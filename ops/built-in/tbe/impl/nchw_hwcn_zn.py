@@ -83,7 +83,7 @@ class FormatTransferParams():
 
     def __init__(self, ib_):
         self.ib_ = ib_
-        self.device_core_num = AICORE_NUM
+        self.device_core_num = Constant.AICORE_NUM
         self.block = tvm.thread_axis("blockIdx.x")
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 

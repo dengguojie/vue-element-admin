@@ -132,8 +132,8 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                                 src1_rep_stride=8)
 
     # encapsulate the two-number compute function.
-    # 'pylint: diable=too-many-arguments
     @staticmethod
+    # 'pylint: disable=too-many-arguments
     def _compute_two_ctn(method, dst, src0, src1, rep_times=1, mask=128):
         method(mask=mask,
                dst=dst,
@@ -209,7 +209,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                                 tmp_kh, tmp_kw, l1_begin_pos[0], l1_begin_pos[1], aux_l1.shape[2], aux_l1.shape[3],
                                 self.k_h, self.k_w, self.stride_h, self.stride_w, rep_times, 1, (0, 0, 0, 0))
 
-    # 'pylint: diable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _calc_maxline(self, max_line_ub, big_matrix_ub, line_blk, super_line_loop, super_line_tail):
         self._move_ctn(dst=max_line_ub,
                        src=big_matrix_ub,
@@ -259,7 +259,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
         return tensor_info
 
-    # 'pylint: diable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _calc_bitmask(self, bitmask_ub, big_matrix_ub, max_line_ub, super_line_loop, super_line_tail):
         with self.inst.for_range(0, self.k_elem) as line_ind:
             if super_line_loop != 0:
@@ -278,6 +278,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                     repeat_times=super_line_tail
                 )
 
+    # 'pylint: disable=too-many-arguments
     def _deduplicate_bitmask(self, mask_or_ub, mask_not_ub, bitmask_ub, data_blk, bm_loop, bm_tail):
         # first, init the mask_not and mask_or
         if bm_loop != 0:
@@ -329,7 +330,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         pass
 
 
-# 'pylint: disable=too-few-public-method
+# 'pylint: disable=too-few-public-methods
 class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
     """
     MaxPool3DWithArgmaxWholeKernel: inherited from MaxPool3DWithArgmax
@@ -379,7 +380,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         self.ubtail_super_loop_cmp = self.ubtail_ub_loop // self.upper_cmp_rep
         self.ubtail_super_tail_cmp = self.ubtail_ub_loop % self.upper_cmp_rep
 
-    # 'pylint: diable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _cut_ub_process(self, ind_ctx, mode):
         tensor_info = ind_ctx['tensor_info']
         ind_n = ind_ctx['ind_N']
@@ -569,7 +570,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         return self.inst
 
 
-# 'pylint: diable=too-many-arguments,too-many-branches
+# 'pylint: disable=too-many-arguments,too-many-branches
 def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
     input_shape = x.get("shape")
     if x.get("dtype").lower() != "float16":

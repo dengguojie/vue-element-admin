@@ -26,16 +26,14 @@ from impl.util import util_select_op_base
 from impl.util import util_common
 
 
-# Determine whether the 16 bit alignment
-SIZE_SIXTEEN = 16
-
-
 # 'pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
 # 'pylint: disable=too-many-locals
 def _can_division_sixteen(shape):
     """
     _can_division_sixteen
     """
+    # Determine whether the 16 bit alignment
+    size_sixteen = 16
     if len(shape) < 2:
         if shape[-1] == 0:
             expected_value = "equal to 0"
@@ -47,7 +45,7 @@ def _can_division_sixteen(shape):
         expected_value = "equal to 0"
         real_value = "not equal to 0"
         error_manager_vector.raise_err_input_value_invalid("mul", "value of shape", expected_value, real_value)
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+    if shape[-1] % size_sixteen == 0 and shape[-2] % size_sixteen == 0:
         return True
 
     return False
@@ -198,6 +196,7 @@ def _can_broad(x, y):
                0] == 16 or y[0] == y[1] == 16
 
 
+# 'pylint: too-many-arguments
 def _gen_para(dtype_total, format_list0, format_list1, format_list2, unknownshape_format_list, shape_x, shape_y):
     if -1 in shape_x or -1 in shape_y:
         input0 = util_select_op_base.gen_param(classify="input0",
@@ -577,6 +576,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     dtype_total = []
     format_nd = ["ND"]
+    # 'pylint: unused-variable
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
     list_input = [x, y]
@@ -593,19 +593,21 @@ def op_select_format(x, y, output, kernel_name="mul"):
     if y_flag["5d"] or y_flag["4d"]:
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
+    # 'pylint: unused-variable
     common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
             not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
-    format_flag = {"NDC1HWC0": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim,
-                   "FRACTAL_Z_3D": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim and x_ndim == y_ndim,
+
+    format_flag = {"NDC1HWC0": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim,
+                   "FRACTAL_Z_3D": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim and x_ndim == y_ndim,
                    "FRACTAL_NZ": len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:],
-                   "NC1HWC0": x_flag["4d"] and y_flag["4d"] and ((format_y == format_x and
+                   "NC1HWC0": x_flag.get("4d") and y_flag.get("4d") and ((format_y == format_x and
                                ((x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim) and _can_broad(
                                [shape_x[format_x.index(format_x[0])], shape_x[format_x.index(format_x[1])],
                                 format_x[0] != "C", format_x[1] != "C"],
                                [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
                                 format_y[0] != "C", format_y[1] != "C"])) or
                                (list(shape_x) == list(shape_y) and -1 not in shape_x)),
-                   "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
+                   "FRACTAL_Z": x_flag.get("4d") and y_flag.get("4d") and format_x == format_y and (
                            (x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0
                             and util_common.is_support_fractal_z_inputs(list_input)
                             and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y)) or
@@ -617,28 +619,31 @@ def op_select_format(x, y, output, kernel_name="mul"):
                    "ND": True
                    }
 
-    format_flag["C1HWNCoC0"] = (x_flag["4d"] and y_flag["Scalar"]) or (x_flag["Scalar"] and y_flag["4d"])
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or (x_flag["4d"] and y_flag["Scalar"]) or (
-            x_flag["Scalar"] and y_flag["4d"])
-    format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or (x_flag["4d"] and y_flag["Scalar"]) or (
-            x_flag["Scalar"] and y_flag["4d"])
-    format_flag["FRACTAL_NZ"] = format_flag["FRACTAL_NZ"] or (
-            len(shape_x) >= 2 and y_flag["Scalar"] and (
+    format_flag["C1HWNCoC0"] = (x_flag.get("4d") and y_flag.get("Scalar")) or\
+                               (x_flag.get("Scalar") and y_flag.get("4d"))
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or (x_flag.get("4d") and y_flag.get("Scalar")) or (
+            x_flag.get("Scalar") and y_flag.get("4d"))
+    format_flag["FRACTAL_Z"] = format_flag.get("FRACTAL_Z") or (x_flag.get("4d") and y_flag.get("Scalar")) or (
+            x_flag.get("Scalar") and y_flag.get("4d"))
+    format_flag["FRACTAL_NZ"] = format_flag.get("FRACTAL_NZ") or (
+            len(shape_x) >= 2 and y_flag.get("Scalar") and (
                 format_x in format_4d_list or (shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0))) or (
-            len(shape_y) >= 2 and x_flag["Scalar"] and (
+            len(shape_y) >= 2 and x_flag.get("Scalar") and (
                 format_y in format_4d_list or (shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0)))
 
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or \
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
                              (len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == shape_y[0] % 16 == 0) or \
-                             (len(shape_x) == 1 and y_flag["4d"] and format_x == format_y and
+                             (len(shape_x) == 1 and y_flag.get("4d") and format_x == format_y and
                               ((format_y in ("NHWC",) and reduce_y != 1) or
                                (format_y in ("NCHW", "HWCN") and
-                                (y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1)))) or \
-                             (len(shape_y) == 1 and x_flag["4d"] and format_x == format_y and
+                                (y_cdim == shape_x[0] or y_cdim == 1 or
+                                 shape_x[0] == 1 or shape_x[0] // 16 == 1)))) or \
+                             (len(shape_y) == 1 and x_flag.get("4d") and format_x == format_y and
                               ((format_x in ("NHWC",) and reduce_x != 1) or
                                (format_x in ("NCHW", "HWCN") and
-                                (x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or shape_y[0] // 16 == 1)))) or \
-                             (x_flag["4d"] and y_flag["4d"] and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
+                                (x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or
+                                 shape_y[0] // 16 == 1)))) or \
+                             (x_flag.get("4d") and y_flag.get("4d") and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
 
     # NDC1HWC0 FRACTAL_Z_3D
 
@@ -689,6 +694,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
+
 
 def _mul_check_format(x, y):
     """

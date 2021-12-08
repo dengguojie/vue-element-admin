@@ -51,6 +51,7 @@ class Constant:
     # number of cubes processed by one vadds instruction
     NUM_CUBE = MAX_MASK // CUBE_SIZE
 
+
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments
 # 'pylint: disable=too-many-locals,too-many-branches
 # 'pylint: disable=unused-argument,too-many-lines,too-many-statements

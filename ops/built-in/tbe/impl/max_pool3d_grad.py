@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.load3d_common_func import img2col
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant.
@@ -147,6 +148,7 @@ class Params:
     """
         Function: use to store concat base parameters
     """
+
     def __init__(self, ub_split, col_in_size,
                  forward_ou_size, mask_size, grad_size,
                  zero_size, grad_sel_fp16_size, grad_sel_fp32_size,
@@ -167,6 +169,7 @@ class MaxPool3DGradCompute:
     """
         Function: use to store concat base parameters
     """
+
     def __init__(self, shape_list, params):
         # forward_in_shape, forward_ou_shape, grad_shape, ou_shape
         # ksize_list, strides_list, pads, dtype
@@ -265,7 +268,7 @@ class MaxPool3DGradCompute:
                                            scope=tik.scope_gm,
                                            is_atomic_add=True)
 
-    def _padding_mode(self,):
+    def _padding_mode(self, ):
         # NDC1HWC0
         _, map_d, _, map_h, map_w, _ = self.forward_in_shape
         _, kernel_d, kernel_h, kernel_w, _ = self.ksize
@@ -301,17 +304,17 @@ class MaxPool3DGradCompute:
     def _infer_dim_return(self, do, ho, wo, model):
 
         if self.kd >= self.sd:
-            di = self.kd + (do-1) * self.sd
+            di = self.kd + (do - 1) * self.sd
         else:
             di = do * self.sd
 
         if self.kh >= self.sh:
-            hi = self.kh + (ho-1) * self.sh
+            hi = self.kh + (ho - 1) * self.sh
         else:
             hi = ho * self.sh
 
         if self.kw > self.sw:
-            wi = self.kw + (wo-1) * self.sw
+            wi = self.kw + (wo - 1) * self.sw
         else:
             wi = wo * self.sw
 
@@ -335,17 +338,17 @@ class MaxPool3DGradCompute:
         # Because in "VALID", feature_map's size is as same as l1_in_buf.
 
         if self.kd >= self.sd:
-            di = self.kd + (do-1) * self.sd
+            di = self.kd + (do - 1) * self.sd
         else:
             di = do * self.sd
 
         if self.kh >= self.sh:
-            hi = self.kh + (ho-1) * self.sh
+            hi = self.kh + (ho - 1) * self.sh
         else:
             hi = ho * self.sh
 
         if self.kw > self.sw:
-            wi = self.kw + (wo-1) * self.sw
+            wi = self.kw + (wo - 1) * self.sw
         else:
             wi = wo * self.sw
 
@@ -416,7 +419,7 @@ class MaxPool3DGradCompute:
         col_in_size = _ceil_div(_prod(col_in_shape), 256) * 256
 
         forward_ou_shape_last_do = [1, ho, wo, self.c0]
-        forward_ou_shape_except_last = [do-1, ho, wo, self.c0]
+        forward_ou_shape_except_last = [do - 1, ho, wo, self.c0]
         forward_ou_size = _ceil_div(_prod(forward_ou_shape_last_do), 128) * 128
         forward_ou_size += _prod(forward_ou_shape_except_last)
 
@@ -561,9 +564,9 @@ class MaxPool3DGradCompute:
     def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
         n_burst = in_shape[0]
         burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1-1) +
+        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
                       _prod(self.forward_in_shape[4:]) *
-                      (self.h-in_shape[1])) * self.num_bit // Constant.MINI_UNIT
+                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
         dst_stride = 0
 
         in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
@@ -585,9 +588,9 @@ class MaxPool3DGradCompute:
                             in_shape, hi_batch):
         n_burst = in_shape[0]
         burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1-1) +
+        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
                       _prod(self.forward_in_shape[4:]) *
-                      (self.h-in_shape[1])) * self.num_bit // Constant.MINI_UNIT
+                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
         dst_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
                      self.num_bit // Constant.MINI_UNIT
 
@@ -655,9 +658,9 @@ class MaxPool3DGradCompute:
         n_burst = in_shape[0]
         burst_len = _prod(in_shape[1:]) * self.num_bit_fp32 // Constant.MINI_UNIT
         src_stride = 0
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1-1) +
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
                       _prod(self.forward_in_shape[4:]) *
-                      (self.h-in_shape[1])) * self.num_bit_fp32 // Constant.MINI_UNIT
+                      (self.h - in_shape[1])) * self.num_bit_fp32 // Constant.MINI_UNIT
 
         in_list = [n_burst, burst_len, src_stride,
                    dst_stride, src_idx, dst_idx]
@@ -680,9 +683,9 @@ class MaxPool3DGradCompute:
                     self.num_bit_fp32 // Constant.MINI_UNIT
         src_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
                      self.num_bit_fp32 // Constant.MINI_UNIT
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1-1) +
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
                       _prod(self.forward_in_shape[4:]) *
-                      (self.h-in_shape[1])) * \
+                      (self.h - in_shape[1])) * \
                      self.num_bit_fp32 // Constant.MINI_UNIT
 
         in_list = [n_burst, burst_len, src_stride,
@@ -710,9 +713,9 @@ class MaxPool3DGradCompute:
                     self.num_bit_fp32 // Constant.MINI_UNIT
         src_stride = self.overlap_h * self.w * self.c0 * \
                      self.num_bit_fp32 // Constant.MINI_UNIT
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1-1) +
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
                       _prod(self.forward_in_shape[4:]) *
-                      (self.h-in_shape[1])) * \
+                      (self.h - in_shape[1])) * \
                      self.num_bit_fp32 // Constant.MINI_UNIT
 
         in_list = [n_burst, burst_len, src_stride,
@@ -777,7 +780,7 @@ class MaxPool3DGradCompute:
         dst_stride = 0
         if num_overlap > 0:
             tik_instance.data_move(ubuf[0],
-                                   ubuf[all_num-num_overlap],
+                                   ubuf[all_num - num_overlap],
                                    0,
                                    n_burst,
                                    burst_len,
@@ -794,9 +797,9 @@ class MaxPool3DGradCompute:
         # Only split do, ho, wo, do and ho is 1.
         n_burst = in_shape[0]
         burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1-1) +
-                      _prod(self.forward_ou_shape[4:]) * (self.ho-in_shape[1]) +
-                      self.c0 * (self.wo-in_shape[2])) * \
+        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_ou_shape[4:]) * (self.ho - in_shape[1]) +
+                      self.c0 * (self.wo - in_shape[2])) * \
                      self.num_bit // Constant.MINI_UNIT
         dst_stride = 0
 
@@ -1008,11 +1011,11 @@ class MaxPool3DGradCompute:
 
         # num_instr_loop_w: num of instructions on direct W
         # num_instr_loop_h: num of instructions on direct H
-        num_instr_loop_w = math.ceil(once_elem/max_mask)
+        num_instr_loop_w = math.ceil(once_elem / max_mask)
         remain_mask = once_elem % max_mask
         if remain_mask == 0 and once_elem != 0:
             remain_mask = max_mask
-        num_instr_loop_h = math.ceil(repeat_times/Constant.MAX_REPEAT)
+        num_instr_loop_h = math.ceil(repeat_times / Constant.MAX_REPEAT)
         remain_repeat = repeat_times % Constant.MAX_REPEAT
         if remain_repeat == 0 and repeat_times != 0:
             remain_repeat = Constant.MAX_REPEAT
@@ -1115,14 +1118,14 @@ class MaxPool3DGradCompute:
 
         with tik_instance.if_scope(tik.all(idx_d == 0, idx_h == 0, idx_w == 0)):
             tik_instance.vcmpv_eq(mask_buf[0],
-                                  forward_ou_buf[idx_do*ho*wo*c0],
+                                  forward_ou_buf[idx_do * ho * wo * c0],
                                   col_in_buf[0],
-                                  math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE),
+                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
                                   1, 1, 8, 8)
 
             tik_instance.data_move(mask_or_buf[0],
                                    mask_buf[0], 0, 1,
-                                   param.mask_size//16, 0, 0)
+                                   param.mask_size // 16, 0, 0)
 
             tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
                               param.mask_size // Constant.VECTOR_FP16_SIZE,
@@ -1130,9 +1133,9 @@ class MaxPool3DGradCompute:
 
         with tik_instance.else_scope():
             tik_instance.vcmpv_eq(mask_buf[0],
-                                  forward_ou_buf[idx_do*ho*wo*c0],
+                                  forward_ou_buf[idx_do * ho * wo * c0],
                                   col_in_buf[0],
-                                  math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE),
+                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
                                   1, 1, 8, 8)
 
             tik_instance.vand(self.mask_fp16, mask_buf, mask_not_buf, mask_buf,
@@ -1156,10 +1159,10 @@ class MaxPool3DGradCompute:
         ho, wo, c0 = const_list
         idx_do = idx_list[0]
 
-        repeat_times_sel = math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE)
+        repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
         with tik_instance.for_range(0, repeat_times_sel) as serial:
             grad_sel_offset = serial * 128
-            grad_offset = serial * 128 + idx_do*ho*wo*c0
+            grad_offset = serial * 128 + idx_do * ho * wo * c0
             mask_offset = serial * 8
             cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
             tik_instance.vsel(self.mask_fp16, 0,
@@ -1224,7 +1227,7 @@ class MaxPool3DGradCompute:
                                 src_grad_gm, gm2ub_data_shape)
 
             # ---load3d l1 to col_in_buffer---
-            repeat_times = _ceil_div(ho*wo, 16)
+            repeat_times = _ceil_div(ho * wo, 16)
             # window
             with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                 # number of hwc0 in window
@@ -1257,14 +1260,14 @@ class MaxPool3DGradCompute:
                                                                idx_h == 0,
                                                                idx_w == 0)):
                                 tik_instance.vcmpv_eq(mask_buf[0],
-                                                      forward_ou_buf[idx_do*ho*wo*c0],
+                                                      forward_ou_buf[idx_do * ho * wo * c0],
                                                       col_in_buf[0],
-                                                      math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE),
+                                                      math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
                                                       1, 1, 8, 8)
 
                                 tik_instance.data_move(mask_or_buf[0],
                                                        mask_buf[0], 0, 1,
-                                                       param.mask_size//16, 0, 0)
+                                                       param.mask_size // 16, 0, 0)
 
                                 tik_instance.vnot(self.mask_fp16,
                                                   mask_not_buf, mask_or_buf,
@@ -1273,9 +1276,9 @@ class MaxPool3DGradCompute:
 
                             with tik_instance.else_scope():
                                 tik_instance.vcmpv_eq(mask_buf[0],
-                                                      forward_ou_buf[idx_do*ho*wo*c0],
+                                                      forward_ou_buf[idx_do * ho * wo * c0],
                                                       col_in_buf[0],
-                                                      math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE),
+                                                      math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
                                                       1, 1, 8, 8)
 
                                 tik_instance.vand(self.mask_fp16, mask_buf,
@@ -1294,10 +1297,10 @@ class MaxPool3DGradCompute:
                                                   1, 1, 8, 8)
 
                             # ---vsel(grad,zero,mask)---
-                            repeat_times_sel = math.ceil(ho*wo*c0/Constant.VECTOR_FP16_SIZE)
+                            repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
                             with tik_instance.for_range(0, repeat_times_sel) as serial:
                                 grad_sel_offset = serial * 128
-                                grad_offset = serial * 128 + idx_do*ho*wo*c0
+                                grad_offset = serial * 128 + idx_do * ho * wo * c0
                                 mask_offset = serial * 8
                                 cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
                                 tik_instance.vsel(self.mask_fp16, 0,
@@ -1313,12 +1316,12 @@ class MaxPool3DGradCompute:
                                         param.grad_sel_fp16_size, "float16")
 
                             # ---rewrite grad_sel_fp32 to f_map_fp32
-                            config = (self.sw*2, self.sw*2, 2,
-                                      self.sh*wi*2, self.sh*wi*2, wo*2)
+                            config = (self.sw * 2, self.sw * 2, 2,
+                                      self.sh * wi * 2, self.sh * wi * 2, wo * 2)
                             if _check_config(config):
                                 with tik_instance.for_range(0, 1) as ho_idx:
-                                    map_index = (idx_do*self.sd+idx_d)*hi*wi*c0 + \
-                                                (idx_h*wi*c0+idx_w*c0)
+                                    map_index = (idx_do * self.sd + idx_d) * hi * wi * c0 + \
+                                                (idx_h * wi * c0 + idx_w * c0)
                                     mask_index = wo * ho_idx * c0
                                     shape_map_hw = [hi, wi, c0]
                                     shape_grad = [ho, wo, c0]
@@ -1327,15 +1330,15 @@ class MaxPool3DGradCompute:
                                                        f_map_fp32_buf[map_index:],
                                                        grad_sel_fp32_buf[mask_index:],
                                                        f_map_fp32_buf[map_index:],
-                                                       "float32", wo*c0//2, ho,
+                                                       "float32", wo * c0 // 2, ho,
                                                        shape_map_hw, shape_grad,
                                                        config=config)
 
                                     self._rewrite_fmap(tik_instance, "vadd",
-                                                       f_map_fp32_buf[map_index+8:],
-                                                       grad_sel_fp32_buf[mask_index+8:],
-                                                       f_map_fp32_buf[map_index+8:],
-                                                       "float32", wo*c0//2, ho,
+                                                       f_map_fp32_buf[map_index + 8:],
+                                                       grad_sel_fp32_buf[mask_index + 8:],
+                                                       f_map_fp32_buf[map_index + 8:],
+                                                       "float32", wo * c0 // 2, ho,
                                                        shape_map_hw, shape_grad,
                                                        config=config)
 
@@ -1344,29 +1347,29 @@ class MaxPool3DGradCompute:
                                 # which window, begin_index of kernel,
                                 # begin_index of child kernel
                                 with tik_instance.for_range(0, ho) as ho_idx:
-                                    map_index = (idx_do*self.sd+idx_d)*hi*wi*c0 + \
-                                                (ho_idx*self.sh*wi*c0) + \
-                                                (idx_h*wi*c0+idx_w*c0)
+                                    map_index = (idx_do * self.sd + idx_d) * hi * wi * c0 + \
+                                                (ho_idx * self.sh * wi * c0) + \
+                                                (idx_h * wi * c0 + idx_w * c0)
                                     mask_index = wo * ho_idx * c0
 
                                     self._vector_op(tik_instance, "vadd",
                                                     f_map_fp32_buf[map_index:],
                                                     grad_sel_fp32_buf[mask_index:],
                                                     f_map_fp32_buf[map_index:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
                                     self._vector_op(tik_instance, "vadd",
-                                                    f_map_fp32_buf[map_index+8:],
-                                                    grad_sel_fp32_buf[mask_index+8:],
+                                                    f_map_fp32_buf[map_index + 8:],
+                                                    grad_sel_fp32_buf[mask_index + 8:],
                                                     f_map_fp32_buf[map_index + 8:],
                                                     "float32", wo * c0 // 2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
 
             # ---mov_out---
             dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -1427,7 +1430,7 @@ class MaxPool3DGradCompute:
                 # ----Init_Begin_Idx----
                 if self.kd >= self.sd:
                     di_coordinate = loop_idx * \
-                                    (di_batch-self.overlap_d)
+                                    (di_batch - self.overlap_d)
                 else:
                     di_coordinate = loop_idx * di_batch
                 do_coordinate = loop_idx * do_batch
@@ -1448,7 +1451,7 @@ class MaxPool3DGradCompute:
                 with tik_instance.else_scope():
                     self._copy_gm_to_l1(tik_instance, l1_in_buf,
                                         src_orig_x_gm, 0,
-                                        [di+self.overlap_d, hi, wi, c0])
+                                        [di + self.overlap_d, hi, wi, c0])
 
                 # ----COPY_ORI_OUTPUT_2_FORWARD_OU_BUF----
                 self._copy_gm_to_ub(tik_instance, forward_ou_buf,
@@ -1460,7 +1463,7 @@ class MaxPool3DGradCompute:
                                     src_grad_gm, [do, ho, wo, c0])
 
                 # ---load3d l1 to col_in_buffer---
-                repeat_times = _ceil_div(ho*wo, 16)
+                repeat_times = _ceil_div(ho * wo, 16)
                 # which window
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     # which hwc0
@@ -1484,9 +1487,13 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
-                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
-                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
+                                        tik_instance, col_in_buf_shape,
+                                        col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                        "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf,
+                                            src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh,
+                                            self.sw, repeat_times, 1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -1504,12 +1511,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32---
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*wi*2, self.sh*wi*2, wo*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * wi * 2, self.sh * wi * 2, wo * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi*wi*c0 + \
-                                                    (idx_h*wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi * wi * c0 + \
+                                                    (idx_h * wi * c0 + idx_w * c0)
                                         mask_index = wo * ho_idx * c0
                                         shape_map_hw = [hi, wi, c0]
                                         shape_grad = [ho, wo, c0]
@@ -1518,15 +1525,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo*c0//2, ho,
+                                                           "float32", wo * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo*c0//2, ho,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -1534,29 +1541,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi*wi*c0 + \
-                                                    (ho_idx*self.sh*wi*c0) + \
-                                                    (idx_h*wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi * wi * c0 + \
+                                                    (ho_idx * self.sh * wi * c0) + \
+                                                    (idx_h * wi * c0 + idx_w * c0)
                                         mask_index = wo * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        grad_sel_fp32_buf[mask_index + 8:],
                                                         f_map_fp32_buf[map_index + 8:],
                                                         "float32", wo * c0 // 2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # ---mov_out---
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -1570,7 +1577,7 @@ class MaxPool3DGradCompute:
                 with tik_instance.if_scope(di_coordinate + di < boundary_d):
                     if self.kd >= self.sd:
                         # move accumulated data to gm
-                        ub2gm_shape = [di-self.overlap_d, hi, wi, c0]
+                        ub2gm_shape = [di - self.overlap_d, hi, wi, c0]
                         self._copy_ub_to_gm(tik_instance, f_map_fp32_buf, 0,
                                             self.ou_y_gm, dst_ou_gm,
                                             ub2gm_shape)
@@ -1609,7 +1616,7 @@ class MaxPool3DGradCompute:
                         # useful data
                         if self.di_invalid <= 0:
                             # overlap_d make di exceed self.d
-                            ub2gm_shape = [di+self.di_invalid, hi, wi, c0]
+                            ub2gm_shape = [di + self.di_invalid, hi, wi, c0]
                             self._copy_ub_to_gm(tik_instance, f_map_fp32_buf, 0,
                                                 self.ou_y_gm, dst_ou_gm,
                                                 ub2gm_shape)
@@ -1686,13 +1693,13 @@ class MaxPool3DGradCompute:
                 # ==========================
                 if self.kd >= self.sd:
                     di_coordinate = loop_do_idx * \
-                                    (di_batch-self.overlap_d)
+                                    (di_batch - self.overlap_d)
                 else:
                     di_coordinate = loop_do_idx * di_batch
 
                 if self.kh >= self.sh:
                     hi_coordinate = loop_ho_idx * \
-                                    (hi_batch-self.overlap_h)
+                                    (hi_batch - self.overlap_h)
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch
 
@@ -1722,16 +1729,16 @@ class MaxPool3DGradCompute:
                         if self.overlap_h < 0:
                             self._gm2l1_tiling_do_ho(tik_instance, l1_in_buf,
                                                      src_orig_x_gm, 0,
-                                                     [di, hi+self.overlap_h,
+                                                     [di, hi + self.overlap_h,
                                                       wi, c0],
                                                      hi_batch)
 
                 with tik_instance.else_scope():
                     if self.overlap_d < 0:
-                        with tik_instance.if_scope(hi_coordinate+hi <= self.h):
+                        with tik_instance.if_scope(hi_coordinate + hi <= self.h):
                             self._gm2l1_tiling_do_ho(tik_instance, l1_in_buf,
                                                      src_orig_x_gm, 0,
-                                                     [di+self.overlap_d,
+                                                     [di + self.overlap_d,
                                                       hi, wi, c0],
                                                      hi_batch)
                         with tik_instance.else_scope():
@@ -1739,8 +1746,8 @@ class MaxPool3DGradCompute:
                                 self._gm2l1_tiling_do_ho(tik_instance,
                                                          l1_in_buf,
                                                          src_orig_x_gm, 0,
-                                                         [di+self.overlap_d,
-                                                          hi+self.overlap_h,
+                                                         [di + self.overlap_d,
+                                                          hi + self.overlap_h,
                                                           wi, c0],
                                                          hi_batch)
 
@@ -1758,7 +1765,7 @@ class MaxPool3DGradCompute:
                 # ================================
                 # load3d l1 to col_in_buffer
                 # ================================
-                repeat_times = _ceil_div(ho*wo, 16)
+                repeat_times = _ceil_div(ho * wo, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
@@ -1780,10 +1787,13 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
-                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
-                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
-
+                                        tik_instance, col_in_buf_shape, col_in_buf,
+                                        0, Constant.MIN_VALUE_FP16,
+                                        "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf,
+                                            src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh,
+                                            self.sw, repeat_times, 1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -1801,12 +1811,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*wi*2, self.sh*wi*2, wo*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * wi * 2, self.sh * wi * 2, wo * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi*c0 + \
-                                                    (idx_h*wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi * c0 + \
+                                                    (idx_h * wi * c0 + idx_w * c0)
                                         mask_index = wo * ho_idx * c0
                                         shape_map_hw = [hi_batch, wi, c0]
                                         shape_grad = [ho, wo, c0]
@@ -1815,15 +1825,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo*c0//2, ho,
+                                                           "float32", wo * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo*c0//2, ho,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -1831,29 +1841,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi*c0 + \
-                                                    (ho_idx*self.sh*wi*c0) + \
-                                                    (idx_h*wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi * c0 + \
+                                                    (ho_idx * self.sh * wi * c0) + \
+                                                    (idx_h * wi * c0 + idx_w * c0)
                                         mask_index = wo * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        grad_sel_fp32_buf[mask_index + 8:],
                                                         f_map_fp32_buf[map_index + 8:],
                                                         "float32", wo * c0 // 2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -1867,11 +1877,11 @@ class MaxPool3DGradCompute:
                         # ================================
                         # Split kernels as n-1 and the nth
                         # ================================
-                        with tik_instance.if_scope(hi_coordinate+hi < boundary_h):
+                        with tik_instance.if_scope(hi_coordinate + hi < boundary_h):
                             # ==============================
                             # move accumulated data to gm
                             # ==============================
-                            in_shape = [num_d, hi-self.overlap_h, wi, c0]
+                            in_shape = [num_d, hi - self.overlap_h, wi, c0]
                             self._ub2gm_split_do_ho(tik_instance,
                                                     f_map_fp32_buf,
                                                     src_idx, dst,
@@ -1882,7 +1892,7 @@ class MaxPool3DGradCompute:
                             # ==============================
                             in_shape = [num_d, hi, wi, c0]
                             overlap = [num_d, self.overlap_h, wi, c0]
-                            non_overlap = [num_d, hi-self.overlap_h, wi, c0]
+                            non_overlap = [num_d, hi - self.overlap_h, wi, c0]
 
                             n_burst = in_shape[0]
                             burst_len = _prod(overlap[1:]) * \
@@ -1945,7 +1955,7 @@ class MaxPool3DGradCompute:
                                                 param.f_map_fp32_size,
                                                 f_map_fp32_buf, 0, 0, "float32")
                         else:
-                            with tik_instance.if_scope(hi_coordinate+hi < boundary_h):
+                            with tik_instance.if_scope(hi_coordinate + hi < boundary_h):
                                 in_shape = [num_d, hi, wi, c0]
                                 self._ub2gm_split_do_ho_2(tik_instance,
                                                           f_map_fp32_buf,
@@ -1958,7 +1968,7 @@ class MaxPool3DGradCompute:
                                                     f_map_fp32_buf, 0, 0,
                                                     "float32")
                             with tik_instance.else_scope():
-                                in_shape = [num_d, hi+self.hi_invalid, wi, c0]
+                                in_shape = [num_d, hi + self.hi_invalid, wi, c0]
                                 self._ub2gm_split_do_ho_2(tik_instance,
                                                           f_map_fp32_buf,
                                                           src_idx, dst,
@@ -1979,10 +1989,10 @@ class MaxPool3DGradCompute:
                     if self.di_invalid >= 0:
                         mov_atomic(di, self.ou_y_gm, dst_ou_gm, 0)
                     else:
-                        with tik_instance.if_scope(di_coordinate+di <= self.d):
+                        with tik_instance.if_scope(di_coordinate + di <= self.d):
                             mov_atomic(di, self.ou_y_gm, dst_ou_gm, 0)
                         with tik_instance.else_scope():
-                            mov_atomic(di+self.di_invalid,
+                            mov_atomic(di + self.di_invalid,
                                        self.ou_y_gm, dst_ou_gm, 0)
                     tik_instance.set_atomic_add(0)
 
@@ -2051,19 +2061,19 @@ class MaxPool3DGradCompute:
                 # ==========================
                 if self.kd >= self.sd:
                     di_coordinate = loop_do_idx * \
-                                    (di_batch-self.overlap_d)
+                                    (di_batch - self.overlap_d)
                 else:
                     di_coordinate = loop_do_idx * di_batch
 
                 if self.kh >= self.sh:
                     hi_coordinate = loop_ho_idx * \
-                                    (hi_batch-self.overlap_h)
+                                    (hi_batch - self.overlap_h)
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch
 
                 if self.kw >= self.sw:
                     wi_coordinate = loop_wo_idx * \
-                                    (wi_batch-self.overlap_w)
+                                    (wi_batch - self.overlap_w)
                 else:
                     wi_coordinate = loop_wo_idx * wi_batch
 
@@ -2111,7 +2121,7 @@ class MaxPool3DGradCompute:
                 # ================================
                 # load3d l1 to col_in_buffer
                 # ================================
-                repeat_times = _ceil_div(ho*wo, 16)
+                repeat_times = _ceil_div(ho * wo, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
@@ -2133,7 +2143,8 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                        "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2169,20 +2180,20 @@ class MaxPool3DGradCompute:
                                                     f_map_fp32_buf[map_index:],
                                                     grad_sel_fp32_buf[mask_index:],
                                                     f_map_fp32_buf[map_index:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
                                     self._vector_op(tik_instance, "vadd",
-                                                    f_map_fp32_buf[map_index+8:],
-                                                    grad_sel_fp32_buf[mask_index+8:],
                                                     f_map_fp32_buf[map_index + 8:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    grad_sel_fp32_buf[mask_index + 8:],
+                                                    f_map_fp32_buf[map_index + 8:],
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -2288,8 +2299,8 @@ class MaxPool3DGradCompute:
             def _main(loop_idx, di, do):
                 # ----Init_Begin_Idx----
                 if self.kd >= self.sd:
-                    di_coordinate = loop_idx * (di_batch-self.overlap_d) + \
-                                    remainder_c1 * (core_di-self.overlap_d)
+                    di_coordinate = loop_idx * (di_batch - self.overlap_d) + \
+                                    remainder_c1 * (core_di - self.overlap_d)
                 else:
                     di_coordinate = loop_idx * di_batch + \
                                     remainder_c1 * core_di
@@ -2313,7 +2324,7 @@ class MaxPool3DGradCompute:
                 with tik_instance.else_scope():
                     self._copy_gm_to_l1(tik_instance, l1_in_buf,
                                         src_orig_x_gm, 0,
-                                        [di+self.overlap_d, hi_batch,
+                                        [di + self.overlap_d, hi_batch,
                                          wi_batch, c0])
 
                 # ----COPY_ORI_OUTPUT_2_FORWARD_OU_BUF----
@@ -2326,7 +2337,7 @@ class MaxPool3DGradCompute:
                                     src_grad_gm, [do, ho_batch, wo_batch, c0])
 
                 # ---load3d l1 to col_in_buffer---
-                repeat_times = _ceil_div(ho_batch*wo_batch, 16)
+                repeat_times = _ceil_div(ho_batch * wo_batch, 16)
                 # which window
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     # which hwc0
@@ -2350,7 +2361,8 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                        "float16")
 
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_batch, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
@@ -2373,12 +2385,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*wi_batch*2, self.sh*wi_batch*2, wo_batch*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * wi_batch * 2, self.sh * wi_batch * 2, wo_batch * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi_batch*c0 + \
-                                                    (idx_h*wi_batch*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0 + \
+                                                    (idx_h * wi_batch * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
                                         shape_map_hw = [hi_batch, wi_batch, c0]
                                         shape_grad = [ho_batch, wo_batch, c0]
@@ -2387,15 +2399,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo_batch*c0//2, ho_batch,
+                                                           "float32", wo_batch * c0 // 2, ho_batch,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo_batch*c0//2, ho_batch,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo_batch * c0 // 2, ho_batch,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -2403,29 +2415,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho_batch) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi_batch*c0 + \
-                                                    (ho_idx*self.sh*wi_batch*c0) + \
-                                                    (idx_h*wi_batch*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0 + \
+                                                    (ho_idx * self.sh * wi_batch * c0) + \
+                                                    (idx_h * wi_batch * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
                                                         f_map_fp32_buf[map_index + 8:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        grad_sel_fp32_buf[mask_index + 8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # ---mov_out---
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -2517,11 +2529,11 @@ class MaxPool3DGradCompute:
             core_ho_times = self.ho // core_ho
             core_hi = self.core_in_shape[1]
 
-            merchant = (sum_core+num_core_loop) // (c1*core_do_times*core_ho_times)
-            remainder = (sum_core+num_core_loop) % (c1*core_do_times*core_ho_times)
+            merchant = (sum_core + num_core_loop) // (c1 * core_do_times * core_ho_times)
+            remainder = (sum_core + num_core_loop) % (c1 * core_do_times * core_ho_times)
 
-            merchant_c1 = remainder // (core_do_times*core_ho_times)
-            remainder_c1 = remainder % (core_do_times*core_ho_times)
+            merchant_c1 = remainder // (core_do_times * core_ho_times)
+            remainder_c1 = remainder % (core_do_times * core_ho_times)
 
             merchant_d = remainder_c1 // core_ho_times
             remainder_d = remainder_c1 % core_ho_times
@@ -2531,15 +2543,15 @@ class MaxPool3DGradCompute:
                 # Init_Begin_Idx
                 # ==========================
                 if self.kd >= self.sd:
-                    di_coordinate = loop_do_idx * (di_batch-self.overlap_d) + \
-                                    merchant_d * (core_di-self.overlap_d)
+                    di_coordinate = loop_do_idx * (di_batch - self.overlap_d) + \
+                                    merchant_d * (core_di - self.overlap_d)
                 else:
                     di_coordinate = loop_do_idx * di_batch + \
                                     merchant_d * core_di
 
                 if self.kh >= self.sh:
-                    hi_coordinate = loop_ho_idx * (hi_batch-self.overlap_h) + \
-                                    remainder_d * (core_hi-self.overlap_h)
+                    hi_coordinate = loop_ho_idx * (hi_batch - self.overlap_h) + \
+                                    remainder_d * (core_hi - self.overlap_h)
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch + \
                                     remainder_d * core_hi
@@ -2583,7 +2595,7 @@ class MaxPool3DGradCompute:
                 # ================================
                 # load3d l1 to col_in_buffer
                 # ================================
-                repeat_times = _ceil_div(ho*wo_batch, 16)
+                repeat_times = _ceil_div(ho * wo_batch, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
@@ -2605,7 +2617,8 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                        "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2626,12 +2639,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*wi_batch*2, self.sh*wi_batch*2, wo_batch*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * wi_batch * 2, self.sh * wi_batch * 2, wo_batch * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi_batch*c0 + \
-                                                    (idx_h*wi_batch*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0 + \
+                                                    (idx_h * wi_batch * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
                                         shape_map_hw = [hi_batch, wi_batch, c0]
                                         shape_grad = [ho, wo_batch, c0]
@@ -2640,15 +2653,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo_batch*c0//2, ho,
+                                                           "float32", wo_batch * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo_batch*c0//2, ho,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo_batch * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -2656,29 +2669,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*hi_batch*wi_batch*c0 + \
-                                                    (ho_idx*self.sh*wi_batch*c0) + \
-                                                    (idx_h*wi_batch*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0 + \
+                                                    (ho_idx * self.sh * wi_batch * c0) + \
+                                                    (idx_h * wi_batch * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
                                                         f_map_fp32_buf[map_index + 8:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        grad_sel_fp32_buf[mask_index + 8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -2791,16 +2804,16 @@ class MaxPool3DGradCompute:
             core_wo_times = self.wo // core_wo
             core_wi = self.core_in_shape[2]
 
-            merchant = (sum_core+num_core_loop) // \
-                       (c1*core_do_times*core_ho_times*core_wo_times)
-            remainder = (sum_core+num_core_loop) % \
-                        (c1*core_do_times*core_ho_times*core_wo_times)
+            merchant = (sum_core + num_core_loop) // \
+                       (c1 * core_do_times * core_ho_times * core_wo_times)
+            remainder = (sum_core + num_core_loop) % \
+                        (c1 * core_do_times * core_ho_times * core_wo_times)
 
-            merchant_c1 = remainder // (core_do_times*core_ho_times*core_wo_times)
-            remainder_c1 = remainder % (core_do_times*core_ho_times*core_wo_times)
+            merchant_c1 = remainder // (core_do_times * core_ho_times * core_wo_times)
+            remainder_c1 = remainder % (core_do_times * core_ho_times * core_wo_times)
 
-            merchant_d = remainder_c1 // (core_ho_times*core_wo_times)
-            remainder_d = remainder_c1 % (core_ho_times*core_wo_times)
+            merchant_d = remainder_c1 // (core_ho_times * core_wo_times)
+            remainder_d = remainder_c1 % (core_ho_times * core_wo_times)
 
             merchant_h = remainder_d // core_wo_times
             remainder_h = remainder_d % core_wo_times
@@ -2811,22 +2824,22 @@ class MaxPool3DGradCompute:
                 # Init_Begin_Idx
                 # ==========================
                 if self.kd >= self.sd:
-                    di_coordinate = loop_do_idx * (di_batch-self.overlap_d) + \
-                                    merchant_d * (core_di-self.overlap_d)
+                    di_coordinate = loop_do_idx * (di_batch - self.overlap_d) + \
+                                    merchant_d * (core_di - self.overlap_d)
                 else:
                     di_coordinate = loop_do_idx * di_batch + \
                                     merchant_d * core_di
 
                 if self.kh >= self.sh:
-                    hi_coordinate = loop_ho_idx * (hi_batch-self.overlap_h) + \
-                                    merchant_h * (core_hi-self.overlap_h)
+                    hi_coordinate = loop_ho_idx * (hi_batch - self.overlap_h) + \
+                                    merchant_h * (core_hi - self.overlap_h)
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch + \
                                     merchant_h * core_hi
 
                 if self.kw >= self.sw:
-                    wi_coordinate = loop_wo_idx * (wi_batch-self.overlap_w) + \
-                                    remainder_h * (core_wi-self.overlap_w)
+                    wi_coordinate = loop_wo_idx * (wi_batch - self.overlap_w) + \
+                                    remainder_h * (core_wi - self.overlap_w)
                 else:
                     wi_coordinate = loop_wo_idx * wi_batch + \
                                     remainder_h * core_wi
@@ -2875,7 +2888,7 @@ class MaxPool3DGradCompute:
                 # ================================
                 # load3d l1 to col_in_buffer
                 # ================================
-                repeat_times = _ceil_div(ho*wo, 16)
+                repeat_times = _ceil_div(ho * wo, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
@@ -2897,7 +2910,8 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                        "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2933,20 +2947,20 @@ class MaxPool3DGradCompute:
                                                     f_map_fp32_buf[map_index:],
                                                     grad_sel_fp32_buf[mask_index:],
                                                     f_map_fp32_buf[map_index:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
                                     self._vector_op(tik_instance, "vadd",
-                                                    f_map_fp32_buf[map_index+8:],
-                                                    grad_sel_fp32_buf[mask_index+8:],
                                                     f_map_fp32_buf[map_index + 8:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    grad_sel_fp32_buf[mask_index + 8:],
+                                                    f_map_fp32_buf[map_index + 8:],
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -3066,8 +3080,8 @@ class MaxPool3DGradCompute:
                 # enough in l1_in_buf.
                 # ============================================================
                 if self.kd >= self.sd:
-                    di_coordinate = loop_idx * (di_batch-self.overlap_d) + \
-                                    remainder_c1 * (core_di-self.overlap_d) - \
+                    di_coordinate = loop_idx * (di_batch - self.overlap_d) + \
+                                    remainder_c1 * (core_di - self.overlap_d) - \
                                     pad_d_top
                 else:
                     di_coordinate = loop_idx * di_batch + \
@@ -3107,7 +3121,7 @@ class MaxPool3DGradCompute:
 
                 in_shape = [di_val, hi_batch, wi_batch, c0]
                 self._copy_gm_to_l1(tik_instance, l1_in_buf,
-                                    src_orig_x_gm, l1_idx*hi_batch*wi_batch*c0,
+                                    src_orig_x_gm, l1_idx * hi_batch * wi_batch * c0,
                                     in_shape)
 
                 # ----COPY_ORI_OUTPUT_2_FORWARD_OU_BUF----
@@ -3121,7 +3135,7 @@ class MaxPool3DGradCompute:
 
                 # ---load3d l1 to col_in_buffer---
                 load3d_mark = tik_instance.Scalar(dtype='int64', name='load3d_mark')
-                repeat_times = _ceil_div(ho_batch*wo_batch, 16)
+                repeat_times = _ceil_div(ho_batch * wo_batch, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         # =====================================================
@@ -3154,7 +3168,8 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                            "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -pad_hw_top, -pad_hw_left, hi_batch, wi_batch, self.kh, self.kw,
                                                 self.sh, self.sw, repeat_times, 1, pad_hw_list)
@@ -3175,12 +3190,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*map_wi*2, self.sh*map_wi*2, wo_batch*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * map_wi * 2, self.sh * map_wi * 2, wo_batch * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*map_hi*map_wi*c0 + \
-                                                    (idx_h*map_wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * map_hi * map_wi * c0 + \
+                                                    (idx_h * map_wi * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
                                         shape_map_hw = [map_hi, map_wi, c0]
                                         shape_grad = [ho_batch, wo_batch, c0]
@@ -3189,15 +3204,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo_batch*c0//2, ho_batch,
+                                                           "float32", wo_batch * c0 // 2, ho_batch,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo_batch*c0//2, ho_batch,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo_batch * c0 // 2, ho_batch,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -3205,29 +3220,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho_batch) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*map_hi*map_wi*c0 + \
-                                                    (ho_idx*self.sh*map_wi*c0) + \
-                                                    (idx_h*map_wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * map_hi * map_wi * c0 + \
+                                                    (ho_idx * self.sh * map_wi * c0) + \
+                                                    (idx_h * map_wi * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
                                                         f_map_fp32_buf[map_index + 8:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        grad_sel_fp32_buf[mask_index + 8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # ---mov_out---
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -3246,7 +3261,7 @@ class MaxPool3DGradCompute:
                     dst_stride = 0
 
                     with tik_instance.for_range(0, ub2gm_shape[0]) as idx:
-                        src_idx_new = src_idx + idx * map_hi*map_wi*c0
+                        src_idx_new = src_idx + idx * map_hi * map_wi * c0
                         dst_idx_new = dst_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
 
                         in_list = [n_burst, burst_len, src_stride,
@@ -3263,7 +3278,7 @@ class MaxPool3DGradCompute:
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(di_val, self.ou_y_gm, dst_ou_gm,
-                           l1_idx*map_hi*map_wi*c0)
+                           l1_idx * map_hi * map_wi * c0)
                 tik_instance.set_atomic_add(0)
 
             with tik_instance.for_range(0, loop_do) as idx:
@@ -3339,11 +3354,11 @@ class MaxPool3DGradCompute:
             core_ho_times = self.ho // core_ho
             core_hi = self.core_in_shape[1]
 
-            merchant = (sum_core+num_core_loop) // (c1*core_do_times*core_ho_times)
-            remainder = (sum_core+num_core_loop) % (c1*core_do_times*core_ho_times)
+            merchant = (sum_core + num_core_loop) // (c1 * core_do_times * core_ho_times)
+            remainder = (sum_core + num_core_loop) % (c1 * core_do_times * core_ho_times)
 
-            merchant_c1 = remainder // (core_do_times*core_ho_times)
-            remainder_c1 = remainder % (core_do_times*core_ho_times)
+            merchant_c1 = remainder // (core_do_times * core_ho_times)
+            remainder_c1 = remainder % (core_do_times * core_ho_times)
 
             merchant_d = remainder_c1 // core_ho_times
             remainder_d = remainder_c1 % core_ho_times
@@ -3353,8 +3368,8 @@ class MaxPool3DGradCompute:
                 # Init_Begin_Idx
                 # ==========================
                 if self.kd >= self.sd:
-                    di_coordinate = loop_do_idx * (di_batch-self.overlap_d) + \
-                                    merchant_d * (core_di-self.overlap_d) - \
+                    di_coordinate = loop_do_idx * (di_batch - self.overlap_d) + \
+                                    merchant_d * (core_di - self.overlap_d) - \
                                     pad_d_top
                 else:
                     di_coordinate = loop_do_idx * di_batch + \
@@ -3362,8 +3377,8 @@ class MaxPool3DGradCompute:
                                     pad_d_top
 
                 if self.kh >= self.sh:
-                    hi_coordinate = loop_ho_idx * (hi_batch-self.overlap_h) + \
-                                    remainder_d * (core_hi-self.overlap_h) - \
+                    hi_coordinate = loop_ho_idx * (hi_batch - self.overlap_h) + \
+                                    remainder_d * (core_hi - self.overlap_h) - \
                                     pad_hw_top
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch + \
@@ -3422,7 +3437,7 @@ class MaxPool3DGradCompute:
                 in_shape = [di_val, hi_val, wi_batch, c0]
                 self._gm2l1_tiling_do_ho(tik_instance, l1_in_buf,
                                          src_orig_x_gm,
-                                         l1_idx*hi_batch*wi_batch*c0,
+                                         l1_idx * hi_batch * wi_batch * c0,
                                          in_shape,
                                          hi_batch)
 
@@ -3441,7 +3456,7 @@ class MaxPool3DGradCompute:
                 # load3d l1 to col_in_buffer
                 # ================================
                 load3d_mark = tik_instance.Scalar(dtype='int64', name='load3d_mark')
-                repeat_times = _ceil_div(ho*wo_batch, 16)
+                repeat_times = _ceil_div(ho * wo_batch, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         # =====================================================
@@ -3476,7 +3491,8 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                            "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -h_top, -pad_hw_left, hi_val, wi_batch, self.kh, self.kw,
                                                 self.sh, self.sw, repeat_times, 1, pad_hw_list)
@@ -3497,12 +3513,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                config = (self.sw*2, self.sw*2, 2,
-                                          self.sh*map_wi*2, self.sh*map_wi*2, wo_batch*2)
+                                config = (self.sw * 2, self.sw * 2, 2,
+                                          self.sh * map_wi * 2, self.sh * map_wi * 2, wo_batch * 2)
                                 if _check_config(config):
                                     with tik_instance.for_range(0, 1) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*map_hi*map_wi*c0 + \
-                                                    (idx_h*map_wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * map_hi * map_wi * c0 + \
+                                                    (idx_h * map_wi * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
                                         shape_map_hw = [map_hi, map_wi, c0]
                                         shape_grad = [ho, wo_batch, c0]
@@ -3511,15 +3527,15 @@ class MaxPool3DGradCompute:
                                                            f_map_fp32_buf[map_index:],
                                                            grad_sel_fp32_buf[mask_index:],
                                                            f_map_fp32_buf[map_index:],
-                                                           "float32", wo_batch*c0//2, ho,
+                                                           "float32", wo_batch * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
 
                                         self._rewrite_fmap(tik_instance, "vadd",
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           grad_sel_fp32_buf[mask_index+8:],
-                                                           f_map_fp32_buf[map_index+8:],
-                                                           "float32", wo_batch*c0//2, ho,
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           grad_sel_fp32_buf[mask_index + 8:],
+                                                           f_map_fp32_buf[map_index + 8:],
+                                                           "float32", wo_batch * c0 // 2, ho,
                                                            shape_map_hw, shape_grad,
                                                            config=config)
                                 else:
@@ -3527,29 +3543,29 @@ class MaxPool3DGradCompute:
                                     # which window, begin_index of kernel,
                                     # begin_index of child kernel
                                     with tik_instance.for_range(0, ho) as ho_idx:
-                                        map_index = (idx_do*self.sd+idx_d)*map_hi*map_wi*c0 + \
-                                                    (ho_idx*self.sh*map_wi*c0) + \
-                                                    (idx_h*map_wi*c0+idx_w*c0)
+                                        map_index = (idx_do * self.sd + idx_d) * map_hi * map_wi * c0 + \
+                                                    (ho_idx * self.sh * map_wi * c0) + \
+                                                    (idx_h * map_wi * c0 + idx_w * c0)
                                         mask_index = wo_batch * ho_idx * c0
 
                                         self._vector_op(tik_instance, "vadd",
                                                         f_map_fp32_buf[map_index:],
                                                         grad_sel_fp32_buf[mask_index:],
                                                         f_map_fp32_buf[map_index:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
                                         self._vector_op(tik_instance, "vadd",
-                                                        f_map_fp32_buf[map_index+8:],
-                                                        grad_sel_fp32_buf[mask_index+8:],
                                                         f_map_fp32_buf[map_index + 8:],
-                                                        "float32", wo_batch*c0//2,
-                                                        stride_config=(self.sw*2,
-                                                                       self.sw*2, 2,
-                                                                       self.sw*16,
-                                                                       self.sw*16, 16))
+                                                        grad_sel_fp32_buf[mask_index + 8:],
+                                                        f_map_fp32_buf[map_index + 8:],
+                                                        "float32", wo_batch * c0 // 2,
+                                                        stride_config=(self.sw * 2,
+                                                                       self.sw * 2, 2,
+                                                                       self.sw * 16,
+                                                                       self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -3569,7 +3585,7 @@ class MaxPool3DGradCompute:
                     dst_stride = 0
 
                     with tik_instance.for_range(0, ub2gm_shape[0]) as idx:
-                        src_idx_new = src_idx + idx * map_hi*map_wi*c0
+                        src_idx_new = src_idx + idx * map_hi * map_wi * c0
                         dst_idx_new = dst_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
 
                         in_list = [n_burst, burst_len, src_stride,
@@ -3587,7 +3603,7 @@ class MaxPool3DGradCompute:
 
                 tik_instance.set_atomic_add(1)
                 mov_atomic(di_val, hi_val, self.ou_y_gm, dst_ou_gm,
-                           l1_idx*map_hi*map_wi*c0)
+                           l1_idx * map_hi * map_wi * c0)
                 tik_instance.set_atomic_add(0)
 
             if ho_tail != 0:
@@ -3677,16 +3693,16 @@ class MaxPool3DGradCompute:
             core_wo_times = self.wo // core_wo
             core_wi = self.core_in_shape[2]
 
-            merchant = (sum_core+num_core_loop) // \
-                       (c1*core_do_times*core_ho_times*core_wo_times)
-            remainder = (sum_core+num_core_loop) % \
-                        (c1*core_do_times*core_ho_times*core_wo_times)
+            merchant = (sum_core + num_core_loop) // \
+                       (c1 * core_do_times * core_ho_times * core_wo_times)
+            remainder = (sum_core + num_core_loop) % \
+                        (c1 * core_do_times * core_ho_times * core_wo_times)
 
-            merchant_c1 = remainder // (core_do_times*core_ho_times*core_wo_times)
-            remainder_c1 = remainder % (core_do_times*core_ho_times*core_wo_times)
+            merchant_c1 = remainder // (core_do_times * core_ho_times * core_wo_times)
+            remainder_c1 = remainder % (core_do_times * core_ho_times * core_wo_times)
 
-            merchant_d = remainder_c1 // (core_ho_times*core_wo_times)
-            remainder_d = remainder_c1 % (core_ho_times*core_wo_times)
+            merchant_d = remainder_c1 // (core_ho_times * core_wo_times)
+            remainder_d = remainder_c1 % (core_ho_times * core_wo_times)
 
             merchant_h = remainder_d // core_wo_times
             remainder_h = remainder_d % core_wo_times
@@ -3697,8 +3713,8 @@ class MaxPool3DGradCompute:
                 # Init_Begin_Idx
                 # ==========================
                 if self.kd >= self.sd:
-                    di_coordinate = loop_do_idx * (di_batch-self.overlap_d) + \
-                                    merchant_d * (core_di-self.overlap_d) - \
+                    di_coordinate = loop_do_idx * (di_batch - self.overlap_d) + \
+                                    merchant_d * (core_di - self.overlap_d) - \
                                     pad_d_top
                 else:
                     di_coordinate = loop_do_idx * di_batch + \
@@ -3706,8 +3722,8 @@ class MaxPool3DGradCompute:
                                     pad_d_top
 
                 if self.kh >= self.sh:
-                    hi_coordinate = loop_ho_idx * (hi_batch-self.overlap_h) + \
-                                    merchant_h * (core_hi-self.overlap_h) - \
+                    hi_coordinate = loop_ho_idx * (hi_batch - self.overlap_h) + \
+                                    merchant_h * (core_hi - self.overlap_h) - \
                                     pad_hw_top
                 else:
                     hi_coordinate = loop_ho_idx * hi_batch + \
@@ -3715,8 +3731,8 @@ class MaxPool3DGradCompute:
                                     pad_hw_top
 
                 if self.kw >= self.sw:
-                    wi_coordinate = loop_wo_idx * (wi_batch-self.overlap_w) + \
-                                    remainder_h * (core_wi-self.overlap_w) - \
+                    wi_coordinate = loop_wo_idx * (wi_batch - self.overlap_w) + \
+                                    remainder_h * (core_wi - self.overlap_w) - \
                                     pad_hw_left
                 else:
                     wi_coordinate = loop_wo_idx * wi_batch + \
@@ -3777,7 +3793,7 @@ class MaxPool3DGradCompute:
                 input1 = [di_batch, hi_batch, wi_batch]
                 self._gm2l1_tiling_do_ho_wo(tik_instance,
                                             l1_in_buf, src_orig_x_gm,
-                                            l1_idx*hi_batch*wi_batch*c0,
+                                            l1_idx * hi_batch * wi_batch * c0,
                                             input0, input1)
 
                 # ================================
@@ -3796,7 +3812,7 @@ class MaxPool3DGradCompute:
                 # load3d l1 to col_in_buffer
                 # ================================
                 load3d_mark = tik_instance.Scalar(dtype='int64', name='load3d_mark')
-                repeat_times = _ceil_div(ho*wo, 16)
+                repeat_times = _ceil_div(ho * wo, 16)
                 with tik_instance.for_range(0, do, thread_num=1) as idx_do:
                     with tik_instance.for_range(0, self.kd, thread_num=1) as idx_d:
                         # =====================================================
@@ -3828,7 +3844,8 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16, "float16")
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, Constant.MIN_VALUE_FP16,
+                                            "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -h_top, -w_top, hi_val, wi_val, self.kh, self.kw, self.sh, self.sw,
                                                 repeat_times, 1, pad_hw_list)
@@ -3864,20 +3881,20 @@ class MaxPool3DGradCompute:
                                                     f_map_fp32_buf[map_index:],
                                                     grad_sel_fp32_buf[mask_index:],
                                                     f_map_fp32_buf[map_index:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
                                     self._vector_op(tik_instance, "vadd",
-                                                    f_map_fp32_buf[map_index+8:],
-                                                    grad_sel_fp32_buf[mask_index+8:],
                                                     f_map_fp32_buf[map_index + 8:],
-                                                    "float32", wo*c0//2,
-                                                    stride_config=(self.sw*2,
-                                                                   self.sw*2, 2,
-                                                                   self.sw*16,
-                                                                   self.sw*16, 16))
+                                                    grad_sel_fp32_buf[mask_index + 8:],
+                                                    f_map_fp32_buf[map_index + 8:],
+                                                    "float32", wo * c0 // 2,
+                                                    stride_config=(self.sw * 2,
+                                                                   self.sw * 2, 2,
+                                                                   self.sw * 16,
+                                                                   self.sw * 16, 16))
 
                 # mov_out
                 dst_ou_gm = merchant * _prod(self.forward_in_shape[1:]) + \
@@ -3898,7 +3915,7 @@ class MaxPool3DGradCompute:
                     dst_stride = (self.w - num_w) * 2
 
                     with tik_instance.for_range(0, ub2gm_shape[0]) as idx:
-                        src_idx_new = src_idx + idx * map_hi*map_wi*c0
+                        src_idx_new = src_idx + idx * map_hi * map_wi * c0
                         dst_idx_new = dst_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
 
                         in_list = [n_burst, burst_len, src_stride,
@@ -3926,7 +3943,7 @@ class MaxPool3DGradCompute:
                 tik_instance.set_atomic_add(1)
                 mov_atomic(di_val, hi_val, wi_val,
                            self.ou_y_gm, dst_ou_gm,
-                           l1_idx*map_hi*map_wi*c0)
+                           l1_idx * map_hi * map_wi * c0)
                 tik_instance.set_atomic_add(0)
 
             if wo_tail != 0:
@@ -3967,7 +3984,7 @@ class MaxPool3DGradCompute:
                 mark.set_as(1)
 
         if pad_d_bottom != 0:
-            with tik_instance.if_scope(win_idx > di_value-d_bottom-1):
+            with tik_instance.if_scope(win_idx > di_value - d_bottom - 1):
                 self.set_vector_dup(tik_instance, param.col_in_size,
                                     dst_buf, 0, Constant.MIN_VALUE_FP16, "float16")
                 mark.set_as(1)
@@ -4047,7 +4064,6 @@ class MaxPool3DGradCompute:
         sum_core = tik_instance.Scalar("int64")
         with tik_instance.for_range(0, core_num,
                                     block_num=core_num) as blk_idx:
-
             core_loop_uint64, sum_core_uint64 = _cal_core(tik_instance, total_num,
                                                           blk_idx, core_num)
             core_loop.set_as(core_loop_uint64)
@@ -4229,7 +4245,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
 
 # 'pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type(dict, dict, dict, dict,
-                       (tuple, list), (tuple, list), str, (tuple, list), str, str)
+                             (tuple, list), (tuple, list), str, (tuple, list), str, str)
 def max_pool3d_grad(orig_x, orig_y, grads, y,
                     ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
                     data_format="NDHWC",
