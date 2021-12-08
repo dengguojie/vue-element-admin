@@ -153,7 +153,7 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     parameters.tiling_mode = TILING_MODE_6;
   }
 
-  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - \ 
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - \
       SHAPE_LEN) && parameters.output_shape[shape_len - 1] == 1 && BYTE_BLOCK * \
       (parameters.input[shape_len - 1] + 1) < ub_size) {
     parameters.tiling_mode = TILING_MODE_8;

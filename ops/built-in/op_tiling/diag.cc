@@ -101,12 +101,6 @@ bool DiagTiling(const std::string& op_type, const ge::Operator& op_paras, const 
     return false;
   }
 
-  const map<string, int64_t&> compile_params = {{"core_num", core_num}};
-  for (auto& param : compile_params) {
-    const auto& name = param.first;
-    OP_LOGD(op_type.c_str(), "GetCompileInfo %s", name.c_str());
-  }
-
   TilingParam param;
   InItRunningParams(param);
 

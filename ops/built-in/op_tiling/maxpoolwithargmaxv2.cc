@@ -129,6 +129,10 @@ static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
 
 
 static int32_t DivRtn(int32_t x, int32_t y) {
+  if (y == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgMaxV2", "y value cannot be zero");
+    return 0;
+  }
   int32_t q = x / y;
   int32_t r = x % y;
   if ((r != 0) && ((r < 0) != (y < 0))) {
@@ -138,6 +142,10 @@ static int32_t DivRtn(int32_t x, int32_t y) {
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
+  if (core_num == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgMaxV2", "core_num value cannot be zero");
+    return;
+  }
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {
