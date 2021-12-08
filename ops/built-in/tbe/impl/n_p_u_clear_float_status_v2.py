@@ -41,12 +41,6 @@ def n_p_u_clear_float_status_v2(addr, data, kernel_name="n_p_u_clear_float_statu
     """
     tik_instance = tik.Tik()
 
-    tensor_num = len(addr)
-    tensor_list = []
-    for i in range(tensor_num):
-        input_data = tik_instance.Tensor("float32", (NUM_EIGHT,), name="input_data_" + str(i), scope=tik.scope_gm)
-        tensor_list.append(input_data)
-
     spec_workspace = tik_instance.Tensor("float32", (NUM_EIGHT,),
                                          name="spec_workspace", scope=tik.scope_gm, is_global_tensor=True)
 
@@ -56,5 +50,5 @@ def n_p_u_clear_float_status_v2(addr, data, kernel_name="n_p_u_clear_float_statu
 
     tik_instance.data_move(spec_workspace, ub_tensor, 0, 1, 1, 8, 8)
 
-    tik_instance.BuildCCE(kernel_name, inputs=tensor_list, outputs=[])
+    tik_instance.BuildCCE(kernel_name, inputs=[], outputs=[])
     return tik_instance
