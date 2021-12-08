@@ -21,7 +21,6 @@ import numpy
 
 import te.platform as tbe_platform
 from te import tvm
-import inspect
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -30,9 +29,6 @@ class Const:
     The class for constant.
     """
     # get available ub size
-    print("inspect 0000000const")
-    print(inspect.stack())
-    print("inspect 11111111const")
     DEFAULT_MATRIX_R0C0_YUV2RGB = 298
     DEFAULT_MATRIX_R0C1_YUV2RGB = 516
     DEFAULT_MATRIX_R0C2_YUV2RGB = 0
