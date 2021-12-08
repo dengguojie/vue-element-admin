@@ -29,24 +29,19 @@ static const char kTypeTransData1[] = "transdata1";
 static const char kPatternCube[] = "cube";
 static const char kPatternGEMM[] = "GEMM";
 static const char kPatternQuant[] = "quant";
-static const char kPatternElemwise[] = "elemwise";
 static const char kTypeTransData2[] = "transdata2";
 static const string kOpTypeTransData = "TransData";
 static const int kFusionOpNumMax = 10;
 static const string kFusedOpType = "FusedOp";
 
-// white list of OP_PATTERN_ELEMWISE
-static const std::unordered_set<string> kWhiteListOfElemwiseNode = { "LeakyRelu", "Relu", "PRelu" };
-
 /*
  * @brief: define transdata_cube fusion pattern
  *
- *  (Transdata)? + Cube + (Dequent/Quent/Requent)? + (Elemwise)? + (Transdata)?
+ *  (Transdata)? + Cube + (Dequent/Quent/Requent)? + (Transdata)?
  *  pattern limit:
- *          1.Transdata,Dequent/Quent/Requent,Elemwise are optional,Cube is required.
- *          2.Elemwise supports LeakyRelu,Relu,PRelu
- *          3.Cube supports Matmul,Conv2d,Conv_dx,Conv_dw.
- *          4.Matmul only support Matmul
+ *          1.Transdata,Dequent/Quent/Requent are optional,Cube is required.
+ *          2.Cube supports Matmul,Conv2d,Conv_dx,Conv_dw.
+ *          3.Matmul only support Matmul
  *
  * @return BufferFusionPattern: return all valid patterns
  */
@@ -63,39 +58,17 @@ vector<BufferFusionPattern *> TbeMatmulFixpipeFusionPass::DefinePatterns() {
                    TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
         .AddOpDesc(kPatternQuant, {OP_PATTERN_DEQUANT, OP_PATTERN_QUANT, OP_PATTERN_REQUANT},
                    TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-        .AddOpDesc(kPatternElemwise, {OP_PATTERN_ELEMWISE},
-                   TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
         .AddOpDesc(kTypeTransData2, {kOpTypeTransData},
                    TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
         .SetHead({kTypeTransData1, kPatternCube})
         .SetOutputs(kTypeTransData1, {kPatternCube})
         .SetOutputs(kPatternCube, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
-        .SetOutputs(kPatternQuant, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
-        .SetOutputs(kPatternElemwise, {kTypeTransData2});
+        .SetOutputs(kPatternQuant, {kTypeTransData2});
 
   patterns.push_back(pattern);
 
   OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name.c_str());
   return patterns;
-}
-
-bool TbeMatmulFixpipeFusionPass::IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr> &elemwise_nodes) {
-  for (auto &elemwise_node : elemwise_nodes) {
-    string op_type = elemwise_node->GetType();
-    auto count = kWhiteListOfElemwiseNode.count(op_type);
-    if (count == 0) {
-      OP_LOGD(kFusedOpType.c_str(), "node:%s[type:%s] not in elemwise white_list.",
-              elemwise_node->GetName().c_str(), op_type.c_str());
-      return false;
-    } else if (op_type == "LeakyRelu" or op_type == "PRelu") {
-      if (elemwise_node->GetOpDesc()->GetInputDesc(0).GetDataType() != ge::DT_FLOAT16) {
-        OP_LOGD(kFusedOpType.c_str(), "node:%s[type:%s] only support fp16.",
-                elemwise_node->GetName().c_str(), op_type.c_str());
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 bool TbeMatmulFixpipeFusionPass::MatmulSupportTrans(const ge::NodePtr &node, const bool &is_input) {
@@ -172,14 +145,8 @@ Status TbeMatmulFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
 
   vector<ge::NodePtr> transdata1_nodes = GetMatchedNodesByDescName(kTypeTransData1, mapping);
   vector<ge::NodePtr> cube_nodes = GetMatchedNodesByDescName(kPatternCube, mapping);
-  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kPatternElemwise, mapping);
   vector<ge::NodePtr> transdata2_nodes = GetMatchedNodesByDescName(kTypeTransData2, mapping);
-  if (!elemwise_nodes.empty()) {
-    if (!IsInWhiteListOfElemwiseOp(elemwise_nodes)) {
-      fusion_nodes.clear();
-      return SUCCESS;
-    }
-  }
+  
   CheckCubeSupportTransNodes(cube_nodes, transdata1_nodes, transdata2_nodes, fusion_nodes);
 
   if (fusion_nodes.size() == 1) {
