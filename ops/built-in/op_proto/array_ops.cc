@@ -2226,6 +2226,39 @@ IMPL_INFER_VALUE_RANGE_FUNC(ShapeN, ShapeNValueRangeInferFunc){
 
 INFER_VALUE_RANGE_CUSTOM_FUNC_REG(ShapeN, INPUT_IS_DYNAMIC, ShapeNValueRangeInferFunc);
 
+static graphStatus IdentityValueRangeInfer(const Operator &op) {
+  AscendString name;
+  CHECK(op.GetName(name) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGI(name.GetString(), "Identity valuerange start");
+
+  size_t cur_op_input_size = op.GetInputsSize();
+  size_t cur_op_output_size = op.GetOutputsSize();
+  if (cur_op_input_size != cur_op_output_size) {
+    OP_LOGI(name.GetString(), "Current op inputs_size %zu and outputs_size %zu are not the same.",
+            cur_op_input_size, cur_op_output_size);
+    return GRAPH_PARAM_INVALID;
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  for (size_t i = 0; i < cur_op_input_size; i++) {
+    auto input_i_desc = op_desc->MutableInputDesc(i);
+    std::vector<std::pair<int64_t, int64_t>> in_value_range;
+    input_i_desc->GetValueRange(in_value_range);
+    if (in_value_range.empty()) {
+      continue;
+    }
+
+    auto output_i_desc = op_desc->MutableOutputDesc(i);
+    output_i_desc->SetValueRange(in_value_range);
+    if (IsLogEnable(GE, DLOG_DEBUG)) {
+      OP_LOGD(name.GetString(), "Current op set output %zu value range success, value range = %s.", i,
+              RangeToString(in_value_range).c_str());
+    }
+  }
+  OP_LOGI(name.GetString(), "Identity valuerange end");
+
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
   OP_LOGI(op.GetName().c_str(), "IdentityN infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -2250,6 +2283,12 @@ IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
 
 INFER_FUNC_REG(IdentityN, IdentityNInfer);
 
+IMPL_INFER_VALUE_RANGE_FUNC(IdentityN, IdentityNValueRangeInferFunc){
+  return IdentityValueRangeInfer(op);
+}
+
+INFER_VALUE_RANGE_CUSTOM_FUNC_REG(IdentityN, INPUT_HAS_VALUE_RANGE, IdentityNValueRangeInferFunc);
+
 IMPLEMT_INFERFUNC(Identity, IdentityInfer) {
   OP_LOGI(op.GetName().c_str(), "Identity infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -2273,6 +2312,12 @@ IMPLEMT_INFERFUNC(Identity, IdentityInfer) {
 }
 
 INFER_FUNC_REG(Identity, IdentityInfer);
+
+IMPL_INFER_VALUE_RANGE_FUNC(Identity, IdentityValueRangeInferFunc){
+  return IdentityValueRangeInfer(op);
+}
+
+INFER_VALUE_RANGE_CUSTOM_FUNC_REG(Identity, INPUT_HAS_VALUE_RANGE, IdentityValueRangeInferFunc);
 
 IMPLEMT_INFERFUNC(ReadVariableOp, ReadVariableOpInfer) {
   TensorDesc input_desc = op.GetInputDesc("x");

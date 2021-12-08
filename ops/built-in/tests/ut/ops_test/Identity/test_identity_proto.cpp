@@ -29,6 +29,7 @@
 #include "utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/tensor_utils.h"
 
 class Identity : public testing::Test {
  protected:
@@ -62,5 +63,41 @@ TEST_F(Identity, merge_infer_shape_known) {
   EXPECT_EQ(output_shape_range_y, expected_shape_range_y);
 }
 
+TEST_F(Identity, IdentityVauleShapeTest) {
+  ge::op::Identity op("Identity");
+  std::vector<std::pair<int64_t, int64_t>> x_range = {std::make_pair(1, 20), std::make_pair(1, 1),
+                                                      std::make_pair(2, 2)};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->MutableInputDesc(0)->SetValueRange(x_range);
+  auto ret = op_desc->CallInferValueRangeFunc(op);
+  ASSERT_EQ(ret, 0);
+  std::vector<std::pair<int64_t, int64_t>> y_value_range;
+  op_desc->MutableOutputDesc(0)->GetValueRange(y_value_range);
+  std::vector<int64_t> target_value_range = {1,20,1,1,2,2};
+  std::vector<int64_t> output_value_range;
+  for (auto pair : y_value_range) {
+    output_value_range.push_back(pair.first);
+    output_value_range.push_back(pair.second);
+  }
+  ASSERT_EQ(output_value_range, target_value_range);
+}
 
+TEST_F(Identity, IdentityNVauleShapeTest_failed) {
+  ge::op::IdentityN op("IdentityN");
 
+  std::vector<std::pair<int64_t, int64_t>> x_range = {std::make_pair(1, 20), std::make_pair(1, 1),
+                                                      std::make_pair(2, 2)};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  vector<int64_t> dims_vec_0 = {8, 2};
+  ge::GeTensorDesc tensor_desc_0(ge::GeShape(dims_vec_0), ge::FORMAT_NCHW, ge::DT_FLOAT);
+  ge::TensorUtils::SetRealDimCnt(tensor_desc_0, dims_vec_0.size());
+  op_desc->AddInputDesc(tensor_desc_0);
+
+  vector<int64_t> dims_vec_1 = {3, 5, 4};
+  ge::GeTensorDesc tensor_desc_1(ge::GeShape(dims_vec_1), ge::FORMAT_NCHW, ge::DT_FLOAT);
+  ge::TensorUtils::SetRealDimCnt(tensor_desc_1, dims_vec_0.size());
+  op_desc->AddInputDesc(tensor_desc_1);
+  op_desc->MutableInputDesc(0)->SetValueRange(x_range);
+  auto ret = op_desc->CallInferValueRangeFunc(op);
+  ASSERT_EQ(ret, ge::GRAPH_PARAM_INVALID);
+}
