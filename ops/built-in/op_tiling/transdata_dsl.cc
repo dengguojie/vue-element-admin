@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,17 @@
  * \file trans_data_dsl.cpp
  * \brief
  */
-#include <math.h>
 #include "transdata_dsl.h"
 #include "error_log.h"
 #include "vector_tiling_log.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
-int64_t TransdataBase::LimitMap(int64_t factor) {
+int64_t TransdataBase::LimitMap(int64_t factor) const {
   int64_t fp32_limit = 64;
   int64_t fp16_limit = 256;
   int64_t int8_limit = 1024;
+  factor = factor == 0 ? DEFAULT_VALUE : factor;
   switch (BLOCK / factor) {
     case FP32:
       return fp32_limit;
@@ -51,11 +50,11 @@ bool TransdataBase::CommonAlignLimit(int64_t dim_len, int64_t ub_size) {
   return is_legal_len and is_not_align;
 }
 
-int64_t TransdataBase::SetAlign(int64_t value, int64_t align_factor) {
+int64_t TransdataBase::SetAlign(int64_t value, int64_t align_factor) const {
   return (value + align_factor - 1) / align_factor * align_factor;
 }
 
-int64_t TransdataBase::Prod(int64_t* input, int64_t ptr, int64_t length) {
+int64_t TransdataBase::Prod(const int64_t* input, int64_t ptr, int64_t length) const {
   int64_t base = 1;
   if (ptr >= length) {
     return base;
@@ -90,7 +89,7 @@ int32_t TransdataBase::CalcTilingKey() {
   return key;
 }
 
-void TransdataBase::GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo* mte) {
+void TransdataBase::GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo& mte) {
   // work in backward
   // reshape
   int64_t realPtr = reshape_mapping_output[ptr];
@@ -98,8 +97,8 @@ void TransdataBase::GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLM
   factor = realPtr == c1_idx ? factor * compileInfo.pad_align_size : factor;
   factor = output_shape[realPtr] > factor ? factor : output_shape[realPtr];
 
-  mte->mainLen = factor * baseLen;
-  mte->tailLen = (output_shape[realPtr] % factor) * baseLen;
+  mte.mainLen = factor * baseLen;
+  mte.tailLen = (output_shape[realPtr] % factor) * baseLen;
 }
 
 void TransdataBase::StorageAlign(int64_t* new_input, int64_t* new_out, int64_t* input) {
@@ -127,7 +126,7 @@ void TransdataBase::StorageAlign(int64_t* new_input, int64_t* new_out, int64_t* 
   }
 }
 
-bool TransdataBase::CheckValidSplit(int64_t* input, int64_t* output, int64_t ptrA, int64_t ptrB) {
+bool TransdataBase::CheckValidSplit(const int64_t* input, const int64_t* output, int64_t ptrA, int64_t ptrB) {
   // prtA: index of input
   // ptrB: index of output
   // new_c0 is based on input
@@ -293,7 +292,7 @@ void TransdataBase::FindAxisInUB(int64_t* axis_in_ub, int64_t length) {
   axis_in_ub[tilingInfo.ub_1_idx] = AXIS_IN_SECOND_UB_SPLIT;
 }
 
-void TransdataBase::ForwardBlockProcess(int64_t* axis_in_ub) {
+void TransdataBase::ForwardBlockProcess(const int64_t* axis_in_ub) {
   // update factor by output_shape(not storage align and transpose align)
   if (tilingInfo.ub_0_factor > output_shape[compileInfo.permute[tilingInfo.ub_0_idx]]) {
     tilingInfo.ub_0_factor = output_shape[compileInfo.permute[tilingInfo.ub_0_idx]];
@@ -356,7 +355,7 @@ void TransdataBase::ForwardBlockProcess(int64_t* axis_in_ub) {
   }
 }
 
-void TransdataBase::BackwardBlockProcess(int64_t* axis_in_ub) {
+void TransdataBase::BackwardBlockProcess(const int64_t* axis_in_ub) {
   // update factor by reshape (not storage align and transpose align)
   if (tilingInfo.ub_0_factor > reshape[compileInfo.permute[tilingInfo.ub_0_idx]]) {
     tilingInfo.ub_0_factor = reshape[compileInfo.permute[tilingInfo.ub_0_idx]];
@@ -443,30 +442,29 @@ bool TransdataBase::BaseUBTiling() {
     int64_t tiling_input[size_output] = {0};
     int64_t tiling_output[size_output] = {0};
     StorageAlign(tiling_input, tiling_output, reshape);
-    V_OP_TILING_CHECK(UBTilingFilter(tiling_input, tiling_output),
+    V_OP_TILING_CHECK(UBTilingFilter(tiling_input, tiling_output, static_cast<int64_t>(size_output)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UBTilingFilter Failed"), return false);
-    V_OP_TILING_CHECK(UBTilingForwardProcess(tiling_input, tiling_output),
+    V_OP_TILING_CHECK(UBTilingForwardProcess(tiling_input, tiling_output, size_output),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UBTilingForwardProcess Failed"), return false);
   } else {
     // input -> reshape -> ac_out
     int64_t tiling_input[size_input] = {0};
     int64_t tiling_output[size_input] = {0};
     StorageAlign(tiling_input, tiling_output, input_shape);
-    V_OP_TILING_CHECK(UBTilingFilter(tiling_input, tiling_output),
+    V_OP_TILING_CHECK(UBTilingFilter(tiling_input, tiling_output, static_cast<int64_t>(size_input)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UBTilingFilter Failed"), return false);
-    V_OP_TILING_CHECK(UBTilingBackwardProcess(tiling_input, tiling_output),
+    V_OP_TILING_CHECK(UBTilingBackwardProcess(tiling_input, tiling_output, size_input),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UBTilingBackwardProcess Failed"), return false);
   }
   return true;
 }
 
-bool TransdataBase::UBTilingFilter(int64_t* input, int64_t* output) {
+bool TransdataBase::UBTilingFilter(int64_t* input, int64_t* output, int64_t array_length) {
   // ptrA: index of input
   // ptrB: index of output
   ub_tiling_num = 0;
-  int64_t length = compileInfo.is_forward ? size_output : size_input;
-  for (int64_t ptrA = length - 1; ptrA >= 0; ptrA--) {
-    for (int64_t ptrB = length - 1; ptrB >= 0; ptrB--) {
+  for (int64_t ptrA = array_length - 1; ptrA >= 0; ptrA--) {
+    for (int64_t ptrB = array_length - 1; ptrB >= 0; ptrB--) {
       if (CheckValidSplit(input, output, ptrA, ptrB)) {
         possible_ub_tiling[ub_tiling_num * STRIDE_2] = ptrA;
         possible_ub_tiling[ub_tiling_num * STRIDE_2 + 1] = ptrB;
@@ -477,7 +475,7 @@ bool TransdataBase::UBTilingFilter(int64_t* input, int64_t* output) {
   return ub_tiling_num > 0;
 }
 
-bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
+bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output, size_t array_length) {
   /*
    * 1. In forward, output is mte3 that is align, input is mte2 that maybe not align.
    * 2. Firstly make mte2
@@ -493,9 +491,9 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
   bool split_once = false;
 
   int64_t num_in_ub = 0;
-  int64_t total_num = Prod(input, 0, size_output);
+  int64_t total_num = Prod(input, 0, array_length);
   int64_t all_times = ub_tiling_num;
-  int64_t mte_standard = 256 / (BLOCK / compileInfo.align_size);
+  int64_t mte_standard = PACKET_SENDING_RATE / (BLOCK / compileInfo.align_size);
 
   // update template value
   bool mte3_arrive_256B = false;
@@ -503,12 +501,12 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
 
   while (all_times >= 1) {
     // PreProcess
-    ptrI = possible_ub_tiling[(all_times - 1) * 2];
-    ptrO = possible_ub_tiling[(all_times - 1) * 2 + 1];
-    mte2.virLen = Prod(input, ptrI + 1, size_output);
-    mte3.virLen = Prod(output, ptrO + 1, size_output);
+    ptrI = possible_ub_tiling[(all_times - 1) * STRIDE_2];
+    ptrO = possible_ub_tiling[(all_times - 1) * STRIDE_2 + 1];
+    mte2.virLen = Prod(input, ptrI + 1, array_length);
+    mte3.virLen = Prod(output, ptrO + 1, array_length);
     num_in_ub = mte2.virLen;
-    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(size_output); idx++) {
+    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(array_length); idx++) {
       num_in_ub = compileInfo.permute[idx] < ptrI ? num_in_ub * output[idx] : num_in_ub;
     }
 
@@ -520,13 +518,13 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
       // split axis which do transpose need special align (m,n)->(n,m)
       int64_t boundO = run_out_ub ? UBSize / num_in_ub : output[ptrO];
       if (is_last_transpose) {
-        if (ptrO == static_cast<int64_t>(size_output) - OFFSET_2) {
+        if (ptrO == static_cast<int64_t>(array_length) - OFFSET_2) {
           boundO = boundO / compileInfo.align_size * compileInfo.align_size;
-        } else if (ptrO == static_cast<int64_t>(size_output) - 1) {
+        } else if (ptrO == static_cast<int64_t>(array_length) - 1) {
           bool is_fp16 = BLOCK / compileInfo.align_size == FP16;
           bool is_int8 = BLOCK / compileInfo.align_size == INT8;
           boundO = is_fp16 or is_int8 ? boundO / compileInfo.align_size * compileInfo.align_size
-                                      : 16 * compileInfo.align_size;
+                                      : STRIDE_16 * compileInfo.align_size;
         }
       }
 
@@ -662,12 +660,11 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
     }
 
     // Compare
-    int64_t new_core = percent >= 0.95 and core > compileInfo.core_num ? compileInfo.core_num : core;
-    int64_t old_core =
-        tilingInfo.percent >= 0.95 and tilingInfo.core > compileInfo.core_num ? compileInfo.core_num : tilingInfo.core;
+    int64_t new_core = percent >= THRESHOLD and core > compileInfo.core_num ? compileInfo.core_num : core;
+    int64_t old_core = tilingInfo.percent >= THRESHOLD and tilingInfo.core > compileInfo.core_num ? compileInfo.core_num
+                                                                                                  : tilingInfo.core;
     int64_t new_core_distance = abs(new_core - compileInfo.core_num);
     int64_t old_core_distance = abs(old_core - compileInfo.core_num);
-
     if (new_core_distance < old_core_distance) {
       UBTilingUpdate(ptrI, ptrO, ub_0_factor, ub_1_factor, mte2.virLen, mte3.virLen, percent, core);
     } else if (new_core_distance == old_core_distance) {
@@ -688,7 +685,7 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
     int64_t mainFactor = tilingInfo.ub_1_factor;
     int64_t dimBound = output[tilingInfo.ub_1_idx];
     int64_t tailFactor = dimBound % mainFactor;
-    float tail_percent = (float)(tailFactor) / (float)(mainFactor);
+    float tail_percent = static_cast<float>(tailFactor) / static_cast<float>(mainFactor);
     float fine_tuning_threshold = 0.8;
     if (tail_percent == 0 or tail_percent >= fine_tuning_threshold) {
       return true;
@@ -701,7 +698,7 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
   return true;
 }
 
-bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
+bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output, size_t array_length) {
   /*
    * 1. In backward, input is mte2 that is align, output is mte3 that may be not align.
    * 2. Firstly make mte3
@@ -718,7 +715,7 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
   bool split_once = false;
 
   int64_t num_in_ub = 0;
-  int64_t total_num = Prod(input, 0, size_input);
+  int64_t total_num = Prod(input, 0, array_length);
   int64_t all_times = ub_tiling_num;
   int64_t mte_standard = PACKET_SENDING_RATE / (BLOCK / compileInfo.align_size);
 
@@ -731,12 +728,12 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
   while (all_times >= 1) {
     // PreProcess
     init_success = false;
-    ptrI = possible_ub_tiling[(all_times - 1) * 2];
-    ptrO = possible_ub_tiling[(all_times - 1) * 2 + 1];
-    mte2.virLen = Prod(input, ptrI + 1, size_input);
-    mte3.virLen = Prod(output, ptrO + 1, size_input);
+    ptrI = possible_ub_tiling[(all_times - 1) * STRIDE_2];
+    ptrO = possible_ub_tiling[(all_times - 1) * STRIDE_2 + 1];
+    mte2.virLen = Prod(input, ptrI + 1, array_length);
+    mte3.virLen = Prod(output, ptrO + 1, array_length);
     num_in_ub = mte2.virLen;
-    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(size_input); idx++) {
+    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(array_length); idx++) {
       num_in_ub = compileInfo.permute[idx] < ptrI ? num_in_ub * output[idx] : num_in_ub;
     }
 
@@ -748,19 +745,19 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
       // split axis which do transpose need special align (m,n)->(n,m)
       int64_t boundO = run_out_ub ? UBSize / num_in_ub : output[ptrO];
       if (is_last_transpose) {
-        if (ptrO == static_cast<int64_t>(size_input) - OFFSET_2) {
+        if (ptrO == static_cast<int64_t>(array_length) - OFFSET_2) {
           boundO = boundO / compileInfo.align_size * compileInfo.align_size;
-        } else if (ptrO == static_cast<int64_t>(size_input) - 1) {
+        } else if (ptrO == static_cast<int64_t>(array_length) - 1) {
           bool is_fp16 = BLOCK / compileInfo.align_size == FP16;
           bool is_int8 = BLOCK / compileInfo.align_size == INT8;
           boundO = is_fp16 or is_int8 ? boundO / compileInfo.align_size * compileInfo.align_size
-                                      : 16 * compileInfo.align_size;
+                                      : STRIDE_16 * compileInfo.align_size;
         }
       }
 
       for (int64_t factor = 1; factor <= boundO; factor++) {
         // mte3_tail should bigger than 16(float16) or is 0, must used real output
-        GetOutPutRealTail(ptrO, factor, &mte3);
+        GetOutPutRealTail(ptrO, factor, mte3);
         core = total_num / num_in_ub / output[ptrO] * ((output[ptrO] + factor - 1) / factor);
         tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
         multi_core_is_legal = mte3.mainLen >= compileInfo.align_size or core == 1;
@@ -788,7 +785,7 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
         // extra core can improve UB usage
         for (int64_t factor = ub_1_factor; factor <= boundO; factor++) {
           // mte3_tail should bigger than 16 (float16) or is 0
-          GetOutPutRealTail(ptrO, factor, &mte3);
+          GetOutPutRealTail(ptrO, factor, mte3);
           tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
           if (tail_is_legal) {
             core = total_num / num_in_ub / output[ptrO] * ((output[ptrO] + factor - 1) / factor);
@@ -839,7 +836,7 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
       boundO = boundF / ub_0_factor;
       boundO = boundO > output[ptrO] ? output[ptrO] : boundO;
       for (int64_t factor = 1; factor <= boundO; factor++) {
-        GetOutPutRealTail(ptrO, factor, &mte3);
+        GetOutPutRealTail(ptrO, factor, mte3);
         ub_1_outer = (output[ptrO] + factor - 1) / factor;
         core = base_core * ub_0_outer * ub_1_outer;
         tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
@@ -867,7 +864,7 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
       if (core > compileInfo.core_num) {
         // extra core can improve UB usage
         for (int64_t factor = ub_1_factor; factor <= boundO; factor++) {
-          GetOutPutRealTail(ptrO, factor, &mte3);
+          GetOutPutRealTail(ptrO, factor, mte3);
           tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
           ub_1_outer = (output[ptrO] + factor - 1) / factor;
           core = base_core * ub_1_outer * ub_0_outer;
@@ -922,12 +919,11 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
     }
 
     // Compare
-    int64_t new_core = percent >= 0.95 and core > compileInfo.core_num ? compileInfo.core_num : core;
-    int64_t old_core =
-        tilingInfo.percent >= 0.95 and tilingInfo.core > compileInfo.core_num ? compileInfo.core_num : tilingInfo.core;
+    int64_t new_core = percent >= THRESHOLD and core > compileInfo.core_num ? compileInfo.core_num : core;
+    int64_t old_core = tilingInfo.percent >= THRESHOLD and tilingInfo.core > compileInfo.core_num ? compileInfo.core_num
+                                                                                                  : tilingInfo.core;
     int64_t new_core_distance = abs(new_core - compileInfo.core_num);
     int64_t old_core_distance = abs(old_core - compileInfo.core_num);
-
     if (new_core_distance < old_core_distance) {
       UBTilingUpdate(ptrI, ptrO, ub_0_factor, ub_1_factor, mte2.virLen, mte3.virLen, percent, core);
     } else if (new_core_distance == old_core_distance) {
@@ -944,14 +940,14 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
   return true;
 }
 
-void TransdataBase::UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2,
-                                   int64_t mte3, float percent, int64_t core) {
+void TransdataBase::UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2_info,
+                                   int64_t mte3_info, float percent, int64_t core) {
   tilingInfo.ub_0_idx = ptrA;
   tilingInfo.ub_1_idx = ptrB;
   tilingInfo.ub_0_factor = factorA;
   tilingInfo.ub_1_factor = factorB;
-  tilingInfo.mte2_burst_len = mte2;
-  tilingInfo.mte3_burst_len = mte3;
+  tilingInfo.mte2_burst_len = mte2_info;
+  tilingInfo.mte3_burst_len = mte3_info;
   tilingInfo.percent = percent;
   tilingInfo.core = core;
   tilingInfo.split_once = compileInfo.permute[ptrA] == ptrB;
@@ -1004,7 +1000,6 @@ bool TransdataBase::GetInputOutput() {
 }
 
 bool TransdataBase::ChooseStrategy() {
-  size_t length = compileInfo.src_pad.size();
   int64_t last_dim_length = compileInfo.is_forward ? input_shape[size_input - 1] : output_shape[size_output - 1];
 
   // Init computeType and ShapeType
@@ -1093,7 +1088,7 @@ bool TransdataBase::DoTiling() {
   return ret && WriteTilingData();
 }
 
-bool CompileInfoTransdataDSL::Check() {
+bool CompileInfoTransdataDSL::Check() const {
   V_OP_TILING_CHECK((core_num > 0),
                     VECTOR_INNER_ERR_REPORT_TILIING("TransdataDSL", "core_num is %ld that is illegal", core_num),
                     return false);
@@ -1169,5 +1164,4 @@ std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::strin
 
   return compile_info_ptr;
 }
-
 }  // namespace optiling

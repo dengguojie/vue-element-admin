@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #ifndef TRANSDATA_DSL_H
 #define TRANSDATA_DSL_H
 
+#include <cmath>
 #include <vector>
 #include <string>
 
@@ -37,6 +38,7 @@ static const int64_t AXIS_OUT_UB = 0;
 static const int64_t AXIS_IN_UB = 1;
 static const int64_t AXIS_IN_FIRST_UB_SPLIT = 2;
 static const int64_t AXIS_IN_SECOND_UB_SPLIT = 3;
+static const float THRESHOLD = 0.95;
 
 static const int64_t FP32_TRANSPOSE_LIMIT = 128;
 static const int64_t MAX_DIM_NUM = 8;
@@ -62,7 +64,7 @@ struct CompileInfoTransdataDSL {
   CompileInfoTransdataDSL() = default;
   CompileInfoTransdataDSL(const std::string& op_type, const nlohmann::json& compile_info);
   // check value
-  bool Check();
+  bool Check() const;
   bool check_success{false};
   bool is_const_compile{false};
   bool is_const{false};
@@ -124,25 +126,25 @@ class TransdataBase {
   bool InferOutput();
   bool DoFusing(int64_t* input, int64_t* output, size_t ori_length);
 
-  bool UBTilingFilter(int64_t* input, int64_t* output);
-  bool UBTilingForwardProcess(int64_t* input, int64_t* output);
-  bool UBTilingBackwardProcess(int64_t* input, int64_t* output);
+  bool UBTilingFilter(int64_t* input, int64_t* output, int64_t array_length);
+  bool UBTilingForwardProcess(int64_t* input, int64_t* output, size_t array_length);
+  bool UBTilingBackwardProcess(int64_t* input, int64_t* output, size_t array_length);
   void UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2, int64_t mte3,
                       float percent, int64_t core);
 
   void FindAxisInUB(int64_t* axis_in_ub, int64_t length);
-  void ForwardBlockProcess(int64_t* axis_in_ub);
-  void BackwardBlockProcess(int64_t* axis_in_ub);
+  void ForwardBlockProcess(const int64_t* axis_in_ub);
+  void BackwardBlockProcess(const int64_t* axis_in_ub);
 
  private:
-  int64_t SetAlign(int64_t value, int64_t align_factor);
-  int64_t Prod(int64_t* input, int64_t ptr, int64_t length);
+  int64_t SetAlign(int64_t value, int64_t align_factor) const;
+  int64_t Prod(const int64_t* input, int64_t ptr, int64_t length) const;
   int32_t CalcTilingKey();
-  int64_t LimitMap(int64_t factor);
+  int64_t LimitMap(int64_t factor) const;
   bool CommonAlignLimit(int64_t dim_len, int64_t ub_size);
   void StorageAlign(int64_t* new_input, int64_t* new_out, int64_t* input);
-  bool CheckValidSplit(int64_t* input, int64_t* output, int64_t ptrA, int64_t ptrB);
-  void GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo* mte);
+  bool CheckValidSplit(const int64_t* input, const int64_t* output, int64_t ptrA, int64_t ptrB);
+  void GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo& mte);
 
  private:
   const std::string& op_type;
