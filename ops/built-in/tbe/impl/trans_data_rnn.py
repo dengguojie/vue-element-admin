@@ -24,8 +24,7 @@ from impl import trans_data_rnn_positive_source
 from impl import trans_data_rnn_negative_target
 
 
-# 'pylint: disable=locally-disabled,too-many-branches
-# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-arguments,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

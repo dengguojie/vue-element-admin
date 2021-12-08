@@ -368,7 +368,7 @@ class StridedSliceStridesLargerThanOne:
                 row_id = blk_idx * self.rows_each_core + (self.loop_times - 1) * 16 * self.rows_each_repeat
                 self._do_with_vnchwconv_last_strides_per_loop(self.rows_each_repeat, row_id, self.last_loop_rows)
 
-    # 'pylint: disable=too-many-local-variables
+    # 'pylint: disable=too-many-locals
     def _do_with_vnchwconv_last_strides_per_loop(self, rows_each_repeat, row_id, loop_rows):
         """
         slice multiple rows of input data at one loop
@@ -450,7 +450,7 @@ class StridedSliceStridesLargerThanOne:
                 with inst.if_scope(ub_data_count > 0):
                     ub2gm(inst, self.output_gm[dst_addr], out_ub, ub_data_count)
 
-    # 'pylint: disable=too-many-local-variables
+    # 'pylint: disable=too-many-locals
     def _add_tail(self, input_ub, out_ub, row_id, ub_data_count):
         """
         additional data rows are processed so that the output data is 32B aligned.
@@ -515,7 +515,7 @@ class StridedSliceStridesLargerThanOne:
                 row_id = (self.aicore_num_used - 1) * self.rows_each_core + (self.tail_loop_times - 1) * 16
                 self._do_with_vnchwconv_per_loop_large(row_id, self.tail_last_loop_rows)
 
-    # 'pylint: disable=too-many-local-variables
+    # 'pylint: disable=too-many-locals
     # 'pylint: disable=too-many-arguments
     def _do_with_vnchwconv_per_loop_large(self, row_id, loop_rows):
         """
@@ -535,6 +535,7 @@ class StridedSliceStridesLargerThanOne:
         self._do_with_vnchwconv_per_inner_loop_large(row_id, loop_rows, self.inner_loops - 1,
                                                      self.last_inner_loop_count, self.roll_back_num)
 
+    # 'pylint: disable=too-many-locals
     def _do_with_vnchwconv_per_inner_loop_large(self, row_id, loop_rows, inner_loops_idx,
                                                 loop_count, roll_back_num):
         """
