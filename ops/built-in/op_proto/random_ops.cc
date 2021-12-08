@@ -350,7 +350,7 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
+IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   Shape unused;
 
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
@@ -399,7 +399,37 @@ IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
   return op.UpdateOutputDesc("y", output_desc);
 }
 
-INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);
+COMMON_INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);
+COMMON_INFER_FUNC_REG(StatelessDropOutGenMask, DropOutGenMaskInfer);
+
+IMPLEMT_VERIFIER(StatelessDropOutGenMask, StatelessDropOutGenMasktVerify) {
+  Shape unused;
+  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("call WithRank function failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+            "scalar"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(2), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("call WithRank function failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(2).GetShape().GetDims()),
+            "scalar"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (WithRank(op.GetInputDesc(3), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("call WithRank function failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(3).GetShape().GetDims()),
+            "scalar"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(StatelessDropOutGenMask, StatelessDropOutGenMasktVerify);
 
 IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   Shape unused;
