@@ -35,7 +35,7 @@ def op_select_format(input_data, x1, x2, value, y, kernel_name="addcmul"):
     """
     op_select_format
     """
-    dtype_list = ["float16", "float32", "int32", "int8", "uint8"]
+    dtype_list = ["float16", "float32", "int32"]
     dtype_len = len(dtype_list)
 
     support_format = ["ND"]
@@ -88,7 +88,7 @@ def check_op_dtype(dtype_input, dtype_x1, dtype_x2, dtype_value):
     :param dtype_value: str
     :return: none
     """
-    check_list = ["float16", "float32", "int32", "int8", "uint8"]
+    check_list = ["float16", "float32", "int32"]
 
     para_check.check_dtype(dtype_input, check_list)
     para_check.check_dtype(dtype_x1, check_list)

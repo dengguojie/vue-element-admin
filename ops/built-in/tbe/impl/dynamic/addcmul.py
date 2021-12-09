@@ -98,7 +98,7 @@ def addcmul(input_data, x1, x2, value, y, kernel_name="addcmul"):
     dtype_x2 = x2.get("dtype").lower()
     dtype_value = value.get("dtype").lower()
 
-    check_list = ["float16", "float32", "int32", "int8", "uint8"]
+    check_list = ["float16", "float32", "int32"]
 
     para_check.check_dtype(dtype_input, check_list)
     para_check.check_dtype(dtype_x1, check_list)
