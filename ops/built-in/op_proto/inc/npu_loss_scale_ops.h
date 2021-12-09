@@ -120,7 +120,7 @@ REG_OP(NPUGetFloatStatus)
 
 
 /**
-*@brief Set the value of address 0x40000 to 0 in each core . \n
+*@brief Set the value of global workspace to 0. \n
 
 *@par Restrictions:
 *Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
@@ -129,7 +129,7 @@ REG_OP(NPUClearFloatStatusV2)
     .OP_END_FACTORY_REG(NPUClearFloatStatusV2)
 
 /**
-*@brief Get the value of address 0x40000 . \n
+*@brief Set the value of global workspace to 0. \n
 
 *@par Inputs:
 *addr: A tensor of type float32 . \n
