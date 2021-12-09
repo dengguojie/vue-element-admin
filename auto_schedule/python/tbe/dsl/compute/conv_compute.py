@@ -2073,6 +2073,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             filter_h_dilation = (ConvParam.filter_h - 1)*ConvParam.dilate_h + 1
             filter_w_dilation = (ConvParam.filter_w - 1)*ConvParam.dilate_w + 1
+            ConvParam.filter_h_dilation = filter_h_dilation
+            ConvParam.filter_w_dilation = filter_w_dilation
             if 'ho' in ConvParam.dyn_var_map:
                 ConvParam.h_out = ConvParam.dyn_var_map.get('ho')
             else:

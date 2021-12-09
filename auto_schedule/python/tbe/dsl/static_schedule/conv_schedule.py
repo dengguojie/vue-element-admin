@@ -3803,7 +3803,8 @@ class CceConvOp:
             def modify_m_for_load3d(l1_m, w_in, w_out, additional_rows):
                 stride_update = 1 if strideh_opti_flag else ConvParam.stride_h
                 ho_len = tvm.min(tvm.floordiv(l1_m, w_out) + additional_rows, ConvParam.h_out)
-                hi_max = tvm.min(ConvParam.filter_h + (ho_len - 1) * stride_update, ConvParam.h_in)
+                hi_max = tvm.min(ConvParam.filter_h_dilation + (ho_len - 1) * stride_update,
+                                 ConvParam.h_in)
                 if "mean_matrix" in tensor_map:
                     sch[al1].buffer_tile((None, None), (None, None), (None, None), (None, hi_max),
                                          (None, None), (None, None))
