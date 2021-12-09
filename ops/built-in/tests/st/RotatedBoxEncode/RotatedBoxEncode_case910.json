@@ -1,0 +1,47 @@
+[
+  {
+    "op": "RotatedBoxEncode",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "anchor_box",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "gt_box",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      } 
+    ],
+    "attr": [
+      {
+        "name": "weight",
+        "value": [1.0, 1.0, 1.0, 1.0, 1.0],
+        "type": "list_float"
+      }
+    ],
+    "case_name": "test_RotatedBoxEncode_0"
+  }
+]

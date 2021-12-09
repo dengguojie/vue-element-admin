@@ -2047,4 +2047,25 @@ IMPLEMT_COMMON_INFERFUNC(RotatedIouInferShape) {
 
 COMMON_INFER_FUNC_REG(RotatedIou, RotatedIouInferShape);
 // ----------------RotatedIou Finished-------------------
+
+// ----------------RotatedBoxEncode Started-------------------
+IMPLEMT_COMMON_INFERFUNC(RotatedBoxEncodeInferShape) {
+  OP_LOGI("RotatedBoxEncode", "RotatedBoxEncodeInferShape");
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto anchor_desc = op_info->MutableInputDesc("anchor_box");
+  auto anchor_shape = anchor_desc->MutableShape();
+  auto anchor_format = anchor_desc->GetFormat();
+  DataType anchor_dtype = anchor_desc->GetDataType();
+
+  auto output_desc = op_info->MutableOutputDesc("y");
+
+  output_desc->SetShape(GeShape(anchor_shape.GetDims()));
+  output_desc->SetFormat(anchor_format);
+  output_desc->SetDataType(anchor_dtype);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(RotatedBoxEncode, RotatedBoxEncodeInferShape);
+// ----------------RotatedBoxEncode Finished-------------------
 }  // namespace ge
