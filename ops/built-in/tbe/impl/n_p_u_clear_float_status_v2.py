@@ -24,8 +24,8 @@ NUM_EIGHT = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def n_p_u_clear_float_status_v2(addr, data, kernel_name="n_p_u_clear_float_status_v2"):
+@para_check.check_op_params(para_check.KERNEL_NAME)
+def n_p_u_clear_float_status_v2(kernel_name="n_p_u_clear_float_status_v2"):
     """
     the main function of npu_clear_float_status
 
