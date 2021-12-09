@@ -1,16 +1,36 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+roi_extractor
+"""
+import functools
 from te import tik
 import te.platform as tbe_platform
 from te.utils import para_check
-from functools import reduce
 from impl.roi_align import roi_align_compute
 
 
 def ceil_div(value, factor):
+    """
+    ceil div
+    """
     return (value + factor - 1) // factor
 
 
 # 16K size
-UB_30K_SIZE = 150*1024
+UB_30K_SIZE = 150 * 1024
 BLOCK_BIT_SIZE = 32
 BIT_EACH_BYTE = 8
 ALIGN_LEN = 128
@@ -32,8 +52,8 @@ def _tf_n52n8(tik_instance, rois_ub, rois_n5, block_num):
         rois_ub[rois_num, 4].set_as(rois_n5[rois_num, 4])
 
 
-#pylint: disable=too-many-statements,too-many-locals,too-many-branches
-#pylint: disable=no-member
+# pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -232,6 +252,9 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
 
 def roi_align_tik(tik_instance, feature_map, rois, roisn, ret,
                   scale, pool_h, pool_w, sample_ratio, roi_end_mode=0, aligned=True):
+    """
+    roi align func
+    """
     rois_shape = rois.shape
     dtype = feature_map.dtype
     feature_shape = feature_map.shape
@@ -381,11 +404,14 @@ def roi_align_tik(tik_instance, feature_map, rois, roisn, ret,
     return tik_instance
 
 
-
-class RoiExtractor:
+# 'pylint: disable=unused-argument
+class RoiExtractor(object):
+    """
+    roi_extractor op
+    """
     def __init__(self, feats, rois, roi_feats,
                  finest_scale=56, roi_scale_factor=0,
-                 spatial_scale=(4, 8, 16, 32), pooled_h=7, pooled_w=7,
+                 spatial_scale=None, pooled_h=7, pooled_w=7,
                  sample_num=0, pool_mode='avg',
                  aligned=False, kernel_name="roi_extractor"):
         if pool_mode != 'avg':
@@ -410,7 +436,7 @@ class RoiExtractor:
         self.y_shape = roi_feats.get("shape")
         self.rois_total_num = self.rois_shape[0]
         self.num_levels = len(feats)
-        self.pow_table = [2**i * self.finest_scale for i in range(self.num_levels + 1)]
+        self.pow_table = [2 ** i * self.finest_scale for i in range(self.num_levels + 1)]
         self.index_arr = [i for i in range(self.num_levels)]
 
         if self.rois_shape[1] not in (4, 5):
@@ -421,13 +447,13 @@ class RoiExtractor:
             x_shape = tensor_dict.get("shape")
             self.data_x.append(self.tik_instance.Tensor(self.x_dtype, x_shape, name="x_%d" % i, scope=tik.scope_gm))
         self.data_rois = self.tik_instance.Tensor(self.rois_dtype, self.rois_shape, name="rois", scope=tik.scope_gm)
-        self.data_y = self.tik_instance.Tensor(self.x_dtype, (reduce(lambda x, y: x * y, self.y_shape), ),
+        self.data_y = self.tik_instance.Tensor(self.x_dtype, (functools.reduce(lambda x, y: x * y, self.y_shape), ),
                                                name="roi_feats", scope=tik.scope_gm)
 
         # multi core
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-    def map_roi_levels(self, target_lvls):
+    def map_roi_levels(self, target_lvls, proc_num, roi_offset=0):
         """
         calculate scale = torch.sqrt((rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
         :return: target_lvls
@@ -452,8 +478,8 @@ class RoiExtractor:
         self.tik_instance.vector_dup(128, one_ub, 1, 1, 1, 8)
         self.tik_instance.vector_dup(128, zero_ub, 0, 1, 1, 8)
 
-        loop = self.rois_total_num // ALIGN_LEN
-        tail = self.rois_total_num % ALIGN_LEN
+        loop = proc_num // ALIGN_LEN
+        tail = proc_num % ALIGN_LEN
 
         rois_ub = self.tik_instance.Tensor(self.rois_dtype, (ALIGN_LEN, 8),
                                            name="rois_ub", scope=tik.scope_ubuf)
@@ -466,6 +492,9 @@ class RoiExtractor:
         support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
 
         def inner_compute(offset):
+            """
+            compute roi area
+            """
             if self.rois_dtype == "float16":
                 j_value = self.tik_instance.Scalar(dtype="float16")
                 with self.tik_instance.for_range(0, 128) as j:
@@ -506,17 +535,20 @@ class RoiExtractor:
 
         if loop > 0:
             with self.tik_instance.for_range(0, loop) as loop_i:
-                self.tik_instance.data_move(rois_ub_n5[0, 0], self.data_rois[loop_i * ALIGN_LEN, 0],
+                self.tik_instance.data_move(rois_ub_n5[0, 0], self.data_rois[loop_i * ALIGN_LEN + roi_offset, 0],
                                             0, 1, 40 * n_burst, 0, 0)
                 _tf_n52n8(self.tik_instance, rois_ub, rois_ub_n5, ALIGN_LEN)
                 inner_compute(loop_i * ALIGN_LEN)
         if tail > 0:
-            self.tik_instance.data_move(rois_ub_n5[0, 0], self.data_rois[loop * ALIGN_LEN, 0],
+            self.tik_instance.data_move(rois_ub_n5[0, 0], self.data_rois[loop * ALIGN_LEN + roi_offset, 0],
                                         0, 1, 40 * n_burst, 0, 0)
             _tf_n52n8(self.tik_instance, rois_ub, rois_ub_n5, tail)
             inner_compute(loop * ALIGN_LEN)
 
     def tik_vand(self, dst, src0, src1, data_len):
+        """
+        vand
+        """
         offset = 0
         loop = data_len // (128 * 255)
         if loop > 0:
@@ -531,7 +563,10 @@ class RoiExtractor:
         if tail > 0:
             self.tik_instance.vec_and(tail, dst[offset], src0[offset], src1[offset], 1, 8, 8, 8)
 
-    def where_and_nonzero(self, target_lvls, index_reg, inds, lvl):
+    def where_and_nonzero(self, target_lvls, index_reg, inds, lvl, proc_num):
+        """
+        select roi
+        """
         align_len = target_lvls.shape[0]
         inds_buf = self.tik_instance.Tensor("int32", (align_len, ),
                                             name="inds_buf", scope=tik.scope_ubuf)
@@ -569,21 +604,25 @@ class RoiExtractor:
             self.tik_instance.vec_conv(64, "floor", inds_buf[128 * i], i_ub, 2, 8, 4)  # fp16->i32
         idx = self.tik_instance.Scalar("int32", name="roi_idx")
         index_reg.set_as(0)
-        with self.tik_instance.for_range(0, self.rois_total_num) as roi_i:
+        with self.tik_instance.for_range(0, proc_num) as roi_i:
             idx.set_as(inds_buf[roi_i])
             with self.tik_instance.if_scope(idx != 0):
                 inds[index_reg].set_as(roi_i)
                 index_reg.set_as(index_reg + 1)
 
     def compute(self):
+        """
+        roi extractor compute
+        """
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
         data_each_block = BLOCK_BIT_SIZE // dtype_bytes_size
-        roi_elem_len = reduce(lambda x, y: x * y, self.y_shape[1:])
+        roi_elem_len = functools.reduce(lambda x, y: x * y, self.y_shape[1:])
 
         roi_buf = self.tik_instance.Tensor(self.rois_dtype, (self.num_levels * self.rois_total_num, 5), name="roi_buf",
                                            scope=tik.scope_gm, is_workspace=True)
-        roi_feats_buf = self.tik_instance.Tensor(self.x_dtype, (self.num_levels * self.y_shape[0], *self.y_shape[1:]),
-                                                 name="roi_feats_buf", scope=tik.scope_gm, is_workspace=True)
+        roi_feats_shape = [self.num_levels * self.y_shape[0]] + list(self.y_shape[1:])
+        roi_feats_buf = self.tik_instance.Tensor(self.x_dtype, roi_feats_shape, name="roi_feats_buf",
+                                                 scope=tik.scope_gm, is_workspace=True)
 
         with self.tik_instance.for_range(0, self.num_levels, block_num=self.num_levels) as block_idx:
             roisn_ub = self.tik_instance.Tensor("int32", (data_each_block, ), name="roisn_ub", scope=tik.scope_ubuf)
@@ -594,9 +633,9 @@ class RoiExtractor:
 
             with self.tik_instance.new_stmt_scope():
                 target_lvls = self.tik_instance.Tensor("float16", (ceil_div(self.rois_total_num, 128) * 128,),
-                                                   name="target_lvls_ub", scope=tik.scope_ubuf)
-                self.map_roi_levels(target_lvls)
-                self.where_and_nonzero(target_lvls, index_reg, inds, block_idx)
+                                                       name="target_lvls_ub", scope=tik.scope_ubuf)
+                self.map_roi_levels(target_lvls, self.rois_total_num)
+                self.where_and_nonzero(target_lvls, index_reg, inds, block_idx, self.rois_total_num)
                 roisn_ub[0].set_as(index_reg)
 
                 rois_ub = self.tik_instance.Tensor(self.rois_dtype, (data_each_block, ),
@@ -627,13 +666,93 @@ class RoiExtractor:
                         pass
 
             with self.tik_instance.new_stmt_scope():
-                out_ub = self.tik_instance.Tensor(self.rois_dtype, (roi_elem_len, ), name="out_ub", scope=tik.scope_ubuf)
+                out_ub = self.tik_instance.Tensor(self.rois_dtype, (roi_elem_len, ), name="out_ub",
+                                                  scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, index_reg) as roi_i:
                     idx.set_as(inds[roi_i])
                     self.tik_instance.data_move(out_ub, roi_feats_buf[block_idx * self.y_shape[0] + roi_i, 0, 0, 0, 0],
                                                 0, 1, ceil_div(roi_elem_len, data_each_block), 0, 0)
                     self.tik_instance.data_move(self.data_y[idx * roi_elem_len], out_ub, 0, 1,
                                                 ceil_div(roi_elem_len, data_each_block), 0, 0)
+
+        # build
+        sch_list = [dx for dx in self.data_x] + [self.data_rois]
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=sch_list, outputs=[self.data_y])
+        return self.tik_instance
+
+    def compute2(self):
+        """
+        roi extractor compute when soc_version is Ascend710
+        """
+        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
+        data_each_block = BLOCK_BIT_SIZE // dtype_bytes_size
+        roi_elem_len = functools.reduce(lambda x, y: x * y, self.y_shape[1:])
+
+        roi_buf = self.tik_instance.Tensor(self.rois_dtype, (self.num_levels * self.rois_total_num, 5), name="roi_buf",
+                                           scope=tik.scope_gm, is_workspace=True)
+        roi_feats_shape = [self.num_levels * self.y_shape[0]] + list(self.y_shape[1:])
+        roi_feats_buf = self.tik_instance.Tensor(self.x_dtype, roi_feats_shape, name="roi_feats_buf",
+                                                 scope=tik.scope_gm, is_workspace=True)
+
+        per_core_roi = self.rois_total_num // self.core_num
+
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_idx:
+            roisn_ub = self.tik_instance.Tensor("int32", (data_each_block, ), name="roisn_ub", scope=tik.scope_ubuf)
+            inds = self.tik_instance.Tensor("int32", (ceil_div(per_core_roi, 128) * 128, ),
+                                            name="inds_ub", scope=tik.scope_ubuf)
+            offset = block_idx * per_core_roi
+
+            index_reg = self.tik_instance.Scalar("int32", name="index_reg")  # valid rois number in current level
+            idx_tmp = self.tik_instance.Scalar("int32", name="roi_idx_tmp")
+            idx = self.tik_instance.Scalar("int32", name="roi_idx")
+
+            with self.tik_instance.new_stmt_scope():
+                target_lvls = self.tik_instance.Tensor("float16", (ceil_div(per_core_roi, 128) * 128,),
+                                                       name="target_lvls_ub", scope=tik.scope_ubuf)
+                self.map_roi_levels(target_lvls, per_core_roi, offset)
+
+                for fm_idx in range(self.num_levels):
+                    self.where_and_nonzero(target_lvls, index_reg, inds, fm_idx, per_core_roi)
+                    roisn_ub[0].set_as(index_reg)
+
+                    rois_ub = self.tik_instance.Tensor(self.rois_dtype, (data_each_block, ),
+                                                       name="rois_ub", scope=tik.scope_ubuf)
+                    with self.tik_instance.for_range(0, index_reg) as roi_i:
+                        idx_tmp.set_as(inds[roi_i])
+                        idx.set_as(idx_tmp + offset)
+                        self.tik_instance.data_move(rois_ub, self.data_rois[idx, 0], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(roi_buf[fm_idx * self.y_shape[0] + roi_i + offset, 0], rois_ub, 0,
+                                                    1, 1, 0, 0)
+
+                    # call roi_align module
+                    with self.tik_instance.if_scope(index_reg > 0):
+                        self.tik_instance = roi_align_tik(
+                            self.tik_instance,
+                            self.data_x[fm_idx],
+                            roi_buf[fm_idx * self.rois_total_num + offset:fm_idx * self.rois_total_num + offset +
+                                    per_core_roi, :],
+                            roisn_ub,
+                            roi_feats_buf[fm_idx * self.y_shape[0] + offset:fm_idx * self.y_shape[0] + offset +
+                                          per_core_roi, :, :, :, :],
+                            self.spatial_scale[fm_idx],
+                            self.output_size,
+                            self.output_size,
+                            self.sample_ratio,
+                            0,
+                            self.aligned
+                        )
+
+                    with self.tik_instance.new_stmt_scope():
+                        out_ub = self.tik_instance.Tensor(self.rois_dtype, (roi_elem_len, ), name="out_ub",
+                                                          scope=tik.scope_ubuf)
+                        with self.tik_instance.for_range(0, index_reg) as roi_i:
+                            idx_tmp.set_as(inds[roi_i])
+                            idx.set_as(idx_tmp + offset)
+                            self.tik_instance.data_move(out_ub, roi_feats_buf[fm_idx * self.y_shape[0] + roi_i + offset,
+                                                                              0, 0, 0, 0],
+                                                        0, 1, ceil_div(roi_elem_len, data_each_block), 0, 0)
+                            self.tik_instance.data_move(self.data_y[idx * roi_elem_len], out_ub, 0, 1,
+                                                        ceil_div(roi_elem_len, data_each_block), 0, 0)
 
         # build
         sch_list = [dx for dx in self.data_x] + [self.data_rois]
@@ -647,9 +766,26 @@ class RoiExtractor:
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def roi_extractor(feats, rois, roi_feats,
-                  finest_scale=56, roi_scale_factor=0, spatial_scale=(1./4, 1./8, 1./16, 1./32),
+                  finest_scale=56, roi_scale_factor=0, spatial_scale=None,
                   pooled_h=7, pooled_w=7, sample_num=0, pool_mode='avg', aligned=True, kernel_name="roi_extractor"):
+    """
+    roi extractor op
+    """
     rpn_instance = RoiExtractor(feats, rois, roi_feats,
                                 finest_scale, roi_scale_factor, spatial_scale,
                                 pooled_h, pooled_w, sample_num, pool_mode, aligned, kernel_name)
+
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+
+    if cce_product == tbe_platform.ASCEND_710:
+        core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        rois_shape = rois.get("shape")
+        roi_num = rois_shape[0]
+        per_core = roi_num // core_num
+        tail = roi_num % core_num
+        if per_core and not tail:
+            return rpn_instance.compute2()
+        else:
+            return rpn_instance.compute()
+
     return rpn_instance.compute()
