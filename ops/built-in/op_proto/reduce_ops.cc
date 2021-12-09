@@ -1978,4 +1978,63 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanVarianceInferShape) {
 COMMON_INFER_FUNC_REG(ReduceMeanVariance, ReduceMeanVarianceInferShape);
 // ------------------ReduceMeanVariance END-----------------
 
+// ----------------ReduceStdV2Update Begin-------------------
+using std::find;
+IMPLEMT_INFERFUNC(ReduceStdV2Update, ReduceStdV2UpdateInferShape) {
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
+  ge::Shape input_shape = tensordesc_input.GetShape();
+  DataType input_dtype = tensordesc_input.GetDataType();
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  int64_t dim_num = input_shape.GetDimNum();
+
+  TensorDesc tensordesc_output = op.GetOutputDescByName("output_var");
+  tensordesc_output.SetDataType(input_dtype);
+  tensordesc_output.SetFormat(tensordesc_input.GetFormat());
+
+  bool keepdim;
+  (void)op.GetAttr("keepdim", keepdim);
+  
+  std::vector<int64_t> axis;
+  if (GRAPH_SUCCESS != op.GetAttr("dim", axis)) {
+    return GRAPH_FAILED;
+  }
+
+  for (size_t i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      axis[i] = axis[i] + dim_num;
+    }
+  }
+
+  std::vector<int64_t> oshape_vector;
+  for (int item = 0; item < dim_num; ++item) {
+    if (find(axis.begin(), axis.end(), item) != axis.end()) {
+      if (keepdim == true) {
+        oshape_vector.push_back(1);
+      }
+    } else {
+      oshape_vector.push_back(dims_input[item]);
+    }
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> input_mean_range;
+  op.GetInputDescByName("mean").GetShapeRange(input_mean_range);
+  tensordesc_output.SetShapeRange(input_mean_range);
+
+  Shape oshape(oshape_vector);
+  tensordesc_output.SetShape(oshape);
+  (void)op.UpdateOutputDesc("output_var", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(ReduceStdV2Update, ReduceStdV2UpdateVerify){
+  if (op.GetInputDescByName("x").GetDataType() != op.GetInputDescByName("mean").GetDataType()) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ReduceStdV2Update, ReduceStdV2UpdateInferShape);
+VERIFY_FUNC_REG(ReduceStdV2Update, ReduceStdV2UpdateVerify);
+// ----------------ReduceStdV2Update END---------------------
+
 }  // namespace ge
