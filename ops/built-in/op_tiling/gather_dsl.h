@@ -152,7 +152,7 @@ namespace optiling {
     GatherTilingHandler(const std::string &o, const std::string &p, const nlohmann::json &c)
             : AutoTilingHandler(o, p), gather_compile_info(o, c) {}
 
-    ~GatherTilingHandler() {}
+    ~GatherTilingHandler() = default;
 
     bool DoTiling(const ge::Operator &op_paras, utils::OpRunInfo &run_info) const override;
     bool DoTiling(const ge::Operator &op_paras, utils::OpRunInfo &run_info, const OpInfo &op_info) const override;

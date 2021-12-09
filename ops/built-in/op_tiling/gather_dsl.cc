@@ -93,6 +93,12 @@ constexpr int64_t BROADCAST_TILING_KEY = 990000001;
 constexpr int64_t PARAM_DTYPE_B8 = 1;
 constexpr int64_t PARAM_DTYPE_B16 = 2;
 constexpr int64_t PARAM_DTYPE_B64 = 8;
+
+constexpr size_t KEY_SIZE = 10;
+constexpr int32_t DECIMAL_TEN = 10;
+constexpr int32_t INDICES_SHAPE_IDX = 20000;
+constexpr int32_t MIN_BLOCK_FACTOR_IDX = 30000;
+constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 }
   GatherDslCompileInfo::GatherDslCompileInfo(const std::string& op_type, const nlohmann::json& org_compile_info) {
     try {
@@ -421,7 +427,7 @@ constexpr int64_t PARAM_DTYPE_B64 = 8;
     indices_num_ub = gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
 
     constexpr int64_t scalar_indices_threshold = 3072;
-    return (params_size_total < gather_compile_info.params_ub_half_num / 2) &&
+    return (params_size_total < gather_compile_info.params_ub_half_num / UB_HALF_DIV_NUM) &&
            (indices_size_total < scalar_indices_threshold) &&
            (output_shape[OUTPUT_PARAMS_ROW_IDX] == 1);
   }
@@ -812,32 +818,29 @@ constexpr int64_t PARAM_DTYPE_B64 = 8;
 
     int64_t cur_key = key;
     int64_t key_len = 8;
-    constexpr size_t key_size = 10;
-    char keys[key_size] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
+
+    char keys[KEY_SIZE] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
     while (cur_key && key_len >= 0) {
-      keys[key_len] = '0' + cur_key % 10;
-      cur_key /= 10;
+      keys[key_len] = '0' + cur_key % DECIMAL_TEN;
+      cur_key /= DECIMAL_TEN;
       key_len--;
     }
     std::string str_key = keys;
 
     try {
       const auto &all_vars = gather_compile_info.gather_vars.at(str_key);
-      constexpr std::int32_t indices_shape_idx = 20000;
-      constexpr std::int32_t min_block_cut_idx = 30000;
-      constexpr std::int32_t min_ub_cut_idx = 40000;
       for (const auto &var : all_vars) {
-        if (var >= min_ub_cut_idx) {
+        if (var >= MIN_UB_FACTOR_IDX) {
           run_info.AddTilingData(static_cast<int32_t>(ub_factor));
-        } else if (var >= min_block_cut_idx) {
+        } else if (var >= MIN_BLOCK_FACTOR_IDX) {
           run_info.AddTilingData(static_cast<int32_t>(block_factor));
-        } else if (var >= indices_shape_idx) {
+        } else if (var >= INDICES_SHAPE_IDX) {
           int64_t var_value = var;
-          size_t dim_index = var_value % 10;
+          size_t dim_index = var_value % DECIMAL_TEN;
           run_info.AddTilingData(static_cast<int32_t>(indices_shape[dim_index]));
         } else {
           int64_t var_value = var;
-          size_t dim_index = var_value % 10;
+          size_t dim_index = var_value % DECIMAL_TEN;
           if (total_size != 0) {
             if ((gather_compile_info.gather_type == GATHER_ND_COMPUTE) && (dim_index > 0)) {
               dim_index = dim_index + 1;
