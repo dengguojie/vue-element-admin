@@ -122,12 +122,6 @@ REG_OP(NPUGetFloatStatus)
 /**
 *@brief Set the value of address 0x40000 to 0 in each core . \n
 
-*@par Inputs:
-*addr: A tensor of type float32 . \n
-
-*@par Outputs:
-*data: A Tensor of type float32.
-
 *@par Restrictions:
 *Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
 */
