@@ -239,18 +239,18 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   int64_t dtype_factor = 1;
   // to make sure the rep_stride of vor is less than limit
   if (params.tiling_mode == TILING_MODE_2010) {
-    int64_t max_r2nd_lp_size = 63;
+    int64_t max_r2nd_lp_size = TRANSDATA_TILING_PARAM_63;
     if (dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) {
       if (axis_dst_c_size == params.c0_len && axis_src_left_size <= C0_16) {
         // for vor in copy data in
-        max_r2nd_lp_size = 63;
+        max_r2nd_lp_size = TRANSDATA_TILING_PARAM_63;
       } else {
         // for vor in reorder
-        max_r2nd_lp_size = 31;
+        max_r2nd_lp_size = TRANSDATA_TILING_PARAM_31;
       }
       dtype_factor = TRANSDATA_TILING_FACTOR_2;
     } else if (axis_dst_c_size == params.c0_len && axis_src_left_size <= C0_16) {
-      max_r2nd_lp_size = 127;
+      max_r2nd_lp_size = TRANSDATA_TILING_PARAM_127;
     }
     tmp_dst_r2nd_lp_unit = GetFloorDiv(params.ub_offset, params.src_cl_lp_unit * c0_len);
     if (tmp_dst_r2nd_lp_unit > max_r2nd_lp_size) {
@@ -406,25 +406,25 @@ void SetRunningTc201Params(const TransDataTc201Param& run_params, utils::OpRunIn
 }
 
 void PrintTilingModeTc201Params(const std::string& op_type, const TransDataTc201Param& params) {
-  OP_LOGD(op_type, "tiling_mode=%d ", params.tiling_mode);
-  OP_LOGD(op_type, "ub_offset=%d ", params.ub_offset);
-  OP_LOGD(op_type, "mc_pos=%d ", params.mc_pos);
-  OP_LOGD(op_type, "used_core_cnt=%d ", params.used_core_cnt);
-  OP_LOGD(op_type, "src_r2nd_dst_r2nd_same=%d ", params.src_r2nd_dst_r2nd_same);
-  OP_LOGD(op_type, "c0_len=%d ", params.c0_len);
-  OP_LOGD(op_type, "core_step_in=%d ", params.core_step_in);
-  OP_LOGD(op_type, "core_step_out=%d ", params.core_step_out);
-  OP_LOGD(op_type, "nlc_dst_r2nd_lp_cnt=%d ", params.nlc_dst_r2nd_lp_cnt);
-  OP_LOGD(op_type, "nlc_src_cl_lp_cnt=%d ", params.nlc_src_cl_lp_cnt);
-  OP_LOGD(op_type, "nlc_src_left_lp_cnt=%d ", params.nlc_src_left_lp_cnt);
-  OP_LOGD(op_type, "nlc_dst_r2nd_left=%d ", params.nlc_dst_r2nd_left);
-  OP_LOGD(op_type, "nlc_src_cl_left=%d ", params.nlc_src_cl_left);
-  OP_LOGD(op_type, "nlc_src_left_left=%d ", params.nlc_src_left_left);
-  OP_LOGD(op_type, "lc_dst_r2nd_lp_cnt=%d ", params.lc_dst_r2nd_lp_cnt);
-  OP_LOGD(op_type, "lc_src_cl_lp_cnt=%d ", params.lc_src_cl_lp_cnt);
-  OP_LOGD(op_type, "lc_src_left_lp_cnt=%d ", params.lc_src_left_lp_cnt);
-  OP_LOGD(op_type, "lc_dst_r2nd_left=%d ", params.lc_dst_r2nd_left);
-  OP_LOGD(op_type, "lc_src_cl_left=%d ", params.lc_src_cl_left);
+  OP_LOGD(op_type, "tiling_mode=%d", params.tiling_mode);
+  OP_LOGD(op_type, "ub_offset=%d", params.ub_offset);
+  OP_LOGD(op_type, "mc_pos=%d", params.mc_pos);
+  OP_LOGD(op_type, "used_core_cnt=%d", params.used_core_cnt);
+  OP_LOGD(op_type, "src_r2nd_dst_r2nd_same=%d", params.src_r2nd_dst_r2nd_same);
+  OP_LOGD(op_type, "c0_len=%d", params.c0_len);
+  OP_LOGD(op_type, "core_step_in=%d", params.core_step_in);
+  OP_LOGD(op_type, "core_step_out=%d", params.core_step_out);
+  OP_LOGD(op_type, "nlc_dst_r2nd_lp_cnt=%d", params.nlc_dst_r2nd_lp_cnt);
+  OP_LOGD(op_type, "nlc_src_cl_lp_cnt=%d", params.nlc_src_cl_lp_cnt);
+  OP_LOGD(op_type, "nlc_src_left_lp_cnt=%d", params.nlc_src_left_lp_cnt);
+  OP_LOGD(op_type, "nlc_dst_r2nd_left=%d", params.nlc_dst_r2nd_left);
+  OP_LOGD(op_type, "nlc_src_cl_left=%d", params.nlc_src_cl_left);
+  OP_LOGD(op_type, "nlc_src_left_left=%d", params.nlc_src_left_left);
+  OP_LOGD(op_type, "lc_dst_r2nd_lp_cnt=%d", params.lc_dst_r2nd_lp_cnt);
+  OP_LOGD(op_type, "lc_src_cl_lp_cnt=%d", params.lc_src_cl_lp_cnt);
+  OP_LOGD(op_type, "lc_src_left_lp_cnt=%d", params.lc_src_left_lp_cnt);
+  OP_LOGD(op_type, "lc_dst_r2nd_left=%d", params.lc_dst_r2nd_left);
+  OP_LOGD(op_type, "lc_src_cl_left=%d", params.lc_src_cl_left);
   OP_LOGD(op_type, "lc_src_left_left=%d", params.lc_src_left_left);
   OP_LOGD(op_type, "dst_r2nd_lp_unit=%d", params.dst_r2nd_lp_unit);
   OP_LOGD(op_type, "dst_r2nd_step_in=%d", params.dst_r2nd_step_in);

@@ -71,6 +71,12 @@ constexpr int64_t TRANSDATA_TILING_FACTOR_54 = 54;
 constexpr int64_t TRANSDATA_TILING_FACTOR_56 = 56;
 
 constexpr int64_t TRANSDATA_TILING_PARAM_2 = 2;
+constexpr int64_t TRANSDATA_TILING_PARAM_3 = 3;
+constexpr int64_t TRANSDATA_TILING_PARAM_4 = 4;
+constexpr int64_t TRANSDATA_TILING_PARAM_5 = 5;
+constexpr int64_t TRANSDATA_TILING_PARAM_31 = 31;
+constexpr int64_t TRANSDATA_TILING_PARAM_63 = 63;
+constexpr int64_t TRANSDATA_TILING_PARAM_127 = 127;
 
 struct HeadTilingParam {
   int64_t shape_loop_cnt;

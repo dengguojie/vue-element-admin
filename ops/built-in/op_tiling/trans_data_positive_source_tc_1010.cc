@@ -232,15 +232,15 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
       (axis_c_size % c0_len == 0 && params.pln_dst_cr_size % TRANSDATA_TILING_FACTOR_2 == 0)) {
     // move in cl_cr_c in together
     if (params.c_lp_unit == axis_c_size && per_vnc_dst_cr_cnt >= axis_dst_cr_size) {
-      params.nc_le_vcol = 3;
+      params.nc_le_vcol = TRANSDATA_TILING_PARAM_3;
       per_vnc_dst_cl_cnt = GetFloorDiv(params.vnc_line_size * VNC_LINES, axis_c_size * axis_dst_cr_size);
     } else if (params.c_lp_unit == axis_c_size) {
       // move in cr_c in together
-      params.nc_le_vcol = 4;
+      params.nc_le_vcol = TRANSDATA_TILING_PARAM_4;
       per_vnc_dst_cl_cnt = 1;
     } else {
       // move in c
-      params.nc_le_vcol = 5;
+      params.nc_le_vcol = TRANSDATA_TILING_PARAM_5;
       per_vnc_dst_cl_cnt = 1;
     }
     params.pln_dst_cl_size = per_vnc_dst_cl_cnt;
@@ -254,7 +254,7 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
       params.nc_le_vcol = 1;
       params.pln_dst_cl_size = GetFloorDiv(params.pln_dst_cr_size, axis_dst_cr_size);
     } else {
-      params.nc_le_vcol = 2;
+      params.nc_le_vcol = TRANSDATA_TILING_PARAM_2;
       params.pln_dst_cl_size = 1;
       // adjust c-right parameters
       dst_cr_lp_cnt = GetCeilDiv(axis_dst_cr_size, params.pln_dst_cr_size);

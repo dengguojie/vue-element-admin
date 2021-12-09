@@ -17,14 +17,18 @@ prod_virial_se_a
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 
 
+# 'pylint: disable=too-few-public-methods
 class ProdVirialSeA:
+    """
+    ProdVirialSeA compute
+    """
     MAX_NNEI_IN_UB = 256
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, net_deriv, in_deriv, rij, nlist, natoms, nnei, nall, kernel_name):
         self.kernel_name = kernel_name
         self.tik_inst = tik.Tik(tik.Dprofile)
@@ -112,6 +116,7 @@ class ProdVirialSeA:
 
         return net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, zero_scalar, j_idx0, j_idx1, j_idx2, j_idx3
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _compute_virial_fp32(self, nn, ub_tuple):
         """
         Support shape/datatype:
@@ -232,6 +237,7 @@ class ProdVirialSeA:
                                outputs=[self.virial_gm, self.atom_virial_gm])
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _check_params(net_deriv, in_deriv, rij, nlist, natoms, virial, atom_virial, n_a_sel, n_r_sel, nall, kernel_name):
     net_deriv_dtype = net_deriv.get("dtype").lower()
     para_check.check_dtype(net_deriv_dtype, ("float32"), param_name="net_deriv")
@@ -282,6 +288,7 @@ def _check_params(net_deriv, in_deriv, rij, nlist, natoms, virial, atom_virial, 
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule)
 
 
+# 'pylint: disable=too-many-arguments,
 @register_operator("ProdVirialSeA")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
