@@ -162,3 +162,215 @@ TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_2) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_001) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_002) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_003) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  vector<int64_t> ksize = {1, 2, 2, 2};
+  op.SetAttr("ksize", ksize);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_004) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_005) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  vector<int64_t> strides = {1, 1, 1, 1};
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, VerifyMaxPool3DGrad_006) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                    {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                   {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("data_format", "ND");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_001) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCHW));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_002) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  op.SetAttr("strides", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_003) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_004) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 0, 0, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_005) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("padding", "CALCULATED");
+  op.SetAttr("pads", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_006) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("padding", "error");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_007) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("padding", strides);
+  op.SetAttr("pads", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_008) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  vector<int64_t> pads = {0, 0, 0, 0, 0};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("padding", strides);
+  op.SetAttr("pads", pads);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_009) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {17, 63, 7, 2, 16}, ge::FORMAT_NCDHW));
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  vector<int64_t> pads = {0, 0, -1, 0, 0, 0};
+  op.SetAttr("strides", strides);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("padding", strides);
+  op.SetAttr("pads", pads);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

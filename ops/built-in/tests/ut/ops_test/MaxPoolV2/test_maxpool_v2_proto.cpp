@@ -256,3 +256,138 @@ TEST_F(MaxPoolV2Test, MaxPoolV2_infer_shape_padding_failed2) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(MaxPoolV2Test, InfershapeMaxPoolV2_001) {
+  ge::op::MaxPoolV2 op;
+  auto tensor_desc1 = create_desc_with_ori({2, 2, 2, 2}, ge::DT_INT64, ge::FORMAT_NHWC, {2, 2, 2, 2}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc1);
+
+  ge::TensorDesc const_desc(ge::Shape({4}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value[4] = {1, 1, 1, 1};
+  auto const_op = ge::op::Constant().set_attr_value(ge::Tensor(const_desc, (uint8_t*)const_value, 4 * sizeof(int32_t)));
+  op.set_input_ksize(const_op);
+  op.UpdateInputDesc("ksize", const_desc);
+
+  ge::TensorDesc const_desc1(ge::Shape({4}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value1[4] = {1, 1, 1, 1};
+  auto const_op1 =
+      ge::op::Constant().set_attr_value(ge::Tensor(const_desc1, (uint8_t*)const_value1, 4 * sizeof(int32_t)));
+  op.set_input_strides(const_op1);
+  op.UpdateInputDesc("strides", const_desc1);
+
+  op.SetAttr("data_format", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolV2Test, InfershapeMaxPoolV2_002) {
+  ge::op::MaxPoolV2 op;
+  auto tensor_desc1 = create_desc_with_ori({2, 2, 2, 2}, ge::DT_INT64, ge::FORMAT_NHWC, {2, 2, 2, 2}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc1);
+
+  ge::TensorDesc const_desc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  int32_t const_value[4] = {1, 1, 1, 1};
+  auto const_op = ge::op::Constant().set_attr_value(ge::Tensor(const_desc, (uint8_t*)const_value, 4 * sizeof(int32_t)));
+  op.set_input_ksize(const_op);
+  op.UpdateInputDesc("ksize", const_desc);
+
+  ge::TensorDesc const_desc1(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  int32_t const_value1[4] = {1, 1, 1, 1};
+  auto const_op1 =
+      ge::op::Constant().set_attr_value(ge::Tensor(const_desc1, (uint8_t*)const_value1, 4 * sizeof(int32_t)));
+  op.set_input_strides(const_op1);
+  op.UpdateInputDesc("strides", const_desc1);
+
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("padding", "SAME");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
+  std::vector<int64_t> expected_output_shape = {2, 2, 2, 2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(MaxPoolV2Test, InfershapeMaxPoolV2_003) {
+  ge::op::MaxPoolV2 op;
+  auto tensor_desc1 = create_desc_with_ori({2, 2, 2, 2}, ge::DT_INT64, ge::FORMAT_NHWC, {2, 2, 2, 2}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc1);
+
+  ge::TensorDesc const_desc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  int32_t const_value[4] = {1, 1, 1, 1};
+  auto const_op = ge::op::Constant().set_attr_value(ge::Tensor(const_desc, (uint8_t*)const_value, 4 * sizeof(int32_t)));
+  op.set_input_ksize(const_op);
+  op.UpdateInputDesc("ksize", const_desc);
+
+  ge::TensorDesc const_desc1(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  int32_t const_value1[4] = {1, 1, 1, 1};
+  auto const_op1 =
+      ge::op::Constant().set_attr_value(ge::Tensor(const_desc1, (uint8_t*)const_value1, 4 * sizeof(int32_t)));
+  op.set_input_strides(const_op1);
+  op.UpdateInputDesc("strides", const_desc1);
+
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("padding", "VALID");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
+  std::vector<int64_t> expected_output_shape = {2, 2, 2, 2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(MaxPoolV2Test, InfershapeMaxPoolV2_004) {
+  ge::op::MaxPoolV2 op;
+  auto tensor_desc1 = create_desc_with_ori({2, 2, 2, 2}, ge::DT_INT64, ge::FORMAT_NHWC, {2, 2, 2, 2}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc1);
+
+  ge::TensorDesc const_desc(ge::Shape({4}), ge::FORMAT_NCHW, ge::DT_INT32);
+  int32_t const_value[4] = {1, 1, 1, 1};
+  auto const_op = ge::op::Constant().set_attr_value(ge::Tensor(const_desc, (uint8_t*)const_value, 4 * sizeof(int32_t)));
+  op.set_input_ksize(const_op);
+  op.UpdateInputDesc("ksize", const_desc);
+
+  ge::TensorDesc const_desc1(ge::Shape({4}), ge::FORMAT_NCHW, ge::DT_INT32);
+  int32_t const_value1[4] = {1, 1, 1, 1};
+  auto const_op1 =
+      ge::op::Constant().set_attr_value(ge::Tensor(const_desc1, (uint8_t*)const_value1, 4 * sizeof(int32_t)));
+  op.set_input_strides(const_op1);
+  op.UpdateInputDesc("strides", const_desc1);
+
+  op.SetAttr("data_format", "NCHW");
+  op.SetAttr("padding", "SAME");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
+  std::vector<int64_t> expected_output_shape = {2, 2, 2, 2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(MaxPoolV2Test, InfershapeMaxPoolV2_005) {
+  ge::op::MaxPoolV2 op;
+  auto tensor_desc1 = create_desc_with_ori({2, 2, 2, 2}, ge::DT_INT64, ge::FORMAT_NHWC, {2, 2, 2, 2}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc1);
+
+  ge::TensorDesc const_desc(ge::Shape({4}), ge::FORMAT_NCHW, ge::DT_INT64);
+  int64_t const_value[4] = {1, 1, 1, 1};
+  auto const_op = ge::op::Constant().set_attr_value(ge::Tensor(const_desc, (uint8_t*)const_value, 4 * sizeof(int64_t)));
+  op.set_input_ksize(const_op);
+  op.UpdateInputDesc("ksize", const_desc);
+
+  ge::TensorDesc const_desc1(ge::Shape({4}), ge::FORMAT_NCHW, ge::DT_INT32);
+  int32_t const_value1[4] = {1, 1, 1, 1};
+  auto const_op1 =
+      ge::op::Constant().set_attr_value(ge::Tensor(const_desc1, (uint8_t*)const_value1, 4 * sizeof(int32_t)));
+  op.set_input_strides(const_op1);
+  op.UpdateInputDesc("strides", const_desc1);
+
+  op.SetAttr("data_format", "NCHW");
+  op.SetAttr("padding", "VALID");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
+  std::vector<int64_t> expected_output_shape = {2, 2, 2, 2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
