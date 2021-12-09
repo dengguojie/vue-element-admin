@@ -22,26 +22,57 @@ class n_p_u_get_float_status_v2_infer_test : public testing::Test {
 TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_test_1) {
   auto graph = std::make_shared<ge::ComputeGraph>("n_p_u_get_float_status_v2_infer_test_1");
 
+  // expect info
+  std::vector<int64_t> expected_shape = {8};
+  auto dtype = DT_FLOAT;
+
+  // input
   ge::GeShape output_shape({8});
-  ge::GeTensorDesc output_desc(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-  output_desc.SetOriginFormat(ge::FORMAT_ND);
-  output_desc.SetOriginDataType(ge::DT_FLOAT);
-  output_desc.SetOriginShape(output_shape);
+  ge::GeTensorDesc desc_data(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
+  desc_data.SetOriginFormat(ge::FORMAT_ND);
+  desc_data.SetOriginDataType(ge::DT_FLOAT);
+  desc_data.SetOriginShape(output_shape);
+  auto data = op::Data("data");
+  data.update_input_desc_x(desc_data);
+  data.update_output_desc_y(desc_data);
 
-  ge::OpDescPtr n_p_u_get_float_status_v2 = std::make_shared<ge::OpDesc>("NPUGetFloatStatusV2", "NPUGetFloatStatusV2");
-  n_p_u_get_float_status_v2->AddOutputDesc(output_desc);
-  n_p_u_get_float_status_v2->AddInputDesc(output_desc);
-  ge::NodePtr n_p_u_get_float_status_v2_node = graph->AddNode(n_p_u_get_float_status_v2);
+  // new op
+  auto test_op = op::NPUGetFloatStatusV2("NPUGetFloatStatusV2");
+  test_op.set_input_x(data);
+  std::vector<Operator> inputs{data};
+  std::vector<Operator> outputs{test_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
 
-  ge::OpDescPtr const1 = std::make_shared<ge::OpDesc>("Const", "Const");
-  const1->AddOutputDesc(output_desc);
-  ge::NodePtr const_node = graph->AddNode(const1);
-  ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), n_p_u_get_float_status_v2_node->GetInDataAnchor(0));
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
 
-  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
-  netoutput->AddInputDesc(output_desc);
+  bool findOp = false;
+  for (auto node: compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "NPUGetFloatStatusV2") {
+      findOp = true;
+      auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+      std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+      EXPECT_EQ(dims, expected_shape);
+      auto output_dtype = output_desc.GetDataType();
+      EXPECT_EQ(output_dtype, dtype);
+    }
+  }
+  EXPECT_EQ(findOp, true);
 
-  ge::NodePtr netoutput_node = graph->AddNode(netoutput);
-  ge::GraphUtils::AddEdge(n_p_u_get_float_status_v2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
-  fe::FusionPassTestUtils::InferShapeAndType(graph);
+//  ge::OpDescPtr n_p_u_get_float_status_v2 = std::make_shared<ge::OpDesc>("NPUGetFloatStatusV2", "NPUGetFloatStatusV2");
+//  n_p_u_get_float_status_v2->AddOutputDesc(desc_data);
+//  n_p_u_get_float_status_v2->AddInputDesc(desc_data);
+//  ge::NodePtr n_p_u_get_float_status_v2_node = graph->AddNode(n_p_u_get_float_status_v2);
+//
+//  ge::OpDescPtr const1 = std::make_shared<ge::OpDesc>("Const", "Const");
+//  const1->AddOutputDesc(desc_data);
+//  ge::NodePtr const_node = graph->AddNode(const1);
+//  ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), n_p_u_get_float_status_v2_node->GetInDataAnchor(0));
+//
+//  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
+//  netoutput->AddInputDesc(desc_data);
+//
+//  ge::NodePtr netoutput_node = graph->AddNode(netoutput);
+//  ge::GraphUtils::AddEdge(n_p_u_get_float_status_v2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+//  fe::FusionPassTestUtils::InferShapeAndType(graph);
 }
