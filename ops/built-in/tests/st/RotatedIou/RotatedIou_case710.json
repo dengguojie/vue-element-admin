@@ -1,7 +1,7 @@
 [
   {
-    "op": "RotatedOverlaps",
-    "calc_expect—_func_file": "test_rotated_overlaps_golden.py:calc_expect_func",
+    "op": "RotatedIou",
+    "calc_expect—_func_file": "test_rotated_iou_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -36,7 +36,7 @@
           6
         ],
         "format": "ND",
-        "name": "overlaps",
+        "name": "iou",
         "type": "float"
       } 
     ],
@@ -46,12 +46,24 @@
         "value": false,
         "type": "bool"
         
+      },
+      {
+        "name": "mode",
+        "value": "iou",
+        "type": "string"
+        
+      },
+      {
+        "name": "is_cross",
+        "value": true,
+        "type": "bool"
+        
       }
     ],
-    "case_name": "test_RotatedOverlaps_000"
+    "case_name": "test_RotatedIou_000"
   },
   {
-    "op": "RotatedOverlaps",
+    "op": "RotatedIou",
     "input_desc": [
       {
         "shape": [
@@ -82,7 +94,7 @@
           60
         ],
         "format": "ND",
-        "name": "overlaps",
+        "name": "iou",
         "type": "float"
       } 
     ],
@@ -92,8 +104,20 @@
         "value": true,
         "type": "bool"
         
+      },
+      {
+        "name": "mode",
+        "value": "iou",
+        "type": "string"
+        
+      },
+      {
+        "name": "is_cross",
+        "value": true,
+        "type": "bool"
+        
       }
     ],
-    "case_name": "test_RotatedOverlaps_001"
+    "case_name": "test_RotatedIou_001"
   }
 ]

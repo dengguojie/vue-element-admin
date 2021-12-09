@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-rotated_overlaps
+rotated_iou
 """
 
 from topi.cce import util
@@ -53,23 +53,25 @@ class Constant(object):
     COEF = 0.01745329252
     # limit of k's size of query_boxes
     K_LIMIT = 2000
+    # to avoid denominator zero  
+    EPSILON = 1e-6
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("rotated_overlaps")
-class RotatedOverlaps(object):
+@tbe_platform.fusion_manager.fusion_manager.register("rotated_iou")
+class RotatedIou(object):
     """
-    The class for RotatedOverlaps.
+    The class for RotatedIou.
     """
     # 'pylint:disable=too-many-arguments
-    def __init__(self, boxes, query_boxes, overlaps, trans, kernel_name):
+    def __init__(self, boxes, query_boxes, iou, trans, mode, is_cross, kernel_name):
         """
         class init
         """
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.trans = trans
         self.kernel_name = kernel_name
-        check_res = self.paras_check(boxes, query_boxes, overlaps, kernel_name)
+        check_res = self.paras_check(boxes, query_boxes, iou, mode, is_cross, kernel_name)
         self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3],
         # Calculate concurrent number on boxes(input_1) dimension
         self.task_num = self.n
@@ -95,7 +97,7 @@ class RotatedOverlaps(object):
                                                  scope=tik.scope_gm)
         self.query_boxes_gm = self.tik_instance.Tensor(self.dtype, [self.batch, Constant.INFOS, self.k],
                                                        name="query_boxes_gm", scope=tik.scope_gm)
-        self.overlaps_gm = self.tik_instance.Tensor(self.dtype, [self.batch, self.n, self.k], name="overlaps_gm",
+        self.iou_gm = self.tik_instance.Tensor(self.dtype, [self.batch, self.n, self.k], name="iou_gm",
                                                     scope=tik.scope_gm, is_atomic_add=True)
 
         # Tensor
@@ -114,6 +116,7 @@ class RotatedOverlaps(object):
         self.y_of_boxes_ub = None
         self.w_of_boxes_ub = None
         self.h_of_boxes_ub = None
+        self.area_of_boxes_ub = None
         self.half_w_of_boxes_ub = None
         self.half_h_of_boxes_ub = None
 
@@ -233,7 +236,7 @@ class RotatedOverlaps(object):
         self.numerator_x = None
         self.numerator_y = None
 
-    def paras_check(self, boxes, query_boxes, overlaps, kernel_name):
+    def paras_check(self, boxes, query_boxes, iou, mode, is_cross, kernel_name):
         """
         paras_check
         """
@@ -249,15 +252,21 @@ class RotatedOverlaps(object):
         util.check_shape_rule(shape_query_boxes)
         util.check_dtype_rule(dtype_query_boxes, "float32")
 
-        shape_overlaps = overlaps.get("shape")
-        dtype_overlaps = overlaps.get("dtype").lower()
-        util.check_shape_rule(shape_overlaps)
-        util.check_dtype_rule(dtype_overlaps, "float32")
+        shape_iou = iou.get("shape")
+        dtype_iou = iou.get("dtype").lower()
+        util.check_shape_rule(shape_iou)
+        util.check_dtype_rule(dtype_iou, "float32")
 
-        if shape_boxes[2] != shape_overlaps[1]:
+        if mode != 'iou':
+            raise RuntimeError("mode only support iou")
+
+        if not is_cross:
+            raise RuntimeError("is_cross only support True")
+
+        if shape_boxes[2] != shape_iou[1]:
             raise RuntimeError("Shape unmatch in boxes nums")
 
-        if shape_query_boxes[2] != shape_overlaps[2]:
+        if shape_query_boxes[2] != shape_iou[2]:
             raise RuntimeError("Shape unmatch in query_boxes nums")
 
         if shape_boxes[1] != Constant.INFOS:
@@ -269,7 +278,7 @@ class RotatedOverlaps(object):
         if shape_query_boxes[2] > Constant.K_LIMIT:
             raise RuntimeError("K's value is over 2000.")
 
-        return [shape_boxes[0], shape_overlaps[1], shape_overlaps[2], dtype_boxes]
+        return [shape_boxes[0], shape_iou[1], shape_iou[2], dtype_boxes]
 
     def get_area_of_triangle(self, idx_tmp, idx_current_tmp):
         """
@@ -767,7 +776,8 @@ class RotatedOverlaps(object):
                     self.boxes_gm[
                         self.n * Constant.Y_IDX + self.b1_batch * task_idx + current_batch * self.n * Constant.INFOS],
                     0, 1, self.b1_repeats, 0, 0)
-
+        
+        self.tik_instance.h_mul(self.area_of_boxes_ub, self.h_of_boxes_ub, self.w_of_boxes_ub)
         self.tik_instance.h_mul(self.half_w_cos_of_boxes_ub, self.cos_t_of_boxes_ub, self.half_w_of_boxes_ub)
         self.tik_instance.h_mul(self.half_w_sin_of_boxes_ub, self.sin_t_of_boxes_ub, self.half_w_of_boxes_ub)
 
@@ -827,6 +837,8 @@ class RotatedOverlaps(object):
                                                       scope=tik.scope_ubuf)
         self.h_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="h_of_boxes_ub",
                                                       scope=tik.scope_ubuf)
+        self.area_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="area_of_boxes_ub",
+                                                         scope=tik.scope_ubuf)                                              
         self.half_w_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="half_w_of_boxes_ub",
                                                            scope=tik.scope_ubuf)
         self.half_h_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="half_h_of_boxes_ub",
@@ -986,6 +998,9 @@ class RotatedOverlaps(object):
         single task
         """
         self.data_init()
+        b1_area = self.tik_instance.Scalar(self.dtype)
+        b2_area = self.tik_instance.Scalar(self.dtype)
+        overlap = self.tik_instance.Scalar(self.dtype)
         with self.tik_instance.for_range(0, Constant.BLOCK) as i:
             self.ori_idx_fp16_ub[i].set_as(self.idx_fp32)
             self.idx_fp32.set_as(self.idx_fp32 + 1)
@@ -999,27 +1014,29 @@ class RotatedOverlaps(object):
                 with self.tik_instance.if_scope(self.w_value * self.h_value > 0):
                     self.valid_box_num.set_as(self.valid_box_num + 1)
             self.mov_repeats.set_as((self.valid_box_num + Constant.BLOCK - 1) // Constant.BLOCK)
-
             with self.tik_instance.for_range(0, self.b1_batch) as b1_idx:
                 self.tik_instance.vec_dup(Constant.BLOCK, self.overlap_ub, 0, self.mov_repeats, 1)
                 self.b1_offset.set_as(self.k_align - self.b1_batch + b1_idx)
+                b1_area.set_as(self.area_of_boxes_ub[self.b1_offset])
                 with self.tik_instance.for_range(0, self.valid_box_num) as b2_idx:
                     self.record_vertex_point(b2_idx)
                     self.record_intersection_point(b2_idx)
+                    b2_area.set_as(self.area_of_boxes_ub[b2_idx])
                     with self.tik_instance.if_scope(self.corners_num == 3):
                         self.b1_x1.set_as(self.corners_ub[0])
                         self.b1_y1.set_as(self.corners_ub[Constant.BLOCK])
                         self.get_area_of_triangle(1, 2)
                         with self.tik_instance.if_scope(self.value > 0):
-                            self.overlap_ub[b2_idx].set_as(self.value / 2)
+                            overlap.set_as(self.value / 2)
                         with self.tik_instance.else_scope():
-                            self.overlap_ub[b2_idx].set_as(-1 * self.value / 2)
+                            overlap.set_as(-1 * self.value / 2)
+                        self.overlap_ub[b2_idx].set_as(overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
                     with self.tik_instance.if_scope(self.corners_num > 3):
                         self.sum_area_of_triangles(b2_idx)
-                        self.overlap_ub[b2_idx].set_as(self.value / 2)
-
+                        overlap.set_as(self.value / 2)
+                        self.overlap_ub[b2_idx].set_as(overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
                 self.tik_instance.data_move(
-                    self.overlaps_gm[self.k * (task_idx * self.b1_batch + b1_idx + current_batch * self.n)],
+                    self.iou_gm[self.k * (task_idx * self.b1_batch + b1_idx + current_batch * self.n)],
                     self.overlap_ub, 0, 1, self.mov_repeats, 0, 0)
 
     def compute(self):
@@ -1036,17 +1053,18 @@ class RotatedOverlaps(object):
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.boxes_gm, self.query_boxes_gm],
-                                   outputs=[self.overlaps_gm])
+                                   outputs=[self.iou_gm])
 
         return self.tik_instance
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def rotated_overlaps(boxes, query_boxes, overlaps, trans=False, kernel_name="rotated_overlaps"):
+def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True, kernel_name="rotated_iou"):
     """
-    Function: compute the rotated boxes's overlaps.
-    Modify : 2021-11-01
+    Function: compute the rotated boxes's iou.
+    Modify : 2021-12-01
 
     Init base parameters
     Parameters
@@ -1055,17 +1073,21 @@ def rotated_overlaps(boxes, query_boxes, overlaps, trans=False, kernel_name="rot
         data of input
     input(query_boxes): dict
         data of input
-    output(overlaps): dict
+    output(iou): dict
         data of output
 
     Attributes:
     trans : bool
         true for 'xyxyt', false for 'xywht'
+    mode: string
+        with the value range of ['iou', 'iof'], only support 'iou' now.
+    is_cross: bool
+        cross calculation when it is True, and one-to-one calculation when it is False.
 
     kernel_name: str
         the name of the operator
     ----------
     """
-    op_obj = RotatedOverlaps(boxes, query_boxes, overlaps, trans, kernel_name)
+    op_obj = RotatedIou(boxes, query_boxes, iou, trans, mode, is_cross, kernel_name)
 
     return op_obj.compute()

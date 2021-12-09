@@ -1,6 +1,57 @@
 [
   {
     "op": "RotatedOverlaps",
+    "calc_expect—_func_file": "test_rotated_overlaps_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          5,
+          10
+        ],
+        "format": "ND",
+        "name": "boxes",
+        "type": "float",
+        "value_range":[[5,10]],
+        "data_distribute": "uniform"
+      },
+      {
+        "shape": [
+          8,
+          5,
+          6
+        ],
+        "format": "ND",
+        "name": "query_boxes",
+        "type": "float",
+        "value_range":[[5,10]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          10,
+          6
+        ],
+        "format": "ND",
+        "name": "overlaps",
+        "type": "float"
+      } 
+    ],
+    "attr": [
+      {
+        "name": "trans",
+        "value": false,
+        "type": "bool"
+        
+      }
+    ],
+    "case_name": "test_RotatedOverlaps_000"
+  },
+  {
+    "op": "RotatedOverlaps",
     "input_desc": [
       {
         "shape": [
@@ -43,6 +94,6 @@
         
       }
     ],
-    "case_name": "test_RotatedOverlaps_000"
+    "case_name": "test_RotatedOverlaps_001"
   }
 ]
