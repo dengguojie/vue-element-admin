@@ -21,6 +21,7 @@ util
 from decorator import decorator
 from tbe import tvm
 from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_320
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
@@ -37,7 +38,6 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 
 ASCEND_SHISI = "smallhisi"
-
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
 # and set the dtype to None.
@@ -64,6 +64,8 @@ DSL_CHECK_SUPPORT_MAP = {
                    "uint16", "int8", "uint8"),
         ASCEND_310: ("float16", "float32", "int32", "uint32", "int16",
                      "uint16", "int8", "uint8"),
+        ASCEND_320: ("float16", "float32", "int32", "uint32", "int16",
+                     "uint16", "int8", "uint8"),
         ASCEND_910: ("float16", "float32", "int32", "uint32", "int16",
                      "uint16", "int8", "uint8"),
         ASCEND_920A: ("float16", "float32", "int32", "uint32", "int16",
@@ -82,6 +84,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "unsorted_segment_sum": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -92,6 +95,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "unsorted_segment_mean": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -102,6 +106,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "unsorted_segment_prod": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32", "int16"),
@@ -112,6 +117,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "unsorted_segment_min": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32", "int16"),
@@ -122,6 +128,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "unsorted_segment_max": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32", "int16"),
@@ -134,6 +141,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "inplace_add": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -144,6 +152,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "inplace_sub": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -154,6 +163,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "inplace_update": {
         "AllSoc": ("float16", "float32", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -171,6 +181,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "ceil": {
         "AllSoc": ("float16", "f162s32"),
         ASCEND_310: ("float16", "f162s32"),
+        ASCEND_320: ("float16", "float32", "f162s32", "f322s32",
+                     "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
                       "f322s64", "s642f32", "f322bf16", "bf162s32"),
@@ -182,6 +194,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "floor": {
         "AllSoc": ("float16", "f162s32"),
         ASCEND_310: ("float16", "f162s32"),
+        ASCEND_320: ("float16", "float32", "f162s32", "f322s32",
+                     "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
                       "f322s64", "s642f32", "f322bf16", "bf162s32"),
@@ -193,6 +207,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "round": {
         "AllSoc": ("float16", "f162s32"),
         ASCEND_310: ("float16", "f162s32"),
+        ASCEND_320: ("float16", "float32", "f162s32", "f322s32",
+                     "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
                       "f322s64", "s642f32", "f322bf16", "bf162s32"),
@@ -204,6 +220,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "trunc": {
         "AllSoc": ("float16", "f162s32"),
         ASCEND_310: (),
+        ASCEND_320: ("float16", "float32", "f162s32", "f322s32",
+                     "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
                       "f322s64", "s642f32", "f322bf16", "bf162s32"),
@@ -215,6 +233,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "round_half_up": {
         "AllSoc": ("float16", "f162s32"),
         ASCEND_310: (),
+        ASCEND_320: ("float16", "float32", "f162s32", "f322s32",
+                     "f322s64", "s642f32", "f322bf16", "bf162s32"),
         ASCEND_910: ("float16", "float32", "f162s32", "f322s32"),
         ASCEND_920A: ("float16", "float32", "f162s32", "f322s32",
                       "f322s64", "s642f32", "f322bf16", "bf162s32"),
@@ -228,6 +248,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "reduce_sum": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),  # int32: nlst support, last not
@@ -238,6 +259,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "reduce_max": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),  # fp32:last need priority_flag
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32"),
@@ -248,6 +270,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "reduce_min": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),  # fp32:last need priority_flag
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32"),
@@ -258,6 +281,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "reduce_prod": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),  # int32: nlst/last support
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -270,6 +294,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vadd": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -280,6 +305,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vsub": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -290,6 +316,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmul": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32", "int16"),
@@ -300,6 +327,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vdiv": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32",),
+        ASCEND_320: ("float16", "float32",),
         ASCEND_910: ("float16", "float32",),
         ASCEND_920A: ("float16", "float32",),
         ASCEND_710: ("float16", "float32",),
@@ -310,6 +338,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmod": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -320,6 +349,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmin": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -330,6 +360,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmax": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -340,6 +371,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vadds": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -350,6 +382,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmins": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -360,6 +393,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmaxs": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -370,6 +404,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmuls": {
         "AllSoc": ("float16", "int32"),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -380,6 +415,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vnot": {
         "AllSoc": ("int16", "uint16", "int32", "uint32"),
         ASCEND_310: ("int16", "uint16", "int32", "uint32"),
+        ASCEND_320: ("int16", "uint16", "int32", "uint32"),
         ASCEND_910: ("int16", "uint16", "int32", "uint32"),
         ASCEND_920A: ("int16", "uint16", "int32", "uint32"),
         ASCEND_710: ("int16", "uint16", "int32", "uint32"),
@@ -390,6 +426,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vor": {
         "AllSoc": ("int16", "uint16", "int32", "uint32"),
         ASCEND_310: ("int16", "uint16", "int32", "uint32"),
+        ASCEND_320: ("int16", "uint16", "int32", "uint32"),
         ASCEND_910: ("int16", "uint16", "int32", "uint32"),
         ASCEND_920A: ("int16", "uint16", "int32", "uint32"),
         ASCEND_710: ("int16", "uint16", "int32", "uint32"),
@@ -400,6 +437,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vand": {
         "AllSoc": ("int16", "uint16", "int32", "uint32"),
         ASCEND_310: ("int16", "uint16", "int32", "uint32"),
+        ASCEND_320: ("int16", "uint16", "int32", "uint32"),
         ASCEND_910: ("int16", "uint16", "int32", "uint32"),
         ASCEND_920A: ("int16", "uint16", "int32", "uint32"),
         ASCEND_710: ("int16", "uint16", "int32", "uint32"),
@@ -410,6 +448,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vcmp": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -420,6 +459,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vlogic": {
         "AllSoc": ("bool",),
         ASCEND_310: ("bool",),
+        ASCEND_320: ("bool",),
         ASCEND_910: ("bool",),
         ASCEND_920A: ("bool",),
         ASCEND_710: ("bool",),
@@ -430,6 +470,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vsel": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -440,6 +481,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vcmpsel": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -450,6 +492,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vlog": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -460,6 +503,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vexp": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -470,6 +514,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vabs": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -480,6 +525,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vrec": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -490,6 +536,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vrelu": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16",),
         ASCEND_910: ("float16",),
         ASCEND_920A: ("float16",),
         ASCEND_710: ("float16", "float32"),
@@ -500,6 +547,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vsqrt": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -510,6 +558,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vrsqrt": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -520,6 +569,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vaxpy": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -560,6 +610,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vlrelu": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32"),
@@ -570,6 +621,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vaddrelu": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16",),
         ASCEND_910: ("float16",),
         ASCEND_920A: ("float16",),
         ASCEND_710: ("int16", "float16", "float32"),
@@ -580,6 +632,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vsubrelu": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16",),
         ASCEND_910: ("float16",),
         ASCEND_920A: ("float16",),
         ASCEND_710: ("int16", "float16", "float32"),
@@ -654,6 +707,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "clip": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32"),  # int32: schedule not support
@@ -669,6 +723,11 @@ DSL_CHECK_SUPPORT_MAP = {
                      "f162f32", "f162s8", "f162u8", "f162s32",
                      "s82f16", "s82u8", "u82f16", "u82s8",
                      "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_320: ("f322f16", "f322s8", "f322u8", "f322s32",
+                     "f162f32", "f162s8", "f162u8", "f162s32",
+                     "s82f16", "s82u8", "u82f16", "u82s8",
+                     "s322f16", "s322s8", "s322u8", "s322f32",
+                     "s642s32", "s322s64", "bf162f32"),
         ASCEND_910: ("f322f16", "f322s8", "f322u8", "f322s32",
                      "f162f32", "f162s8", "f162u8", "f162s32",
                      "s82f16", "s82u8", "u82f16", "u82s8",
@@ -721,6 +780,7 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_prod": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -731,6 +791,7 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "vsel": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16",),
+        ASCEND_320: ("float16",),
         ASCEND_910: ("float16",),
         ASCEND_920A: ("float16",),
         ASCEND_710: ("float16", "float32"),
@@ -741,6 +802,7 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_sum": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -751,6 +813,7 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_max": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
@@ -761,6 +824,7 @@ UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_min": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
         ASCEND_910: ("float16", "float32", "int32"),
         ASCEND_920A: ("float16", "float32", "int32"),
         ASCEND_710: ("float16", "float32", "int32"),
