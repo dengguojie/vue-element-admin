@@ -75,22 +75,4 @@ class fusion_mul_fusion_optimizer_pass_unittest : public testing::Test {
     GraphUtils::AddEdge(mul_Node->GetOutDataAnchor(0), bias_node->GetInDataAnchor(0));
   }
 };
-
-TEST_F(fusion_mul_fusion_optimizer_pass_unittest, mul_fusion_optimizer_success) {
-  auto graph = std::make_shared<ComputeGraph>("test");
-  CreateMulGraph(graph);
-
-  fe::FusionPassTestUtils::RunGraphFusionPass("MulFusionOptimizeFusionPass", fe::BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS, *graph);
-  bool changed = false;
-  for (auto node: graph->GetAllNodes()) {
-    std::cout << "fusion_mul_fusion_optimizer_pass_unittest type" << std::endl;
-    if (node->GetType() == "Mul") {
-      auto op_desc = node->GetOpDesc();
-      auto op_input0_desc_primary_format =
-      static_cast<ge::Format>(ge::GetPrimaryFormat(op_desc->MutableInputDesc(0)->GetFormat()));
-      changed = op_input0_desc_primary_format == ge::FORMAT_NCHW;
-    }
-  }
-  EXPECT_EQ(changed, true);
-}
 }

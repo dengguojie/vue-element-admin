@@ -44,6 +44,7 @@ namespace fe {
 const string kPatternMulFusOtimizer = "MUL";
 const string kMulType = "Mul";
 const string kFusedOptype = "mul_fusion_optimizer";
+const std::unordered_set<Format> kOriFormat = {FORMAT_NCHW, FORMAT_NHWC, FORMAT_HWCN, FORMAT_CHWN};
 
 vector<FusionPattern*> MulFusionOptimizeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -112,7 +113,10 @@ Status JudgeFormatOK(const ge::GeTensorDescPtr &tensor0, const ge::GeTensorDescP
           ge::TypeUtils::FormatToSerialString(tensor0_format).c_str(),
           ge::TypeUtils::FormatToSerialString(tensor1_format).c_str());
 
-  if (tensor0_format != tensor1_format) {
+  if ((kOriFormat.count(tensor0_format) > 0 && tensor1_format == FORMAT_ND) ||
+      (kOriFormat.count(tensor1_format) > 0 && tensor0_format == FORMAT_ND)) {
+    OP_LOGD(kFusedOptype.c_str(), "MulFusionOptimizeFusionPass op %s's edge, one is ori format, and another is ND");
+  } else if (tensor0_format != tensor1_format) {
     diff_cnt++;
   }
   return SUCCESS;
@@ -156,7 +160,8 @@ Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_pt
   auto output0_peer_node_desc = node_output->GetOpDesc();
   auto input0_peer_output0_tensor = input0_peer_node_desc->MutableOutputDesc(0);
   auto input1_peer_output0_tensor = input1_peer_node_desc->MutableOutputDesc(0);
-  auto output0_peer_input0_tensor = output0_peer_node_desc->MutableInputDesc(0);
+  uint32_t output0_peer_input0_tensor_idx = in_node_ptr->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetIdx();
+  auto output0_peer_input0_tensor = output0_peer_node_desc->MutableInputDesc(output0_peer_input0_tensor_idx);
   FUSION_PASS_CHECK((!input0_peer_output0_tensor || !input1_peer_output0_tensor || !output0_peer_input0_tensor),
                     OP_LOGI(kFusedOptype.c_str(), "The tensor input or output of %s is null!",
                             in_node_ptr->GetName().c_str()), return NOT_CHANGED);
@@ -185,6 +190,4 @@ Status MulFusionOptimizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   return SUCCESS;
 }
 
-REGISTER_PASS("MulFusionOptimizeFusionPass", BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS,
-              MulFusionOptimizeFusionPass);
 }  // namespace fe
