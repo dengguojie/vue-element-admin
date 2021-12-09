@@ -36,10 +36,15 @@ from impl.util.util_conv2d_dynamic import modify_input_range
 from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
+from impl.util.util_conv2d_dynamic import check_graph_mode
+from impl.util.util_conv2d_dynamic import check_input_range
+from impl.util.util_conv2d_dynamic import check_range_l1_size
+from impl.util.util_conv2d_dynamic import check_range_value
 from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from tbe.dsl.compute.conv_compute import conv
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.common.utils import log
+from typing import Union
 
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
@@ -811,6 +816,7 @@ class AvgPool:
         )
         return self.tik_instance
 
+
 def gen_avg_pool_range(inputs, ksize, strides, padding):
     """
     fuzz input range
@@ -831,7 +837,7 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
         idx_w = 2
         idx_c = 3
     else:
-        err_man.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC")
+        error_manager_cube.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC")
 
     # x_range instance when empty
     if not x_range:
@@ -875,9 +881,52 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
     return new_in_range
 
 
+def check_avg_pool_range(inputs: dict, ksize: Union[tuple, list], strides: Union[tuple, list], padding: str) -> list:
+    """
+    graph mode fuzz, check input range
+    """
+    op_type = "avg_pool"
+    input_range = inputs.get("ori_range")
+    x_format = inputs.get("ori_format")
+
+    if x_format == "NCHW":
+        idx_h = 2
+        idx_w = 3
+    elif x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+    else:
+        error_manager_cube.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC.")
+
+    check_range_value(op_type, input_range, idx_h, idx_w)
+
+    kh = ksize[idx_h]
+    kw = ksize[idx_w]
+    if padding == "SAME":
+        pads = [-1, -1, -1, -1]
+    else:
+        pads = [0, 0, 0, 0]
+
+    low_check = check_input_range(input_range, idx_h, idx_w, kh, kw, pads)
+    up_check = check_range_l1_size(inputs, kh, kw, strides, pads)
+
+    if not up_check and not low_check:
+        return []
+
+    type_info = []
+    if up_check:
+        type_info.append(up_check)
+    if low_check:
+        type_info.append(low_check)
+
+    json_str = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": type_info}}]
+    return json_str
+
+
 @tbe_register.register_param_generalization("AvgPool")
-def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",
-                            data_format='NHWC', offset_x=0, kernel_name="avg_pool", generalize_config=None):
+def avg_pool_generalization(x: dict, filter: dict, bias: dict, y: dict, ksize: Union[tuple, list],
+                            strides: Union[tuple, list], padding: str = "VALID", data_format: str = 'NHWC',
+                            offset_x: int = 0, kernel_name: str = "avg_pool", generalize_config: dict = None) -> list:
     """
     avg_pool generalization
 
@@ -905,24 +954,33 @@ def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",
     if generalize_config.get("mode") not in support_mode:
         error_manager_cube.raise_err_specific_user("avg_pool", "invalid generalize mode {}, only support {}".format(
             str(generalize_config.get("mode")), str(support_mode)))
-    result = []
+
     # unknow_rank inputs ori_shape is [-2], others' shape length is 4
     unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
     if unknow_rank:
         error_manager_cube.raise_err_specific_user("avg_pool", "not support unknow_rank under mode {}".format(
             generalize_config["mode"]))
-    x_range = gen_avg_pool_range(x, ksize, strides, padding)
-    x["ori_range"] = x_range
-    have_range = {"x": x, "y": y}
-    for name, tensor in have_range.items():
-        # only change shape NHW dim to -1, range is already set at infershape
-        valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
-        if not valid:
-            error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d".format(
-                name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-            if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-    result.append([x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name])
+
+    if not check_graph_mode(x):
+        x_range = gen_avg_pool_range(x, ksize, strides, padding)
+        x["ori_range"] = x_range
+        have_range = {"x": x, "y": y}
+        result = []
+        for name, tensor in have_range.items():
+            # only change shape NHW dim to -1, range is already set at infershape
+            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+            if not valid:
+                error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d".format(
+                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+        result.append([x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name])
+    else:
+        json_str = check_avg_pool_range(x, ksize, strides, padding)
+        if not json_str:
+            result = [x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name]
+        else:
+            result = json_str
     return result
 
 
