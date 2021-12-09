@@ -35,9 +35,9 @@
 namespace optiling {
 using namespace ge;
 
-
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"block_dim", "ub_size"};
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"ub_size", 0}};
 
 bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& opCompileInfo,
                  utils::OpRunInfo& runInfo) {
@@ -143,5 +143,5 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const s
   return true;
 }
 
-REGISTER_OP_TILING_V3_WITH_VECTOR(Slice, SliceTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Slice, SliceTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling

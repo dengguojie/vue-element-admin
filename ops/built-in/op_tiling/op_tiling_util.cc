@@ -26,11 +26,11 @@
 #include "op_tiling_util.h"
 
 namespace {
-  constexpr int32_t DATA_BLOCK_4 = 4;
-  constexpr int32_t DATA_BLOCK_8 = 8;
-  constexpr int32_t DATA_BLOCK_16 = 16;
-  constexpr int32_t DATA_BLOCK_32 = 32;
-}
+constexpr int32_t DATA_BLOCK_4 = 4;
+constexpr int32_t DATA_BLOCK_8 = 8;
+constexpr int32_t DATA_BLOCK_16 = 16;
+constexpr int32_t DATA_BLOCK_32 = 32;
+}  // namespace
 
 namespace optiling {
 using namespace std;
@@ -67,7 +67,7 @@ vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
   if (op_desc == nullptr)
     return {};
 
-  vector< vector<int64_t> > shapes;
+  vector<vector<int64_t>> shapes;
   int count = op_desc->GetInputsSize();
   for (int i = 0; i < count; i++) {
     auto ptr = op_desc->MutableInputDesc(i);
@@ -122,7 +122,8 @@ void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString comp
                              const std::map<std::string, int64_t>& optional_key) {
   std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString())));
   std::vector<int64_t>* parsed_vector_ptr = new std::vector<int64_t>(compile_info_key.size(), 0);
-  TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
+  bool bsucc = TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
+  OP_TILING_CHECK(!bsucc, delete parsed_vector_ptr, return nullptr);
   return static_cast<void*>(parsed_vector_ptr);
 }
 }  // namespace optiling

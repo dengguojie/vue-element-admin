@@ -32,22 +32,23 @@
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling_profiling.h"
 
-#define REGISTER_OP_TILING_V3_WITH_VECTOR(optype, opfunc, vector_key, optional_key)                             \
-  bool Tbe##optype##TilingV3WithVec(const ge::Operator& para, const void* op_info_void,                         \
-                                    optiling::utils::OpRunInfo& rinfo) {                                        \
-    return opfunc(#optype, para, *(const std::vector<int64_t>*)op_info_void, rinfo);                            \
-  }                                                                                                             \
-  void* Tbe##optype##TilingV3WithVecParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) { \
-    return ParseCompileToInt64Vec(para, compile_info, vector_key, optional_key);                                \
-  }                                                                                                             \
+#define REGISTER_OP_TILING_V3_WITH_VECTOR(optype, opfunc, vector_key, optional_key)                                \
+  bool Tbe##optype##TilingV3WithVec(const ge::Operator& para, const void* op_info_void,                            \
+                                    optiling::utils::OpRunInfo& rinfo) {                                           \
+    OP_TILING_CHECK(op_info_void == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#optype, "op_info_void is nullptr."), \
+                    return false);                                                                                 \
+    return opfunc(#optype, para, *(const std::vector<int64_t>*)op_info_void, rinfo);                               \
+  }                                                                                                                \
+  void* Tbe##optype##TilingV3WithVecParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) {    \
+    return ParseCompileToInt64Vec(para, compile_info, vector_key, optional_key);                                   \
+  }                                                                                                                \
   REGISTER_OP_TILING_V3(optype, Tbe##optype##TilingV3WithVec, Tbe##optype##TilingV3WithVecParsefunc)
 
 #define REGISTER_OP_TILING_V3_CUSTOM(optype, opfunc, parse_func, struct_name)                                         \
   bool Tbe##optype##TilingV3Custom(const ge::Operator& para, const void* op_info_void,                                \
                                    optiling::utils::OpRunInfo& rinfo) {                                               \
-    if (op_info_void == nullptr) {                                                                                    \
-      return false;                                                                                                   \
-    }                                                                                                                 \
+    OP_TILING_CHECK(op_info_void == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#optype, "op_info_void is nullptr."),    \
+                    return false);                                                                                    \
     return opfunc(#optype, para, *(const struct_name*)op_info_void, rinfo);                                           \
   }                                                                                                                   \
   void* Tbe##optype##TilingV3CustomParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) {        \
@@ -55,7 +56,7 @@
     if (json_object == nullptr) {                                                                                     \
       return nullptr;                                                                                                 \
     }                                                                                                                 \
-    struct_name* parsed_void_ptr = new (struct_name)();                                                                 \
+    struct_name* parsed_void_ptr = new (struct_name)();                                                               \
     bool parse_ret = parse_func(#optype, *json_object, *parsed_void_ptr);                                             \
     if (parse_ret) {                                                                                                  \
       return static_cast<void*>(parsed_void_ptr);                                                                     \

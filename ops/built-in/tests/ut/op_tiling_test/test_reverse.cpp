@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "selection_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 
@@ -31,8 +33,20 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
+/*
+.INPUT(x, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32,
+                          DT_INT64, DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_DOUBLE,
+                          DT_COMPLEX64, DT_COMPLEX128, DT_STRING}))
+    .INPUT(axis, TensorType({DT_INT32,DT_INT64}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32,
+                           DT_INT64, DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_DOUBLE,
+                           DT_COMPLEX64, DT_COMPLEX128, DT_STRING}))
+*/
+
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -43,48 +57,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 4};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{2};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{2};
   std::vector<int64_t> output{200, 200, 200, 4};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "11 1 1 1 1 1250 200 8 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 19 1250 3 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -95,48 +82,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 200};
-  std::vector<int64_t> reverse_axes_shape{2};
-  std::vector<int32_t> reverse_axes_value{0, 2};
+  std::vector<int64_t> axes_shape{2};
+  std::vector<int32_t> axes_value{0, 2};
   std::vector<int64_t> output{200, 200, 200, 200};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "1 1 1 1 1 1 200 400 0 0 0 0 0 1 0 1 1 1 1 25 8 200 0 0 0 0 1 1 0 1 153 200 2 3 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -147,48 +107,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 23};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{2};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{2};
   std::vector<int64_t> output{200, 200, 200, 23};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234562";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "2 1 1 1 1 1250 200 46 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 6 1250 3 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -199,48 +132,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 6400};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{2};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{2};
   std::vector<int64_t> output{200, 200, 200, 6400};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234563";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "3 1 1 1 1 1 1 12800 0 0 0 0 0 0 0 1 1 1 1 32 1250 200 0 0 0 0 0 0 1 0 512 12800 1 3 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -251,48 +157,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 4};
-  std::vector<int64_t> reverse_axes_shape{3};
-  std::vector<int64_t> reverse_axes_value{0, 1, 3};
+  std::vector<int64_t> axes_shape{3};
+  std::vector<int64_t> axes_value{0, 1, 3};
   std::vector<int64_t> output{66, 66, 66, 4};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int64";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 8, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234564";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT64, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "11 1 1 1 1 128 64 4 0 0 0 0 1 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 1 1 60 128 3 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -303,48 +182,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 129};
-  std::vector<int64_t> reverse_axes_shape{3};
-  std::vector<int64_t> reverse_axes_value{3};
+  std::vector<int64_t> axes_shape{3};
+  std::vector<int64_t> axes_value{3};
   std::vector<int64_t> output{66, 66, 66, 129};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int64";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 8, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234564";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT64, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "5 1 1 1 1 1 8192 129 0 0 0 0 0 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 240 8192 2 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -355,48 +207,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 6400};
-  std::vector<int64_t> reverse_axes_shape{3};
-  std::vector<int64_t> reverse_axes_value{3};
+  std::vector<int64_t> axes_shape{3};
+  std::vector<int64_t> axes_value{3};
   std::vector<int64_t> output{66, 66, 66, 6400};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int64";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 8, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234564";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT64, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "6 1 1 1 1 1 1 6400 0 0 0 0 0 0 1 1 1 1 1 1 32 8192 0 0 0 0 0 0 0 1 512 6400 1 2 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -407,47 +232,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
       "1}}";
 
   std::vector<int64_t> input{2};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{0};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{0};
   std::vector<int64_t> output{2};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "01234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 1 1 2 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 2 2 1 0 ");
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "4 1 1 1 1 1 1 2 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 2 2 1 0 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -458,46 +257,20 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
       "1}}";
 
   std::vector<int64_t> input{1};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{0};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{0};
   std::vector<int64_t> output{1};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "11234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -508,46 +281,20 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
       "1}}";
 
   std::vector<int64_t> input;
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{0};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{0};
   std::vector<int64_t> output;
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "111234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -558,47 +305,21 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
       "1}}";
 
   std::vector<int64_t> input{1, 1, 31, 36};
-  std::vector<int64_t> reverse_axes_shape{4};
-  std::vector<int32_t> reverse_axes_value{0, 1, 2, 3};
+  std::vector<int64_t> axes_shape{4};
+  std::vector<int32_t> axes_value{0, 1, 2, 3};
   std::vector<int64_t> output{1, 1, 31, 36};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "111234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 31 1 36 0 0 0 0 1 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 31 31 3 0 ");
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "4 1 1 1 1 31 1 36 0 0 0 0 1 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 31 31 3 0 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
-  using namespace optiling;
   std::string op_name = "ReverseV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -609,42 +330,16 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
       "2}}";
 
   std::vector<int64_t> input{1, 79, 79, 3};
-  std::vector<int64_t> reverse_axes_shape{1};
-  std::vector<int32_t> reverse_axes_value{3};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{3};
   std::vector<int64_t> output{1, 79, 79, 3};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  TeOpTensor tensor_reverse_axes;
-  tensor_reverse_axes.shape = reverse_axes_shape;
-  tensor_reverse_axes.dtype = "int32";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_reverse_axes_arg;
-  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
-  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
-      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.inputs.push_back(tensor_reverse_axes_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "11123456333";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "11 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "11 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
 }
-

@@ -86,5 +86,52 @@ bool GetConstIntData(const ge::Operator& paras, const int64_t const_input_idx, s
   return true;
 }
 
+/*
+ * @brief: read constvalue from paras store into value
+ * @param [in] paras: ge::Operator
+ * @param [in] const_input_idx: constvalue axes index
+ * @param [out] value: integer to store return value.
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetConstInt(const ge::Operator& paras, const int64_t const_input_idx, T& value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  ConstGeTensorBarePtr const_tensor = OpDescUtils::GetInputConstData(paras, const_input_idx);
+  if (const_tensor == nullptr) {
+    auto input_name = op_desc->GetInputNameByIndex(const_input_idx);
+    OP_LOGW("GetConstIntData", "constvalue [%s] is not exists.", input_name.c_str());
+    return false;
+  }
+
+  const auto& tensor_data = const_tensor->GetData();
+  auto data = tensor_data.GetData();
+  if (data == nullptr) {
+    auto input_name = op_desc->GetInputNameByIndex(const_input_idx);
+    OP_LOGW("GetConstIntData", "constvalue [%s] is nullptr.", input_name.c_str());
+    return false;
+  }
+  auto size = tensor_data.GetSize();
+  DataType dtype = op_desc->MutableInputDesc(const_input_idx)->GetDataType();
+  switch (dtype) {
+    case DT_UINT64:
+      value = static_cast<T>(*reinterpret_cast<const uint64_t*>(data));
+      break;
+    case DT_INT64:
+      value = static_cast<T>(*reinterpret_cast<const int64_t*>(data));
+      break;
+    case DT_UINT32:
+      value = static_cast<T>(*reinterpret_cast<const uint32_t*>(data));
+      break;
+    case DT_INT32:
+      value = static_cast<T>(*reinterpret_cast<const int32_t*>(data));
+      break;
+    default: {
+      OP_LOGW("GetConstInt", "GetConstInt of dtype[%d] has not implement.", dtype);
+      return false;
+    } break;
+  }
+  return true;
+}
+
 }  // namespace ops
 #endif  // CANN_OPS_BUILT_IN_OPS_CONST_H_

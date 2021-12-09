@@ -21,10 +21,11 @@
 #include <string>
 #include <math.h>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "op_log.h"
 #include "error_log.h"
 #include "../op_proto/util/error_util.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 // elements num in one block for int16
@@ -80,71 +81,6 @@ struct ReverseV2CompileParams {
   std::string op_type;
 };
 
-static bool GetReverseV2CompileParams(const nlohmann::json& compile_info, ReverseV2CompileParams& compile_params) {
-  using namespace nlohmann;
-  auto allVars = compile_info["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
-    return false;
-  }
-  compile_params.core_num = allVars["core_num"].get<std::int64_t>();
-  // get max_elements
-  if (allVars.count("max_elements") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get max_elements error");
-    return false;
-  }
-  compile_params.max_elements = allVars["max_elements"].get<std::int64_t>();
-
-  // get max_elements_last_large_size
-  if (allVars.count("max_elements_last_large_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get max_elements_last_large_size error");
-    return false;
-  }
-  compile_params.max_elements_last_large_size = allVars["max_elements_last_large_size"].get<std::int64_t>();
-
-  // get dtype_rate
-  if (allVars.count("dtype_rate") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get dtype_rate error");
-    return false;
-  }
-  compile_params.dtype_rate = allVars["dtype_rate"].get<std::int64_t>();
-
-  // get topk_threshold
-  if (allVars.count("topk_threshold") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get topk_threshold error");
-    return false;
-  }
-  compile_params.topk_threshold = allVars["topk_threshold"].get<std::int64_t>();
-  return true;
-}
-
-static bool GetAxesConstValue(const TeOpParas& paras, const string& name, const string& dtype,
-                              vector<int64_t>& values) {
-  values.clear();
-  if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
-    return false;
-  }
-
-  auto size = std::get<1>(paras.const_inputs.at(name));
-  if (dtype == "int64") {
-    int count = size / sizeof(int64_t);
-    const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  } else if (dtype == "int32") {
-    int count = size / sizeof(int32_t);
-    const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  }
-
-  return true;
-}
-
 static void PrintVectorValues(const std::string& op_type, const std::string& print_key,
                               const std::vector<int64_t>& print_vec) {
   // print tiling_params
@@ -153,41 +89,41 @@ static void PrintVectorValues(const std::string& op_type, const std::string& pri
   }
 }
 
-void SetRuningParams(const ResizeV2TilingParams& tiling_params, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, tiling_params.tiling_key);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_0);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_1);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_2);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_3);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_4);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_5);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_6);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_0);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_1);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_2);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_3);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_4);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_5);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_axis_6);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_0);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_1);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_2);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_3);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_4);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_5);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_shape_6);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_0);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_1);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_2);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_3);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_4);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_5);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_axis_6);
-  ByteBufferPut(run_info.tiling_data, tiling_params.is_split_axi_reverse);
-  ByteBufferPut(run_info.tiling_data, tiling_params.split_part_num);
-  ByteBufferPut(run_info.tiling_data, tiling_params.split_dim);
-  ByteBufferPut(run_info.tiling_data, tiling_params.inner_real_dims);
-  ByteBufferPut(run_info.tiling_data, tiling_params.outer_real_dims);
+void SetRuningParams(const ResizeV2TilingParams& tiling_params, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(tiling_params.tiling_key);
+  run_info.AddTilingData(tiling_params.inner_shape_0);
+  run_info.AddTilingData(tiling_params.inner_shape_1);
+  run_info.AddTilingData(tiling_params.inner_shape_2);
+  run_info.AddTilingData(tiling_params.inner_shape_3);
+  run_info.AddTilingData(tiling_params.inner_shape_4);
+  run_info.AddTilingData(tiling_params.inner_shape_5);
+  run_info.AddTilingData(tiling_params.inner_shape_6);
+  run_info.AddTilingData(tiling_params.inner_axis_0);
+  run_info.AddTilingData(tiling_params.inner_axis_1);
+  run_info.AddTilingData(tiling_params.inner_axis_2);
+  run_info.AddTilingData(tiling_params.inner_axis_3);
+  run_info.AddTilingData(tiling_params.inner_axis_4);
+  run_info.AddTilingData(tiling_params.inner_axis_5);
+  run_info.AddTilingData(tiling_params.inner_axis_6);
+  run_info.AddTilingData(tiling_params.outer_shape_0);
+  run_info.AddTilingData(tiling_params.outer_shape_1);
+  run_info.AddTilingData(tiling_params.outer_shape_2);
+  run_info.AddTilingData(tiling_params.outer_shape_3);
+  run_info.AddTilingData(tiling_params.outer_shape_4);
+  run_info.AddTilingData(tiling_params.outer_shape_5);
+  run_info.AddTilingData(tiling_params.outer_shape_6);
+  run_info.AddTilingData(tiling_params.outer_axis_0);
+  run_info.AddTilingData(tiling_params.outer_axis_1);
+  run_info.AddTilingData(tiling_params.outer_axis_2);
+  run_info.AddTilingData(tiling_params.outer_axis_3);
+  run_info.AddTilingData(tiling_params.outer_axis_4);
+  run_info.AddTilingData(tiling_params.outer_axis_5);
+  run_info.AddTilingData(tiling_params.outer_axis_6);
+  run_info.AddTilingData(tiling_params.is_split_axi_reverse);
+  run_info.AddTilingData(tiling_params.split_part_num);
+  run_info.AddTilingData(tiling_params.split_dim);
+  run_info.AddTilingData(tiling_params.inner_real_dims);
+  run_info.AddTilingData(tiling_params.outer_real_dims);
 }
 
 void PrintTilingParams(const ResizeV2TilingParams& tiling_params, const std::string& op_type) {
@@ -227,37 +163,45 @@ void PrintTilingParams(const ResizeV2TilingParams& tiling_params, const std::str
   OP_LOGD(op_type, "tiling_data, tiling_params.outer_real_dims = %d.", tiling_params.outer_real_dims);
 }
 
-bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                     OpRunInfo& run_info) {
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "max_elements", "max_elements_last_large_size",
+                                                          "dtype_rate", "topk_threshold"};
+
+bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
+                     utils::OpRunInfo& run_info) {
   using namespace ge;
+  PROFILING_TILING_INIT(op_type.c_str());
+  OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse op_info failed."), return false);
   // get compile data begin
   ReverseV2CompileParams compile_params;
   // init compile data
-  compile_params.core_num = 0;
   compile_params.op_type = op_type;
   // get compile data
-  if (!GetReverseV2CompileParams(op_info, compile_params)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
-    return false;
-  }
+  compile_params.core_num = op_info[0];
+  // get max_elements
+  compile_params.max_elements = op_info[1];
+  // get max_elements_last_large_size
+  compile_params.max_elements_last_large_size = op_info[2];
+  // get dtype_rate
+  compile_params.dtype_rate = op_info[3];
+  // get topk_threshold
+  compile_params.topk_threshold = op_info[4];
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   OP_LOGI(op_type, "tiling run begin.");
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
-  if (op_paras.inputs.size() != 2) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of inputs must be 2. but is %lu", op_paras.inputs.size());
-    return false;
-  }
-  if (op_paras.outputs.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of outputs is 0. return false");
-    return false;
-  }
-  const std::vector<int64_t>& input_shape_const = op_paras.inputs[0].tensor[0].shape;
-  std::vector<int64_t> input_shape = input_shape_const;
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+
+  std::vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
   std::vector<int64_t> axis_vec;
-  if (!GetAxesConstValue(op_paras, "axis", op_paras.inputs[1].tensor[0].dtype, axis_vec)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get axis values failed");
-    return false;
-  }
+  // input axis index is 1
+  OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, axis_vec),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get axis values failed."), return false);
   if (input_shape.empty()) {
     input_shape.push_back(1);
   }
@@ -268,6 +212,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   }
   // append the dim for other dtype
   input_shape.push_back(compile_params.dtype_rate);
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // print input
   PrintVectorValues(op_type, "input_shape", input_shape);
@@ -352,8 +297,8 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
 
   // after split the core dim, when first is big, will split again
   int64_t total_num = std::accumulate(merged_shape.begin(), merged_shape.end(), 1, std::multiplies<int64_t>());
-  if (merged_shape.size() < 7 && total_num / merged_shape[0] < 512 &&
-      merged_shape[0] > modified_input[0] && modified_input[0] > compile_params.core_num) {
+  if (merged_shape.size() < 7 && total_num / merged_shape[0] < 512 && merged_shape[0] > modified_input[0] &&
+      modified_input[0] > compile_params.core_num) {
     int64_t split_dim = modified_input[0];
     merged_shape.insert(merged_shape.begin(), split_dim);
     merged_shape[1] = merged_shape[1] / split_dim;
@@ -418,7 +363,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       continue;
     }
     if ((mid_inner_loop + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num * last_align_size > max_len &&
-         tiling_params.tiling_key == TILING_KEY_FOUR) {
+        tiling_params.tiling_key == TILING_KEY_FOUR) {
       inner_first_dim = i + 1;
       break;
     }
@@ -528,17 +473,16 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   if (tiling_params.inner_shape_6 == 1) {
     tiling_params.tiling_key = 0;
   }
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   SetRuningParams(tiling_params, run_info);
 
   PrintTilingParams(tiling_params, op_type);
 
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
-  run_info.block_dim = compile_params.core_num;
+  run_info.SetBlockDim(compile_params.core_num);
   OP_LOGI(op_type, "tiling run success.");
+  PROFILING_TILING_END();
   return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(ReverseV2, ReverseV2Tiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ReverseV2, ReverseV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling
-

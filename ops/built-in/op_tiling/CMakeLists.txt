@@ -117,7 +117,6 @@ set(_optiling_files
   scatter_mul.cc
   scatter_div.cc
   scatter_nd_add.cc
-  scatter_nd_sub.cc
   scatter_nd_update.cc
   slice.cc
   softmax_cross_entropy_with_logits.cc
