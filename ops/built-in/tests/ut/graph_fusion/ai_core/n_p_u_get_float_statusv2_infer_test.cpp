@@ -24,14 +24,14 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
 
   ge::GeShape output_shape({8});
   ge::GeTensorDesc output_desc(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-  bias_desc.SetOriginFormat(ge::FORMAT_ND);
-  bias_desc.SetOriginDataType(ge::DT_FLOAT);
-  bias_desc.SetOriginShape(output_shape);
+  output_desc.SetOriginFormat(ge::FORMAT_ND);
+  output_desc.SetOriginDataType(ge::DT_FLOAT);
+  output_desc.SetOriginShape(output_shape);
 
-  ge::OpDescPtr n_p_u_get_float_status_v2= std::make_shared<ge::OpDesc>("NPUGetFloatStatusV2", "NPUGetFloatStatusV2");
-  n_p_u_get_float_status->AddOutputDesc(output_desc);
-  n_p_u_get_float_status->AddInputDesc(output_desc);
-  ge::NodePtr n_p_u_get_float_status_node = graph->AddNode(n_p_u_get_float_status);
+  ge::OpDescPtr n_p_u_get_float_status_v2 = std::make_shared<ge::OpDesc>("NPUGetFloatStatusV2", "NPUGetFloatStatusV2");
+  n_p_u_get_float_status_v2->AddOutputDesc(output_desc);
+  n_p_u_get_float_status_v2->AddInputDesc(output_desc);
+  ge::NodePtr n_p_u_get_float_status_v2_node = graph->AddNode(n_p_u_get_float_status_v2);
 
   fe::FusionPassTestUtils::InferShapeAndType(graph);
 }
