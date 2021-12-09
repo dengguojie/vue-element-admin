@@ -114,11 +114,19 @@ IMPLEMT_COMMON_INFERFUNC(AscendQuantInferShape) {
 COMMON_INFER_FUNC_REG(AscendQuant, AscendQuantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendDequantInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[AscendDequant Inferformat] Finaly deq_scale format is %d", FORMAT_NCHW);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+
+  auto tensordesc_input = op_desc->MutableInputDesc("deq_scale");
+  tensordesc_input->SetOriginFormat(FORMAT_NCHW);
+  tensordesc_input->SetFormat(FORMAT_NCHW);
+
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     int type;
     if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
-      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-      auto output_desc = op_info->MutableOutputDesc(0);
+      auto output_desc = op_desc->MutableOutputDesc(0);
       output_desc->SetDataType((ge::DataType)type);
     }
     return GRAPH_SUCCESS;
