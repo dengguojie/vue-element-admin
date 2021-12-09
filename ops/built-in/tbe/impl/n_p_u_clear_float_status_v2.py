@@ -31,8 +31,6 @@ def n_p_u_clear_float_status_v2(kernel_name="n_p_u_clear_float_status_v2"):
 
     Parameters
     ----------
-    addr: dict,shape and datatype,datatype supports float32
-    data: dict,shape and datatype,datatype supports float32
     kernel_name: cce kernel name, default value is "n_p_u_clear_float_status_v2"
 
     Returns

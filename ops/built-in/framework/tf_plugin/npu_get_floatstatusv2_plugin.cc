@@ -21,7 +21,7 @@
 #include "register/register.h"
 
 namespace domi {
-// register NPUGetFloatStatus op to GE
+// register NPUGetFloatStatusV2 op to GE
 REGISTER_CUSTOM_OP("NPUGetFloatStatusV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("NpuGetFloatStatusV2")
