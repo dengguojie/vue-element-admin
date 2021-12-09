@@ -47,6 +47,18 @@ CONV1D_MAX_W = 2147483647
 # maximum of stride, limited by load3d
 STRIDE_HW_MAX = 63
 
+# the bytes length of several dtype
+BIT_RATIO_DICT = {
+    "int32": 4,
+    "float32": 4,
+    "float16": 2,
+    "uint8": 1,
+    "int8": 1,
+    "uint4": 0.5,
+    "int4": 0.5,
+    "bfloat16": 2,
+}
+
 
 def _check_shape_rule(shape, dim, formats, name, allow_zero=False):
     """
@@ -261,6 +273,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.flag_all_one_case = False
         self.flag_load3d_special_case = False
         self.conv1d_situation = False
+        self.l0b_dma_flag = False
 
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.c0_size = tbe_platform.C0_SIZE
@@ -420,15 +433,72 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     and self.stride[0] == 1 and self.dilation[2] == 1:
                 self.conv1d_situation = True
 
+        def _check_with_dma(attr, attr_limit):
+            for attr_value in attr:
+                if attr_value > attr_limit:
+                    self.l0b_dma_flag = True
+
+        # L1 limitation, Mainly required by chip
+        def _min_l1_check():
+            stride_h, stride_w = self.stride
+            _, _, dilation_h, dilation_w = self.dilation
+            kernel_h_dilation = (kernel_height - 1) * dilation_h + 1
+            kernel_w_dilation = (kernel_width - 1) * dilation_w + 1
+            width_grads = self.shape_grads_5hd[3]
+            input_dtype_size = BIT_RATIO_DICT.get(self.fmap_dtype, 2)
+
+            al1_min_byte = BLOCK_SIZE * BLOCK_SIZE * input_dtype_size
+            if not self.conv1d_situation:
+                kl1_min = self.shape_x_5hd[3]
+            else:
+                kl1_min = (BLOCK_SIZE - 1) * stride_w + kernel_w_dilation
+            if width_grads >= BLOCK_SIZE:
+                if width_grads % BLOCK_SIZE == 0:
+                    bl1_min_byte = kernel_h_dilation * kl1_min * BLOCK_SIZE * input_dtype_size
+                else:
+                    bl1_min_byte = (kernel_h_dilation + stride_h) * kl1_min * BLOCK_SIZE * input_dtype_size
+            else:
+                bl1_align_factor = _ceil_div(BLOCK_SIZE, width_grads)
+                if BLOCK_SIZE % width_grads == 0:
+                    bl1_min_byte = (kernel_h_dilation + (bl1_align_factor - 1) * stride_h) * kl1_min * \
+                                   BLOCK_SIZE * input_dtype_size
+                else:
+                    bl1_min_byte = (kernel_h_dilation + bl1_align_factor * stride_h) * kl1_min * \
+                                   BLOCK_SIZE * input_dtype_size
+            l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+            if (al1_min_byte + bl1_min_byte) > l1_size:
+                return False
+            return True
+
+        # over-spec scene, replace dma_copy with load_3d
+        def _set_l0b_dma_flag():
+            is_dma_scene = (not self.cube_vector_split) and (self.fmap.op.tag != "NHWC_trans_5HD") and \
+                           self.dilation == [1, 1, 1, 1]
+            if is_dma_scene:
+                is_special_case = self.flag_load3d_special_case and self.shape_x_5hd[3] > STRIDE_HW_MAX
+                if (not _min_l1_check()) or is_special_case:
+                    self.l0b_dma_flag = True
+                if not self.conv1d_situation:
+                    _check_with_dma([self.shape_x_5hd[3], self.shape_grads_5hd[3]], INPUTS_W_MAX)
+                _check_with_dma([kernel_height, kernel_width], 255)
+                _check_with_dma(self.stride, STRIDE_HW_MAX)
+                _check_with_dma(self.pad, 255)
+            elif not _min_l1_check():
+                dict_args = {}
+                dict_args["errCode"] = "E60026"
+                error_manager_util.raise_runtime_error(dict_args)
+
         _set_all_one_case_flag()
         _set_load3d_special_case_flag()
         _set_conv1d_situation_flag()
+        if not self.var_map:
+            _set_l0b_dma_flag()
 
-        _check_variable_range(kernel_height, 1, 255, "height of filter")
-        _check_variable_range(kernel_width, 1, 255, "width of filter")
-
-        _check_attr_rule(self.stride, 2, [1, 63],
-                        "[strideH, strideW]", "stride")
+        if not self.l0b_dma_flag:
+            _check_variable_range(kernel_height, 1, 255, "height of filter")
+            _check_variable_range(kernel_width, 1, 255, "width of filter")
+            _check_attr_rule(self.stride, 2, [1, 63],
+                            "[strideH, strideW]", "stride")
         return True
 
     def _deconv_dw_input_check_2(self):  # pylint: disable=R0914, R0915
@@ -533,7 +603,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _, _, grads_height, grads_width, _ \
             = self.shape_grads_5hd
 
-        if self.conv1d_situation:
+        if self.conv1d_situation or self.l0b_dma_flag:
             inputs_w_max = CONV1D_MAX_W
 
         _check_variable_range(grads_height, INPUTS_HW_MIN,
@@ -549,12 +619,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         # if only fmap w after padding equals to filter w after dilation
         # and soc_version is Ascend910
         # then only support fmap w not larger than STRIDE_HW_MAX now
-        if self.flag_load3d_special_case:
+        if self.flag_load3d_special_case and not self.l0b_dma_flag:
             _check_variable_range(self.shape_x_5hd[3], INPUTS_HW_MIN,
                                   STRIDE_HW_MAX,
                                   "width of x")
 
-        if isinstance(self.pad[0], int):
+        if isinstance(self.pad[0], int) and not self.l0b_dma_flag:
             _check_attr_rule(self.pad, 4, [0, 255], \
                              "[up,down,left,right]", "pad")
         return True
@@ -647,7 +717,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             grads_width = grads_width * w_one_flag
             self.shapelist['grads_5hd'][-2] = grads_width
             self.shape_grads_5hd[-2] = grads_width
-            
+
         # group dict
         group_dict = self.group_dict
         real_g = group_dict.get("real_g")
@@ -701,6 +771,16 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                               grads_matrix)
         if not self.flag_all_one_case:
             if not self.var_map:
+                fmap_ub = None
+                if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
+                    pad_top, pad_bottom, pad_left, pad_right = self.pad
+                    fmap_ub_shape = (batch_size,
+                                     fmap_channel_1,
+                                     fmap_height + pad_top + pad_bottom,
+                                     fmap_width + pad_left + pad_right,
+                                     fmap_c0)
+                    fmap_ub = self._fmap_2_ub(fmap_ub_shape, fmap_height, fmap_width)
+
                 # shape of fmap_original_matrix, corresponding to set_fmatrix
                 fmap_shape_original_matrix = (batch_size,
                                               grads_height*grads_width,
@@ -712,8 +792,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 self.shapelist['fmap_original_matrix'] = \
                                                     fmap_shape_original_matrix
 
+                if fmap_ub is None:
+                    fmap_l1_before = self.fmap
+                else:
+                    fmap_l1_before = fmap_ub
                 fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
-                                                  self.fmap, fmap_dtype)
+                                                  fmap_l1_before, fmap_dtype)
                 # move fmap to L0B
                 fmap_shape_fmap_matrix = (real_g,
                                           batch_size,
@@ -732,8 +816,27 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     )
                 self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
+                if self.l0b_dma_flag:
+                    fmap_shape_fmap_matrix = (
+                        real_g,
+                        batch_size,
+                        hw_mad_1,
+                        fmap_c1_g*kernel_height*kernel_width,
+                        BLOCK_SIZE,
+                        fmap_c0
+                    )
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
                                                     fmap_matrix, fmap_dtype)
+
+                if self.l0b_dma_flag:
+                    fmap_shape_fmap_matrix = self.shapelist.get('fmap_fmap_matrix')
+                    fmap_fractal_with_dma = tvm.compute(fmap_shape_fmap_matrix,
+                                                        lambda *indices:
+                                                        fmap_fractal(*indices[:-2], indices[-1], indices[-2]),
+                                                        name='fmap_2_fractal_dma',
+                                                        tag='fmap_2_fractal_dma',
+                                                        attrs={'l0b_dma_flag': self.l0b_dma_flag})
+                    fmap_fractal = fmap_fractal_with_dma
             else:
                 fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
                                     fmap_height, fmap_width, fmap_c0)
@@ -952,6 +1055,19 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                             name='grads_2_fractal',
                             tag='grads_2_fractal')
 
+    def _fmap_2_ub(self, fmap_ub_shape, fmap_height, fmap_width):
+        pad_top, _, pad_left, _ = self.pad
+        return tvm.compute(fmap_ub_shape,
+                           lambda n, c1, h, w, c0:
+                           tvm.select(tvm.any(h < pad_top,
+                                              h > fmap_height + pad_top - 1,
+                                              w < pad_left,
+                                              w > fmap_width + pad_left - 1),
+                                      tvm.const(0, self.fmap_dtype),
+                                      self.fmap(n, c1, h - pad_top, w - pad_left, c0)),
+                           name='fmap_ub_for_dma',
+                           tag='fmap_ub_for_dma')
+
     def _fmap_2_matrix(self, fmap_shape_original_matrix, fmap, fmap_dtype):
         """
         compute definiton of set_fmatrix
@@ -1009,6 +1125,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 + kernel_width_indices * dilationw
             c0_index = fmap_c0_indices
 
+            if self.l0b_dma_flag:
+                return fmap(n_index, c1_index, h_index, w_index, c0_index)
+
             # if index belongs to padding and 16 align, select 0
             return tvm.select(tvm.any(h_index < pad_top,
                                       h_index > fmap_height + pad_top - 1,
@@ -1038,7 +1157,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                            attrs={'pad': self.pad, 'stride': self.stride,
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape,
-                                  'group_dict': self.group_dict})
+                                  'group_dict': self.group_dict,
+                                  'l0b_dma_flag': self.l0b_dma_flag})
 
     def _fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
         """
@@ -1128,6 +1248,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 hw_mad_1_indices, fkk_indices,
                 fmap_c0_indices, hw_mad_0_indices) = indices
 
+            if self.l0b_dma_flag:
+                (group_index, n_vm_index,
+                 hw_mad_1_indices, fkk_indices,
+                 hw_mad_0_indices, fmap_c0_indices) = indices
+
             if self.fmap_dtype == "float32":
                 # matrix: fmap_c0 aligned to 8
                 # fractal: hw_mad aligned to 8, while fmap_c0 aligned to 16
@@ -1151,6 +1276,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                             // BLOCK_SIZE) % kernel_width
                 c0_vm_index = \
                     (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+
+            if self.l0b_dma_flag:
+                return tvm.select(tvm.any(hw_vm_index < hw_fuse),
+                                  fmap_2_col_matrix(n_vm_index, hw_vm_index,
+                                                    c1_index, kh_vm_index,
+                                                    kw_vm_index, c0_vm_index))
 
             # select padding and 16 align
             return tvm.select(tvm.any(hw_vm_index < 0,

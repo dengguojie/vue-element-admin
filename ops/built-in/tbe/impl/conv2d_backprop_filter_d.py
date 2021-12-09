@@ -725,23 +725,6 @@ def check_conv2dbp_filter_params(
             dict_args["attr_name"] = attr_name
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
-    def _is_conv1d_situation():
-        if fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1:
-            return True
-        return False
-
-    def _is_load3d_special():
-        # limitation by chip:
-        # load3d instruction not support out_w = 1
-        # only Ascend310 and Hi3796CS can support
-        if (
-            tbe_platform.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
-            and dedy_h != 1
-            and dedy_w == 1
-        ):
-            return True
-        return False
-
     def _need_change_hw():
         return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
 
@@ -853,11 +836,6 @@ def check_conv2dbp_filter_params(
 
     fmap_w_padding = fmap_w + pad_left + pad_right
     fmap_h_padding = fmap_h + pad_up + pad_down
-    # special cases
-    fmap_hw_min, dedy_hw_min = FMAP_HW_MIN, DEDY_HW_MIN
-    dedy_h_max, fmap_h_max = DEDY_H_MAX, FMAP_H_MAX
-    dedy_w_max, fmap_w_max = DEDY_W_MAX, FMAP_W_MAX
-
 
     # exchange h and w will not change date in memory
     if _need_change_hw():
@@ -874,33 +852,6 @@ def check_conv2dbp_filter_params(
         filter_h_dilation, filter_w_dilation = filter_w_dilation, filter_h_dilation
         pad_left, pad_right, pad_up, pad_down = pads
         pads = pad_up, pad_down, pad_left, pad_right
-
-    # if conv1d situation, make sure w is in [1,2**31-1]
-    if _is_conv1d_situation():
-        dedy_w_max = CONV1D_MAX_W
-        fmap_w_max = CONV1D_MAX_W
-
-    # Dedy value limit
-    _check_attr_range_dw("out_backprop's H", dedy_h, dedy_hw_min, dedy_h_max)
-    _check_attr_range_dw("out_backprop's W", dedy_w, dedy_hw_min, dedy_w_max)
-
-    # filter value limit
-    _check_attr_range_dw("y's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range_dw("y's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
-
-    # Fmap value limit
-    _check_attr_range_dw("x's H", fmap_h, fmap_hw_min, fmap_h_max)
-    _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, fmap_w_max)
-    # limitation by chip:
-    # if only fmap w after padding equals to filter w after dilation
-    # and soc_version is Ascend910
-    # then only support fmap w not larger than STRIDE_HW_MAX now
-    if _is_load3d_special():
-        _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, STRIDE_HW_MAX)
-
-    # stride value limit
-    _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:
@@ -951,27 +902,6 @@ def check_conv2dbp_filter_params(
 
     _check_axis_hw()
 
-    def _min_l1_byte():
-        # Waiting for FE support fp32, need to be deleted later
-        x_dtype = "float16"
-        # Forth : L1 limitation, Mainly required by chip
-        al1_min_byte = C0 * C0 * BIT_RATIO_DICT.get(x_dtype)
-        if not _is_conv1d_situation():
-            kl1_min = fmap_w
-        else:
-            kl1_min = (C0 - 1) * stride_w + filter_w_dilation
-        if dedy_w % C0 == 0:
-            bl1_min_byte = filter_h_dilation * kl1_min * C0 * BIT_RATIO_DICT.get(x_dtype)
-        else:
-            bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0 * BIT_RATIO_DICT.get(x_dtype)
-
-        l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
-        if (al1_min_byte + bl1_min_byte) > l1_size:
-            dict_args = {}
-            dict_args["errCode"] = "E60026"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
-
-    _min_l1_byte()
     # Fifth : check shape size, 64 bits limitation
     c0_size = tbe_platform.C0_SIZE
     fmap_size = fmap_batch * _align(fmap_channel, c0_size) * fmap_h * fmap_w
@@ -1188,7 +1118,7 @@ def conv2d_backprop_filter_compute(
             error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "y", 
                                                             "[NCHW, NHWC, HWCN]", origin_format_res)
         return x_shape, shape_res
-    
+
     origin_format_x = x.op.attrs["ori_format"]
     origin_shape_x = tuple(i.value for i in x.op.attrs["ori_shape"])
     res_dtype = y["dtype"]
@@ -1198,7 +1128,7 @@ def conv2d_backprop_filter_compute(
                                                    origin_shape_x,
                                                    origin_format_res,
                                                    origin_shape_res)
-    
+
     if len(strides) == 4:
         h_index = data_format.find("H")
         w_index = data_format.find("W")
@@ -1207,14 +1137,14 @@ def conv2d_backprop_filter_compute(
         dilations = dilations
     elif data_format == "NHWC":
         dilations = (dilations[0], dilations[3], dilations[1], dilations[2])
-    
+
     _, _, fmap_h, fmap_w = shape_x
     _, _, filter_h, filter_w = shape_res
     stride_h, stride_w = strides
     _, _, dilation_h, dilation_w = dilations
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    
+
     #pads calculate
     if pads == "SAME":
         pad_w = _align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
@@ -1229,7 +1159,7 @@ def conv2d_backprop_filter_compute(
     elif pads == "VALID":
         pads = PADDING_VAILD
     pads = list(pads)
-    
+
     para_dict = {
         "strides": strides,
         "padding": pads,
@@ -1238,7 +1168,7 @@ def conv2d_backprop_filter_compute(
         "res_dtype": res_dtype,
         "kernel_name": kernel_name
     }
-    
+
     dedw = tbe.conv2d_backprop_filter(input_x=x,
                                       out_backprop=out_backprop,
                                       filter_sizes=shape_res,

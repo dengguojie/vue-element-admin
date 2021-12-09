@@ -134,6 +134,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self._loc_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
         self._lob_size = tbe_platform_info.get_soc_spec("L0B_SIZE")
         self.c0_size = tbe_platform.C0_SIZE
+        self.l0b_dma_flag = False
 
     def schedule(self,  # pylint: disable=R0914,R0915
                  res, spec_node_list, sch_list, dynamic_para=None):
@@ -311,39 +312,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if cub_pbuff not in (1, 2):
                 dict_args = _gen_dict_args("CUB_pbuffer", cub_pbuff)
-                error_manager_util.raise_runtime_error(dict_args)
-
-        def _l1_limit_check():
-            """
-            do L1 size limit check
-
-            """
-            in_data_size = BIT_RATIO_DICT.get(in_dtype, 2)
-            al1_min_byte = CUBE_DIM * CUBE_DIM * in_data_size
-            if not flag_conv1d_case:
-                kl1_min = width_fmap
-            else:
-                kl1_min = (CUBE_DIM - 1) * stride_width + kw_dilation
-            if width_grads >= CUBE_DIM:
-                if width_grads % CUBE_DIM == 0:
-                    bl1_min_byte = kernel_height * kl1_min * CUBE_DIM *\
-                        in_data_size
-                else:
-                    bl1_min_byte = (kernel_height+stride_height) \
-                        * kl1_min * CUBE_DIM * in_data_size
-            else:
-                bl1_align_factor = _ceil_div(CUBE_DIM, width_grads)
-                if CUBE_DIM % width_grads == 0:
-                    bl1_min_byte = (kernel_height+(bl1_align_factor-1)
-                                    * stride_height) * kl1_min *\
-                        CUBE_DIM * in_data_size
-                else:
-                    bl1_min_byte = (kernel_height +
-                                    bl1_align_factor * stride_height) \
-                        * kl1_min * CUBE_DIM * in_data_size
-            if (al1_min_byte + bl1_min_byte) > self.l1_size:
-                dict_args = dict()
-                dict_args["errCode"] = "E60026"
                 error_manager_util.raise_runtime_error(dict_args)
 
         def _atomic_add(sch, res_cc):
@@ -709,6 +677,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                                          run_once_axes=run_once_mdim + run_once_ndim)
                                 bl1_attach_scope = dw_ddr
                                 bl1_attach_axis = c_fmap_mad_at
+                            if self.l0b_dma_flag:
+                                bl1_attach_axis = c_fmap_mad_at
                             sch[fmap_l1].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
                 else:  # else: fully load, attach to thread_axis
                     bl1_attach_axis = fused_multi_core
@@ -725,8 +695,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         sch[fmap_l1].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
                 return bl1_attach_scope, bl1_attach_axis
             bl1_attach_scope, bl1_attach_axis = _fmap_l1_attach(run_once_mdim)
-            if fmap_matrix_flag:
+            if fmap_matrix_flag and not self.l0b_dma_flag:
                 sch[fmap_matrix].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
+            if fmap_ub is not None:
+                sch[fmap_ub].compute_at(sch[fmap_l1], sch[fmap_l1].op.axis[4])
 
         def _double_buffer():
             """
@@ -848,24 +820,31 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1],
                                                 'im2col_v2', setfmatrix_dict_0)
                 else:
-                    if fmap_trans_flag:
-                        sch[fmap_l1].emit_insn(fmap_l1.op.axis[1],
-                                               'dma_copy', {"layout_transform": "nd2nz"})
+                    if self.l0b_dma_flag:
+                        if fmap_ub is not None:
+                            sch[fmap_ub].emit_insn(fmap_ub.op.axis[4], 'dma_copy')
+                        sch[fmap_l1].emit_insn(fmap_l1.op.axis[5], 'dma_copy')
+                        sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[0], 'dma_copy')
                     else:
-                        sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
-                    sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
-                                            'set_fmatrix', setfmatrix_dict)
-                    if in_dtype == "float32":
-                        # fmap_fractal axes:
-                        #       group, batch, hw_mad_1, fkk(cin_1*hk*wk), cin_0->16, mad_0->8
-                        # split axes to match im2col pattern, make sure the last 2 axes is 8*8
-                        # then reorder axes so that the sequence is as below:
-                        #       group, 2, [emit here] batch, hw_mad_1, fkk, cin_0_s->8, mad_0->8
-                        cin_outer, cin_inner = sch[fmap_fractal].split(fmap_fractal.op.axis[-2], factor=self.c0_size)
-                        fmap_fractal_axes = fmap_fractal.op.axis[1:]
-                        fmap_fractal_axes[-2] = cin_inner
-                        sch[fmap_fractal].reorder(fmap_fractal.op.axis[0], cin_outer, *fmap_fractal_axes)
-                    sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
+                        if fmap_trans_flag:
+                            sch[fmap_l1].emit_insn(fmap_l1.op.axis[1],
+                                                   'dma_copy', {"layout_transform": "nd2nz"})
+                        else:
+                            sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
+                        sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
+                                                   'set_fmatrix', setfmatrix_dict)
+                        if in_dtype == "float32":
+                            # fmap_fractal axes:
+                            #       group, batch, hw_mad_1, fkk(cin_1*hk*wk), cin_0->16, mad_0->8
+                            # split axes to match im2col pattern, make sure the last 2 axes is 8*8
+                            # then reorder axes so that the sequence is as below:
+                            #       group, 2, [emit here] batch, hw_mad_1, fkk, cin_0_s->8, mad_0->8
+                            cin_outer, cin_inner = sch[fmap_fractal].split(fmap_fractal.op.axis[-2],
+                                                                           factor=self.c0_size)
+                            fmap_fractal_axes = fmap_fractal.op.axis[1:]
+                            fmap_fractal_axes[-2] = cin_inner
+                            sch[fmap_fractal].reorder(fmap_fractal.op.axis[0], cin_outer, *fmap_fractal_axes)
+                        sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
             else:
                 if fmap_trans_flag:
                     sch[fmap].emit_insn(fmap.op.axis[1], 'dma_copy', {"layout_transform": "nd2nz"})
@@ -953,7 +932,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         def _get_tiling():
             if not self.var_map:
-                _l1_limit_check()
                 info_dict = {
                     "op_type": "conv2d_backprop_filter",
                     "A_shape": list(grads_shape),
@@ -1044,11 +1022,20 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             dw_cc = dw_ddr
 
         grads_fractal = dw_cc.op.input_tensors[0]
-        fmap_fractal = dw_cc.op.input_tensors[1]
         grads_matrix = grads_fractal.op.input_tensors[0]
-        fmap_matrix = fmap_fractal.op.input_tensors[0]
-        fmap = fmap_matrix.op.input_tensors[0]
         grads = grads_matrix.op.input_tensors[0]
+        fmap_fractal = dw_cc.op.input_tensors[1]
+        if fmap_fractal.op.tag == "fmap_2_fractal_dma":
+            fmap_fractal_before = fmap_fractal.op.input_tensors[0]
+            fmap_matrix = fmap_fractal_before.op.input_tensors[0]
+            self.l0b_dma_flag = fmap_fractal.op.attrs['l0b_dma_flag'].value
+        else:
+            fmap_matrix = fmap_fractal.op.input_tensors[0]
+        fmap = fmap_matrix.op.input_tensors[0]
+        fmap_ub = None
+        if fmap.op.tag == "fmap_ub_for_dma":
+            fmap_ub = fmap_matrix.op.input_tensors[0]
+            fmap = fmap_ub.op.input_tensors[0]
 
         if fmap.op.tag == "NHWC_trans_5HD":
             fmap_trans_flag = True
@@ -1139,6 +1126,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 bl1_pbuffer = 2
             else:
                 bl1_pbuffer = 1
+
+            if self.l0b_dma_flag:
+                kbl1 = CUBE_DIM
+                mal0 = 1
+                nbl0 = 1
 
             default_tiling = {
                 'AUB_shape': None, 'BUB_shape': None,
@@ -1307,6 +1299,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 if fmap_trans_flag:
                     fmap_l1 = fmap
                     sch[fmap].set_scope(tbe_platform_info.scope_cbuf)
+                elif fmap_ub is not None:
+                    sch[fmap_ub].set_scope(tbe_platform_info.scope_ubuf)
+                    fmap_l1 = sch.cache_read(fmap_ub, tbe_platform_info.scope_cbuf, [fmap_matrix])
                 else:
                     fmap_l1 = sch.cache_read(fmap, tbe_platform_info.scope_cbuf, [fmap_matrix])
                 if not flag_conv1d_case:
@@ -1333,6 +1328,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         sch[fmap_matrix].set_scope(tbe_platform_info.scope_cbuf)
 
+        if self.l0b_dma_flag:
+            sch[fmap_fractal_before].set_scope(tbe_platform_info.scope_cbuf)
+            sch[fmap_fractal_before].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
+                                                  (1, CUBE_DIM), (1, k_align_length))
         sch[fmap_fractal].set_scope(tbe_platform_info.scope_cb)
         sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                        (1, CUBE_DIM), (1, k_align_length))
@@ -1693,7 +1692,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                             # hw splited 2 times before BL1 attach
                             hw_parts_offset = \
                                 ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
-                                 grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) * 
+                                 grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *
                                  tiling["BL1_shape"][0])
 
                     hw_offset = hw_block_offset + hw_parts_offset
@@ -1828,8 +1827,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     nbl1_c1 = c1_fmap
                 else:
                     kbl1_data = tiling["BL1_shape"][0]
-                    nbl1_c1 = ((tiling.get("BL1_shape")[1] * 
-                               tiling.get("BL0_matrix")[1]) // 
+                    nbl1_c1 = ((tiling.get("BL1_shape")[1] *
+                               tiling.get("BL0_matrix")[1]) //
                                (kernel_height * kernel_width))
                 bl1_wi = (kbl1_data - 1) * stride_width + kw_dilation
                 bl1_k_full = bl1_hi * bl1_wi
@@ -1967,6 +1966,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 sch[dw_ub].mem_unique()
 
         _split_w_for_conv1d()
+        if self.l0b_dma_flag:
+            sch[fmap_l1].compute_inline()
+            sch[fmap_matrix].compute_inline()
+            fmap_l1 = fmap_fractal_before
         l0a_attach_scope, l0a_attach_axis, l0b_attach_scope, l0b_attach_axis = _l0_attach()
         _al1_attach()
         _bl1_attach()
