@@ -36,7 +36,7 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
   ge::OpDescPtr const1 = std::make_shared<ge::OpDesc>("Const", "Const");
   const1->AddOutputDesc(output_desc);
   ge::NodePtr const_node = graph->AddNode(const1);
-  ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), n_p_u_get_float_status_v2_node->GetInDataAnchor(i));
+  ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), n_p_u_get_float_status_v2_node->GetInDataAnchor(0));
 
   ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
   netoutput->AddInputDesc(output_desc);
