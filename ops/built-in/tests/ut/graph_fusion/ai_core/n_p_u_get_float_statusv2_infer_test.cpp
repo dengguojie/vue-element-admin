@@ -58,21 +58,4 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
     }
   }
   EXPECT_EQ(findOp, true);
-
-//  ge::OpDescPtr n_p_u_get_float_status_v2 = std::make_shared<ge::OpDesc>("NPUGetFloatStatusV2", "NPUGetFloatStatusV2");
-//  n_p_u_get_float_status_v2->AddOutputDesc(desc_data);
-//  n_p_u_get_float_status_v2->AddInputDesc(desc_data);
-//  ge::NodePtr n_p_u_get_float_status_v2_node = graph->AddNode(n_p_u_get_float_status_v2);
-//
-//  ge::OpDescPtr const1 = std::make_shared<ge::OpDesc>("Const", "Const");
-//  const1->AddOutputDesc(desc_data);
-//  ge::NodePtr const_node = graph->AddNode(const1);
-//  ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), n_p_u_get_float_status_v2_node->GetInDataAnchor(0));
-//
-//  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
-//  netoutput->AddInputDesc(desc_data);
-//
-//  ge::NodePtr netoutput_node = graph->AddNode(netoutput);
-//  ge::GraphUtils::AddEdge(n_p_u_get_float_status_v2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
-//  fe::FusionPassTestUtils::InferShapeAndType(graph);
 }
