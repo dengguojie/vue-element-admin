@@ -65,7 +65,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_param_types = set(["required", "optional", "dynamic"])
         allow_op_pattern = set(["reduce", "broadcast", "formatAgnostic"])
         allow_attr_type = set(["bool", "int", "listInt", "float", "str", "listFloat",
-                               "listListInt", "type", "listBool"])
+                               "listListInt", "type", "listBool", "listStr"])
         allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
                             "binfile.name", "kernel.name",
                             "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
