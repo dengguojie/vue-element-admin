@@ -26,85 +26,55 @@
 #include "graph/debug/ge_log.h"
 #include "eletwise.h"
 #include "vector_tiling.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
-bool ExpandTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                  OpRunInfo& run_info) {
-  std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
+
+struct ExpandCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+};
+
+bool ExpandTiling(const std::string& op_type, const ge::Operator& op_paras, const ExpandCompileInfo& parsed_info,
+                  utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator failed."),
+                  return false);
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  std::vector<int64_t> x_runtime_shape = input_desc->MutableShape().GetDims();
   std::vector<int64_t> shape_value;
 
-  std::string shape_dtype = op_paras.inputs[1].tensor[0].dtype;
-  auto pointer = std::get<0>(op_paras.const_inputs.at("shape"));
-  auto size = std::get<1>(op_paras.const_inputs.at("shape"));
+  input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  ge::DataType shape_dtype = input_desc->GetDataType();
+  // input shape index is 1
+  OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, shape_value),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape Const value error."), return false);
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  uint32_t count =
-    (shape_dtype == "int64") ? size / sizeof(int64_t) : (shape_dtype == "int32") ? size / sizeof(int32_t) : 0;
+  std::vector<std::vector<int64_t>> shapes = {shape_value, x_runtime_shape};
+  OpInfo eletwise_info(shapes, shape_dtype);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  if (shape_dtype == "int64") {
-    auto* data = (int64_t*)pointer;
-    while (count--) {
-      shape_value.push_back(*data++);
-    }
-  }
-  if (shape_dtype == "int32") {
-    auto* data = (int32_t*)pointer;
-    while (count--) {
-      shape_value.push_back(*data++);
-    }
-  }
-
-  std::vector<int64_t> broadcast_input = {};
-  std::vector<int64_t> broadcast_shape = {};
-  std::vector<int64_t> output_shape = {};
-
-  // align shape for shape and input shapes
-  uint64_t len_diff = shape_value.size() - x_runtime_shape.size();
-  if (len_diff >= 0) {
-    for (uint64_t i = 0; i < len_diff; i++){
-      broadcast_input.push_back(1);
-    }
-
-    for (uint64_t i = 0; i < x_runtime_shape.size(); i++){
-       broadcast_input.push_back(x_runtime_shape[i]);
-    }
-
-    for (uint64_t i = 0; i < broadcast_input.size(); i++){
-       if (broadcast_input[i] > shape_value[i]){
-         output_shape.push_back(broadcast_input[i]);
-       } else {
-         output_shape.push_back(shape_value[i]);
-         }
-    }
-  }
-  else {
-    len_diff = -len_diff;
-    for (uint64_t i = 0; i < len_diff; i++){
-      output_shape.push_back(1);
-    }
-
-    for (uint64_t i = 0; i < shape_value.size(); i++){
-      output_shape.push_back(shape_value[i]);
-    }
-
-    for (uint64_t i = 0; i < output_shape.size(); i++){
-      if (broadcast_input[i] > shape_value[i]){
-        output_shape[i] = broadcast_input[i];
-      }
-    }
-  }
-
-  TeOpParas op_paras_tmp = op_paras;
-  // update new shape
-  broadcast_shape.push_back(output_shape.size());
-
-  op_paras_tmp.inputs[0].tensor[0].shape = std::move(shape_value);
-  op_paras_tmp.inputs[1].tensor[0].shape = std::move(x_runtime_shape);
-  op_paras_tmp.outputs[0].tensor[0].shape = std::move(output_shape);
-
-  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+  PROFILING_TILING_END();
   return ret;
 }
 
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 ExpandCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  return true;
+}
+
 // register tiling interface of the expand op.
-REGISTER_OP_TILING_FUNC_BUFFERED(Expand, ExpandTiling);
+REGISTER_OP_TILING_V3_CUSTOM(Expand, ExpandTiling, ParseJsonCompileInfo, ExpandCompileInfo);
 }  // namespace optiling

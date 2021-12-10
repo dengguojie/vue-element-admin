@@ -18,51 +18,57 @@
 #include "error_log.h"
 #include "op_log.h"
 #include "vector_tiling.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
-bool GerTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-               OpRunInfo& run_info) {
-  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                  return false);
-  OP_TILING_CHECK(op_paras.outputs.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs cannot be empty"), return false);
-  OP_TILING_CHECK(op_paras.inputs.size() != 2,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs size needs to be 2"), return false);
-  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
-  OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"), return false);
-  OP_TILING_CHECK(op_paras.outputs[0].tensor.empty(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs[0].tensor cannot be empty"), return false);
 
-  const std::vector<int64_t> shape_x1 = op_paras.inputs[0].tensor[0].shape;
-  const std::vector<int64_t> shape_x2 = op_paras.inputs[1].tensor[0].shape;
+struct GerCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+};
+
+bool GerTiling(const std::string& op_type, const ge::Operator& op_paras, const GerCompileInfo& parsed_info,
+               utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator failed."),
+                  return false);
+
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  const std::vector<int64_t> shape_x1 = input_desc->MutableShape().GetDims();
+  ge::DataType shape_dtype = input_desc->GetDataType();
+
+  input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  const std::vector<int64_t> shape_x2 = input_desc->MutableShape().GetDims();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
   std::vector<int64_t> shape_x1_new = shape_x1;
   std::vector<int64_t> shape_x2_new = shape_x2;
-  std::vector<int64_t> shape_y_new = {};
 
   shape_x1_new.push_back(1);
   shape_x2_new.insert(shape_x2_new.begin(), 1, 1);
-  shape_y_new.push_back(shape_x1[0]);
-  shape_y_new.push_back(shape_x2[0]);
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  TeOpParas op_paras_tmp;
-  TeOpTensor x1_tensor, x2_tensor, y_tensor;
-  TeOpTensorArg x1_arg, x2_arg, y_arg;
+  std::vector<std::vector<int64_t>> shapes = {shape_x1_new, shape_x2_new};
+  OpInfo eletwise_info(shapes, shape_dtype);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  x1_tensor.shape = shape_x1_new;
-  x2_tensor.shape = shape_x2_new;
-  y_tensor.shape = shape_y_new;
-  x1_arg.tensor.push_back(x1_tensor);
-  x2_arg.tensor.push_back(x2_tensor);
-  y_arg.tensor.push_back(y_tensor);
-  op_paras_tmp.inputs.push_back(x1_arg);
-  op_paras_tmp.inputs.push_back(x2_arg);
-  op_paras_tmp.outputs.push_back(y_arg);
-
-  bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+  PROFILING_TILING_END();
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Ger, GerTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 GerCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(Ger, GerTiling, ParseJsonCompileInfo, GerCompileInfo);
 }  // namespace optiling

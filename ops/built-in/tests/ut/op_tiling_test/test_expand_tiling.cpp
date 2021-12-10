@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "array_ops.h"
 
 using namespace std;
 
@@ -18,7 +19,7 @@ class ExpandTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
@@ -31,56 +32,38 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
+/*
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(shape, TensorType({DT_INT16, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+*/
+
 TEST_F(ExpandTiling, Expand_tiling_test_1) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Expand");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  TeOpTensorArg tensorInputs, tensorOutputsArg;
-  TeOpParas opParas;
+  auto opParas = op::Expand("Expand");
 
   vector<vector<int64_t>> input_shapes = {
       {1, 1, 5},
       {3},
   };
+  vector<int64_t> output = {3, 1, 5};
 
-  vector<string> dtypes = {"float16", "int32"};
-  for (size_t i = 0; i < input_shapes.size(); i++) {
-    tensorInputs.tensor.clear();
-    TeOpTensor tensorInput;
-    tensorInput.shape = input_shapes[i];
-    tensorInput.dtype = dtypes[i];
-    tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensorInputs);
-  }
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32};
+  std::vector<int32_t> shape_value{3, 1, 5};
 
-  std::vector<int64_t> shape_shape;
-  shape_shape.push_back(3);
-  ge::Shape ge_shape(shape_shape);
-  ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT32));
-  int32_t buf[3];
-  buf[0] = 3;
-  buf[1] = 1;
-  buf[2] = 5;
-  opParas.const_inputs["shape"] = std::make_tuple((const unsigned char *)buf, sizeof(buf), const_tensor);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, shape, input_shapes[1], dtypes[1], ge::FORMAT_ND, shape_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtypes[0], ge::FORMAT_ND, {});
 
-  TeOpTensor tensorOutput;
-  tensorOutput.shape = {3, 1, 5};
-  tensorOutput.dtype = "float16";
-  tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputsArg);
-  opParas.op_type = "Expand";
-  std::string compileInfo = R"( {"_pattern": "Broadcast", "push_status": 0,"_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 2, 43680, 21840]}, "_elewise_vars": {"0": [10000, 10100], "1": [10000, 10100, 20000, 30000], "2": [10000, 10100, 20000, 30001], "3": [10000, 10100, 20000, 30002], "5": [10000, 10100, 20001, 30001], "6": [10000, 10100, 20001, 30002], "9": [10000, 10100, 20002, 30002]}, "_vars": {"0": ["_dim_0_0", "_dim_1_0"], "1": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_2"], "5": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_0_0", "_dim_1_0", "_block_factor_2", "_ub_factor_2"]}})";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
+  std::string compileInfo =
+      R"( {"_pattern": "Broadcast", "_outs_uint1": false, "push_status": 0,"_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 2, 43680, 21840]}, "_elewise_vars": {"0": [10000, 10100], "1": [10000, 10100, 20000, 30000], "2": [10000, 10100, 20000, 30001], "3": [10000, 10100, 20000, 30002], "5": [10000, 10100, 20001, 30001], "6": [10000, 10100, 20001, 30002], "9": [10000, 10100, 20002, 30002]}, "_vars": {"0": ["_dim_0_0", "_dim_1_0"], "1": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_2"], "5": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_0_0", "_dim_1_0", "_block_factor_2", "_ub_factor_2"]}})";
 
   // do tilling, get runInfo
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
-            "3 1 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1 ");
 }
-
