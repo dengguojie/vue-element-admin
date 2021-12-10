@@ -97,7 +97,8 @@ def strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, 
     total_core_num = aicore_num
     tail_flag = False
     if output_size % aicore_num != 0 or ouput_core_data_num % type_block_num != 0:
-        aicore_num = aicore_num - 1
+        if aicore_num > 1:
+            aicore_num = aicore_num - 1
         ouput_core_data_num = output_size // aicore_num
         input_core_data_num = input_size // aicore_num
         if output_size % aicore_num != 0 or ouput_core_data_num % type_block_num != 0:
