@@ -39,6 +39,7 @@ constexpr std::int64_t ELEMENT_IN_BLOCK_B32 = 8;
 constexpr std::int64_t ELEMENT_IN_BLOCK_B8 = 32;
 constexpr std::int64_t ELEMENT_IN_BLOCK_B64 = 4;
 constexpr std::int64_t NO_MULTI_BLOCK_BASE_KEY = 0;
+constexpr std::int64_t CONST_TILING_KEY = 1000000;
 constexpr std::int64_t ONE_DIMS_N_LAST_NO_CONV_BASE_KEY = 20000;
 constexpr std::int64_t ONE_DIMS_N_LAST_ALIGN_BASE_KEY = 10000;
 constexpr std::int64_t PURE_COPY_BASE_KEY = 3000000;
@@ -53,9 +54,14 @@ constexpr std::int64_t BLOCK_SIZE_BYTE = 32;
 constexpr int64_t ALIGN_THRESHOLD = 512;
 constexpr std::int64_t ONE_K_BYTES = 1024;
 constexpr std::int64_t MULTI_CORE_EXPERIENCE = 64;
-}
-
-static OpInfo dummy_op_info(std::vector<std::vector<int64_t>>(), ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
+constexpr std::int64_t CROSS_COEXISTING_QUANTITY_FACTOR = 2;
+constexpr std::int64_t BASE_COEXISTING_QUANTITY = 2;
+constexpr std::int64_t LAST_TRANSPOSE_COEXISTING_QUANTITY = 4;
+constexpr std::int64_t ALIGN_GT_B16_CROSS_UB_IN_FACTOR = 3;
+constexpr std::int64_t ALIGN_CROSS_UB_IN_FACTOR = 2;
+constexpr std::int64_t COMPILE_SHAPE_IS_ONE_FLAG = 2;
+constexpr double CROSS_UB_IN_EXPERIENCE = 0.7;
+}  // namespace
 
 static const int64_t GetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16
@@ -71,14 +77,6 @@ static const int64_t GetElementByType(const ge::DataType& dtype) {
     element_in_block = ELEMENT_IN_BLOCK_B64;
   }
   return element_in_block;
-}
-
-static inline int64_t CeilDiv(int64_t a, int64_t b) {
-  return (a + b - 1) / b;
-}
-
-static inline int64_t FloorAlign(int64_t a, int64_t b) {
-  return a / b * b;
 }
 
 bool Transpose::ParseCompileInfo() {
@@ -99,6 +97,21 @@ bool Transpose::ParseCompileInfo() {
   return true;
 }
 
+void Transpose::GenerateShape(int64_t cur_dim_value, size_t cur_index, int64_t& real_index, bool& is_first_in) {
+  if (c_info.mergeable[cur_index] == COMPILE_SHAPE_IS_ONE_FLAG) {
+    return;
+  } else if (c_info.mergeable[cur_index] == 1) {
+    input_shapes[real_index] = input_shapes[real_index] * cur_dim_value;
+  } else {
+    if (is_first_in) {
+      is_first_in = false;
+    } else {
+      real_index++;
+    }
+    input_shapes[real_index] = cur_dim_value;
+  }
+}
+
 bool Transpose::GenerateOutputShape() {
   V_OP_TILING_CHECK((op_paras.GetInputsSize() != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"), return false);
@@ -110,18 +123,7 @@ bool Transpose::GenerateOutputShape() {
   bool is_first_in = true;
   for (size_t i = 0; i < src_dim_len; i++) {
     int64_t cur_dim_value = shape.GetDim(i);
-    if (c_info.mergeable[i] == 2) {
-      continue;
-    } else if (c_info.mergeable[i] == 1) {
-      input_shapes[real_index] = input_shapes[real_index] * cur_dim_value;
-    } else {
-      if (is_first_in) {
-        is_first_in = false;
-      } else {
-        real_index++;
-      }
-      input_shapes[real_index] = cur_dim_value;
-    }
+    GenerateShape(shape.GetDim(i), i, real_index, is_first_in);
   }
   V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"), return false);
@@ -147,19 +149,7 @@ bool Transpose::GenerateOutputShapeFromOp() {
   int64_t real_index = 0;
   bool is_first_in = true;
   for (size_t i = 0; i < src_dim_len; i++) {
-    int64_t cur_dim_value = op_input_shapes[0][i];
-    if (c_info.mergeable[i] == 2) {
-      continue;
-    } else if (c_info.mergeable[i] == 1) {
-      input_shapes[real_index] = input_shapes[real_index] * cur_dim_value;
-    } else {
-      if (is_first_in) {
-        is_first_in = false;
-      } else {
-        real_index++;
-      }
-      input_shapes[real_index] = cur_dim_value;
-    }
+    GenerateShape(op_input_shapes[0][i], i, real_index, is_first_in);
   }
   dtype = op_info.GetInType();
   for (size_t i = 0; i < c_info.ori_permute.size(); i++) {
@@ -169,7 +159,7 @@ bool Transpose::GenerateOutputShapeFromOp() {
   return true;
 }
 
-bool Transpose::CalcTiling() {
+bool Transpose::CalcOutputSize() {
   V_OP_TILING_CHECK((!c_info.permute.empty()), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
                     return false);
   output_size = std::accumulate(output_shapes.begin(), output_shapes.begin() + c_info.permute.size(), 1LL,
@@ -178,6 +168,10 @@ bool Transpose::CalcTiling() {
              return false);
   V_CHECK_GT(output_size, 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape must be greater than 0"),
              return false);
+  return true;
+}
+
+bool Transpose::CalcTiling() {
   if (max_dim_shape == output_size) {
     is_pure_copy = true;
     c_info.permute = {0};
@@ -187,10 +181,10 @@ bool Transpose::CalcTiling() {
   }
   int64_t last_index = c_info.permute.size() - 1;
   is_last_transpose = c_info.permute[last_index] != last_index;
-  int64_t coexisting_quantity = 2;
-  int64_t factor = (GetElementByType(dtype) ==
-                    B8_COEXISTING_QUANTITY_FACTOR ? B8_COEXISTING_QUANTITY_FACTOR : GT_B8_COEXISTING_QUANTITY_FACTOR);
-  int64_t cross_coexisting_quantity = (factor * 2) + coexisting_quantity;
+  int64_t coexisting_quantity = BASE_COEXISTING_QUANTITY;
+  int64_t factor = (GetElementByType(dtype) == B8_COEXISTING_QUANTITY_FACTOR ? B8_COEXISTING_QUANTITY_FACTOR
+                                                                             : GT_B8_COEXISTING_QUANTITY_FACTOR);
+  int64_t cross_coexisting_quantity = (factor * CROSS_COEXISTING_QUANTITY_FACTOR) + coexisting_quantity;
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t bytes = BLOCK_SIZE_BYTE / ele_in_block;
   is_nlast_no_conv = !is_last_transpose && output_shapes[last_index] % ele_in_block == 0;
@@ -200,24 +194,24 @@ bool Transpose::CalcTiling() {
   }
   if (is_last_transpose) {
     if (GetElementByType(dtype) < ELEMENT_IN_BLOCK_DEFAULT) {
-      coexisting_quantity = 4;
+      coexisting_quantity = LAST_TRANSPOSE_COEXISTING_QUANTITY;
     }
-    max_available_ub = FloorAlign(c_info.ub_size / coexisting_quantity / bytes, ele_in_block);
-    max_available_cross_ub = FloorAlign(cross_ub_size / cross_coexisting_quantity / bytes, ele_in_block);
+    max_available_ub = c_info.ub_size / coexisting_quantity / bytes / ele_in_block * ele_in_block;
+    max_available_cross_ub = cross_ub_size / cross_coexisting_quantity / bytes / ele_in_block * ele_in_block;
   } else if (is_nlast_no_conv) {
-    max_available_ub = FloorAlign(c_info.ub_size / coexisting_quantity / bytes, ele_in_block);
+    max_available_ub = c_info.ub_size / coexisting_quantity / bytes / ele_in_block * ele_in_block;
   } else {
     is_nlast_align =
         !is_last_transpose && (output_shapes[last_index] % ele_in_block == 0 ||
                                output_shapes[last_index] >= (ALIGN_THRESHOLD / (BLOCK_SIZE_BYTE / ele_in_block)));
     if (is_nlast_align) {
-      max_available_ub = FloorAlign((c_info.ub_size - BLOCK_SIZE_BYTE) / bytes, ele_in_block);
+      max_available_ub = (c_info.ub_size - BLOCK_SIZE_BYTE) / bytes / ele_in_block * ele_in_block;
     } else {
-      max_available_ub = FloorAlign(cross_ub_size / cross_coexisting_quantity / bytes, ele_in_block);
+      max_available_ub = cross_ub_size / cross_coexisting_quantity / bytes / ele_in_block * ele_in_block;
     }
   }
   if (is_pure_copy) {
-    max_available_ub = FloorAlign(c_info.ub_size / 2 / bytes, ele_in_block);
+    max_available_ub = c_info.ub_size / BASE_COEXISTING_QUANTITY / bytes / ele_in_block * ele_in_block;
   }
   const int64_t multi_core_threshold = MULTI_CORE_EXPERIENCE * GetElementByType(dtype);  // 2k
   if (output_size > multi_core_threshold) {
@@ -231,8 +225,9 @@ bool Transpose::DoBlockTiling() {
     if (!have_splits[i]) {
       if (block_dims * output_shapes[i] >= c_info.core_num) {
         block_axis = i;
-        block_factor = CeilDiv(output_shapes[i], c_info.core_num / block_dims);
-        block_dims *= CeilDiv(output_shapes[i], block_factor);
+        int64_t left_core = c_info.core_num / block_dims;
+        block_factor = (output_shapes[i] + left_core - 1) / left_core;
+        block_dims *= ((output_shapes[i] + block_factor - 1) / block_factor);
         break;
       } else {
         block_dims *= output_shapes[i];
@@ -240,11 +235,12 @@ bool Transpose::DoBlockTiling() {
     }
   }
   if (block_axis == -1) {
-    int64_t remainder_low = CeilDiv(output_shapes[low_ub_axis], low_ub_factor);
+    int64_t remainder_low = (output_shapes[low_ub_axis] + low_ub_factor - 1) / low_ub_factor;
     if (block_dims * remainder_low >= c_info.core_num) {
       block_axis = low_ub_axis;
-      block_factor = CeilDiv(remainder_low, c_info.core_num / block_dims);
-      block_dims *= CeilDiv(remainder_low, block_factor);
+      int64_t left_core = c_info.core_num / block_dims;
+      block_factor = (remainder_low + left_core - 1) / left_core;
+      block_dims *= ((remainder_low + block_factor - 1) / block_factor);
     } else {
       block_dims *= remainder_low;
       if (low_ub_axis == high_ub_axis) {
@@ -255,9 +251,10 @@ bool Transpose::DoBlockTiling() {
   }
   if (block_axis == -1) {
     block_axis = high_ub_axis;
-    int64_t remainder_low = CeilDiv(output_shapes[high_ub_axis], high_ub_factor);
-    block_factor = CeilDiv(remainder_low, c_info.core_num / block_dims);
-    block_dims *= CeilDiv(remainder_low, block_factor);
+    int64_t remainder_low = (output_shapes[high_ub_axis] + high_ub_factor - 1) / high_ub_factor;
+    int64_t left_core = c_info.core_num / block_dims;
+    block_factor = (remainder_low + left_core - 1) / left_core;
+    block_dims *= (remainder_low + block_factor - 1) / block_factor;
   }
   return true;
 }
@@ -273,10 +270,11 @@ bool Transpose::DoUbTilingNoCross() {
   input_available_ub = std::sqrt(max_available_ub);
   output_available_ub = max_available_ub / input_available_ub;
   int64_t ele_in_block = GetElementByType(dtype);
-  tilingParams.cross_ub_in = std::sqrt(max_available_cross_ub) * 0.7;
+  tilingParams.cross_ub_in = std::sqrt(max_available_cross_ub) * CROSS_UB_IN_EXPERIENCE;
   tilingParams.cross_ub_out = std::sqrt(max_available_cross_ub);
   if (output_shapes[tilingParams.output_index] % ele_in_block == 0) {
-    tilingParams.cross_ub_in = ele_in_block < ELEMENT_IN_BLOCK_DEFAULT ? ele_in_block * 3 : ele_in_block * 2;
+    tilingParams.cross_ub_in = ele_in_block < ELEMENT_IN_BLOCK_DEFAULT ? ele_in_block * ALIGN_GT_B16_CROSS_UB_IN_FACTOR
+                                                                       : ele_in_block * ALIGN_CROSS_UB_IN_FACTOR;
     tilingParams.cross_ub_out = tilingParams.cross_ub_in;
   }
   if (ele_in_block < ELEMENT_IN_BLOCK_DEFAULT) {
@@ -336,8 +334,8 @@ void Transpose::CrossUbUpdateSameAxis(CrossUbTilingParams& tilingParams) {
     tilingParams.input_ub_size /= input_shapes[tilingParams.input_index];
     if (tilingParams.can_update_ub) {
       tilingParams.can_update_ub = false;
-      output_available_ub = max_available_ub / (CeilDiv(input_available_ub, ele_in_block) * ele_in_block);
-      output_available_ub = FloorAlign(output_available_ub, ele_in_block);
+      output_available_ub = max_available_ub / ((input_available_ub + ele_in_block - 1) / ele_in_block * ele_in_block);
+      output_available_ub = output_available_ub / ele_in_block * ele_in_block;
     }
   } else {
     output_available_ub = tilingParams.output_ub_size;
@@ -346,8 +344,8 @@ void Transpose::CrossUbUpdateSameAxis(CrossUbTilingParams& tilingParams) {
     tilingParams.output_ub_size /= output_shapes[tilingParams.output_index];
     if (tilingParams.can_update_ub) {
       tilingParams.can_update_ub = false;
-      input_available_ub = max_available_ub / (CeilDiv(output_available_ub, ele_in_block) * ele_in_block);
-      input_available_ub = FloorAlign(input_available_ub, ele_in_block);
+      input_available_ub = max_available_ub / ((output_available_ub + ele_in_block - 1) / ele_in_block * ele_in_block);
+      input_available_ub = input_available_ub / ele_in_block * ele_in_block;
     }
   }
 }
@@ -364,8 +362,8 @@ bool Transpose::OutputCrossUbTiling(CrossUbTilingParams& tilingParams) {
     tilingParams.output_ub_size /= output_shapes[tilingParams.output_index];
     if (tilingParams.can_update_ub) {
       tilingParams.can_update_ub = false;
-      input_available_ub = max_available_ub / (CeilDiv(output_available_ub, ele_in_block) * ele_in_block);
-      input_available_ub = FloorAlign(input_available_ub, ele_in_block);
+      input_available_ub = max_available_ub / ((output_available_ub + ele_in_block - 1) / ele_in_block * ele_in_block);
+      input_available_ub = input_available_ub / ele_in_block * ele_in_block;
     }
   } else if (tilingParams.output_ub_size * output_shapes[tilingParams.output_index] < output_available_ub) {
     tilingParams.output_ub_size *= output_shapes[tilingParams.output_index];
@@ -387,8 +385,8 @@ bool Transpose::InputCrossUbTiling(CrossUbTilingParams& tilingParams) {
     tilingParams.input_ub_size /= input_shapes[tilingParams.input_index];
     if (tilingParams.can_update_ub) {
       tilingParams.can_update_ub = false;
-      output_available_ub = max_available_ub / (CeilDiv(input_available_ub, ele_in_block) * ele_in_block);
-      output_available_ub = FloorAlign(output_available_ub, ele_in_block);
+      output_available_ub = max_available_ub / ((input_available_ub + ele_in_block - 1) / ele_in_block * ele_in_block);
+      output_available_ub = output_available_ub / ele_in_block * ele_in_block;
     }
   } else if (tilingParams.input_ub_size * input_shapes[tilingParams.input_index] < input_available_ub) {
     tilingParams.input_ub_size *= input_shapes[tilingParams.input_index];
@@ -405,8 +403,9 @@ void Transpose::DoStoreAlignBlockTiling() {
   for (int64_t i = 0; i < high_ub_axis; i++) {
     if (block_dims * output_shapes[i] >= c_info.core_num) {
       block_axis = i;
-      block_factor = CeilDiv(output_shapes[i], c_info.core_num / block_dims);
-      block_dims *= CeilDiv(output_shapes[i], block_factor);
+      int64_t left_core = c_info.core_num / block_dims;
+      block_factor = (output_shapes[i] + left_core - 1) / left_core;
+      block_dims *= ((output_shapes[i] + block_factor - 1) / block_factor);
       break;
     } else {
       block_dims *= output_shapes[i];
@@ -414,9 +413,10 @@ void Transpose::DoStoreAlignBlockTiling() {
   }
   if (block_axis == -1) {
     block_axis = high_ub_axis;
-    int64_t remainder_low = CeilDiv(output_shapes[high_ub_axis], high_ub_factor);
-    block_factor = CeilDiv(remainder_low, c_info.core_num / block_dims);
-    block_dims *= CeilDiv(remainder_low, block_factor);
+    int64_t remainder_low = (output_shapes[high_ub_axis] + high_ub_factor - 1) / high_ub_factor;
+    int64_t left_core = c_info.core_num / block_dims;
+    block_factor = (remainder_low + left_core - 1) / left_core;
+    block_dims *= ((remainder_low + block_factor - 1) / block_factor);
   }
 }
 
@@ -425,14 +425,15 @@ void Transpose::DoStoreAlignUbTiling(int64_t available_ub) {
   int64_t output_ub_size = 1;
   int64_t last_output = output_shapes[output_index];
   int64_t ele_in_block = GetElementByType(dtype);
-  output_shapes[output_index] = CeilDiv(last_output, ele_in_block) * ele_in_block;
+  output_shapes[output_index] = (last_output + ele_in_block - 1) / ele_in_block * ele_in_block;
   int64_t align_size = output_size / last_output * output_shapes[output_index];
   if (available_ub * c_info.core_num > align_size && align_size > available_ub && !is_pure_copy) {
     int64_t multi_core = 1;
     for (int64_t i = 0; i <= output_index; i++) {
       if (multi_core * output_shapes[i] >= c_info.core_num) {
         align_size /= (multi_core * output_shapes[i]);
-        int64_t factor = CeilDiv(output_shapes[i], c_info.core_num / multi_core);
+        int64_t left_core = c_info.core_num / multi_core;
+        int64_t factor = (output_shapes[i] + left_core - 1) / left_core;
         align_size *= factor;
         break;
       } else {
@@ -476,8 +477,9 @@ bool Transpose::DoUbTiling(int64_t available_ub) {
   input_available_ub = std::sqrt(available_ub);
   output_available_ub = available_ub / input_available_ub;
   int64_t ele_in_block = GetElementByType(dtype);
-  if (is_last_transpose && ele_in_block == 8 && input_shapes[ubTilingParams.input_index] > ele_in_block) {
-    input_available_ub = FloorAlign(input_available_ub, ele_in_block);
+  if (is_last_transpose && ele_in_block == ELEMENT_IN_BLOCK_B32 &&
+      input_shapes[ubTilingParams.input_index] > ele_in_block) {
+    input_available_ub = input_available_ub / ele_in_block * ele_in_block;
     output_available_ub = available_ub / input_available_ub;
   }
   ubTilingParams.no_update_cross = false;
@@ -645,7 +647,7 @@ void Transpose::UbNoOverlap(int64_t output_in_ub) {
   }
 }
 
-bool Transpose::AdjustJudge(const AdjustTilingParams& adjustTilingParams, bool greater_input) {
+bool Transpose::AdjustJudge(const AdjustTilingParams& adjustTilingParams, bool greater_input) const {
   int64_t input_index = adjustTilingParams.input_index;
   int64_t input_in_size = adjustTilingParams.input_in_ub;
   int64_t cur_input_ub_factor = low_ub_factor;
@@ -697,7 +699,7 @@ void Transpose::AdjustOutputFactor(AdjustTilingParams& adjustTilingParams) {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t output_no_continues = adjustTilingParams.all_in_ub / (adjustTilingParams.output_in_ub * high_ub_factor);
   int64_t output_align =
-      CeilDiv(adjustTilingParams.output_in_ub * high_ub_factor, ele_in_block) * ele_in_block;
+      (adjustTilingParams.output_in_ub * high_ub_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
   if (output_align * output_no_continues > adjustTilingParams.max_ub && output_no_continues != 1) {
     // high_ub_factor is 1
     UpdateFactorOne(adjustTilingParams);
@@ -714,16 +716,14 @@ void Transpose::AdjustOutputFactor(AdjustTilingParams& adjustTilingParams) {
         high_ub_factor = low_ub_factor;
       }
     } else {
-      if (high_ub_factor == 1) {
-        while (high_ub_factor == 1 || c_info.ori_permute[high_ub_axis] > adjustTilingParams.input_index) {
-          have_splits[high_ub_axis] = false;
-          high_ub_axis++;
-          high_ub_factor = output_shapes[high_ub_axis];
-          adjustTilingParams.output_in_ub /= high_ub_factor;
-        }
+      while (high_ub_factor == 1 || c_info.ori_permute[high_ub_axis] > adjustTilingParams.input_index) {
+        have_splits[high_ub_axis] = false;
+        high_ub_axis++;
+        high_ub_factor = output_shapes[high_ub_axis];
+        adjustTilingParams.output_in_ub /= high_ub_factor;
       }
       output_align =
-          CeilDiv(adjustTilingParams.output_in_ub * high_ub_factor, ele_in_block) * ele_in_block;
+          (adjustTilingParams.output_in_ub * high_ub_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
       high_ub_factor = (output_align - ele_in_block) / adjustTilingParams.output_in_ub;
       if (low_ub_axis == high_ub_axis) {
         low_ub_factor = high_ub_factor;
@@ -736,7 +736,7 @@ void Transpose::AdjustInputFactor(AdjustTilingParams& adjustTilingParams) {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t input_no_continues = adjustTilingParams.all_in_ub / (adjustTilingParams.input_in_ub * low_ub_factor);
   int64_t input_align =
-      CeilDiv(adjustTilingParams.input_in_ub * low_ub_factor, ele_in_block) * ele_in_block;
+      (adjustTilingParams.input_in_ub * low_ub_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
   if (input_align * input_no_continues > adjustTilingParams.max_ub && input_no_continues != 1) {
     // low_ub_factor is 1
     UpdateFactorOne(adjustTilingParams);
@@ -753,15 +753,13 @@ void Transpose::AdjustInputFactor(AdjustTilingParams& adjustTilingParams) {
         low_ub_factor = high_ub_factor;
       }
     } else {
-      if (low_ub_factor == 1) {
-        while (low_ub_factor == 1 || c_info.permute[adjustTilingParams.input_index] > high_ub_axis) {
-          have_splits[c_info.permute[adjustTilingParams.input_index]] = false;
-          adjustTilingParams.input_index++;
-          low_ub_factor = input_shapes[adjustTilingParams.input_index];
-          adjustTilingParams.input_in_ub /= low_ub_factor;
-        }
+      while (low_ub_factor == 1 || c_info.permute[adjustTilingParams.input_index] > high_ub_axis) {
+        have_splits[c_info.permute[adjustTilingParams.input_index]] = false;
+        adjustTilingParams.input_index++;
+        low_ub_factor = input_shapes[adjustTilingParams.input_index];
+        adjustTilingParams.input_in_ub /= low_ub_factor;
       }
-      input_align = CeilDiv(adjustTilingParams.input_in_ub * low_ub_factor, ele_in_block) * ele_in_block;
+      input_align = (adjustTilingParams.input_in_ub * low_ub_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
       int64_t new_factor = (input_align - ele_in_block) / adjustTilingParams.input_in_ub;
       adjustTilingParams.all_in_ub = adjustTilingParams.all_in_ub / low_ub_factor * new_factor;
       low_ub_factor = new_factor;
@@ -773,7 +771,7 @@ void Transpose::AdjustInputFactor(AdjustTilingParams& adjustTilingParams) {
   }
 }
 
-void Transpose::CalcInUbSize(AdjustTilingParams& adjustTilingParams) {
+void Transpose::CalcInUbSize(AdjustTilingParams& adjustTilingParams) const {
   size_t dim_len = c_info.ori_permute.size();
   for (size_t i = 0; i < dim_len; i++) {
     if (have_splits[i]) {
@@ -851,11 +849,13 @@ bool Transpose::DoBlockAndUbTiling() {
 
 bool Transpose::DoTiling() {
   bool ret = ParseCompileInfo();
+  bool has_op_info = !op_info.GetInputShape().empty();
   if (has_op_info) {
     ret = ret && GenerateOutputShapeFromOp();
   } else {
     ret = ret && GenerateOutputShape();
   }
+  ret = ret && CalcOutputSize();
   ret = ret && CalcTiling();
   ret = ret && DoBlockAndUbTiling();
   if (!need_multi_core && is_pure_copy) {
@@ -870,6 +870,18 @@ bool Transpose::DoTiling() {
   return ret;
 }
 
+void Transpose::WriteConstTilingData() const {
+  run_info.AddTilingData(static_cast<int32_t>(need_multi_core));
+  run_info.AddTilingData(static_cast<int32_t>(block_axis));
+  run_info.AddTilingData(static_cast<int32_t>(block_factor));
+  if (!is_nlast_align && !is_pure_copy) {
+    run_info.AddTilingData(static_cast<int32_t>(low_ub_axis));
+    run_info.AddTilingData(static_cast<int32_t>(low_ub_factor));
+  }
+  run_info.AddTilingData(static_cast<int32_t>(high_ub_axis));
+  run_info.AddTilingData(static_cast<int32_t>(high_ub_factor));
+}
+
 bool Transpose::WriteTilingData() const {
   OP_LOGD(op_type.c_str(), "tiling key:%lld", tiling_key);
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
@@ -882,15 +894,7 @@ bool Transpose::WriteTilingData() const {
 
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   if (c_info.only_const_tiling) {
-    run_info.AddTilingData(static_cast<int32_t>(need_multi_core));
-    run_info.AddTilingData(static_cast<int32_t>(block_axis));
-    run_info.AddTilingData(static_cast<int32_t>(block_factor));
-    if (!is_nlast_align && !is_pure_copy) {
-      run_info.AddTilingData(static_cast<int32_t>(low_ub_axis));
-      run_info.AddTilingData(static_cast<int32_t>(low_ub_factor));
-    }
-    run_info.AddTilingData(static_cast<int32_t>(high_ub_axis));
-    run_info.AddTilingData(static_cast<int32_t>(high_ub_factor));
+    WriteConstTilingData();
     return true;
   }
   run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
@@ -925,13 +929,13 @@ bool Transpose::WriteTilingData() const {
   return true;
 }
 
-bool Transpose::ProcessConst(bool& is_const) {
+bool Transpose::ProcessConst(bool& is_const) const {
   try {
     is_const = compile_info.at("_is_const");
     if (is_const) {
-      int32_t block_dims = compile_info.at("_const_dims");
-      run_info.SetTilingKey(1000000);
-      run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
+      int32_t const_block_dims = compile_info.at("_const_dims");
+      run_info.SetTilingKey(CONST_TILING_KEY);
+      run_info.SetBlockDim(static_cast<uint32_t>(const_block_dims));
       return true;
     }
   } catch (const std::exception& e) {
@@ -952,20 +956,21 @@ bool Transpose::TransposeTiling() {
   ret = ret && WriteTilingData();
   return ret;
 }
-
 }  // namespace transpose
 
 bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                   utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "Enter Transpose Dsl");
-  transpose::Transpose transpose(op_type, op_paras, compile_info, transpose::dummy_op_info, run_info, false);
+  static std::vector<std::vector<int64_t>> dummy_input_shapes{};
+  static OpInfo dummy_op_info(dummy_input_shapes, ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
+  transpose::Transpose transpose(op_type, op_paras, compile_info, dummy_op_info, run_info);
   return transpose.TransposeTiling();
 }
 
 bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                   utils::OpRunInfo& run_info, const OpInfo& op_info) {
   OP_LOGD(op_type.c_str(), "Enter Transpose Dsl");
-  transpose::Transpose transpose(op_type, op_paras, compile_info, op_info, run_info, true);
+  transpose::Transpose transpose(op_type, op_paras, compile_info, op_info, run_info);
   return transpose.TransposeTiling();
 }
 

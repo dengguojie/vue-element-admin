@@ -51,20 +51,6 @@ static void AddParams(ge::OpDescPtr& op_desc, const std::vector<int64_t>& shape,
   }
 }
 
-TEST_F(ConcatDslTiling, concat_dsl_tiling_custom_unsupported) {
-  std::string compile_info =
-      R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[false, true], [false, true]], "_vars": {"3000001": ["_dim_0_1", "_dim_1_1", "_block_factor_1", "_ub_factor_1", "_offset_1"], "4000000": ["_dim_0_1", "_dim_1_1", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1"], "4000001": ["_dim_0_1", "_dim_1_1", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1"], "4100000": ["_dim_0_1", "_dim_1_1", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000001": ["_dim_0_1", "_dim_1_1", "_block_factor_1", "_ub_factor_1", "_offset_1"], "4000000": ["_dim_0_1", "_dim_1_1", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1"], "4000001": ["_dim_0_1", "_dim_1_1", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1"], "4100000": ["_dim_0_1", "_dim_1_1", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000001": [], "4000000": [], "4000001": [], "4100000": []}, "_custom_vars": {"3000001": [], "4000000": [], "4000001": [], "4100000": []}})";
-  ge::Operator op_paras = ge::Operator(this->test_info_->name());
-
-  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
-  optiling::utils::OpRunInfo runInfo;
-  std::vector<std::vector<int64_t>> input_shapes{};
-  optiling::OpInfo c_op_info(input_shapes, ge::DT_FLOAT);
-  std::shared_ptr<AutoTilingHandler> outer_compile_info =
-      CreateConcatDslTilingHandler(this->test_info_->name(), "Concat", op_info);
-  ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo, c_op_info));
-}
-
 TEST_F(ConcatDslTiling, concat_dsl_tiling_case1) {
   // concat 1 axis, original axis is 1
   std::vector<std::vector<int64_t>> inputs{{100, 200, 30}, {15, 200, 30}};

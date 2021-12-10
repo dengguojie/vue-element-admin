@@ -57,10 +57,7 @@ constexpr std::int64_t HALF_ALIGN_NO_CUT_BASE_KEY = 5100000;
 constexpr std::size_t CONCAT_DIM_LEN = 2;
 constexpr double COL_BLOCK_ALIGN_EXPERIENCE = 0.5;
 constexpr std::uint32_t CONST_TILING_KEY = 1000000;
-}
-
-
-static OpInfo dummy_op_info(std::vector<std::vector<int64_t>>(), ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
+}  // namespace
 
 static const int64_t GetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16
@@ -76,20 +73,6 @@ static const int64_t GetElementByType(const ge::DataType& dtype) {
     element_in_block = ELEMENT_IN_BLOCK_B64;
   }
   return element_in_block;
-}
-
-static inline int64_t CeilDiv(int64_t a, int64_t b) {
-  V_OP_TILING_CHECK((b != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "CeilDiv denominator cannot be zero."),
-                    return b);
-  return (a + b - 1) / b;
-}
-
-static inline int64_t FloorAlign(int64_t a, int64_t b) {
-  V_OP_TILING_CHECK((b != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "FloorAlign denominator cannot be zero."),
-                    return b);
-  return a / b * b;
 }
 
 bool Concat::ParseCompileInfo() {
@@ -199,7 +182,7 @@ bool Concat::CalcTiling() {
   if (output_shapes[0] == 1) {
     is_one_concat = true;
     need_multi_core = true;
-    max_available_ub = FloorAlign((c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / bytes, ele_in_block);
+    max_available_ub = (c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / bytes / ele_in_block * ele_in_block;
   } else {
     int64_t row_limit = ROW_ALIGN_FACTOR;
     int64_t col_limit = ele_in_block == bytes ? COL_SPLIT_LIMIT_B8 : COL_SPLIT_LIMIT;
@@ -207,7 +190,7 @@ bool Concat::CalcTiling() {
       need_multi_core = true;
     }
     int64_t coexisting_quantity = GENERAL_NODE_NUMBERS;
-    max_available_ub = FloorAlign(c_info.ub_size / coexisting_quantity / bytes, ele_in_block);
+    max_available_ub = c_info.ub_size / coexisting_quantity / bytes / ele_in_block * ele_in_block;
   }
   return true;
 }
@@ -215,15 +198,15 @@ bool Concat::CalcTiling() {
 void Concat::DoBlockTiling() {
   if (is_one_concat) {
     block_axis = 1;
-    block_factor = CeilDiv(output_shapes[1], c_info.core_num);
-    block_dims *= CeilDiv(output_shapes[1], block_factor);
+    block_factor = (output_shapes[1] + c_info.core_num - 1) / c_info.core_num;
+    block_dims *= (output_shapes[1] + block_factor - 1) / block_factor;
     return;
   }
   bool must_cut_zero_axis = output_shapes[0] >= c_info.core_num || no_align || read_align_no_ub;
   if (must_cut_zero_axis) {
     block_axis = 0;
-    block_factor = CeilDiv(output_shapes[0], c_info.core_num);
-    block_dims = CeilDiv(output_shapes[0], block_factor);
+    block_factor = (output_shapes[0] + c_info.core_num - 1) / c_info.core_num;
+    block_dims = (output_shapes[0] + block_factor - 1) / block_factor;
   } else if (output_shapes[0] > (c_info.core_num / HALF)) {
     block_axis = 0;
     block_factor = 1;
@@ -233,8 +216,9 @@ void Concat::DoBlockTiling() {
   }
   if (block_axis != 0) {
     block_axis = 1;
-    block_factor = CeilDiv(output_shapes[1], c_info.core_num / block_dims);
-    block_dims *= CeilDiv(output_shapes[1], block_factor);
+    int64_t left_core = c_info.core_num / block_dims;
+    block_factor = (output_shapes[1] + left_core - 1) / left_core;
+    block_dims *= (output_shapes[1] + block_factor - 1) / block_factor;
   }
 }
 
@@ -247,9 +231,9 @@ void Concat::DoUbTiling() {
       (static_cast<double>(col_limit) / static_cast<double>(one_repeat)) - (col_limit / one_repeat) >=
       COL_BLOCK_ALIGN_EXPERIENCE;
   if (is_col_block_align) {
-    col_limit = FloorAlign(col_limit, ele_in_block);
+    col_limit = col_limit / ele_in_block * ele_in_block;
   } else {
-    col_limit = FloorAlign(col_limit, one_repeat);
+    col_limit = col_limit / one_repeat * one_repeat;
   }
   int64_t ge_factor_n;
   int64_t lt_factor_n;
@@ -300,9 +284,7 @@ void Concat::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& 
 }
 
 void Concat::DoGeneralUbTiling(const int64_t factor_n) {
-  V_OP_TILING_CHECK((factor_n != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."),
-                    return);
+  V_OP_TILING_CHECK((factor_n != 0), VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."), return );
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t row_limit = ROW_ALIGN_FACTOR;
   bool is_ub_factor_less_block = output_shapes[1] % factor_n != 0 && output_shapes[1] % factor_n < ele_in_block;
@@ -331,7 +313,7 @@ void Concat::DoGeneralUbTiling(const int64_t factor_n) {
   } else {
     high_ub_factor = output_shapes[1] > factor_n ? factor_n : output_shapes[1];
   }
-  output_shapes[1] = CeilDiv(output_shapes[1], high_ub_factor);
+  output_shapes[1] = (output_shapes[1] + high_ub_factor - 1) / high_ub_factor;
 
   int64_t align_factor = all_half_align ? HALF : ele_in_block;
   int64_t factor_m = row_limit * align_factor * (factor_n / high_ub_factor);
@@ -348,9 +330,9 @@ void Concat::DoNoAlignUbTiling(const int64_t factor_n) {
   if (all_one_concat) {
     factor_m = max_available_ub / output_shapes[1];
     if (ele_in_block == BLOCK_SIZE) {
-      factor_m = FloorAlign(factor_m, ele_in_block * ele_in_block);
+      factor_m = factor_m / (ele_in_block * ele_in_block) * (ele_in_block * ele_in_block);
     } else {
-      factor_m = FloorAlign(factor_m, row_limit * ele_in_block);
+      factor_m = factor_m / (row_limit * ele_in_block) * (row_limit * ele_in_block);
     }
   }
   output_shapes[1] = 1;
@@ -362,39 +344,38 @@ void Concat::DoUbSplitZeroAxis(const int64_t factor_m) {
   if (output_shapes[0] > factor_m) {
     low_ub_factor = factor_m;
   } else {
-    low_ub_factor = CeilDiv(output_shapes[0], ele_in_block) * ele_in_block;
+    low_ub_factor = (output_shapes[0] + ele_in_block - 1) / ele_in_block * ele_in_block;
   }
-  output_shapes[0] = CeilDiv(output_shapes[0], low_ub_factor);
+  output_shapes[0] = (output_shapes[0] + low_ub_factor - 1) / low_ub_factor;
 }
 
 void Concat::DoOneConcatUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t dtype_len = BLOCK_SIZE / ele_in_block;
-  max_available_ub = FloorAlign((c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / dtype_len, ele_in_block);
+  max_available_ub = (c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / dtype_len / ele_in_block * ele_in_block;
   int64_t core_size = 1;
   if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
     core_size = c_info.core_num / output_shapes[0];
   }
   V_OP_TILING_CHECK((max_available_ub != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."),
-                    return);
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."), return );
   if (output_shapes[1] / max_available_ub < core_size &&
       output_shapes[1] > HALF_REPEAT_BLOCK_NUM * ele_in_block * core_size) {
-    max_available_ub = CeilDiv(output_shapes[1], core_size);
-    max_available_ub = CeilDiv(max_available_ub, ele_in_block) * ele_in_block;
+    max_available_ub = (output_shapes[1] + core_size - 1) / core_size;
+    max_available_ub = (max_available_ub + ele_in_block - 1) / ele_in_block * ele_in_block;
   }
   high_ub_factor = min(max_available_ub, output_shapes[1]);
   ori_output_col = output_shapes[1];
-  output_shapes[1] = CeilDiv(output_shapes[1], high_ub_factor);
+  output_shapes[1] = (output_shapes[1] + high_ub_factor - 1) / high_ub_factor;
 }
 
 void Concat::DoAllAlignUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t dtype_len = BLOCK_SIZE / ele_in_block;
   if (c_info.ori_axis == 0) {
-    max_available_ub = FloorAlign(c_info.ub_size / dtype_len, ele_in_block);
+    max_available_ub = c_info.ub_size / dtype_len / ele_in_block * ele_in_block;
   } else {
-    max_available_ub = FloorAlign(c_info.ub_size / HALF / dtype_len, ele_in_block);
+    max_available_ub = c_info.ub_size / HALF / dtype_len / ele_in_block * ele_in_block;
   }
   if (output_shapes[1] <= max_available_ub && !is_one_concat) {
     read_align_no_ub = true;
@@ -402,11 +383,11 @@ void Concat::DoAllAlignUbTiling() {
     int64_t base_size = MULTI_CORE_EXPERIENCE * ONE_K_BYTES / dtype_len / output_shapes[1];
     int64_t max_core = c_info.core_num;
     if (base_size > 1) {
-      max_core = CeilDiv(c_info.core_num, base_size);
+      max_core = (c_info.core_num + base_size - 1) / base_size;
     }
-    low_ub_factor = min(CeilDiv(output_shapes[0], max_core), max_available_ub);
+    low_ub_factor = min((output_shapes[0] + max_core - 1) / max_core, max_available_ub);
     output_shapes[1] = 1;
-    output_shapes[0] = CeilDiv(output_shapes[0], low_ub_factor);
+    output_shapes[0] = (output_shapes[0] + low_ub_factor - 1) / low_ub_factor;
   } else {
     int64_t row_factor = ROW_ALIGN_FACTOR;
     if (output_shapes[0] > row_factor) {
@@ -414,14 +395,14 @@ void Concat::DoAllAlignUbTiling() {
     } else {
       low_ub_factor = output_shapes[0];
     }
-    output_shapes[0] = CeilDiv(output_shapes[0], low_ub_factor);
+    output_shapes[0] = (output_shapes[0] + low_ub_factor - 1) / low_ub_factor;
     int64_t core_size = 1;
     if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
       core_size = c_info.core_num / output_shapes[0];
     }
-    int64_t col_factor = CeilDiv(output_shapes[1], core_size);
-    col_factor = CeilDiv(col_factor, ele_in_block) * ele_in_block;
-    row_factor = FloorAlign(max_available_ub / low_ub_factor, ele_in_block);
+    int64_t col_factor = (output_shapes[1] + core_size - 1) / core_size;
+    col_factor = (col_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
+    row_factor = max_available_ub / low_ub_factor / ele_in_block * ele_in_block;
     high_ub_factor = min(row_factor, col_factor);
     output_shapes[1] = (output_shapes[1] + high_ub_factor - 1) / high_ub_factor;
   }
@@ -462,12 +443,12 @@ void Concat::CalcOffsets() {
     cur_sum += input_shapes[i][1];
     if (cur_sum < high_ub_factor) {
       if (one_concat) {
-        offset += CeilDiv(input_shapes[i][1], ele_in_block) * ele_in_block;
+        offset += (input_shapes[i][1] + ele_in_block - 1) / ele_in_block * ele_in_block;
       } else {
         offset += low_ub_factor * input_shapes[i][1];
       }
     } else {
-      offset = CeilDiv((cur_sum % high_ub_factor), ele_in_block) * ele_in_block * low_ub_factor;
+      offset = ((cur_sum % high_ub_factor) + ele_in_block - 1) / ele_in_block * ele_in_block * low_ub_factor;
     }
     offsets[i] = offset;
     cur_sum %= high_ub_factor;
@@ -527,7 +508,7 @@ void Concat::UpdateTiling() {
   }
 }
 
-bool Concat::CheckZeroBlockTiling() {
+bool Concat::CheckZeroBlockTiling() const {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t cur_output = 0;
   for (int64_t i = input_nums - 1; i >= 0; i--) {
@@ -542,7 +523,7 @@ bool Concat::CheckZeroBlockTiling() {
   return false;
 }
 
-bool Concat::CheckOneBlockTiling() {
+bool Concat::CheckOneBlockTiling() const {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t block_inner_size = high_ub_factor * block_factor;
   int64_t cur_output = 0;
@@ -589,6 +570,7 @@ void Concat::CheckAndUpdateTiling() {
 
 bool Concat::DoTiling() {
   bool ret = ParseCompileInfo();
+  bool has_op_info = !op_info.GetInputShape().empty();
   if (has_op_info) {
     ret = ret && GenerateOutputShapeFromOp();
   } else {
@@ -689,7 +671,7 @@ bool Concat::WriteTilingData() const {
   return true;
 }
 
-bool Concat::ProcessConst(bool& is_const) {
+bool Concat::ProcessConst(bool& is_const) const {
   try {
     is_const = compile_info.at("_is_const");
     if (is_const) {
@@ -721,14 +703,16 @@ bool Concat::ConcatTiling() {
 bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "enter ConcatDsl");
-  concat::Concat concat(op_type, op_paras, compile_info, concat::dummy_op_info, run_info, false);
+  static std::vector<std::vector<int64_t>> dummy_input_shapes{};
+  static OpInfo dummy_op_info(dummy_input_shapes, ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
+  concat::Concat concat(op_type, op_paras, compile_info, dummy_op_info, run_info);
   return concat.ConcatTiling();
 }
 
 bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                utils::OpRunInfo& run_info, const OpInfo& op_info) {
   OP_LOGD(op_type.c_str(), "enter ConcatDsl");
-  concat::Concat concat(op_type, op_paras, compile_info, op_info, run_info, true);
+  concat::Concat concat(op_type, op_paras, compile_info, op_info, run_info);
   return concat.ConcatTiling();
 }
 

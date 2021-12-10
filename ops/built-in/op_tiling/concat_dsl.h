@@ -46,19 +46,18 @@ struct CompileInfo {
 class Concat {
  public:
   explicit Concat(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _compile_info,
-                  const OpInfo& _op_info, utils::OpRunInfo& _run_info, const bool _has_op_info)
+                  const OpInfo& _op_info, utils::OpRunInfo& _run_info)
       : op_type(_op_type),
         op_paras(_op_paras),
         compile_info(_compile_info),
         op_info(_op_info),
-        run_info(_run_info),
-        has_op_info(_has_op_info) {
+        run_info(_run_info) {
   }
   ~Concat() = default;
   bool ConcatTiling();
 
  private:
-  bool ProcessConst(bool& is_const);
+  bool ProcessConst(bool& is_const) const;
   bool DoTiling();
   bool ParseCompileInfo();
   bool GenerateOutputShape();
@@ -67,15 +66,15 @@ class Concat {
   void DoBlockTiling();
   void DoUbTiling();
   void DoAllAlignUbTiling();
-  void DoNoAlignUbTiling(const int64_t factor_n);
-  void DoGeneralUbTiling(const int64_t factor_n);
+  void DoNoAlignUbTiling(int64_t factor_n);
+  void DoGeneralUbTiling(int64_t factor_n);
   void DoOneConcatUbTiling();
   void CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& lt_factor_n);
-  void DoUbSplitZeroAxis(const int64_t factor_m);
+  void DoUbSplitZeroAxis(int64_t factor_m);
   void CheckAndUpdateTiling();
   void UpdateTiling();
-  bool CheckZeroBlockTiling();
-  bool CheckOneBlockTiling();
+  bool CheckZeroBlockTiling() const;
+  bool CheckOneBlockTiling() const;
   void CalcFactor();
   void CalcOffsets();
   void CalcKey();
@@ -101,7 +100,6 @@ class Concat {
   int64_t ori_output_col{1};
   uint64_t tiling_key{0};
   ge::DataType dtype{ge::DataType::DT_FLOAT16};
-  const bool has_op_info{false};
   bool need_multi_core{false};
   bool is_one_concat{false};
   bool use_one_concat{false};

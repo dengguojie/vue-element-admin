@@ -72,24 +72,24 @@ struct AdjustTilingParams {
 class Transpose {
  public:
   explicit Transpose(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _compile_info,
-                     const OpInfo& _op_info, utils::OpRunInfo& _run_info, const bool _has_op_info)
+                     const OpInfo& _op_info, utils::OpRunInfo& _run_info)
       : op_type(_op_type),
         op_paras(_op_paras),
         compile_info(_compile_info),
         op_info(_op_info),
-        run_info(_run_info),
-        has_op_info(_has_op_info) {
+        run_info(_run_info) {
   }
-  ~Transpose() {
-  }
+  ~Transpose() = default;
   bool TransposeTiling();
 
  private:
   bool ParseCompileInfo();
+  void GenerateShape(int64_t cur_dim_value, size_t cur_index, int64_t& real_index, bool& is_first_in);
   bool GenerateOutputShape();
   bool GenerateOutputShapeFromOp();
-  bool ProcessConst(bool& is_const);
+  bool ProcessConst(bool& is_const) const;
   bool DoTiling();
+  bool CalcOutputSize();
   bool CalcTiling();
   bool DoBlockAndUbTiling();
   bool DoBlockTiling();
@@ -99,8 +99,8 @@ class Transpose {
   void DoStoreAlignBlockTiling();
   void DoStoreAlignUbTiling(int64_t available_ub);
   void CalcKey();
-  void CalcInUbSize(transpose::AdjustTilingParams& adjustTilingParams);
-  bool AdjustJudge(const transpose::AdjustTilingParams& adjustTilingParams, bool greater_input);
+  void CalcInUbSize(transpose::AdjustTilingParams& adjustTilingParams) const;
+  bool AdjustJudge(const transpose::AdjustTilingParams& adjustTilingParams, bool greater_input) const;
   void UpdateFactorOne(transpose::AdjustTilingParams& adjustTilingParams);
   void AdjustInputFactor(transpose::AdjustTilingParams& adjustTilingParams);
   void AdjustOutputFactor(transpose::AdjustTilingParams& adjustTilingParams);
@@ -111,6 +111,7 @@ class Transpose {
   bool InputCrossUbTiling(transpose::CrossUbTilingParams& tilingParams);
   bool OutputCrossUbTiling(transpose::CrossUbTilingParams& tilingParams);
   void CrossUbUpdateSameAxis(transpose::CrossUbTilingParams& tilingParams);
+  void WriteConstTilingData() const;
   bool WriteTilingData() const;
 
  private:
@@ -141,7 +142,6 @@ class Transpose {
   bool need_multi_core{false};
   bool first_last_transpose{false};
   bool is_pure_copy{false};
-  bool has_op_info{false};
   std::array<int64_t, transpose::MAX_DIM_LEN> input_shapes{};
   std::array<int64_t, transpose::MAX_DIM_LEN> output_shapes{};
   std::array<int64_t, transpose::MAX_DIM_LEN> have_splits{};

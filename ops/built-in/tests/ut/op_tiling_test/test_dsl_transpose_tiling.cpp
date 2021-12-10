@@ -54,21 +54,6 @@ static void AddParams(ge::OpDescPtr& op_desc, const std::vector<int64_t>& shape,
   }
 }
 
-TEST_F(TransposeDslTiling, transpose_dsl_tiling_custom_unsupported) {
-  std::string compile_info = R"({"_mergeable": [0, 0, 0, 0], "_pattern": "Transpose", "_core_num": 32, "_ub_size": 262144, "_ori_permute": [1, 0, 3, 2], "_permute": [1, 0, 3, 2], "_transpose_vars": [true, true, true, true], "_only_const_tiling": false, "_is_const": false, "_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2"], "2000023": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2", "_ub_factor_3"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_3"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_1"], "2000122": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2"], "2000123": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2", "_ub_factor_3"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_3"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2"], "2000223": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2", "_ub_factor_3"], "2000323": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_2", "_ub_factor_3"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_3"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2"], "2000023": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2", "_ub_factor_3"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_3"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_1"], "2000122": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2"], "2000123": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2", "_ub_factor_3"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_3"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2"], "2000223": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2", "_ub_factor_3"], "2000323": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_2", "_ub_factor_3"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_3"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": [], "2000000": [], "2000001": [], "2000022": [], "2000023": [], "2000033": [], "2000101": [], "2000111": [], "2000122": [], "2000123": [], "2000133": [], "2000222": [], "2000223": [], "2000323": [], "2000333": [], "3000000": []}, "_custom_vars": {"0": [], "2000000": [], "2000001": [], "2000022": [], "2000023": [], "2000033": [], "2000101": [], "2000111": [], "2000122": [], "2000123": [], "2000133": [], "2000222": [], "2000223": [], "2000323": [], "2000333": [], "3000000": []}})";
-  ge::Operator op_paras = ge::Operator(this->test_info_->name());
-
-  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
-  optiling::utils::OpRunInfo runInfo;
-  std::vector<std::vector<int64_t>> input_shapes{};
-  optiling::OpInfo c_op_info(input_shapes, ge::DT_FLOAT);
-  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
-    CreateTransposeDslTilingHandler(this->test_info_->name(),
-                                    "Transpose",
-                                    op_info);
-  ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo, c_op_info));
-}
-
 TEST_F(TransposeDslTiling, transpose_dsl_tiling_case1) {
   // n last transpose, fp 32, last value > 128, [0, 2, 1, 3]
   std::vector<std::vector<int64_t>> inputs {
@@ -731,4 +716,37 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case20) {
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo, opInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5, 22, 41, 18, 92, 3, 80");
+}
+
+TEST_F(TransposeDslTiling, transpose_dsl_tiling_case21) {
+  // [1, 0, 3, 2]
+  std::vector<std::vector<int64_t>> inputs {
+      {88, 660, 8, 22}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+      {660, 88, 22, 8}
+  };
+  std::string compile_info = R"({"_mergeable": [0, 0, 0, 0], "_pattern": "Transpose", "_core_num": 32, "_ub_size": 262144, "_permute": [1, 0, 3, 2], "_ori_permute": [1, 0, 3, 2], "_only_const_tiling": true, "_is_const": false})";
+  ge::DataType dtype = ge::DT_FLOAT16;
+
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype);
+  }
+  for (size_t i = 0; i < outputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype, OUTPUT);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+
+  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "Transpose",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1, 0, 21, 0, 1, 1, 21");
 }
