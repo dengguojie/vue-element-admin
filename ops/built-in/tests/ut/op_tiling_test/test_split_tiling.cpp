@@ -6,7 +6,10 @@
 #include "register/op_tiling_registry.h"
 #include "split_combination_ops.h"
 #include "array_ops.h"
-
+#include "common/utils/ut_op_util.h"
+#include "test_common.h"
+using namespace ge;
+using namespace ut_util;
 using namespace std;
 
 class SplitTiling : public testing::Test {
@@ -33,17 +36,6 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-using namespace ge;
-#include "test_common.h"
-/*
-REG_OP(Split)
-    .INPUT(split_dim, TensorType({DT_INT32}))
-    .INPUT(x, TensorType::BasicType())
-    .DYNAMIC_OUTPUT(y, TensorType::BasicType())
-    .REQUIRED_ATTR(num_split, Int)
-    .OP_END_FACTORY_REG(Split)
-*/
-
 TEST_F(SplitTiling, Split_tiling0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Split");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -58,30 +50,19 @@ TEST_F(SplitTiling, Split_tiling0) {
   vector<ge::DataType> dtypes = {ge::DT_INT8, ge::DT_INT32};
   vector<int32_t> split_dim{0};
 
-  TensorDesc tensorInputx;
-  tensorInputx.SetShape(ge::Shape(input_shapes[0]));
-  tensorInputx.SetDataType(dtypes[0]);
-  TENSOR_INPUT(opParas, tensorInputx, x);
-
-  TensorDesc tensorInputSplitDim;
-  tensorInputSplitDim.SetShape(ge::Shape(input_shapes[1]));
-  tensorInputSplitDim.SetDataType(dtypes[1]);
-  TENSOR_INPUT_CONST(opParas, tensorInputSplitDim, split_dim, (const uint8_t*)split_dim.data(), split_dim.size() * 4);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, split_dim, input_shapes[1], dtypes[1], FORMAT_ND, split_dim);
 
   opParas.SetAttr("num_split", {1820});
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc tensorOutput;
-    tensorOutput.SetShape(ge::Shape(output_shapes[i]));
-    tensorOutput.SetDataType(dtypes[0]);
-    TENSOR_OUTPUT(opParas, tensorOutput, y);
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output_shapes[i], dtypes[0], FORMAT_ND, {});
   }
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":253952, \"num_split\":1}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(SplitTiling, Split_tiling1) {
@@ -98,36 +79,20 @@ TEST_F(SplitTiling, Split_tiling1) {
   vector<ge::DataType> dtypes = {ge::DT_INT8, ge::DT_INT32};
   vector<int32_t> split_dim{0};
 
-  TensorDesc tensorInputx;
-  tensorInputx.SetShape(ge::Shape(input_shapes[0]));
-  tensorInputx.SetDataType(dtypes[0]);
-  TENSOR_INPUT(opParas, tensorInputx, x);
-
-  TensorDesc tensorInputSplitDim;
-  tensorInputSplitDim.SetShape(ge::Shape(input_shapes[1]));
-  tensorInputSplitDim.SetDataType(dtypes[1]);
-  TENSOR_INPUT_CONST(opParas, tensorInputSplitDim, split_dim, (const uint8_t*)split_dim.data(), split_dim.size() * 4);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, split_dim, input_shapes[1], dtypes[1], FORMAT_ND, split_dim);
 
   opParas.SetAttr("num_split", {1820});
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc tensorOutput;
-    tensorOutput.SetShape(ge::Shape(output_shapes[i]));
-    tensorOutput.SetDataType(dtypes[0]);
-    TENSOR_OUTPUT(opParas, tensorOutput, y);
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output_shapes[i], dtypes[0], FORMAT_ND, {});
   }
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":253952, \"num_split\":1}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
-  // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "1 32 422240 1820 13195 13195 0 13195 13195 0 13195 13195 232 1 422240 0 0 0 0 0 0 0 0 1820 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(SplitTiling, Split_tiling2) {
@@ -147,36 +112,17 @@ TEST_F(SplitTiling, Split_tiling2) {
   vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_INT32};
   std::vector<int32_t> split_dim{1};
 
-  TensorDesc tensorInputx;
-  tensorInputx.SetShape(ge::Shape(input_shapes[0]));
-  tensorInputx.SetDataType(dtypes[0]);
-  tensorInputx.SetFormat(ge::FORMAT_FRACTAL_NZ);
-  TENSOR_INPUT(opParas, tensorInputx, x);
-
-  TensorDesc tensorInputSplitDim;
-  tensorInputSplitDim.SetShape(ge::Shape(input_shapes[1]));
-  tensorInputSplitDim.SetDataType(dtypes[1]);
-  tensorInputSplitDim.SetFormat(ge::FORMAT_FRACTAL_NZ);
-  TENSOR_INPUT_CONST(opParas, tensorInputSplitDim, split_dim, (const uint8_t*)split_dim.data(), split_dim.size() * 4);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], FORMAT_FRACTAL_NZ, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, split_dim, input_shapes[1], dtypes[1], FORMAT_FRACTAL_NZ, split_dim);
 
   opParas.SetAttr("num_split", {1, 2, 1, 80});
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc tensorOutput;
-    tensorOutput.SetShape(ge::Shape(output_shapes[i]));
-    tensorOutput.SetDataType(dtypes[0]);
-    tensorOutput.SetFormat(ge::FORMAT_FRACTAL_NZ);
-    TENSOR_OUTPUT(opParas, tensorOutput, y);
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output_shapes[i], dtypes[0], FORMAT_FRACTAL_NZ, {});
   }
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":126976, \"num_split\":4}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), to_string(runInfo.GetAllTilingData()));
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }

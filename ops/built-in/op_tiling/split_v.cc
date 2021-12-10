@@ -56,6 +56,8 @@ constexpr int32_t SPLIT_NUM = 16;
 constexpr int32_t ALLIGN_NUM_16 = 16;
 constexpr int32_t ALLIGN_NUM_15 = 15;
 
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_elems", "num_split"};
+
 namespace optiling {
 struct SplitVTilingParams {
   int64_t tilingMode;
@@ -147,7 +149,7 @@ bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock,
   return ret;
 }
 
-bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputShape,
+bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, const GeShape& inputShape,
                      std::vector<int64_t> sizeSplitsVec) {
   if (sizeSplitsVec.size() != static_cast<size_t>(numSplit)) {
     VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "num_split must be equal to the size_splits size");
@@ -156,7 +158,7 @@ bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> in
   }
 
   int64_t sizeSplitsSum = 0;
-  int64_t dim = inputShape[splitDim];
+  int64_t dim = inputShape.GetDim(splitDim);
   if (std::find(sizeSplitsVec.begin(), sizeSplitsVec.end(), -1) == sizeSplitsVec.end()) {
     sizeSplitsSum = std::accumulate(sizeSplitsVec.begin(), sizeSplitsVec.end(), 0);
     GELOGD("op [SplitVTiling] : CheckSplitVAttr  sizeSplitsSum=%ld, splitDim=%ld, inputShape[%ld]=%ld", sizeSplitsSum,
@@ -305,19 +307,19 @@ void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t da
   runParams.lastNumLast = rowsLastCore - runParams.loopNumLast * maxRows;
 }
 
-bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, std::vector<int64_t> inputShape,
+bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, const GeShape& inputShape,
                             int64_t ubElems, int64_t coreNum, int64_t splitDim, int64_t numSplit, int64_t dataBlock,
                             const std::vector<int64_t>& sizeSplitsVec, ge::DataType inputDType, bool isSplitV) {
   int64_t shapeBefore = 1;
   int64_t shapeAfter = 1;
   int64_t shapeAfterDim = 1;
-  int64_t shapeDim = inputShape[splitDim];
-  int64_t inputSize = inputShape.size();
+  int64_t shapeDim = inputShape.GetDim(splitDim);
+  int64_t inputSize = inputShape.GetDimNum();
   for (int64_t i = 0; i < splitDim; i++) {
-    shapeBefore = inputShape[i] * shapeBefore;
+    shapeBefore = inputShape.GetDim(i) * shapeBefore;
   }
   for (int64_t j = splitDim + 1; j < inputSize; j++) {
-    shapeAfterDim = inputShape[j] * shapeAfterDim;
+    shapeAfterDim = inputShape.GetDim(j) * shapeAfterDim;
   }
   shapeAfter = shapeDim * shapeAfterDim;
 
@@ -525,32 +527,22 @@ void PrintSplitVTilingParams(const SplitVTilingParams& params) {
   GELOGD("op [SplitVTiling] : sizeValueSplit=%d.", params.sizeValueSplit);
 }
 
-bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubElems,
-                            int64_t& numSplit) {
-  using namespace nlohmann;
-  auto allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get core_num error");
-    return false;
-  }
-  coreNum = allVars["core_num"].get<std::int64_t>();
+bool GetSplitVCompileParams(const std::string& op_type, const std::vector<int64_t>& opCompileInfo, int64_t& coreNum,
+                            int64_t& ubElems, int64_t& numSplit) {
+  OP_TILING_CHECK(
+      opCompileInfo.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), opCompileInfo.size()),
+      return false);
 
-  if (allVars.count("ub_elems") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get ub_elems error");
-    return false;
-  }
-  ubElems = allVars["ub_elems"].get<std::int64_t>();
-
-  if (allVars.count("num_split") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get num_split error");
-    return false;
-  }
-  numSplit = allVars["num_split"].get<std::int64_t>();
+  coreNum = opCompileInfo[0];
+  ubElems = opCompileInfo[1];
+  numSplit = opCompileInfo[2];
 
   return true;
 }
 
-bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
   using namespace ge;
   using namespace std;
@@ -586,8 +578,8 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   }
   ge::Format input_format = input0_desc->GetFormat();
 
-  const std::vector<int64_t>& inputShape = xInput_desc->MutableShape().GetDims();
-  int64_t shapeSize = inputShape.size();
+  const GeShape& inputShape = xInput_desc->MutableShape();
+  int64_t shapeSize = inputShape.GetDimNum();
   ge::DataType inputDType = xInput_desc->GetDataType();
   int64_t dataBlock = GetDataBlockElems(inputDType);
   if (dataBlock == 0) {
@@ -600,7 +592,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   int64_t coreNum = 0;
   int64_t ubElems = 0;
   int64_t numSplit = 0;
-  bool can_get_params = GetSplitVCompileParams(opCompileInfo, coreNum, ubElems, numSplit);
+  bool can_get_params = GetSplitVCompileParams(opType, opCompileInfo, coreNum, ubElems, numSplit);
   if (!can_get_params || coreNum == 0 || ubElems == 0 || numSplit == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: GetSplitVCompileParams error.");
     return false;
@@ -646,7 +638,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
     int64_t size = sizeSplitsVec.size();
     if (input_format == ge::FORMAT_FRACTAL_NZ) {
       for (int in = 0; in < size; in++) {
-        sizeSplitsVec[in] = (sizeSplitsVec[in]  +  ALLIGN_NUM_15) / ALLIGN_NUM_16;
+        sizeSplitsVec[in] = (sizeSplitsVec[in] + ALLIGN_NUM_15) / ALLIGN_NUM_16;
       }
     }
     if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {
@@ -654,7 +646,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
       return false;
     }
   } else {
-    int64_t dim = inputShape[splitDim];
+    int64_t dim = inputShape.GetDim(splitDim);
     if (dim % numSplit != 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType,
                                       "SplitVTiling: The num_split must be divisible by the x.shape[split_dim]");
@@ -669,7 +661,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   InitSplitVRunningParams(runParams);
   runParams.sizeValueSplit = splitSizeValue;
 
-  int64_t inputElems = std::accumulate(inputShape.begin(), inputShape.end(), 1, std::multiplies<int>());
+  int64_t inputElems = inputShape.GetShapeSize();
   GELOGD("op [SplitVTiling] : inputElems=%d.", inputElems);
 
   if (!CalSplitVRunningParams(runParams, inputElems, inputShape, ubElems, coreNum, splitDim, numSplit, dataBlock,
@@ -690,7 +682,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
 }
 
 // register tiling interface of the SplitV op
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(SplitV, SplitVTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(SplitV, SplitVTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 // register tiling interface of the Split op
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Split, SplitVTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Split, SplitVTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

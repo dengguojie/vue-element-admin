@@ -6,7 +6,10 @@
 #include "register/op_tiling_registry.h"
 #include "nn_norm_ops.h"
 #include "array_ops.h"
-
+#include "common/utils/ut_op_util.h"
+#include "test_common.h"
+using namespace ge;
+using namespace ut_util;
 using namespace std;
 
 class DropOutDoMaskTiling : public testing::Test {
@@ -33,15 +36,6 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-using namespace ge;
-#include "test_common.h"
-/*
-.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
-    .INPUT(mask, TensorType({DT_UINT8}))
-    .INPUT(keep_prob, TensorType({DT_FLOAT, DT_FLOAT16}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
-*/
-
 TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DropOutDoMask");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -51,31 +45,14 @@ TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
   std::vector<int64_t> input_mask_shape = {40};
   std::vector<int64_t> input_keep_prob_shape = {1};
 
-  TensorDesc tensorInputX;
-  tensorInputX.SetShape(ge::Shape(input_x_shape));
-  tensorInputX.SetDataType(ge::DT_FLOAT);
-
-  TensorDesc tensorInputMask;
-  tensorInputMask.SetShape(ge::Shape(input_mask_shape));
-  tensorInputMask.SetDataType(ge::DT_UINT8);
-
-  TensorDesc tensorInputKeepProb;
-  tensorInputKeepProb.SetShape(ge::Shape(input_keep_prob_shape));
-  tensorInputKeepProb.SetDataType(ge::DT_FLOAT);
-
-  TENSOR_INPUT(opParas, tensorInputX, x);
-  TENSOR_INPUT(opParas, tensorInputMask, mask);
-  TENSOR_INPUT(opParas, tensorInputKeepProb, keep_prob);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_x_shape, DT_FLOAT, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, mask, input_mask_shape, DT_UINT8, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, keep_prob, input_keep_prob_shape, DT_FLOAT, FORMAT_ND, {});
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 128 16 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }

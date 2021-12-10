@@ -27,9 +27,11 @@
 #include "array_ops.h"
 #define private public
 #include "register/op_tiling_registry.h"
-
-using namespace std;
+#include "common/utils/ut_op_util.h"
+#include "test_common.h"
 using namespace ge;
+using namespace ut_util;
+using namespace std;
 
 class ArgMaxWithValueTiling : public testing::Test {
  protected:
@@ -55,16 +57,6 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-using namespace ge;
-#include "test_common.h"
-/*
-.INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16}))
-    .OUTPUT(indice,TensorType({DT_INT32}))
-    .OUTPUT(values, TensorType({DT_FLOAT,DT_FLOAT16}))
-    .REQUIRED_ATTR(dimension, Int)
-    .ATTR(keep_dims, Bool, false)
-*/
-
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
   std::string op_name = "ArgMaxWithValue";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
@@ -74,19 +66,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
 
   std::vector<int64_t> input = {35, 5, 128};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
@@ -98,19 +83,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
 
   std::vector<int64_t> input{35, 128};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 35 128 128 3 16 3 1 128 0 0 0 16 0 0 0 3 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
@@ -122,19 +100,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
 
   std::vector<int64_t> input{35, 96};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 35 96 96 3 16 3 1 240 0 0 0 16 0 0 0 3 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
@@ -146,19 +117,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
 
   std::vector<int64_t> input{35, 10000};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 35 10000 10000 3 16 3 0 0 0 10000 0 16 0 0 0 3 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
@@ -170,19 +134,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
 
   std::vector<int64_t> input{35, 10000};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
@@ -194,19 +151,12 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
 
   std::vector<int64_t> input{35, 8000};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_6) {
   std::string op_name = "ArgMaxWithValue";
@@ -217,17 +167,10 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_6) {
 
   std::vector<int64_t> input = {3, 5, 521};
 
-  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
-
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
-  TENSOR_INPUT(opParas, tensor_input, x);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "9 3 5 521 5 128 9 0 0 0 0 0 128 128 0 0 9 128 119 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }

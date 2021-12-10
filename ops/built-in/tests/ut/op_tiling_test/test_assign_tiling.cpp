@@ -11,10 +11,11 @@
 #include "array_ops.h"
 #define private public
 #include "register/op_tiling_registry.h"
-
-using namespace std;
-using namespace ge;
+#include "common/utils/ut_op_util.h"
 #include "test_common.h"
+using namespace ge;
+using namespace ut_util;
+using namespace std;
 
 class AssignTiling : public testing::Test {
  protected:
@@ -49,20 +50,12 @@ TEST_F(AssignTiling, Assign_tiling1) {
       {4, 4, 4, 4},
       {4, 4, 4, 4},
   };
-  TensorDesc tensor_input1(ge::Shape(input[0]), ge::FORMAT_ND, ge::DT_FLOAT16);
-  TensorDesc tensor_input2(ge::Shape(input[1]), ge::FORMAT_ND, ge::DT_FLOAT16);
 
-  TENSOR_INPUT(opParas, tensor_input1, ref);
-  TENSOR_INPUT(opParas, tensor_input2, value);
+  TENSOR_INPUT_WITH_SHAPE(opParas, ref, input[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, value, input[1], DT_FLOAT16, FORMAT_ND, {});
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 256000}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
-  // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 4 4 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }

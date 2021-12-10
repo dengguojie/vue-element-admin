@@ -33,36 +33,35 @@
 // the minimum num for one core
 const int64_t CORE_MINIMUM_NUM = 4;
 const int64_t BLOCK_SIZE = 32;  // one block size is 32Bytes
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size"};
 
 using namespace ge;
 namespace optiling {
-bool GetAssignCompileParams(const nlohmann::json& op_compile_info, int64_t& core_num, int64_t& ub_size) {
-  using namespace nlohmann;
-  const nlohmann::json& all_vars = op_compile_info["vars"];
-  if (all_vars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("Assign", "GetAssignCompileParams, get core_num error");
-    return false;
-  }
-  core_num = all_vars["core_num"].get<std::int64_t>();
+bool GetAssignCompileParams(const std::string& op_type, const std::vector<int64_t>& op_compile_info, int64_t& core_num,
+                            int64_t& ub_size) {
+  OP_TILING_CHECK(
+      op_compile_info.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), op_compile_info.size()),
+      return false);
 
-  if (all_vars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("Assign", "GetAssignCompileParams, get ub_size error");
-    return false;
-  }
-  ub_size = all_vars["ub_size"].get<std::int64_t>();
+  core_num = op_compile_info[0];
+  ub_size = op_compile_info[1];
 
   return true;
 }
 
-bool AssignTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool AssignTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                   utils::OpRunInfo& run_info) {
   using namespace ge;
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
-  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."), return false);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
   auto value_desc = operator_info->MutableInputDesc(1);
-  OP_TILING_CHECK(value_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get value_desc failed."), return false);
+  OP_TILING_CHECK(value_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get value_desc failed."),
+                  return false);
 
   ge::GeShape value_shape = value_desc->MutableShape();
   ge::DataType input_dtype = value_desc->GetDataType();
@@ -72,7 +71,7 @@ bool AssignTiling(const std::string& op_type, const ge::Operator& op_paras, cons
 
   int64_t core_num = 0;
   int64_t ub_size = 0;
-  if (!GetAssignCompileParams(op_info, core_num, ub_size)) {
+  if (!GetAssignCompileParams(op_type, op_info, core_num, ub_size)) {
     return false;
   }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
@@ -104,5 +103,5 @@ bool AssignTiling(const std::string& op_type, const ge::Operator& op_paras, cons
 }
 
 // register tiling interface of the Assign op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Assign, AssignTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Assign, AssignTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

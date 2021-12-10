@@ -30,16 +30,16 @@
 
 // the minest num for one core
 const int64_t CORE_MINEST_NUM = 128;
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num"};
 
 namespace optiling {
-bool GetDropOutDoMaskCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum) {
-  using namespace nlohmann;
-  auto allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");
-    return false;
-  }
-  coreNum = allVars["core_num"].get<std::int64_t>();
+bool GetDropOutDoMaskCompileParams(const std::string& op_type, const std::vector<int64_t>& op_info, int64_t& coreNum) {
+  OP_TILING_CHECK(
+      op_info.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), op_info.size()),
+      return false);
+  coreNum = op_info[0];
 
   return true;
 }
@@ -51,24 +51,23 @@ void SetRuningParams(const int64_t& core_used_num, const int64_t& num_per_core, 
   runInfo.AddTilingData(num_tail_core);
 }
 
-bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                          utils::OpRunInfo& run_info) {
   using namespace ge;
   PROFILING_TILING_INIT(op_type.c_str());
 
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
-  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."), 
-		  return false);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
   auto var_desc = operator_info->MutableInputDesc(0);
   OP_TILING_CHECK(var_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var_desc failed."), return false);
 
-  const std::vector<int64_t>& var_shape = var_desc->MutableShape().GetDims();
+  const GeShape& var_shape = var_desc->MutableShape();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  int64_t var_num =
-      var_shape.size() == 0 ? 1 : std::accumulate(var_shape.begin(), var_shape.end(), 1, std::multiplies<int64_t>());
+  int64_t var_num = var_shape.GetDimNum() == 0 ? 1 : var_shape.GetShapeSize();
   int64_t core_num = 0;
-  if (!GetDropOutDoMaskCompileParams(op_info, core_num)) {
+  if (!GetDropOutDoMaskCompileParams(op_type, op_info, core_num)) {
     VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");
     return false;
   }
@@ -94,5 +93,5 @@ bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_para
 }
 
 // register tiling interface of the DropOutDoMask op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(DropOutDoMask, DropOutDoMaskTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(DropOutDoMask, DropOutDoMaskTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

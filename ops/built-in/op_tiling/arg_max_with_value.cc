@@ -36,6 +36,7 @@ using namespace ge;
 using namespace std;
 
 const int32_t MAX_SEGMENT_LEN = 2048 * 4;
+static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num", "axis"};
 
 struct TilingParam {
   int32_t tiling_mode;
@@ -114,8 +115,8 @@ static int GetAlignNum(int32_t dim_size, int32_t align_size) {
   return align_num;
 }
 
-static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, const ge::DataType& dtype,
-                           int32_t axis, int32_t ub_ele, int32_t core_num) {
+static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, const ge::DataType& dtype, int32_t axis,
+                           int32_t ub_ele, int32_t core_num) {
   // set block and vector
   int32_t data_each_block = 8;
   int32_t data_each_vector = 64;
@@ -304,20 +305,7 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
   }
 }
 
-template <typename T>
-static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, T& value) {
-  const nlohmann::json& all_vars = op_info["vars"];
-  if (all_vars.empty()) {
-    return false;
-  }
-  if (all_vars.count(name) == 0) {
-    return false;
-  }
-  value = all_vars[name].get<T>();
-  return true;
-}
-
-static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                          utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "ArgOpsTiling running.");
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
@@ -327,22 +315,15 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
   }
   PROFILING_TILING_INIT(op_type.c_str());
   // get compile info
-  int32_t ub_ele = 0;
-  int32_t core_num = 1;
-  int32_t axis = 1;
-  const map<string, int32_t&> compile_params = {
-      {"ub_ele", ub_ele},
-      {"core_num", core_num},
-      {"axis", axis},
-  };
-  for (auto& param : compile_params) {
-    const auto& name = param.first;
-    OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
-    if (!GetCompileInfo<int32_t>(op_info, name, param.second)) {
-      return false;
-    }
-    OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
-  }
+  OP_TILING_CHECK(
+      op_info.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), op_info.size()),
+      return false);
+
+  int32_t ub_ele = static_cast<int32_t>(op_info[0]);
+  int32_t core_num = static_cast<int32_t>(op_info[1]);
+  int32_t axis = static_cast<int32_t>(op_info[2]);
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   // check axis value and set to positive value
   auto input_desc = operator_info->MutableInputDesc(0);
@@ -375,6 +356,6 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ArgMaxWithValue, ArgOpsTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ArgMinWithValue, ArgOpsTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ArgMaxWithValue, ArgOpsTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ArgMinWithValue, ArgOpsTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling
