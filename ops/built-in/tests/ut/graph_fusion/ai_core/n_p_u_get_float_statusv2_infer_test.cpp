@@ -28,11 +28,9 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
   auto dtype = DT_FLOAT;
 
   // input
-  ge::GeShape output_shape({8});
+  ge::Shape output_shape({8});
   ge::TensorDesc desc_data(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
   desc_data.SetOriginFormat(ge::FORMAT_ND);
-  desc_data.SetOriginDataType(ge::DT_FLOAT);
-  desc_data.SetOriginShape(output_shape);
   auto data = op::Data("data");
   data.update_input_desc_x(desc_data);
   data.update_output_desc_y(desc_data);
