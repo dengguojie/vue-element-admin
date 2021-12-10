@@ -2037,4 +2037,25 @@ INFER_FUNC_REG(ReduceStdV2Update, ReduceStdV2UpdateInferShape);
 VERIFY_FUNC_REG(ReduceStdV2Update, ReduceStdV2UpdateVerify);
 // ----------------ReduceStdV2Update END---------------------
 
+// ----------------ReduceLogSumExp Op-------------------
+IMPLEMT_COMMON_INFERFUNC(ReduceLogSumExpInferShape) {
+    std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
+    if (prof_switch) {
+        before_infer = std::chrono::steady_clock::now();
+    }
+    OP_LOGD(op.GetName().c_str(), "Enter Start ReduceLogSumExpInferShape");
+    if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
+        if (prof_switch) {
+            after_infer = std::chrono::steady_clock::now();
+            auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+        }
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(ReduceLogSumExp, ReduceLogSumExpInferShape);
+// ----------------ReduceLogSumExp END-------------------
+
 }  // namespace ge
