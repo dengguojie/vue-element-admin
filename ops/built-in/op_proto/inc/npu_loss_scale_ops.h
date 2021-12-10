@@ -132,7 +132,7 @@ REG_OP(NPUClearFloatStatusV2)
 *@brief Set the value of global workspace to 0. \n
 
 *@par Inputs:
-*addr: A tensor of type float32 . \n
+*addr: A nested structure of Tensors of type float32 . \n
 
 *@par Outputs:
 *data: A Tensor of type float32.
