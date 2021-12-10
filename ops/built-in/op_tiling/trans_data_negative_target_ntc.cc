@@ -285,7 +285,6 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   for (int32_t i = 0; i < dst_axis_pos_c; i++) {
     axis_dst_cl_size *= out_shape[i];
   }
-  int64_t src_c_dst_cr_size = axis_src_c_size * axis_dst_cr_size;
   int64_t dst_c_dst_cr_size = axis_dst_c_size * axis_dst_cr_size;
   int64_t tmp_dst_cl_lp_unit;
   if ((dtype == DT_FLOAT16 || dtype == DT_INT8 || dtype == DT_UINT8 ||

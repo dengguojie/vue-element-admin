@@ -55,6 +55,14 @@ namespace optiling
     return res_value;
   }
 
+  static int64_t GetIdxFromFormatV2(const std::map<ge::Format, int64_t>& format_map, const ge::Format data_format) {
+    auto find_format_it = format_map.find(data_format);
+    if (find_format_it != format_map.end()) {
+      return find_format_it->second;
+    }
+
+    return -1;
+  }
 
   bool GetMcInfoPositiveNtc100(const int64_t &src_cr_lp_cnt, const int64_t &src_cr_size, const int64_t &src_c_lp_cnt,
                                const int64_t &src_c_size, const int64_t &src_cl_lp_cnt, const int64_t &src_cl_size,
@@ -145,7 +153,7 @@ namespace optiling
       in_shape_new.push_back(in_shape[1]);
       in_shape_new.push_back(in_shape[2]);
       in_shape_new.push_back(in_shape[3] * in_shape[4]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
       out_shape_new.push_back(in_shape[0]);
       out_shape_new.push_back(in_shape[2]);
@@ -162,7 +170,7 @@ namespace optiling
       in_shape_new.push_back(in_shape[0]);
       in_shape_new.push_back(in_shape[1]);
       in_shape_new.push_back(in_shape[2] * in_shape[3]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
       out_shape_new.push_back(in_shape[0]);
       out_shape_new.push_back(axis_c1);
@@ -178,9 +186,9 @@ namespace optiling
       in_shape_new.push_back(in_shape[0] * in_shape[1]);
       in_shape_new.push_back(in_shape[2]);
       in_shape_new.push_back(in_shape[3]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
-      int64_t n_idx = GetIdxFromFormat(N_IDX_MAP, src_format);
+      int64_t n_idx = GetIdxFromFormatV2(N_IDX_MAP, src_format);
       int64_t axis_no = GetCeilDiv(in_shape[n_idx], NI_16);
       out_shape_new.push_back(axis_c1);
       out_shape_new.push_back(in_shape[0] * in_shape[1]);
@@ -197,9 +205,9 @@ namespace optiling
       in_shape_new.push_back(in_shape[1] * in_shape[2]);
       in_shape_new.push_back(in_shape[3]);
       in_shape_new.push_back(in_shape[4]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
-      int64_t n_idx = GetIdxFromFormat(N_IDX_MAP, src_format);
+      int64_t n_idx = GetIdxFromFormatV2(N_IDX_MAP, src_format);
       int64_t axis_no = GetCeilDiv(in_shape[n_idx], NI_16);
       out_shape_new.push_back(in_shape[0]);
       out_shape_new.push_back(axis_c1);
@@ -246,9 +254,9 @@ namespace optiling
       in_shape_new.push_back(in_shape[0]);
       in_shape_new.push_back(in_shape[1]);
       in_shape_new.push_back(in_shape[2] * in_shape[3]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
-      int64_t n_idx = GetIdxFromFormat(N_IDX_MAP, src_format);
+      int64_t n_idx = GetIdxFromFormatV2(N_IDX_MAP, src_format);
       int64_t axis_no = GetCeilDiv(in_shape[n_idx], NI_16);
       out_shape_new.push_back(axis_c1);
       out_shape_new.push_back(in_shape[2] * in_shape[3]);
@@ -265,9 +273,9 @@ namespace optiling
       in_shape_new.push_back(in_shape[1]);
       in_shape_new.push_back(in_shape[2]);
       in_shape_new.push_back(in_shape[3] * in_shape[4]);
-      int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+      int64_t c_idx = GetIdxFromFormatV2(C_IDX_MAP, src_format);
       int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
-      int64_t n_idx = GetIdxFromFormat(N_IDX_MAP, src_format);
+      int64_t n_idx = GetIdxFromFormatV2(N_IDX_MAP, src_format);
       int64_t axis_no = GetCeilDiv(in_shape[n_idx], NI_16);
       out_shape_new.push_back(in_shape[2]);
       out_shape_new.push_back(axis_c1);

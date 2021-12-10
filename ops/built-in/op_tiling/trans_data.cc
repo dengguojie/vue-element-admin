@@ -41,6 +41,15 @@ int64_t GetC0SizeWithType(DataType& dtype) {
   return C0_16;
 }
 
+static int64_t GetIdxFromFormatV1(const std::map<ge::Format, int64_t>& format_map, const ge::Format data_format) {
+  auto find_format_it = format_map.find(data_format);
+  if (find_format_it != format_map.end()) {
+    return find_format_it->second;
+  }
+
+  return -1;
+}
+
 bool CheckTensorShape(const std::string& op_type, int64_t ub_size, int64_t block_dim, std::vector<int64_t> out_shape) {
   int32_t out_dims = out_shape.size();
 
@@ -92,8 +101,8 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
                     ge::Format& dst_format, int64_t c0_len, int64_t group, std::vector<int64_t>& in_shape_new,
                     std::vector<int64_t>& out_shape_new, std::string& real_src_format, std::string& real_dst_format) {
   if ((src_format == FORMAT_NCHW || src_format == FORMAT_NHWC) && (dst_format == FORMAT_NC1HWC0)) {
-    int64_t hw_idx = GetIdxFromFormat(HW_IDX_MAP, src_format);
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t hw_idx = GetIdxFromFormatV1(HW_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     real_dst_format = "NCHT";
     if (src_format == FORMAT_NCHW) {
       real_src_format = "NCH";
@@ -196,7 +205,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     in_shape_new.push_back(in_shape[1]);
     in_shape_new.push_back(in_shape[2]);
     in_shape_new.push_back(in_shape[3] * in_shape[4]);
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
     int64_t axis_c0 = c0_len;
     out_shape_new.push_back(in_shape[0]);
@@ -222,7 +231,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     in_shape_new.push_back(in_shape[2]);
     in_shape_new.push_back(in_shape[3]);
 
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     int64_t axis_c0 = out_shape[out_shape.size() - 1];
     int64_t axis_ni = out_shape[out_shape.size() - 2];
     int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], axis_c0);
@@ -244,7 +253,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     in_shape_new.push_back(in_shape[1] * in_shape[2]);
     in_shape_new.push_back(in_shape[3]);
     in_shape_new.push_back(in_shape[4]);
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
     int64_t axis_c0 = c0_len;
     int64_t axis_ni = NI_16;
@@ -267,7 +276,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     in_shape_new.push_back(in_shape[1]);
     in_shape_new.push_back(in_shape[3] * in_shape[2]);
     in_shape_new.push_back(in_shape[4]);
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
     int64_t axis_c0 = c0_len;
     int64_t axis_ni = NI_16;
@@ -310,7 +319,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     in_shape_new.push_back(in_shape[1]);
     in_shape_new.push_back(in_shape[3] * in_shape[2]);
     in_shape_new.push_back(in_shape[4]);
-    int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
+    int64_t c_idx = GetIdxFromFormatV1(C_IDX_MAP, src_format);
     int64_t axis_c1 = GetCeilDiv(in_shape[c_idx], c0_len);
     int64_t axis_c0 = c0_len;
     out_shape_new.push_back(in_shape[0]);

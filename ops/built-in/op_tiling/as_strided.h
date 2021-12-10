@@ -31,19 +31,19 @@
 
 namespace optiling {
 
-#define BYTES_PER_BLOCK 32
-#define VNC_ROWS 16
-#define MTE_GATE 4
-#define TILING_LAST_STRIDE_IS_ONE 3000
-#define TILING_LAST_DIM_IS_LARGE 3001
-#define TILING_LAST_DIM_IS_SMALL 3002
-#define TILING_INPUT_OR_OUTPUT_IS_ALL_IN 3003
-#define TILING_LAST_LARGE_DIM_LARGE_STRIDE 3004
-#define TILING_LAST_SMALL_DIM_LARGE_STRIDE 3005
-#define TILING_LAST_TWO_DIM_IS_LARGE 3006
-#define TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE 3007
-#define TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL 3008
-#define TILING_FIRST_STRIDE_IS_SMALL 3009
+constexpr int64_t BYTES_PER_BLOCK = 32;
+constexpr int64_t VNC_ROWS = 16;
+constexpr int64_t MTE_GATE = 4;
+constexpr int64_t TILING_LAST_STRIDE_IS_ONE = 3000;
+constexpr int64_t TILING_LAST_DIM_IS_LARGE = 3001;
+constexpr int64_t TILING_LAST_DIM_IS_SMALL = 3002;
+constexpr int64_t TILING_INPUT_OR_OUTPUT_IS_ALL_IN = 3003;
+constexpr int64_t TILING_LAST_LARGE_DIM_LARGE_STRIDE = 3004;
+constexpr int64_t TILING_LAST_SMALL_DIM_LARGE_STRIDE = 3005;
+constexpr int64_t TILING_LAST_TWO_DIM_IS_LARGE = 3006;
+constexpr int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE = 3007;
+constexpr int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL = 3008;
+constexpr int64_t TILING_FIRST_STRIDE_IS_SMALL = 3009;
 
 struct AsStridedInfo {
   int64_t tiling_mode;
@@ -77,6 +77,7 @@ struct AsStridedInfo {
     rsecond_dim_size = 1;
     rsecond_dim_stride = 0;
     nfirst_cnt_per_row = 1;
+    tiling_mode = 1;
   }
 };
 

@@ -446,15 +446,6 @@ static int64_t GetCeilDiv(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-static int64_t GetIdxFromFormat(const std::map<ge::Format, int64_t>& format_map, const ge::Format data_format) {
-  auto find_format_it = format_map.find(data_format);
-  if (find_format_it != format_map.end()) {
-    return find_format_it->second;
-  }
-
-  return -1;
-}
-
 static int64_t GetShapeSize(std::vector<int64_t> in_shape, int32_t pos) {
   int32_t n = in_shape.size();
   int64_t shape_size = 1;

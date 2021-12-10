@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 /*!
  * \file as_strided.cc
  * \brief tiling function of op as_strided
@@ -34,7 +33,6 @@ using namespace std;
 
 using namespace ge;
 namespace optiling {
-
 
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"max_elem_cnt", "core_num"};
@@ -72,15 +70,15 @@ static int64_t GetDivisorAlign(const int64_t u_value, const int64_t d_value) {
   return res_value;
 }
 
-static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t beg, int64_t end) {
+static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t beg, const int64_t end) {
   int64_t range_size = 1;
 
   if (end < 0) {
-    end = beg;
-  }
-
-  for (int64_t i = beg; i <= end; i++) {
+    range_size = in_shape[beg];
+  } else {
+    for (int64_t i = beg; i <= end; i++) {
     range_size *= in_shape[i];
+    }
   }
 
   return range_size;
@@ -88,6 +86,7 @@ static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t 
 
 static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row, const int64_t col) {
   int64_t elem_index_in_ori = 0;
+  int64_t dim_step = 3;
 
   // row and col are 1-based
   if (row == 0 || col == 0) {
@@ -95,9 +94,9 @@ static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row
   } else {
     int64_t n_row = row - 1;
     for (int64_t i = 0; i < as_info.dim_num; i++) {
-      elem_index_in_ori += (n_row / as_info.dim_except_last_paras[i*3+0] %
-                            as_info.dim_except_last_paras[i*3+1] *
-                            as_info.dim_except_last_paras[i*3+2]);
+      elem_index_in_ori += (n_row / as_info.dim_except_last_paras[i*dim_step+0] %
+                            as_info.dim_except_last_paras[i*dim_step+1] *
+                            as_info.dim_except_last_paras[i*dim_step+2]);
     }
     elem_index_in_ori = elem_index_in_ori + as_info.storage_offset + 1 + (col - 1) * as_info.last_dim_stride;
   }
@@ -109,6 +108,7 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
                       std::vector<int64_t>& new_size, std::vector<int64_t>& new_stride) {
   int64_t idx_beg = 0;
   int64_t idx_end = 0;
+  int64_t save_dims = 2;
   int64_t dims = out_stride.size();
   vector<int64_t> tmp_out_size;
   vector<int64_t> tmp_out_stride;
@@ -162,7 +162,7 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
       new_stride.push_back(tmp_out_stride[idx_beg]);
     }
   }
-  if (tmp_out_stride[tmp_dims-2] == tmp_out_stride[tmp_dims-1]) {
+  if (tmp_out_stride[tmp_dims-save_dims] == tmp_out_stride[tmp_dims-1]) {
     new_size.push_back(GetRangeSize(tmp_out_size, idx_beg, idx_end));
   } else {
     new_size.push_back(tmp_out_size[idx_beg]);
@@ -180,9 +180,9 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
     int64_t tmp_axis_merge_stride = 1;
     int64_t last_dim_index = new_size[new_dims-1] * new_stride[new_dims-1];
 
-    if (last_dim_index != new_stride[new_dims-2]) {
+    if (last_dim_index != new_stride[new_dims-save_dims]) {
       return true;
-    } else if (last_dim_index == new_stride[new_dims-2] && new_dims == 2) {
+    } else if (last_dim_index == new_stride[new_dims-save_dims] && new_dims == save_dims) {
       tmp_axis_merge_size = GetRangeSize(new_size, 0, 1);
       tmp_axis_merge_stride = new_stride[1];
       new_size.resize(1);
@@ -190,7 +190,7 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
       new_size[0] = tmp_axis_merge_size;
       new_stride[0] = tmp_axis_merge_stride;
     } else {
-      int64_t cur_idx = new_dims - 2;
+      int64_t cur_idx = new_dims - save_dims;
       for (int64_t j = cur_idx; j > 0; j--) {
         if (new_size[j] * last_dim_index == new_stride[j-1]) {
           last_dim_index *= new_size[j];
@@ -205,7 +205,6 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
       new_size[cur_idx] = tmp_axis_merge_size;
       new_stride[cur_idx] = tmp_axis_merge_stride;
    }
-
   }
 
   return true;
@@ -218,13 +217,14 @@ static bool SetDimsTilingParas(const string& op_type, AsStridedInfo& as_info,
     return false;
   }
 
-  auto dims = out_size.size();
+  int64_t dims = out_size.size();
+  int64_t save_dims = 2;
   as_info.dim_num = dims - 1;  // except last dim
   as_info.last_dim_size = out_size[as_info.dim_num];
   as_info.last_dim_stride = out_stride[as_info.dim_num];
   as_info.out_lp_step = out_size[as_info.dim_num];
 
-  if (dims == 2) {
+  if (dims == save_dims) {
     as_info.dim_except_last_paras.push_back(1);
     as_info.dim_except_last_paras.push_back(out_size[0]);
     as_info.dim_except_last_paras.push_back(out_stride[0]);
@@ -233,14 +233,14 @@ static bool SetDimsTilingParas(const string& op_type, AsStridedInfo& as_info,
   }
 
   // index from left side
-  for (size_t i = 0; i < dims-2; i++) {
-    as_info.dim_except_last_paras.push_back(GetRangeSize(out_size, i+1, dims-2));
+  for (int64_t i = 0; i < dims - save_dims; i++) {
+    as_info.dim_except_last_paras.push_back(GetRangeSize(out_size, i+1, dims-save_dims));
     as_info.dim_except_last_paras.push_back(out_size[i]);
     as_info.dim_except_last_paras.push_back(out_stride[i]);
   }
   as_info.dim_except_last_paras.push_back(1);
-  as_info.dim_except_last_paras.push_back(out_size[dims-2]);
-  as_info.dim_except_last_paras.push_back(out_stride[dims-2]);
+  as_info.dim_except_last_paras.push_back(out_size[dims-save_dims]);
+  as_info.dim_except_last_paras.push_back(out_stride[dims-save_dims]);
 
   return true;
 }
@@ -251,14 +251,17 @@ static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& pa
   vector<int64_t> tmp_out_size;
   vector<int64_t> tmp_out_stride;
   vector<int64_t> storage_offset;
+  size_t input_idx_1 = 1;
+  size_t input_idx_2 = 2;
+  size_t input_idx_3 = 3;
 
   // the parameters order in op proto is: x, size, stride, storage_offset, y
-  if (!ops::GetConstIntData(paras, 1, tmp_out_size)) {
+  if (!ops::GetConstIntData(paras, input_idx_1, tmp_out_size)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const size failed!");
     return false;
   }
 
-  if (!ops::GetConstIntData(paras, 2, tmp_out_stride)) {
+  if (!ops::GetConstIntData(paras, input_idx_2, tmp_out_stride)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const stride failed!");
     return false;
   }
@@ -273,7 +276,7 @@ static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& pa
     return false;
   }
 
-  if (!ops::GetConstIntData(paras, 3, storage_offset)) {
+  if (!ops::GetConstIntData(paras, input_idx_3, storage_offset)) {
     OP_LOGD(op_type, "use storage_offset default value.");
   } else if (storage_offset[0] < 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the storage_offset cannot be negative value!");
@@ -329,11 +332,11 @@ static bool GetCompileParams(const std::string& op_type, const std::vector<int64
   return true;
 }
 
-static void GetLpTilingParas(const std::string& op_type, const int64_t core_num,
+static void GetLpTilingParas(const int64_t core_num,
                              const int64_t out_axis_0_lp_cnt, const int64_t out_axis_0_lp_left,
                              const int64_t out_axis_1_lp_cnt, const int64_t out_axis_1_lp_left,
                              AsStridedInfo& as_info) {
-  int64_t used_core_cnt;
+  int64_t used_core_cnt = 1;
 
   if (out_axis_0_lp_cnt >= out_axis_1_lp_cnt) {
     used_core_cnt = GetCeilDiv(out_axis_0_lp_cnt, GetCeilDiv(out_axis_0_lp_cnt, core_num));
@@ -341,7 +344,7 @@ static void GetLpTilingParas(const std::string& op_type, const int64_t core_num,
     as_info.used_core_cnt = used_core_cnt;
     as_info.nlc_m_axis_0_lp_cnt = GetCeilDiv(out_axis_0_lp_cnt, used_core_cnt);
     as_info.nlc_m_axis_0_lp_left = 0;
-    as_info.lc_m_axis_0_lp_cnt = out_axis_0_lp_cnt - (used_core_cnt - 1)*as_info.nlc_m_axis_0_lp_cnt;
+    as_info.lc_m_axis_0_lp_cnt = out_axis_0_lp_cnt - (used_core_cnt - 1) * as_info.nlc_m_axis_0_lp_cnt;
     as_info.lc_m_axis_0_lp_left = out_axis_0_lp_left;
     as_info.core_step_in = as_info.nlc_m_axis_0_lp_cnt * as_info.m_axis_0_lp_unit;
     as_info.nlc_m_axis_1_lp_cnt = out_axis_1_lp_cnt;
@@ -354,7 +357,7 @@ static void GetLpTilingParas(const std::string& op_type, const int64_t core_num,
     as_info.used_core_cnt = used_core_cnt;
     as_info.nlc_m_axis_1_lp_cnt = GetCeilDiv(out_axis_1_lp_cnt, used_core_cnt);
     as_info.nlc_m_axis_1_lp_left = 0;
-    as_info.lc_m_axis_1_lp_cnt = out_axis_1_lp_cnt - (used_core_cnt - 1)*as_info.nlc_m_axis_1_lp_cnt;
+    as_info.lc_m_axis_1_lp_cnt = out_axis_1_lp_cnt - (used_core_cnt - 1) * as_info.nlc_m_axis_1_lp_cnt;
     as_info.lc_m_axis_1_lp_left = out_axis_1_lp_left;
     as_info.core_step_in = as_info.nlc_m_axis_1_lp_cnt * as_info.m_axis_1_lp_unit;
     as_info.nlc_m_axis_0_lp_cnt = out_axis_0_lp_cnt;
@@ -362,38 +365,38 @@ static void GetLpTilingParas(const std::string& op_type, const int64_t core_num,
     as_info.lc_m_axis_0_lp_cnt = out_axis_0_lp_cnt;
     as_info.lc_m_axis_0_lp_left = out_axis_0_lp_left;
   }
-
 }
 
 static void UpdateDimsInfo(const size_t dims, const std::vector<int64_t>& out_size, AsStridedInfo& as_info) {
+  size_t dim_step = 3;
+  size_t save_dims = 2;
   as_info.dim_num -= 1;
-  as_info.dim_except_last_paras.resize(as_info.dim_num*3);
-  if (dims - 2 == 1) {
+  as_info.dim_except_last_paras.resize(as_info.dim_num*dim_step);
+  if (dims - save_dims == 1) {
     as_info.dim_except_last_paras[0] = 1;
   } else {
-    for (size_t i = 0; i < dims-3; i++) {
-      as_info.dim_except_last_paras[i*3] = GetRangeSize(out_size, i+1, dims-3);
+    for (size_t i = 0; i < dims - dim_step; i++) {
+      as_info.dim_except_last_paras[i*dim_step] = GetRangeSize(out_size, i+1, dims-dim_step);
     }
-    as_info.dim_except_last_paras[(dims - 3)*3] = 1;
+    as_info.dim_except_last_paras[(dims - dim_step)*dim_step] = 1;
   }
-
 }
 
 static void SetTilingParamForLastTwoDimIsLarge(const int64_t vnc_scheme_ub_offset, const int64_t nrsecond_dim_len,
                                                const int64_t last_two_dim_len, const int64_t last_two_dim_raw_elem,
                                                const size_t dims, const std::vector<int64_t>& out_size,
                                                const std::vector<int64_t>& out_stride, AsStridedInfo& as_info) {
+  int64_t save_dims = 2;
   as_info.tiling_mode = TILING_LAST_TWO_DIM_IS_LARGE;  // using full vnchwconv scheme, and move in 1 row per time
   as_info.out_ub_offset = vnc_scheme_ub_offset;
   as_info.m_axis_0_lp_unit = nrsecond_dim_len > VNC_ROWS ? VNC_ROWS : nrsecond_dim_len;
   as_info.m_axis_1_lp_unit = last_two_dim_len;
   as_info.m_axis_1_burst_unit = last_two_dim_raw_elem;
-  as_info.rsecond_dim_size = out_size[dims-2];
-  as_info.rsecond_dim_stride = out_stride[dims-2];
+  as_info.rsecond_dim_size = out_size[dims-save_dims];
+  as_info.rsecond_dim_stride = out_stride[dims-save_dims];
   as_info.out_lp_step = last_two_dim_len;
 
   UpdateDimsInfo(dims, out_size, as_info);
-
 }
 
 static void SetTilingParamForLastStrideIsZero(const int64_t vnc_scheme_ub_offset, const int64_t ele_per_block,
@@ -401,9 +404,10 @@ static void SetTilingParamForLastStrideIsZero(const int64_t vnc_scheme_ub_offset
                                               const int64_t max_rsecond_valid_elem, const size_t dims,
                                               const std::vector<int64_t>& out_size,
                                               const std::vector<int64_t>& out_stride, AsStridedInfo& as_info) {
+  size_t save_dims = 2;
   auto last_dim_len = out_size[dims - 1];
-  auto rsecond_dim_len = out_size[dims - 2];
-  auto rsecond_dim_stride = out_stride[dims - 2];
+  auto rsecond_dim_len = out_size[dims - save_dims];
+  auto rsecond_dim_stride = out_stride[dims - save_dims];
 
   if (last_dim_len < MTE_GATE * ele_per_block) {
     as_info.tiling_mode = TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL;  // using full vnchwconv scheme
@@ -424,7 +428,6 @@ static void SetTilingParamForLastStrideIsZero(const int64_t vnc_scheme_ub_offset
   as_info.out_lp_step = last_dim_len * rsecond_dim_len;
 
   UpdateDimsInfo(dims, out_size, as_info);
-
 }
 
 static void SetTilingParamForFirstStrideIsSmall(const int64_t vnc_scheme_ub_offset, const int64_t vnc_col_len,
@@ -451,29 +454,33 @@ static void SetTilingParamForFirstStrideIsSmall(const int64_t vnc_scheme_ub_offs
 
   // update dims info parameters
   auto dims = out_size.size();
-  if (dims == 2) {
-    as_info.dim_except_last_paras[1] = out_size[1];
-    as_info.dim_except_last_paras[2] = out_stride[1];
+  size_t save_dims = 2;
+  size_t dim_step = 3;
+  size_t idx_1 = 1;
+  size_t idx_2 = 2;
+  if (dims == save_dims) {
+    as_info.dim_except_last_paras[idx_1] = out_size[1];
+    as_info.dim_except_last_paras[idx_2] = out_stride[1];
   } else {
-    for (size_t i = 0; i < dims-2; i++) {
-    as_info.dim_except_last_paras[i*3 + 0] = GetRangeSize(out_size, i+2, dims-1);
-    as_info.dim_except_last_paras[i*3 + 1] = out_size[i + 1];
-    as_info.dim_except_last_paras[i*3 + 2] = out_stride[i + 1];
+    for (size_t i = 0; i < dims - save_dims; i++) {
+    as_info.dim_except_last_paras[i*dim_step] = GetRangeSize(out_size, i+save_dims, dims-1);
+    as_info.dim_except_last_paras[i*dim_step + idx_1] = out_size[i + 1];
+    as_info.dim_except_last_paras[i*dim_step + idx_2] = out_stride[i + 1];
     }
-    as_info.dim_except_last_paras[(dims - 2)*3 + 0] = 1;
-    as_info.dim_except_last_paras[(dims - 2)*3 + 1] = out_size[dims-1];
-    as_info.dim_except_last_paras[(dims - 2)*3 + 2] = out_stride[dims-1];
-
+    as_info.dim_except_last_paras[(dims - save_dims)*dim_step] = 1;
+    as_info.dim_except_last_paras[(dims - save_dims)*dim_step + idx_1] = out_size[dims-1];
+    as_info.dim_except_last_paras[(dims - save_dims)*dim_step + idx_2] = out_stride[dims-1];
   }
-
 }
 
 static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t max_elem_in_ub,
                                     const int64_t core_num, const DataType& data_type,
                                     const std::vector<int64_t>& in_shape, const std::vector<int64_t>& out_size,
                                     const std::vector<int64_t>& out_stride, AsStridedInfo& as_info) {
-  auto dims = out_size.size();
-  if (dims < 2) {
+  int64_t dims = out_size.size();
+  int64_t val_2 = 2;
+  int64_t val_3 = 3;
+  if (dims < val_2) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output dimension should be bigger than 2!");
     return false;
   }
@@ -484,24 +491,24 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
   }
 
   auto last_dim_len = out_size[dims-1];
-  auto nlast_dim_len = GetRangeSize(out_size, 0, dims-2);
+  auto nlast_dim_len = GetRangeSize(out_size, 0, dims-val_2);
   auto last_dim_stride = out_stride[dims-1];
-  auto rsecond_dim_len = out_size[dims-2];
-  auto rsecond_dim_stride = out_stride[dims-2];
+  auto rsecond_dim_len = out_size[dims-val_2];
+  auto rsecond_dim_stride = out_stride[dims-val_2];
   auto nfirst_dim_len = GetRangeSize(out_size, 1, dims-1);
   int64_t ele_per_block = GetFloorDiv(BYTES_PER_BLOCK, GetSizeByDataType(data_type));
   int64_t out_max_idx_in_input = GetElemIndexInOri(as_info, nlast_dim_len, last_dim_len);
   int64_t in_shape_size = GetRangeSize(in_shape, 0, in_shape.size()-1);
 
-  int64_t vnc_scheme_ub_offset = GetDivisorAlign(GetFloorDiv(max_elem_in_ub, 2), ele_per_block);
+  int64_t vnc_scheme_ub_offset = GetDivisorAlign(GetFloorDiv(max_elem_in_ub, val_2), ele_per_block);
   int64_t vnc_col_len = GetDivisorAlign(GetFloorDiv(vnc_scheme_ub_offset, VNC_ROWS), ele_per_block);
   if (ele_per_block == BYTES_PER_BLOCK) {
-    vnc_col_len = GetDivisorAlign(GetFloorDiv(vnc_col_len, 2), ele_per_block);
+    vnc_col_len = GetDivisorAlign(GetFloorDiv(vnc_col_len, val_2), ele_per_block);
   }
   int64_t all_in_scheme_ub_offset = GetDivisorAlign(max_elem_in_ub - vnc_col_len, ele_per_block);
   int64_t last_two_dim_len = last_dim_len * rsecond_dim_len;
-  int64_t last_two_dim_raw_elem = ((last_two_dim_len - 1)/last_dim_len%rsecond_dim_len*rsecond_dim_stride +
-                                   (last_two_dim_len - 1)%last_dim_len*last_dim_stride + 1);
+  int64_t last_two_dim_raw_elem = ((last_two_dim_len - 1)  /last_dim_len % rsecond_dim_len * rsecond_dim_stride +
+                                   (last_two_dim_len - 1) % last_dim_len * last_dim_stride + 1);
 
   int64_t max_valid_elem_a_row = 1;
   if (last_dim_stride > 0) {
@@ -525,23 +532,20 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
     int64_t tmp_m_axis_0_lp_unit = GetFloorDiv(max_elem_in_ub, axis_1_unit_block_align);
     as_info.m_axis_0_lp_unit = nlast_dim_len > tmp_m_axis_0_lp_unit ? tmp_m_axis_0_lp_unit : nlast_dim_len;
     as_info.m_axis_1_burst_unit = (as_info.m_axis_1_lp_unit - 1) * last_dim_stride + 1;
-
   } else if (max_valid_elem_a_row >= MTE_GATE * ele_per_block && last_dim_len >= MTE_GATE * ele_per_block) {
     as_info.tiling_mode = TILING_LAST_DIM_IS_LARGE;  // using full vnchwconv scheme, and move in 1 row per time
     as_info.out_ub_offset = vnc_scheme_ub_offset;
     as_info.m_axis_0_lp_unit = nlast_dim_len > VNC_ROWS ? VNC_ROWS : nlast_dim_len;
     as_info.m_axis_1_lp_unit = last_dim_len > max_valid_elem_a_row ? max_valid_elem_a_row : last_dim_len;
     as_info.m_axis_1_burst_unit = (as_info.m_axis_1_lp_unit - 1) * last_dim_stride + 1;
-
   } else if (dims > 2 && last_two_dim_raw_elem <= vnc_col_len &&
              last_two_dim_len >= MTE_GATE * ele_per_block && last_two_dim_len <= vnc_col_len) {
-    auto nrsecond_dim_len = GetRangeSize(out_size, 0, dims-3);
+    auto nrsecond_dim_len = GetRangeSize(out_size, 0, dims-val_3);
     SetTilingParamForLastTwoDimIsLarge(vnc_scheme_ub_offset, nrsecond_dim_len, last_two_dim_len,
                                        last_two_dim_raw_elem, dims, out_size, out_stride, as_info);
     // for multiple core parameters
     nlast_dim_len = nrsecond_dim_len;
     last_dim_len = last_two_dim_len;
-
   } else if (max_valid_elem_a_row >= MTE_GATE * ele_per_block && last_dim_len < MTE_GATE * ele_per_block) {
     as_info.tiling_mode = TILING_LAST_DIM_IS_SMALL;  // using single vnchwconv scheme, and move in 1 row per time
     as_info.out_ub_offset = vnc_scheme_ub_offset;
@@ -551,29 +555,25 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
     as_info.m_axis_0_lp_unit = nlast_dim_len > tmp_axis_0_lp_unit ? tmp_axis_0_lp_unit : nlast_dim_len;
     as_info.m_axis_1_lp_unit = last_dim_len;
     as_info.m_axis_1_burst_unit = (as_info.m_axis_1_lp_unit - 1) * last_dim_stride + 1;
-
   } else if (out_max_idx_in_input <= all_in_scheme_ub_offset || in_shape_size <= all_in_scheme_ub_offset) {
     as_info.tiling_mode = TILING_INPUT_OR_OUTPUT_IS_ALL_IN;  // using scalar scheme, and move all in
     as_info.out_ub_offset = all_in_scheme_ub_offset;
     as_info.m_axis_1_lp_unit = last_dim_len > vnc_col_len ? vnc_col_len : last_dim_len;
     int64_t tmp_m_axis_0_lp_unit = GetFloorDiv(vnc_col_len, as_info.m_axis_1_lp_unit);
     as_info.m_axis_0_lp_unit = nlast_dim_len > tmp_m_axis_0_lp_unit ? tmp_m_axis_0_lp_unit : nlast_dim_len;
-
     if (out_max_idx_in_input <= all_in_scheme_ub_offset) {
       as_info.m_axis_1_burst_unit = out_max_idx_in_input;
     } else {
       as_info.m_axis_1_burst_unit = in_shape_size;
     }
-
-  } else if (dims > 2 && last_dim_stride == 0 &&
-             max_rsecond_valid_elem * last_dim_len >= MTE_GATE * ele_per_block && max_rsecond_valid_elem >= 2) {
-    auto nrsecond_dim_len = GetRangeSize(out_size, 0, dims-3);
+  } else if (dims > val_2 && last_dim_stride == 0 &&
+             max_rsecond_valid_elem * last_dim_len >= MTE_GATE * ele_per_block && max_rsecond_valid_elem >= val_2) {
+    auto nrsecond_dim_len = GetRangeSize(out_size, 0, dims-val_3);
     SetTilingParamForLastStrideIsZero(vnc_scheme_ub_offset, ele_per_block, vnc_col_len, nrsecond_dim_len,
                                       max_rsecond_valid_elem, dims, out_size, out_stride, as_info);
     // for multiple core parameters
     nlast_dim_len = nrsecond_dim_len;
-    last_dim_len = out_size[dims-2];
-
+    last_dim_len = out_size[dims-val_2];
   } else if (max_first_dim_in > out_stride[0] && out_stride[0] > 0 && nfirst_dim_len >= MTE_GATE * ele_per_block) {
     // process the first dimension from left side as the last
     SetTilingParamForFirstStrideIsSmall(vnc_scheme_ub_offset, vnc_col_len, ele_per_block, nfirst_dim_len,
@@ -595,14 +595,13 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
       as_info.m_axis_0_lp_unit = GetFloorDiv(vnc_col_valid_elem, as_info.m_axis_1_lp_unit);
     }
     as_info.m_axis_1_burst_unit = 1;
-
   }
 
   int64_t out_axis_0_lp_cnt = GetCeilDiv(nlast_dim_len, as_info.m_axis_0_lp_unit);
   int64_t out_axis_0_lp_left = nlast_dim_len % as_info.m_axis_0_lp_unit;
   int64_t out_axis_1_lp_cnt = GetCeilDiv(last_dim_len, as_info.m_axis_1_lp_unit);
   int64_t out_axis_1_lp_left = last_dim_len % as_info.m_axis_1_lp_unit;
-  GetLpTilingParas(op_type, core_num, out_axis_0_lp_cnt, out_axis_0_lp_left,
+  GetLpTilingParas(core_num, out_axis_0_lp_cnt, out_axis_0_lp_left,
                    out_axis_1_lp_cnt, out_axis_1_lp_left, as_info);
 
   return true;
@@ -728,5 +727,4 @@ bool AsStridedTiling(const std::string& op_type,
 }
 
 REGISTER_OP_TILING_V3_WITH_VECTOR(AsStrided, AsStridedTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
-
 };
