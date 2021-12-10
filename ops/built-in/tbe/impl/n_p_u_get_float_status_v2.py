@@ -19,8 +19,13 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# constant 8
-NUM_EIGHT = 8
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_EIGHT = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
@@ -44,14 +49,15 @@ def n_p_u_get_float_status_v2(addr, data, kernel_name="n_p_u_get_float_status_v2
     tensor_num = len(addr)
     tensor_list = []
     for i in range(tensor_num):
-        input_data = tik_instance.Tensor("float32", (NUM_EIGHT,), name="input_data_" + str(i), scope=tik.scope_gm)
+        input_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
+                                         name="input_data_" + str(i), scope=tik.scope_gm)
         tensor_list.append(input_data)
 
-    spec_workspace = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    spec_workspace = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                          name="spec_workspace", scope=tik.scope_gm, is_global_tensor=True)
 
-    ub_tensor = tik_instance.Tensor("float32", (NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
-    output_data = tik_instance.Tensor("float32", (NUM_EIGHT,), name="output_data", scope=tik.scope_gm)
+    ub_tensor = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
+    output_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="output_data", scope=tik.scope_gm)
 
     tik_instance.data_move(ub_tensor, spec_workspace, 0, 1, 1, 8, 8)
     tik_instance.data_move(output_data, ub_tensor, 0, 1, 1, 8, 8)

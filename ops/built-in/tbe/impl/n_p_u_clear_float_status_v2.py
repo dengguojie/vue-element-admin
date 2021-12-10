@@ -19,8 +19,13 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# constant 8
-NUM_EIGHT = 8
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_EIGHT = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
@@ -39,10 +44,10 @@ def n_p_u_clear_float_status_v2(kernel_name="n_p_u_clear_float_status_v2"):
     """
     tik_instance = tik.Tik()
 
-    spec_workspace = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    spec_workspace = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                          name="spec_workspace", scope=tik.scope_gm, is_global_tensor=True)
 
-    ub_tensor = tik_instance.Tensor("float32", (NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
+    ub_tensor = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
 
     tik_instance.vec_dup(8, ub_tensor, 0, 1, 8)
 
