@@ -197,6 +197,7 @@ set(_tf_plugins
   gather_v2_plugin.cc
   gelu_grad_plugin.cc
   gelu_plugin.cc
+  get_next_from_queue_plugin.cc
   getspan_plugin.cc
   greater_equal_plugin.cc
   greater_plugin.cc
@@ -310,6 +311,7 @@ set(_tf_plugins
   prod_force_se_a_plugin.cc
   quantized_resize_bilinear_plugin.cc
   queue_close_plugin.cc
+  queue_data_plugin.cc
   queue_dequeue_many_plugin.cc
   queue_dequeue_plugin.cc
   queue_enqueue_many_plugin.cc

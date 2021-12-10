@@ -2433,5 +2433,24 @@ REG_OP(GetNextV2)
   .ATTR(output_shapes, ListListInt, {{}, {}})
   .ATTR(channel_name, String, "")
   .OP_END_FACTORY_REG(GetNextV2)
+
+/**
+*@brief GetNextFromQueue
+*@par Inputs:
+*x: the data, only support uint8
+*@par Outputs:
+*y: the data in iterator, all types are available
+*@par Attributes:
+*output_types: types of all outputs
+*output_shapes: shapes of all outputs
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(GetNextFromQueue)
+  .INPUT(x, TensorType({DT_UINT8}))
+  .DYNAMIC_OUTPUT(y, TensorType::ALL())
+  .ATTR(output_types, ListType, {})
+  .ATTR(output_shapes, ListListInt, {{}, {}})
+  .OP_END_FACTORY_REG(GetNextFromQueue)
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_DATA_FLOW_OPS_H_

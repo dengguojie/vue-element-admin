@@ -1404,6 +1404,26 @@ REG_OP(UpdateTensorDesc)
                            DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE}))
     .REQUIRED_ATTR(shape, ListInt)
     .OP_END_FACTORY_REG(UpdateTensorDesc)
+
+/**
+*@brief Queue data for other operators. \n
+*@par Attributes:
+*index: Index of the input tensor.The data type must be int32 or int64.
+Assume that net has three data nodes, one should be set 0, another should
+be set 1, and the left should be set 2. \n
+*queue_name: queue name
+*output_types: types of outputs data
+*output_shapes: shapes of outputs data
+*@par Outputs:
+*y: A DT_UINT8 tensor. \n
+*/
+REG_OP(QueueData)
+    .OUTPUT(y, TensorType({DT_UINT8}))
+    .ATTR(index, Int, 0)
+    .ATTR(queue_name, String, "")
+    .ATTR(output_types, ListType, {})
+    .ATTR(output_shapes, ListListInt, {{}, {}})
+    .OP_END_FACTORY_REG(QueueData)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ARRAY_OPS_H_

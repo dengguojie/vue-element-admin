@@ -21,7 +21,9 @@
 #include "inc/array_ops.h"
 #include <climits>
 #include <unordered_set>
+#include <unordered_map>
 #include <utility>
+#include <numeric>
 
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
@@ -3054,4 +3056,62 @@ IMPLEMT_INFERFUNC(UpdateTensorDesc, UpdateTensorDescInfer) {
 
 INFER_FUNC_REG(UpdateTensorDesc, UpdateTensorDescInfer);
 // ----------------UpdateTensorDesc End-------------------
+
+// ----------------QueueData Begin------------------------
+IMPLEMT_INFERFUNC(QueueData, QueueDataInferShape) {
+  std::vector<ge::DataType> output_types;
+  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::vector<int64_t>> output_shapes;
+  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
+    return GRAPH_FAILED;
+  }
+
+  if (output_types.size() != output_shapes.size()) {
+    std::string err_msg = "attr[output_types] and attr[output_shapes] should be the same length";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  std::map<ge::DataType, int32_t> data_type_size_map = {
+    {ge::DT_FLOAT,  sizeof(float)},    {ge::DT_FLOAT16, sizeof(float) / 2},
+    {ge::DT_INT8,   sizeof(int8_t)},   {ge::DT_INT16,   sizeof(int16_t)},
+    {ge::DT_INT32,  sizeof(int32_t)},  {ge::DT_INT64,   sizeof(int64_t)},
+    {ge::DT_UINT8,  sizeof(uint8_t)},  {ge::DT_UINT16,  sizeof(uint16_t)},
+    {ge::DT_UINT32, sizeof(uint32_t)}, {ge::DT_UINT64,  sizeof(uint64_t)},
+    {ge::DT_DOUBLE, sizeof(double)},   {ge::DT_BOOL,    sizeof(bool)}
+  };
+
+  std::vector<int64_t> shapes;
+  for (size_t i = 0; i < output_types.size(); ++i) {
+    if (data_type_size_map.find(output_types[i]) == data_type_size_map.end()) {
+      shapes.emplace_back(-1);
+      continue;
+    }
+    int64_t type_size = data_type_size_map[output_types[i]];
+    int64_t data_len = 
+      std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), type_size, std::multiplies<int64_t>{});
+    int64_t item_info_size = 64; // sizeof(ItemInfo)
+    int64_t dims = sizeof(int64_t) * output_shapes[i].size();
+    shapes.emplace_back(item_info_size + dims + data_len); 
+  }
+  
+  Shape shape(shapes);
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(shape);
+  output_desc.SetDataType(ge::DT_UINT8);
+  graphStatus output_status = op.UpdateOutputDesc("y", output_desc);
+  if (output_status != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y] desc failed"));
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(QueueData, QueueDataInferShape);
+// ----------------QueueData End--------------------------
 }  // namespace ge
