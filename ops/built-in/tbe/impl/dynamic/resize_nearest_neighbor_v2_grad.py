@@ -881,16 +881,17 @@ class ResizeNearestNeighborV2Grad:
         opt_config = {"out_of_bound_sync_check": True,
                       "enable_const_fold": True
                      }
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.grads_gm, self.size_gm),
-                                   outputs=(self.out_gm,),
-                                   flowtable=(self.tiling_gm,), config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
                                                             "core_num": self.ai_core_num,
                                                             "max_w_len": self.ub_max_num // self.grads_shape_c0,
                                                             "align_corners": int(self.align_corners),
                                                             "half_pixel_centers": int(self.half_pixel_centers)})
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.grads_gm, self.size_gm),
+                                   outputs=(self.out_gm,),
+                                   flowtable=(self.tiling_gm,), config=opt_config)
 
         return self.tik_instance
 
