@@ -274,8 +274,6 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
 }
 
 bool Conv3DBpFilterGroupFusionPass::GenerateMulNode(ge::ComputeGraph& graph,
-                                                    const std::vector<int64_t>& dims,
-                                                    const std::map<std::string, int64_t>& group_map,
                                                     const ge::OpDescPtr& conv_desc,
                                                     ge::NodePtr& mul_node) {
   OpDescPtr mul_desc;
@@ -342,7 +340,7 @@ bool Conv3DBpFilterGroupFusionPass::Relink(ge::NodePtr& conv_node,
 }
 
 Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                           vector<ge::NodePtr>& new_nodes) {
+                                             vector<ge::NodePtr>& /* new_nodes */) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter Conv3DBpFilterGroupFusionPass::Fusion");
   NodePtr dw_node = GetNodeFromMapping(PATTERN_CONV3D_DW_GROUP, mapping);
   FUSION_PASS_CHECK(dw_node == nullptr,
@@ -407,7 +405,7 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   ge::NodePtr mul_node;
   FUSION_PASS_CHECK(
-    !GenerateMulNode(graph, out_dims, group_map, dw_desc, mul_node),
+    !GenerateMulNode(graph, dw_desc, mul_node),
     OP_LOGW(FUSED_OP_TYPE.c_str(),
       "Conv3DBpFilterGroupFusionPass generate mul node failed."),
     return NOT_CHANGED);

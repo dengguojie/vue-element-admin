@@ -21,33 +21,37 @@
 #include "graph/utils/op_desc_utils.h"
 #include "register/register.h"
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/axis_util.h"
 #include "../../op_proto/util/error_util.h"
 #include "op_log.h"
 
 namespace domi {
-Status DepthwiseConv2DBackpropFilterMappingFn(const Message* op_src, ge::Operator& op) {
-  if (AutoMappingFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "AutoMappingFn failed.");
+Status DepthwiseConv2DBackpropFilterMappingFn(const ge::Operator& op_src, ge::Operator& op) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
+
+  if (AutoMappingByOpFn(op_src, op) != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
   auto tensorDescW = op_dsc->MutableOutputDesc("filter_grad");
   tensorDescW->SetOriginFormat(ge::FORMAT_HWCN);
   tensorDescW->SetFormat(ge::FORMAT_HWCN);
-  OP_LOGD(op.GetName().c_str(), "update output format success.");
+  OP_LOGD(op_name.GetString(), "update output format success.");
   std::vector<int32_t> padList{0, 0, 0, 0};
   op.SetAttr("pads", padList);
-  OP_LOGD(op.GetName().c_str(), "update pads success.");
+  OP_LOGD(op_name.GetString(), "update pads success.");
   return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("DepthwiseConv2DBackpropFilter")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("DepthwiseConv2dNativeBackpropFilter")
-    .ParseParamsFn(DepthwiseConv2DBackpropFilterMappingFn)
+    .ParseParamsByOperatorFn(DepthwiseConv2DBackpropFilterMappingFn)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

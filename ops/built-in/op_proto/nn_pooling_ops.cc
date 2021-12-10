@@ -360,7 +360,9 @@ static bool reset_range(ge::Operator& op, const std::string& tensor_name) {
 
   if (reset_flag) {
     tensor_desc->SetShapeRange(shape_range);
-    OP_LOGW(op.GetName().c_str(), "%s range does not match the shape value, has been fixed.", tensor_name.c_str());
+    ge::AscendString op_name;
+    (void)op.GetName(op_name);
+    OP_LOGW(op_name.GetString(), "%s range does not match the shape value, has been fixed.", tensor_name.c_str());
   }
   return reset_flag;
 }
@@ -1365,17 +1367,16 @@ INFER_DATA_SLICE_FUNC_REG(Pooling, PoolingInferDataSlice);
   */
 static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
                           const int64_t& value, int64_t& low, int64_t& high) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+
   size_t min_size = 2;
-  if (grade.size() < min_size) {
-    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
-    return false;
-  }
+  CHECK(grade.size() < min_size, OP_LOGE(op_name.GetString(), "input grade size smaller then %u", min_size),
+        return false);
   // grade is in ascending order
   size_t last = grade.size() - 1;
-  if (value > grade[last]) {
-    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
-    return false;
-  }
+  CHECK(value > grade[last],
+        OP_LOGE(op_name.GetString(), "input value %lld is out the range of %lld", value, grade[last]), return false);
   // if it is the right boundary value, use the right closed interval
   if (value == grade[last]) {
     low = grade[last - 1] + 1;
@@ -1415,7 +1416,7 @@ static bool GenFuzzyCompileShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_t
     idx_h = 2;
     idx_w = 3;
   }
-  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, ((1UL << 31) - 1)};
   std::vector<int64_t> grade_w = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
   std::vector<int64_t> grade_h = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
   // init empty range
@@ -1427,20 +1428,22 @@ static bool GenFuzzyCompileShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_t
   grade_map[idx_n] = grade_n;
   grade_map[idx_h] = grade_h;
   grade_map[idx_w] = grade_w;
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
   for (auto item: grade_map) {
     // allow shape -1 with range
     if(x_shape[item.first] == -1) {
       if (range_set.size() > item.first) {
         input_range[item.first] = range_set[item.first];
       } else {
-        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
+        OP_LOGE(op_name.GetString(), "cant't get input index %zu range", item.first);
         return false;
       }
     } else {
       int64_t low = 1;
       int64_t high = 1;
       if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
-        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
+        OP_LOGE(op_name.GetString(), "failed to get the %zu range", item.first);
         return false;
       }
       input_range[item.first] = std::make_pair(low, high);
@@ -1586,7 +1589,6 @@ static void SetAvgPoolOutRange(const std::string pad_str, const vector<int32_t>&
   int32_t pad = attr_params[attrIdx++];
   int32_t kernel = attr_params[attrIdx++];
   int32_t input_position = attr_params[attrIdx++];
-  int32_t output_position = attr_params[attrIdx++];
   int32_t low = input_range[input_position].first;
   int32_t high = input_range[input_position].second;
   if (pad_str == "SAME") {
@@ -1622,6 +1624,9 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
                                     const std::vector<int32_t>& pad_list, const std::vector<int64_t>& dims_input,
                                     std::vector<int64_t> dim_vector, const bool& ceil_mode, const bool& global_pooling,
                                     const std::string& padding_mode) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+
   std::string input_format_str = format2str[input_format];
 
   if (input_format_str != "NHWC") {
@@ -1632,11 +1637,9 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
   int32_t c_input_position = input_format_str.find("C");
   int64_t input_h = dims_input[h_input_position];
   int64_t input_w = dims_input[w_input_position];
-  int64_t input_c = dims_input[c_input_position];
 
   int32_t h_output_position = data_format.find("H");
   int32_t w_output_position = data_format.find("W");
-  int32_t c_output_position = data_format.find("C");
 
   int32_t strh = strides_list[h_output_position];
   int32_t strw = strides_list[w_output_position];
@@ -1650,10 +1653,10 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
   // update pads if padding is SAME
   if (padding_mode == "SAME" && (input_h == -1 || input_w == -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1});
-    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
 
-  OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
+  OP_LOGD(op_name.GetString(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> Input_range;
   input_tensor_desc->GetShapeRange(Input_range);
   if (input_h == -1 && !global_pooling) {
@@ -2279,6 +2282,9 @@ bool IsAllVal(const vector<int64_t>& vec, int64_t val) {
 }
 
 IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_shape = op_desc->MutableInputDesc("x")->MutableShape().GetDims();
   auto ksize = op.get_attr_ksize();
@@ -2292,7 +2298,7 @@ IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
     invalid_pads = pads.size() != 6;
   }
   if (invalid_param || invalid_ksize || invalid_strides || invalid_pads) {
-    OP_LOGE(op.GetName().c_str(), "AvgPool3D check x_shape or ksize or strides size or pads size is invalid!");
+    OP_LOGE(op_name.GetString(), "AvgPool3D check x_shape or ksize or strides size or pads size is invalid!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2386,7 +2392,10 @@ void UpdateAvgPool3DPads(int32_t id, int32_t ih, int32_t iw, int32_t kd,
 }
 
 IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
-  auto input_tensor_desc = op.GetInputDesc("x");
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
+  auto input_tensor_desc = op.GetInputDescByName("x");
   auto shape = input_tensor_desc.GetShape();
   Format input_format = input_tensor_desc.GetFormat();
   std::vector<int64_t> dims_input = shape.GetDims();
@@ -2433,11 +2442,11 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   }
 
   if (!GetStridesAndKSize(op, input_format, strd, strh, strw, kd, kh, kw)) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides or ksize in AvgPool3D.");
+    OP_LOGE(op_name.GetString(), "Failed to get attr strides or ksize in AvgPool3D.");
     return GRAPH_FAILED;
   }
   if (strd == 0 || strh == 0 || strw == 0 || kd == 0 || kh == 0 || kw == 0) {
-    OP_LOGE(op.GetName().c_str(), "Strides or ksize invalid.");
+    OP_LOGE(op_name.GetString(), "Strides or ksize invalid.");
     return GRAPH_FAILED;
   }
 
@@ -2447,14 +2456,14 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
     vector<int64_t> pads(kAvgPool3DPadsDim, 0);
     if (op.GetAttr("padding", padding) == GRAPH_SUCCESS) {
       CHECK(padding != "SAME" && padding != "VALID",
-            OP_LOGE(op.GetName().c_str(),
+            OP_LOGE(op_name.GetString(),
                     "Padding is invalid, expect SAME or VALID, but real: %s.",
                     padding.c_str()),
             return GRAPH_FAILED);
     } else if (op.GetAttr("pads", pads) == GRAPH_SUCCESS) {
       padding = IsAllVal(pads, 0) ? "VALID" : "SAME";
     } else {
-      OP_LOGE(op.GetName().c_str(),
+      OP_LOGE(op_name.GetString(),
               "Can't get padding or pads attribute.");
       return GRAPH_FAILED;
     }
@@ -2468,7 +2477,7 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
     std::string dx_format_str = format2str[input_format];
     CHECK(!GetAvgPool3DOutputRange(op_desc, ksize_dhw, strides_dhw, padding, dx_format_str,
                             output_shape, output_range),
-          OP_LOGE(op.GetName().c_str(), "Set dynamic output shape and range failed."),
+          OP_LOGE(op_name.GetString(), "Set dynamic output shape and range failed."),
           return GRAPH_FAILED);
 
     pads.assign(kAvgPool3DPadsDim, 0);
@@ -2491,14 +2500,12 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   std::vector<int32_t> pad_vec;
   if (GetPadsByPadding(op, id, ih, iw, kd, kh, kw, strd, strh, strw, pad_vec)) {
     op.SetAttr("pads",pad_vec);
-  } else if (op.GetAttr("pads", pad_vec) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get padding or pads failed.");
-    return GRAPH_FAILED;
+  } else {
+    CHECK(op.GetAttr("pads", pad_vec) != GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "get padding or pads failed."),
+          return GRAPH_FAILED);
   }
-  if (pad_vec.size() != 6) {
-    OP_LOGE(op.GetName().c_str(), "pads size must be 6.");
-    return GRAPH_FAILED;
-  }
+
+  CHECK(pad_vec.size() != 6, OP_LOGE(op_name.GetString(), "pads size must be 6."), return GRAPH_FAILED);
 
   std::string pad_str;
   if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
@@ -2555,13 +2562,13 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
     dim_vector.push_back(in);
   }
 
-  TensorDesc tensor_out = op.GetOutputDesc("y");
+  TensorDesc tensor_out = op.GetOutputDescByName("y");
   DataType input_dtype = input_tensor_desc.GetDataType();
   Shape output_shape(dim_vector);
   tensor_out.SetShape(output_shape);
   tensor_out.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("y", tensor_out) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    OP_LOGE(op_name.GetString(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     OpsOPUpdateErrReport(op.GetName(), "y");
   }
   return GRAPH_SUCCESS;
@@ -2868,17 +2875,16 @@ static bool CheckGlobal(const int32_t d_dim,
 }
 
 static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   // check data_slice attr
-  if (data_slice.size() != kAvgPool3DGradDataSlice) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data_slice's size should be 6.");
-    return GRAPH_FAILED;
-  }
+  CHECK(data_slice.size() != kAvgPool3DGradDataSlice,
+        CUBE_INNER_ERR_REPORT(op_name.GetString(), "data_slice's size should be 6."), return GRAPH_FAILED);
 
   // no support C0 axis
-  if (data_slice[kAvgPool3DGradDataSlice - 1].size() != 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
-    return NOT_SUPPORT_SLICE;
-  }
+  CHECK(data_slice[kAvgPool3DGradDataSlice - 1].size() != 0,
+        CUBE_INNER_ERR_REPORT(op_name.GetString(), "no support to cut C0 axis."), return NOT_SUPPORT_SLICE);
 
   // check valid slice num in data slice
   int32_t valid_cnt = 0;
@@ -2886,18 +2892,17 @@ static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<i
     if (data_slice[i].size() == 0) {
       continue;
     }
-    if (data_slice[i].size() != 2) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
-      return GRAPH_FAILED;
-    }
+
+    CHECK(data_slice[i].size() != 2,
+          CUBE_INNER_ERR_REPORT(op_name.GetString(), "data slice format input size should be 2."), return GRAPH_FAILED);
     valid_cnt ++;
   }
   if (valid_cnt == 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "data slice is empty.");
     return GRAPH_FAILED;
   }
   if (valid_cnt != 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "valid slice range num is more than 1.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2905,14 +2910,17 @@ static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<i
 
 static bool GetAttrsAvgPool3DGrad(ge::Operator& op, const string& data_format,
                                   int32_t& strd, int32_t& strh, int32_t& strw) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+
   std::vector<int32_t> stride_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get strides list failed.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get strides list failed.");
     return false;
   }
   auto s_size = stride_list.size();
   if (s_size != kAvgPool3DGradStridesDim) {
-    OP_LOGE(op.GetName().c_str(), "strides list should be 3d.");
+    OP_LOGE(op_name.GetString(), "strides list should be 3d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "stride_list";
     err_map["op_name"] = "AvgPool3DGrad";
@@ -2928,7 +2936,7 @@ static bool GetAttrsAvgPool3DGrad(ge::Operator& op, const string& data_format,
   strw = stride_list[data_format.find("W")];
 
   if (strd <= 0 || strh <= 0 || strw <= 0) {
-    OP_LOGE(op.GetName().c_str(), "strides should be positive.");
+    OP_LOGE(op_name.GetString(), "strides should be positive.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = "AvgPool3DGrad";
@@ -2975,41 +2983,44 @@ static void InferHWAvgPool3DGrad(int64_t kernel_size,
 }
 
 IMPLEMT_VERIFIER(AvgPool3DGradD, AvgPool3DGradDVerify) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   std::vector<int64_t> orig_input_shape = GetAttrValue(op, "orig_input_shape");
   if (orig_input_shape.size() != kAvgPool3DGradOriShapeDim) {
-    OP_LOGE(op.GetName().c_str(), "orig_input_shape length is not %zu.", kAvgPool3DGradOriShapeDim);
+    OP_LOGE(op_name.GetString(), "orig_input_shape length is not %zu.", kAvgPool3DGradOriShapeDim);
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
   if (ksize.size() != kAvgPool3DGradKsizeDim) {
-    OP_LOGE(op.GetName().c_str(), "ksize size is not %zu.", kAvgPool3DGradKsizeDim);
+    OP_LOGE(op_name.GetString(), "ksize size is not %zu.", kAvgPool3DGradKsizeDim);
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> strides = GetAttrValue(op, "strides");
   if (strides.size() != kAvgPool3DGradStridesDim) {
-    OP_LOGE(op.GetName().c_str(), "strides size is not %zu.", kAvgPool3DGradStridesDim);
+    OP_LOGE(op_name.GetString(), "strides size is not %zu.", kAvgPool3DGradStridesDim);
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> pads;
   if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get pads failed!");
+    OP_LOGE(op_name.GetString(), "Get pads failed!");
     return GRAPH_FAILED;
   }
   if (pads.size() != kAvgPool3DGradPadsDim) {
-    OP_LOGE(op.GetName().c_str(), "Attr pads size is not %zu.", kAvgPool3DGradPadsDim);
+    OP_LOGE(op_name.GetString(), "Attr pads size is not %zu.", kAvgPool3DGradPadsDim);
     return GRAPH_FAILED;
   }
 
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr data_format failed.");
+    OP_LOGE(op_name.GetString(), "get attr data_format failed.");
     return GRAPH_FAILED;
   }
   if (data_format != "NDHWC" && data_format != "NCDHW") {
-    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC.", data_format.c_str());
+    OP_LOGE(op_name.GetString(), "Attr data_format(%s) only support NDHWC.", data_format.c_str());
     return GRAPH_FAILED;
   }
 
@@ -3017,39 +3028,38 @@ IMPLEMT_VERIFIER(AvgPool3DGradD, AvgPool3DGradDVerify) {
 }
 
 IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   std::vector<int64_t> orig_input_shape = GetAttrValue(op, "orig_input_shape");
   if (orig_input_shape.size() != kAvgPool3DGradOriShapeDim) {
-    OP_LOGE(op.GetName().c_str(), "Get orig_input_shape failed!");
+    OP_LOGE(op_name.GetString(), "Get orig_input_shape failed!");
     return GRAPH_FAILED;
   }
   TensorDesc grads_desc = op.GetInputDesc("grads");
 
   std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
-  if (!CheckListEmpty(op.GetName(), ksize, "ksize")) {
+  if (!CheckListEmpty(op_name.GetString(), ksize, "ksize")) {
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(op.GetName(), strides, "strides")) {
+  if (!CheckListEmpty(op_name.GetString(), strides, "strides")) {
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> pads;
   if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get pads failed!");
+    OP_LOGE(op_name.GetString(), "Get pads failed!");
     return GRAPH_FAILED;
   }
 
   std::string data_format;
-  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get data_format failed!");
-    return GRAPH_FAILED;
-  }
-  if (data_format != "NDHWC" && data_format != "NCDHW") {
-    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC or NCDHW.",
-            data_format.c_str());
-    return GRAPH_FAILED;
-  }
+  CHECK(op.GetAttr("data_format", data_format) != GRAPH_SUCCESS,
+        OP_LOGE(op_name.GetString(), "Get data_format failed!"), return GRAPH_FAILED);
+  CHECK(data_format != "NDHWC" && data_format != "NCDHW",
+        OP_LOGE(op_name.GetString(), "Attr data_format(%s) only support NDHWC or NCDHW.", data_format.c_str()),
+        return GRAPH_FAILED);
 
   TensorDesc mean_desc = op.GetInputDesc("multiplier");
   if (data_format == "NDHWC") {
@@ -3059,7 +3069,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
     mean_desc.SetOriginFormat(FORMAT_NCDHW);
     mean_desc.SetFormat(FORMAT_NCDHW);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NDHWC or NCDHW", data_format.c_str());
+    OP_LOGE(op_name.GetString(), "Attr data_format(%s) only support NDHWC or NCDHW", data_format.c_str());
     return GRAPH_FAILED;
   }
 
@@ -3069,7 +3079,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   mean_desc.SetOriginShape(grads_shape);
   mean_desc.SetDataType(grads_dtype);
   if (op.UpdateInputDesc("multiplier", mean_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update input multiplier!");
+    OP_LOGE(op_name.GetString(), "Fail to update input multiplier!");
     return GRAPH_FAILED;
   }
 
@@ -3090,7 +3100,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   filter_desc.SetFormat(FORMAT_DHWCN);
   filter_desc.SetDataType(grads_dtype);
   if (op.UpdateInputDesc("filter", filter_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update input:filter desc!");
+    OP_LOGE(op_name.GetString(), "Fail to update input:filter desc!");
     return GRAPH_FAILED;
   }
 
@@ -3098,7 +3108,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   output_desc.SetShape(Shape(orig_input_shape));
   output_desc.SetDataType(grads_dtype);
   if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output:output desc!");
+    OP_LOGE(op_name.GetString(), "Fail to update output:output desc!");
     return GRAPH_FAILED;
   }
 
@@ -3106,7 +3116,10 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter AvgPool3DGradDInferDataSlice.");
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
+  OP_LOGD(op_name.GetString(), "Enter AvgPool3DGradDInferDataSlice.");
 
   int32_t strd = 0;
   int32_t strh = 0;
@@ -3114,16 +3127,16 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
 
   string data_format;
   CHECK(op.GetAttr("data_format", data_format) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "get attr data_format failed."),
+        OP_LOGE(op_name.GetString(), "get attr data_format failed."),
         return GRAPH_FAILED);
   CHECK(data_format != "NDHWC" && data_format != "NCDHW",
-        OP_LOGE(op.GetName().c_str(),
+        OP_LOGE(op_name.GetString(),
                 "Attr data_format(%s) only support NDHWC or NCDHW.",
                 data_format.c_str()),
         return GRAPH_FAILED);
 
   if (!GetAttrsAvgPool3DGrad(op, data_format, strd, strh, strw)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get attrs failed.");
     return GRAPH_FAILED;
   }
 
@@ -3140,7 +3153,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
   vector<vector<int64_t>> multiplier_data_slice(6, vector<int64_t>(0));
 
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
 
@@ -3166,7 +3179,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
   int32_t iw = x_shape[w_input_position];
 
   if (CheckGlobal(id, ih, iw)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "global mode not support cut");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "global mode not support cut");
     return NOT_SUPPORT_SLICE;
   }
 
@@ -3218,19 +3231,19 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
 
   // check update flag
   if (!needUpdateX) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "there's no update in desc.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "there's no update in desc.");
     return GRAPH_FAILED;
   }
 
   // update data slice attr
   if (needUpdateX) {
     if(!AttrUtils::SetListListInt(tensor_desc_grads, ge::ATTR_NAME_DATA_SLICE, grads_data_slice)) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set grads data slice attr failed.");
+      CUBE_INNER_ERR_REPORT(op_name.GetString(), "set grads data slice attr failed.");
       return GRAPH_FAILED;
     }
     CHECK_PTR_NULL(tensor_desc_multiplier, "tensor multipiler desc", return GRAPH_FAILED);
     if(!AttrUtils::SetListListInt(tensor_desc_multiplier, ge::ATTR_NAME_DATA_SLICE, multiplier_data_slice)) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set multiplier data slice attr failed.");
+      CUBE_INNER_ERR_REPORT(op_name.GetString(), "set multiplier data slice attr failed.");
       return GRAPH_FAILED;
     }
   }
@@ -3246,28 +3259,30 @@ INFER_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDInferShape);
 
 // ----------------AvgPool3DGrad-------------------
 IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
   if (ksize.size() != kAvgPool3DGradKsizeDim) {
-    OP_LOGE(op.GetName().c_str(), "Attr:ksize has an incorreted length");
+    OP_LOGE(op_name.GetString(), "Attr:ksize has an incorreted length");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> strides = GetAttrValue(op, "strides");
   if (strides.size() != kAvgPool3DGradStridesDim) {
-    OP_LOGE(op.GetName().c_str(), "Attr:strides has an incorreted length");
+    OP_LOGE(op_name.GetString(), "Attr:strides has an incorreted length");
     return GRAPH_FAILED;
   }
 
   std::string data_format;
-  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr data_format failed.");
-    return GRAPH_FAILED;
-  }
+  CHECK(op.GetAttr("data_format", data_format) != GRAPH_SUCCESS,
+        OP_LOGE(op_name.GetString(), "get attr data_format failed."), return GRAPH_FAILED);
+
   if (data_format != "NDHWC" && data_format != "NCDHW") {
-    OpsAttrValueErrReport(op.GetName().c_str(),
+    OpsAttrValueErrReport(op_name.GetString(),
                           "data_format", "NCDHW or NDHWC",
                           data_format);
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name.GetString(),
             "Attr data_format(%s) only support NDHWC or NCDHW.",
             data_format.c_str());
     return GRAPH_FAILED;
@@ -3280,7 +3295,7 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   vector<int64_t> orig_input_dim = orig_shape_desc->MutableShape().GetDims();
   if (orig_input_dim.size() != kAvgPool3DGradOriShapeDim &&
         orig_input_dim.size() != 1) {
-    OP_LOGE(op.GetName().c_str(), "orig_input_shape's dim expect: %u or %u, but real: %u.",
+    OP_LOGE(op_name.GetString(), "orig_input_shape's dim expect: %u or %u, but real: %u.",
             1, kAvgPool3DGradOriShapeDim, orig_input_dim.size());
     return GRAPH_FAILED;
   }
@@ -3290,7 +3305,7 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   vector<int64_t> grads_shape = grads_desc->MutableShape().GetDims();
   if (grads_shape.size() != kAvgPool3DGradOriShapeDim &&
         !IsUnknownRankShape(grads_shape)) {
-    OP_LOGE(op.GetName().c_str(), "grads_shape's dim expect: %u, but real: %u.",
+    OP_LOGE(op_name.GetString(), "grads_shape's dim expect: %u, but real: %u.",
             kAvgPool3DGradOriShapeDim, grads_shape.size());
     return GRAPH_FAILED;
   }
@@ -3299,15 +3314,15 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   std::vector<int64_t> pads;
   if (op.GetAttr("pads", pads) == GRAPH_SUCCESS) {
     if (pads.size() != kAvgPool3DGradPadsDim) {
-      OP_LOGE(op.GetName().c_str(), "Attr:pads size expect: %u, but real: %u.",
+      OP_LOGE(op_name.GetString(), "Attr:pads size expect: %u, but real: %u.",
               kAvgPool3DGradPadsDim, pads.size());
       return GRAPH_FAILED;
     }
   } else if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "op attrs must contains padding or pads.");
+    OP_LOGE(op_name.GetString(), "op attrs must contains padding or pads.");
     return GRAPH_FAILED;
   } else if (padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name.GetString(),
             "Attr padding(%s) only SAME NDHWC or VALID.",
             padding.c_str());
     return GRAPH_FAILED;
@@ -3444,6 +3459,9 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
 }
 
 IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto grads_desc = op_info->MutableInputDesc("grads");
   auto orig_shape_desc = op_info->MutableInputDesc("orig_input_shape");
@@ -3468,7 +3486,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
     is_dynamic = IsUnKnownShape(fmap_shape);
   } else {
     is_dynamic = true;
-    OP_LOGI(op.GetName().c_str(), "infer shape in dynamic mode.");
+    OP_LOGI(op_name.GetString(), "infer shape in dynamic mode.");
     fmap_shape.assign(kAvgPool3DGradOriShapeDim, -1);
   }
 
@@ -3480,14 +3498,14 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
   if (ksize.size() != kAvgPool3DGradKsizeDim) {
     OpsGetAttrErrReport(op.GetName(), "ksize");
-    OP_LOGE(op.GetName().c_str(), "Attr:ksize has an incorrected length.");
+    OP_LOGE(op_name.GetString(), "Attr:ksize has an incorrected length.");
     return GRAPH_FAILED;
   }
   // get strides attr
   std::vector<int64_t> strides = GetAttrValue(op, "strides");
   if (strides.size() != kAvgPool3DGradStridesDim) {
     OpsGetAttrErrReport(op.GetName(), "strides");
-    OP_LOGE(op.GetName().c_str(), "Attr:strides has an incorrected length.");
+    OP_LOGE(op_name.GetString(), "Attr:strides has an incorrected length.");
     return GRAPH_FAILED;
   }
   // get data format attr
@@ -3495,7 +3513,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS ||
      (data_format != "NDHWC" && data_format != "NCDHW")) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name.GetString(),
            "Op attr:data_format only support NDHWC and NCDHW.");
     return GRAPH_FAILED;
   }
@@ -3505,16 +3523,14 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   vector<int64_t> pads(kAvgPool3DGradPadsDim, 0);
   if (op.GetAttr("padding", padding) == GRAPH_SUCCESS) {
     if (padding != "SAME" && padding != "VALID") {
-      OP_LOGE(op.GetName().c_str(), "Padding pattern is incorrected, only support SAME and VALID.");
+      OP_LOGE(op_name.GetString(), "Padding pattern is incorrected, only support SAME and VALID.");
       return GRAPH_FAILED;
     }
   } else {
-    OP_LOGD(op.GetName().c_str(), "Get padding attr failed.");
+    OP_LOGD(op_name.GetString(), "Get padding attr failed.");
     // pads attr
-    if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Get attr:pads failed.");
-      return GRAPH_FAILED;
-    }
+    CHECK(op.GetAttr("pads", pads) != GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Get attr:pads failed."),
+          return GRAPH_FAILED);
     has_padding_attr = false;
     padding = IsAllVal(pads, 0) ? "VALID" : "SAME";
   }
@@ -3523,7 +3539,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   // set range
   if (is_dynamic && !SetAvgPool3DGradOutputRange(op_info, ksize, strides, padding,
                                                  data_format, fmap_shape)) {
-    OP_LOGE(op.GetName().c_str(), "Calculate output range.");
+    OP_LOGE(op_name.GetString(), "Calculate output range.");
     return GRAPH_FAILED;
   }
 
@@ -3539,7 +3555,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
     if (!is_dynamic || (fmap_shape[orig_shape_format_str.find("D")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("H")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("W")] != -1)){
-      OP_LOGD(op.GetName().c_str(), "Fix padding attr.");
+      OP_LOGD(op_name.GetString(), "Fix padding attr.");
       AvgPool3DGradCalcPads(fmap_shape, orig_shape_format_str, ksize, strides, pads, data_format);
     } else {
       pads.assign(kAvgPool3DGradPadsDim, -1);
@@ -3792,7 +3808,7 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
     OP_LOGD(op.GetName().c_str(), "Padding mode is same, can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
-  
+
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -5547,15 +5563,17 @@ static bool set_avg_pool_grad_out_shape_range(ge::Operator& op, const std::strin
                                               ge::GeTensorDescPtr& tensordesc_output,
                                               ge::GeTensorDescPtr& input_grad_desc,
                                               bool& unknown_rank) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
   if (input_grad_range.size() != input_grad_shape.size() && input_grad_range.size() != 0 && !unknown_rank) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), 
+    CUBE_INNER_ERR_REPORT(op_name.GetString(),
       "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
       input_grad_range.size(), input_grad_range.size());
     return false;
   }
   if (input_grad_range.size() == 0 && !unknown_rank) {
     input_grad_range.resize(input_grad_shape.size());
-    for (int i = 0; i < input_grad_shape.size(); i++) {
+    for (size_t i = 0; i < input_grad_shape.size(); i++) {
       input_grad_range[i].first = std::max(input_grad_shape[i], kDynamicRangeLowerBound);
       input_grad_range[i].second = input_grad_shape[i];
     }
@@ -5566,10 +5584,10 @@ static bool set_avg_pool_grad_out_shape_range(ge::Operator& op, const std::strin
   } else {
     std::vector<int64_t> output_sizes = tensordesc_output->MutableShape().GetDims();
     if (output_sizes.empty() || output_sizes.size() != 4) {
-      OP_LOGE(op.GetName().c_str(), "output_sizes list should be 4D. actual is: %u.", output_sizes.size());
+      OP_LOGE(op_name.GetString(), "output_sizes list should be 4D. actual is: %u.", output_sizes.size());
       map<string, string> err_map;
       err_map["param_name"] = "output_sizes";
-      err_map["op_name"] = op.GetName().c_str();
+      err_map["op_name"] = op_name.GetString();
       err_map["expected_value"] = "4D";
       err_map["input_value"] = std::to_string(output_sizes.size()) + "D.";
       std::string report_error_code = "E50029";
@@ -5624,16 +5642,14 @@ static bool set_avg_pool_grad_out_shape_range(ge::Operator& op, const std::strin
   return true;
 }
 
-static void reset_avg_pool_grad_out_shape(ge::Operator& op, const std::vector<int64_t>&dy_sizes,
+static void reset_avg_pool_grad_out_shape(const std::vector<int64_t>&dy_sizes,
                                           const std::string& dy_format, std::vector<int64_t>& input_sizes,
                                           const std::string& input_format) {
   int32_t h_input_position = input_format.find("H");
   int32_t w_input_position = input_format.find("W");
-  int32_t c_input_position = input_format.find("C");
   int32_t n_input_position = input_format.find("N");
   int32_t h_dy_position = dy_format.find("H");
   int32_t w_dy_position = dy_format.find("W");
-  int32_t c_dy_position = dy_format.find("C");
   int32_t n_dy_position = dy_format.find("N");
   if (dy_sizes[n_dy_position] == -1) {
     input_sizes[n_input_position] = -1;
@@ -5647,37 +5663,38 @@ static void reset_avg_pool_grad_out_shape(ge::Operator& op, const std::vector<in
 }
 
 IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksize");
-  if (!CheckListEmpty(op.GetName(), ksize, "ksize")) {
+  if (!CheckListEmpty(op_name.GetString(), ksize, "ksize")) {
     return GRAPH_FAILED;
   }
   if (ksize.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "Attr ksize(%u) is too small", ksize.size());
+    OP_LOGE(op_name.GetString(), "Attr ksize(%u) is too small", ksize.size());
   }
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(op.GetName(), strides, "strides")) {
+  if (!CheckListEmpty(op_name.GetString(), strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) is too small", strides.size());
+    OP_LOGE(op_name.GetString(), "Attr strides(%u) is too small", strides.size());
     return GRAPH_FAILED;
   }
 
   std::string padding;
-  if (op.GetAttr("padding", padding) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get padding failed!");
-    return GRAPH_FAILED;
-  }
+  CHECK(op.GetAttr("padding", padding) != GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Get padding failed!"),
+        return GRAPH_FAILED);
   if (padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(), "Attr padding(%s) only support SAME and VALID", padding.c_str());
+    OP_LOGE(op_name.GetString(), "Attr padding(%s) only support SAME and VALID", padding.c_str());
     return GRAPH_FAILED;
   }
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      OP_LOGE(op.GetName().c_str(), "Attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
+      OP_LOGE(op_name.GetString(), "Attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
       return GRAPH_FAILED;
     }
   }
@@ -5707,7 +5724,10 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter AvgPoolGrad inferfunction!");
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
+  OP_LOGI(op_name.GetString(), "Enter AvgPoolGrad inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
   auto input_grad_desc = op_desc->MutableInputDesc("input_grad");
@@ -5721,7 +5741,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
   bool is_dynamic =false;
 
   if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) == GRAPH_SUCCESS) {
-    OP_LOGD(op.GetName().c_str(), "Get constdata success");
+    OP_LOGD(op_name.GetString(), "Get constdata success");
     DataType dtype = input_sizes_desc->GetDataType();
     GetConstValue(op, orig_input_shape_tensor, dtype, orig_input_size);
     is_input_size_const = true;
@@ -5760,7 +5780,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
       }
     }
     if (!unknown_rank) {
-      reset_avg_pool_grad_out_shape(op, input_grad_shape, data_format, orig_input_size, data_format);
+      reset_avg_pool_grad_out_shape(input_grad_shape, data_format, orig_input_size, data_format);
     }
   }
   if (orig_input_size.size() == input_grad_shape.size()) {
@@ -5777,7 +5797,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
       return ge::GRAPH_FAILED;
   }
 
-  OP_LOGD(op.GetName().c_str(), "Leave AvgPoolGrad inferfunction!");
+  OP_LOGD(op_name.GetString(), "Leave AvgPoolGrad inferfunction!");
   return GRAPH_SUCCESS;
 }
 

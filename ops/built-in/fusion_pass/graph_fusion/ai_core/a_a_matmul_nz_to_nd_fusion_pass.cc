@@ -201,7 +201,7 @@ bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping)
   FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
                     OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:0) before MatMul node does not match."),
                     return false);
-  
+
   FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
                     OP_LOGW(kNameFusionPass.c_str(), "TransData(idx:1) before Matmul node does not match."),
                     return false);
@@ -213,7 +213,7 @@ bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping)
   return true;
 }
 
-bool AAMatMulNzToNdFusionPass::NeedFusion(const ge::ComputeGraph& graph, const Mapping& mapping) {
+bool AAMatMulNzToNdFusionPass::NeedFusion(const Mapping& mapping) {
   // Not support: cube_vector_split
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
@@ -382,8 +382,9 @@ Status AAMatMulNzToNdFusionPass::DoFusion(ge::ComputeGraph& graph) {
   return fe::SUCCESS;
 }
 
-Status AAMatMulNzToNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  if (!NeedFusion(graph, mapping)) {
+Status AAMatMulNzToNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                        vector<ge::NodePtr>& /* fusionNodes */) {
+  if (!NeedFusion(mapping)) {
     return NOT_CHANGED;
   }
 

@@ -119,7 +119,7 @@ void GenFilter(int64_t filter_size, float val, uint16_t *data)
 
 void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &grads_shape,
                    const vector<int64_t> &ksize, const vector<int64_t> &strides,
-                   const vector<int64_t> &pads, bool ceil_mode, bool count_include_pad,
+                   const vector<int64_t> &pads, bool count_include_pad,
                    int64_t size, uint16_t *data)
 {
   int64_t input_len_d = input_shape[1] + pads[0] + pads[1];
@@ -209,7 +209,7 @@ GeTensorPtr CreateFilterNode(const vector<int64_t> &filter_ori_shape_vec, float 
   return filter_ptr;
 }
 
-Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
+Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& /* fusion_nodes */) {
   GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_grad_fusion_pass_begin");
   ge::NodePtr node_ptr = GetNodeFromMapping("AvgPool3DGrad", mapping);
   Operator op = OpDescUtils::CreateOperatorFromNode(node_ptr);
@@ -360,7 +360,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                       CUBE_INNER_ERR_REPORT(kOpType.c_str(), "multiplies is NULL."),
                       return PARAM_INVALID);
     GenMultiplies(orig_input_shape_formated, grads_shape_vec, ksize_formated, strides_formated, pads,
-                  ceil_mode, count_include_pad, grads_size, multiplies_mem.get());
+                  count_include_pad, grads_size, multiplies_mem.get());
     GeShape mul_shape(grads_shape_vec);
     GeTensorDesc mul_tensor_desc(mul_shape, FORMAT_NDC1HWC0, DT_FLOAT16);
     mul_tensor_desc.SetOriginShape(GeShape(grads_ori_shape_vec_formated));

@@ -53,7 +53,7 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
 
   bool use_actual_distance = false;
   if (op.GetAttr("use_actual_distance", use_actual_distance) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Failed to get attr[use_actual_distance]. Set it to false.");
+    OP_LOGW(op_name.GetString(), "Failed to get attr[use_actual_distance]. Set it to false.");
   }
 
   auto output_segment_sum = op_desc->MutableOutputDesc(0);

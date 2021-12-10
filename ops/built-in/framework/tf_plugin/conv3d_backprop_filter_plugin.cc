@@ -23,6 +23,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/axis_util.h"
 #include "../../op_proto/util/util.h"
 
 #include "op_log.h"
@@ -35,9 +36,12 @@ namespace {
   const int32_t kOutputIdx0 = 0;
 }
 
-Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter ParseParamsConv3DBackpropFilter.");
-  AutoMappingFn(op_src, op);
+Status ParseParamsConv3DBackpropFilter(const ge::Operator& op_src, ge::Operator& op) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
+
+  OP_LOGI(op_name.GetString(), "Enter ParseParamsConv3DBackpropFilter.");
+  AutoMappingByOpFn(op_src, op);
 
   ge::Format data_format = ge::FORMAT_NDHWC;
   std::string data_format_attr;
@@ -53,40 +57,31 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   org_tensor_x.SetOriginFormat(data_format);
   org_tensor_x.SetFormat(data_format);
   auto ret = opDsc->UpdateInputDesc(kInputIdx0, org_tensor_x);
-  if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input_x format failed.");
-    return FAILED;
-  }
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update input_x format failed."), return FAILED);
 
   ge::GeTensorDesc org_tensor_y = opDsc->GetInputDesc(kInputIdx1);
   org_tensor_y.SetOriginFormat(data_format);
   org_tensor_y.SetFormat(data_format);
   ret = opDsc->UpdateInputDesc(kInputIdx1, org_tensor_y);
-  if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update out_backprop format failed.");
-    return FAILED;
-  }
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update out_backprop format failed."), return FAILED);
 
   ge::GeTensorDesc org_tensor_w = opDsc->GetOutputDesc(kOutputIdx0);
   org_tensor_w.SetOriginFormat(ge::FORMAT_DHWCN);
   org_tensor_w.SetFormat(ge::FORMAT_DHWCN);
   ret = opDsc->UpdateOutputDesc(kInputIdx0, org_tensor_w);
-  if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output dw format failed.");
-    return FAILED;
-  }
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update output dw format failed."), return FAILED);
   std::vector<int32_t> pad_list = {0, 0, 0, 0, 0, 0};
   op.SetAttr("pads", pad_list);
 
-  OP_LOGI(op.GetName().c_str(), "update output dw format success.");
+  OP_LOGI(op_name.GetString(), "update output dw format success.");
 
-  OP_LOGI(op.GetName().c_str(), "Exit ParseParamsConv3DBackpropFilter.");
+  OP_LOGI(op_name.GetString(), "Exit ParseParamsConv3DBackpropFilter.");
   return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("Conv3DBackpropFilter")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Conv3DBackpropFilterV2")
-    .ParseParamsFn(ParseParamsConv3DBackpropFilter)
+    .ParseParamsByOperatorFn(ParseParamsConv3DBackpropFilter)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

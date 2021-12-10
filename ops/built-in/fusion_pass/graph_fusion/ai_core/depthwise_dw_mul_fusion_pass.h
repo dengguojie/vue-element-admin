@@ -34,7 +34,7 @@ class DepthwiseDwMulFusionPass : public PatternFusionBasePass {
 
   private:
     ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& depthwiseDwNode, ge::Format& inputOriginFormat, bool& is_dynamic);
-    Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, const int64_t matrixSize, vector<int64_t>& dimInfo, bool& is_dynamic);
+    Status AddCoffe(ge::NodePtr& mulNode, const int64_t matrixSize, vector<int64_t>& dimInfo, bool& is_dynamic);
 
     const string FUSED_OP_TYPE = "DepthwiseConv2DBackpropFilterD";
 };

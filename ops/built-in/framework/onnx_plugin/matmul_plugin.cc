@@ -13,15 +13,16 @@
 
 #include "onnx_common.h"
 #include "array_ops.h"
+#include "../../op_proto/util/axis_util.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
+  ge::AscendString op_name;
+  CHECK(op_dest.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
-  if (node == nullptr) {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
-    return FAILED;
-  }
+  CHECK(node == nullptr, ONNX_PLUGIN_LOGE(op_name.GetString(), "Dynamic cast op_src to NodeProto failed."),
+        return FAILED);
 
   bool trans_a = false;
   bool trans_b = false;
@@ -38,12 +39,12 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
 // register MatMul op info to GE
 REGISTER_CUSTOM_OP("BatchMatMulV2")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::MatMul",
-                   "ai.onnx::9::MatMul",
-                   "ai.onnx::10::MatMul",
-                   "ai.onnx::11::MatMul",
-                   "ai.onnx::12::MatMul",
-                   "ai.onnx::13::MatMul"})
+    .OriginOpType({ge::AscendString("ai.onnx::8::MatMul"),
+                   ge::AscendString("ai.onnx::9::MatMul"),
+                   ge::AscendString("ai.onnx::10::MatMul"),
+                   ge::AscendString("ai.onnx::11::MatMul"),
+                   ge::AscendString("ai.onnx::12::MatMul"),
+                   ge::AscendString("ai.onnx::13::MatMul")})
     .ParseParamsFn(ParseParamsMatMul)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

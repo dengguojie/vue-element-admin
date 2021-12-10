@@ -153,8 +153,6 @@ static void CalTilingParam(TilingParam& param, const GeShape &input_shape, int32
 
   int64_t input_shape_n = input_shape.GetDim(0);
   int64_t input_shape_c1 = input_shape.GetDim(1);
-  int64_t input_shape_h = input_shape.GetDim(2);
-  int64_t input_shape_w = input_shape.GetDim(3);
   int64_t input_shape_c0 = input_shape.GetDim(4);
 
   int32_t one_fourth_ub_ele = ub_ele / 4;
@@ -218,7 +216,7 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   if (output_desc == nullptr) {
     return false;
   }
-  GeShape &output_shape = output_desc->MutableShape();
+
   OP_TILING_CHECK(
     input_shape.GetDimNum() != 5,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %lu",
@@ -262,13 +260,13 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   param.input_w = input_shape.GetDim(3);
   OP_TILING_CHECK(
     (padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Input height or width must greater than or equal to ksize when padding mode is valid."),
         return false);
   int32_t one_fourth_ub_ele = ub_ele / 4;
   OP_TILING_CHECK(
     (one_fourth_ub_ele / input_shape.GetDim(4) / ksize_h < ksize_w),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
         return false);
 

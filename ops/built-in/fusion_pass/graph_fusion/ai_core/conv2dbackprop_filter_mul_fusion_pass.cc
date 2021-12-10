@@ -135,13 +135,11 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
 
 /*!
  * @brief: add a const node to mul node
- * @param [in] graph: original graph
  * @param [in] mulNode: the pointer of mul node
  * @param [in] matrixSize: the size of const node
  * @return success for add a const node to mul node
  */
-Status Conv2DbpFilterMulFusionPass::AddAssit(ge::ComputeGraph& graph,
-                                             ge::NodePtr& mulNode,
+Status Conv2DbpFilterMulFusionPass::AddAssit(ge::NodePtr& mulNode,
                                              const int64_t matrixSize) {
   // get OriginDesc info
   ge::ConstGeTensorDescPtr inputDesc0 = GetCurrNodeInputDesc(mulNode, 0);
@@ -236,7 +234,8 @@ vector<FusionPattern*> Conv2DbpFilterMulFusionPass::DefinePatterns() {
  * @param [out] newNodes: nodes matched by pattern
  * @return bool: fusion status ok or not.
  */
-Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
+Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                           vector<ge::NodePtr>& /* new_nodes */) {
   // dwNode info
   ge::NodePtr dwNode = GetNodeFromMapping(PATTERN_CONV2DBPFILTER, mapping);
   FUSION_PASS_CHECK(dwNode == nullptr,
@@ -298,7 +297,7 @@ Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(mulNode == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mul Node failed"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(AddAssit(graph, mulNode, matrixSize) != SUCCESS,
+  FUSION_PASS_CHECK(AddAssit(mulNode, matrixSize) != SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add assit failed"),
                     return PARAM_INVALID);
 

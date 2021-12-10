@@ -138,7 +138,6 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   int c_idx = c_anchor_ptr->GetIdx();
   int alpha_idx = alpha_anchor_ptr->GetIdx();
   int beta_idx = beta_anchor_ptr->GetIdx();
-  int y_idx = y_anchor_ptr->GetIdx();
 
   // get desc of gemm
   ge::GeTensorDesc gemm_a_in_desc = gemm_node->GetOpDesc()->GetInputDesc(a_anchor);

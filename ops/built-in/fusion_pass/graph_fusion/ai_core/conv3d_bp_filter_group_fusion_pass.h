@@ -32,8 +32,6 @@ class Conv3DBpFilterGroupFusionPass : public PatternFusionBasePass {
  private:
   bool Relink(ge::NodePtr& conv_node, ge::NodePtr& mul_node, ge::NodePtr& const_node);
   bool GenerateMulNode(ge::ComputeGraph& graph,
-                       const std::vector<int64_t>& dims,
-                       const std::map<std::string, int64_t>& group_map,
                        const ge::OpDescPtr& conv_desc,
                        ge::NodePtr& mul_node);
   bool GenMultiplier(ge::ComputeGraph& graph, const std::vector<int64_t>& dims,

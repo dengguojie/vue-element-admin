@@ -107,7 +107,7 @@ vector<FusionPattern*> MatMulTransdataFusionPass::DefinePatterns() {
 
 
 Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                         vector<ge::NodePtr>& fusion_nodes) {
+                                         vector<ge::NodePtr>& /* fusion_nodes */) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter MatMulTransdataFusionPass.");
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;

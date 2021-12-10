@@ -24,8 +24,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status AutoMappingFnMatMulV2(const google::protobuf::Message* op_src, ge::Operator& op) {
-  Status ret = AutoMappingFn(op_src, op);
+Status AutoMappingFnMatMulV2(const ge::Operator& op_src, ge::Operator& op) {
+  Status ret = AutoMappingByOpFn(op_src, op);
   if (ret != SUCCESS) {
     CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "tensorflow plugin parser failed. auto mapping failed.");
     return FAILED;
@@ -50,6 +50,6 @@ Status AutoMappingFnMatMulV2(const google::protobuf::Message* op_src, ge::Operat
 REGISTER_CUSTOM_OP("MatMulV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("MatMul")
-    .ParseParamsFn(AutoMappingFnMatMulV2)
+    .ParseParamsByOperatorFn(AutoMappingFnMatMulV2)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

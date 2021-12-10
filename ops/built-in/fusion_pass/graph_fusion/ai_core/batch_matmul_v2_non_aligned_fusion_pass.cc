@@ -153,7 +153,7 @@ vector<FusionPattern *> BatchMatMulNonAlignedFusionPass::DefinePatterns() {
 }
 
 Status BatchMatMulNonAlignedFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
-                                               vector<ge::NodePtr> &fusion_nodes) {
+                                               vector<ge::NodePtr> & /* fusion_nodes */) {
   OP_LOGI(kNameFusionPass.c_str(), "Enter BatchMatMulNonAlignedFusionPass.");
   FUSION_PASS_CHECK(GetNodes(mapping) != SUCCESS, OP_LOGW(kNameFusionPass.c_str(), "Failed to get Nodes."),
                     return NOT_CHANGED);
@@ -675,10 +675,8 @@ Status BatchMatMulNonAlignedFusionPass::DoFusionPattern2(ge::ComputeGraph &graph
 
   auto bmm_3_input_1_shape = batchmatmul_3_node->GetOpDesc()->MutableInputDesc(1)->GetOriginShape();
   auto len_bmm_3_input_1_shape = bmm_3_input_1_shape.GetDimNum();
-  int64_t bmm_3_n_dim = bmm_3_input_1_shape.GetDim(len_bmm_3_input_1_shape - 1);
   int64_t bmm_3_k_dim = bmm_3_input_1_shape.GetDim(len_bmm_3_input_1_shape - 2);
   if (batchmatmul_3_adj_x2) {
-    bmm_3_n_dim = bmm_3_input_1_shape.GetDim(len_bmm_3_input_1_shape - 2);
     bmm_3_k_dim = bmm_3_input_1_shape.GetDim(len_bmm_3_input_1_shape - 1);
   }
 
@@ -825,7 +823,8 @@ Status BatchMatMulNonAlignedFusionPass::CreatePadDNode(ge::ComputeGraph &graph, 
   int idx = out_anchor->GetIdx();
   auto previous_node_desc = previous_node->GetOpDesc()->MutableOutputDesc(idx);
 
-  auto pad_op = ge::OperatorFactory::CreateOperator(previous_node->GetName() + "/PadD", "PadD");
+  std::string op_name(previous_node->GetName() + "/PadD");
+  auto pad_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "PadD");
   FUSION_PASS_CHECK(pad_op.IsEmpty(), OP_LOGE("Create PadD Op operator error"), return FAILED);
   auto pad_desc = ge::OpDescUtils::GetOpDescFromOperator(pad_op);
   pad_op.BreakConnect();
@@ -857,7 +856,8 @@ Status BatchMatMulNonAlignedFusionPass::CreateReshapeNode(ge::ComputeGraph &grap
   int idx = out_anchor->GetIdx();
   auto previous_node_desc = previous_node->GetOpDesc()->MutableOutputDesc(idx);
 
-  auto reshape_op = ge::OperatorFactory::CreateOperator(previous_node->GetName() + "/Reshape", "Reshape");
+  std::string op_name(previous_node->GetName() + "/Reshape");
+  auto reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshape_op.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return FAILED);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshape_op);
   reshape_op.BreakConnect();
@@ -967,7 +967,7 @@ Status BatchMatMulNonAlignedFusionPass::UpdateConst(ge::NodePtr &shape_node, vec
     int32_t *const_data = (int32_t *)(const_ptr->GetData().GetData());
     FUSION_PASS_CHECK(const_data == nullptr, OP_LOGE(kNameFusionPass.c_str(), "const_data of reshape is nullptr"),
                       return PARAM_INVALID);
-    int64_t dim = const_shape.size();
+    size_t dim = const_shape.size();
     for (size_t i = 0; i < dim; i++) {
       const_data[i] = (int32_t)const_shape[i];
     }
@@ -976,7 +976,7 @@ Status BatchMatMulNonAlignedFusionPass::UpdateConst(ge::NodePtr &shape_node, vec
     int64_t *const_data = (int64_t *)(const_ptr->GetData().GetData());
     FUSION_PASS_CHECK(const_data == nullptr, OP_LOGE(kNameFusionPass.c_str(), "const_data of reshape is nullptr"),
                       return PARAM_INVALID);
-    int64_t dim = const_shape.size();
+    size_t dim = const_shape.size();
     for (size_t i = 0; i < dim; i++) {
       const_data[i] = const_shape[i];
     }

@@ -297,7 +297,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   // get orig_input_shape value
   Operator op = OpDescUtils::CreateOperatorFromNode(avg_pool_grad_fused_node);
   Tensor orig_input_shape_const_tensor;
-  op.GetInputConstData(avg_pool_grad_attr_info[0], orig_input_shape_const_tensor);
+  op.GetInputConstData(avg_pool_grad_attr_info[0].c_str(), orig_input_shape_const_tensor);
   FUSION_PASS_CHECK(data_type != DT_INT32,
                     OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape dtype only surpport INT32."),
                     return NOT_CHANGED);
@@ -379,7 +379,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     output_shape_c = avg_pool_dim_info[1];
     avg_pool_dim_info[1] = output_shape_h;
     avg_pool_dim_info[2] = output_shape_w;
-    avg_pool_dim_info[3] = output_shape_c; 
+    avg_pool_dim_info[3] = output_shape_c;
   }
   vector<int64_t> orig_input_shape_v{orig_input_shape_const_tensor_ptr[0], orig_input_shape_const_tensor_ptr[1],
                                      orig_input_shape_const_tensor_ptr[2], orig_input_shape_const_tensor_ptr[3]};

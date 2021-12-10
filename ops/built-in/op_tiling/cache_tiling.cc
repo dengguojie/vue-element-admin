@@ -576,7 +576,7 @@ void SetResFactors(int64_t *resFactors, const L0Status &l0Status)
 }
 
 void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status,
-                      int64_t *parasCombo, int64_t sizeofParasCombo)
+                      int64_t *parasCombo)
 {
   GetL0StatusFromParasCombo(l0Status, parasCombo);
   int64_t majorDim = l2Status.m;
@@ -633,11 +633,9 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
   int64_t dbAOnBOnCOnIdx = 0;
   int64_t dbAOnBOnCOffIdx = 1;
   int64_t resFactors[8][7] = {0};
-  int64_t parasCombo[9];
   for (int32_t i = 0; i < L0_PARAS_COMBO_LEN; ++i) {
     MKNParasCombo mknParasCombo = GetParasCombo(i, blockValue);
-    GetL0FactorsCand(resFactors[i], l2Status, l0Status, mknParasCombo.parasCombo,
-                     sizeof(mknParasCombo.parasCombo));
+    GetL0FactorsCand(resFactors[i], l2Status, l0Status, mknParasCombo.parasCombo);
   }
 
   // check both L0C utilization and loadsize to control LOC LOA LOB DB
@@ -966,7 +964,7 @@ void GetUbFactors(const string &op_type, const L0Status &l0Status, UbStatus &ubS
 }
 
 void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const L0Status &l0Status,
-                          L1Status &l1Status, const UbStatus &ubStatus)
+                          L1Status &l1Status)
 {
   if (l2Status.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == l2Status.k) {
     l1Status.m_al1 = NONE;
@@ -991,7 +989,7 @@ void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &ti
   GetL0Factors(op_type, l2Status, blockValue, l0Status);
   GetL1Factors(op_type, params, l2Status, l0Status, l1Status);
   GetUbFactors(op_type, l0Status, ubStatus);
-  CheckSpecialTemplate(op_type, l2Status, l0Status, l1Status, ubStatus);
+  CheckSpecialTemplate(op_type, l2Status, l0Status, l1Status);
   tiling.SetParams(l2Status, l0Status, l1Status, ubStatus);
   tiling.SetAttachFlag();
   tiling.GetTilingId();

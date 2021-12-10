@@ -7667,8 +7667,7 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
   return true;
 }
 
-static void ResetConv3dBpInputOutShape(ge::Operator& op,
-                                       Format dy_format,
+static void ResetConv3dBpInputOutShape(Format dy_format,
                                        const std::vector<int64_t>&dy_sizes,
                                        Format input_format,
                                        std::vector<int64_t>& input_sizes) {
@@ -7732,7 +7731,7 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   }
 
   if (!unknown_rank) {
-    ResetConv3dBpInputOutShape(op, dy_desc->GetFormat(), dy_desc->GetShape().GetDims(), y_desc->GetFormat(),
+    ResetConv3dBpInputOutShape(dy_desc->GetFormat(), dy_desc->GetShape().GetDims(), y_desc->GetFormat(),
                                input_sizes);
   }
 
@@ -9285,7 +9284,7 @@ VERIFY_FUNC_REG(Conv3DTransposeD, Conv3DTransposeDVerify);
 template <typename T1, typename T2, typename T3>
 static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<T1>& x_sizes, Format x_format,
                                             const std::vector<T2>& filter_sizes, Format filter_format,
-                                            const std::vector<T3>& input_sizes, Format input_format, bool& isRun) {
+                                            const std::vector<T3>& input_sizes, bool& isRun) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
 
@@ -9965,8 +9964,7 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
 
   // update pads list by padding[SAME,VALID] and calculate input_size
   bool isRun = false;
-  if (!SetInputsizeListConv2DTranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes,
-                                       input_format, isRun)) {
+  if (!SetInputsizeListConv2DTranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes, isRun)) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "Set Conv2DTranspose InputsizeList failed.");
     return GRAPH_FAILED;
   }

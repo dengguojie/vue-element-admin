@@ -20,16 +20,17 @@
  */
 #include "onnx_common.h"
 #include "array_ops.h"
+#include "../../op_proto/util/axis_util.h"
 
 namespace domi {
 
 Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
+  ge::AscendString op_name;
+  CHECK(op_dest.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   const ge::onnx::NodeProto* node =
       dynamic_cast<const ge::onnx::NodeProto*>(op_src);
-  if (node == nullptr) {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
-    return FAILED;
-  }
+  CHECK(node == nullptr, ONNX_PLUGIN_LOGE(op_name.GetString(), "Dynamic cast op_src to NodeProto failed."),
+        return FAILED);
   bool trans_a = false;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "transA" && attr.i() != 0) {
@@ -49,10 +50,7 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("transpose_x2", trans_b);
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
-  if (op_desc == nullptr) {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get op desc failed.");
-    return FAILED;
-  }
+  CHECK(op_desc == nullptr, ONNX_PLUGIN_LOGE(op_name.GetString() , "Get op desc failed."), return FAILED);
   //The fmap should be NCHW
   ge::GeTensorDesc output_y_desc = op_desc->GetOutputDesc(0);
   output_y_desc.SetOriginFormat(ge::FORMAT_NCHW);
@@ -65,12 +63,12 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
 // register Gemm op info to GE
 REGISTER_CUSTOM_OP("MatMulV2")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::Gemm",
-                   "ai.onnx::9::Gemm",
-                   "ai.onnx::10::Gemm",
-                   "ai.onnx::11::Gemm",
-                   "ai.onnx::12::Gemm",
-                   "ai.onnx::13::Gemm"})
+    .OriginOpType({ge::AscendString("ai.onnx::8::Gemm"),
+                   ge::AscendString("ai.onnx::9::Gemm"),
+                   ge::AscendString("ai.onnx::10::Gemm"),
+                   ge::AscendString("ai.onnx::11::Gemm"),
+                   ge::AscendString("ai.onnx::12::Gemm"),
+                   ge::AscendString("ai.onnx::13::Gemm")})
     .ParseParamsFn(ParseParamsGemm)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

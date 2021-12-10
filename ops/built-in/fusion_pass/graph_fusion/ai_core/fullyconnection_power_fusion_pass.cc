@@ -26,6 +26,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "anchor_util.h"
 #include "graph/debug/ge_attr_define.h"
@@ -184,8 +185,6 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "FcNode[%s]: LinkControlEdge not success.", fullyConnectionNodeName.c_str()),
       return ret);
 
-  
-
   ge::OpDescPtr powerDesc = powerNode->GetOpDesc();
   FUSION_PASS_CHECK(powerDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -201,7 +200,8 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
 
   ge::AttrUtils::GetInt(fullyConnectionNode->GetOpDesc(), "num_output", num_output);
 
-  if (power != 1 || scale != 1) {
+  if (std::fabs(power - 1.0F) > std::numeric_limits<float>::epsilon() ||
+      std::fabs(scale - 1.0F) > std::numeric_limits<float>::epsilon()) {
     OP_LOGI(FUSED_OP_TYPE, "fc and power nodes is not meet the conditions , graph not changed.");
     return NOT_CHANGED;
   }

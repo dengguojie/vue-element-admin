@@ -19,6 +19,7 @@
  *
  */
 #include "onnx_common.h"
+#include "../../op_proto/util/axis_util.h"
 #include "../../op_proto/util/error_util.h"
 #include "array_ops.h"
 #include "nn_calculation_ops.h"
@@ -47,9 +48,10 @@ struct ConvTransposeAttr {
   bool trans_2d = false;
 };
 
-Status AttrUpdate(std::vector<int32_t>& dst, std::vector<int32_t>& src, int offset, int count, std::string& op_name) {
+Status AttrUpdate(std::vector<int32_t>& dst, std::vector<int32_t>& src, int offset, int count,
+                  const ge::AscendString& op_name) {
   if ((int)src.size() < count) {
-    ONNX_PLUGIN_LOGE(op_name.c_str(), "attr size[%d] should >= [%d]", (int)src.size(), count);
+    ONNX_PLUGIN_LOGE(op_name.GetString(), "attr size[%d] should >= [%d]", (int)src.size(), count);
     return FAILED;
   }
   for (int i = 0; i < count; ++i) {
@@ -59,6 +61,8 @@ Status AttrUpdate(std::vector<int32_t>& dst, std::vector<int32_t>& src, int offs
 }
 
 Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& op) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   // if attr is set in model, receive them with these var
   std::vector<int32_t> strides_list = {1, 1};
   std::vector<int32_t> dilations_list = {1, 1};
@@ -91,7 +95,7 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
       // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        ONNX_PLUGIN_LOGE(op.GetName().c_str(), "The value lenth of pads is odd, transform failed.");
+        ONNX_PLUGIN_LOGE(op_name.GetString(), "The value lenth of pads is odd, transform failed.");
         return FAILED;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
@@ -123,16 +127,15 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
   }
 
   if (!is_have_kenel_shape) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "attr kenel_shape must have value");
+    ONNX_PLUGIN_LOGE(op_name.GetString(), "attr kenel_shape must have value");
     return FAILED;
   }
 
   int out_len = dim_size == INPUT_5D ? 3 : 2;
   if (!out_pads_list.empty()) {
     std::vector<int32_t> out_pads_list_new(out_len + 2, 0);
-    std::string op_name = op.GetName(); 
     if (AttrUpdate(out_pads_list_new, out_pads_list, 2, out_len, op_name) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "attr out_pads update fail");
+      ONNX_PLUGIN_LOGE(op_name.GetString(), "attr out_pads update fail");
       return FAILED;
     }
     op.SetAttr("output_padding", out_pads_list_new);
@@ -140,9 +143,8 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
 
   if (!out_shape_list.empty()) {
     std::vector<int32_t> out_shape_list_new(out_len, 0);
-    std::string op_name = op.GetName();
     if (AttrUpdate(out_shape_list_new, out_shape_list, 0, out_len, op_name) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "attr out_shape update fail");
+      ONNX_PLUGIN_LOGE(op_name.GetString(), "attr out_shape update fail");
       return FAILED;
     }
     op.SetAttr("output_shape", out_shape_list_new);
@@ -155,7 +157,7 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
     }
   }
   op.SetAttr("pads", pad_list);
-  
+
   if (is_set_output_shape && !is_set_auto_pad) {
     op.SetAttr("auto_pad", "SAME_LOWER");
   }
@@ -412,8 +414,12 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::ConvTranspose", "ai.onnx::9::ConvTranspose", "ai.onnx::10::ConvTranspose",
-                   "ai.onnx::11::ConvTranspose", "ai.onnx::12::ConvTranspose", "ai.onnx::13::ConvTranspose"})
+    .OriginOpType({ge::AscendString("ai.onnx::8::ConvTranspose"),
+                   ge::AscendString("ai.onnx::9::ConvTranspose"),
+                   ge::AscendString("ai.onnx::10::ConvTranspose"),
+                   ge::AscendString("ai.onnx::11::ConvTranspose"),
+                   ge::AscendString("ai.onnx::12::ConvTranspose"),
+                   ge::AscendString("ai.onnx::13::ConvTranspose")})
     .ParseParamsFn(ParseParamsConvTranspose)
     .ParseOpToGraphFn(ParseOpToGraphConvTranspose)
     .ImplyType(ImplyType::TVM);

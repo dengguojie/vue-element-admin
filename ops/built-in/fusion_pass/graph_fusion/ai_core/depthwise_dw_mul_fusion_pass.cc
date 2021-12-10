@@ -220,7 +220,7 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   return mul_node;
 }
 
-Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mul_node, const int64_t matrix_size,
+Status DepthwiseDwMulFusionPass::AddCoffe(ge::NodePtr& mul_node, const int64_t matrix_size,
                                           vector<int64_t>& dim_info, bool& is_dynamic) {
   OP_LOGI("Enter DepthwiseDwMulFusionPass::AddCoffe");
   int64_t output_n = 0;
@@ -339,7 +339,8 @@ vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                        vector<ge::NodePtr>& /* fusion_nodes */) {
   OP_LOGI("Enter DepthwiseDwMulFusionPass Fusion");
   // avgpool node
   ge::NodePtr depthwise_dw_node = GetNodeFromMapping(PATTERN_DEPTHWISEDW, mapping);
@@ -429,7 +430,7 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   ge::NodePtr mul_node = AddMul(graph, depthwise_dw_node, output_origin_format, is_dynamic);
   FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null, AddMul failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(AddCoffe(graph, mul_node, matrix_size, assit_dim_info_origin, is_dynamic) != SUCCESS,
+  FUSION_PASS_CHECK(AddCoffe(mul_node, matrix_size, assit_dim_info_origin, is_dynamic) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return PARAM_INVALID);
   OP_LOGI("Leave DepthwiseDwMulFusionPass Fusion");
   return SUCCESS;

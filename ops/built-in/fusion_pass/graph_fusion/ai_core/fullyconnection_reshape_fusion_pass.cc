@@ -63,7 +63,8 @@ vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
   return patterns;
 }
 
-Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                          vector<ge::NodePtr>& /* fusionNodes */) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FullyConnectionReshapePass fusion begin");
   ge::NodePtr reshapeNode = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   ge::NodePtr fullyConnectionNode = GetNodeFromMapping(PATTERN_FULLYCONNECTION, mapping);

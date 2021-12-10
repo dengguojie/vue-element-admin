@@ -99,7 +99,7 @@ int GetIntersection(int pos1_start, int pos1_end, int pos2_start, int pos2_end) 
 
 void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, int dout, int ho, int wo, int kd,
                    int kh, int kw, int stride_d, int stride_h, int stride_w, const vector<int>& pads, uint16_t* data,
-                   int max_size, bool ceil_mode, bool count_include_pad) {
+                   int max_size, bool count_include_pad) {
   int pad_d = pads[0] + pads[1];
   int pad_h = pads[2] + pads[3];
   int pad_w = pads[4] + pads[5];
@@ -215,7 +215,7 @@ vector<FusionPattern*> AvgPool3DFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
+Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& /* fusion_nodes */) {
   OP_LOGD(kFusedOpType.c_str(), "get into AvgPool3d fusion pass.");
   NodePtr op_node = GetNodeFromMapping("AvgPool3D", mapping);
   Operator op = OpDescUtils::CreateOperatorFromNode(op_node);
@@ -352,7 +352,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
                       return PARAM_INVALID);
 
     GenMultiplier(fmap_n, fmap_c1, fmap_d, fmap_h, fmap_w, dout, ho, wo, kd, kh, kw, stride_d, stride_h, stride_w, pads,
-                  multiplier_mem.get(), multiplier_size, ceil_mode, count_include_pad);
+                  multiplier_mem.get(), multiplier_size, count_include_pad);
 
     vector<int64_t> mul_dim_info{fmap_n, dout, fmap_c1, ho, wo, kC0};
     GeShape mul_shape(mul_dim_info);

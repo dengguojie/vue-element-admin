@@ -36,7 +36,7 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   bool IsLinkRelationshipCorrect(const Mapping& mapping);
   bool IsNumOfNodesOutCorrect();
   bool IsStaticShape();
-  bool NeedFusion(const ge::ComputeGraph& graph, const Mapping& mapping);
+  bool NeedFusion(const Mapping& mapping);
   vector<FusionPattern*> DefinePatterns() override;
   void RestoreOriginalValues();
 

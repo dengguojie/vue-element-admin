@@ -12,6 +12,7 @@
 #include "tbe_fullyconnection_elemwise_fusion_pass.h"
 #include <string>
 #include <vector>
+#include <cmath>
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -222,7 +223,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
                   reluNode->GetName().c_str(), reluNode->GetType().c_str());
           return FAILED;
         }
-        if (negative_slope != 0) {
+        if (std::fabs(negative_slope) > std::numeric_limits<float>::epsilon()) {
           fusionNodes.clear();
           OP_LOGD(FUSED_OP_TYPE.c_str(), "LeakyRelu op[%s] type[%s] node has negative slope.",
                   reluNode->GetName().c_str(), reluNode->GetType().c_str());

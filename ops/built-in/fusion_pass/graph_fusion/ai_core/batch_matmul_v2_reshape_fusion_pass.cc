@@ -30,20 +30,20 @@ namespace fe {
   static const string PATTERN_BATCHMATMULV2 = "BatchMatMulV2";
   static const string BATCHMATMULV2 = "BatchMatMulV2";
   vector<FusionPattern*> BatchMatMulV2ReshapeFusionPass::DefinePatterns() {
-  vector<FusionPattern*> patterns; 
+  vector<FusionPattern*> patterns;
   FusionPattern *pattern = new(std::nothrow) FusionPattern("BatchMatMulV2ReshapeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object fail."), 
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object fail."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_BATCHMATMULV2, {BATCHMATMULV2}).SetOutput(PATTERN_BATCHMATMULV2);
   patterns.push_back(pattern);
   return patterns;
   }
 
-Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
-                                              vector<ge::NodePtr>& fuion_nodes) {
+Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                              vector<ge::NodePtr>& /* fuion_nodes */) {
   OP_LOGD(FUSED_OP_TYPE, "Enter BatchMatMulV2ReshapeFusionPass.");
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_BATCHMATMULV2, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "Fuse node is null, fusion failed."), 
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "Fuse node is null, fusion failed."),
                     return PARAM_INVALID);
   auto input0desc = GetCurrNodeInputDesc(fused_node, 0);
   auto input1desc = GetCurrNodeInputDesc(fused_node, 1);
@@ -146,7 +146,7 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   return SUCCESS;
 }
 
-Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst, 
+Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
                                                  ge::NodePtr& new_node) {
   ge::NodePtr src_node = src->GetOwnerNode();
   ge::NodePtr dst_node = dst->GetOwnerNode();
@@ -160,15 +160,15 @@ Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &sr
   }
   if(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
     OP_LOGE(dst_node->GetName().c_str(), "Remove input0 edge error.");
-    return FAILED; 
+    return FAILED;
   }
   if(ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
     OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str());
-    return FAILED; 
+    return FAILED;
   }
   if(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
    OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str());
-    return FAILED; 
+    return FAILED;
   }
   return SUCCESS;
 }

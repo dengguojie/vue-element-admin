@@ -24,6 +24,7 @@
 #include "op_log.h"
 #include "register/register.h"
 #include "../../op_proto/util/error_util.h"
+#include "../../op_proto/util/axis_util.h"
 #include "../../op_proto/util/util.h"
 
 namespace domi {
@@ -31,10 +32,13 @@ namespace domi {
 namespace {
   const int32_t CV_NUM_1 = 1;
 }
-Status ParseParamsConv2DBackpropInput(const Message* op_src, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter ParseParamsConv2DBackpropInput.");
+Status ParseParamsConv2DBackpropInput(const ge::Operator& op_src, ge::Operator& op) {
+  ge::AscendString op_name;
+  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
-  AutoMappingFn(op_src, op);
+  OP_LOGI(op_name.GetString(), "Enter ParseParamsConv2DBackpropInput.");
+
+  AutoMappingByOpFn(op_src, op);
 
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_dsc, "op desc", return FAILED);
@@ -43,10 +47,10 @@ Status ParseParamsConv2DBackpropInput(const Message* op_src, ge::Operator& op) {
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(CV_NUM_1, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "updating filter's format failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "updating filter's format failed.");
     return FAILED;
   } else {
-    OP_LOGI(op.GetName().c_str(), "Update filter format success, now is %d", op.GetInputDesc(CV_NUM_1).GetFormat());
+    OP_LOGI(op_name.GetString(), "Update filter format success, now is %d", op.GetInputDesc(CV_NUM_1).GetFormat());
   }
 
   // Escape GE require attr [pads] check here
@@ -59,6 +63,6 @@ Status ParseParamsConv2DBackpropInput(const Message* op_src, ge::Operator& op) {
 REGISTER_CUSTOM_OP("Conv2DBackpropInput")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Conv2DBackpropInput")
-    .ParseParamsFn(ParseParamsConv2DBackpropInput)
+    .ParseParamsByOperatorFn(ParseParamsConv2DBackpropInput)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

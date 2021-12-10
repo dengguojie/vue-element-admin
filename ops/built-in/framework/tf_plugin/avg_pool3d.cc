@@ -19,13 +19,17 @@
  * \brief
  */
 #include "register/register.h"
+#include "../../op_proto/util/axis_util.h"
 #include "op_log.h"
 
 namespace domi {
 // Replace ge ParseParams fuction to process graph conv2d node attrs
-Status ParseParamsAvgPool3D(const Message* op_src, ge::Operator& op) {
+Status ParseParamsAvgPool3D(const ge::Operator& op_src, ge::Operator& op) {
+  ge::AscendString op_name;
+  CHECK(op_src.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
+
   // Convert original tf graph avg_pool3d attrs to GE graph attrs
-  if (AutoMappingFn(op_src, op) != SUCCESS) {
+  if (AutoMappingByOpFn(op_src, op) != SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
@@ -40,6 +44,6 @@ Status ParseParamsAvgPool3D(const Message* op_src, ge::Operator& op) {
 REGISTER_CUSTOM_OP("AvgPool3D")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("AvgPool3D")
-    .ParseParamsFn(ParseParamsAvgPool3D)
+    .ParseParamsByOperatorFn(ParseParamsAvgPool3D)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

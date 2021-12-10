@@ -2103,7 +2103,7 @@ Status EinsumPass::CheckInputArgs(const Mapping &mapping) {
 
 // vector<NodePtr> &fusion_nodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
-Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr> &fusion_nodes) {
+Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr> & /* fusion_nodes */) {
   OP_LOGI(kFusedOpType.c_str(), "EinsumPass fusion in!");
   Status ret = CheckInputArgs(mapping);
   if (ret != SUCCESS) {
