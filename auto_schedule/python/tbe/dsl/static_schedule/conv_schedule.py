@@ -743,7 +743,7 @@ class CceConvOp:
                                           'deq_vector': False,
                                           'quant_round': None,
                                           'quant_padding': False}
-        self._emit_insn_map = {"elewise_single_relu": "vector_relu",
+        self._emit_insn_map = {"elewise_single_relu": "vector_auto",
                                "elewise_single_round_d": "vector_conv_round",
                                "elewise_single_VS_max": "vector_maxs",
                                "elewise_single_VS_min": "vector_mins",
@@ -3947,11 +3947,11 @@ class CceConvOp:
 
         def set_biasrelu_optim_flag():
             """
-            v200 fp16 bias+leakyrelu(negative_slope=0) optim
+            v200 fp16 bias+leakyrelu(negative_slope=0)/relu optim
             the condition:
-            1. leakyrelu(negative_slope=0)
+            1. leakyrelu(negative_slope=0)/relu
             2. fp16 bias
-            3. fp16 bias + remove_pad + leakyrelu
+            3. fp16 bias + remove_pad + leakyrelu/relu
             4. remove_pad tensor canot be used by two or more than two tensor.
             5. only be v200 scenes.
             """
@@ -3959,12 +3959,18 @@ class CceConvOp:
             for lop in self._op_graph.body_ops:
                 if self._pre_relu_fused_flag:
                     continue
-                if "negative_slope" in lop["dst_buffer"].op.attrs and \
-                lop["dst_buffer"].op.attrs["negative_slope"].value == 0 and \
-                "conv_vector_bias_add" in lop["prev_op"][0]["prev_op"][0]["op"] and \
-                len(lop["prev_op"][0]["next_op"]) == 1 and \
-                is_support_v200() and "elewise_single_lrelu" in lop["op"]:
-                    biasrelu_optim_flag = True
+
+                leaky_relu_flag = "elewise_single_lrelu" in lop["op"] and \
+                    "negative_slope" in lop["dst_buffer"].op.attrs and \
+                    lop["dst_buffer"].op.attrs["negative_slope"].value == 0
+
+                relu_flag = "elewise_single_relu" in lop["op"]
+
+                if (leaky_relu_flag or relu_flag) and \
+                    "conv_vector_bias_add" in lop["prev_op"][0]["prev_op"][0]["op"] and \
+                    len(lop["prev_op"][0]["next_op"]) == 1 and is_support_v200():
+                        biasrelu_optim_flag = True
+
             return biasrelu_optim_flag
 
         def handle_res_c_reorder():
