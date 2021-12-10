@@ -1,11 +1,12 @@
-#include "nn_batch_norm_ops.h"
-#include "all_ops.h"
-#include "fusion_pass_test_utils.h"
+#include "gtest/gtest.h"
 #include "graph/compute_graph.h"
 #include "graph/graph.h"
-#include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
-#include "gtest/gtest.h"
+#include "graph/utils/graph_utils.h"
+#include "elewise_calculation_ops.h"
+#include "array_ops.h"
+#include "npu_loss_scale_ops.h"
+#include "fusion_pass_test_utils.h"
 
 using namespace ge;
 using namespace op;
@@ -20,7 +21,7 @@ class n_p_u_get_float_status_v2_infer_test : public testing::Test {
 };
 
 TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_test_1) {
-  auto graph = std::make_shared<ge::ComputeGraph>("n_p_u_get_float_status_v2_infer_test_1");
+  ge::Graph graph("n_p_u_get_float_status_v2_infer_test_1");
 
   // expect info
   std::vector<int64_t> expected_shape = {8};
@@ -28,7 +29,7 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
 
   // input
   ge::GeShape output_shape({8});
-  ge::GeTensorDesc desc_data(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
+  ge::TensorDesc desc_data(output_shape, ge::FORMAT_ND, ge::DT_FLOAT);
   desc_data.SetOriginFormat(ge::FORMAT_ND);
   desc_data.SetOriginDataType(ge::DT_FLOAT);
   desc_data.SetOriginShape(output_shape);
@@ -38,7 +39,7 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
 
   // new op
   auto test_op = op::NPUGetFloatStatusV2("NPUGetFloatStatusV2");
-  test_op.set_input_x(data);
+  test_op.set_dynamic_input_addr(data);
   std::vector<Operator> inputs{data};
   std::vector<Operator> outputs{test_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
