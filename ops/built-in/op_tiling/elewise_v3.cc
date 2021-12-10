@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file elewise.cpp
+ * \file elewise_v3.cc
  * \brief
  */
 #include <algorithm>
@@ -24,6 +24,7 @@
 #include "graph/op_desc.h"
 #include "graph/utils/op_desc_utils.h"
 #include "elewise_v3.h"
+#include "tiling_handler.h"
 
 namespace optiling {
 namespace v3 {
@@ -49,7 +50,7 @@ constexpr int64_t ELEMENT_IN_BLOCK_BOOL = 32;
 constexpr int64_t ELEMENT_IN_BLOCK_BIT = 256;
 }
 
-const int64_t Elewise::GetElementByType(const ge::DataType dtype) {
+const int64_t Elewise::GetElementByType(const ge::DataType& dtype) const {
   // element nums in one block, default, fp16, int16, uin16
   constexpr int64_t one_bit_dtype_value = 100;
   if (dtype == ge::DataType::DT_FLOAT || dtype == ge::DataType::DT_INT32 || dtype == ge::DataType::DT_UINT32) {
@@ -264,8 +265,7 @@ void Elewise::GetOutputDtype() {
 }
 
 void Elewise::WriteKnownData() {
-  OP_LOGD(op_type.c_str(), "elewise known tiling key is:%lld", tiling_key);
-  OP_LOGD(op_type.c_str(), "elewise known block_dims is:%lld", block_dims);
+  OP_LOGD(op_type.c_str(), "elewise known tiling key is:%lld and block_dims is:%lld", tiling_key, block_dims);
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
 }
@@ -418,8 +418,7 @@ bool Elewise::DoTiling(const OpInfo& op_info) {
   return ret;
 }
 
-void ElewiseCompileInfo::ParseOutsUintOne(const std::string& op_type, const nlohmann::json& outer_compile_info) {
-  OP_LOGD(op_type.c_str(), "elewise compile info ParseOutsUintOne running");
+void ElewiseCompileInfo::ParseOutsUintOne(const nlohmann::json& outer_compile_info) {
   if (!outer_compile_info.contains("_outs_uint1")) {
     has_outs_uint1 = false;
   } else {
@@ -427,8 +426,7 @@ void ElewiseCompileInfo::ParseOutsUintOne(const std::string& op_type, const nloh
   }
 }
 
-void ElewiseCompileInfo::ParseFlagInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
-  OP_LOGD(op_type.c_str(), "elewise compile info ParseFlagInfo running");
+void ElewiseCompileInfo::ParseFlagInfo(const nlohmann::json& outer_compile_info) {
   if (!outer_compile_info.contains("_flag_info")) {
     has_flag_info = false;
   } else {
@@ -448,8 +446,7 @@ void ElewiseCompileInfo::ParseFlagInfo(const std::string& op_type, const nlohman
   }
 }
 
-void ElewiseCompileInfo::ParseBaseInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
-  OP_LOGD(op_type.c_str(), "elewise compile info ParseBaseInfo running");
+void ElewiseCompileInfo::ParseBaseInfo(const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_base_info") && !outer_compile_info.at("_base_info").empty()) {
     constexpr uint32_t base_info_size = 4;
     constexpr uint32_t max_ub_index = 2;
@@ -487,8 +484,7 @@ void ElewiseCompileInfo::ParseBaseInfo(const std::string& op_type, const nlohman
   }
 }
 
-void ElewiseCompileInfo::ParseConstDims(const std::string& op_type, const nlohmann::json& outer_compile_info) {
-  OP_LOGD(op_type.c_str(), "elewise compile info ParseConstDims running");
+void ElewiseCompileInfo::ParseConstDims(const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_const_block_dims") && is_const_shapes) {
     const std::vector<int64_t>& input_const_dims =
       outer_compile_info.at("_const_block_dims").get<std::vector<int64_t>>();
@@ -498,8 +494,7 @@ void ElewiseCompileInfo::ParseConstDims(const std::string& op_type, const nlohma
   }
 }
 
-void ElewiseCompileInfo::ParseElewiseVarSize(const std::string& op_type, const nlohmann::json& outer_compile_info) {
-  OP_LOGD(op_type.c_str(), "elewise compile info ParseElewiseVarSize running");
+void ElewiseCompileInfo::ParseElewiseVarSize(const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_elewise_vars")&& !outer_compile_info.at("_elewise_vars").empty()) {
     const std::string tiling_key_str = "210000000";
     const std::string tiling_key_db_str = "210010000";
@@ -519,11 +514,11 @@ void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {
 
 ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
   OP_LOGD(op_type.c_str(), "elewise compile info parse running");
-  ParseOutsUintOne(op_type, outer_compile_info);
-  ParseFlagInfo(op_type, outer_compile_info);
-  ParseBaseInfo(op_type, outer_compile_info);
-  ParseConstDims(op_type, outer_compile_info);
-  ParseElewiseVarSize(op_type, outer_compile_info);
+  ParseOutsUintOne(outer_compile_info);
+  ParseFlagInfo(outer_compile_info);
+  ParseBaseInfo(outer_compile_info);
+  ParseConstDims(outer_compile_info);
+  ParseElewiseVarSize(outer_compile_info);
 }
 }  // namespace v3
 

@@ -23,6 +23,7 @@
 #include "error_log.h"
 #include "graph/utils/op_desc_utils.h"
 #include "reduce_tiling_v3.h"
+#include "tiling_handler.h"
 
 namespace optiling {
 namespace {

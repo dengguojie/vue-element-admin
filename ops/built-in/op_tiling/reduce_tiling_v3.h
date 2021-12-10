@@ -197,9 +197,5 @@ class ReduceTilingHandler: public AutoTilingHandler {
   private:
   const v3::ReduceCompileInfo compileInfo;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
-                                                             const std::string& pattern,
-                                                             const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 #endif  // REDUCE_TILING_V3_H

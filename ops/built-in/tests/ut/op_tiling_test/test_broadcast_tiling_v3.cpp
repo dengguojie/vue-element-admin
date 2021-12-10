@@ -19,6 +19,7 @@
 #include "array_ops.h"
 #include "op_tiling/vector_tiling.h"
 #include "op_tiling/broadcast_v3.h"
+#include "op_tiling/tiling_handler.h"
 
 using namespace std;
 using namespace ge;

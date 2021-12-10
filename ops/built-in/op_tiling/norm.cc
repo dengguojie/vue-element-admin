@@ -18,9 +18,10 @@
  * \file norm.cc
  * \brief tiling function of op
  */
+#include "norm.h"
 #include <algorithm>
 #include <numeric>
-#include "norm.h"
+#include "tiling_handler.h"
 #include "error_log.h"
 #include "graph/utils/op_desc_utils.h"
 

@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <cmath>
 
+#include "tiling_handler.h"
 #include "op_tiling_util.h"
 #include "graph/utils/op_desc_utils.h"
 

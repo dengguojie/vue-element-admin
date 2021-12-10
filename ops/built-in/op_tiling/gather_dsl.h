@@ -64,7 +64,7 @@ namespace optiling {
   class GatherDsl {
     public:
       explicit GatherDsl(const std::string& _op_type, const ge::Operator& _op_paras,
-                                 const GatherDslCompileInfo& _gather_compile_info, utils::OpRunInfo& _run_info) :
+                         const GatherDslCompileInfo& _gather_compile_info, utils::OpRunInfo& _run_info) :
               op_type(_op_type), op_paras(_op_paras), gather_compile_info(_gather_compile_info), run_info(_run_info){
       }
 
@@ -160,10 +160,5 @@ namespace optiling {
   private:
     const GatherDslCompileInfo gather_compile_info;
   };
-
-  std::shared_ptr <AutoTilingHandler> CreateGatherTilingHandler(const std::string &op_type,
-                                                               const std::string &pattern,
-                                                               const nlohmann::json &parsed_compile_info);
 } // namespace optiling
 #endif // OPS_BUILT_IN_OP_TILING_GATHER_SCHEDULE_H_
-

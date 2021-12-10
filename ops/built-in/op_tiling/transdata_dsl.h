@@ -192,9 +192,6 @@ class TransdataTilingHandler : public AutoTilingHandler {
  private:
   const CompileInfoTransdataDSL compileInfo;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::string& op_type, const std::string& pattern,
-                                                                const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 
 #endif  // TRANSDATA_DSL_H

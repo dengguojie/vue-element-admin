@@ -153,9 +153,6 @@ class ConcatDslTilingHandler : public AutoTilingHandler {
  private:
   const nlohmann::json compile_info;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std::string& op_type, const std::string& pattern,
-                                                                const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_CONCAT_DSL_H_

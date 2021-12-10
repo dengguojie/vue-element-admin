@@ -211,11 +211,6 @@ class NormTilingHandler: public AutoTilingHandler {
   private:
   const NormCompileInfo norm_compile_info;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
-                                                           const std::string& pattern,
-                                                           const nlohmann::json& parsed_compile_info);
-
 }  // namespace optiling
 
 #endif  // NORM_TILING_H

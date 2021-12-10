@@ -29,6 +29,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling_log.h"
 #include "error_log.h"
+#include "tiling_handler.h"
 
 namespace optiling {
 namespace transpose {

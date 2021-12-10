@@ -7,6 +7,7 @@
 #include "graph/graph.h"
 #include "register/op_tiling_registry.h"
 #include "op_tiling/concat_dsl.h"
+#include "op_tiling/tiling_handler.h"
 
 using namespace optiling;
 class ConcatDslTiling : public testing::Test {

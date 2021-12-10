@@ -19,32 +19,9 @@
  * \brief tiling function of vector ops
  */
 #include "vector_tiling.h"
+#include "tiling_handler.h"
 
 namespace optiling {
-extern std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::string& op_type,
-                                                                       const std::string& pattern,
-                                                                       const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(const std::string& op_type,
-                                                                          const std::string& pattern,
-                                                                          const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std::string& op_type,
-                                                                       const std::string& pattern,
-                                                                       const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                     const std::string& pattern,
-                                                                     const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
-                                                                       const std::string& pattern,
-                                                                       const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
-                                                                    const std::string& pattern,
-                                                                    const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateGatherTilingHandler(const std::string& op_type,
-                                                                    const std::string& pattern,
-                                                                    const nlohmann::json& parsed_compile_info);
 
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 

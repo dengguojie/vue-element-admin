@@ -57,11 +57,11 @@ struct ElewiseCompileInfo {
   bool broadcast_pattern{false};
 
  private:
-  void ParseOutsUintOne(const std::string& op_type, const nlohmann::json& outer_compile_info);
-  void ParseFlagInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
-  void ParseBaseInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
-  void ParseConstDims(const std::string& op_type, const nlohmann::json& outer_compile_info);
-  void ParseElewiseVarSize(const std::string& op_type, const nlohmann::json& outer_compile_info);
+  void ParseOutsUintOne(const nlohmann::json& outer_compile_info);
+  void ParseFlagInfo(const nlohmann::json& outer_compile_info);
+  void ParseBaseInfo(const nlohmann::json& outer_compile_info);
+  void ParseConstDims(const nlohmann::json& outer_compile_info);
+  void ParseElewiseVarSize(const nlohmann::json& outer_compile_info);
 };
 
 class Elewise {
@@ -70,13 +70,13 @@ class Elewise {
                    const ge::Operator& op_paras,
                    const ElewiseCompileInfo& compile_info,
                    utils::OpRunInfo& run_info)
-    : op_type(op_type), op_paras(op_paras), compile_info(compile_info), run_info(run_info) {}
+      : op_type(op_type), op_paras(op_paras), compile_info(compile_info), run_info(run_info) {}
   ~Elewise() = default;
   bool DoTiling();
   bool DoTiling(const OpInfo& op_info);
 
  private:
-  const int64_t GetElementByType(const ge::DataType dtype);
+  const int64_t GetElementByType(const ge::DataType& dtype) const;
   bool CheckCompileInfo();
   bool CheckInOutNum();
   bool CheckInOutNum(const OpInfo& op_info);
@@ -116,7 +116,7 @@ class Elewise {
 class ElewiseTilingHandler: public AutoTilingHandler {
  public:
   ElewiseTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingHandler(o, p), elewise_compile_info(o, c) {}
+      : AutoTilingHandler(o, p), elewise_compile_info(o, c) {}
   ~ElewiseTilingHandler() = default;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
@@ -124,9 +124,5 @@ class ElewiseTilingHandler: public AutoTilingHandler {
  private:
   const v3::ElewiseCompileInfo elewise_compile_info;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                              const std::string& pattern,
-                                                              const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_ELEWISE_V3_H_

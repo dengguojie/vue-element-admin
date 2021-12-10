@@ -174,10 +174,5 @@ class BroadcastTilingHandler: public AutoTilingHandler {
   private:
   const v3::BroadcastCompileInfo broadcast_compile_info;
 };
-
-std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
-                                                                const std::string& pattern,
-                                                                const nlohmann::json& parsed_compile_info);
-
 } // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_BROADCAST_H_

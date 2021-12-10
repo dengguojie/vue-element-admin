@@ -16,6 +16,7 @@
 #include "graph/compute_graph.h"
 #include "graph/utils/graph_utils.h"
 #include "op_tiling/reduce_tiling_v3.h"
+#include "op_tiling/tiling_handler.h"
 
 #include "reduce_ops.h"
 #include "array_ops.h"

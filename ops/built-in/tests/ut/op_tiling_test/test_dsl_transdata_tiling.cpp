@@ -28,6 +28,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "op_tiling/vector_tiling.h"
 #include "op_tiling/transdata_dsl.h"
+#include "op_tiling/tiling_handler.h"
 
 using namespace std;
 using namespace ge;

@@ -20,6 +20,7 @@
 #include "test_common.h"
 #include "common/utils/ut_op_util.h"
 #include "op_tiling/gather_dsl.h"
+#include "op_tiling/tiling_handler.h"
 
 using namespace std;
 using namespace ge;

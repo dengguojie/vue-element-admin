@@ -191,6 +191,7 @@ set(_optiling_files
   vector_tiling.cc
   lru_cache_v2.cc
   cache_tiling.cc
+  tiling_handler.h
 )
 
 set(_op_tiling_include

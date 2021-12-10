@@ -172,6 +172,9 @@ auto_schedule:
       - ops/built-in/op_tiling/concat_dsl.h
       - ops/built-in/op_tiling/gather_dsl.cc
       - ops/built-in/op_tiling/gather_dsl.h
+      - ops/built-in/op_tiling/transdata_dsl.h
+      - ops/built-in/op_tiling/transdata_dsl.cc
+      - ops/built-in/op_tiling/tiling_handler.h
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/      
     unrelease:
     llt:
