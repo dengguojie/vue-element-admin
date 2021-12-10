@@ -583,6 +583,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     conv_param.strideh_opti_flag = strideh_opti_flag
     conv_param.input_nd_flag = input_nd_flag
     conv_param.weight_nd_flag = weight_nd_flag
+    conv_param.impl_mode = para_dict.get("impl_mode", "")
 
     #==============save tiling_info_dict for conv2d_tiling_case=============
     tiling_query_param = conv_param.tiling_query_param

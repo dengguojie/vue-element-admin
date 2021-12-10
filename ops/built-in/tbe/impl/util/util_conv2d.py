@@ -15,6 +15,7 @@ from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.common.context import get_context
 
 
 PAD_SHAPE_DIM = 2
@@ -860,3 +861,20 @@ def is_force_fp32(input_type, weight_type, output_type):
     if input_type == "float16" and weight_type == "float16" and output_type == "float32":
         return True
     return False
+
+def get_op_precision_mode(op_type):
+    """
+    Get op precision mode from op_info base on op_type
+    default mode is ""
+    conv2d only support "high_performance"/"" by now
+    """
+    context = get_context()
+    if context is None:
+        return ""
+    op_infos = context.get_op_info()
+    if not op_infos:
+        return ""
+    for op_info in op_infos:
+        if op_info.op_type == op_type and op_info.precision_mode in ("high_performance", ""):
+            return op_info.precision_mode
+    return ""

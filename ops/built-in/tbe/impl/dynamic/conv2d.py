@@ -286,7 +286,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
         "groups": groups, "data_format": data_format, "offset_x": offset_x,
         "kernel_name": kernel_name, "optim_dict": default_para.get("optim_dict"),
     }
-
+    impl_mode = util_conv2d.get_op_precision_mode("Conv2D")
     conv_para = Conv2dParaProcess(ori_paras)
     paras = conv_para.config_paras()
 
@@ -303,6 +303,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "res_dtype": default_para.get("res_dtype"),
                    "fusion_para": default_para.get("fusion_para"),
                    "kernel_name": kernel_name,
+                   "impl_mode": impl_mode,
                    "group": conv_para.groups,
                    "enlarge": paras.get("group_para").get("enlarge"),
                    "c1_opt": paras.get("group_para").get("c1_opt"),

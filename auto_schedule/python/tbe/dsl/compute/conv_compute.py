@@ -469,6 +469,7 @@ class ConvParam:
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
         cls.bias_init_align_dim_flag = False
         cls.int4_width_out_align_flag = False
+        cls.impl_mode = ""
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
                            "slice_offset": (0, 0, 0, 0, 0),
@@ -518,6 +519,7 @@ class ConvParam:
     dyn_var_map = {}
     fmap_range = None
     kernel_name = None
+    impl_mode = ""
 
 
 def shape_to_list(shape):

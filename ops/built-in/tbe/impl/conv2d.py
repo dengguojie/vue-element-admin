@@ -359,6 +359,9 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
         inputs, weights, bias, offset_w, strides, \
         pads, dilations, offset_x, groups, kernel_name, data_format, options)
 
+    impl_mode = util_conv2d.get_op_precision_mode("Conv2D")
+    para_dict["impl_mode"] = impl_mode
+
     res = conv(inputs, weights, para_dict, optim_dict)
 
     return res
@@ -561,6 +564,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
 
     fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
         shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
+    impl_mode = util_conv2d.get_op_precision_mode("Conv2D")
     tensor_list = []
     with tvm.target.cce():
         data = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
@@ -598,7 +602,8 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                    "group_opt": group_opt,
                                    "a_shape": fmap_shape_nc1hwc0,
                                    "weight_fracz_shape": filter_shape_frac_z,
-                                   "weight_ori_shape_nchw": weight_ori_shape_nchw,},
+                                   "weight_ori_shape_nchw": weight_ori_shape_nchw,
+                                   "impl_mode": impl_mode,},
                         optim_dict=optim_dict,
                         dsl_flag=False)
         tensor_list.append(conv_res)

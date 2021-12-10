@@ -26,7 +26,7 @@ from tbe.common.platform import platform_info as cce
 from te.platform.cce_params import scope_fb0, scope_fb1, scope_fb2, scope_fb3, scope_bt, scope_cbuf
 from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.tiling import tiling_api
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule import util
 
@@ -823,23 +823,27 @@ class InnerBatch:
         """
         if batch_cl0 > 1 and tiling["BL1_shape"] is None:
             self.flag = True
+            log.debug("enable innerbatch")
 
-    def config_batch_al1(self, batch_al1, batch_cl0):
+    def config_innerbatch_axis(self, batch_al1, batch_cl0):
         """
-        Config batch of al1.
+        Config innerbatch case batch inner split axis.
         """
         if self.flag:
             return batch_cl0
         return batch_al1
 
-    def check_innerbatch_tiling(self, tiling, batch):
+    def check_innerbatch_tiling(self, tiling, batch, out_hw):
         """
-        Check the tiling of innerbatch.
+        Check the tiling of l0b innerbatch.
         """
-        if tiling["AL1_shape"]:
-            _, _, batch_al1, _ = tiling["AL1_shape"]
-            if batch_al1 > 1 and batch_al1 != batch:
-                err_man.raise_err_equal_invalid("conv2d", "al1_batch", "batch")
+        if self.flag:
+            _, mc_cl0, m0_cl0, _, batch_cl0, _ = tiling["CL0_matrix"]
+            batch_dim, _, _, _ = tiling["block_dim"]
+            if mc_cl0 * m0_cl0 != ceil(out_hw, m0_cl0):
+                err_man.raise_err_specific("conv2d", "innerbatch case must full load M.")
+            if batch_cl0 * batch_dim > batch:
+                err_man.raise_err_specific("conv2d", "innerbatch batch_cl0*batch_dim cannot be greater than batch.")
 
 
 class StridehOpti:
@@ -1088,7 +1092,7 @@ class Conv2dSchedule:
             """
             Get tiling in v220 situation.
             """
-            tiling = get_tiling(info_dict)
+            tiling = tiling_api.get_tiling(info_dict)
             tiling["CUB_matrix"] = tiling["CL0_matrix"]
             if tiling is None or tiling["AL0_matrix"][2] == 32:
                 log.warn("get invalid tiling, default tiling will be used")
@@ -1165,7 +1169,7 @@ class Conv2dSchedule:
         self._dynamic_shape.check_dynamic_overhead_opt_flag(tiling)
 
         self._inner_batch.set_l0b_innerbatch_flag(tiling, batch_cl0)
-        self._inner_batch.check_innerbatch_tiling(tiling, self._batch)
+        self._inner_batch.check_innerbatch_tiling(tiling, self._batch, self._out_hw)
 
         check_l0_tiling()
         check_overhead_opt_flag()
@@ -1466,7 +1470,6 @@ class Conv2dSchedule:
             k1_al1 = k_al1 // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
             if k1_al1 == 0:
                 k1_al1 = 1
-            batch_al1 = self._inner_batch.config_batch_al1(batch_al1, batch_cl0)
 
         if bl1_tiling:
             k_bl1, multi_n_bl1, _, _ = bl1_tiling
@@ -1628,7 +1631,7 @@ class Conv2dSchedule:
 
         res_go, res_gi = sch[res].split(res_g, nparts=group_dim)
 
-        res_nio, res_nii = sch[res].split(res_ni, batch_al1)
+        res_nio, res_nii = sch[res].split(res_ni, self._inner_batch.config_innerbatch_axis(batch_cl0, batch_al1))
 
         if group_cl0 == 1 and multi_bl0_group:
             res_gio, res_gii = sch[res].split(res_gi, factor=group_bl0)
@@ -1658,8 +1661,8 @@ class Conv2dSchedule:
                                  res_cioi,
                                  res_moi,
                                  res_cii,
-                                 res_co1_ori_i, # 2
                                  res_nii,
+                                 res_co1_ori_i, # third axis from bottom must be 2 for fp32
                                  res_mi)
             else:
                 sch[res].reorder(res_no,
@@ -1755,7 +1758,6 @@ class Conv2dSchedule:
                              cl0_co0,
                              cl0_ki,
                              cl0_k0)
-            sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         else:
             sch[cl0].reorder(cl0_ko,
                              cl0_co,
@@ -2006,6 +2008,19 @@ class Conv2dSchedule:
 
             return bl1_common_emit_insn()
 
+        def cl0_emit_insn():
+            """
+            Emit insn for cl0.
+            """
+            mad_dict = {"mad_pattern": 2, "k_outer": k_outer}
+
+            if self._fmap_dtype == "float32" and conv_param.impl_mode == "high_performance":
+                if tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_mmad", "h322f32"):
+                    mad_dict["hf32"] = 1
+                    log.debug("enable HF32 mode")
+
+            sch[cl0].emit_insn(cl0_pragma_axis, 'mad', mad_dict)
+
         def get_weight_repeat_number():
             """
             Get load repeat number of weight tensor.
@@ -2098,9 +2113,7 @@ class Conv2dSchedule:
 
         sch[bl0].emit_insn(bl0.op.axis[0], "dma_copy")
 
-        mad_dict = {"mad_pattern": 2, "k_outer": k_outer}
-
-        sch[cl0].emit_insn(cl0_pragma_axis, 'mad', mad_dict)
+        cl0_emit_insn()
 
         res_emit_insn()
 
