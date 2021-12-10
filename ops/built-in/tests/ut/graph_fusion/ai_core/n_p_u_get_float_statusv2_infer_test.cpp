@@ -37,6 +37,7 @@ TEST_F(n_p_u_get_float_status_v2_infer_test, n_p_u_get_float_status_v2_infer_tes
 
   // new op
   auto test_op = op::NPUGetFloatStatusV2("NPUGetFloatStatusV2");
+  test_op.create_dynamic_input_addr(1);
   test_op.set_dynamic_input_addr(0, data);
   std::vector<Operator> inputs{data};
   std::vector<Operator> outputs{test_op};
