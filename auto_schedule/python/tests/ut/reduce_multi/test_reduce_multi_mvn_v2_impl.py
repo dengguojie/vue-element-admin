@@ -37,8 +37,9 @@ case2 = {"params": [{"shape": (5, 31, 27, 26), "dtype": "float16", "format": "NC
          "format_expect": [],
          "support_expect": True
          }
-case3 = {"params": [{"shape": (64, 61, 92, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (64, 61, 92, 1),"ori_format": "NCHW"},
-                    {"shape": (64, 61, 92, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (64, 61, 92, 1),"ori_format": "NCHW"},
+case3 = {
+        "params": [{"shape": (2, 17, 7, 5), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 31, 27, 26),"ori_format": "NCHW"},
+                    {"shape": (5, 31, 27, 26), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 31, 27, 26),"ori_format": "NCHW"},
                     9.0,
                     [0]
                     ],
@@ -46,8 +47,7 @@ case3 = {"params": [{"shape": (64, 61, 92, 1), "dtype": "float16", "format": "NC
          "expect": "success",
          "format_expect": [],
          "support_expect": True
-        }
-
+}
 compile_case_list = [
     case1, case2, case3
 ]
