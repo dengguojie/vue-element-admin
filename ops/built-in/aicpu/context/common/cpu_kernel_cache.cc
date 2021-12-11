@@ -617,12 +617,12 @@ int32_t CpuKernelCache::RunCpuKernelWithBlock(void *param, struct BlkDimInfo *bl
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
-  
+
   std::shared_ptr<NodeDef> nodedef_proto = nullptr;
   auto ctx = GetCpuKernelContextWithBlock(ext_info_msg, nodedef,
                                           nodedef_len, nodedef_proto, blkdim_info);
   KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR, "Get cpu kernel context from buff failed.")
-  
+
   ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
@@ -654,7 +654,7 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContextWithBlock(
     std::shared_ptr<NodeDef> &nodedef_proto, struct BlkDimInfo *blkdim_info) {
   std::shared_ptr<CpuKernelContext> ctx = nullptr;
   KERNEL_LOG_INFO("Get cpu kernel context with block info begin. kernel id[%lu]", extInfoMsg->kernel_id);
-  if (extInfoMsg->has_sess_info) {
+  if (extInfoMsg->has_sess_info && blkdim_info->blockNum == 1) {
     CpuCacheData *cache = GetCache(extInfoMsg->kernel_id);
     if (cache != nullptr) {
       KERNEL_LOG_INFO("Get kernel from cache success.");

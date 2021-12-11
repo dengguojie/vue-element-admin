@@ -71,7 +71,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param param: kernel context and blkDimInfo
    * @return int32_t: 0 indicates success, whilWe the others fail
    */
-  int32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkDimInfo) override;
+  int32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkdim_info) override;
 
  private:
   CpuKernelCache(const CpuKernelCache &) = delete;

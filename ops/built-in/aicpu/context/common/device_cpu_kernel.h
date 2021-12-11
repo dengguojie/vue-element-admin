@@ -24,6 +24,6 @@ struct BlkDimInfo {
 
 extern "C" {
 uint32_t RunCpuKernel(void *param);
-uint32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkDimInfo);
+uint32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkdim_info);
 }
 #endif // AICPU_CONTEXT_COMMON_DEVICE_CPU_KERNEL_H

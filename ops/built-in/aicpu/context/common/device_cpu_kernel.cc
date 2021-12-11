@@ -124,7 +124,7 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
       param, session->sessionId, stream_id, session->sessFlag);
 }
 
-__attribute__((visibility("default"))) uint32_t RunCpuKernelWithBlock(void *param, 
+__attribute__((visibility("default"))) uint32_t RunCpuKernelWithBlock(void *param,
                                                                       struct BlkDimInfo *blkdim_info) {
   KERNEL_LOG_INFO("RunCpuKernelWithBlock C begin. blockid[%u], blockdim[%u].",
                   blkdim_info->blockId, blkdim_info->blockNum);
