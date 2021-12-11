@@ -39,7 +39,7 @@ class TransDataConfusionTransposeDFusionPass : public PatternFusionBasePass {
   Status CheckShapeInfo(const ge::NodePtr& transData1, const ge::NodePtr& confusionTransposeD,
                         const ge::NodePtr& transData2);
   Status InsertConstNode(ge::ComputeGraph& graph, ge::NodePtr& constNode);
-  Status InsertTransposeNode(ge::ComputeGraph& graph, const ge::NodePtr& transData1, const ge::NodePtr& constNode,
+  Status InsertTransposeDNode(ge::ComputeGraph& graph, const ge::NodePtr& transData1,
                              const ge::NodePtr& transData2, ge::NodePtr& transposeNode);
   Status RemoveNode(ge::ComputeGraph& graph, const ge::NodePtr& node);
   const string FUSED_OP_TYPE = "TransDataConfusionTransposeD";

@@ -144,21 +144,21 @@ TEST_F(transdata_confusiontransposed_fusion_pass_test, transdata_confusiontransp
   ge::ComputeGraphPtr computeGraph = ge::GraphUtils::GetComputeGraph(graph);
 
   GE_DUMP(computeGraph, testCaseName + "_before_fusion");
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZTransDataConfusionTransposeDFusionPass",
+  fe::FusionPassTestUtils::RunGraphFusionPass("TransDataTransposeFusionPass",
                                               fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
 
   bool findConfusionTransposeD = false;
-  bool findTranspose = false;
+  bool findTransposeD = false;
   for (auto node : computeGraph->GetAllNodes()) {
     if (node->GetType() == "ConfusionTransposeD") {
       findConfusionTransposeD = true;
-    } else if (node->GetType() == "Transpose") {
-      findTranspose = true;
+    } else if (node->GetType() == "TransposeD") {
+      findTransposeD = true;
     }
   }
   EXPECT_EQ(findConfusionTransposeD, false);
-  EXPECT_EQ(findTranspose, true);
+  EXPECT_EQ(findTransposeD, true);
 }
 
 // Test bad attribute configuration: perm.
@@ -265,7 +265,7 @@ TEST_F(transdata_confusiontransposed_fusion_pass_test, transdata_confusiontransp
   ge::ComputeGraphPtr computeGraph = ge::GraphUtils::GetComputeGraph(graph);
 
   GE_DUMP(computeGraph, testCaseName + "_before_fusion");
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZTransDataConfusionTransposeDFusionPass",
+  fe::FusionPassTestUtils::RunGraphFusionPass("TransDataTransposeFusionPass",
                                               fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
 
@@ -437,19 +437,19 @@ TEST_F(transdata_confusiontransposed_fusion_pass_test, transdata_confusiontransp
   GraphUtils::AddEdge(addsNode->GetOutControlAnchor(), confusionTransposeDNode->GetInControlAnchor());
 
   GE_DUMP(computeGraph, testCaseName + "_before_fusion");
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZTransDataConfusionTransposeDFusionPass",
+  fe::FusionPassTestUtils::RunGraphFusionPass("TransDataTransposeFusionPass",
                                               fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
 
   bool findConfusionTransposeD = false;
-  bool findTranspose = false;
+  bool findTransposeD = false;
   for (auto node : computeGraph->GetAllNodes()) {
     if (node->GetType() == "ConfusionTransposeD") {
       findConfusionTransposeD = true;
-    } else if (node->GetType() == "Transpose") {
-      findTranspose = true;
+    } else if (node->GetType() == "TransposeD") {
+      findTransposeD = true;
     }
   }
   EXPECT_EQ(findConfusionTransposeD, true);
-  EXPECT_EQ(findTranspose, false);
+  EXPECT_EQ(findTransposeD, false);
 }

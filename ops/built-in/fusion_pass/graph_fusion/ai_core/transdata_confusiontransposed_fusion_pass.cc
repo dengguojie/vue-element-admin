@@ -265,47 +265,28 @@ Status TransDataConfusionTransposeDFusionPass::CheckShapeInfo(const ge::NodePtr&
   return SUCCESS;
 }
 
-Status TransDataConfusionTransposeDFusionPass::InsertConstNode(ge::ComputeGraph& graph, ge::NodePtr& constNode) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "InsertConstNode begin");
-
-  std::vector<int32_t> permList = {0, 1, 3, 2, 5, 4};
-  ge::GeTensorDesc permInputDesc(GeShape({static_cast<int64_t>(permList.size())}), ge::FORMAT_ND, ge::DT_INT32);
-  permInputDesc.SetOriginFormat(ge::FORMAT_ND);
-
-  ge::GeTensorPtr outTensor = std::make_shared<ge::GeTensor>(permInputDesc);
-  outTensor->SetData(reinterpret_cast<uint8_t*>(permList.data()), permList.size() * sizeof(int32_t));
-  ge::OpDescPtr outOpDesc = ge::OpDescUtils::CreateConstOp(outTensor);
-  constNode = graph.AddNode(outOpDesc);
-  FUSION_PASS_CHECK(constNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to add Const node for ivf counts fusion."), return FAILED);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "InsertConstNode end");
-  return SUCCESS;
-}
-
-Status TransDataConfusionTransposeDFusionPass::InsertTransposeNode(ge::ComputeGraph& graph,
+Status TransDataConfusionTransposeDFusionPass::InsertTransposeDNode(ge::ComputeGraph& graph,
                                                                    const ge::NodePtr& transData1,
-                                                                   const ge::NodePtr& constNode,
                                                                    const ge::NodePtr& transData2,
                                                                    ge::NodePtr& transposeNode) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "InsertTransposeNode begin");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "InsertTransposeDNode begin");
 
   auto transData1InAnchor = transData1->GetInDataAnchor(0);
   auto preNodeOutAnchor = transData1InAnchor->GetPeerOutAnchor();
   ge::NodePtr preNode = preNodeOutAnchor->GetOwnerNode();
   ge::OpDescPtr preNodeOpDesc = preNode->GetOpDesc();
-  std::string nodeName = preNodeOpDesc->GetName() + "/Transpose";
-  ge::OpDescPtr transposeNodeOpDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((transposeNodeOpDesc = std::make_shared<ge::OpDesc>(nodeName, "Transpose")),
+  std::string nodeName = preNodeOpDesc->GetName() + "/TransposeD";
+  ge::OpDescPtr transposeDNodeOpDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((transposeDNodeOpDesc = std::make_shared<ge::OpDesc>(nodeName, "TransposeD")),
                           return INTERNAL_ERROR);
 
   ge::OpDescPtr transData1OpDesc = transData1->GetOpDesc();
   ge::OpDescPtr transData2OpDesc = transData2->GetOpDesc();
 
   ge::GeTensorDesc xDesc = transData1OpDesc->GetInputDesc(0).Clone();
-  FUSION_PASS_CHECK(transposeNodeOpDesc->AddInputDesc("x", xDesc) != SUCCESS,
+  FUSION_PASS_CHECK(transposeDNodeOpDesc->AddInputDesc("x", xDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to add input x for transpose node."), return FAILED);
-  transposeNodeOpDesc->MutableInputDesc(0)->SetFormat(ge::FORMAT_ND);
+  transposeDNodeOpDesc->MutableInputDesc(0)->SetFormat(ge::FORMAT_ND);
 
   std::vector<int64_t> transData1InputOriginShape = transData1OpDesc->GetInputDesc(0).GetOriginShape().GetDims();
   std::vector<int64_t> transData2OutputOriginShape = transData2OpDesc->GetOutputDesc(0).GetOriginShape().GetDims();
@@ -314,7 +295,7 @@ Status TransDataConfusionTransposeDFusionPass::InsertTransposeNode(ge::ComputeGr
   xOriginShape.push_back(transData2OutputOriginShape.at(1));
   xOriginShape.push_back(transData1InputOriginShape.at(1));
   xOriginShape.push_back(transData1InputOriginShape.at(2) / transData2OutputOriginShape.at(1));
-  transposeNodeOpDesc->MutableInputDesc(0)->SetOriginShape(ge::GeShape(xOriginShape));
+  transposeDNodeOpDesc->MutableInputDesc(0)->SetOriginShape(ge::GeShape(xOriginShape));
 
   std::vector<int64_t> transData1InputShape = transData1OpDesc->GetInputDesc(0).GetShape().GetDims();
   std::vector<int64_t> transData2OutputShape = transData2OpDesc->GetOutputDesc(0).GetShape().GetDims();
@@ -325,21 +306,17 @@ Status TransDataConfusionTransposeDFusionPass::InsertTransposeNode(ge::ComputeGr
   xShape.push_back(transData1InputShape.at(2));
   xShape.push_back(transData1InputShape.at(3));
   xShape.push_back(transData1InputShape.at(4));
-  transposeNodeOpDesc->MutableInputDesc(0)->SetShape(ge::GeShape(xShape));
-
-  ge::OpDescPtr constOpDesc = constNode->GetOpDesc();
-  FUSION_PASS_CHECK(constOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get OpDesc of Const Node."),
-                    return PARAM_INVALID);
-  ge::GeTensorDesc permDesc = constOpDesc->GetOutputDesc(0).Clone();
-  FUSION_PASS_CHECK(transposeNodeOpDesc->AddInputDesc("perm", permDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to add input perm for transpose node."), return FAILED);
+  transposeDNodeOpDesc->MutableInputDesc(0)->SetShape(ge::GeShape(xShape));
+  
+  std::vector<int64_t> perm = {0, 1, 3, 2, 5, 4};
+  ge::AttrUtils::SetListInt(transposeDNodeOpDesc, "perm", perm);
 
   ge::GeTensorDesc yDesc = transData2OpDesc->GetOutputDesc(0).Clone();
-  FUSION_PASS_CHECK(transposeNodeOpDesc->AddOutputDesc("y", yDesc) != SUCCESS,
+  FUSION_PASS_CHECK(transposeDNodeOpDesc->AddOutputDesc("y", yDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to add output y for transpose node."), return FAILED);
-  transposeNodeOpDesc->MutableOutputDesc(0)->SetFormat(ge::FORMAT_ND);
+  transposeDNodeOpDesc->MutableOutputDesc(0)->SetFormat(ge::FORMAT_ND);
 
-  transposeNode = graph.AddNode(transposeNodeOpDesc);
+  transposeNode = graph.AddNode(transposeDNodeOpDesc);
   FUSION_PASS_CHECK(transposeNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to add transpose node."),
                     return FAILED);
 
@@ -347,11 +324,6 @@ Status TransDataConfusionTransposeDFusionPass::InsertTransposeNode(ge::ComputeGr
                     VECTOR_FUSION_INNER_ERR_REPORT(
                         FUSED_OP_TYPE.c_str(), "Failed to add edge from pre node's output to transpose node's input."),
                     return FAILED);
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(constNode->GetOutDataAnchor(0), transposeNode->GetInDataAnchor(1)),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "Failed to add edge from pre node's output to transpose node's input."),
-      return FAILED);
 
   auto postInAnchors = transData2->GetOutDataAnchor(0)->GetPeerInDataAnchors();
   if (postInAnchors.size() > 0) {
@@ -420,14 +392,8 @@ Status TransDataConfusionTransposeDFusionPass::Fusion(ge::ComputeGraph& graph, M
   FUSION_PASS_CHECK(SUCCESS != checkShapeRet, OP_LOGD(FUSED_OP_TYPE.c_str(), "Unsupport parameters. Fusion end."),
                     return checkShapeRet);
 
-  ge::NodePtr constNode = nullptr;
-  Status insertConstRet = InsertConstNode(graph, constNode);
-  FUSION_PASS_CHECK(SUCCESS != insertConstRet, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to insert Const node."),
-                    return insertConstRet);
-  newNodes.push_back(constNode);
-
   ge::NodePtr transposeNode = nullptr;
-  Status insertTransposeRet = InsertTransposeNode(graph, transData1, constNode, transData2, transposeNode);
+  Status insertTransposeRet = InsertTransposeDNode(graph, transData1, transData2, transposeNode);
   FUSION_PASS_CHECK(SUCCESS != insertTransposeRet, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to insert Transpose node."),
                     return insertTransposeRet);
   newNodes.push_back(transposeNode);
@@ -449,6 +415,6 @@ Status TransDataConfusionTransposeDFusionPass::Fusion(ge::ComputeGraph& graph, M
   return SUCCESS;
 }
 
-REGISTER_PASS("ZTransDataConfusionTransposeDFusionPass", SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+REGISTER_PASS("TransDataTransposeFusionPass", SECOND_ROUND_BUILT_IN_GRAPH_PASS,
               TransDataConfusionTransposeDFusionPass);
 }  // namespace fe
