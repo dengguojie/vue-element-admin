@@ -19,15 +19,6 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("PadV3", "impl.dynamic.pad_v3", "pad_v3")
 
-# pylint: disable = unused-argument,
-def test_get_op_support_info(test_arg):
-    from impl.dynamic.pad_v3 import get_op_support_info
-    x = {'ori_shape': (-1, -1, -1), 'shape': (2, 3, 2), 'ori_format': 'NC1HWC0', 'format': 'NC1HWC0', 'dtype': 'float16'}
-    paddings = {'ori_shape': (-1), 'shape': (2, ), 'ori_format': 'NC1HWC0', 'format': 'NC1HWC0', 'dtype': 'float16'}
-    constant_values = {'ori_shape': (-1), 'shape': (1, ), 'ori_format': 'NC1HWC0', 'format': 'NC1HWC0', 'dtype': 'float16'}
-    y = {'ori_shape': (-1, -1, -1), 'shape': (2, 3, 2), 'ori_format': 'NC1HWC0', 'format': 'NC1HWC0', 'dtype': 'float16'}
-    get_op_support_info(x, paddings, constant_values, y)
-
 case1 = {
     "params": [
         {"shape": (-1, -1, -1, -1), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
@@ -100,7 +91,6 @@ case4 = {
     "support_expect": True
 }
 
-ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case1)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case2)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case3)

@@ -25,10 +25,6 @@ from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 from impl.dynamic.replication_pad_v3 import replication_pad_v3
 from impl.dynamic.pad_v3_5hd import pad_v3_5hd
-from impl.util.util_select_op_base import get_op_cal_info
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -49,29 +45,6 @@ class Constant:
     MODE5 = 5
     THRESHOLD_VALUE = 8192
     BLOCK = 32
-
-
-# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
-def get_op_support_info(x,
-                        paddings,
-                        constant_values,
-                        y,
-                        mode='constant',
-                        padding_contiguous=True,
-                        kernel_name="pad_v3"):
-    """
-    get_op_support_info
-    """
-    x_format = x.get("format").upper()
-    if x_format == "NC1HWC0":
-        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
-                             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]]
-        axis_reduce_list = None
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-    return op_cal_info_in_json
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
