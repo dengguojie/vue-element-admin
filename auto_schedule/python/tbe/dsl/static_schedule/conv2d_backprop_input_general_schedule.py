@@ -150,6 +150,27 @@ def _lcm(param1, param2):
     return temp // param2
 
 
+def _parse_preload_para(preload):
+    if preload is None:
+        preload_c_col = 0
+        preload_a_l1 = 0
+    else:
+        preload_c_col = preload & 1
+        preload_a_l1 = (preload >> 1) & 1
+    return {'c_col': preload_c_col, 'a_l1': preload_a_l1}
+
+
+def _do_preload(sch, tensors, tiling, preload):
+    al1_pbuffer = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
+    l0c_pbuffer = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
+
+    # allocate_at conflicts preload
+    if tiling['A_overhead_opt_flag'] == 0 and (preload['a_l1'] and al1_pbuffer == 2):
+        sch[tensors['a_l1']].preload()
+    if preload['c_col'] and l0c_pbuffer == 2:
+        sch[tensors['c_col']].preload()
+
+
 def general_schedule(
     tensor, sch_list, tiling_case=None, var_range=None
 ):  # pylint:disable=R0914,R0915
@@ -1144,7 +1165,9 @@ def general_schedule(
         tiling['B_overhead_opt_flag'] = 0
 
     tbe_compile_param = tiling.get("tbe_compile_para")
+    # when tbe_compile_param is None, sch.tbe_compile_para and preload is None
     sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_param)
+    preload = _parse_preload_para(preload)
     if sch.tbe_compile_para is not None:
         out_of_order = sch.tbe_compile_para.get("out_of_order")
 
@@ -2732,9 +2755,11 @@ def general_schedule(
         _handle_workspace()
     if not l0c_multi_group_flag and not support_l0c_to_out:
         _c_col_buffer_tile()
-    if preload:
-        if l0c_pbuffer == 2:
-            sch[c_col].preload()
+
+    tensors = {}
+    tensors['a_l1'] = a_l1
+    tensors['c_col'] = c_col
+    _do_preload(sch, tensors, tiling, preload)
 
     double_out_tensor.clear()
     tiling.clear()

@@ -774,9 +774,10 @@ class Conv2dDxOptiSchedule:
             mc = int_ceil_div(DIM_MAP["img_shape"][3], TILING["AL0_matrix"][2]) + 1
             TILING["AL0_matrix"][0] = TILING["CL0_matrix"][1] = TILING["CUB_matrix"][1] = mc
         compile_param = TILING.get("tbe_compile_para")
+        # when compile_param is None, tbe_compile_para and preload is None
         tbe_compile_para, preload = parse_tbe_compile_para(compile_param)
         self.dx_para.update_para_map("tbe_compile_para", tbe_compile_para)
-        self.dx_para.update_para_map("preload", preload)
+        self._update_preload_para(preload)
         out_of_order = False
         if tbe_compile_para is not None:
             out_of_order = tbe_compile_para.get("out_of_order")
@@ -3013,17 +3014,29 @@ class Conv2dDxOptiSchedule:
         if var_map:
             _handle_dynamic_shape()
 
-        sch.tbe_compile_para = self.dx_para.get_para_map("tbe_compile_para")
-        preload = self.dx_para.get_para_map("preload")
-        if preload:
-            if TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
-                sch[c_l0c].preload()
+        if self.dx_para.get_para_map("preload_c_l0c") and TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
+            sch[c_l0c].preload()
+        support_preload_a_l1 = (self.dx_para.get_para_map("preload_a_l1")
+                                and TILING.get("manual_pingpong_buffer")["AL1_pbuffer"] == 2)
+        # allocate_at conflicts preload
+        if TILING["A_overhead_opt_flag"] == 0 and support_preload_a_l1:
+            sch[a_l1].preload()
 
         TILING.clear()
         DIM_MAP.clear()
         TENSOR_MAP.clear()
         DOUBLE_TENSOR_OUT.clear()
         return sch
+
+    def _update_preload_para(self, preload):
+        if preload is None:
+            preload_c_l0c = 0
+            preload_a_l1 = 0
+        else:
+            preload_c_l0c = preload & 1
+            preload_a_l1 = (preload >> 1) & 1
+        self.dx_para.update_para_map('preload_c_l0c', preload_c_l0c)
+        self.dx_para.update_para_map('preload_a_l1', preload_a_l1)
 
 
 def opti_schedule(tensor, sch_list, tiling_case=None, var_range=None):
