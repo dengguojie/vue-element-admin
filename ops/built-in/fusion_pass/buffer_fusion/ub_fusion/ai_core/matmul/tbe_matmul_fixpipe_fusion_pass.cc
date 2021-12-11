@@ -63,7 +63,7 @@ vector<BufferFusionPattern *> TbeMatmulFixpipeFusionPass::DefinePatterns() {
         .SetHead({kTypeTransData1, kPatternCube})
         .SetOutputs(kTypeTransData1, {kPatternCube})
         .SetOutputs(kPatternCube, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
-        .SetOutputs(kPatternQuant, {kTypeTransData2});
+        .SetOutputs(kPatternQuant, {kTypeTransData2}, TBE_OUTPUT_BRANCH_SINGLE, true);
 
   patterns.push_back(pattern);
 
