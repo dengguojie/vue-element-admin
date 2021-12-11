@@ -5,7 +5,10 @@
 #include "graph/utils/graph_utils.h"
 #include "math_ops.h"
 #include "array_ops.h"
+#define private public
+#define protected public
 #include "fusion_pass_test_utils.h"
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -14,10 +17,17 @@ class nll_loss_fusion_test : public testing::Test {
 protected:
     static void SetUpTestCase() {
         std::cout << "nll_loss_fusion_test SetUp" << std::endl;
+        fe::PlatformInfo platform_info;
+        fe::OptionalInfo opti_compilation_info;
+        platform_info.str_info.aic_version = "AIC-C-100";
+        opti_compilation_info.soc_version = "soc_version";
+        fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+        fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     }
 
     static void TearDownTestCase() {
         std::cout << "nll_loss_fusion_test TearDown" << std::endl;
+        fe::PlatformInfoManager::Instance().platform_info_map_.clear();
     }
 };
 

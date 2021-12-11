@@ -23,6 +23,7 @@
 #include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "common/util/platform_info.h"
 
 using namespace ge;
 namespace fe {
@@ -33,6 +34,10 @@ static const std::string PATTERN_FUSEDNODE = "NLLLoss";
 static const vector<vector<int64_t>> SUPPORT_CASES = {
     {4210704, 21},
     {8388608, 19},
+};
+
+static const vector<string> NOT_SUPPORT_AIC = {
+    "AIC-C-100",
 };
 
 vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
@@ -137,6 +142,7 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 
 Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
   bool fail_status = false;
+  bool is_support_aic = true;
   bool is_unknown_shape = false;
   bool is_match = false;
   string reduction = "";
@@ -158,28 +164,43 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
-  // check nllloss support dynamic
-  if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
-    return FAILED;
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
+                                                                                     optional_info) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get platform info failed."), return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "aic version is [%s].", platform_info.str_info.aic_version.c_str());
+  for (auto aic_version : NOT_SUPPORT_AIC) {
+    if (platform_info.str_info.aic_version == aic_version) {
+      is_support_aic = false;
+      break;
+    }
   }
 
-  if (!is_unknown_shape) {
-    GeTensorDesc x_desc = nll_loss_node->GetOpDesc()->GetInputDesc(0);
-    vector<int64_t> x_shape = x_desc.GetShape().GetDims();
-    for (auto shape : SUPPORT_CASES) {
-      if (x_shape == shape) {
-        is_match = true;
-        break;
-      }
+  if (!is_support_aic) {
+    // check nllloss support dynamic
+    if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
+      return FAILED;
     }
 
-    if (!is_match) {
-      auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(2);
-      // weight optional
-      if (weight_desc != nullptr) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape or not optional weight.");
-        return NOT_CHANGED;
+    if (!is_unknown_shape) {
+      GeTensorDesc x_desc = nll_loss_node->GetOpDesc()->GetInputDesc(0);
+      vector<int64_t> x_shape = x_desc.GetShape().GetDims();
+      for (auto shape : SUPPORT_CASES) {
+        if (x_shape == shape) {
+          is_match = true;
+          break;
+        }
+      }
+
+      if (!is_match) {
+        auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(2);
+        // weight optional
+        if (weight_desc != nullptr) {
+          OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape or not optional weight.");
+          return NOT_CHANGED;
+        }
       }
     }
   }
