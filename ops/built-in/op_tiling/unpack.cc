@@ -111,13 +111,12 @@ bool CheckOpParams(const ge::Operator& op_paras, int32_t input_dims, int32_t& ax
   return true;
 }
 
-bool GetCompileParams(const opInfo& op_info, CompileInfo& compile_info) {
+void GetCompileParams(const opInfo& op_info, CompileInfo& compile_info) {
   compile_info.axis = op_info.axis;
   compile_info.ub_size = op_info.ub_size;
   compile_info.output_num = op_info.output_num;
   compile_info.core_num = op_info.core_num;
   compile_info.is_special_tiling = op_info.is_special_tiling;
-  return true;
 }
 
 void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
@@ -270,14 +269,10 @@ bool CheckRet(CompileInfo& compile_info, const ge::Operator& op_paras, const opI
     return false;
   }
   compile_info.dtype_size = kDtypeSizeMap.at(op_paras.GetInputDesc(0).GetDataType());
-  bool ret = GetCompileParams(op_info, compile_info);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Get Compile info failed.");
-    return ret;
-  }
+  GetCompileParams(op_info, compile_info);
 
   // check op input and output params
-  ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
+  bool ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Check op params failed.");
     return ret;

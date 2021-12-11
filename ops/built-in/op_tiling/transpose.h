@@ -995,7 +995,6 @@ struct RuntimeInfo {
    *
    */
   int64_t colPerm[TRANSPOSE_MAX_AXIS_NUM];
-  //int64_t rowPerm[TRANSPOSE_MAX_AXIS_NUM];
 
   NCR ncrs[TRANSPOSE_MAX_AXIS_NUM];
   NCR ncr;

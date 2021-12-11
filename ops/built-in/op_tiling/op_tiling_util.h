@@ -49,7 +49,7 @@
                                    optiling::utils::OpRunInfo& rinfo) {                                               \
     OP_TILING_CHECK(op_info_void == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#optype, "op_info_void is nullptr."),    \
                     return false);                                                                                    \
-    return opfunc(#optype, para, *(const struct_name*)op_info_void, rinfo);                                           \
+    return opfunc(#optype, para, *static_cast<const struct_name*>(op_info_void), rinfo);                              \
   }                                                                                                                   \
   void* Tbe##optype##TilingV3CustomParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) {        \
     std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString()))); \

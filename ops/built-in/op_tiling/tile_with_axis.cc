@@ -19,7 +19,6 @@
 using namespace std;
 
 namespace optiling {
-
 struct TileWithAxisCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   int64_t ori_axis_value;
