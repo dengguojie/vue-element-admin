@@ -30,6 +30,7 @@ class BertAdam():
     class of apply_adam_v2
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, data_num, data_type, kernel_name, cont, adam_mode):
         self.data_num = data_num
         self.data_type = data_type
@@ -118,7 +119,7 @@ class BertAdam():
         if self.adam_mode == "mbart_adam":
             inputs_all = [self.var, self.m, self.v, self.lr,
                           self.beta1, self.beta2, self.epsilon, self.grad, self.max_grad_norm,
-                          self.global_grad_norm, self.step_size, self.weight_decay]
+                          self.global_grad_norm, self.weight_decay, self.step_size]
         else:
             inputs_all = [self.var, self.m, self.v, self.lr,
                           self.beta1, self.beta2, self.epsilon, self.grad, self.max_grad_norm,
