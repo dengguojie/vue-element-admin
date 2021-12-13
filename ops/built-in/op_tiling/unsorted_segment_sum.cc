@@ -557,7 +557,8 @@ void ComputeUbTensorSize(const int32_t& ub_size, const std::vector<int64_t>& inp
 /******************MODE_FP32_INPUT_LAST_AXIS_ALIGN******************/
 void ComputeEleNumOneCore(const int32_t& min_ele_num, const int32_t& ids_num, const int32_t& core_num,
                           const int32_t& e_size, int32_t& ids_ele_num_front_core, int32_t& ids_ele_num_last_core,
-                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core, const int32_t& num_segments) {
+                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core,
+                           const int32_t& num_segments) {
   int32_t ids_num_align = UssCeil(ids_num, min_ele_num);
   if (num_segments > 1) {
     if (e_size == 1) {

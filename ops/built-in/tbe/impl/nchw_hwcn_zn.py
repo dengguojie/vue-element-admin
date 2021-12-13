@@ -26,11 +26,11 @@ from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 from te.utils.op_utils import *
 
+
 # 'pylint: disable=locally-disabled,too-many-lines,too-many-statements
 # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 # 'pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
 # 'pylint: disable=locally-disabled,unnecessary-comprehension
-
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """

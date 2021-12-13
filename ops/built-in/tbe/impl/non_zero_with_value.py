@@ -258,7 +258,7 @@ class NonZero:
                                                    init_value=mulps_align_num * Constant.UB_REPEAT_SIZE -
                                                    Constant.UB_REPEAT_SIZE)
             start_init_nums = self.tik_instance.Scalar("int32", "start_init_nums", init_value=Constant.UB_REPEAT_SIZE)
-            # 'pylint: unused-variable
+            # 'pylint: disable=unused-variable
             with self.tik_instance.for_range(0, ln_max_loop) as emit_idx:
                 cur_emit_nums = self.tik_instance.Scalar("int32", "cur_emit_nums", init_value=start_init_nums)
                 mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
@@ -379,6 +379,7 @@ class NonZero:
         """
         compute function for each loop.
         """
+        # 'pylint: disable=unused-variable
         row, col = self.x_shape
         blk_size = cur_loop_num
         align_num = 64

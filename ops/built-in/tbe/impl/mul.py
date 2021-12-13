@@ -196,7 +196,7 @@ def _can_broad(x, y):
                0] == 16 or y[0] == y[1] == 16
 
 
-# 'pylint: too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _gen_para(dtype_total, format_list0, format_list1, format_list2, unknownshape_format_list, shape_x, shape_y):
     if -1 in shape_x or -1 in shape_y:
         input0 = util_select_op_base.gen_param(classify="input0",
@@ -626,7 +626,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     dtype_total = []
     format_nd = ["ND"]
-    # 'pylint: unused-variable
+    # 'pylint: disable=unused-variable
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
     list_input = [x, y]
@@ -637,12 +637,12 @@ def op_select_format(x, y, output, kernel_name="mul"):
     y_flag = {"5d": len(shape_y) == 5 and format_y in format_5d_list,
               "4d": len(shape_y) == 4 and format_y in format_4d_list,
               "Scalar": len(shape_y) == 1 and shape_y[0] == 1}
-    if x_flag["5d"] or x_flag["4d"]:
+    if x_flag.get("5d") or x_flag.get("4d"):
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
         x_wdim = shape_x[format_x.index("W")]
         x_hdim = shape_x[format_x.index("H")]
-    if y_flag["5d"] or y_flag["4d"]:
+    if y_flag.get("5d") or y_flag.get("4d"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
         y_wdim = shape_y[format_y.index("W")]
@@ -711,8 +711,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
                               (x_cdim == x_hdim == x_wdim == 1 or y_cdim == y_hdim == y_wdim == 1))
 
     # NDC1HWC0 FRACTAL_Z_3D
-
-    format_list = [i for i in format_flag if format_flag[i]]
+    format_list = [i for i in format_flag if format_flag.get(i)]
 
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2:
