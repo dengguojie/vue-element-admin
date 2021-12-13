@@ -34,6 +34,7 @@ from tbe.common.utils.errormgr import error_manager_cube
 
 from tbe.dsl.compute.mmad_compute import MatMulComputeParam as GEMMComputeParam1
 from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam as GEMMComputeParam2
+from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
@@ -58,6 +59,8 @@ BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
 UNKNOWN_DIM = -1
 INITIAL_TILING_ID = 10000
 SHAPE_BMKN_LEN = 4
+BANK_THRESHOLD = 64
+BANK_GAP = 16
 
 def set_var_value(info, target_area):
     """
@@ -856,9 +859,103 @@ class MatmulTiling(CubeTilingOp):
                 m_range = [max(1, m_value - M_LEN), m_value]
                 k_range = [max(1, k_value - K_LEN), k_value]
                 n_range = [max(1, n_value - N_LEN), n_value]
-
+        k_range = self.update_range_by_ub(k_range, tiling, shape_info)
         perf_range = m_range + k_range + n_range
         return perf_range
+
+    def _get_bank_space(self, out_axis, in_axis, trans_flag, db_buf):
+        """
+        get space to solve bank_conflict in aub/bub
+        """
+        dtype_size = BIT_RATIO_DICT[self.a_type]
+        out_axis, in_axis = [in_axis, out_axis] if trans_flag else [out_axis, in_axis]
+        bank_space = 0
+        if in_axis % BANK_THRESHOLD == 0:
+            bank_space = out_axis * BANK_GAP * db_buf * dtype_size
+        return bank_space
+
+    def update_range_by_ub(self, k_range, tiling, shape_info):
+        """
+        aub/bub attach at c_gm, k_range should be updated
+        """
+        block_in = tbe_platform_info.BLOCK_IN
+        block_reduce = tbe_platform_info.BLOCK_REDUCE
+        block_out = tbe_platform_info.BLOCK_OUT
+        m_value, k_value, n_value = shape_info[0:3]
+        block_n, block_m = tiling["block_dim"][1:3]
+
+        cub_n1, cub_m1 = tiling.get("CUB_matrix")[0:2]
+        aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
+        bub_db = tiling.get("manual_pingpong_buffer").get("BUB_pbuffer")
+        cub_db = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
+
+        ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
+        aub_k, aub_m1 = tiling["AUB_shape"][0:2] if tiling.get("AUB_shape") else [0, 0]
+        bub_k, bub_n1 = tiling["BUB_shape"][0:2] if tiling.get("BUB_shape") else [0, 0]
+        c_fused_num = self.tiling_info.get("fused_double_operand_num")
+        a_fused_num = self.tiling_info.get("padl") // 10
+        b_fused_num = self.tiling_info.get("padr") // 10
+
+        if tiling.get("AL1_shape"):
+            al1_k, al1_m1 = tiling.get("AL1_shape")[0:2]
+            al1_m1 = al1_m1 * tiling["CL0_matrix"][1]
+        else:
+            al1_k, al1_m1 = k_value * block_reduce, int_ceil_div(m_value, block_m)
+        if tiling.get("BL1_shape"):
+            bl1_k, bl1_n1 = tiling.get("BL1_shape")[0:2]
+            bl1_n1 = bl1_n1 * tiling["CL0_matrix"][0]
+        else:
+            bl1_k, bl1_n1= k_value * block_reduce, int_ceil_div(n_value, block_n)
+        aub_k_full_load = (tiling.get("AUB_shape") and [aub_k, aub_m1] == [al1_k, al1_m1]
+                           and al1_k // block_reduce == k_value)
+        bub_k_full_load = (tiling.get("BUB_shape") and [bub_k, bub_n1] == [bl1_k, bl1_n1]
+                           and bl1_k // block_reduce == k_value)
+        # aub/bub k_factor same as tiling 
+        if not aub_k_full_load and not bub_k_full_load:
+            return k_range
+
+        cub_space = (cub_n1 * cub_m1 * block_in * block_out * (c_fused_num + 1) *
+                     BIT_RATIO_DICT[self.c_type] * cub_db)
+        aub_space = (aub_m1 * block_in * aub_k * (a_fused_num + 1) *
+                     BIT_RATIO_DICT[self.a_type] * aub_db)
+        bub_space = (bub_n1 * block_out * bub_k * (b_fused_num + 1) *
+                     BIT_RATIO_DICT[self.b_type] * bub_db)
+        # cub bank_conflict add space, same as schedule
+        cub_add_space = cub_n1 * block_out * BIT_RATIO_DICT[self.c_type] * cub_db
+        remaining_space = ub_size - cub_space - aub_space - bub_space - cub_add_space
+
+        trans_a_flag = GEMMComputeParam.tiling_info_dict["trans_a"]
+        trans_b_flag = GEMMComputeParam.tiling_info_dict["trans_b"]
+        # Both here and the calculation in schedule do not support attaching aub/bub at c_gm to solve bank conflict.
+        if aub_k_full_load and bub_k_full_load:
+            # the max extra k1 when compute at c_gm and k_factor is not k_aub/k_bub
+            k_len = math.floor(remaining_space // 
+                               ((aub_m1 * (a_fused_num + 1) * aub_db + bub_n1 * (b_fused_num + 1) * bub_db) *
+                               block_in * block_reduce * BIT_RATIO_DICT[self.a_type]))
+        elif aub_k_full_load:
+            # bub not full load, may need solve bank conflict.
+            bub_add_space = self._get_bank_space(bub_k, bub_n1 * block_out, trans_b_flag, bub_db)
+            remaining_space = remaining_space - bub_add_space
+            k_len = math.floor(remaining_space //
+                               (aub_m1 * (a_fused_num + 1) * aub_db * block_in * block_reduce *
+                                BIT_RATIO_DICT[self.a_type]))
+        else:
+            # aub not full load, may need solve bank conflict.
+            aub_add_space = self._get_bank_space(aub_m1 * block_in, aub_k, trans_a_flag, aub_db)
+            remaining_space = remaining_space - aub_add_space
+            k_len = math.floor(remaining_space //
+                               (bub_n1 * (b_fused_num + 1) * bub_db * block_out * block_reduce *
+                               BIT_RATIO_DICT[self.b_type]))
+        if remaining_space <= 0:
+            return [k_range[0], k_value]
+        k_max = min(k_value + k_len, k_range[1])
+        for k in range(k_value, k_max + 1):
+            # in dynamic, specially update k_bound of ub when k_axis is not divided by factor
+            if int_ceil_div((k + 1), tiling.get("AL0_matrix")[1]) * tiling.get("AL0_matrix")[1] * \
+                block_in > k_max:
+                k_max = k
+                break
+        return [k_range[0], k_max]
 
     def get_repo_candidate(self, seed, target_area):
         """

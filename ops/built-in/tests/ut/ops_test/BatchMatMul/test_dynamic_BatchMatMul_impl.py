@@ -28,6 +28,7 @@ matmul_case = [
 ]
 
 matmul_ND_case = [
+    (((32, 2147483647),), (49, 112), (49, 112), (113, 240),"float16", "float16", "ND",False, False, False, True, "dynamic_batch_matmul_ND_format_0"),
     (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_ND_format_1"),
     (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, False, False, True, "dynamic_matmul_ND_format_1"),
     (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, True, False, True, "dynamic_matmul_ND_format_1"),
@@ -95,9 +96,9 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
         format = "FRACTAL_NZ"
     block_range = [] if format == "ND" else [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
 
-    x1_range = [*batch_range, m_range, k_range] if trans_a else [*batch_range, k_range, m_range]
+    x1_range = [*batch_range, m_range, k_range] if not trans_a else [*batch_range, k_range, m_range]
     x1_range += block_range
-    x2_range = [k_range, n_range] if trans_b else [n_range, k_range]
+    x2_range = [n_range, k_range] if trans_b else [k_range, n_range]
     x2_range += block_range
     y_range = [*batch_range, n_range, m_range] + block_range
 
@@ -127,6 +128,7 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
                 "format": "ND", "ori_format": "ND", "range": (bias_n_range,)}
     else:
         bias = None
+
 
     if error_mode == "x1_orishape":
         x1["ori_shape"] = [-1, -1]
@@ -361,5 +363,6 @@ def test_get_op_support_info_dynamic_batchmatmul(test_arg):
          "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
     get_op_support_info(x1, x2, trans_a=True)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul)
+ut_case.run(["Ascend310", "Ascend910A"])
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910A"])
