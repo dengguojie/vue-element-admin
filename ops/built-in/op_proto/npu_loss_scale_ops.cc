@@ -111,5 +111,15 @@ IMPLEMT_VERIFIER(NPUAllocFloatStatus, NPUAllocFloatStatusVerify) {
 
 INFER_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusVerify);
+// ----------------------------NPUGetFloatStatusV2------------------------------------//
+IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusV2InferShape) {
+  TensorDesc td = op.GetOutputDesc("data");
+  td.SetShape(Shape({8}));  // 8 * 4B equals 32B
+  td.SetDataType(DT_FLOAT);
+  (void)op.UpdateOutputDesc("data", td);
+  return GRAPH_SUCCESS;
+}
 
+INFER_FUNC_REG(NPUGetFloatStatusV2, NPUGetFloatStatusV2InferShape);
+// ----------------------------NPUGetFloatStatusV2------------------------------------//
 }  // namespace ge
