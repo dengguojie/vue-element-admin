@@ -81,6 +81,15 @@ def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     return False
 
 
+def _is_special_cases(input_shape):
+    white_list_shape = [[64, 64, 1024], [96, 64, 1024]]
+    shape_t = list(input_shape)
+    if shape_t in white_list_shape:
+        return True
+
+    return False
+
+
 def op_select_format(input_dy, input_x,
                      output_pd_gamma, output_pd_beta, shape_gamma,
                      kernel_name="layer_norm_beta_gamma_backprop_v2"):
@@ -110,7 +119,7 @@ def op_select_format(input_dy, input_x,
     shape_dy = shape_util.scalar2tensor_one(shape_dy)
     c_0 = 16
 
-    if _check_dynamic_format(shape_dy, shape_gamma, c_0):
+    if _check_dynamic_format(shape_dy, shape_gamma, c_0) or _is_special_cases(shape_dy):
         input0 = util_select_op_base.gen_param(classify="input0", name="dy",
                                                datatype="float,float,float",
                                                format="NCHW,NHWC,ND")
