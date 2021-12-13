@@ -1,0 +1,104 @@
+[
+  {
+    "op": "RotatedBoxDecode",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "anchor_box",
+        "type": "float"
+      },
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "deltas",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      } 
+    ],
+    "attr": [
+      {
+        "name": "weight",
+        "value": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": "list_float"
+      }
+    ],
+    "case_name": "test_RotatedBoxDecode_0"
+  },
+  {
+    "op": "RotatedBoxDecode",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "anchor_box",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "deltas",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          5,
+          65473
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      } 
+    ],
+    "attr": [
+      {
+        "name": "weight",
+        "value": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": "list_float"
+      }
+    ],
+    "case_name": "test_RotatedBoxDecode_1"
+  }
+]

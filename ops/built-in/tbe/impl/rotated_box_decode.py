@@ -15,7 +15,7 @@
 # limitations under the License.
 # ============================================================================
 """
-rotated_box_encode
+rotated_box_decode
 """
 import te.platform as tbe_platform
 from te import tik
@@ -45,41 +45,55 @@ class Constant:
     TAN_2X_TIMES = 6
     # define the factors for tan
     FACTORS = [1 / 3, 2 / 15, 17 / 315, 62 / 2835, 1382 / 155925]
+    # const one
+    CONST_POS_ONE = 1.0
+    # pi / 4
+    CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
+    # pi / 8
+    CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
+    # taylor itertor
+    CONST_ITERTOR = 6
+    # taylor itertor 2
+    CONST_ITERTOR2 = 4
+    # tan(pi / 8)
+    TAN_PI_BY_EIGHT = 0.4142135623730950
+    # taylor factor
+    TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
 
 
 # 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
 # 'pylint: disable=unused-argument
-class RotatedBoxEncode():
+class RotatedBoxDecode():
     """
-    Function: use to finish RotatedBoxEncode main functions
+    Function: use to finish RotatedBoxDecode main functions
     """
 
-    def __init__(self, anchor_box, gt_box, y, weight, kernel_name):
+    def __init__(self, anchor_box, deltas, y, weight, kernel_name):
         """
-        init RotatedBoxEncode parameters
+        init RotatedBoxDecode parameters
         ---------------------------------------------------------------
         :param anchor_box: dict of shape and dtype for input anchor box
-        :param gt_box: dict of shape and dtype for input gt box
-        :param y: dict of shape and dtype for output encode box
-        :param weight: the weight for encode bounding box
+        :param deltas: dict of shape and dtype for input delta box
+        :param y: dict of shape and dtype for output decode box
+        :param weight: the weight for decode bounding box
         :param kernel_name: the kernel's name
         :return: None
         """
         self.init_tik_inst()
         self.anchor_shape = anchor_box.get("shape")
         self.anchor_dtype = anchor_box.get("dtype").lower()
-        self.gt_shape = gt_box.get("shape")
-        self.gt_dtype = gt_box.get("dtype").lower()
-        self.encode_shape = y.get("shape")
-        self.encode_dtype = y.get("dtype").lower()
+        self.delta_shape = deltas.get("shape")
+        self.delta_dtype = deltas.get("dtype").lower()
+        self.decode_shape = y.get("shape")
+        self.decode_dtype = y.get("dtype").lower()
         self.weight = weight
 
         self.kernel_name = kernel_name
-        self.batch = self.encode_shape[0]
-        self.bbox_num = self.encode_shape[1]
-        self.bbox_len = self.encode_shape[2]
+        self.batch = self.decode_shape[0]
+        self.bbox_num = self.decode_shape[1]
+        self.bbox_len = self.decode_shape[2]
         self.dtype = "float32"
         self.mask = 64
 
@@ -94,12 +108,12 @@ class RotatedBoxEncode():
         self.core_overlap = None
         self.anchor_ub = None
         self.anchor_ub_f16 = None
-        self.encode_ub = None
-        self.encode_ub_f16 = None
-        self.gt_ub = None
-        self.gt_ub_f16 = None
+        self.decode_ub = None
+        self.decode_ub_f16 = None
+        self.delta_ub = None
+        self.delta_ub_f16 = None
         self.anchor_pos_ub = None
-        self.gt_pos_ub = None
+        self.delta_pos_ub = None
 
         self.tiling_param_caculate()
         self.init_gm_tensor()
@@ -116,7 +130,7 @@ class RotatedBoxEncode():
         :parameter core_num: int
         :returns: None
         """
-        if self.gt_dtype == "float16":
+        if self.delta_dtype == "float16":
             total_ele = total_ele // 2
         self.one_core_ele = (total_ele + core_num - 1) // core_num
         self.act_core_num = total_ele // self.one_core_ele
@@ -124,7 +138,7 @@ class RotatedBoxEncode():
             self.act_core_num = self.act_core_num + 1
         self.last_core_ele = total_ele - (self.act_core_num - 1) * self.one_core_ele
 
-        if self.gt_dtype == "float16":
+        if self.delta_dtype == "float16":
             self.one_core_ele = self.one_core_ele * 2
             self.last_core_ele = self.last_core_ele * 2
 
@@ -132,16 +146,16 @@ class RotatedBoxEncode():
         """tiling_param_caculate
         """
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
-        self.dtype_gt_size = tbe_platform.cce_intrin.get_bit_len(self.gt_dtype) // 8
+        self.dtype_delta_size = tbe_platform.cce_intrin.get_bit_len(self.delta_dtype) // 8
         self.num_each_block = Constant.BLOCK_SIZE // self.dtype_size
-        self.num_each_block_f16 = Constant.BLOCK_SIZE // self.dtype_gt_size
+        self.num_each_block_f16 = Constant.BLOCK_SIZE // self.dtype_delta_size
         self.align_unit = Constant.BBOX_NUM * self.num_each_block
         self.align_unit_f16 = Constant.BBOX_NUM * self.num_each_block_f16
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
                        Constant.RESERVED_UB_SIZE) // self.dtype_size // self.align_unit
 
-        if self.gt_dtype == "float16":
+        if self.delta_dtype == "float16":
             self.ub_split = 16
             if self.bbox_num * self.bbox_len % self.align_unit_f16 != 0:
                 total_unit = self.bbox_num * self.bbox_len // self.align_unit_f16 + 1
@@ -179,13 +193,13 @@ class RotatedBoxEncode():
                                               (self.batch, self.bbox_num, self.bbox_len),
                                               name="anchor_gm",
                                               scope=tik.scope_gm)
-        self.gt_gm = self.tik_inst.Tensor(self.gt_dtype,
-                                          (self.batch, self.bbox_num, self.bbox_len),
-                                          name="gt_gm",
-                                          scope=tik.scope_gm)
-        self.encode_gm = self.tik_inst.Tensor(self.encode_dtype,
+        self.delta_gm = self.tik_inst.Tensor(self.delta_dtype,
+                                             (self.batch, self.bbox_num, self.bbox_len),
+                                             name="delta_gm",
+                                             scope=tik.scope_gm)
+        self.decode_gm = self.tik_inst.Tensor(self.decode_dtype,
                                               (self.batch, self.bbox_num, self.bbox_len),
-                                              name="encode_gm",
+                                              name="decode_gm",
                                               scope=tik.scope_gm)
 
     def init_ub_tensor(self):
@@ -196,41 +210,41 @@ class RotatedBoxEncode():
                                                self.max_ele * self.align_unit // Constant.BBOX_NUM),
                                               name="anchor_ub", scope=tik.scope_ubuf)
 
-        self.gt_ub = self.tik_inst.Tensor(self.dtype,
-                                          (Constant.BBOX_NUM,
-                                           self.max_ele * self.align_unit // Constant.BBOX_NUM),
-                                          name="gt_ub", scope=tik.scope_ubuf)
+        self.delta_ub = self.tik_inst.Tensor(self.dtype,
+                                             (Constant.BBOX_NUM,
+                                              self.max_ele * self.align_unit // Constant.BBOX_NUM),
+                                             name="delta_ub", scope=tik.scope_ubuf)
 
-        self.encode_ub = self.tik_inst.Tensor(self.dtype,
+        self.decode_ub = self.tik_inst.Tensor(self.dtype,
                                               (Constant.BBOX_NUM,
                                                self.max_ele * self.align_unit // Constant.BBOX_NUM),
-                                              name="encode_ub", scope=tik.scope_ubuf)
+                                              name="decode_ub", scope=tik.scope_ubuf)
 
         self.anchor_pos_ub = self.tik_inst.Tensor(self.dtype,
                                                   (Constant.BBOX_NUM,
                                                    self.max_ele * self.align_unit // Constant.BBOX_NUM),
                                                   name="anchor_pos_ub", scope=tik.scope_ubuf)
 
-        self.gt_pos_ub = self.tik_inst.Tensor(self.dtype,
-                                              (Constant.BBOX_NUM,
-                                               self.max_ele * self.align_unit // Constant.BBOX_NUM),
-                                              name="gt_pos_ub", scope=tik.scope_ubuf)
+        self.delta_pos_ub = self.tik_inst.Tensor(self.dtype,
+                                                 (Constant.BBOX_NUM,
+                                                  self.max_ele * self.align_unit // Constant.BBOX_NUM),
+                                                 name="delta_pos_ub", scope=tik.scope_ubuf)
 
-        if self.gt_dtype == "float16":
+        if self.delta_dtype == "float16":
             self.anchor_ub_f16 = self.tik_inst.Tensor(self.anchor_dtype,
                                                       (Constant.BBOX_NUM,
                                                        self.tensor_f16_len // Constant.BBOX_NUM),
                                                       name="anchor_ub_f16", scope=tik.scope_ubuf)
 
-            self.gt_ub_f16 = self.tik_inst.Tensor(self.gt_dtype,
-                                                  (Constant.BBOX_NUM,
-                                                   self.tensor_f16_len // Constant.BBOX_NUM),
-                                                  name="gt_ub_f16", scope=tik.scope_ubuf)
+            self.delta_ub_f16 = self.tik_inst.Tensor(self.delta_dtype,
+                                                     (Constant.BBOX_NUM,
+                                                      self.tensor_f16_len // Constant.BBOX_NUM),
+                                                     name="delta_ub_f16", scope=tik.scope_ubuf)
 
-            self.encode_ub_f16 = self.tik_inst.Tensor(self.encode_dtype,
+            self.decode_ub_f16 = self.tik_inst.Tensor(self.decode_dtype,
                                                       (Constant.BBOX_NUM,
                                                        self.tensor_f16_len // Constant.BBOX_NUM),
-                                                      name="encode_ub_f16", scope=tik.scope_ubuf)
+                                                      name="decode_ub_f16", scope=tik.scope_ubuf)
 
     def init_ub_scalar(self):
         """init_ub_tensor
@@ -253,13 +267,13 @@ class RotatedBoxEncode():
         :param overlap: the overlap for 32B
         :return: None
         """
-        if self.gt_dtype == "float16":
-            gt_ub = self.gt_ub_f16
+        if self.delta_dtype == "float16":
+            delta_ub = self.delta_ub_f16
             anchor_ub = self.anchor_ub_f16
             ub_ele = ub_ele // 2
             num_each_block = self.num_each_block_f16
         else:
-            gt_ub = self.gt_ub
+            delta_ub = self.delta_ub
             anchor_ub = self.anchor_ub
             num_each_block = self.num_each_block
 
@@ -269,8 +283,8 @@ class RotatedBoxEncode():
                     self.tik_inst.data_move(anchor_ub[bbox_idx, :],
                                             self.anchor_gm[batch_idx, bbox_idx, offset:],
                                             0, 1, ub_ele - 1, 0, 0)
-                    self.tik_inst.data_move(gt_ub[bbox_idx, :],
-                                            self.gt_gm[batch_idx, bbox_idx, offset:],
+                    self.tik_inst.data_move(delta_ub[bbox_idx, :],
+                                            self.delta_gm[batch_idx, bbox_idx, offset:],
                                             0, 1, ub_ele - 1, 0, 0)
 
                 align_offset = offset + (ub_ele - 1) * num_each_block - overlap
@@ -279,32 +293,32 @@ class RotatedBoxEncode():
                 self.tik_inst.data_move(anchor_ub[bbox_idx, ub_offset:],
                                         self.anchor_gm[batch_idx, bbox_idx, align_offset:],
                                         0, 1, 1, 0, 0)
-                self.tik_inst.data_move(gt_ub[bbox_idx, ub_offset:],
-                                        self.gt_gm[batch_idx, bbox_idx, align_offset:],
+                self.tik_inst.data_move(delta_ub[bbox_idx, ub_offset:],
+                                        self.delta_gm[batch_idx, bbox_idx, align_offset:],
                                         0, 1, 1, 0, 0)
 
             with self.tik_inst.else_scope():
                 self.tik_inst.data_move(anchor_ub[bbox_idx, :],
                                         self.anchor_gm[batch_idx, bbox_idx, offset:],
                                         0, 1, ub_ele, 0, 0)
-                self.tik_inst.data_move(gt_ub[bbox_idx, :],
-                                        self.gt_gm[batch_idx, bbox_idx, offset:],
+                self.tik_inst.data_move(delta_ub[bbox_idx, :],
+                                        self.delta_gm[batch_idx, bbox_idx, offset:],
                                         0, 1, ub_ele, 0, 0)
-        if self.gt_dtype == "float16":
+        if self.delta_dtype == "float16":
             with self.tik_inst.for_range(0, Constant.BBOX_NUM) as bbox_idx:
                 with self.tik_inst.if_scope(repeat_time > 0):
                     self.tik_inst.vconv(self.mask, 'none', self.anchor_ub[bbox_idx, :], anchor_ub[bbox_idx, :],
                                         repeat_time, 1, 1, 8, 4)
 
-                    self.tik_inst.vconv(self.mask, 'none', self.gt_ub[bbox_idx, :], gt_ub[bbox_idx, :],
+                    self.tik_inst.vconv(self.mask, 'none', self.delta_ub[bbox_idx, :], delta_ub[bbox_idx, :],
                                         repeat_time, 1, 1, 8, 4)
 
                 with self.tik_inst.if_scope(repeat_left > 0):
                     self.tik_inst.vconv(repeat_left, 'none', self.anchor_ub[bbox_idx, repeat_offset:],
                                         anchor_ub[bbox_idx, repeat_offset:], 1, 1, 1, 8, 4)
 
-                    self.tik_inst.vconv(repeat_left, 'none', self.gt_ub[bbox_idx, repeat_offset:],
-                                        gt_ub[bbox_idx, repeat_offset:], 1, 1, 1, 8, 4)
+                    self.tik_inst.vconv(repeat_left, 'none', self.delta_ub[bbox_idx, repeat_offset:],
+                                        delta_ub[bbox_idx, repeat_offset:], 1, 1, 1, 8, 4)
 
     def move_out_ub_data(self, repeat_time, repeat_left, repeat_offset, batch_idx, offset, ub_ele, overlap):
         """
@@ -317,37 +331,37 @@ class RotatedBoxEncode():
         :param overlap: the overlap for 32B
         :return: None
         """
-        if self.encode_dtype == "float16":
+        if self.decode_dtype == "float16":
             ub_ele = ub_ele // 2
-            encode_ub = self.encode_ub_f16
+            decode_ub = self.decode_ub_f16
             num_each_block = self.num_each_block_f16
             with self.tik_inst.for_range(0, Constant.BBOX_NUM) as bbox_idx:
                 with self.tik_inst.if_scope(repeat_time > 0):
-                    self.tik_inst.vconv(self.mask, "none", self.encode_ub_f16[bbox_idx, :],
-                                        self.encode_ub[bbox_idx, :], repeat_time, 1, 1, 4, 8)
+                    self.tik_inst.vconv(self.mask, "none", self.decode_ub_f16[bbox_idx, :],
+                                        self.decode_ub[bbox_idx, :], repeat_time, 1, 1, 4, 8)
                 with self.tik_inst.if_scope(repeat_left > 0):
-                    self.tik_inst.vconv(repeat_left, "none", self.encode_ub_f16[bbox_idx, repeat_offset:],
-                                        self.encode_ub[bbox_idx, repeat_offset:], 1, 1, 1, 4, 8)
+                    self.tik_inst.vconv(repeat_left, "none", self.decode_ub_f16[bbox_idx, repeat_offset:],
+                                        self.decode_ub[bbox_idx, repeat_offset:], 1, 1, 1, 4, 8)
         else:
-            encode_ub = self.encode_ub
+            decode_ub = self.decode_ub
             num_each_block = self.num_each_block
 
         with self.tik_inst.for_range(0, Constant.BBOX_NUM) as bbox_idx:
             with self.tik_inst.if_scope(overlap > 0):
                 with self.tik_inst.if_scope(ub_ele - 1 > 0):
-                    self.tik_inst.data_move(self.encode_gm[batch_idx, bbox_idx, offset:],
-                                            encode_ub[bbox_idx, :],
+                    self.tik_inst.data_move(self.decode_gm[batch_idx, bbox_idx, offset:],
+                                            decode_ub[bbox_idx, :],
                                             0, 1, ub_ele - 1, 0, 0)
                 align_offset = offset + (ub_ele - 1) * num_each_block - overlap
                 ub_offset = (ub_ele - 1) * num_each_block
 
-                self.tik_inst.data_move(self.encode_gm[batch_idx, bbox_idx, align_offset:],
-                                        encode_ub[bbox_idx, ub_offset:],
+                self.tik_inst.data_move(self.decode_gm[batch_idx, bbox_idx, align_offset:],
+                                        decode_ub[bbox_idx, ub_offset:],
                                         0, 1, 1, 0, 0)
 
             with self.tik_inst.else_scope():
-                self.tik_inst.data_move(self.encode_gm[batch_idx, bbox_idx, offset:],
-                                        encode_ub[bbox_idx, :],
+                self.tik_inst.data_move(self.decode_gm[batch_idx, bbox_idx, offset:],
+                                        decode_ub[bbox_idx, :],
                                         0, 1, ub_ele, 0, 0)
 
     def corner_to_center(self, box_corner, box_pos, repeat_time, repeat_left, offset):
@@ -433,13 +447,45 @@ class RotatedBoxEncode():
             self.tik_inst.data_move(center_angle[0, offset:], corner_angle[0, offset:],
                                     0, 1, repeat_left // self.num_each_block, 1, 1)
 
-    def get_target_center(self, src_0_ub, src_1_ub, src_2_ub, weight, center_info_ub,
+    def delta_scalar(self, delta, wx, wy, ww, wh, wt, repeat_time, repeat_left, offset):
+        """
+        :param delta: dict of shape and dtype for input delta box
+        :param wx: weight of x
+        :param wy: weight of y
+        :param ww: weight of w
+        :param wh: weight of h
+        :param wt: weight of t
+        :param repeat_time: int, the repeat time for tik instruction
+        :param repeat_left: int, the repeat left for tik instrucion
+        :param offset: int, the repeat offset for tik instruction
+        :return: None
+        """
+        delta_x = delta[0, :]
+        delta_y = delta[1, :]
+        delta_w = delta[2, :]
+        delta_h = delta[3, :]
+        delta_t = delta[4, :]
+
+        with self.tik_inst.if_scope(repeat_time > 0):
+            self.tik_inst.vmuls(self.mask, delta_x, delta_x, 1 / wx, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vmuls(self.mask, delta_y, delta_y, 1 / wy, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vmuls(self.mask, delta_w, delta_w, 1 / ww, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vmuls(self.mask, delta_h, delta_h, 1 / wh, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vmuls(self.mask, delta_t, delta_t, 1 / wt, repeat_time, 1, 1, 8, 8)
+
+        with self.tik_inst.if_scope(repeat_left > 0):
+            self.tik_inst.vmuls(repeat_left, delta_x[0, offset:], delta_x[0, offset:], 1 / wx, 1, 1, 1, 8, 8)
+            self.tik_inst.vmuls(repeat_left, delta_y[0, offset:], delta_y[0, offset:], 1 / wy, 1, 1, 1, 8, 8)
+            self.tik_inst.vmuls(repeat_left, delta_w[0, offset:], delta_w[0, offset:], 1 / ww, 1, 1, 1, 8, 8)
+            self.tik_inst.vmuls(repeat_left, delta_h[0, offset:], delta_h[0, offset:], 1 / wh, 1, 1, 1, 8, 8)
+            self.tik_inst.vmuls(repeat_left, delta_t[0, offset:], delta_t[0, offset:], 1 / wt, 1, 1, 1, 8, 8)
+
+    def get_target_center(self, src_0_ub, src_1_ub, src_2_ub, center_info_ub,
                           repeat_time, repeat_left, offset):
         """
         :param src_0_ub: input tensor 0
         :param src_1_ub: input tensor 1
         :param src_2_ub: input tensor 2
-        :param weight: the weight for center
         :param center_info_ub: result tensor
         :param repeat_time: int, the repeat time for tik instruction
         :param repeat_left: int, the repeat left for tik instrucion
@@ -448,59 +494,36 @@ class RotatedBoxEncode():
         """
         with self.tik_inst.new_stmt_scope():
             with self.tik_inst.if_scope(repeat_time > 0):
-                self.tik_inst.vsub(self.mask, center_info_ub, src_0_ub, src_1_ub, repeat_time, 1, 1, 1, 8, 8, 8)
-                if self.support_div is True:
-                    self.tik_inst.vdiv(self.mask, center_info_ub, center_info_ub, src_2_ub,
-                                       repeat_time, 1, 1, 1, 8, 8, 8)
-                else:
-                    self.tik_inst.vrec(self.mask, src_2_ub, src_2_ub, repeat_time, 1, 1, 8, 8)
-                    self.tik_inst.vmul(self.mask, center_info_ub, center_info_ub, src_2_ub,
-                                       repeat_time, 1, 1, 1, 8, 8, 8)
-                self.tik_inst.vmuls(self.mask, center_info_ub, center_info_ub, weight, repeat_time, 1, 1, 8, 8)
+                self.tik_inst.vmul(self.mask, center_info_ub, src_0_ub, src_2_ub,
+                                   repeat_time, 1, 1, 1, 8, 8, 8)
+                self.tik_inst.vadd(self.mask, center_info_ub, src_1_ub,
+                                   center_info_ub, repeat_time, 1, 1, 1, 8, 8, 8)
 
             with self.tik_inst.if_scope(repeat_left > 0):
-                self.tik_inst.vsub(repeat_left, center_info_ub[0, offset:], src_0_ub[0, offset:],
-                                   src_1_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
-                if self.support_div is True:
-                    self.tik_inst.vdiv(repeat_left, center_info_ub[0, offset:], center_info_ub[0, offset:],
-                                       src_2_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
-                else:
-                    self.tik_inst.vrec(repeat_left, src_2_ub[0, offset:], src_2_ub[0, offset:], 1, 1, 1, 8, 8)
-                    self.tik_inst.vmul(repeat_left, center_info_ub[0, offset:], center_info_ub[0, offset:],
-                                       src_2_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
-                self.tik_inst.vmuls(repeat_left, center_info_ub[0, offset:], center_info_ub[0, offset:],
-                                    weight, 1, 1, 1, 8, 8)
+                self.tik_inst.vmul(repeat_left, center_info_ub[0, offset:], src_0_ub[0, offset:],
+                                   src_2_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+                self.tik_inst.vadd(repeat_left, center_info_ub[0, offset:], src_1_ub[0, offset:],
+                                   center_info_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
 
-    def get_target_wh(self, src_0_ub, src_1_ub, encode_ub, weight, repeat_time, repeat_left, offset):
+    def get_target_wh(self, src_0_ub, src_1_ub, decode_ub, repeat_time, repeat_left, offset):
         """
         :param src_0_ub: input tensor 0
         :param src_1_ub: input tensor 1
-        :param encode_ub: result encode tensor
-        :param weight: the weight for w or h
+        :param decode_ub: result decode tensor
         :param repeat_time: int, the repeat time for tik instruction
         :param repeat_left: int, the repeat left for tik instrucion
         :param offset: int, the repeat offset for tik instruction
         :return: None
         """
         with self.tik_inst.if_scope(repeat_time > 0):
-            if self.support_div is True:
-                self.tik_inst.vdiv(self.mask, encode_ub, src_0_ub, src_1_ub, repeat_time, 1, 1, 1, 8, 8, 8)
-            else:
-                self.tik_inst.vrec(self.mask, encode_ub, src_1_ub, repeat_time, 1, 1, 8, 8)
-                self.tik_inst.vmul(self.mask, encode_ub, src_0_ub, encode_ub, repeat_time, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vln(self.mask, encode_ub, encode_ub, repeat_time, 1, 1, 8, 8)
-            self.tik_inst.vmuls(self.mask, encode_ub, encode_ub, weight, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vec_exp(self.mask, decode_ub, src_0_ub, repeat_time, 8, 8)
+            self.tik_inst.vmul(self.mask, decode_ub, decode_ub, src_1_ub,
+                               repeat_time, 1, 1, 1, 8, 8, 8)
 
         with self.tik_inst.if_scope(repeat_left > 0):
-            if self.support_div is True:
-                self.tik_inst.vdiv(repeat_left, encode_ub[0, offset:], src_0_ub[0, offset:], src_1_ub[0, offset:],
-                                   1, 1, 1, 1, 8, 8, 8)
-            else:
-                self.tik_inst.vrec(repeat_left, encode_ub[0, offset:], src_1_ub[0, offset:], 1, 1, 1, 8, 8)
-                self.tik_inst.vmul(repeat_left, encode_ub[0, offset:], src_0_ub[0, offset:], encode_ub[0, offset:],
-                                   1, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vln(repeat_left, encode_ub[0, offset:], encode_ub[0, offset:], 1, 1, 1, 8, 8)
-            self.tik_inst.vmuls(repeat_left, encode_ub[0, offset:], encode_ub[0, offset:], weight, 1, 1, 1, 8, 8)
+            self.tik_inst.vec_exp(repeat_left, decode_ub[0, offset:], src_0_ub[0, offset:], 1, 8, 8)
+            self.tik_inst.vmul(repeat_left, decode_ub[0, offset:], decode_ub[0, offset:],
+                               src_1_ub[0, offset:], 1, 1, 1, 1, 8, 8, 8)
 
     def compute_tan(self, mask, repeat_time, ub_a, ub_b, ub_c):
         """
@@ -547,40 +570,182 @@ class RotatedBoxEncode():
             self.tik_inst.vdiv(mask, res, res_denominator, tanx_square, repeat_time, 1, 1, 1, 8, 8, 8)
             times = times - 1
 
-    def get_target_angle(self, gt_angle, anchor_angle, encode_angle, weight, repeat_time, repeat_left, offset):
+    def do_taylor(self, mask, repeat_time, input_data, res_ub, ub_b, ub_c):
         """
-        :param gt_angle: gt angle tensor
+        :param mask: int, the mask for tik instruction
+        :param repeat_time: int, the repeat time for tik instruction
+        :param input_data: tensor, input data for taylor
+        :param res_ub: tensor, result tensor
+        :param ub_b: tensor, temp tensor b
+        :param ub_c: tensor, temp tensor c
+        :return: None
+        """
+        tensor_offset = ub_b
+        self.tik_inst.vec_dup(mask, tensor_offset, Constant.TAN_PI_BY_EIGHT, repeat_time, 8)
+        denominator_data = ub_c
+        self.tik_inst.vmuls(mask, denominator_data, input_data, Constant.TAN_PI_BY_EIGHT, repeat_time, 1, 1, 8, 8)
+        self.tik_inst.vadds(mask, denominator_data, denominator_data, Constant.CONST_POS_ONE, repeat_time, 1, 1, 8, 8)
+        molecule = ub_b
+        self.tik_inst.vsub(mask, molecule, input_data, tensor_offset, repeat_time, 1, 1, 1, 8, 8, 8)
+        data = ub_b
+        self.tik_inst.vdiv(mask, data, molecule, denominator_data, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vabs(mask, data, data, repeat_time, 1, 1, 8, 8)
+
+        square_data = ub_c
+        self.tik_inst.vmul(mask, square_data, data, data, repeat_time, 1, 1, 1, 8, 8, 8)
+        res = res_ub
+        self.tik_inst.vec_dup(mask, res, Constant.TAYLOR[Constant.CONST_ITERTOR], repeat_time, 8)
+        for i in reversed(range(Constant.CONST_ITERTOR)):
+            self.tik_inst.vmul(mask, res, res, square_data, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadds(mask, res, res, Constant.TAYLOR[i], repeat_time, 1, 1, 8, 8)
+        self.tik_inst.vmul(mask, res, res, data, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vadds(mask, res, res, Constant.CONST_PI_BY_EIGHT, repeat_time, 1, 1, 8, 8)
+
+        self.tik_inst.vmul(mask, square_data, input_data, input_data, repeat_time, 1, 1, 1, 8, 8, 8)
+        res2 = ub_b
+        self.tik_inst.vec_dup(mask, res2, Constant.TAYLOR[Constant.CONST_ITERTOR2], repeat_time, 8)
+        for i in reversed(range(Constant.CONST_ITERTOR2)):
+            self.tik_inst.vmul(mask, res2, res2, square_data, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadds(mask, res2, res2, Constant.TAYLOR[i], repeat_time, 1, 1, 8, 8)
+        self.tik_inst.vmul(mask, res2, res2, input_data, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vmin(mask, res, res, res2, repeat_time, 1, 1, 1, 8, 8, 8)
+
+    def compute_atan(self, mask, repeat_time, ub_a, ub_b, ub_c, ub_d, ub_e, ub_f):
+        """
+        :param mask: int, the mask for tik instruction
+        :param repeat_time: int, the repeat time for tik instruction
+        :param ub_a: temp tensor a
+        :param ub_b: temp tensor b
+        :param ub_c: temp tensor c
+        :param ub_d: temp tensor d
+        :param ub_e: temp tensor e
+        :param ub_f: temp tensor f
+        :return: None
+        """
+        x = ub_a
+        abs_data = ub_e
+        self.tik_inst.vabs(mask, abs_data, x, repeat_time, 1, 1, 8, 8)
+
+        tensor_one = ub_b
+        self.tik_inst.vec_dup(mask, tensor_one, Constant.CONST_POS_ONE, repeat_time, 8)
+
+        abs_data_sub_one = ub_c
+        abs_data_add_one = ub_d
+        self.tik_inst.vsub(mask, abs_data_sub_one, abs_data, tensor_one, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vadd(mask, abs_data_add_one, abs_data, tensor_one, repeat_time, 1, 1, 1, 8, 8, 8)
+        abs_data2 = ub_d
+        self.tik_inst.vdiv(mask, abs_data2, abs_data_sub_one, abs_data_add_one, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vabs(mask, abs_data2, abs_data2, repeat_time, 1, 1, 8, 8)
+
+        res_mt_one = ub_f
+        self.do_taylor(mask, repeat_time, abs_data2, res_mt_one, ub_b, ub_c)
+        res = ub_d
+        self.do_taylor(mask, repeat_time, abs_data, res, ub_b, ub_c)
+
+        self.tik_inst.vadds(mask, res_mt_one, res_mt_one, Constant.CONST_PI_BY_FOUR, repeat_time, 1, 1, 8, 8)
+        self.tik_inst.vmin(mask, res, res, res_mt_one, repeat_time, 1, 1, 1, 8, 8, 8)
+
+        new_data = ub_a
+        self.tik_inst.vmuls(mask, new_data, x, 2 ** 62, repeat_time, 1, 1, 8, 8)
+        abs_data = ub_b
+        self.tik_inst.vabs(mask, abs_data, new_data, repeat_time, 1, 1, 8, 8)
+        denominator = ub_b
+        self.tik_inst.vadds(mask, denominator, abs_data, 2 ** (-62), repeat_time, 1, 1, 8, 8)
+        sign_mask = ub_b
+        self.tik_inst.vdiv(mask, sign_mask, new_data, denominator, repeat_time, 1, 1, 1, 8, 8, 8)
+        res_out = ub_a
+        self.tik_inst.vmul(mask, res_out, res, sign_mask, repeat_time, 1, 1, 1, 8, 8, 8)
+
+    def get_target_angle(self, delta_angle, anchor_angle, decode_angle, repeat_time, repeat_left, offset):
+        """
+        :param delta_angle: delta angle tensor
         :param anchor_angle: anchor angle tensor
-        :param encode_angle: encode anelg tensor
-        :param weight: the weight for angle
+        :param decode_angle: decode anelg tensor
         :param repeat_time: int, the repeat time for tik instruction
         :param repeat_left: int, the repeat left for tik instrucion
         :param offset: int, the repeat offset for tik instruction
         :return: None
         """
         with self.tik_inst.if_scope(repeat_time > 0):
-            self.tik_inst.vmuls(self.mask, gt_angle, gt_angle, Constant.PI / 180.0, repeat_time, 1, 1, 8, 8)
-            self.compute_tan(self.mask, repeat_time, gt_angle, self.gt_pos_ub[0, :], self.gt_pos_ub[1, :])
             self.tik_inst.vmuls(self.mask, anchor_angle, anchor_angle, Constant.PI / 180.0, repeat_time, 1, 1, 8, 8)
-            self.compute_tan(self.mask, repeat_time, anchor_angle, self.anchor_pos_ub[0, :], self.anchor_pos_ub[1, :])
-
-            self.tik_inst.vsub(self.mask, encode_angle, gt_angle, anchor_angle, repeat_time, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(self.mask, encode_angle, encode_angle, weight, repeat_time, 1, 1, 8, 8)
+            self.compute_tan(self.mask, repeat_time, anchor_angle, self.delta_pos_ub[0, :], self.delta_pos_ub[1, :])
+            self.tik_inst.vadd(self.mask, decode_angle, anchor_angle,
+                               delta_angle, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.compute_atan(self.mask, repeat_time, decode_angle, self.delta_pos_ub[0, :], self.delta_pos_ub[1, :],
+                              self.delta_pos_ub[2, :], self.delta_pos_ub[3, :], self.delta_pos_ub[4, :])
+            self.tik_inst.vmuls(self.mask, decode_angle, decode_angle, 180.0 / Constant.PI, repeat_time, 1, 1, 8, 8)
 
         with self.tik_inst.if_scope(repeat_left > 0):
-            self.tik_inst.vmuls(repeat_left, gt_angle[0, offset:], gt_angle[0, offset:],
-                                Constant.PI / 180.0, 1, 1, 1, 8, 8)
-            self.compute_tan(repeat_left, 1, gt_angle[0, offset:],
-                             self.gt_pos_ub[0, offset:], self.gt_pos_ub[1, offset:])
             self.tik_inst.vmuls(repeat_left, anchor_angle[0, offset:], anchor_angle[0, offset:],
                                 Constant.PI / 180.0, 1, 1, 1, 8, 8)
-            self.compute_tan(repeat_left, 1, anchor_angle[0, offset:],
-                             self.anchor_pos_ub[0, offset:], self.anchor_pos_ub[1, offset:])
-            self.tik_inst.vsub(repeat_left, encode_angle[0, offset:], gt_angle[0, offset:], anchor_angle[0, offset:],
-                               1, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(repeat_left, encode_angle[0, offset:], encode_angle[0, offset:], weight, 1, 1, 1, 8, 8)
+            self.compute_tan(repeat_left, 1, anchor_angle[0, offset:], self.delta_pos_ub[0, offset:],
+                             self.delta_pos_ub[1, offset:])
+            self.tik_inst.vadd(repeat_left, decode_angle[0, offset:], anchor_angle[0, offset:],
+                               delta_angle[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+            self.compute_atan(repeat_left, 1, decode_angle[0, offset:], self.delta_pos_ub[0, offset:],
+                              self.delta_pos_ub[1, offset:], self.delta_pos_ub[2, offset:],
+                              self.delta_pos_ub[3, offset:], self.delta_pos_ub[4, offset:])
+            self.tik_inst.vmuls(repeat_left, decode_angle[0, offset:], decode_angle[0, offset:],
+                                180.0 / Constant.PI, 1, 1, 1, 8, 8)
 
-    def rotated_box_encode_compute(self, repeat_time, repeat_left, offset):
+    def center_to_corner(self, box_center, box_pos, repeat_time, repeat_left, offset):
+        """
+        :param box_center: tensor, the input center format box
+        :param box_pos: tensor, the ouput corner format box
+        :param repeat_time: int, the repeat time for tik instruction
+        :param repeat_left: int, the repeat left for tik instrucion
+        :param offset: int, the repeat offset for tik instruction
+        :return: None
+        """
+        center_x = box_center[0, :]
+        center_y = box_center[1, :]
+        box_w = box_center[2, :]
+        box_h = box_center[3, :]
+
+        corner_lx = box_pos[0, :]
+        corner_ly = box_pos[1, :]
+        corner_rx = box_pos[2, :]
+        corner_ry = box_pos[3, :]
+
+        with self.tik_inst.if_scope(repeat_time > 0):
+            self.tik_inst.vmuls(self.mask, corner_rx, box_w, 0.5, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vsub(self.mask, corner_lx, center_x,
+                               corner_rx, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(self.mask, corner_rx, center_x,
+                               corner_rx, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vmuls(self.mask, corner_ry, box_h, 0.5, repeat_time, 1, 1, 8, 8)
+            self.tik_inst.vsub(self.mask, corner_ly, center_y,
+                               corner_ry, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(self.mask, corner_ry, center_y,
+                               corner_ry, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.data_move(center_x, corner_lx, 0, 1, self.mask * repeat_time // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(center_y, corner_ly, 0, 1, self.mask * repeat_time // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(box_w, corner_rx, 0, 1, self.mask * repeat_time // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(box_h, corner_ry, 0, 1, self.mask * repeat_time // self.num_each_block, 1, 1)
+
+        with self.tik_inst.if_scope(repeat_left > 0):
+            self.tik_inst.vmuls(repeat_left, corner_rx[0, offset:], box_w[0, offset:],
+                                0.5, 1, 1, 1, 8, 8)
+            self.tik_inst.vsub(repeat_left, corner_lx[0, offset:], center_x[0, offset:],
+                               corner_rx[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(repeat_left, corner_rx[0, offset:], center_x[0, offset:],
+                               corner_rx[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vmuls(repeat_left, corner_ry[0, offset:], box_h[0, offset:],
+                                0.5, 1, 1, 1, 8, 8)
+            self.tik_inst.vsub(repeat_left, corner_ly[0, offset:], center_y[0, offset:],
+                               corner_ry[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(repeat_left, corner_ry[0, offset:], center_y[0, offset:],
+                               corner_ry[0, offset:], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.data_move(center_x[0, offset:], corner_lx[0, offset:],
+                                    0, 1, repeat_left // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(center_y[0, offset:], corner_ly[0, offset:],
+                                    0, 1, repeat_left // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(box_w[0, offset:], corner_rx[0, offset:],
+                                    0, 1, repeat_left // self.num_each_block, 1, 1)
+            self.tik_inst.data_move(box_h[0, offset:], corner_ry[0, offset:],
+                                    0, 1, repeat_left // self.num_each_block, 1, 1)
+
+    def rotated_box_decode_compute(self, repeat_time, repeat_left, offset):
         """
         :param repeat_time: int, the repeat time for tik instruction
         :param repeat_left: int, the repeat left for tik instrucion
@@ -588,27 +753,28 @@ class RotatedBoxEncode():
         :return: None
         """
         self.corner_to_center(self.anchor_ub, self.anchor_pos_ub, repeat_time, repeat_left, offset)
-        self.corner_to_center(self.gt_ub, self.gt_pos_ub, repeat_time, repeat_left, offset)
 
-        self.get_target_center(self.gt_pos_ub[0, :], self.anchor_pos_ub[0, :],
-                               self.anchor_pos_ub[2, :], self.weight[0],
-                               self.encode_ub[0, :], repeat_time, repeat_left, offset)
+        self.delta_scalar(self.delta_ub, self.weight[0], self.weight[1], self.weight[2],
+                          self.weight[3], self.weight[4], repeat_time, repeat_left, offset)
 
-        self.get_target_center(self.gt_pos_ub[1, :], self.anchor_pos_ub[1, :],
-                               self.anchor_pos_ub[3, :], self.weight[1],
-                               self.encode_ub[1, :], repeat_time, repeat_left, offset)
+        self.get_target_center(self.delta_ub[0, :], self.anchor_pos_ub[0, :],
+                               self.anchor_pos_ub[2, :], self.decode_ub[0, :],
+                               repeat_time, repeat_left, offset)
 
-        self.get_target_wh(self.gt_pos_ub[2, :], self.anchor_pos_ub[2, :],
-                           self.encode_ub[2, :], self.weight[2],
-                           repeat_time, repeat_left, offset)
+        self.get_target_center(self.delta_ub[1, :], self.anchor_pos_ub[1, :],
+                               self.anchor_pos_ub[3, :], self.decode_ub[1, :],
+                               repeat_time, repeat_left, offset)
 
-        self.get_target_wh(self.gt_pos_ub[3, :], self.anchor_pos_ub[3, :],
-                           self.encode_ub[3, :], self.weight[3],
-                           repeat_time, repeat_left, offset)
+        self.get_target_wh(self.delta_ub[2, :], self.anchor_pos_ub[2, :],
+                           self.decode_ub[2, :], repeat_time, repeat_left, offset)
 
-        self.get_target_angle(self.gt_pos_ub[4, :], self.anchor_pos_ub[4, :],
-                              self.encode_ub[4, :], self.weight[4],
-                              repeat_time, repeat_left, offset)
+        self.get_target_wh(self.delta_ub[3, :], self.anchor_pos_ub[3, :],
+                           self.decode_ub[3, :], repeat_time, repeat_left, offset)
+
+        self.get_target_angle(self.delta_ub[4, :], self.anchor_pos_ub[4, :],
+                              self.decode_ub[4, :], repeat_time, repeat_left, offset)
+
+        self.center_to_corner(self.decode_ub, self.delta_pos_ub, repeat_time, repeat_left, offset)
 
     def calculation_process(self, core_idx, batch_idx, loop_num, loop_left, overlap):
         """
@@ -626,7 +792,7 @@ class RotatedBoxEncode():
             offset = base_offset + cyc_idx * self.max_ele * self.align_unit
             self.move_in_gm_data(self.repeat_time, self.repeat_left, self.repeat_time * self.mask,
                                  batch_idx, offset // Constant.BBOX_NUM, self.max_ele, 0)
-            self.rotated_box_encode_compute(self.repeat_time, self.repeat_left, self.repeat_time * self.mask)
+            self.rotated_box_decode_compute(self.repeat_time, self.repeat_left, self.repeat_time * self.mask)
             self.move_out_ub_data(self.repeat_time, self.repeat_left, self.repeat_time * self.mask,
                                   batch_idx, offset // Constant.BBOX_NUM, self.max_ele, 0)
 
@@ -636,12 +802,12 @@ class RotatedBoxEncode():
             offset = base_offset + loop_num * self.max_ele * self.align_unit
             self.move_in_gm_data(self.repeat_time, self.repeat_left, self.repeat_time * self.mask,
                                  batch_idx, offset // Constant.BBOX_NUM, loop_left, overlap)
-            self.rotated_box_encode_compute(self.repeat_time, self.repeat_left, self.repeat_time * self.mask)
+            self.rotated_box_decode_compute(self.repeat_time, self.repeat_left, self.repeat_time * self.mask)
             self.move_out_ub_data(self.repeat_time, self.repeat_left, self.repeat_time * self.mask,
                                   batch_idx, offset // Constant.BBOX_NUM, loop_left, overlap)
 
-    def encode_compute_tiling(self):
-        """encode_compute_tiling
+    def decode_compute_tiling(self):
+        """decode_compute_tiling
         """
         with self.tik_inst.for_range(0, self.core_num, block_num=self.core_num) as core_idx:
             with self.tik_inst.if_scope(core_idx < self.act_core_num):
@@ -666,34 +832,34 @@ class RotatedBoxEncode():
     def tik_inst_function(self):
         """tik_inst_function
         """
-        self.encode_compute_tiling()
+        self.decode_compute_tiling()
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                               inputs=[self.anchor_gm, self.gt_gm],
-                               outputs=[self.encode_gm])
+                               inputs=[self.anchor_gm, self.delta_gm],
+                               outputs=[self.decode_gm])
 
 
-def _check_param(anchor_box, gt_box, y, weight):
+def _check_param(anchor_box, deltas, y, weight):
     """
     check parameters, if one is invalid, then raise error
     -----------------------
     :param anchor_box: dict of shape and dtype of input anchor bbox
-    :param gt_box: dict of shape and dtype of input gt bbox
-    :param y: dict of shape and dtype of output encode bbox
-    :param weight: the weight for encode bounding box
+    :param deltas: dict of shape and dtype of input delta bbox
+    :param y: dict of shape and dtype of output decode bbox
+    :param weight: the weight for decode bounding box
     :return: None
     """
     anchor_shape = anchor_box.get("shape")
     anchor_dtype = anchor_box.get("dtype").lower()
-    gt_shape = gt_box.get("shape")
-    gt_dtype = gt_box.get("dtype").lower()
-    encode_shape = y.get("shape")
-    encode_dtype = y.get("dtype").lower()
+    delta_shape = deltas.get("shape")
+    delta_dtype = deltas.get("dtype").lower()
+    decode_shape = y.get("shape")
+    decode_dtype = y.get("dtype").lower()
 
-    if anchor_dtype != gt_dtype or anchor_dtype != encode_dtype or gt_dtype != encode_dtype:
-        raise RuntimeError("anchor dtype, gt dtype and encode dtype must be same.")
+    if anchor_dtype != delta_dtype or anchor_dtype != decode_dtype or delta_dtype != decode_dtype:
+        raise RuntimeError("anchor dtype, delta dtype and decode dtype must be same.")
 
-    if anchor_shape != gt_shape or anchor_shape != encode_shape or gt_shape != encode_shape:
-        raise RuntimeError("anchor shape, gt shape and encode shape must be same.")
+    if anchor_shape != delta_shape or anchor_shape != decode_shape or delta_shape != decode_shape:
+        raise RuntimeError("anchor shape, delta shape and decode shape must be same.")
 
     if len(anchor_shape) != 3:
         raise RuntimeError("data dim must be 3.")
@@ -710,20 +876,19 @@ def _check_param(anchor_box, gt_box, y, weight):
     if anchor_shape[2] <= 0:
         raise RuntimeError("the data shape[2] must be greater than 0.")
 
-
-def rotated_box_encode(anchor_box, gt_box, y, weight, kernel_name="rotated_box_encode"):
+def rotated_box_decode(anchor_box, deltas, y, weight, kernel_name="rotated_box_decode"):
     """
-    implementation of rotated_box_encode and return the tik instance
+    implementation of rotated_box_decode and return the tik instance
     ----------------------------------------------------------------
     :param anchor_box: dict of shape and dtype of input anchor bbox
-    :param gt_box: dict of shape and dtype of input gt bbox
-    :param y: dict of shape and dtype of output encode bbox
-    :param weight: the weight for encode bounding box
+    :param deltas: dict of shape and dtype of input delta bbox
+    :param y: dict of shape and dtype of output decode bbox
+    :param weight: the weight for decode bounding box
     :param kernel_name: the kernel's name
     :return: tik instance
     """
-    _check_param(anchor_box, gt_box, y, weight)
-    obj = RotatedBoxEncode(anchor_box, gt_box, y, weight, kernel_name)
+    _check_param(anchor_box, deltas, y, weight)
+    obj = RotatedBoxDecode(anchor_box, deltas, y, weight, kernel_name)
     obj.tik_inst_function()
 
     return obj.tik_inst
