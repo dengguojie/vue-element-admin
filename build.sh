@@ -438,8 +438,9 @@ checkopts() {
   cov=FALSE
   CI_MODE=FALSE
   upload=FALSE
+  WITH_CUSTOM_OP=FALSE
   # Process the options
-  while getopts 'xhj:usvg:a-:m-:f:' opt
+  while getopts 'xhj:usvg:a-:cm-:f:' opt
   do
     case "${opt}" in
       x) git submodule init &&git submodule update
@@ -454,6 +455,7 @@ checkopts() {
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
+      c) WITH_CUSTOM_OP=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
       f) CHANGED_FILES=$OPTARG
          CI_MODE=TRUE ;; 
@@ -669,7 +671,7 @@ compile_mod(){
             do
                 cmake --build . --target $lib -- -j ${THREAD_NUM}
             done 
-        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
+        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
         mk_dir "${CMAKE_DEVICE_PATH}"
         cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
@@ -704,7 +706,7 @@ build_cann() {
             -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT \
             -DTILING_UT=$TILING_UT -DPROTO_UT=$PROTO_UT \
             -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT
-            -DBUILD_MODE=$build_mode"
+            -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
 
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
   
@@ -721,7 +723,7 @@ build_cann() {
             -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
             -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
             -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
-        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode"
+        CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
 
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
         mk_dir "${CMAKE_DEVICE_PATH}"
@@ -733,7 +735,7 @@ build_cann() {
 }
 
 minirc(){
-  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DMINRC=TRUE -DBUILD_MODE=$build_mode"
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DMINRC=TRUE -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
   logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
   mk_dir "${CMAKE_DEVICE_PATH}"
   cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
@@ -759,7 +761,7 @@ main() {
     -DUT_TEST_ALL=$UT_TEST_ALL -DST_TEST=$ST_TEST -DAICPU_ONLY=$AICPU_ONLY\
     -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT -DTILING_UT=$TILING_UT\
     -DPROTO_UT=$PROTO_UT -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT\
-    -DUT_NO_EXEC=$UT_NO_EXEC -DBUILD_MODE=$build_mode" 
+    -DUT_NO_EXEC=$UT_NO_EXEC -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
     create_lib $@
     exit 0
   fi

@@ -7,19 +7,26 @@ if(NOT ENABLE_TEST)
     message(FATAL_ERROR "Cannot find the the ini parser ${INI_PARSER}")
   endif()
 
+  set(CUSTOM_FLAG "")
+  if(WITH_CUSTOM_OP)
+    set(CUSTOM_FLAG "-c")
+  endif()
+
   file(MAKE_DIRECTORY "${AICPU_JSON_OUT_PATH}")
   add_custom_command(OUTPUT "${AICPU_JSON_OUT_PATH}/aicpu_kernel.json"
     COMMAND "${HI_PYTHON}" "${INI_PARSER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/aicpu_kernel/aicpu_kernel.ini"
     "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/aicpu_cust_kernel/aicpu_cust_kernel.ini"
-    "${AICPU_JSON_OUT_PATH}/aicpu_kernel.json" 1>/dev/null
+    "${AICPU_JSON_OUT_PATH}/aicpu_kernel.json"
+    "${CUSTOM_FLAG}" 1>/dev/null
     COMMENT "Parsing aicpu_kernel.ini and aicpu_cust_kernel.ini file"
   )
 
   add_custom_command(OUTPUT "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json"
     COMMAND "${HI_PYTHON}" "${INI_PARSER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/host_cpu_kernel/host_cpu_kernel.ini"
-    "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json" 1>/dev/null
+    "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json"
+    "${CUSTOM_FLAG}" 1>/dev/null
     COMMENT "Parsing host_cpu_kernel.ini file"
   )
 

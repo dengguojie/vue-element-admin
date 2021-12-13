@@ -98,6 +98,12 @@ set(local_kernels_src_files
     utils/sparse_group.cc
     utils/sparse_tensor.cc
 )
+if(WITH_CUSTOM_OP)
+	  #list(APPEND local_kernels_src_files
+	  #    kernels/normalized/custom/research/XXXX.cc
+	  #)
+endif()
+message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src_files})
 
 set(local_host_kernels_src_files
     kernels/host/assign.cc
