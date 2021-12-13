@@ -29,7 +29,11 @@ from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_compute import check_fc_fuse
 
+GENERAL_INPUT_LENGTH = 5
+FC_LENGTH_MIN = 2
+FC_LENGTH_MAX = 4
 
 # 'pylint: disable=too-many-nested-blocks
 def _can_division_sixteen(shape):
@@ -624,18 +628,38 @@ def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=Tr
             else:
                 input_y = tbe.broadcast(input_y, shape_x)
     else:
-        batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
-        batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
-        if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
-            if batch_matmul_flag_rhs:
-                input_x, input_y = input_y, input_x
-            return _add_compute_with_batchmatmul(input_x, input_y)
         shape_x = shape_util.shape_to_list(input_x.shape)
         shape_y = shape_util.shape_to_list(input_y.shape)
-        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                                                  param_name_input2="input_y")
-        input_x = tbe.broadcast(input_x, shape_max)
-        input_y = tbe.broadcast(input_y, shape_max)
+        fc_fusion_right_flag = len(shape_x) == GENERAL_INPUT_LENGTH and check_fc_fuse(input_y)
+        fc_fusion_left_flag = len(shape_y) == GENERAL_INPUT_LENGTH and check_fc_fuse(input_x)
+        if fc_fusion_left_flag or fc_fusion_right_flag:
+            if (len(shape_x) == FC_LENGTH_MIN):
+                input_y = tvm.compute(shape_x, lambda x, y:input_y(x % shape_y[0], \
+                    (y % (shape_y[1] * shape_y[-1])) // shape_y[-1], 0, 0, \
+                    (y % (shape_y[1] * shape_y[-1])) % shape_y[-1]))
+            elif (len(shape_x) == FC_LENGTH_MAX):
+                input_y = tvm.compute(shape_x, lambda x1, y1, y0, x0:input_y(0, x1 % shape_y[1], 0, 0, \
+                    x0 % shape_y[-1]))
+            if (len(shape_y) == FC_LENGTH_MIN):
+                input_x = tvm.compute(shape_y, lambda x, y:input_x(x % shape_x[0], \
+                    (y % (shape_x[1] * shape_x[-1])) // shape_x[-1], 0, 0, \
+                    (y % (shape_x[1] * shape_x[-1])) % shape_x[-1]))
+            elif (len(shape_y) == FC_LENGTH_MAX):
+                input_x = tvm.compute(shape_y, lambda x1, y1, y0, x0:input_x(0, x1 % shape_x[1], 0, 0, \
+                    x0 % shape_x[-1]))
+        else:
+            batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
+            batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
+            if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
+                if batch_matmul_flag_rhs:
+                    input_x, input_y = input_y, input_x
+                return _add_compute_with_batchmatmul(input_x, input_y)
+            shape_x = shape_util.shape_to_list(input_x.shape)
+            shape_y = shape_util.shape_to_list(input_y.shape)
+            shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                                                    param_name_input2="input_y")
+            input_x = tbe.broadcast(input_x, shape_max)
+            input_y = tbe.broadcast(input_y, shape_max)
 
     res = tbe.vadd(input_x, input_y)
     if x_dtype in ("uint8", "int8"):

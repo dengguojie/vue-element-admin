@@ -54,6 +54,25 @@ def sign(input_data):
 
     return res
 
+def check_fc_fuse(input_tensor):
+    """
+    check if fused with fullyconnection
+
+    Parameters:
+    input_tensor: the tensor of elem input
+
+    Returns result
+    """
+    queue = [input_tensor]
+    while queue:
+        item = queue.pop(0)
+        # the min dim size of fc is 2
+        fc_min_dim_flag = len(item.shape) == 2 and item.op.attrs["format"] == "ND"
+        # the max dim size of fc is 4
+        fc_max_dim_flag = len(item.shape) == 4 and item.op.attrs["format"] == "FRACTAL_NZ"
+        if ("matmul" in item.op.tag) and (fc_min_dim_flag or fc_max_dim_flag):
+           return True
+    return False
 
 def check_batchmatmul_fuse(input_tensor):
     """

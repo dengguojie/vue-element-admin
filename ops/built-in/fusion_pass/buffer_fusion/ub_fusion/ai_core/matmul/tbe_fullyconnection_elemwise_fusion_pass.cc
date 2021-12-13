@@ -29,6 +29,7 @@ static const string PATTERN_QUANT = "quant";
 static const string PATTERN_ELTWISE1 = "eltwise1";      // desc name
 static const string PATTERN_ELTWISE2 = "eltwise2";      // desc name
 static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
+static const string PATTERN_OTHER_INPUT1 = "InputData1";  // desc name
 static const string PATTERN_OUTPUT = "output";          // desc name
 static const vector<string> elemWiseWhiteList = {
   "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
@@ -74,10 +75,12 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .SetHead({PATTERN_FC_MATMUL})
           .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_DEQUANT})
           .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DEQUANT})
           .SetOutputs(PATTERN_DEQUANT, {PATTERN_ELTWISE1})
+          .SetOutputs(PATTERN_OTHER_INPUT1, {PATTERN_ELTWISE1})
           .SetOutputs(PATTERN_ELTWISE1, {PATTERN_ELTWISE2})
           .SetOutputs(PATTERN_ELTWISE2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
 
@@ -149,6 +152,21 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
 }
 
+bool CheckPreNodeIsFcNode(const ge::NodePtr& reluNode) {
+  for (auto in_anchor : reluNode->GetAllInDataAnchors()) {
+    ge::OutDataAnchorPtr pre_out_anchor = in_anchor->GetPeerOutAnchor();
+    if (pre_out_anchor == nullptr) {
+      continue;
+    }
+    ge::NodePtr pre_node = pre_out_anchor->GetOwnerNode();
+    if (pre_node == nullptr || pre_node->GetType() != "FullyConnection") {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -210,11 +228,38 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
         return SUCCESS;
       }
     } else {
-      if (reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu") {
+      bool unvalid_elemWise1_type = reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" &&
+                                    reluNode->GetType() != "Add";
+      if (unvalid_elemWise1_type) {
         fusionNodes.clear();
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
                 reluNode->GetName().c_str(), reluNode->GetType().c_str());
         return SUCCESS;
+      }
+      if (reluNode->GetType() == "Add") {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is add, start this ub fusion.");
+        // the input nodes of add must be 2
+        FUSION_PASS_CHECK(reluNode->GetAllInDataAnchors().size() != 2,
+                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input nodes must be two"),
+                          return FAILED);
+        // previous nodes are all not FC
+        if (!CheckPreNodeIsFcNode(reluNode)) {
+          fusionNodes.clear();
+          OP_LOGD(FUSED_OP_TYPE.c_str(), "both the inputs are not FullyConnection");
+          return SUCCESS;
+        }
+        ge::OutDataAnchorPtr out_anchor = reluNode->GetOutDataAnchor(0);
+        FUSION_PASS_CHECK(out_anchor->GetPeerInDataAnchors().size() != 1,
+                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output node must be one"),
+                          return FAILED);
+        // the elemwise2 is not relu6
+        if (out_anchor->GetPeerInDataAnchors().at(0)->GetOwnerNode()->GetType() != "Relu6") {
+          fusionNodes.clear();
+          OP_LOGD(FUSED_OP_TYPE.c_str(),
+                  "Eltwise2 type is not relu6, it is not supported for this ub fusion pass, skip fusion.");
+          return SUCCESS;
+        }
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise2 type is relu6, this ub fusion success.");
       }
       float negative_slope = 0;
       if (reluNode->GetType() == "LeakyRelu") {
