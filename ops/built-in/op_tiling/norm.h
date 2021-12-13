@@ -25,6 +25,7 @@
 #include <cmath>
 #include <vector>
 
+#include "graph/utils/op_desc_utils.h"
 #include "vector_tiling.h"
 
 namespace optiling {
@@ -44,9 +45,8 @@ struct NormCompileInfo {
   NormCompileInfo() = default;
   NormCompileInfo(const std::string& op_type, const nlohmann::json &compile_info);
   // check value
-  bool Check();
+  bool Check(const std::string& op_type) const;
 
-  std::string norm_op_type;
   bool check_success{true};
   // reduce and broadcast axis
   std::vector<int32_t> ori_reduce_axis;
@@ -91,7 +91,7 @@ struct NormReorderInfo {
   std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
 };
 
-enum NormBroadcastMode {
+enum class NormBroadcastMode {
   NO_BROADCAST = 0,
   SAME_REDUCE = 1,
   OPPOSITE_REDUCE = 2,
@@ -109,13 +109,21 @@ class Norm {
     bool DoTiling();
 
   private:
+    bool CheckInputNum() const;
+    bool GetMaxDimLen(const ge::OpDescPtr& op_desc);
     bool GetInput();
     bool Init();
     bool GetNormPattern();
     bool EliminateOne();
+    void InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& common_flag,
+                          const int32_t& reduce_flag, const int32_t& broadcast_flag,
+                          const int32_t& reduce_broadcast_flag);
     bool FusedAxis();
     bool GetUbSizeInfo();
+    bool ProcessBlockTilingAndReorder();
     bool ProcessTiling();
+    bool JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, const int64_t& right_align_product,
+                                              const std::size_t& index);
     bool JudgeCurDimSplitBlock(const int64_t& right_product, const std::size_t& index);
     bool JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& right_product,
                                const std::size_t& index, const int64_t& max_block_factor = 0);
@@ -124,26 +132,30 @@ class Norm {
     bool GetBlockTilingInfo();
     bool ProcessReorderAxis();
     bool GetPartialReorderUbTilingInfo();
+    bool CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& cur_dim,
+                                const int64_t& cur_dim_tail, const int64_t& right_product) const;
     bool JudgeNormalCurDimSplitUb(const std::size_t& index);
     bool JudgeWorkspaceCurDimSplitUb(const std::size_t& index);
     bool GetUbTilingInfo();
     bool NeedRefineBlockTiling();
+    bool ConstPostCalcTiling();
+    bool CalcNormInfo();
     bool CalcTiling();
-    bool ConstInputProcPost();
+    bool ConstPostWriteTilingData();
     bool CalcTilingKey();
     bool CalcWorkspace();
     bool WriteTilingData();
 
     bool IsNeedPartialReorder();
-    bool IsNeedWorkspace();
-    bool IsNeedAlignedInUb();
+    bool IsNeedWorkspace() const;
+    bool IsNeedAlignedInUb() const;
     bool GetVarValue();
     bool CalcInputAlignShape();
     NormBroadcastMode JudgeBroadcastMode(const std::array<int64_t, NORM_MAX_DIM_LEN>& before_shape);
-    int32_t CalcMinEliminateOneIndex();
-    int32_t GetBlockDim(int32_t tiling_axis, int64_t tiling_factor);
-    int64_t CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis);
-    int64_t CalcReorderAlignShapeProduct(int32_t axis_index);
+    int32_t CalcMinEliminateOneIndex() const;
+    int32_t GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const;
+    int64_t CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const;
+    int64_t CalcReorderAlignShapeProduct(int32_t axis_index) const;
 
     const std::string& op_type;
     const ge::Operator& op_paras;
@@ -201,15 +213,15 @@ class Norm {
 
 class NormTilingHandler: public AutoTilingHandler {
   public:
-  NormTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingHandler(o, p), norm_compile_info(o, c) {}
-  ~NormTilingHandler() = default;
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-  bool ParsedSuccess() {return norm_compile_info.check_success;};
+    NormTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
+      : AutoTilingHandler(o, p), norm_compile_info(o, c) {}
+    ~NormTilingHandler() = default;
+    bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
+    bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
+    bool ParsedSuccess() const {return norm_compile_info.check_success;};
 
   private:
-  const NormCompileInfo norm_compile_info;
+    const NormCompileInfo norm_compile_info;
 };
 }  // namespace optiling
 
