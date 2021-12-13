@@ -298,7 +298,7 @@ class MaxpoolGrad:
         self.res_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="res_gm",
                                                scope=tik.scope_gm)
         # temporary storage of overlap in workspace
-        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.WORKSPACE_SIZE,), name="overlap_gm",
+        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.WORKSPACE_SIZE // 4,), name="overlap_gm",
                                                    scope=tik.scope_gm, is_workspace=True)
 
     def init_ub_tensor(self):
@@ -2149,7 +2149,6 @@ class MaxpoolGrad:
                 "dilation_w": self.dilation[2],
                 "ceil_mode": self.ceil_mode
             })
-        tbe_context.get_context().add_compile_info("workspace", self.workspace)
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.ori_input_gm, self.grad_gm, self.argmax_gm],
                                    outputs=[self.res_gm],
