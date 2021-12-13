@@ -540,7 +540,7 @@ def op_select_format(x, y, perm, shape, transpose_first,
     return param_dynamic_in_json
 
 
-# 'pylint: disable=too-many-boolean-expressions,too-many-return-statements,too-many-branchs
+# 'pylint: disable=too-many-boolean-expressions,too-many-return-statements,too-many-branches
 def _is_matmul_fusion_case(y, perm, shape, transpose_first):
     """
     check if it is case of fusion with matmul

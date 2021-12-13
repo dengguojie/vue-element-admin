@@ -30,42 +30,48 @@ from impl.constant_util import STRIDE_ZERO
 from impl.constant_util import DATA_TYPE_UINT8
 from impl.common_util import get_data_size
 
-# A maximum of 25k can be calculated at a time.
-MAX_COMPUTE_SIZE = 25 * 1024
 
-# const value 1
-VALUE_ONE = 1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    Constant
+    """
+    # A maximum of 25k can be calculated at a time.
+    MAX_COMPUTE_SIZE = 25 * 1024
 
-# const value 0
-VALUE_ZERO = 0
+    # const value 1
+    VALUE_ONE = 1
 
-# const value 2
-VALUE_TWO = 2
+    # const value 0
+    VALUE_ZERO = 0
 
-# const value -1
-NEG_ONE = -1
+    # const value 2
+    VALUE_TWO = 2
 
-# repeat stride 4 for vconv
-STRIDE_FOUR = 4
+    # const value -1
+    NEG_ONE = -1
 
-# type of cumsum op
-SUM_TYPE = "sum"
+    # repeat stride 4 for vconv
+    STRIDE_FOUR = 4
 
-# type of cumprod op
-PROD_TYPE = "prod"
+    # type of cumsum op
+    SUM_TYPE = "sum"
 
-# type of cumlogsumexp
-LOGSUMEXP_TYPE = "logsumexp"
+    # type of cumprod op
+    PROD_TYPE = "prod"
 
-# handle position of tail
-TAIL = "tail"
+    # type of cumlogsumexp
+    LOGSUMEXP_TYPE = "logsumexp"
 
-# handle postiion of head
-HEAD = "head"
+    # handle position of tail
+    TAIL = "tail"
+
+    # handle postiion of head
+    HEAD = "head"
 
 
-# pylint: disable=useless-object-inheritance,too-many-statements,too-many-locals
-# pylint: disable=too-many-lines,too-many-instance-attributes
+# 'pylint: disable=useless-object-inheritance,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-lines,too-many-instance-attributes
 class CumBase(object):
     """
         Function: use to store cumsum base parameters
@@ -110,8 +116,8 @@ class CumBase(object):
         each: the length of each separate accumulation
 
         """
-        self.each = VALUE_ONE
-        for k in range(axis + VALUE_ONE, len(shape)):
+        self.each = Constant.VALUE_ONE
+        for k in range(axis + Constant.VALUE_ONE, len(shape)):
             self.each = self.each * shape[k]
         each_tail = self.each % (BLOCK_SIZE // self.dsize)
 
@@ -126,15 +132,15 @@ class CumBase(object):
         reserved: the additional length
 
         """
-        if self.each * self.dsize % BLOCK_SIZE != VALUE_ZERO:
-            reserved = BLOCK_SIZE // (self.each_loop * self.each) + VALUE_ONE
+        if self.each * self.dsize % BLOCK_SIZE != Constant.VALUE_ZERO:
+            reserved = BLOCK_SIZE // (self.each_loop * self.each) + Constant.VALUE_ONE
         else:
-            reserved = VALUE_ZERO
+            reserved = Constant.VALUE_ZERO
 
         return reserved
 
 
-# pylint: disable=global-statement,super-with-arguments
+# 'pylint: disable=global-statement,super-with-arguments
 class CumTensor(CumBase):
     """
         Function: use to store cumsum tensor
@@ -162,7 +168,7 @@ class CumTensor(CumBase):
         self.mov_tail = int((self.each - self.mov_len * self.mov_loop) % self.mov_len)
         self.rdtype = DATA_TYPE_FP16 if \
             dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else dtype
-        self.rdsize = VALUE_TWO if \
+        self.rdsize = Constant.VALUE_TWO if \
             dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else self.dsize
         self.mask = VECTOR_BYTE_SIZE // self.rdsize
 
@@ -192,8 +198,8 @@ class CumTensor(CumBase):
 
         """
         self.dsize = self.dsize
-        total_loop = VALUE_ONE
-        for j in range(VALUE_ZERO, axis):
+        total_loop = Constant.VALUE_ONE
+        for j in range(Constant.VALUE_ZERO, axis):
             total_loop = total_loop * shape[j]
 
         return total_loop
@@ -207,8 +213,8 @@ class CumTensor(CumBase):
         mov_len: the size of one move
 
         """
-        max_size = MAX_COMPUTE_SIZE
-        rdsize = VALUE_TWO if self.check_dtype_in_u8s8() else self.dsize
+        max_size = Constant.MAX_COMPUTE_SIZE
+        rdsize = Constant.VALUE_TWO if self.check_dtype_in_u8s8() else self.dsize
         if max_size >= (self.each * rdsize):
             mov_len = self.each
         else:
@@ -247,18 +253,18 @@ class CumTensor(CumBase):
         block_num = tbe_platform.cce_conf.get_soc_spec(
             tbe_platform.cce_conf.CORE_NUM)
         if block_num > total_loop:
-            outer_loop = VALUE_ONE
+            outer_loop = Constant.VALUE_ONE
             block_num = total_loop
-            outer_tail = VALUE_ZERO
+            outer_tail = Constant.VALUE_ZERO
         else:
             outer_loop = total_loop // block_num
             outer_tail = total_loop - block_num * outer_loop
         if self.each * self.dsize < BLOCK_SIZE or (
-                self.mov_tail > VALUE_ZERO and self.mov_tail
+                self.mov_tail > Constant.VALUE_ZERO and self.mov_tail
                 * self.dsize < BLOCK_SIZE):
-            block_num = VALUE_ONE
+            block_num = Constant.VALUE_ONE
             outer_loop = total_loop
-            outer_tail = VALUE_ZERO
+            outer_tail = Constant.VALUE_ZERO
         return block_num, total_loop, outer_loop, outer_tail
 
 
@@ -298,10 +304,10 @@ class CumTilingParam(CumTensor):
 
         """
         # head 256B align, tail 32B align
-        if length * self.rdsize % VECTOR_BYTE_SIZE == VALUE_ZERO:
+        if length * self.rdsize % VECTOR_BYTE_SIZE == Constant.VALUE_ZERO:
             repeat = length * self.rdsize // VECTOR_BYTE_SIZE
         else:
-            repeat = length * self.rdsize // VECTOR_BYTE_SIZE + VALUE_ONE
+            repeat = length * self.rdsize // VECTOR_BYTE_SIZE + Constant.VALUE_ONE
 
         return repeat
 
@@ -320,17 +326,17 @@ class CumTilingParam(CumTensor):
 
         """
         if not self.exclusive and self.reverse:
-            in_offset = self.each_loop - VALUE_ONE - VALUE_TWO * e_cycle
-            out_offset = self.each_loop - VALUE_ONE - VALUE_TWO * e_cycle
+            in_offset = self.each_loop - Constant.VALUE_ONE - Constant.VALUE_TWO * e_cycle
+            out_offset = self.each_loop - Constant.VALUE_ONE - Constant.VALUE_TWO * e_cycle
         elif self.exclusive and self.reverse:
-            in_offset = self.each_loop - VALUE_TWO * e_cycle
-            out_offset = self.each_loop - VALUE_ONE - VALUE_TWO * e_cycle
+            in_offset = self.each_loop - Constant.VALUE_TWO * e_cycle
+            out_offset = self.each_loop - Constant.VALUE_ONE - Constant.VALUE_TWO * e_cycle
         elif self.exclusive and not self.reverse:
-            in_offset = NEG_ONE
-            out_offset = VALUE_ZERO
+            in_offset = Constant.NEG_ONE
+            out_offset = Constant.VALUE_ZERO
         else:
-            in_offset = VALUE_ZERO
-            out_offset = VALUE_ZERO
+            in_offset = Constant.VALUE_ZERO
+            out_offset = Constant.VALUE_ZERO
 
         return in_offset, out_offset
 
@@ -343,10 +349,10 @@ class CumTilingParam(CumTensor):
         burstlen: the tail length of a move in instruct
 
         """
-        if (length * self.dsize) % BLOCK_SIZE == VALUE_ZERO:
+        if (length * self.dsize) % BLOCK_SIZE == Constant.VALUE_ZERO:
             burstlen = length * self.dsize // BLOCK_SIZE
         else:
-            burstlen = length * self.dsize // BLOCK_SIZE + VALUE_ONE
+            burstlen = length * self.dsize // BLOCK_SIZE + Constant.VALUE_ONE
 
         return burstlen
 
@@ -368,6 +374,7 @@ class CumTilingParam(CumTensor):
         self.reverse = reverse
 
 
+# 'pylint: disable=too-many-arguments
 class CumComputer(CumTilingParam):
     """
         Function: use to compute the cumsum
@@ -391,7 +398,7 @@ class CumComputer(CumTilingParam):
         self.kernel_name = kernel_name
         self.need_special, self.spe_position = self.get_multi_special_position()
         # max value scalar
-        if ctype == LOGSUMEXP_TYPE:
+        if ctype == Constant.LOGSUMEXP_TYPE:
             self.scalar_one = self.tik_instance.Scalar(dtype=self.dtype,
                                                        init_value=1.0)
 
@@ -419,11 +426,11 @@ class CumComputer(CumTilingParam):
 
         """
         need_special = False
-        position = HEAD
-        if self.block_num > VALUE_ONE and self.each_tail != VALUE_ZERO \
+        position = Constant.HEAD
+        if self.block_num > Constant.VALUE_ONE and self.each_tail != Constant.VALUE_ZERO \
                 and self.each * self.dsize > BLOCK_SIZE:
             need_special = True
-            position = HEAD if self.mov_tail == VALUE_ZERO else TAIL
+            position = Constant.HEAD if self.mov_tail == Constant.VALUE_ZERO else Constant.TAIL
 
         return need_special, position
 
@@ -446,7 +453,7 @@ class CumComputer(CumTilingParam):
         last_32b = self.get_temp_ubtensor()
         self.tik_instance.data_move(last_32b, self.output_out_gm[
             idx[0], idx[1], idx[2] + tail_idx],
-                                    VALUE_ZERO, VALUE_ONE, VALUE_ONE,
+                                    Constant.VALUE_ZERO, Constant.VALUE_ONE, Constant.VALUE_ONE,
                                     STRIDE_ZERO, STRIDE_ZERO)
         tmp_scalar = self.tik_instance.Scalar(self.dtype)
         for i in range(self.each_tail):
@@ -471,9 +478,9 @@ class CumComputer(CumTilingParam):
         tail_idx: Indicates the offset index
 
         """
-        tail_idx = VALUE_ZERO
+        tail_idx = Constant.VALUE_ZERO
         if self.need_special and position == self.spe_position:
-            burlen = burlen - VALUE_ONE
+            burlen = burlen - Constant.VALUE_ONE
             tail_idx = burlen * BLOCK_SIZE // self.dsize + \
                        self.each_tail - BLOCK_SIZE // self.dsize
 
@@ -516,18 +523,18 @@ class CumComputer(CumTilingParam):
         """
 
         burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == HEAD else self.get_burlen_by_mlen(self.mov_tail)
+            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
         repeat = self.get_repeat(self.mov_len) \
-            if position == HEAD else self.get_repeat(self.mov_tail)
+            if position == Constant.HEAD else self.get_repeat(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
-        # SUM_TYE: 0, PROD_TYPE: 1, LOGSUMEXP: min
-        if self.ctype == SUM_TYPE:
-            value = VALUE_ZERO
-        elif self.ctype == PROD_TYPE:
-            value = VALUE_ONE
-        elif self.ctype == LOGSUMEXP_TYPE:
+        # SUM_TYE: 0, Constant.PROD_TYPE: 1, LOGSUMEXP: min
+        if self.ctype == Constant.SUM_TYPE:
+            value = Constant.VALUE_ZERO
+        elif self.ctype == Constant.PROD_TYPE:
+            value = Constant.VALUE_ONE
+        elif self.ctype == Constant.LOGSUMEXP_TYPE:
             if self.dtype == "float16":
                 value = -2 ** 15 * 1.9991
             elif self.dtype == "float32":
@@ -539,25 +546,25 @@ class CumComputer(CumTilingParam):
         if self.check_dtype_in_u8s8():
             self.tik_instance.vconv(self.mask, "", last_ori, last_ret,
                                     repeat, STRIDE_ONE,
-                                    STRIDE_ONE, STRIDE_FOUR,
+                                    STRIDE_ONE, Constant.STRIDE_FOUR,
                                     REPEAT_STRIDE_EIGHT)
             ub_out = last_ori
         if burlen != 0:
             self.tik_instance.data_move(self.output_out_gm[idx], ub_out,
-                                        VALUE_ZERO, DEFAULT_BURST_LEN,
+                                        Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
                                         burlen, STRIDE_ZERO, STRIDE_ZERO)
         if self.need_special and position == self.spe_position:
             last_32b = self.post_multicore(burlen, idx, ub_out, tail_idx)
 
             self.tik_instance.data_move(
                 self.output_out_gm[idx[0], idx[1], idx[2] + tail_idx],
-                last_32b, VALUE_ZERO, DEFAULT_BURST_LEN,
-                VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
-        if self.ctype == LOGSUMEXP_TYPE:
-            offset = VALUE_ONE if self.need_special \
-                            and self.spe_position == position else VALUE_ZERO
+                last_32b, Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
+                Constant.VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
+        if self.ctype == Constant.LOGSUMEXP_TYPE:
+            offset = Constant.VALUE_ONE if self.need_special \
+                            and self.spe_position == position else Constant.VALUE_ZERO
 
-            self.tik_instance.data_move(last_ret, last_ori, VALUE_ZERO,
+            self.tik_instance.data_move(last_ret, last_ori, Constant.VALUE_ZERO,
                                         DEFAULT_BURST_LEN, burlen+offset,
                                         STRIDE_ZERO, STRIDE_ZERO)
 
@@ -580,12 +587,12 @@ class CumComputer(CumTilingParam):
         real_in = ori if self.check_dtype_in_u8s8() else ub_in
         repeat = self.get_repeat(self.mov_len)
 
-        self.tik_instance.data_move(real_in, self.input_x_gm[idx], VALUE_ZERO,
+        self.tik_instance.data_move(real_in, self.input_x_gm[idx], Constant.VALUE_ZERO,
                                     DEFAULT_BURST_LEN, burlen, STRIDE_ZERO, STRIDE_ZERO)
 
         if self.check_dtype_in_u8s8():
             self.tik_instance.vconv(self.mask, "", ub_in, ori, repeat,
-                                    VALUE_ONE, VALUE_ONE, REPEAT_STRIDE_EIGHT, STRIDE_FOUR)
+                                    Constant.VALUE_ONE, Constant.VALUE_ONE, REPEAT_STRIDE_EIGHT, Constant.STRIDE_FOUR)
 
     def t_dma_direct_out(self, last_ret, last_ori, idx, position):
         """
@@ -604,7 +611,7 @@ class CumComputer(CumTilingParam):
 
         """
         burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == HEAD else self.get_burlen_by_mlen(self.mov_tail)
+            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
@@ -612,7 +619,7 @@ class CumComputer(CumTilingParam):
         real_out = last_ori if self.check_dtype_in_u8s8() else last_ret
         if burlen != 0:
             self.tik_instance.data_move(self.output_out_gm[idx], real_out,
-                                        VALUE_ZERO, DEFAULT_BURST_LEN, burlen,
+                                        Constant.VALUE_ZERO, DEFAULT_BURST_LEN, burlen,
                                         STRIDE_ZERO, STRIDE_ZERO)
 
         if self.need_special and position == self.spe_position:
@@ -620,14 +627,14 @@ class CumComputer(CumTilingParam):
 
             self.tik_instance.data_move(
                 self.output_out_gm[idx[0], idx[1], idx[2] + tail_idx],
-                last_32b, VALUE_ZERO, DEFAULT_BURST_LEN,
-                VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
+                last_32b, Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
+                Constant.VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
 
         # to store last_ret and
-        if self.ctype == LOGSUMEXP_TYPE:
-            offset = VALUE_ONE if self.need_special \
-                                  and self.spe_position == position else VALUE_ZERO
-            self.tik_instance.data_move(last_ori, last_ret, VALUE_ZERO,
+        if self.ctype == Constant.LOGSUMEXP_TYPE:
+            offset = Constant.VALUE_ONE if self.need_special \
+                                  and self.spe_position == position else Constant.VALUE_ZERO
+            self.tik_instance.data_move(last_ori, last_ret, Constant.VALUE_ZERO,
                                         DEFAULT_BURST_LEN, burlen+offset, STRIDE_ZERO,
                                         STRIDE_ZERO)
 
@@ -652,9 +659,9 @@ class CumComputer(CumTilingParam):
                                           scope=tik.scope_ubuf)
 
         burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == HEAD else self.get_burlen_by_mlen(self.mov_tail)
+            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
         repeat = self.get_repeat(self.mov_len) \
-            if position == HEAD else self.get_repeat(self.mov_tail)
+            if position == Constant.HEAD else self.get_repeat(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
@@ -663,16 +670,16 @@ class CumComputer(CumTilingParam):
         if self.check_dtype_in_u8s8():
             self.tik_instance.vconv(self.mask, "", last_ori, last_ret,
                                     repeat, STRIDE_ONE,
-                                    STRIDE_ONE, STRIDE_FOUR,
+                                    STRIDE_ONE, Constant.STRIDE_FOUR,
                                     REPEAT_STRIDE_EIGHT)
             real_out = last_ori
 
-        if self.mov_loop == VALUE_ONE and self.reverse and \
-                (self.mov_len * self.dsize) % BLOCK_SIZE != VALUE_ZERO:
+        if self.mov_loop == Constant.VALUE_ONE and self.reverse and \
+                (self.mov_len * self.dsize) % BLOCK_SIZE != Constant.VALUE_ZERO:
             self.tik_instance.data_move(
-                before, self.output_out_gm[idx[0], idx[1] + VALUE_ONE, idx[2]],
-                VALUE_ZERO, DEFAULT_BURST_LEN,
-                VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
+                before, self.output_out_gm[idx[0], idx[1] + Constant.VALUE_ONE, idx[2]],
+                Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
+                Constant.VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
             tail_idx_fix = self.get_burlen_by_mlen(self.mov_len) * BLOCK_SIZE \
                            // self.dsize + self.each_tail - BLOCK_SIZE // \
                            self.dsize
@@ -685,7 +692,7 @@ class CumComputer(CumTilingParam):
 
         if burlen != 0:
             self.tik_instance.data_move(self.output_out_gm[idx],
-                                        real_out, VALUE_ZERO,
+                                        real_out, Constant.VALUE_ZERO,
                                         DEFAULT_BURST_LEN,
                                         burlen, STRIDE_ZERO, STRIDE_ZERO)
 
@@ -694,8 +701,8 @@ class CumComputer(CumTilingParam):
 
             self.tik_instance.data_move(
                 self.output_out_gm[idx[0], idx[1], idx[2] + tail_idx],
-                last_32b, VALUE_ZERO, DEFAULT_BURST_LEN,
-                VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
+                last_32b, Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
+                Constant.VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
 
     def prod_mul(self, mask_process, repeat_process, last_ret, input_x_ub, idx):
         """
@@ -719,14 +726,14 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        if mov_length % (VECTOR_BYTE_SIZE // self.rdsize) != VALUE_ZERO:
+        if mov_length % (VECTOR_BYTE_SIZE // self.rdsize) != Constant.VALUE_ZERO:
             align_repeat = mov_length * self.rdsize // VECTOR_BYTE_SIZE
-            if align_repeat != VALUE_ZERO:
-                self.prod_mul(self.mask, align_repeat, last_ret, input_x_ub, VALUE_ZERO)
+            if align_repeat != Constant.VALUE_ZERO:
+                self.prod_mul(self.mask, align_repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
             mask_vector = mov_length % (VECTOR_BYTE_SIZE // self.rdsize)
             self.prod_mul(mask_vector, DEFAULT_REPEAT_TIME, last_ret, input_x_ub, self.mask * align_repeat)
         else:
-            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, VALUE_ZERO)
+            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
 
     def prod_process(self, mov_length, repeat, e_cycle, last_ret, input_x_ub):
         """
@@ -737,11 +744,11 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        with self.tik_instance.if_scope((tik.Expr(self.reverse == True) & (e_cycle == VALUE_ONE)) |
-                                        (tik.Expr(self.reverse == False) & (e_cycle == self.each_loop - 1))):
+        with self.tik_instance.if_scope((tik.Expr(self.reverse) & (e_cycle == Constant.VALUE_ONE)) |
+                                        (tik.Expr(not self.reverse) & (e_cycle == self.each_loop - 1))):
             self.prod_tail_process(mov_length, repeat, last_ret, input_x_ub)
         with self.tik_instance.else_scope():
-            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, VALUE_ZERO)
+            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
 
     def cum_computer(self):
         """
@@ -752,13 +759,13 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        if self.ctype in (SUM_TYPE, PROD_TYPE):
+        if self.ctype in (Constant.SUM_TYPE, Constant.PROD_TYPE):
             with self.tik_instance.for_range(0, self.block_num,
                                              block_num=self.block_num) as block_i:
                 self.handle_out_loop(block_i, self.outer_loop)
 
             # handle kernel tail
-            if self.outer_tail != VALUE_ZERO:
+            if self.outer_tail != Constant.VALUE_ZERO:
                 self.handle_out_loop(self.block_num, self.outer_tail)
         else:
             if self.total_loop > 65535 or self.is_last_axis or self.each*self.dsize < BLOCK_SIZE:
@@ -767,7 +774,7 @@ class CumComputer(CumTilingParam):
                     self.handle_out_loop(block_i, self.outer_loop)
 
                 # handle kernel tail
-                if self.outer_tail != VALUE_ZERO:
+                if self.outer_tail != Constant.VALUE_ZERO:
                     self.handle_out_loop(self.block_num, self.outer_tail)
             else:
                 with self.tik_instance.for_range(0, self.total_loop,
@@ -780,7 +787,7 @@ class CumComputer(CumTilingParam):
         """
         o_idx = block_i
 
-        if self.mov_tail != VALUE_ZERO:
+        if self.mov_tail != Constant.VALUE_ZERO:
             self.handle_mov_tail(o_idx)
 
         self.handle_mov_loop(o_idx)
@@ -799,11 +806,11 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        with self.tik_instance.for_range(VALUE_ZERO, loop_num) as o_cycle:
+        with self.tik_instance.for_range(Constant.VALUE_ZERO, loop_num) as o_cycle:
             o_idx = o_cycle + block_i * self.outer_loop
 
             # handle mov tail first because overlap
-            if self.mov_tail != VALUE_ZERO:
+            if self.mov_tail != Constant.VALUE_ZERO:
                 self.handle_mov_tail(o_idx)
 
             self.handle_mov_loop(o_idx)
@@ -822,76 +829,76 @@ class CumComputer(CumTilingParam):
 
         """
 
-        thread_num = VALUE_TWO if self.mov_loop > VALUE_ONE else VALUE_ONE
-        with self.tik_instance.for_range(VALUE_ZERO, self.mov_loop,
+        thread_num = Constant.VALUE_TWO if self.mov_loop > Constant.VALUE_ONE else Constant.VALUE_ONE
+        with self.tik_instance.for_range(Constant.VALUE_ZERO, self.mov_loop,
                                          thread_num=thread_num) as m_cycle:
             # ub tensor
             input_x_ub = self.tik_instance. \
                 Tensor(self.rdtype,
-                       (MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
+                       (Constant.MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
                        name="input_x_ub",
                        scope=tik.scope_ubuf)
             last_ret = self.tik_instance. \
                 Tensor(self.rdtype,
-                       (MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
+                       (Constant.MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
                        name="last_ret",
                        scope=tik.scope_ubuf)
 
             last_ori = self.tik_instance. \
                 Tensor(self.dtype,
-                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                       (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                        name="last_ori",
                        scope=tik.scope_ubuf)
-            if self.ctype == LOGSUMEXP_TYPE:
+            if self.ctype == Constant.LOGSUMEXP_TYPE:
                 max_v = self.tik_instance. \
                     Tensor(self.dtype,
-                           (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                           (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                            name="max_v",
                            scope=tik.scope_ubuf)
                 min_v = self.tik_instance. \
                     Tensor(self.dtype,
-                           (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                           (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                            name="min_v",
                            scope=tik.scope_ubuf)
 
             burstlen = self.get_burlen_by_mlen(self.mov_len)
             repeat = self.get_repeat(self.mov_len)
             if self.exclusive and not self.reverse:
-                idx = [o_cycle, VALUE_ZERO, m_cycle * self.mov_len]
-                self.t_vdup_to_gm(last_ret, last_ori, idx, HEAD)
-                if self.ctype == LOGSUMEXP_TYPE and self.each_loop > VALUE_ONE:
-                    idx_out = [o_cycle, VALUE_ONE, m_cycle * self.mov_len]
+                idx = [o_cycle, Constant.VALUE_ZERO, m_cycle * self.mov_len]
+                self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.HEAD)
+                if self.ctype == Constant.LOGSUMEXP_TYPE and self.each_loop > Constant.VALUE_ONE:
+                    idx_out = [o_cycle, Constant.VALUE_ONE, m_cycle * self.mov_len]
                     self.t_dma_in(last_ret, last_ori, idx, burstlen)
-                    self.t_dma_direct_out(last_ret, last_ori, idx_out, HEAD)
+                    self.t_dma_direct_out(last_ret, last_ori, idx_out, Constant.HEAD)
 
             elif not self.exclusive and not self.reverse:
-                idx = [o_cycle, VALUE_ZERO, m_cycle * self.mov_len]
+                idx = [o_cycle, Constant.VALUE_ZERO, m_cycle * self.mov_len]
                 self.t_dma_in(last_ret, last_ori, idx, burstlen)
-                self.t_dma_direct_out(last_ret, last_ori, idx, HEAD)
+                self.t_dma_direct_out(last_ret, last_ori, idx, Constant.HEAD)
 
             elif not self.exclusive and self.reverse:
-                idx = [o_cycle, self.each_loop - VALUE_ONE,
+                idx = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                        m_cycle * self.mov_len]
                 self.t_dma_in(last_ret, last_ori, idx, burstlen)
-                self.t_dma_direct_out(last_ret, last_ori, idx, HEAD)
+                self.t_dma_direct_out(last_ret, last_ori, idx, Constant.HEAD)
 
             elif self.exclusive and self.reverse:
-                if self.ctype == LOGSUMEXP_TYPE and self.each_loop > VALUE_ONE:
-                    idx_in = [o_cycle, self.each_loop - VALUE_ONE,
+                if self.ctype == Constant.LOGSUMEXP_TYPE and self.each_loop > Constant.VALUE_ONE:
+                    idx_in = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                               m_cycle * self.mov_len]
-                    idx_out = [o_cycle, self.each_loop - VALUE_TWO,
+                    idx_out = [o_cycle, self.each_loop - Constant.VALUE_TWO,
                                m_cycle * self.mov_len]
                     self.t_dma_in(last_ret, last_ori, idx_in, burstlen)
-                    self.t_dma_direct_out(last_ret, last_ori, idx_out, HEAD)
-                idx = [o_cycle, self.each_loop - VALUE_ONE,
+                    self.t_dma_direct_out(last_ret, last_ori, idx_out, Constant.HEAD)
+                idx = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                        m_cycle * self.mov_len]
-                self.t_vdup_to_gm(last_ret, last_ori, idx, HEAD)
+                self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.HEAD)
 
-            if self.ctype == LOGSUMEXP_TYPE:
-                each_loop_start = VALUE_TWO if self.exclusive \
-                                               and self.each_loop > VALUE_ONE else VALUE_ONE
+            if self.ctype == Constant.LOGSUMEXP_TYPE:
+                each_loop_start = Constant.VALUE_TWO if self.exclusive \
+                                               and self.each_loop > Constant.VALUE_ONE else Constant.VALUE_ONE
             else:
-                each_loop_start = VALUE_ONE
+                each_loop_start = Constant.VALUE_ONE
             with self.tik_instance.for_range(each_loop_start,
                                              self.each_loop) as e_cycle:
                 in_offset, out_offset = self.get_offset(e_cycle)
@@ -899,7 +906,7 @@ class CumComputer(CumTilingParam):
                 idx = [o_cycle, e_cycle + in_offset,
                        m_cycle * self.mov_len]
                 self.t_dma_in(input_x_ub, last_ori, idx, burstlen)
-                if self.ctype == SUM_TYPE:
+                if self.ctype == Constant.SUM_TYPE:
                     self.tik_instance.vadd(self.mask, last_ret, input_x_ub,
                                            last_ret,
                                            repeat, STRIDE_ONE, STRIDE_ONE,
@@ -909,15 +916,15 @@ class CumComputer(CumTilingParam):
                                            REPEAT_STRIDE_EIGHT)
                     idx = [o_cycle, e_cycle + out_offset,
                            m_cycle * self.mov_len]
-                    self.t_dma_trans_out(last_ret, last_ori, idx, HEAD)
+                    self.t_dma_trans_out(last_ret, last_ori, idx, Constant.HEAD)
 
-                elif self.ctype == PROD_TYPE:
+                elif self.ctype == Constant.PROD_TYPE:
                     self.prod_process(self.mov_len, repeat, e_cycle, last_ret, input_x_ub)
                     idx = [o_cycle, e_cycle + out_offset,
                            m_cycle * self.mov_len]
-                    self.t_dma_trans_out(last_ret, last_ori, idx, HEAD)
+                    self.t_dma_trans_out(last_ret, last_ori, idx, Constant.HEAD)
 
-                elif self.ctype == LOGSUMEXP_TYPE:
+                elif self.ctype == Constant.LOGSUMEXP_TYPE:
                     # compare input_x_ub with last_ret, find min and max
                     self.tik_instance.vec_max(self.mask, max_v, last_ret,
                                               input_x_ub, repeat,
@@ -960,7 +967,7 @@ class CumComputer(CumTilingParam):
 
                     idx = [o_cycle, e_cycle + out_offset,
                            m_cycle * self.mov_len]
-                    self.t_dma_trans_out(last_ret, last_ori, idx, HEAD)
+                    self.t_dma_trans_out(last_ret, last_ori, idx, Constant.HEAD)
 
     def handle_mov_tail(self, o_cycle):
         """
@@ -978,69 +985,69 @@ class CumComputer(CumTilingParam):
         # ub tensor
         input_x_ub = self.tik_instance. \
             Tensor(self.rdtype,
-                   (MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
+                   (Constant.MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
                    name="input_x_ub",
                    scope=tik.scope_ubuf)
         last_ret = self.tik_instance. \
             Tensor(self.rdtype,
-                   (MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
+                   (Constant.MAX_COMPUTE_SIZE // self.rdsize + VECTOR_BYTE_SIZE,),
                    name="last_ret",
                    scope=tik.scope_ubuf)
         last_ori = self.tik_instance. \
             Tensor(self.dtype,
-                   (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                   (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                    name="last_ori",
                    scope=tik.scope_ubuf)
-        if self.ctype == LOGSUMEXP_TYPE:
+        if self.ctype == Constant.LOGSUMEXP_TYPE:
             max_v = self.tik_instance. \
                 Tensor(self.dtype,
-                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                       (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                        name="max_v",
                        scope=tik.scope_ubuf)
             min_v = self.tik_instance. \
                 Tensor(self.dtype,
-                       (MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
+                       (Constant.MAX_COMPUTE_SIZE // self.dsize + VECTOR_BYTE_SIZE,),
                        name="min_v",
                        scope=tik.scope_ubuf)
 
         burstlen = self.get_burlen_by_mlen(self.mov_tail)
         repeat = self.get_repeat(self.mov_tail)
         if self.exclusive and not self.reverse:
-            idx = [o_cycle, VALUE_ZERO, self.mov_loop * self.mov_len]
-            self.t_vdup_to_gm(last_ret, last_ori, idx, TAIL)
-            if self.ctype == LOGSUMEXP_TYPE and self.each_loop > VALUE_ONE:
-                idx_out = [o_cycle, VALUE_ONE, self.mov_loop * self.mov_len]
+            idx = [o_cycle, Constant.VALUE_ZERO, self.mov_loop * self.mov_len]
+            self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.TAIL)
+            if self.ctype == Constant.LOGSUMEXP_TYPE and self.each_loop > Constant.VALUE_ONE:
+                idx_out = [o_cycle, Constant.VALUE_ONE, self.mov_loop * self.mov_len]
                 self.t_dma_in(last_ret, last_ori, idx, burstlen)
-                self.t_dma_direct_out(last_ret, last_ori, idx_out, TAIL)
+                self.t_dma_direct_out(last_ret, last_ori, idx_out, Constant.TAIL)
 
         elif not self.exclusive and not self.reverse:
-            idx = [o_cycle, VALUE_ZERO, self.mov_loop * self.mov_len]
+            idx = [o_cycle, Constant.VALUE_ZERO, self.mov_loop * self.mov_len]
             self.t_dma_in(last_ret, last_ori, idx, burstlen)
-            self.t_dma_direct_out(last_ret, last_ori, idx, TAIL)
+            self.t_dma_direct_out(last_ret, last_ori, idx, Constant.TAIL)
 
         elif not self.exclusive and self.reverse:
-            idx = [o_cycle, self.each_loop - VALUE_ONE,
+            idx = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                    self.mov_loop * self.mov_len]
             self.t_dma_in(last_ret, last_ori, idx, burstlen)
-            self.t_dma_direct_out(last_ret, last_ori, idx, TAIL)
+            self.t_dma_direct_out(last_ret, last_ori, idx, Constant.TAIL)
 
         elif self.exclusive and self.reverse:
-            if self.ctype == LOGSUMEXP_TYPE and self.each_loop > VALUE_ONE:
-                idx_in = [o_cycle, self.each_loop - VALUE_ONE,
+            if self.ctype == Constant.LOGSUMEXP_TYPE and self.each_loop > Constant.VALUE_ONE:
+                idx_in = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                           self.mov_loop * self.mov_len]
-                idx_out = [o_cycle, self.each_loop - VALUE_TWO,
+                idx_out = [o_cycle, self.each_loop - Constant.VALUE_TWO,
                            self.mov_loop * self.mov_len]
                 self.t_dma_in(last_ret, last_ori, idx_in, burstlen)
-                self.t_dma_direct_out(last_ret, last_ori, idx_out, TAIL)
-            idx = [o_cycle, self.each_loop - VALUE_ONE,
+                self.t_dma_direct_out(last_ret, last_ori, idx_out, Constant.TAIL)
+            idx = [o_cycle, self.each_loop - Constant.VALUE_ONE,
                    self.mov_loop * self.mov_len]
-            self.t_vdup_to_gm(last_ret, last_ori, idx, TAIL)
+            self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.TAIL)
 
-        if self.ctype == LOGSUMEXP_TYPE:
-            each_loop_start = VALUE_TWO if self.exclusive \
-                                           and self.each_loop > VALUE_ONE else VALUE_ONE
+        if self.ctype == Constant.LOGSUMEXP_TYPE:
+            each_loop_start = Constant.VALUE_TWO if self.exclusive \
+                                           and self.each_loop > Constant.VALUE_ONE else Constant.VALUE_ONE
         else:
-            each_loop_start = VALUE_ONE
+            each_loop_start = Constant.VALUE_ONE
         with self.tik_instance.for_range(each_loop_start,
                                          self.each_loop) as e_cycle:
             in_offset, out_offset = self.get_offset(e_cycle)
@@ -1048,7 +1055,7 @@ class CumComputer(CumTilingParam):
             idx = [o_cycle, e_cycle + in_offset, self.mov_loop * self.mov_len]
             self.t_dma_in(input_x_ub, last_ori, idx, burstlen)
 
-            if self.ctype == SUM_TYPE:
+            if self.ctype == Constant.SUM_TYPE:
                 self.tik_instance.vadd(self.mask, last_ret, input_x_ub,
                                        last_ret,
                                        repeat, STRIDE_ONE, STRIDE_ONE,
@@ -1057,15 +1064,15 @@ class CumComputer(CumTilingParam):
                                        REPEAT_STRIDE_EIGHT)
                 idx = [o_cycle, e_cycle + out_offset,
                        self.mov_loop * self.mov_len]
-                self.t_dma_trans_out(last_ret, last_ori, idx, TAIL)
+                self.t_dma_trans_out(last_ret, last_ori, idx, Constant.TAIL)
 
-            elif self.ctype == PROD_TYPE:
+            elif self.ctype == Constant.PROD_TYPE:
                 self.prod_process(self.mov_tail, repeat, e_cycle, last_ret, input_x_ub)
                 idx = [o_cycle, e_cycle + out_offset,
                        self.mov_loop * self.mov_len]
-                self.t_dma_trans_out(last_ret, last_ori, idx, TAIL)
+                self.t_dma_trans_out(last_ret, last_ori, idx, Constant.TAIL)
 
-            elif self.ctype == LOGSUMEXP_TYPE:
+            elif self.ctype == Constant.LOGSUMEXP_TYPE:
                 # compare input_x_ub with last_ret,find min and max
                 self.tik_instance.vec_max(self.mask, max_v, last_ret,
                                           input_x_ub, repeat,
@@ -1108,7 +1115,7 @@ class CumComputer(CumTilingParam):
 
                 idx = [o_cycle, e_cycle + out_offset,
                        self.mov_loop * self.mov_len]
-                self.t_dma_trans_out(last_ret, last_ori, idx, TAIL)
+                self.t_dma_trans_out(last_ret, last_ori, idx, Constant.TAIL)
 
 
 def get_computer_by_ctype(input_x, axis, kernel_name, ctype):
@@ -1127,7 +1134,6 @@ def get_computer_by_ctype(input_x, axis, kernel_name, ctype):
     the instance of computer template
 
     """
-    if ctype == LOGSUMEXP_TYPE:
-        global MAX_COMPUTE_SIZE
-        MAX_COMPUTE_SIZE = 15 * 1024
+    if ctype == Constant.LOGSUMEXP_TYPE:
+        Constant.MAX_COMPUTE_SIZE = 15 * 1024
     return CumComputer(input_x, axis, kernel_name, ctype)

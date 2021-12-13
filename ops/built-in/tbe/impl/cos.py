@@ -23,6 +23,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

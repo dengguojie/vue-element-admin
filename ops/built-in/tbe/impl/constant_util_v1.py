@@ -121,13 +121,13 @@ MINI = "mini"
 # product is cloud
 CLOUD = "cloud"
 
-# define a scalar, value = -(2**32 - 1)
+# `define a scalar, value = -(2**32 - 1)`
 SCALAR_MIN_FP32 = -3402823424.0
-# define a scalar, value = -(2**16 - 1)
+# `define a scalar, value = -(2**16 - 1)`
 SCALAR_MIN_FP16 = -(2**16 - 1)
-# define a scalar, value = (2**30 + 2**29)
+# `define a scalar, value = (2**30 + 2**29)`
 SCALAR_MAX_FP32 = (2**30 + 2**29)
-# define a scalar, value = (2**16 - 1)
+# `define a scalar, value = (2**16 - 1)`
 SCALAR_MAX_FP16 = (2**16 - 1)
 # max segment len
 MAX_SEGMENT_LEN = 2048 * 4

@@ -253,16 +253,16 @@ class CTCLossV2():
                         lamax_ub[s - start_loop].set_as(b_tmp)
                     with self.tik_instance.else_scope():
                         lamax_ub[s - start_loop].set_as(c_tmp)
-                    
+
             repeat_times.set_as(end - start_loop)
 
-            # func: get '-max'
+            # func: get `-max`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 max_tmp.set_as(lamax_ub[s])
                 max_tmp.set_as(-max_tmp)
                 self.tik_instance.vec_adds(3, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK], max_tmp, 1, 8, 8)
 
-            # func: 'exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)'
+            # func: `exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vec_exp(3, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],
@@ -275,12 +275,12 @@ class CTCLossV2():
             with self.tik_instance.else_scope():
                 self.tik_instance.vec_exp(3, a_ub, b_ub, repeat_times, 1, 1)
 
-            # func: 'exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)'
+            # func: `exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 self.tik_instance.vec_reduce_add(3, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK],
                                                  work_tensor_ub, 1, 1)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vln(1, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],
@@ -293,12 +293,12 @@ class CTCLossV2():
             with self.tik_instance.else_scope():
                 self.tik_instance.vln(1, a_ub, b_ub, repeat_times, 1, 1, 1, 1)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 max_tmp.set_as(lamax_ub[s])
                 self.tik_instance.vec_adds(1, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK], max_tmp, 1, 8, 8)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vec_add(1, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],

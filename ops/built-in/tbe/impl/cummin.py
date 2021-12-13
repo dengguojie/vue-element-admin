@@ -28,7 +28,7 @@ class Cummin():
     """
     Implementation of Cummin
     """
-    # 'pylint: disable=too-many-branchs,too-many-statements
+    # 'pylint: disable=too-many-branches,too-many-statements
     def __init__(self, input_x, dim, kernel_name):
         """
         init of cummin
@@ -379,7 +379,7 @@ class Cummin():
                 self.tik_instance.vec_conv(self.max_mask_argmin_dtype, '',
                                            self.last_x_ub_cast[compute_offset],
                                            self.last_x_ub[compute_offset],
-                                           repeat_time, 
+                                           repeat_time,
                                            8, 8)
             compute_offset += repeat_time * self.max_mask_argmin_dtype
             last_num = num % self.max_mask_argmin_dtype

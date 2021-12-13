@@ -16,16 +16,22 @@
 cumprod_d
 """
 from te.utils import para_check
-from impl.cum_computer import get_computer_by_ctype
 from te.utils.error_manager import error_manager_vector
+from impl.cum_computer import get_computer_by_ctype
 from impl.util import util_select_op_base
 
-# the computer type
-PROD_TYPE = "prod"
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant
+    """
+    # the computer type
+    PROD_TYPE = "prod"
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumprod_d"):
     """
     get_op_support_info
@@ -48,8 +54,8 @@ def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_nam
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled, unused-argument,invalid-name
-# pylint: disable=locally-disabled, too-many-arguments, not-callable
+# 'pylint: disable=locally-disabled, unused-argument,invalid-name
+# 'pylint: disable=locally-disabled, too-many-arguments, not-callable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def cumprod_d(x, y, axis=0, exclusive=False, reverse=False,
@@ -77,7 +83,7 @@ def cumprod_d(x, y, axis=0, exclusive=False, reverse=False,
     if axis < 0:
         axis = len(shape) + axis
     check_param(x, axis, kernel_name)
-    cumprod_template = get_computer_by_ctype(x, axis, kernel_name, PROD_TYPE)
+    cumprod_template = get_computer_by_ctype(x, axis, kernel_name, Constant.PROD_TYPE)
     cumprod_template.set_ext_params(exclusive, reverse)
 
     return cumprod_template.get_tik_instance()

@@ -102,20 +102,20 @@ class DecodeBbox:
         b_buffer_ub = input_list[4]
         c_buffer_ub = input_list[5]
 
-        # '0.5*pred_w
+        # `0.5*pred_w`
         self.tik_instance.vmuls(self.mask, a_buffer_ub[0], pred[0], 0.5,
                                 (self.N)*self.ratio, 1, 1, 8, 8)
-        # 'pred_ctr_x - 0.5 * pred_w
+        # `pred_ctr_x - 0.5 * pred_w`
         self.tik_instance.vsub(self.mask, b_buffer_ub[0], pred_center[0],
                                a_buffer_ub[0], (self.N)*self.ratio,
                                1, 1, 1, 8, 8, 8)
-        # 'y : min(pred_ctr_x - 0.5 * pred_w, img_width - 1)
+        # `y : min(pred_ctr_x - 0.5 * pred_w, img_width - 1)`
         self.tik_instance.vector_dup(self.mask, c_buffer_ub, image_size,
                                      (self.N)*self.ratio, 1, 8)
         self.tik_instance.vmin(self.mask, a_buffer_ub[0], b_buffer_ub[0],
                                c_buffer_ub[0], (self.N)*self.ratio,
                                1, 1, 1, 8, 8, 8)
-        # 'pred_box_left_up_x : max(min(pred_ctr_x - 0.5 * pred_w, img_width - 1), 0)
+        # `pred_box_left_up_x : max(min(pred_ctr_x - 0.5 * pred_w, img_width - 1), 0)`
         self.tik_instance.vrelu(self.mask, pred_box_left_up[0], a_buffer_ub[0],
                                 (self.N)*self.ratio, 1, 1, 8, 8)
 
@@ -134,19 +134,19 @@ class DecodeBbox:
 
         tik_instance = self.tik_instance
 
-        # 0.5*pred_w
+        # `0.5*pred_w`
         tik_instance.vmuls(self.mask, a_buffer_ub[0], pred[0], 0.5,
                            (self.N)*self.ratio, 1, 1, 8, 8)
-        # pred_ctr_x + 0.5 * pred_w
+        # `pred_ctr_x + 0.5 * pred_w`
         tik_instance.vadd(self.mask, b_buffer_ub[0], pred_center[0],
                           a_buffer_ub[0], (self.N)*self.ratio, 1, 1, 1, 8, 8, 8)
-        # 'y : min(pred_ctr_x + 0.5 * pred_w, img_width - 1)
+        # `y : min(pred_ctr_x + 0.5 * pred_w, img_width - 1)`
         tik_instance.vector_dup(self.mask, c_buffer_ub, image_size,
                                 (self.N)*self.ratio, 1, 8)
         tik_instance.vmin(self.mask, a_buffer_ub[0], b_buffer_ub[0],
                           c_buffer_ub, (self.N)*self.ratio, 1, 1, 1, 8, 8, 8)
 
-        # 'pred_box_right_down_x : max(min(pred_ctr_x + 0.5 * pred_w, img_width - 1), 0)
+        # `pred_box_right_down_x : max(min(pred_ctr_x + 0.5 * pred_w, img_width - 1), 0)`
         tik_instance.vrelu(self.mask, pred_box_right_down[0], a_buffer_ub[0],
                            (self.N)*self.ratio, 1, 1, 8, 8)
 
@@ -184,7 +184,7 @@ class DecodeBbox:
             pred_h = tik_instance.Tensor(input_dtype, (1, input_n*8*16),
                                          name="pred_h", scope=tik.scope_ubuf)
 
-            # 'widths : boxes[:, 2] - boxes[:, 0] + 1.0
+            # `widths : boxes[:, 2] - boxes[:, 0] + 1.0`
             tik_instance.vsub(self.mask, a_buffer_ub[0],
                               input_region_proposal_ub[2, 0],
                               input_region_proposal_ub[0, 0],
@@ -192,7 +192,7 @@ class DecodeBbox:
             tik_instance.vadds(self.mask, widths[0], a_buffer_ub[0],
                                1, input_n*self.ratio, 1, 1, 8, 8)
 
-            # 'heights : boxes[:, 3] - boxes[:, 1] + 1.0
+            # `heights : boxes[:, 3] - boxes[:, 1] + 1.0`
             tik_instance.vsub(self.mask, a_buffer_ub[0],
                               input_region_proposal_ub[3, 0],
                               input_region_proposal_ub[1, 0],
@@ -200,45 +200,45 @@ class DecodeBbox:
             tik_instance.vadds(self.mask, heights[0], a_buffer_ub[0], 1,
                                input_n*self.ratio, 1, 1, 8, 8)
 
-            # 'ctr_x : boxes[:, 0] + 0.5 * widths
+            # `ctr_x : boxes[:, 0] + 0.5 * widths`
             tik_instance.vmuls(self.mask, a_buffer_ub[0], widths[0], 0.5,
                                input_n*self.ratio, 1, 1, 8, 8)
             tik_instance.vadd(self.mask, ctr_x[0],
                               input_region_proposal_ub[0, 0], a_buffer_ub[0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 
-            # 'ctr_y : boxes[:, 1] + 0.5 * heights
+            # `ctr_y : boxes[:, 1] + 0.5 * heights`
             tik_instance.vmuls(self.mask, a_buffer_ub[0], heights[0], 0.5,
                                input_n*self.ratio, 1, 1, 8, 8)
             tik_instance.vadd(self.mask, ctr_y[0],
                               input_region_proposal_ub[1, 0], a_buffer_ub[0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 
-            # 'pred_center_x : ctr_x + widths*dx
+            # `pred_center_x : ctr_x + widths*dx`
             tik_instance.vmul(self.mask, a_buffer_ub[0], widths,
                               input_bbox_ub[0, 0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
             tik_instance.vadd(self.mask, pred_center_x, ctr_x, a_buffer_ub,
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 
-            # 'pred_center_y : ctr_y + heights * dy
+            # `pred_center_y : ctr_y + heights * dy`
             tik_instance.vmul(self.mask, a_buffer_ub[0], heights,
                               input_bbox_ub[1, 0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
             tik_instance.vadd(self.mask, pred_center_y, ctr_y, a_buffer_ub,
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 
-            # 'exp(dw)
+            # `exp(dw)`
             tik_instance.vexp(self.mask, a_buffer_ub[0], input_bbox_ub[2, 0],
                               input_n*self.ratio, 1, 1, 8, 8)
-            # 'pred_w : widths * exp(dw)
+            # `pred_w : widths * exp(dw)`
             tik_instance.vmul(self.mask, pred_w[0], widths, a_buffer_ub[0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 
-            # 'exp(dh)
+            # `exp(dh)`
             tik_instance.vexp(self.mask, a_buffer_ub[0], input_bbox_ub[3, 0],
                               input_n*self.ratio, 1, 1, 8, 8)
-            # 'pred_h : heights * exp(dh)
+            # `pred_h : heights * exp(dh)`
             tik_instance.vmul(self.mask, pred_h[0], heights, a_buffer_ub[0],
                               input_n*self.ratio, 1, 1, 1, 8, 8, 8)
 

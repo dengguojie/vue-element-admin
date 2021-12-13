@@ -16,17 +16,23 @@
 cumulativelogsumexp_d
 """
 
+from te.utils import para_check
 from impl.cum_computer import get_computer_by_ctype
 from impl.util import util_select_op_base
-from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# the computer type
-COMPUTE_TYPE = "logsumexp"
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant
+    """
+    # the computer type
+    COMPUTE_TYPE = "logsumexp"
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
                         kernel_name="cumulative_logsumexp_d"):
     """
@@ -51,8 +57,8 @@ def get_op_support_info(x, y, axis, exclusive=False, reverse=False,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled, unused-argument,invalid-name
-# pylint: disable=locally-disabled, too-many-arguments, not-callable
+# 'pylint: disable=locally-disabled, unused-argument,invalid-name
+# 'pylint: disable=locally-disabled, too-many-arguments, not-callable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT, para_check.REQUIRED_ATTR_INT,
                  para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def cumulative_logsumexp_d(x, y, axis, exclusive=False, reverse=False,
@@ -81,7 +87,7 @@ def cumulative_logsumexp_d(x, y, axis, exclusive=False, reverse=False,
     check_param(x, axis, kernel_name)
 
     cumlogsumexp_template = get_computer_by_ctype(
-        x, axis, kernel_name, COMPUTE_TYPE)
+        x, axis, kernel_name, Constant.COMPUTE_TYPE)
     cumlogsumexp_template.set_ext_params(exclusive, reverse)
 
     return cumlogsumexp_template.get_tik_instance()
@@ -109,4 +115,5 @@ def check_param(input_x, axis, kernel_name):
     para_check.check_dtype(input_dtype, ("float16", "float32"))
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
-        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", len(input_shape) * (-1), len(input_shape), axis)
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", len(input_shape) * (-1),
+                                                                len(input_shape), axis)

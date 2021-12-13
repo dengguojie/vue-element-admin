@@ -268,7 +268,7 @@ class CTCLossV2Grad():
 
         t = self.tik_instance.Scalar("int32", init_value=t_i - 1)
 
-        # func: 'grad = exp(log_probs)'
+        # func: `grad = exp(log_probs)`
         with self.tik_instance.for_range(0, self.rounds) as j:
             self.tik_instance.vec_exp(Constant.BLOCK, copy_ub_a[(Constant.BLOCK * Constant.REPEAT_OFFSET) * j],
                                       log_probs_ub[(Constant.BLOCK * Constant.REPEAT_OFFSET) * j],
@@ -385,13 +385,13 @@ class CTCLossV2Grad():
                         lamax_ub[s - start].set_as(c_tmp)
 
             repeat_times.set_as(end_loop - start)
-            # func: get '-max'
+            # func: get `-max`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 max_tmp.set_as(lamax_ub[s])
                 max_tmp.set_as(-max_tmp)
                 self.tik_instance.vec_adds(3, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK], max_tmp, 1, 8, 8)
 
-            # func: 'exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)'
+            # func: `exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vec_exp(3, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],
@@ -404,12 +404,12 @@ class CTCLossV2Grad():
             with self.tik_instance.else_scope():
                 self.tik_instance.vec_exp(3, a_ub, b_ub, repeat_times, 1, 1)
 
-            # func: 'exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)'
+            # func: `exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 self.tik_instance.vec_reduce_add(3, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK],
                                                  work_tensor_ub, 1, 1)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vln(1, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],
@@ -422,12 +422,12 @@ class CTCLossV2Grad():
             with self.tik_instance.else_scope():
                 self.tik_instance.vln(1, a_ub, b_ub, repeat_times, 1, 1, 1, 1)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp`
             with self.tik_instance.for_range(0, repeat_times) as s:
                 max_tmp.set_as(lamax_ub[s])
                 self.tik_instance.vec_adds(1, b_ub[s * Constant.BLOCK], a_ub[s * Constant.BLOCK], max_tmp, 1, 8, 8)
 
-            # func: 'log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs'
+            # func: `log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs`
             with self.tik_instance.if_scope(repeat_times > Constant.REPEAT_OFFSET):
                 with self.tik_instance.for_range(0, repeat_times // Constant.REPEAT_OFFSET) as b:
                     self.tik_instance.vec_add(1, a_ub[b * Constant.REPEAT_OFFSET * Constant.BLOCK],
@@ -474,7 +474,7 @@ class CTCLossV2Grad():
                 with self.tik_instance.else_scope():
                     grad_ub[current_target].set_as(alpha_beta_tmp)
 
-            # func: 'grad = exp(log_probs)'
+            # func: `grad = exp(log_probs)`
             with self.tik_instance.for_range(0, self.rounds) as j:
                 self.tik_instance.vec_exp(Constant.BLOCK, copy_ub_a[(Constant.BLOCK * Constant.REPEAT_OFFSET) * j],
                                           log_probs_ub[(Constant.BLOCK * Constant.REPEAT_OFFSET) * j],
