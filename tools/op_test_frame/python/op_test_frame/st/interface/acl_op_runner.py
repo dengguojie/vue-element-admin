@@ -123,7 +123,7 @@ class AclOpRunner:
         :return:
         """
         toolkit_root_path = os.getenv(ConstManager.INSTALL_PATH)
-        if not os.path.exists(toolkit_root_path) or not toolkit_root_path:
+        if not toolkit_root_path or not os.path.exists(toolkit_root_path):
             utils.print_error_log("Path of env install_path: "
                                   "%s does not exist" % toolkit_root_path)
             return
@@ -135,7 +135,7 @@ class AclOpRunner:
             out_path, " ".join(run_cmd)))
         utils.execute_command(run_cmd)
         utils.print_info_log('Finish to run main with msprof.')
-        self.prof_analyze(os.path.join(out_path, ConstManager.PROF), toolkit_root_path)
+        self.prof_analyze(os.path.join(out_path, ConstManager.PROF))
 
     @staticmethod
     def _prof_get_op_case_info_from_csv_file(csv_file, op_name_list):
@@ -233,7 +233,7 @@ class AclOpRunner:
 
     @staticmethod
     def _get_job_path(prof_base_path):
-        scan = utils.ScanFile(prof_base_path, prefix="JOB")
+        scan = utils.ScanFile(prof_base_path, first_prefix="PROF", second_prefix="device")
         scan_dirs = scan.scan_subdirs()
         if not scan_dirs:
             utils.print_error_log("Profiling job directory"
@@ -245,17 +245,16 @@ class AclOpRunner:
                 "please clear the prof directory"
                 " and retry: %s" % ','.join(scan_dirs))
             return ''
-        job_path = os.path.join(prof_base_path, scan_dirs[0])
+        job_path = scan_dirs[0]
         os.chdir(job_path)
         utils.print_info_log(
             "Start to analyze profiling data in %s" % job_path)
         return job_path
 
-    def prof_analyze(self, prof_base_path, toolkit_root_path):
+    def prof_analyze(self, prof_base_path):
         """
         do profiling analysis.
         :param prof_base_path: base path of profiling data: run/out/prof
-        :param toolkit_root_path: installed path of toolkit package
         :return:
         """
         try:
@@ -267,11 +266,6 @@ class AclOpRunner:
             if not run_result_list:
                 return
             # start to do export summary
-            analyze_cmd = [ConstManager.PROF_PYTHON_CMD,
-                           toolkit_root_path + ConstManager.MSPROF_PYC_REL_PATH,
-                           'export', 'summary',
-                           '-dir=./']
-            utils.execute_command(analyze_cmd)
             self._get_data_from_csv_summary(job_path, run_result_list)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")

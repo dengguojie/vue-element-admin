@@ -10,6 +10,7 @@ import os
 import importlib.util
 import importlib.machinery
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.arg_parser import MsopstArgParser
 from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import model_parser
 from op_test_frame.st.interface.framework import tf_model_parser
@@ -19,6 +20,7 @@ from op_test_frame.st.interface.case_generator import CaseGenerator
 from op_test_frame.st.interface.data_generator import DataGenerator
 from op_test_frame.st.interface.st_report import OpSTReport
 from op_test_frame.st.interface.st_report import OpSTCaseReport
+from op_test_frame.st.interface.st_report import ReportJsonEncoder
 from op_test_frame.st.interface.op_st_case_info import OpSTCase
 from op_test_frame.st.interface.op_st_case_info import OpSTCaseTrace
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
@@ -111,6 +113,13 @@ ST_GOLDEN_CONST_INPUT_NO_VALUE_JSON = './st/msopst/golden/base_case/input' \
                                     '/const_input_with_no_value.json'
 ST_GOLDEN_SCALAR_INPUT_WITH_VALUE_JSON = './st/msopst/golden/base_case/input' \
                                     '/scalar_input_with_value.json'
+# attr support data type
+ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_JSON = './st/msopst/golden/base_case/input' \
+                                    '/test_attr_support_data_type.json'
+ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_TESTCASE = './st/msopst/golden/base_case/golden_output' \
+                                        '/gen_optional_acl_prj/TestOp/testcase.cpp'
+ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_ACL_JSON = './st/msopst/golden/base_case/golden_output' \
+                                            '/gen_optional_acl_prj/TestOp/acl_op.json'
 # const input golden files.
 ST_GOLDEN_CONST_INPUT_SRC_TESTCASE = './st/msopst/golden/base_case/golden_output' \
                                         '/gen_optional_acl_prj/ResizeBilinearV2/src/testcase.cpp'
@@ -611,7 +620,6 @@ class TestUtilsMethods(unittest.TestCase):
         lines = "1  Test_AddN_001_case_001  [pass] \n " \
                 "2  Test_AddN_001_case_002  [pass] \n " \
                 "3  Test_AddN_001_case_003  [pass] \n"
-        toolkit_root_path = "toolkit_root_path"
         report = OpSTReport()
         runner = AclOpRunner('/home', 'ddd', report)
         with mock.patch(
@@ -625,8 +633,65 @@ class TestUtilsMethods(unittest.TestCase):
                      mock.patch('os.access', return_value=True), \
                      mock.patch('os.chdir'):
                     with mock.patch('op_test_frame.st.interface.utils.execute_command'):
-                        runner.prof_analyze(os.path.join(
-                            out_path, ConstManager.PROF), toolkit_root_path)
+                        runner.prof_analyze(os.path.join(out_path, ConstManager.PROF))
+
+    def test_prof_run_no_install_path(self):
+        out_path = "./st/msopst/golden/base_case/input"
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        runner.prof_run(out_path)
+
+    def test_prof_run(self):
+        out_path = "./st/msopst/golden/base_case/input"
+        lines = "1  Test_AddN_001_case_001  [pass] \n " \
+                "2  Test_AddN_001_case_002  [pass] \n " \
+                "3  Test_AddN_001_case_003  [pass] \n"
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        with mock.patch('os.getenv', return_value="/home/test/Ascend"):
+            with mock.patch(
+                    'op_test_frame.st.interface.utils.ScanFile.scan_subdirs',
+                    return_value=['result.txt']):
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.read_file',
+                        return_value=lines):
+                    with mock.patch('os.path.join', return_value=out_path), \
+                         mock.patch('os.path.exists', return_value=True), \
+                         mock.patch('os.access', return_value=True), \
+                         mock.patch('os.chdir'):
+                        with mock.patch(
+                                'op_test_frame.st.interface.utils.execute_command'):
+                            runner.prof_run(out_path)
+
+    def test_scan_subdirs(self):
+        prof_base_path = '/home/test'
+        scan = utils.ScanFile(prof_base_path, first_prefix="PROF",
+                              second_prefix="device")
+        with mock.patch('os.path.exists', return_value=True):
+            with mock.patch('os.path.isdir', return_value=True):
+                with mock.patch('os.path.split', return_value=["PROF_A", "device_0"]):
+                    with mock.patch('os.listdir',
+                                    return_value=["PROF_A/device_0"]):
+                        scan.scan_subdirs()
+
+    def test_run_st_attr_data_type(self):
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i',
+                ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_JSON, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
+        testcase_cpp = os.path.join(ST_OUTPUT,
+                                          'TestOp/src/testcase.cpp')
+        acl_op_json = os.path.join(ST_OUTPUT, 'TestOp/run/out/test_data'
+                                         '/config/acl_op.json')
+        self.assertTrue(compare_context(
+            testcase_cpp, ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_TESTCASE))
+        self.assertTrue(compare_context(
+            acl_op_json, ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_ACL_JSON))
 
     def test_st_report_save(self):
         """
@@ -1025,6 +1090,28 @@ class TestUtilsMethods(unittest.TestCase):
             utils.check_list_float(["A"], "err_thr")
         self.assertEqual(error.value.args[0],
                          ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
+
+    def test_arg_parser(self):
+        argument = ['msopst', 'create', '-i', CAST_INI_INPUT,
+                '-out', ST_OUTPUT]
+        with mock.patch('sys.argv', argument):
+            args = MsopstArgParser()
+            args.get_input_file()
+            args.get_output_path()
+
+
+    def test_clas_report_json_encoder(self):
+        value1 = np.int8(1)
+        value2 = np.float16(1.0)
+        value4 = np.zeros(5)
+        json_obj ={"value1": [value1],
+                   "value2": [value2],
+                   "value3": [(1.000000066 + 0j)],
+                   "value4": [value4]
+                   }
+        json.dumps(json_obj, indent=4, cls=ReportJsonEncoder)
+
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,64 @@
+[
+    {
+        "case_name": "Test_Op_001",
+        "op": "TestOp",
+        "st_mode": "",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "normal"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        1.0
+                    ]
+                ],
+                "value": [
+                    1
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    1
+
+                ]
+            }
+        ],
+       "attr": [
+            {
+                "name": "dtype",
+                "value": "float16",
+                "type": "data_type"
+            },
+            {
+                "name": "seed",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "seed2",
+                "value": 0,
+                "type": "int"
+            }
+        ]
+    }
+]

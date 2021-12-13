@@ -140,10 +140,16 @@ def _replace_dict_list(attr_dic, attr_code_str, attr_index):
 def _check_attr_value(attr_dic):
     # deal with the type
     attr_value = attr_dic.get('value')
+    dtype = ''
     if attr_dic.get('type') == 'data_type':
         if attr_value in ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
             dtype = utils.adapt_acl_datatype(attr_value)
-            attr_value = "ACL_{}".format(str(dtype).upper())
+        if attr_value in ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.values():
+            attr_type_keys = list(ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.keys())
+            attr_type_values = list(ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.values())
+            attr_value_is_type = attr_type_keys[attr_type_values.index(attr_value)]
+            dtype = utils.adapt_acl_datatype(attr_value_is_type)
+        attr_value = "ACL_{}".format(str(dtype).upper())
     return attr_value
 
 

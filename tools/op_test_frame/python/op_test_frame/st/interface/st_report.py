@@ -37,14 +37,13 @@ class ReportJsonEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, np.integer):
             return int(o)
-        elif isinstance(o, np.floating):
+        if isinstance(o, np.floating):
             return float(o)
-        elif isinstance(o, complex):
+        if isinstance(o, complex):
             return {o.__class__.__name__: True, "real": o.real, "imag": o.imag}
-        elif isinstance(o, np.ndarray):
+        if isinstance(o, np.ndarray):
             return o.tolist()
-        else:
-            return super(json.JSONEncoder, self).default(o)
+        return super().default(o)
 
 
 class OpSTCaseReport:

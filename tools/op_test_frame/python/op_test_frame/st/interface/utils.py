@@ -578,18 +578,20 @@ class ScanFile:
     """
     The class for scanning path to get subdirectories.
     """
-    def __init__(self, directory, prefix=None):
+    def __init__(self, directory, first_prefix=None, second_prefix=None):
         self.directory = directory
-        self.prefix = prefix
+        self.first_prefix = first_prefix
+        self.second_prefix = second_prefix
 
     def _get_files_list(self, file_path, files_list):
-        if os.path.isdir(file_path):
-            dir_info = os.path.split(file_path)
-            if self.prefix:
-                if dir_info[1].startswith(self.prefix):
-                    files_list.append(dir_info[1])
-            else:
-                files_list.append(dir_info[1])
+        all_files = os.listdir(file_path)
+        for each_file in all_files:
+            each_file_path = os.path.join(file_path, each_file)
+            if os.path.isdir(each_file_path):
+                dir_info = os.path.split(each_file_path)
+                if self.first_prefix:
+                    if dir_info[1].startswith(self.second_prefix):
+                        files_list.append(each_file_path)
         return files_list
 
     def scan_subdirs(self):

@@ -97,8 +97,7 @@ def _display_output(real_data, expect_data, start, end, diff_thd):
         for i in range(10):
             _display_data_by_index(i, start, expect_data, real_data, diff_thd)
         dot_3 = '...'
-        utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(dot_3, dot_3, dot_3,
-                                                                         dot_3, dot_3))
+        utils.print_info_log('{dot:<15} {dot:<15} {dot:<15} {dot:<15} {dot:<15}'.format(dot=dot_3))
         for i in range(split_count - 10 + 1, split_count + 1):
             _display_data_by_index(i, start, expect_data, real_data, diff_thd)
 

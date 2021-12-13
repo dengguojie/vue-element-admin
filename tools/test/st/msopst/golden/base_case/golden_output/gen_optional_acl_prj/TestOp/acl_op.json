@@ -1,0 +1,44 @@
+[
+  {
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "DT_FLOAT16"
+      },
+      {
+        "name": "seed",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "seed2",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "input_desc": [
+      {
+        "const_value": [
+          1
+        ],
+        "format": "ND",
+        "is_const": true,
+        "shape": [
+          1
+        ],
+        "type": "int64"
+      }
+    ],
+    "op": "TestOp",
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16"
+      }
+    ]
+  }
+]

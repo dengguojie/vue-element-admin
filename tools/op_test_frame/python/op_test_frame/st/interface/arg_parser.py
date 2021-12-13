@@ -235,8 +235,7 @@ class MsopstArgParser:
                  "'case0,case1'.", required=False)
         gen_parser.add_argument(
             '-d', "--device_id", dest="device_id", default="0",
-            help="<Optional> input device id, default is 0."
-            , required=False)
+            help="<Optional> input device id, default is 0.", required=False)
 
         # compare parse
         self._mi_compare_parser(compare_parser, compare_by_path_parser)
@@ -265,3 +264,17 @@ class MsopstArgParser:
             "-expect", "--expect path", dest="expect_path", default="",
             help="<Required> the expect result file path",
             required=True)
+
+    def get_input_file(self):
+        """
+        get input file
+        :return: input file
+        """
+        return self.input_file
+
+    def get_output_path(self):
+        """
+        get output path
+        :return: output path
+        """
+        return self.output_path
