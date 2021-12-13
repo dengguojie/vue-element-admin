@@ -251,6 +251,7 @@ class RoiAlign:
             self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
                                    inputs=[self.feature_map, self.rois], outputs=[self.output_gm])
         return self.tik_inst
+
     # 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
     # 'pylint: disable=invalid-name,no-member,unused-variable
     def roialign_compute_each_core(self, block_num, block_offset, block_left):
@@ -697,6 +698,7 @@ class RoiAlign:
                         # end of loop_n1
                 # end of loop_n
         # end of loop_b
+
     # 'pylint:disable=invalid-name,no-member,too-many-arguments,
     # 'pylint:disable=too-many-branches,too-many-statements
     def roi_align_perf_scale(self, rois, xstart, roisnum, sample_ratio,
@@ -968,6 +970,7 @@ class RoiAlign:
                     self.tik_inst.vec_mul(128, roi_gridh_fp32, roi_bin_h_ub, \
                                           n_grid_rec_h_ub, 1, 8, 8, 8)
             return count
+
     # 'pylint:disable=too-many-arguments,too-many-locals,too-many-statements
     # 'pylint: disable=no-member,invalid-name,unused-argument
     def roialign_perf_gen_grid(self,
@@ -1489,8 +1492,8 @@ def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
     return obj.roialign_compute()
 
 
-#pylint: disable=too-many-statements,too-many-locals,too-many-branches
-#pylint: disable=no-member
+# 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# 'pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, proposals_ub_x0,
                                             proposals_ub_y0, proposals_ub_x1,
                                             proposals_ub_y1, scale, pool_h, pool_w,
@@ -1673,8 +1676,8 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
            grid_h_fp32, roi_int32_fm_index
 
 
-#pylint: disable=too-many-statements,too-many-locals,too-many-branches
-#pylint: disable=no-member
+# 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# 'pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -2476,7 +2479,7 @@ def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
     return vbi_weights
 
 
-#pylint: disable=no-member
+# 'pylint: disable=no-member
 def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                           x_hi, y_lo, y_hi, raw_x, raw_y, sample_num_w,
                           sample_num_h, grid_h_num_f,

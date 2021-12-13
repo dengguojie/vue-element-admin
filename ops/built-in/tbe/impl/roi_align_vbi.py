@@ -671,7 +671,6 @@ def _get_vbi_weights_1x1grid(tik_instance, point_weights_fp32, flag='None'):
                                       [VBI_NUM_ELEMENTS_ONEROW * FOUR, ],
                                       name="vbi_weights",
                                       scope=tbe_platform.scope_ubuf)
-    v_repeat_times = (POOL_H * POOL_W + SEVEN) // EIGHT
 
     tik_instance.vector_dup(VBI_NUM_ELEMENTS_ONEROW * TWO, vbi_weights[0, ],
                             0, TWO, ONE, SEVEN)
@@ -679,11 +678,11 @@ def _get_vbi_weights_1x1grid(tik_instance, point_weights_fp32, flag='None'):
                                 name="dst_ub", scope=tbe_platform.scope_ubuf)
     tik_instance.data_move(dst_ub, vbi_tmp_weights_res[0, 0], 0,
                             SEVEN, ONE, 0, THREE)
-    tik_instance.data_move(dst_ub[EIGHT], vbi_tmp_weights_res[ONE, 0], 
+    tik_instance.data_move(dst_ub[EIGHT], vbi_tmp_weights_res[ONE, 0],
                             0, SEVEN, ONE, 0, THREE)
-    tik_instance.data_move(dst_ub[TWO * EIGHT], vbi_tmp_weights_res[TWO, 0], 
+    tik_instance.data_move(dst_ub[TWO * EIGHT], vbi_tmp_weights_res[TWO, 0],
                             0, SEVEN, ONE, 0, THREE)
-    tik_instance.data_move(dst_ub[THREE * EIGHT], vbi_tmp_weights_res[THREE, 0], 
+    tik_instance.data_move(dst_ub[THREE * EIGHT], vbi_tmp_weights_res[THREE, 0],
                             0, SEVEN, ONE, 0, THREE)
     tik_instance.vec_conv(TWO * SIXTEEN, "", vbi_weights, dst_ub, SEVEN, TWO, FOUR)
     return vbi_weights

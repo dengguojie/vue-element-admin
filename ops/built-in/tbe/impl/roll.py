@@ -23,7 +23,7 @@ import functools as fctool
 import math
 
 
-class Roll(object):
+class Roll():
     """
     Implementation of roll
     """
@@ -256,7 +256,7 @@ class Roll(object):
                             + n_id].set_as(self.tmp_ub[n_id])
 
 
-#pylint: disable=unused argument
+# 'pylint: disable=unused-argument,too-many-branches,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)

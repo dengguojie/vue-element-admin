@@ -23,7 +23,7 @@ from te.utils import para_check
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("round")
 def round_compute(x, y, kernel_name="round"):
     """
@@ -55,7 +55,7 @@ def round_compute(x, y, kernel_name="round"):
     return result
 
 
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,redefined-builtin
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def round(x, y, kernel_name="round"):
     """

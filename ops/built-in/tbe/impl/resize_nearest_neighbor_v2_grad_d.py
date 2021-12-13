@@ -23,6 +23,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

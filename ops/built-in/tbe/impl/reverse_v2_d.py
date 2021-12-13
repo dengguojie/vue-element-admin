@@ -29,6 +29,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -165,6 +166,7 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     shape_x = input_x.get("shape")
     dtype_x = input_x.get("dtype")
 
+    # 'pylint: disable=variable_type_changed
     axis = _param_check(shape_x, dtype_x, axis, kernel_name)
 
     axis = omit_axis_point_to_dim_1(shape_x, axis)

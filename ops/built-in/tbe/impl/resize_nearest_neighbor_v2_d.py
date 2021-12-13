@@ -32,6 +32,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.copy_only import copy_only
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

@@ -17,11 +17,10 @@ roi_align_grad
 """
 # 'pylint: disable=too-many-lines,unused-variable
 import te.platform as tbe_platform
-from te.utils import para_check
 from te import tik
-from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
