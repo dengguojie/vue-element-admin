@@ -397,6 +397,12 @@ COMMON_INFER_FUNC_REG(ConfusionSoftmaxGrad, ConfusionSoftmaxGradInferShape);
 
 // --------------------------SoftmaxGradExt-------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradExtInferShape) {
+  auto outShape = op.GetInputDesc("x1").GetShape();
+  auto outDtype = op.GetInputDesc("x1").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(outShape);
+  td.SetDataType(outDtype);
+  (void)op.UpdateOutputDesc("y", td);
   return GRAPH_SUCCESS;
 }
 
