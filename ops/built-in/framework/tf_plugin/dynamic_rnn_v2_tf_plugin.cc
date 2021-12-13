@@ -33,6 +33,11 @@
 
 namespace domi {
 using namespace ge;
+constexpr int32_t index_zero = 0;
+constexpr int32_t index_one = 1;
+constexpr int32_t index_two = 2;
+constexpr int32_t index_three = 3;
+constexpr int32_t index_four = 4;
 
 Status ParseParamsDynamicRNN(const Message *op_src, ge::Operator &op_dest) {
   // Set original_type
@@ -41,11 +46,11 @@ Status ParseParamsDynamicRNN(const Message *op_src, ge::Operator &op_dest) {
 }
 
 static Status ParseOpToGraphDynamicRNN(const ge::Operator &op, ge::Graph &graph) {
-  ge::Operator data_0 = op::Data("x").set_attr_index(0);
-  ge::Operator data_1 = op::Data("w").set_attr_index(1);
-  ge::Operator data_2 = op::Data("b").set_attr_index(2);
-  ge::Operator data_3 = op::Data("init_h").set_attr_index(3);
-  ge::Operator data_4 = op::Data("init_c").set_attr_index(4);
+  ge::Operator data_0 = op::Data("x").set_attr_index(index_zero);
+  ge::Operator data_1 = op::Data("w").set_attr_index(index_one);
+  ge::Operator data_2 = op::Data("b").set_attr_index(index_two);
+  ge::Operator data_3 = op::Data("init_h").set_attr_index(index_three);
+  ge::Operator data_4 = op::Data("init_c").set_attr_index(index_four);
 
   auto rnn = op::DynamicRNN().set_input_x(data_0).set_input_w(data_1).set_input_b(data_2)
                  .set_input_init_h(data_3).set_input_init_c(data_4);

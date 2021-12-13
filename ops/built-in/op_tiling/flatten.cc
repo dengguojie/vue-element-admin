@@ -32,6 +32,7 @@
 
 namespace optiling {
 using namespace ge;
+constexpr int32_t index_two = 2;
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "block_size"};
 
@@ -52,7 +53,7 @@ bool GetFlattenCompileParams(const std::string& op_type, const std::vector<int64
 
   core_num = op_compile_info[0];
   ub_size = op_compile_info[1];
-  block_size = op_compile_info[2];
+  block_size = op_compile_info[index_two];
 
   return true;
 }

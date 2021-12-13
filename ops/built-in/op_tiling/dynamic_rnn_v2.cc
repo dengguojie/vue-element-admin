@@ -28,6 +28,7 @@ namespace {
   constexpr int32_t DST_SHAPE_SIZE = 3;
   constexpr int32_t DST_INPUT_SIZE = 2;
   constexpr int32_t NUM_SIXTEEN = 16;
+  constexpr int32_t INPUT_INDEX_TWO = 2;
 }
 
 namespace optiling {
@@ -83,7 +84,7 @@ int32_t GetRnnV2LibItem(const std::string& opType, const nlohmann::json& opCompi
               tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];
     }
-    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / NUM_SIXTEEN) == xShape[2])) {
+    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / NUM_SIXTEEN) == xShape[INPUT_INDEX_TWO])) {
       OP_LOGI(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, The corresponding schedule is",
               tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];

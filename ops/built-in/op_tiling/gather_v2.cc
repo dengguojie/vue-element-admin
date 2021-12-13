@@ -34,6 +34,7 @@ namespace {
   constexpr int32_t HALF_UB = 2;
   constexpr int32_t DATA_VALUE = 1024;
   constexpr int32_t NUM_32 = 32;
+  constexpr int32_t ACTUAL_NUM = 56.5;
 }
 
 namespace optiling {
@@ -754,7 +755,7 @@ bool TilingWithoutBatchDims(GatherV2TilingParams& run_params, const GatherCompil
 
   // the data of the formula gained from actual tests
   // set a gate value for tiling_mode_7 to optimized some data_move processes
-  float mode_7_gate_value = 56.5 - 0.012 * run_params.params_total / DATA_VALUE;
+  float mode_7_gate_value = ACTUAL_NUM - 0.012 * run_params.params_total / DATA_VALUE;
 
   if (run_params.params_pre >= compile_params.core_num && params_row_ceil <= half_ub_params_elem &&
       (run_params.params_row * compile_params.params_d_size < BLOCK_SIZE ||

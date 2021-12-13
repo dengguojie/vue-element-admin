@@ -163,7 +163,6 @@ void GetTilingData(TilingParams& param,
 
   param.block_tiling_axis = block_tiling_axis;
   param.is_fuse_block = is_fuse_block;
-  param.block_factor = 1;
   if (is_fuse_block > 0) {
     param.block_factor = n_parts;
     param.block_dim = GetBlockNum(out_shape, block_tiling_axis, n_parts);

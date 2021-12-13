@@ -171,7 +171,8 @@ bool CalculationTilingData(const std::string& opType, const int32_t& coreNum, co
 
 bool PrepareTilingData(const std::string& opType, const int32_t& coreNum, const int32_t& indicesNums,
                        const int32_t& varRowElem, const int32_t& varRows, const int32_t& varElemBlock,
-                       const int32_t& onePartElem, int32_t& needCoreNum, const int32_t& ubIndicesNum, OpRunInfo& runInfo)
+                       const int32_t& onePartElem, int32_t& needCoreNum, const int32_t& ubIndicesNum, 
+		       OpRunInfo& runInfo)
 {
   int32_t tailProcessCore = 0;
   int32_t indicesNumEachCore = 0;

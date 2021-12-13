@@ -23,6 +23,11 @@
 #include "op_tiling.h"
 #include "op_tiling_util.h"
 
+namespace {
+  constexpr int32_t INDEX_TWO = 2;
+  constexpr int32_t BASE_INPUT_SIZE = 3;
+}
+
 namespace optiling {
 struct opInfo {
   /* data */
@@ -68,7 +73,7 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   std::vector<int64_t> input_shape = input0_desc->MutableShape().GetDims();
   int32_t fmap_x0 = input_shape[0];
   int32_t fmap_x1 = input_shape[1];
-  int32_t fmap_muli = input_shape[1] * input_shape[2];
+  int32_t fmap_muli = input_shape[1] * input_shape[INDEX_TWO];
   int32_t core_num = 0;
   int32_t ub_size = 0;
   int32_t max_dtype = 0;
@@ -86,9 +91,9 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   run_info.AddTilingData(fmap_x1);
   run_info.AddTilingData(fmap_muli);
   run_info.SetBlockDim(core_num);
-  if (input_shape.size() > 3) {
+  if (input_shape.size() > BASE_INPUT_SIZE) {
     run_info.SetTilingKey(FOUR_DIMEN_KEY);
-  } else if (input_shape.size() == 3) {
+  } else if (input_shape.size() == BASE_INPUT_SIZE) {
     run_info.SetTilingKey(THREE_DIMEN_KEY);
   }
 

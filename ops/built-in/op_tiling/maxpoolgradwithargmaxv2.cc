@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ namespace {
   constexpr int32_t TILING_MODE_0 = 0;
   constexpr int32_t TILING_MODE_1 = 1;
   constexpr int32_t TILING_MODE_2 = 2;
+  constexpr int32_t TILING_FACTOR_TWO = 2;
   constexpr int32_t C0 = 16;
   constexpr int32_t ALLING_MASK_128 = 128;
   constexpr int32_t INPUT_X_INDEX = 0;
@@ -154,6 +155,10 @@ static bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_
 }
 
 static int32_t DivRtn(int32_t x, int32_t y) {
+  if (y == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolGradWithArgMaxV2", "y value cannot be zero");
+    return 0;
+  }
   int32_t q = x / y;
   int32_t r = x % y;
   if ((r != 0) && ((r < 0) != (y < 0))) {
@@ -163,6 +168,10 @@ static int32_t DivRtn(int32_t x, int32_t y) {
 }
 
 static int32_t CeilDiv(int32_t num, int32_t divisor) {
+  if (divisor == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolGradWithArgMaxV2", "divisor value cannot be zero");
+    return 0;
+  }
   if (num % divisor != 0) {
     return num / divisor + 1;
   }
@@ -287,7 +296,7 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
   tiling_params.pad_top = pad_top;
   tiling_params.pad_left = pad_left;
   int32_t exact_h =
-      tiling_params.hi + 2 * tiling_params.pad_top - (kh - 1) - 1 + ((ceil_mode == 1) ? (stride_h - 1) : 0);
+      tiling_params.hi + TILING_FACTOR_TWO * tiling_params.pad_top - (kh - 1) - 1 + ((ceil_mode == 1) ? (stride_h - 1) : 0);
   tiling_params.ho = DivRtn(exact_h, stride_h) + 1;
   if (tiling_params.pad_top > 0) {
     if ((tiling_params.ho - 1) * stride_h >= tiling_params.hi + tiling_params.pad_top) {
@@ -295,7 +304,7 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
     }
   }
   int32_t exact_w =
-      tiling_params.wi + 2 * tiling_params.pad_left - (kw - 1) - 1 + ((ceil_mode == 1) ? (stride_w - 1) : 0);
+      tiling_params.wi + TILING_FACTOR_TWO * tiling_params.pad_left - (kw - 1) - 1 + ((ceil_mode == 1) ? (stride_w - 1) : 0);
   tiling_params.wo = DivRtn(exact_w, stride_w) + 1;
   if (tiling_params.pad_left > 0) {
     if ((tiling_params.wo - 1) * stride_w >= (tiling_params.wi + tiling_params.pad_left)) {

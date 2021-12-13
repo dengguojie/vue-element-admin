@@ -67,7 +67,7 @@ vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
   if (op_desc == nullptr)
     return {};
 
-  vector<vector<int64_t>> shapes;
+  vector< vector<int64_t> > shapes;
   int count = op_desc->GetInputsSize();
   for (int i = 0; i < count; i++) {
     auto ptr = op_desc->MutableInputDesc(i);

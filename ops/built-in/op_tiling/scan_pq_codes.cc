@@ -25,6 +25,7 @@
 
 namespace {
   constexpr int32_t INPUT_SIZE = 2;
+  constexpr int32_t SPLIT_COUNT_NUM = 2;
 }
 
 namespace optiling {
@@ -94,7 +95,7 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   int64_t bucketNumLow = 0;
   int64_t bucketNumHigh = 0;
   int64_t highCoreNum = 0;
-  if (splitCount == 2) {
+  if (splitCount == SPLIT_COUNT_NUM) {
     if (splitIndex == 0) {
       bucketNumTotal = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * coreNums;
       bucketStartBase = 0;

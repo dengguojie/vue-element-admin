@@ -22,6 +22,10 @@
 #include "error_log.h"
 #include "vector_tiling_profiling.h"
 
+namespace {
+  constexpr int32_t DEPTH_SIZE = 2;
+}
+
 namespace optiling {
 struct OneHotTilingParams {
   int32_t is_zero_off_value;
@@ -159,12 +163,12 @@ int32_t CalTilingMode(std::vector<int64_t> x_shape, int32_t depth, int32_t axis,
     auto per_core_numel = CeilDiv(x_numel, core_used);
     if (per_core_numel <= RADIO_UB_SIZE_MIN && per_core_numel * depth <= RADIO_UB_SIZE_MAX) {
       tiling_mode = 1;
-    } else if (per_core_numel <= RADIO_UB_SIZE_MIN && per_core_numel * depth > RADIO_UB_SIZE_MAX && depth >= 2 &&
+    } else if (per_core_numel <= RADIO_UB_SIZE_MIN && per_core_numel * depth > RADIO_UB_SIZE_MAX && depth >= DEPTH_SIZE &&
                depth <= RADIO_UB_SIZE_MAX) {
       tiling_mode = 2;
     } else if (per_core_numel <= RADIO_UB_SIZE_MIN && depth > RADIO_UB_SIZE_MAX) {
       tiling_mode = 3;
-    } else if (per_core_numel > RADIO_UB_SIZE_MIN && depth >= 2 && depth <= RADIO_UB_SIZE_MAX) {
+    } else if (per_core_numel > RADIO_UB_SIZE_MIN && depth >= DEPTH_SIZE && depth <= RADIO_UB_SIZE_MAX) {
       tiling_mode = 4;
     } else {
       tiling_mode = 5;

@@ -21,7 +21,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct LpLossCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int32_t> reduce_axis;
@@ -82,7 +81,8 @@ bool LpLossTiling(const std::string& op_type, const ge::Operator& op_paras,
   float reduce_mean_cof = 1.0;
   for (uint32_t i = 0; i < input_shape.GetDimNum(); i++) {
     if (LpLossIsInAxis(reduce_axis, i)) {
-      OP_TILING_CHECK(input_shape.GetDim(i) == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
+      OP_TILING_CHECK(input_shape.GetDim(i) == 0, 
+		      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
                       return false);
       reduce_mean_cof = reduce_mean_cof / input_shape.GetDim(i);
     }

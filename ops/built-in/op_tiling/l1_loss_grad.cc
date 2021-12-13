@@ -21,7 +21,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct L1LossGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   ge::DataType dtype;

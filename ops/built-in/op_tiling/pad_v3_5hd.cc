@@ -28,6 +28,17 @@
 #include "op_log.h"
 #include "error_log.h"
 
+namespace {
+  constexpr int32_t INDEX_ONE = 1;
+  constexpr int32_t INDEX_TWO = 2;
+  constexpr int32_t INDEX_THREE = 3;
+  constexpr int32_t INDEX_FOUR = 4;
+  constexpr int32_t INDEX_FIVE = 5;
+  constexpr int32_t INDEX_SIX = 6;
+  constexpr int32_t INDEX_SEVEN = 7;
+  constexpr int32_t NUM_THREE = 3;
+}
+
 namespace optiling {
 static const int64_t TILING_MODE_0 = 0;
 
@@ -224,19 +235,19 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
                            PadV35HDTilingParams& tiling_params) {
   OP_LOGD("begin to GetTilingParam.");
   auto tiling_key = 0;
-  auto output_third = paddings_const_values[4] + input_shape[2] + paddings_const_values[5];
-  auto output_fourth = paddings_const_values[6] + input_shape[3] + paddings_const_values[7];
-  auto output_fifth = input_shape[4];
+  auto output_third = paddings_const_values[INDEX_FOUR] + input_shape[INDEX_TWO] + paddings_const_values[INDEX_FIVE];
+  auto output_fourth = paddings_const_values[INDEX_SIX] + input_shape[INDEX_THREE] + paddings_const_values[INDEX_SEVEN];
+  auto output_fifth = input_shape[INDEX_FOUR];
   int64_t core_used = 1;
   int64_t numel = 1;
   int64_t not_last_core_numel = 0;
   int64_t last_core_numel = 0;
   auto nc_total = input_shape[0] * input_shape[1];
+  core_used = get_core_num(input_shape, compile_params.core_num);
   if (core_used == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("PADV35HD", "get core_used error");
     return false;
   }
-  core_used = get_core_num(input_shape, compile_params.core_num);
   not_last_core_numel = (nc_total - 1) / core_used + 1;
   last_core_numel = nc_total - (core_used - 1) * not_last_core_numel;
   numel = output_third * output_fourth * output_fifth;
@@ -245,7 +256,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   all_zero = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
                          [](int64_t item) {return item == 0;});
   all_below_three = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
-                         [](int64_t item) {return item < 3;});
+                         [](int64_t item) {return item < NUM_THREE;});
   if (all_zero) {
     tiling_key =  TILING_MODE_3;
   }
@@ -256,9 +267,10 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
     ((output_fifth * output_fourth) <= (SPLIT_SECOND * compile_params.size)) && (all_below_three)) {
     tiling_key = TILING_MODE_1;
   }
-  else if ((input_shape[2] <= (SPLIT_THREE * compile_params.size)) && ((output_fifth * output_fourth) > (SPLIT_SECOND * \
-	    compile_params.size)) && (paddings_const_values[6] <= PADDINGS_MAX_VALUE) && 
-           (paddings_const_values[7] <= PADDINGS_MAX_VALUE)) {
+  else if ((input_shape[INDEX_TWO] <= (SPLIT_THREE * compile_params.size)) && 
+	    ((output_fifth * output_fourth) > (SPLIT_SECOND * \
+	    compile_params.size)) && (paddings_const_values[INDEX_SIX] <= PADDINGS_MAX_VALUE) && 
+           (paddings_const_values[INDEX_SEVEN] <= PADDINGS_MAX_VALUE)) {
     tiling_key = TILING_MODE_2;
   }
   else {
@@ -267,20 +279,20 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 
   tiling_params.tiling_key = tiling_key;
   tiling_params.tiling_input_dim_0 = input_shape[0];
-  tiling_params.tiling_input_dim_1 = input_shape[1];
-  tiling_params.tiling_input_dim_2 = input_shape[2];
-  tiling_params.tiling_input_dim_3 = input_shape[3];
-  tiling_params.tiling_input_dim_4 = input_shape[4];
+  tiling_params.tiling_input_dim_1 = input_shape[INDEX_ONE];
+  tiling_params.tiling_input_dim_2 = input_shape[INDEX_TWO];
+  tiling_params.tiling_input_dim_3 = input_shape[INDEX_THREE];
+  tiling_params.tiling_input_dim_4 = input_shape[INDEX_FOUR];
   tiling_params.tiling_output_dim_0 = input_shape[0];
-  tiling_params.tiling_output_dim_1 = input_shape[1];
+  tiling_params.tiling_output_dim_1 = input_shape[INDEX_ONE];
   tiling_params.tiling_output_dim_2 = output_third;
   tiling_params.tiling_output_dim_3 = output_fourth;
   tiling_params.tiling_output_dim_4 = output_fifth;
   tiling_params.core_uesd_num = core_used;
-  tiling_params.padding_index_0 = paddings_const_values[6];
-  tiling_params.padding_index_1 = paddings_const_values[7];
-  tiling_params.padding_index_2 = paddings_const_values[4];
-  tiling_params.padding_index_3 = paddings_const_values[5];
+  tiling_params.padding_index_0 = paddings_const_values[INDEX_SIX];
+  tiling_params.padding_index_1 = paddings_const_values[INDEX_SEVEN];
+  tiling_params.padding_index_2 = paddings_const_values[INDEX_FOUR];
+  tiling_params.padding_index_3 = paddings_const_values[INDEX_FIVE];
   tiling_params.not_last_core_num = not_last_core_numel;
   tiling_params.last_core_num = last_core_numel;
   return true;

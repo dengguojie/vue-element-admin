@@ -352,9 +352,6 @@ void padCommon::GetCirculateParams(const std::string& pattern, const int numBit,
 void padCommon::SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t block, int64_t baseData,
                         int64_t baseCore) {
   // Regulation to split inShape[depth-1]:
-  // 1.`right * core_data >= 32B`;
-  // 2.`left * virCore ~ maxCore`;
-  // 3.`left * right == inShape[depth-1]`
   int64_t total = ptrR;
   int64_t bef_ptrR = ptrR;
   int64_t bef_prtL = ptrL;
