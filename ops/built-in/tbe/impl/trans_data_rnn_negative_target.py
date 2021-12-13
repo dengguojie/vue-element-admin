@@ -289,7 +289,7 @@ def _tiling_params_negative(args):
      tp_200_nlc_cr_left, tp_200_lc_cl_lp_cnt, tp_200_lc_c_lp_cnt, tp_200_lc_cr_lp_cnt,
      tp_200_lc_cl_left, tp_200_lc_c_left, tp_200_lc_cr_left) = _get_mc_info_negative(cr_args, c_args, cl_args)
 
-    sub_tiling_params = [tp_200_tiling_mode, tp_200_ub_offset, tp_200_mc_pos, 
+    sub_tiling_params = [tp_200_tiling_mode, tp_200_ub_offset, tp_200_mc_pos,
                          tp_200_used_core_cnt, tp_200_hidden_cnt, tp_200_c0_len,
                          tp_200_core_step_in, tp_200_core_step_out, tp_200_nlc_cr_lp_cnt, tp_200_nlc_c_lp_cnt,
                          tp_200_nlc_cl_lp_cnt, tp_200_nlc_cr_left, tp_200_nlc_c_left, tp_200_nlc_cl_left,
@@ -452,14 +452,14 @@ def _once_vnchwconv_invert(args):
             src_stride.set_as(cr_pln_size - hidden_size)
             dst_stride.set_as(hidden_output - hidden_size)
             with tik_inst.for_range(0, hidden_mid_cnt) as hidden_mid_idx:
-                tik_inst.data_move(src_ub[ub_offset + (hidden_head_len + hidden_mid_idx * hidden_size) * c0_len], 
+                tik_inst.data_move(src_ub[ub_offset + (hidden_head_len + hidden_mid_idx * hidden_size) * c0_len],
                                     src_ub[(hidden_mid_start + hidden_mid_idx * hidden_ceil) * c0_len],
                                     0, c_plp_size, hidden_size, src_stride, dst_stride)
             #tail
             with tik_inst.if_scope(hidden_tail_len > 0):
                 src_stride.set_as(cr_pln_size - hidden_tail_len)
                 dst_stride.set_as(hidden_output - hidden_tail_len)
-                tik_inst.data_move(src_ub[ub_offset + (hidden_head_len + hidden_mid_cnt * hidden_size) * c0_len], 
+                tik_inst.data_move(src_ub[ub_offset + (hidden_head_len + hidden_mid_cnt * hidden_size) * c0_len],
                                    src_ub[hidden_tail_start * c0_len],
                                    0, c_plp_size, hidden_tail_len, src_stride, dst_stride)
         with tik_inst.else_scope():
@@ -541,7 +541,7 @@ def _update_output_offset(args):
     """
 
     (cl_lp_idx, dst_cl_lp_step_out, cl_backend, dst_cl_step_out, c_lp_idx, src_c_lp_step_out, cr_lp_idx,
-     hidden_dst_cr_lp_step_out, cr_backend, dst_cr_step_out, 
+     hidden_dst_cr_lp_step_out, cr_backend, dst_cr_step_out,
      hidden_core_step_out, c_backend, src_c_step_out, block_idx) = args
 
     out_offset = (cl_lp_idx * dst_cl_lp_step_out - cl_backend * dst_cl_step_out +
@@ -601,7 +601,7 @@ def _copy_data_in_0(in_offset_args, tik_args):
                 _move_data_in_cr_cl_one_dims(data_in_args)
         with tik_inst.else_scope():
             tik_inst.data_move(src_ub, src_in_gm[base_gm_offset],
-                               0, c_plp_size * hidden_cnt, hidden_size * c0_len // ele_per_block, 
+                               0, c_plp_size * hidden_cnt, hidden_size * c0_len // ele_per_block,
                                c0_len - hidden_size % c0_len, 0)
 
 
@@ -685,9 +685,9 @@ def calc_cr_offset(core_step_in, block_idx, hidden_size, c0_size, cr_offset):
     hidden_tail_len = 0
     hidden_ceil = (tdc.ceil_fill(hidden_size, c0_size))
     hidden_left = ((core_step_in * block_idx) % hidden_ceil)
-    if (core_step_in > hidden_ceil - hidden_left):
-        if (hidden_left < hidden_size):
-            if (hidden_left == 0):
+    if core_step_in > hidden_ceil - hidden_left:
+        if hidden_left < hidden_size:
+            if hidden_left == 0:
                 hidden_head_len = (0)
                 hidden_mid_start = (0)
             else:
@@ -696,11 +696,11 @@ def calc_cr_offset(core_step_in, block_idx, hidden_size, c0_size, cr_offset):
         else:
             hidden_head_len = (0)
             hidden_mid_start = (hidden_ceil - hidden_left)
-        if (core_step_in > hidden_mid_start):
+        if core_step_in > hidden_mid_start:
             hidden_mid_cnt = ((core_step_in - hidden_mid_start) // hidden_ceil)
             hidden_tail_start = (hidden_mid_start + hidden_mid_cnt * hidden_ceil)
             hidden_tail_len = (core_step_in - hidden_tail_start)
-            if (hidden_tail_len > hidden_size):
+            if hidden_tail_len > hidden_size:
                 hidden_tail_len = (hidden_size)
         else:
             hidden_mid_cnt = (0)
@@ -709,11 +709,12 @@ def calc_cr_offset(core_step_in, block_idx, hidden_size, c0_size, cr_offset):
     else:
         if (hidden_left < hidden_size):
             hidden_output = (core_step_in)
-            if (core_step_in > hidden_size - hidden_left):
-                hidden_output = (hidden_size - hidden_left) 
+            if core_step_in > hidden_size - hidden_left:
+                hidden_output = hidden_size - hidden_left
         else:
             hidden_output = (0)
     cr_offset.set_as(core_step_in - hidden_output)
+
 
 def _func_transform_200(tensor_args, tp_args):
     """
@@ -721,7 +722,7 @@ def _func_transform_200(tensor_args, tp_args):
     """
 
     tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block, hidden_size, in_dtype = tensor_args
-    (tiling_mode, ub_offset, mc_pos, used_core_cnt, hidden_cnt, c0_len, 
+    (tiling_mode, ub_offset, mc_pos, used_core_cnt, hidden_cnt, c0_len,
      core_step_in, core_step_out, nlc_cr_lp_cnt, nlc_c_lp_cnt,
      nlc_cl_lp_cnt, nlc_cr_left, nlc_c_left, nlc_cl_left, lc_cr_lp_cnt, lc_c_lp_cnt, lc_cl_lp_cnt, lc_cr_left,
      lc_c_left, lc_cl_left, dst_cr_lp_unit, src_c_lp_unit, dst_cl_lp_unit, dst_cr_step_in, dst_cr_step_out,
@@ -752,7 +753,7 @@ def _func_transform_200(tensor_args, tp_args):
         hidden_len.set_as(hidden_size)
         with tik_inst.if_scope(tik.all(mc_pos == 2, tiling_mode == 2001)):
             calc_cr_offset(core_step_in, block_idx, hidden_size, c0_len, cr_core_offset)
-        
+
         with tik_inst.for_range(0, cr_lp_cnt) as cr_lp_idx:  # axis C-RIGHT
             with tik_inst.if_scope(tik.any(cr_lp_idx != cr_lp_cnt - 1, cr_left == 0)):
                 # cr_lp_idx for last second core and lc_cr_left for last core
@@ -846,8 +847,8 @@ def _func_transform_200(tensor_args, tp_args):
                         c0_pad_size.set_as(0)
 
                     with tik_inst.if_scope(src_r2nd_dst_r1st_same == 1):  # such as NC1HWC0 -> NCHW
-                        in_offset_args = (tiling_mode, cr_lp_idx, dst_cr_lp_step_in, c_lp_idx, src_c_lp_step_in, cl_lp_idx,
-                                          dst_cl_lp_step_in, block_idx * core_step_in,
+                        in_offset_args = (tiling_mode, cr_lp_idx, dst_cr_lp_step_in, c_lp_idx, src_c_lp_step_in,
+                                          cl_lp_idx, dst_cl_lp_step_in, block_idx * core_step_in,
                                           cr_in_idx_0_size, cr_in_idx_0_dst_rsize, cr_in_idx_0_src_asize,
                                           cr_in_idx_1_size, cr_in_idx_1_dst_rsize, cr_in_idx_1_src_asize,
                                           cl_in_idx_0_size, cl_in_idx_0_dst_rsize, cl_in_idx_0_src_asize,
@@ -949,7 +950,7 @@ def trans_data_rnn_negative_target(src, dst, input_size, hidden_size, kernel_nam
             with tik_inst.if_scope(block_idx < used_core_cnt1):
                 tensor_args1 = [tik_inst, block_idx,
                                src_in_gm[input0_size * in_shape[1] * in_shape[2] * in_shape[3]],
-                               dst_out_gm[input_size * out_shape[1]], 
+                               dst_out_gm[input_size * out_shape[1]],
                                src_ub, block_elem_cnt, hidden_size, in_dtype]
                 tp_args1 = tiling_params1
                 _func_transform_200(tensor_args1, tp_args1)

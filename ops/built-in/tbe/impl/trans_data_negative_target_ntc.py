@@ -282,6 +282,7 @@ def _tiling_params_negative(args):
     else:
         cr_gate = 15 * tdc.VNC_LINES
     # once vnchwconv flow
+    # 'pylint: disable=too-many-boolean-expressions
     if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32) or
         (in_dtype in NEED_CAST_DTYPES and cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32"))) and \
             axis_dst_cr_size >= cr_gate:
@@ -325,6 +326,7 @@ def _tiling_params_negative(args):
     axis_dst_c_size = out_shape[dst_format.index("C")]
     if dst_cr_lp_cnt > 1 or axis_src_c_size == 1:
         tp_200_src_c_lp_unit = 1
+    # 'pylint: disable=too-many-boolean-expressions
     elif (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32) or
         (in_dtype in NEED_CAST_DTYPES and cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32"))) and \
             axis_dst_cr_size >= cr_gate:

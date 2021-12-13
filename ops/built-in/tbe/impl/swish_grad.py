@@ -90,7 +90,7 @@ def check_op_dtype(dtype_input, dtype_x0, dtype_x1):
     para_check.check_dtype(dtype_input, check_list)
 
 
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-locals
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_FLOAT, KERNEL_NAME)
 def swish_grad(input_data, x0, x1, output_y, scale=1.0, kernel_name="swish_grad"):

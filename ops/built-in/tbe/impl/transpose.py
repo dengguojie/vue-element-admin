@@ -16,6 +16,7 @@
 transpose
 """
 
+
 # 'pylint: disable=unused-argument
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """

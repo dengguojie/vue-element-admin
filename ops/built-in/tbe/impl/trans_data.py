@@ -122,11 +122,11 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     None
     """
     positive_tc_transfer = [("NHWC", "NC1HWC0"), ("NDHWC", "NDC1HWC0"), ("NHWC", "FRACTAL_NZ"), ("ND", "FRACTAL_NZ"),
-                            ("NCHW", "FRACTAL_NZ"), ("NDHWC", "FRACTAL_Z_3D"), ("NC1HWC0", "FRACTAL_Z")]
+                             ("NCHW", "FRACTAL_NZ"), ("NDHWC", "FRACTAL_Z_3D"), ("NC1HWC0", "FRACTAL_Z")]
     positive_ntc_transfer = [("NCHW","NC1HWC0"), ("NCDHW", "NDC1HWC0"), ("HWCN", "FRACTAL_Z"), ("ND", "FRACTAL_Z"),
                              ("NCHW", "FRACTAL_Z"), ("DHWCN", "FRACTAL_Z_3D"), ("NCDHW", "FRACTAL_Z_3D")]
     negative_tc_transfer = [("NC1HWC0", "NHWC"), ("NDC1HWC0", "NDHWC"), ("FRACTAL_NZ", "NHWC"), ("FRACTAL_NZ", "ND"),
-                            ("FRACTAL_NZ", "NCHW"), ("FRACTAL_Z_3D", "NDHWC"), ("FRACTAL_NZ", "NC1HWC0")]
+                             ("FRACTAL_NZ", "NCHW"), ("FRACTAL_Z_3D", "NDHWC"), ("FRACTAL_NZ", "NC1HWC0")]
     negative_ntc_transfer = [("NC1HWC0","NCHW"), ("NDC1HWC0", "NCDHW"), ("FRACTAL_Z", "HWCN"), ("FRACTAL_Z", "ND"),
                              ("FRACTAL_Z", "NCHW"), ("FRACTAL_Z_3D", "DHWCN"), ("FRACTAL_Z_3D", "NCDHW")]
 
@@ -282,10 +282,10 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 batch_idx, co_idx // src_c0, howo_idx, co_idx % src_c0),
             name="res_nhwc",
             tag="5HD_trans_NHWC")
-    
+
     elif src_format == "NC1HWC0" and dst_format == "NCHW":
         src_n =  src.shape[0].value
-        src_c1 =  src.shape[1].value 
+        src_c1 =  src.shape[1].value
         src_hw =  src.shape[2].value
         src_c0 =  src.shape[3].value
         dst_ori_shape = dst.get("shape")
