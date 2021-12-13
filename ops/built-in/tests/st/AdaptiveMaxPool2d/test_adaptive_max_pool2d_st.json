@@ -67,5 +67,75 @@
 				"type":"list_int"
 			}
 		]
+	},
+	{
+		"case_name":"test_adaptive_max_pool2d_st_002",
+		"op":"AdaptiveMaxPool2d",
+		"input_desc":[
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					1,
+					1,
+					9,
+					9
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					1,
+					1,
+					4,
+					4
+				]
+			},
+			{
+				"format":[
+					"NCHW"
+				],
+				"type":[
+					"int32"
+				],
+				"shape":[
+					1,
+					1,
+					4,
+					4
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"output_size",
+				"value":[
+					4,
+					4
+				],
+				"type":"list_int"
+			}
+		]
 	}
+
 ]

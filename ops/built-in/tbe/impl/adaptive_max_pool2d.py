@@ -672,7 +672,7 @@ class AdaptiveMaxPool2d:
             error_detail = "output_size must be length 2, " \
                            "but given: {}. ".format(self.output_size)
             error_manager_vector.raise_err_input_shape_invalid(self.kernel_name, "output_size", error_detail)
-        if list(self.y_shape) != list(self.x_shape[:2]) + self.output_size + [self.x_shape[4]]:
+        if list(self.y_shape) != list(self.x_shape[:2]) + list(self.output_size) + [self.x_shape[4]]:
             error_detail = "the Output y planes must be the same with the input x planes, " \
                            "but input x shape is: {}, output y shape is: {}, output_size is: {}.".format(
                 self.x_shape, self.y_shape, self.output_size)
