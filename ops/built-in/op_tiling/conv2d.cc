@@ -146,16 +146,16 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
     GELOGD("optiling x_format is %s, nDim = %d, cDim = %d, hDim = %d, wDim = %d",
             x_format.c_str(), nDim, cDim, hDim, wDim);
 
-    if (op_desc->GetInputsSize() == 0 || op_desc->GetOutputsSize() == 0 || 
+    if (op_desc->GetInputsSize() == 0 || op_desc->GetOutputsSize() == 0 ||
         input_desc->GetShape().GetDimNum() == 0 || output_desc->GetShape().GetDimNum() == 0) {
         OP_LOGE(opType.c_str(), "inputsize or outputsize is zero");
         return false;
     }
 
-    if (opType.c_str() == "Conv2D" && opCompileInfo.contains("fmap_c1") && 
+    if (opType.c_str() == "Conv2D" && opCompileInfo.contains("fmap_c1") &&
         input_desc->GetShape().GetDim(cDim) != opCompileInfo["fmap_c1"]) {
         CUBE_INNER_ERR_REPORT(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups;"
-                              "x_channel=%d, fmap_c1=%d", (int32_t)input_desc->GetShape().GetDim(cDim), 
+                              "x_channel=%d, fmap_c1=%d", (int32_t)input_desc->GetShape().GetDim(cDim),
                               (int32_t)opCompileInfo["fmap_c1"]);
         return false;
     }
@@ -193,7 +193,7 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
     int32_t wo = output_desc->GetShape().GetDim(wDim);
     std::string node_name = op_desc->GetName();
     GELOGD("[%s] tiling_data is %d, %d, %d, %d, %d, %d", node_name.c_str(),
-            runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
+           runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
     PROFILING_TILING_END()
     return res;
 }
