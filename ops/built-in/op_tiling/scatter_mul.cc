@@ -22,12 +22,13 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;
@@ -54,7 +55,7 @@ const int64_t TILING_MODE_10 = 10;
 // div 0 check
 const int64_t ZERO = 0;
 
-struct ScatterMulTilingParams {
+struct ScatterMulOrDivTilingParams {
   int64_t tilingMode;
   int64_t indiceStep;
   int64_t coreNum;
@@ -73,7 +74,11 @@ struct ScatterMulTilingParams {
   int64_t varEachCoreData;
 };
 
-void InitRunningParams(ScatterMulTilingParams& params) {
+static const std::vector<std::string> COMPILE_INFO_KEY_MUL = {"core_num", "ub_size", "var_size", "indices_size"};
+static const std::vector<std::string> COMPILE_INFO_KEY_DIV = {"core_num", "ub_size", "var_size", "indices_size",
+                                                              "support_vdiv"};
+
+void InitRunningParams(ScatterMulOrDivTilingParams& params) {
   params.tilingMode = TILING_MODE_1;
   params.indiceStep = 0;
   params.coreNum = 0;
@@ -92,26 +97,30 @@ void InitRunningParams(ScatterMulTilingParams& params) {
   params.varEachCoreData = 0;
 }
 
-void CalScatterMulBranchRunningParams(ScatterMulTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                      int64_t updatesNum, int64_t updateDataNum, int64_t ubSize,
-                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock) {
+void CalScatterMulOrDivBranchRunningParams(ScatterMulOrDivTilingParams& runParams, int64_t varNum, int64_t indicesNum,
+                                           int64_t updatesNum, int64_t updateDataNum, int64_t ubSize, int64_t coreNum,
+                                           int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
+                                           int64_t supportDiv, const std::string& opType) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
-  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varSize = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "indicesSize = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varUbSize = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul",
-		  "indicesUbSize = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul",
-		  "varDataEachBlock = 0 is not support"),
-                  return);
+  if (opType == "ScatterDiv") {
+    if (supportDiv == 0) {
+      varUbSize = ubSize / 16 * 5;
+      indicesUbSize = ubSize / 16;
+    }
+  }
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return );
+  OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesSize = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varUbSize = 0 is not support"),
+                  return );
+  OP_TILING_CHECK(indicesUbSize == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesUbSize = 0 is not support"), return );
+  OP_TILING_CHECK(varDataEachBlock == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varDataEachBlock = 0 is not support"), return );
   runParams.varLoopNum = varNum / (varUbSize / varSize);
   runParams.varLastNum = varNum % (varUbSize / varSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / varSize);
@@ -163,129 +172,128 @@ void CalScatterMulBranchRunningParams(ScatterMulTilingParams& runParams, int64_t
   }
 }
 
-void SetRuningParams(const ScatterMulTilingParams& params, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, params.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, params.indiceStep);
-  ByteBufferPut(runInfo.tiling_data, params.coreNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesDataNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLastNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesLastNum);
-  ByteBufferPut(runInfo.tiling_data, params.varNum);
-  ByteBufferPut(runInfo.tiling_data, params.varLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.varLastNum);
-  ByteBufferPut(runInfo.tiling_data, params.varEachCoreBurstLen);
-  ByteBufferPut(runInfo.tiling_data, params.varLastCoreBurstLen);
-  ByteBufferPut(runInfo.tiling_data, params.maxIndice);
-  ByteBufferPut(runInfo.tiling_data, params.varEachCoreData);
+void SetRuningParams(const ScatterMulOrDivTilingParams& params, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(params.tilingMode);
+  runInfo.AddTilingData(params.indiceStep);
+  runInfo.AddTilingData(params.coreNum);
+  runInfo.AddTilingData(params.updatesDataNum);
+  runInfo.AddTilingData(params.indicesLoopNum);
+  runInfo.AddTilingData(params.indicesLastNum);
+  runInfo.AddTilingData(params.updatesNum);
+  runInfo.AddTilingData(params.updatesLoopNum);
+  runInfo.AddTilingData(params.updatesLastNum);
+  runInfo.AddTilingData(params.varNum);
+  runInfo.AddTilingData(params.varLoopNum);
+  runInfo.AddTilingData(params.varLastNum);
+  runInfo.AddTilingData(params.varEachCoreBurstLen);
+  runInfo.AddTilingData(params.varLastCoreBurstLen);
+  runInfo.AddTilingData(params.maxIndice);
+  runInfo.AddTilingData(params.varEachCoreData);
 }
 
-void PrintTilingParams(const std::string& opType, const ScatterMulTilingParams& params) {
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : tilingMode=%ld.", params.tilingMode);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : indiceStep=%ld.", params.indiceStep);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : coreNum=%ld.", params.coreNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : updatesDataNum=%ld.", params.updatesDataNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : indicesLastNum=%ld.", params.indicesLastNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : updatesNum=%ld.", params.updatesNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : updatesLastNum=%ld.", params.updatesLastNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varNum=%ld.", params.varNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varLoopNum=%ld.", params.varLoopNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varLastNum=%ld.", params.varLastNum);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : maxIndice=%ld.", params.maxIndice);
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : varEachCoreData=%ld.", params.varEachCoreData);
+void PrintTilingParams(const std::string& opType, const ScatterMulOrDivTilingParams& params) {
+  OP_LOGD(opType, " tilingMode=%ld.", params.tilingMode);
+  OP_LOGD(opType, " indiceStep=%ld.", params.indiceStep);
+  OP_LOGD(opType, " coreNum=%ld.", params.coreNum);
+  OP_LOGD(opType, " updatesDataNum=%ld.", params.updatesDataNum);
+  OP_LOGD(opType, " indicesLoopNum=%ld.", params.indicesLoopNum);
+  OP_LOGD(opType, " indicesLastNum=%ld.", params.indicesLastNum);
+  OP_LOGD(opType, " updatesNum=%ld.", params.updatesNum);
+  OP_LOGD(opType, " updatesLoopNum=%ld.", params.updatesLoopNum);
+  OP_LOGD(opType, " updatesLastNum=%ld.", params.updatesLastNum);
+  OP_LOGD(opType, " varNum=%ld.", params.varNum);
+  OP_LOGD(opType, " varLoopNum=%ld.", params.varLoopNum);
+  OP_LOGD(opType, " varLastNum=%ld.", params.varLastNum);
+  OP_LOGD(opType, " varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
+  OP_LOGD(opType, " varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
+  OP_LOGD(opType, " maxIndice=%ld.", params.maxIndice);
+  OP_LOGD(opType, " varEachCoreData=%ld.", params.varEachCoreData);
 }
 
-bool CheckScatterMulShape(const std::string& opType, std::vector<int64_t> varShape, std::vector<int64_t> indicesShape,
-                          std::vector<int64_t> updatesShape, std::vector<int64_t> outShape) {
-  if (varShape != outShape) {
+bool CheckScatterMulOrDivShape(const std::string& opType, const GeShape& varShape, const GeShape& indicesShape,
+                               const GeShape& updatesShape, const GeShape& outShape) {
+  if (!(varShape == outShape)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "the length of var must be same as the length of output.");
     return false;
   }
 
-  if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - updatesShape.size() == 1) {
+  if (indicesShape.GetDimNum() == 1 && indicesShape.GetDim(0) == 1 &&
+      varShape.GetDimNum() - updatesShape.GetDimNum() == 1) {
     OP_LOGI(opType.c_str(), "Input indices is a scalar.");
     return true;
   }
 
-  std::vector<int64_t> actualUpdatesShape = indicesShape;
-  int64_t varSize = varShape.size();
-  for (int64_t i = 1; i < varSize; i++) {
-    actualUpdatesShape.push_back(varShape[i]);
-  }
-  if (updatesShape != actualUpdatesShape) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "updates does not satisfy the relation expression with actualUpdatesShape.");
+  int64_t varSize = varShape.GetDimNum();
+  int64_t indicesSize = indicesShape.GetDimNum();
+  int64_t updatesSize = updatesShape.GetDimNum();
+  if (varSize + indicesSize - 1 != updatesSize) {
+    VECTOR_INNER_ERR_REPORT_TILIING(
+        opType, "varSize and indicesSize does not satisfy the relation expression with updatesSize.");
     return false;
+  }
+  for (int64_t i = 0; i < indicesSize; i++) {
+    if (indicesShape.GetDim(i) != updatesShape.GetDim(i)) {
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "indicesShapeDim does not equal to updatesShapeDim.");
+      return false;
+    }
+  }
+  for (int64_t i = indicesSize + 1; i < updatesSize; i++) {
+    if (varShape.GetDim(i - indicesSize + 1) != updatesShape.GetDim(i)) {
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "varShapeGetDim does not equal to updatesShapeDim.");
+      return false;
+    }
   }
   return true;
 }
 
-bool GetScatterMulCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum,
-                                int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
-  using namespace nlohmann;
-  const auto& allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
-    return false;
-  }
-  coreNum = allVars["core_num"].get<std::int64_t>();
-
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
-    return false;
-  }
-  ubSize = allVars["ub_size"].get<std::int64_t>();
-
-  if (allVars.count("var_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error");
-    return false;
-  }
-  varSize = allVars["var_size"].get<std::int64_t>();
-
-  if (allVars.count("indices_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
-    return false;
-  }
-  indicesSize = allVars["indices_size"].get<std::int64_t>();
-
+bool GetScatterMulOrDivCompileParams(const std::string& opType, const std::vector<int64_t>& opCompileInfo,
+                                     int64_t& coreNum, int64_t& ubSize, int64_t& varSize, int64_t& indicesSize,
+                                     int64_t& supportDiv) {
+  OP_TILING_CHECK((opType == "ScatterDiv" && COMPILE_INFO_KEY_DIV.size() != opCompileInfo.size()) ||
+                      (opType == "ScatterMul" && COMPILE_INFO_KEY_MUL.size() != opCompileInfo.size()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse opCompileInfo failed."), return false);
+  coreNum = opCompileInfo[0];
+  ubSize = opCompileInfo[1];
+  varSize = opCompileInfo[2];
+  indicesSize = opCompileInfo[3];
+  supportDiv = opCompileInfo[4];
   return true;
 }
 
-bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                      OpRunInfo& runInfo) {
+bool ScatterMulOrDivTiling(const std::string& opType, const ge::Operator& opParas,
+                           const std::vector<int64_t>& opCompileInfo, utils::OpRunInfo& runInfo) {
   using namespace ge;
 
-  OP_LOGI(opType.c_str(), "ScatterMulTiling running.");
-  if (opCompileInfo == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
-    return false;
-  }
+  OP_LOGI(opType.c_str(), "%sTiling running.", opType.c_str());
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
-      opParas.inputs[2].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
-    return false;
-  }
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get op_info failed."),
+                  return false);
+  // get input var Desc
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
+                  return false);
+  const GeShape& varShape = input_desc->MutableShape();
+  const ge::DataType input_dtype = input_desc->GetDataType();
+  // get input indices Desc
+  input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
+                  return false);
+  const GeShape& indicesShape = input_desc->MutableShape();
+  // get input updates Desc
+  input_desc = operator_info->MutableInputDesc(2);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
+                  return false);
+  const GeShape& updatesShape = input_desc->MutableShape();
+  // get output Desc
+  auto output_desc = operator_info->MutableOutputDesc(0);
+  OP_TILING_CHECK(output_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get output_desc failed."),
+                  return false);
+  const GeShape& outShape = output_desc->MutableShape();
 
-  if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
-    return false;
-  }
-
-  const std::vector<int64_t>& varShape = opParas.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& indicesShape = opParas.inputs[1].tensor[0].shape;
-  const std::vector<int64_t>& updatesShape = opParas.inputs[2].tensor[0].shape;
-  const std::vector<int64_t>& outShape = opParas.outputs[0].tensor[0].shape;
-  std::string input_dtype = opParas.inputs[0].tensor[0].dtype;
-
-  bool is_valid_shape = CheckScatterMulShape(opType, varShape, indicesShape, updatesShape, outShape);
+  bool is_valid_shape = CheckScatterMulOrDivShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckScatterMulShape is failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckShape is failed.");
     return false;
   }
 
@@ -293,31 +301,36 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t ubSize = 0;
   int64_t varSize = 0;
   int64_t indicesSize = 0;
+  int64_t supportDiv = 0;
 
-  bool can_get_params = GetScatterMulCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
-  if (!can_get_params) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatterMulCompileParams error.");
-    return false;
-  }
+  OP_TILING_CHECK(
+      !GetScatterMulOrDivCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize, supportDiv),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileInfo errror."), return false);
+
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, 
-	ubSize, varSize, indicesSize);
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum,
+        ubSize, varSize, indicesSize);
     return false;
   }
 
-  ScatterMulTilingParams runParams;
+  ScatterMulOrDivTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t varNum = std::accumulate(varShape.begin(), varShape.end(), 1, std::multiplies<int>());
-  int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
-  int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum =
-      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int>())) : 1;
-  int64_t maxIndice = varShape[0];
+  int64_t varNum = varShape.GetShapeSize();
+  int64_t indicesNum = indicesShape.GetShapeSize();
+  int64_t updatesNum = updatesShape.GetShapeSize();
+  int64_t updateDataNum = 1;
+  int64_t varDimNum = varShape.GetDimNum();
+  if (varDimNum > 1) {
+    for (int64_t i = 1; i < varDimNum; i++) {
+      updateDataNum *= varShape.GetDim(i);
+    }
+  }
+  int64_t maxIndice = varShape.GetDim(0);
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
 
-  OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : indicesNum=%ld.", indicesNum);
+  OP_LOGD(opType, " indicesNum=%ld.", indicesNum);
 
   if (updateDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
@@ -326,21 +339,20 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 
-  CalScatterMulBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
-                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock);
+  CalScatterMulOrDivBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                        runParams.coreNum, varSize, indicesSize, varDataEachBlock, supportDiv, opType);
 
   SetRuningParams(runParams, runInfo);
 
   PrintTilingParams(opType, runParams);
 
-  runInfo.block_dim = runParams.coreNum;
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
+  runInfo.SetBlockDim(runParams.coreNum);
 
-  OP_LOGI(opType.c_str(), "ScatterMulTiling run success.");
+  OP_LOGI(opType.c_str(), "%sTiling run success.", opType.c_str());
 
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(ScatterMul, ScatterMulTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ScatterMul, ScatterMulOrDivTiling, COMPILE_INFO_KEY_MUL, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ScatterDiv, ScatterMulOrDivTiling, COMPILE_INFO_KEY_DIV, NO_OPTIONAL_VALUE);
 }  // namespace optiling

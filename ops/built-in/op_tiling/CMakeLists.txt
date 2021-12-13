@@ -113,9 +113,7 @@ set(_optiling_files
   scatter_sub.cc
   scatter_update.cc
   scatter_max.cc
-  scatter_min.cc
   scatter_mul.cc
-  scatter_div.cc
   scatter_nd_add.cc
   scatter_nd_update.cc
   slice.cc
