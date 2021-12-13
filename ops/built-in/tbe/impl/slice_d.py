@@ -7443,7 +7443,7 @@ def _use_strided_slice(ori_x, ori_y):
     input_shape = ori_x.get("ori_shape")
     output_shape = ori_y.get("ori_shape")
     type_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    block_align = BLOCK_SIZE // type_size
+    block_align = Constant.BLOCK_SIZE // type_size
     if input_shape and output_shape and output_shape[-1] % block_align == 0:
         return False
     return True
