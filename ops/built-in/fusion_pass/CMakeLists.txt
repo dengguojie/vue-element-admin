@@ -134,6 +134,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_1d_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
+  graph_fusion/ai_core/group_norm_relu_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_pass.cc
   graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
