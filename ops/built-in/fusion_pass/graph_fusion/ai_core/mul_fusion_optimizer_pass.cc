@@ -45,7 +45,7 @@ const string kPatternMulFusOtimizer = "MUL";
 const string kMulType = "Mul";
 const string kFusedOptype = "mul_fusion_optimizer";
 const std::unordered_set<Format> kOriFormat = {FORMAT_NCHW, FORMAT_NHWC, FORMAT_HWCN, FORMAT_CHWN};
-
+const std::unordered_set<string> kForbiddenType = {"Const", "Constant", "Variable", "Reshape"};
 vector<FusionPattern*> MulFusionOptimizeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MulFusionOptimizeFusionPass");
@@ -96,7 +96,7 @@ Status SetNewFormat(ge::GeTensorDescPtr mul_in0, ge::GeTensorDescPtr mul_in1, ge
   op_input1_desc_format = mul_in1->GetFormat();
   op_output0_desc_format = mul_out0->GetFormat();
 
-  OP_LOGI(kFusedOptype.c_str(), "Mul after modify format:input0:%s, input1:%s, output0:%s",
+  OP_LOGD(kFusedOptype.c_str(), "Mul after modify format:input0:%s, input1:%s, output0:%s",
           ge::TypeUtils::FormatToSerialString(op_input0_desc_format).c_str(),
           ge::TypeUtils::FormatToSerialString(op_input1_desc_format).c_str(),
           ge::TypeUtils::FormatToSerialString(op_output0_desc_format).c_str());
@@ -147,12 +147,12 @@ Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_pt
   auto input_tensor1 = op_desc->MutableInputDesc(1);
   auto output_tensor = op_desc->MutableOutputDesc(0);
   FUSION_PASS_CHECK((!input_tensor0 || !input_tensor1 || !output_tensor),
-                    OP_LOGI(kFusedOptype.c_str(), "The tensor input or output of %s is null!",
+                    OP_LOGD(kFusedOptype.c_str(), "The tensor input or output of %s is null!",
                             in_node_ptr->GetName().c_str()), return NOT_CHANGED);
 
   auto op_input0_desc_dtype = input_tensor0->GetDataType();
   FUSION_PASS_CHECK((op_input0_desc_dtype != DT_FLOAT16 && op_input0_desc_dtype != DT_FLOAT),
-                    OP_LOGI(kFusedOptype.c_str(), "The dtype of input0  %s invalid", in_node_ptr->GetName().c_str()),
+                    OP_LOGD(kFusedOptype.c_str(), "The dtype of input0  %s invalid", in_node_ptr->GetName().c_str()),
                     return NOT_CHANGED);
 
   auto input0_peer_node_desc = node_input0->GetOpDesc();
@@ -163,16 +163,21 @@ Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_pt
   uint32_t output0_peer_input0_tensor_idx = in_node_ptr->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetIdx();
   auto output0_peer_input0_tensor = output0_peer_node_desc->MutableInputDesc(output0_peer_input0_tensor_idx);
   FUSION_PASS_CHECK((!input0_peer_output0_tensor || !input1_peer_output0_tensor || !output0_peer_input0_tensor),
-                    OP_LOGI(kFusedOptype.c_str(), "The tensor input or output of %s is null!",
+                    OP_LOGD(kFusedOptype.c_str(), "The tensor input or output of %s is null!",
                             in_node_ptr->GetName().c_str()), return NOT_CHANGED);
   int diff_cnt = 0;
   JudgeFormatOK(input_tensor0, input0_peer_output0_tensor, op_desc, diff_cnt);
   JudgeFormatOK(input_tensor1, input1_peer_output0_tensor, op_desc, diff_cnt);
   JudgeFormatOK(output_tensor, output0_peer_input0_tensor, op_desc, diff_cnt);
-  FUSION_PASS_CHECK((diff_cnt != 2), OP_LOGI(kFusedOptype.c_str(), "diff_cnt:%d != 2", diff_cnt), return NOT_CHANGED);
+  FUSION_PASS_CHECK((diff_cnt != 2), OP_LOGD(kFusedOptype.c_str(), "diff_cnt:%d != 2", diff_cnt), return NOT_CHANGED);
+  string input0_type = node_input0->GetType();
+  string input1_type = node_input1->GetType();
+  OP_LOGD(kFusedOptype.c_str(), "input0_type:%s, input1_type:%s", input0_type.c_str(), input1_type.c_str());
+  bool condition = (kForbiddenType.count(input0_type) != 0 || kForbiddenType.count(input1_type) != 0);
+  FUSION_PASS_CHECK(condition, OP_LOGD(kFusedOptype.c_str(), "Input has const or var"), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(SetNewFormat(input_tensor0, input_tensor1, output_tensor) != SUCCESS,
-                    OP_LOGW(kFusedOptype.c_str(), "SetNewFormat failed."), return NOT_CHANGED);
+                    OP_LOGD(kFusedOptype.c_str(), "SetNewFormat failed."), return NOT_CHANGED);
 
   return SUCCESS;
 }
@@ -186,8 +191,10 @@ Status MulFusionOptimizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(CheckParameterAndSet(in_node_ptr) != SUCCESS, OP_LOGW(kFusedOptype.c_str(), "Check MUL param failed."),
                     return NOT_CHANGED);
 
-  OP_LOGI(kFusedOptype.c_str(), "End MulFusionOptimizeFusionPass");
+  OP_LOGD(kFusedOptype.c_str(), "End MulFusionOptimizeFusionPass");
   return SUCCESS;
 }
 
+REGISTER_PASS("MulFusionOptimizeFusionPass", BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS,
+              MulFusionOptimizeFusionPass);
 }  // namespace fe
