@@ -35,6 +35,27 @@ using namespace std;
 
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num", "block_size"};
+const int64_t INDEX_0 = 0;
+const int64_t INDEX_1 = 1;
+const int64_t INDEX_2 = 2;
+const int64_t INDEX_3 = 3;
+const int64_t INDEX_4 = 4;
+const int64_t INDEX_5 = 5;
+const int64_t SIZE_2 = 2;
+const int64_t SIZE_3 = 3;
+const int64_t SIZE_4 = 4;
+const int64_t SIZE_6 = 6;
+const int64_t SIZE_8 = 8;
+const int64_t MODE_2 = 2;
+const int64_t MODE_3 = 3;
+const int64_t MODE_4 = 4;
+const int64_t MODE_5 = 5;
+const int64_t MODE_6 = 6;
+const int64_t MODE_7 = 7;
+const int64_t MODE_8 = 8;
+const int64_t MODE_9 = 9;
+const int64_t MODE_10 = 10;
+const int64_t MODE_11 = 11;
 
 struct TilingParam {
   int32_t tiling_mode = 0;
@@ -110,48 +131,48 @@ static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) 
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
 
-static void CalTilingParam(TilingParam& param, const GeShape& input_shape, ge::Format input_format,
-                           int32_t ub_ele, int32_t core_num, const vector<int64_t>& block_vec,
-                           const vector<int64_t>& crops_vec, bool swap_h_w) {
+static void CalTilingParam(TilingParam& param, const GeShape& input_shape, ge::Format input_format, int32_t ub_ele,
+                           int32_t core_num, const vector<int64_t>& block_vec, const vector<int64_t>& crops_vec,
+                           bool swap_h_w) {
   // calc input and output dim
-  param.input_b = input_shape.GetDim(0);
+  param.input_b = input_shape.GetDim(INDEX_0);
   if (input_format == FORMAT_NC1HWC0) {
-    param.block_h = block_vec[0];
-    param.block_w = block_vec[1];
-    param.crops_t = crops_vec[0];
-    param.crops_b = crops_vec[1];
-    param.crops_l = crops_vec[2];
-    param.crops_r = crops_vec[3];
-    param.channel_one = input_shape.GetDim(1);
-    param.input_h = input_shape.GetDim(2);
-    param.input_w = input_shape.GetDim(3);
+    param.block_h = block_vec[INDEX_0];
+    param.block_w = block_vec[INDEX_1];
+    param.crops_t = crops_vec[INDEX_0];
+    param.crops_b = crops_vec[INDEX_1];
+    param.crops_l = crops_vec[INDEX_2];
+    param.crops_r = crops_vec[INDEX_3];
+    param.channel_one = input_shape.GetDim(INDEX_1);
+    param.input_h = input_shape.GetDim(INDEX_2);
+    param.input_w = input_shape.GetDim(INDEX_3);
     if (swap_h_w) {
-      param.input_h = input_shape.GetDim(3);
-      param.input_w = input_shape.GetDim(2);
+      param.input_h = input_shape.GetDim(INDEX_3);
+      param.input_w = input_shape.GetDim(INDEX_2);
     }
-    param.channel_zero = input_shape.GetDim(4);
+    param.channel_zero = input_shape.GetDim(INDEX_4);
     param.output_b = param.input_b / param.block_h / param.block_w;
     param.output_h = param.input_h * param.block_h - param.crops_t - param.crops_b;
     param.output_w = param.input_w * param.block_w - param.crops_l - param.crops_r;
   } else {
-    param.block_d = block_vec[0];
-    param.block_h = block_vec[1];
-    param.block_w = block_vec[2];
-    param.crops_f = crops_vec[0];
-    param.crops_a = crops_vec[1];
-    param.crops_t = crops_vec[2];
-    param.crops_b = crops_vec[3];
-    param.crops_l = crops_vec[4];
-    param.crops_r = crops_vec[5];
-    param.input_d = input_shape.GetDim(1);
-    param.channel_one = input_shape.GetDim(2);
-    param.input_h = input_shape.GetDim(3);
+    param.block_d = block_vec[INDEX_0];
+    param.block_h = block_vec[INDEX_1];
+    param.block_w = block_vec[INDEX_2];
+    param.crops_f = crops_vec[INDEX_0];
+    param.crops_a = crops_vec[INDEX_1];
+    param.crops_t = crops_vec[INDEX_2];
+    param.crops_b = crops_vec[INDEX_3];
+    param.crops_l = crops_vec[INDEX_4];
+    param.crops_r = crops_vec[INDEX_5];
+    param.input_d = input_shape.GetDim(INDEX_1);
+    param.channel_one = input_shape.GetDim(INDEX_2);
+    param.input_h = input_shape.GetDim(INDEX_3);
     if (swap_h_w) {
-      param.channel_one = input_shape.GetDim(3);
-      param.input_h = input_shape.GetDim(2);
+      param.channel_one = input_shape.GetDim(INDEX_3);
+      param.input_h = input_shape.GetDim(INDEX_2);
     }
-    param.input_w = input_shape.GetDim(4);
-    param.channel_zero = input_shape.GetDim(5);
+    param.input_w = input_shape.GetDim(INDEX_4);
+    param.channel_zero = input_shape.GetDim(INDEX_5);
     param.output_b = param.input_b / param.block_d / param.block_h / param.block_w;
     param.output_d = param.input_d * param.block_d - param.crops_f - param.crops_a;
     param.output_h = param.input_h * param.block_h - param.crops_t - param.crops_b;
@@ -161,18 +182,18 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, ge::F
   // select tiling mode
   if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 4 &&
       (param.block_h - 1) * param.output_w * 2 <= 65535) {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 0 : 6;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 0 : MODE_6;
   } else if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 2 &&
              (param.block_h - 1) * param.output_w * 2 <= 65535) {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 1 : 7;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 1 : MODE_7;
   } else if (param.input_w * param.block_w * param.channel_zero <= ub_ele / 4) {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 2 : 8;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? MODE_2 : MODE_8;
   } else if (param.input_w * param.block_w * param.channel_zero <= ub_ele / 2) {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 3 : 9;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? MODE_3 : MODE_9;
   } else if (param.input_w * param.channel_zero <= ub_ele && param.input_w < 4096) {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 4 : 10;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? MODE_4 : MODE_10;
   } else {
-    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? 5 : 11;
+    param.tiling_mode = input_format == FORMAT_NC1HWC0 ? MODE_5 : MODE_11;
   }
 
   // calc act core_num
@@ -243,9 +264,9 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
                                       COMPILE_INFO_KEY.size(), op_info.size()),
       return false);
 
-  int32_t ub_ele = static_cast<int32_t>(op_info[0]);
-  int32_t core_num = static_cast<int32_t>(op_info[1]);
-  int32_t block_size = static_cast<int32_t>(op_info[2]);
+  int32_t ub_ele = static_cast<int32_t>(op_info[INDEX_0]);
+  int32_t core_num = static_cast<int32_t>(op_info[INDEX_1]);
+  int32_t block_size = static_cast<int32_t>(op_info[INDEX_2]);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   std::vector<int64_t> block_vec{block_size, block_size};
@@ -269,15 +290,15 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
 
   // check and resize block_shape and crops
   if (input_format == FORMAT_NC1HWC0) {
-    if ((ori_format == FORMAT_NHWC) && (block_vec.size() == 1) && (crops_vec.size() == 2)) {
+    if ((ori_format == FORMAT_NHWC) && (block_vec.size() == 1) && (crops_vec.size() == SIZE_2)) {
       block_vec.push_back(1);
       crops_vec.push_back(0);
       crops_vec.push_back(0);
-    } else if (((ori_format == FORMAT_NHWC) || (ori_format == FORMAT_NCHW)) && (block_vec.size() == 2) &&
-               (crops_vec.size() == 4)) {
+    } else if (((ori_format == FORMAT_NHWC) || (ori_format == FORMAT_NCHW)) && (block_vec.size() == SIZE_2) &&
+               (crops_vec.size() == SIZE_4)) {
       ;
-    } else if ((ori_format == FORMAT_NCHW) && (block_vec.size() == 3) && (crops_vec.size() == 6) &&
-               (block_vec[0] == 1) && (crops_vec[0] == 0) && (crops_vec[1] == 0)) {
+    } else if ((ori_format == FORMAT_NCHW) && (block_vec.size() == SIZE_3) && (crops_vec.size() == SIZE_6) &&
+               (block_vec[INDEX_0] == 1) && (crops_vec[INDEX_0] == 0) && (crops_vec[INDEX_1] == 0)) {
       block_vec.erase(block_vec.begin());
       crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
@@ -289,11 +310,11 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
       return false;
     }
   } else {
-    if (((ori_format == FORMAT_NDHWC) || (ori_format == FORMAT_NCDHW)) && (block_vec.size() == 3) &&
-        (crops_vec.size() == 6)) {
+    if (((ori_format == FORMAT_NDHWC) || (ori_format == FORMAT_NCDHW)) && (block_vec.size() == SIZE_3) &&
+        (crops_vec.size() == SIZE_6)) {
       ;
-    } else if ((ori_format == FORMAT_NCDHW) && (block_vec.size() == 4) && (crops_vec.size() == 8) &&
-               (block_vec[0] == 1) && (crops_vec[0] == 0) && (crops_vec[1] == 0)) {
+    } else if ((ori_format == FORMAT_NCDHW) && (block_vec.size() == SIZE_4) && (crops_vec.size() == SIZE_8) &&
+               (block_vec[INDEX_0] == 1) && (crops_vec[INDEX_0] == 0) && (crops_vec[INDEX_1] == 0)) {
       block_vec.erase(block_vec.begin());
       crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
@@ -308,84 +329,86 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
 
   // check block_shape and crops
   if (input_format == FORMAT_NC1HWC0) {
-    if ((block_vec[0] <= 0) || (block_vec[1] <= 0)) {
+    if ((block_vec[INDEX_0] <= 0) || (block_vec[INDEX_1] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type,
           "Get block_shape failed at format NC1HWC0, the value of block_shape must be greater to 0, but "
           "got [%ld, %ld].",
-          block_vec[0], block_vec[1]);
+          block_vec[INDEX_0], block_vec[INDEX_1]);
       return false;
     }
-    if ((crops_vec[0] < 0) || (crops_vec[1] < 0) || (crops_vec[2] < 0) || (crops_vec[3] < 0)) {
+    if ((crops_vec[INDEX_0] < 0) || (crops_vec[INDEX_1] < 0) || (crops_vec[INDEX_2] < 0) || (crops_vec[INDEX_3] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type,
           "Get crops failed at format NC1HWC0, the value of crops must be greater and equal 0, but "
           "got [%ld, %ld, %ld, %ld].",
-          crops_vec[0], crops_vec[1], crops_vec[2], crops_vec[3]);
+          crops_vec[INDEX_0], crops_vec[INDEX_1], crops_vec[INDEX_2], crops_vec[INDEX_3]);
       return false;
     }
-    if ((crops_vec[0] + crops_vec[1] >= input_shape.GetDim(2) * block_vec[0]) ||
-        (crops_vec[2] + crops_vec[3] >= input_shape.GetDim(3) * block_vec[1])) {
+    if ((crops_vec[INDEX_0] + crops_vec[INDEX_1] >= input_shape.GetDim(INDEX_2) * block_vec[INDEX_0]) ||
+        (crops_vec[INDEX_2] + crops_vec[INDEX_3] >= input_shape.GetDim(INDEX_3) * block_vec[INDEX_1])) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type,
           "The crops should less than (input_shape)*(block_shape), but got input:[%ld, %ld], block:[%ld, %ld], "
           "crops:[%ld, %ld, %ld, %ld]",
-          input_shape.GetDim(2), input_shape.GetDim(3), block_vec[0], block_vec[1], crops_vec[0], crops_vec[1], crops_vec[2],
-          crops_vec[3]);
+          input_shape.GetDim(INDEX_2), input_shape.GetDim(INDEX_3), block_vec[INDEX_0], block_vec[INDEX_1],
+          crops_vec[INDEX_0], crops_vec[INDEX_1], crops_vec[INDEX_2], crops_vec[INDEX_3]);
       return false;
     }
-    if (input_shape.GetDim(0) % (block_vec[0] * block_vec[1]) != 0) {
+    if (input_shape.GetDim(INDEX_0) % (block_vec[INDEX_0] * block_vec[INDEX_1]) != 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(
-          op_type, "The batch/(block_shape) should be integer, but got input:[%ld], block:[%ld, %ld]", input_shape.GetDim(0),
-          block_vec[0], block_vec[1]);
+          op_type, "The batch/(block_shape) should be integer, but got input:[%ld], block:[%ld, %ld]",
+          input_shape.GetDim(INDEX_0), block_vec[INDEX_0], block_vec[INDEX_1]);
       return false;
     }
   } else {
-    if ((block_vec[0] <= 0) || (block_vec[1] <= 0) || (block_vec[2] <= 0)) {
+    if ((block_vec[INDEX_0] <= 0) || (block_vec[INDEX_1] <= 0) || (block_vec[INDEX_2] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type,
           "Get block_shape failed at format NDC1HWC0, the value of block_shape must be greater to 0, but "
           "got [%ld, %ld, %ld].",
-          block_vec[0], block_vec[1], block_vec[2]);
+          block_vec[INDEX_0], block_vec[INDEX_1], block_vec[INDEX_2]);
       return false;
     }
-    if ((crops_vec[0] < 0) || (crops_vec[1] < 0) || (crops_vec[2] < 0) || (crops_vec[3] < 0) || (crops_vec[4] < 0) ||
-        (crops_vec[5] < 0)) {
+    if ((crops_vec[INDEX_0] < 0) || (crops_vec[INDEX_1] < 0) || (crops_vec[INDEX_2] < 0) || (crops_vec[INDEX_3] < 0) ||
+        (crops_vec[INDEX_4] < 0) || (crops_vec[INDEX_5] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type,
           "Get crops failed at format NDC1HWC0, the value of crops must be greater and equal 0, but "
           "got[%ld, %ld, %ld, %ld, %ld, %ld].",
-          crops_vec[0], crops_vec[1], crops_vec[2], crops_vec[3], crops_vec[4], crops_vec[5]);
+          crops_vec[INDEX_0], crops_vec[INDEX_1], crops_vec[INDEX_2], crops_vec[INDEX_3], crops_vec[INDEX_4],
+          crops_vec[INDEX_5]);
       return false;
     }
-    if ((crops_vec[0] + crops_vec[1] >= input_shape.GetDim(1) * block_vec[0]) ||
-        (crops_vec[2] + crops_vec[3] >= input_shape.GetDim(3) * block_vec[1]) ||
-        (crops_vec[4] + crops_vec[5] >= input_shape.GetDim(4) * block_vec[2])) {
+    if ((crops_vec[INDEX_0] + crops_vec[INDEX_1] >= input_shape.GetDim(INDEX_1) * block_vec[INDEX_0]) ||
+        (crops_vec[INDEX_2] + crops_vec[INDEX_3] >= input_shape.GetDim(INDEX_3) * block_vec[INDEX_1]) ||
+        (crops_vec[INDEX_4] + crops_vec[INDEX_5] >= input_shape.GetDim(INDEX_4) * block_vec[INDEX_2])) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                       "The crops should less than (input_shape)*(block_shape), but got input:[%ld, "
                                       "%ld, %ld], block:[%ld, %ld, %ld], "
                                       "pads:[%ld, %ld, %ld, %ld, %ld, %ld]",
-                                      input_shape.GetDim(1), input_shape.GetDim(3), input_shape.GetDim(4), block_vec[0], block_vec[1],
-                                      block_vec[2], crops_vec[0], crops_vec[1], crops_vec[2], crops_vec[3],
-                                      crops_vec[4], crops_vec[5]);
+                                      input_shape.GetDim(INDEX_1), input_shape.GetDim(INDEX_3),
+                                      input_shape.GetDim(INDEX_4), block_vec[INDEX_0], block_vec[INDEX_1],
+                                      block_vec[INDEX_2], crops_vec[INDEX_0], crops_vec[INDEX_1], crops_vec[INDEX_2],
+                                      crops_vec[INDEX_3], crops_vec[INDEX_4], crops_vec[INDEX_5]);
       return false;
     }
-    if (input_shape.GetDim(0) % (block_vec[0] * block_vec[1] * block_vec[2]) != 0) {
+    if (input_shape.GetDim(INDEX_0) % (block_vec[INDEX_0] * block_vec[INDEX_1] * block_vec[INDEX_2]) != 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(
           op_type, "The batch/(block_shape) should be integer, but got input:[%ld], block:[%ld, %ld, %ld]",
-          input_shape.GetDim(0), block_vec[0], block_vec[1], block_vec[2]);
+          input_shape.GetDim(INDEX_0), block_vec[INDEX_0], block_vec[INDEX_1], block_vec[INDEX_2]);
       return false;
     }
   }
 
   // if input_h and block_h is one, can swap h and w
   bool swap_h_w = false;
-  if (input_format == FORMAT_NC1HWC0 && input_shape.GetDim(2) == 1 && block_vec[0] == 1 && crops_vec[0] == 0 &&
-      crops_vec[1] == 0) {
+  if (input_format == FORMAT_NC1HWC0 && input_shape.GetDim(INDEX_2) == 1 && block_vec[INDEX_0] == 1 &&
+      crops_vec[INDEX_0] == 0 && crops_vec[INDEX_1] == 0) {
     swap_h_w = true;
-    std::swap(block_vec[0], block_vec[1]);
-    std::swap(crops_vec[0], crops_vec[2]);
-    std::swap(crops_vec[1], crops_vec[3]);
+    std::swap(block_vec[INDEX_0], block_vec[INDEX_1]);
+    std::swap(crops_vec[INDEX_0], crops_vec[INDEX_2]);
+    std::swap(crops_vec[INDEX_1], crops_vec[INDEX_3]);
   }
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // calc tiling params, set tiling params, print tiling params

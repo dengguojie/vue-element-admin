@@ -29,10 +29,10 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace {
-  constexpr int32_t PADDING_VALUE = 2;
-  constexpr int32_t TILING_MODE_6 = 6;
-  constexpr int32_t TILING_MODE_7 = 7;
-}
+constexpr int32_t PADDING_VALUE = 2;
+constexpr int32_t TILING_MODE_6 = 6;
+constexpr int32_t TILING_MODE_7 = 7;
+}  // namespace
 
 namespace optiling {
 using namespace ge;
@@ -46,6 +46,21 @@ static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {
     {"ub_ele", 0},    {"core_num", 0},  {"ksize_h", 0},   {"ksize_w", 0}, {"strides_h", 0},
     {"strides_w", 0}, {"padding", 0},   {"ceil_mode", 0}, {"pad_top", 0}, {"pad_bottom", 0},
     {"pad_left", 0},  {"pad_right", 0}, {"global", 0}};
+
+const int64_t INDEX_0 = 0;
+const int64_t INDEX_1 = 1;
+const int64_t INDEX_2 = 2;
+const int64_t INDEX_3 = 3;
+const int64_t INDEX_4 = 4;
+const int64_t INDEX_5 = 5;
+const int64_t INDEX_6 = 6;
+const int64_t INDEX_7 = 7;
+const int64_t INDEX_8 = 8;
+const int64_t INDEX_9 = 9;
+const int64_t INDEX_10 = 10;
+const int64_t INDEX_11 = 11;
+const int64_t INDEX_12 = 12;
+const int64_t MODE_16 = 16;
 
 struct TilingParam {
   int32_t tiling_mode = 0;
@@ -126,8 +141,7 @@ static void SetTilingParam(const TilingParam& param, utils::OpRunInfo& run_info)
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
-  OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "core_num = 0 is not support"),
-                  return);
+  OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "core_num = 0 is not support"), return);
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {
@@ -149,10 +163,8 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const
   int32_t pad_bottom = compile_info_param.pad_bottom;
   int32_t pad_left = compile_info_param.pad_left;
   int32_t pad_right = compile_info_param.pad_right;
-  OP_TILING_CHECK(strides_h == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_h = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(strides_w == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_w = 0 is not support"),
-                  return);
+  OP_TILING_CHECK(strides_h == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_h = 0 is not support"), return);
+  OP_TILING_CHECK(strides_w == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_w = 0 is not support"), return);
   // calc output height and width, pad infos
   if (padding == 0) {
     param.output_h = (param.input_h + strides_h - 1) / strides_h;
@@ -213,12 +225,12 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const
   // calc core_num, core_ele, loop_num and loop_left
   // global pooling max_pool_v3
   if (ksize_h == param.input_h && ksize_w == param.input_w) {
-    param.n_c1 = input_shape.GetDim(0) * input_shape.GetDim(1);
+    param.n_c1 = input_shape.GetDim(INDEX_0) * input_shape.GetDim(INDEX_1);
     CalCoreNum(param, param.n_c1, core_num);
-    if (ub_ele >= (input_shape.GetDim(2) * input_shape.GetDim(3) * input_shape.GetDim(4))) {
+    if (ub_ele >= (input_shape.GetDim(INDEX_2) * input_shape.GetDim(INDEX_3) * input_shape.GetDim(INDEX_4))) {
       param.tiling_mode = TILING_MODE_6;
     } else {
-      param.h_factor = ub_ele / input_shape.GetDim(4);  // acutal is hw_factor
+      param.h_factor = ub_ele / input_shape.GetDim(INDEX_4);  // acutal is hw_factor
       int32_t input_hw_num = param.input_h * param.input_w;
       param.one_core_loop_num = input_hw_num / param.h_factor;
       // dif from other tiling mode,this is used to tiling hw
@@ -231,8 +243,9 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const
   }
   if ((ksize_h == 1) && (ksize_w == 1) && (strides_h == 1) && (strides_w == 1)) {
     param.tiling_mode = 0;
-    int32_t max_ele = ub_ele / input_shape.GetDim(4);
-    int32_t total_ele = input_shape.GetDim(0) * input_shape.GetDim(1) * input_shape.GetDim(2) * input_shape.GetDim(3);
+    int32_t max_ele = ub_ele / input_shape.GetDim(INDEX_4);
+    int32_t total_ele = input_shape.GetDim(INDEX_0) * input_shape.GetDim(INDEX_1) * input_shape.GetDim(INDEX_2) *
+                        input_shape.GetDim(INDEX_3);
     CalCoreNum(param, total_ele, core_num);
     param.one_core_loop_num = param.one_core_ele / max_ele;
     param.one_core_loop_left = param.one_core_ele % max_ele;
@@ -240,17 +253,17 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const
     param.last_core_loop_left = param.last_core_ele % max_ele;
   } else {
     int32_t one_sixth_ub_ele = ub_ele / 6;
-    param.n_c1 = input_shape.GetDim(0) * input_shape.GetDim(1);
-    if (param.pad_h * param.pad_w * input_shape.GetDim(4) <= one_sixth_ub_ele) {
+    param.n_c1 = input_shape.GetDim(INDEX_0) * input_shape.GetDim(INDEX_1);
+    if (param.pad_h * param.pad_w * input_shape.GetDim(INDEX_4) <= one_sixth_ub_ele) {
       param.tiling_mode = 1;
       CalCoreNum(param, param.n_c1, core_num);
-      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape.GetDim(4));
+      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape.GetDim(INDEX_4));
       param.one_core_loop_num = param.one_core_ele / param.c_factor;
       param.one_core_loop_left = param.one_core_ele % param.c_factor;
       param.last_core_loop_num = param.last_core_ele / param.c_factor;
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
-    } else if (ksize_h * param.pad_w * input_shape.GetDim(4) <= one_sixth_ub_ele) {
-      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape.GetDim(4)) - ksize_h) / strides_h + 1;
+    } else if (ksize_h * param.pad_w * input_shape.GetDim(INDEX_4) <= one_sixth_ub_ele) {
+      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape.GetDim(INDEX_4)) - ksize_h) / strides_h + 1;
       int32_t h_loop = param.output_h / param.h_factor;
       if (h_loop <= param.n_c1) {
         param.tiling_mode = 2;
@@ -268,7 +281,7 @@ static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const
         param.last_core_loop_left = param.last_core_ele % param.h_factor;
       }
     } else {
-      param.w_factor = (one_sixth_ub_ele / input_shape.GetDim(4) / ksize_h - ksize_w) / strides_w + 1;
+      param.w_factor = (one_sixth_ub_ele / input_shape.GetDim(INDEX_4) / ksize_h - ksize_w) / strides_w + 1;
       param.one_core_loop_num = param.output_w / param.w_factor;
       param.one_core_loop_left = param.output_w % param.w_factor;
       param.last_core_loop_num = param.one_core_loop_num;
@@ -292,19 +305,19 @@ bool GetCompileInfo(const std::string& opType, const std::vector<int64_t>& opCom
                                       COMPILE_INFO_KEY.size(), opCompileInfo.size()),
       return false);
 
-  compile_info_param.ub_ele = static_cast<int32_t>(opCompileInfo[0]);
-  compile_info_param.core_num = static_cast<int32_t>(opCompileInfo[1]);
-  compile_info_param.ksize_h = static_cast<int32_t>(opCompileInfo[2]);
-  compile_info_param.ksize_w = static_cast<int32_t>(opCompileInfo[3]);
-  compile_info_param.strides_h = static_cast<int32_t>(opCompileInfo[4]);
-  compile_info_param.strides_w = static_cast<int32_t>(opCompileInfo[5]);
-  compile_info_param.padding = static_cast<int32_t>(opCompileInfo[6]);
-  compile_info_param.ceil_mode = static_cast<int32_t>(opCompileInfo[7]);
-  compile_info_param.pad_top = static_cast<int32_t>(opCompileInfo[8]);
-  compile_info_param.pad_bottom = static_cast<int32_t>(opCompileInfo[9]);
-  compile_info_param.pad_left = static_cast<int32_t>(opCompileInfo[10]);
-  compile_info_param.pad_right = static_cast<int32_t>(opCompileInfo[11]);
-  compile_info_param.global = static_cast<int32_t>(opCompileInfo[12]);
+  compile_info_param.ub_ele = static_cast<int32_t>(opCompileInfo[INDEX_0]);
+  compile_info_param.core_num = static_cast<int32_t>(opCompileInfo[INDEX_1]);
+  compile_info_param.ksize_h = static_cast<int32_t>(opCompileInfo[INDEX_2]);
+  compile_info_param.ksize_w = static_cast<int32_t>(opCompileInfo[INDEX_3]);
+  compile_info_param.strides_h = static_cast<int32_t>(opCompileInfo[INDEX_4]);
+  compile_info_param.strides_w = static_cast<int32_t>(opCompileInfo[INDEX_5]);
+  compile_info_param.padding = static_cast<int32_t>(opCompileInfo[INDEX_6]);
+  compile_info_param.ceil_mode = static_cast<int32_t>(opCompileInfo[INDEX_7]);
+  compile_info_param.pad_top = static_cast<int32_t>(opCompileInfo[INDEX_8]);
+  compile_info_param.pad_bottom = static_cast<int32_t>(opCompileInfo[INDEX_9]);
+  compile_info_param.pad_left = static_cast<int32_t>(opCompileInfo[INDEX_10]);
+  compile_info_param.pad_right = static_cast<int32_t>(opCompileInfo[INDEX_11]);
+  compile_info_param.global = static_cast<int32_t>(opCompileInfo[INDEX_12]);
 
   return true;
 }
@@ -343,9 +356,9 @@ bool MaxPoolTiling(const string& op_type, const ge::Operator& op_paras, const st
                   return false);
 
   OP_TILING_CHECK(
-      input_shape.GetDim(4) != 16,
+      input_shape.GetDim(INDEX_4) != MODE_16,
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, dim 5 of input_shape must be 16, but got %lu.",
-                                      input_shape.GetDim(4)),
+                                      input_shape.GetDim(INDEX_4)),
       return false);
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
@@ -366,8 +379,8 @@ bool MaxPoolTiling(const string& op_type, const ge::Operator& op_paras, const st
 
   // check ksize, strides and input shape
   TilingParam param;
-  param.input_h = input_shape.GetDim(2);
-  param.input_w = input_shape.GetDim(3);
+  param.input_h = input_shape.GetDim(INDEX_2);
+  param.input_w = input_shape.GetDim(INDEX_3);
   if (compile_info_param.global == 1) {
     compile_info_param.ksize_h = param.input_h;
     compile_info_param.ksize_w = param.input_w;
