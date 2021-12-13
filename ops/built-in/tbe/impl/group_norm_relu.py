@@ -22,6 +22,57 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
+def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001, kernel_name="group_norm_relu"):
+    """
+    check_supported
+    """
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    support_version = ("Ascend710", )
+    if soc_version not in support_version:
+        return False, "not support SOC_VERSION"
+    support_dtype = ("float16", "float32")
+    input_params_all = (input_0, input_1, input_2, output_0)
+    for input_params in input_params_all:
+        if input_params.get("dtype").lower() not in support_dtype:
+            return False, "not support data dtype"
+    input_format = input_0.get("format").upper()
+    if input_format == "NCHW":
+        input_shape = tuple(input_0.get("shape"))
+        output_shape = tuple(output_0.get("shape"))
+        weight_shape = tuple(input_1.get("shape"))
+        bias_shape = tuple(input_2.get("shape"))
+    elif input_format == "NC1HWC0" and input_0.get("ori_format").upper() == "NCHW":
+        input_shape = tuple(input_0.get("ori_shape"))
+        output_shape = tuple(output_0.get("ori_shape"))
+        weight_shape = tuple(input_1.get("ori_shape"))
+        bias_shape = tuple(input_2.get("ori_shape"))
+    else:
+        return False, "not support data format"
+    support_shape = (
+        (512, 7), (512, 14), (512, 28), (512, 15), (512, 30), (512, 60),
+        (1024, 30), (1024, 14), (2048, 7), (2048, 15),
+        (64, 56), (64, 120), (128, 28), (128, 56), (128, 60), (128, 120),
+        (256, 14), (256, 28), (256, 30), (256, 56), (256, 60), (256, 120))
+    if input_shape[0] <= 0 or len(input_shape) != 4 or input_shape[1:3] not in support_shape \
+            or input_shape[2] != input_shape[3]:
+        return False, "not support x shape"
+    if output_shape != input_shape:
+        return False, "not support y shape"
+    channel_num = input_shape[1]
+    if (len(weight_shape) != 1 or weight_shape[0] != channel_num) and \
+            (len(weight_shape) != 3 or weight_shape != (channel_num, 1, 1)):
+        return False, "not support weight shape"
+    if (len(bias_shape) != 1 or bias_shape[0] != channel_num) and \
+            (len(bias_shape) != 3 or bias_shape != (channel_num, 1, 1)):
+        return False, "not support bias shape"
+    if not isinstance(num_groups, int) or num_groups != 32:
+        return False, "not support num_groups"
+    if eps < 0:
+        return False, "not support eps"
+    return True, ""
+
+
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class GroupNormBase:
     """
