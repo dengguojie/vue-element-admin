@@ -15,12 +15,12 @@
 """
 proposal_d
 """
-# pylint: disable=R0902
-# pylint: disable=R0903
-# pylint: disable=R0913
-# pylint: disable=R0914
-# pylint: disable=W0613
-# pylint: disable=too-many-branches
+# 'pylint: disable=R0902
+# 'pylint: disable=R0903
+# 'pylint: disable=R0913
+# 'pylint: disable=R0914
+# 'pylint: disable=W0613
+# 'pylint: disable=too-many-branches
 
 import te.platform as tbe_platform
 from te.utils import para_check
@@ -32,7 +32,7 @@ from impl import topk
 from impl.util import util_select_op_base
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(cls_prob_dic,
                         bbox_delta_dic,
                         im_info_dic,

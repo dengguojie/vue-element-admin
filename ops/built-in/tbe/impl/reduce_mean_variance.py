@@ -23,14 +23,9 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_mean_variance")
-def reduce_mean_variance_compute(x,
-                                 mean,
-                                 square_sum,
-                                 axes,
-                                 keep_dims,
-                                 kernel_name="reduce_mean_variance"):
+def reduce_mean_variance_compute(x, mean, square_sum, axes, keep_dims, kernel_name="reduce_mean_variance"):
     """
     Reduce a tensor on a certain axes based on mean and square_sum.
 
@@ -60,7 +55,7 @@ def reduce_mean_variance_compute(x,
     reduce_elts = 1.0
     for i in axes:
         reduce_elts *= shape[i]
-    mean_cof = reduce_elts ** (-1)
+    mean_cof = reduce_elts**(-1)
     x = tbe.cast_to(x, "float32")
     mean_muls = tbe.vmuls(x, mean_cof)
 
@@ -71,13 +66,13 @@ def reduce_mean_variance_compute(x,
     return mean, square_sum
 
 
-def check_supported(x, mean, square_sum, axes,
-                    keep_dims=True, kernel_name="reduce_mean_variance"):
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
+def check_supported(x, mean, square_sum, axes, keep_dims=True, kernel_name="reduce_mean_variance"):
     """
     verify the types of reduce_mean_variance supported by tbe
     """
-    support_shapes = [[224, 224, 160, 32], [112, 112, 80, 64], [56, 56, 40, 128],
-                      [28, 28, 20, 256], [14, 14, 10, 320], [7, 7, 5, 320]]
+    support_shapes = [[224, 224, 160, 32], [112, 112, 80, 64], [56, 56, 40, 128], [28, 28, 20, 256], [14, 14, 10, 320],
+                      [7, 7, 5, 320]]
     shape_x = x.get("ori_shape")
     temp_shape = list(shape_x)
 
@@ -106,11 +101,11 @@ def check_supported(x, mean, square_sum, axes,
     return False, reason
 
 
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_mean_variance(x, mean, square_sum, axes,
-                         keep_dims=True, kernel_name="reduce_mean_variance"):
+def reduce_mean_variance(x, mean, square_sum, axes, keep_dims=True, kernel_name="reduce_mean_variance"):
     """
     Reduce a tensor on a certain axes based on mean and square_sum.
 
@@ -139,7 +134,7 @@ def reduce_mean_variance(x, mean, square_sum, axes,
     format_x = x.get("format")
     dtype_x = x.get("dtype").lower()
     axis = list(axes)
-    if format_x in ("NDC1HWC0",):
+    if format_x in ("NDC1HWC0", ):
         axis = [1, 3, 4]
 
     data_input = tvm.placeholder(shape_x, name="data_input", dtype=dtype_x)
@@ -147,7 +142,5 @@ def reduce_mean_variance(x, mean, square_sum, axes,
 
     with tvm.target.cce():
         sch = tbe.auto_schedule([res_mean, res_square_sum])
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data_input, res_mean, res_square_sum]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data_input, res_mean, res_square_sum]}
     tbe.cce_build_code(sch, config)

@@ -40,7 +40,7 @@ from te.utils import shape_util
 CONST_ZERO = 0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("relu")
 def relu_compute(x, y, kernel_name="relu"):
     """

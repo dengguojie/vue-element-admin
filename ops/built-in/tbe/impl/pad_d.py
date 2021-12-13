@@ -1878,7 +1878,7 @@ def _pattern_align(shape, paddings, dtype):
 
 
 def check_support_5hd(input_x, paddings):
-    """ Check whether 5HD is supported. 
+    """ Check whether 5HD is supported.
 
     Parameters
     ----------

@@ -26,7 +26,7 @@ import te.utils.shape_util as tsu
 
 
 @fusion_manager.register("poisson_nll_loss")
-#pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-arguments
 def poisson_nll_loss_compute(input_x, target, loss, log_input=True, full=False, eps=1e-8, reduction="mean", number=0.0):
     """
     possion_nll_loss
@@ -93,7 +93,7 @@ def poisson_nll_loss_compute(input_x, target, loss, log_input=True, full=False, 
     return output
 
 
-# pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

@@ -232,7 +232,7 @@ class Pdist():
             self.pdist_process(compute_mask, src_offset1, src_offset2, 1, count_num, index_id)
 
     #the specific calculation process
-    # pylint: disable = unused-argument,redefined-builtin,too-many-arguments
+    # 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments
     def pdist_process(self, mask, src_addr1, src_addr2, repeat_times, count_num, index_id):
         if self.p == 0.0:
             self.tik_instance.vec_sub(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.src2_ub[src_addr2],

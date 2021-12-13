@@ -27,7 +27,7 @@ NoneType = type(None)
 def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     """
     check the op support situation.
-    Go to AICPU when doing reduction with float32 type on the last axis. 
+    Go to AICPU when doing reduction with float32 type on the last axis.
     """
     input_shape = x.get("ori_shape")
     input_dtype = x.get("dtype").lower()
