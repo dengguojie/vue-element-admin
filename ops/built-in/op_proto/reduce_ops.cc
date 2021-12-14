@@ -1344,6 +1344,27 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumDInferShape) {
 COMMON_INFER_FUNC_REG(ReduceSumD, ReduceSumDInferShape);
 // ----------------ReduceSumD END-------------------
 
+// ----------------ReduceMeanWithCount Op-------------------
+IMPLEMT_COMMON_INFERFUNC(ReduceMeanWithCountInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter ReduceMeanWithCount proto inferfunction!");
+  ge::TensorDesc result_desc;
+  if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
+    return GRAPH_FAILED;
+  }
+  auto shape = result_desc.GetShape();
+  auto dtype = result_desc.GetDataType();
+
+  // update output desc
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(shape);
+  output_desc.SetDataType(dtype);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ReduceMeanWithCount, ReduceMeanWithCountInferShape);
+// ----------------ReduceMeanWithCount END-------------------
+
 // ----------------ReduceAny Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
   const vector<string> depend_names = {"axes"};

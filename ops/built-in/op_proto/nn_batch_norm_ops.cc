@@ -98,6 +98,67 @@ INFER_FUNC_REG(BatchNorm3D, BatchNorm3DInferShape);
 VERIFY_FUNC_REG(BatchNorm3D, BatchNorm3DVerify);
 // -----------------------------BatchNorm3D END----------------------------
 
+// ----------------SyncBatchNormGatherStatsWithCounts Begin-------------------
+IMPLEMT_INFERFUNC(SyncBatchNormGatherStatsWithCounts,
+                  SyncBatchNormGatherStatsWithCountsInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter SyncBatchNormGatherStatsWithCounts proto inferfunction!");
+  TensorDesc tensordesc_input = op.GetInputDesc("running_var");
+  auto input_shape = tensordesc_input.GetShape().GetDims();
+  DataType input_dtype = tensordesc_input.GetDataType();
+
+  TensorDesc tensordesc_output_1 = op.GetOutputDesc("invert_std");
+  tensordesc_output_1.SetDataType(input_dtype);
+
+  TensorDesc tensordesc_output_2 = op.GetOutputDesc("running_var_update");
+  tensordesc_output_2.SetDataType(input_dtype);
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("SyncBatchNormGatherStatsWithCounts", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
+  OP_LOGI(op.GetName().c_str(), "SyncBatchNormGatherStatsWithCounts op_name get successed.");
+
+  tensordesc_output_1.SetShape(ge::Shape(input_shape));
+  tensordesc_output_2.SetShape(ge::Shape(input_shape));
+  (void)op.UpdateOutputDesc("invert_std", tensordesc_output_1);
+  (void)op.UpdateOutputDesc("running_var_update", tensordesc_output_2);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SyncBatchNormGatherStatsWithCounts,
+               SyncBatchNormGatherStatsWithCountsInferShape);
+// ----------------SyncBatchNormGatherStatsWithCounts END---------------------
+
+// ----------------SyncBNTrainingUpdate Begin-------------------
+IMPLEMT_INFERFUNC(SyncBNTrainingUpdate,
+                  SyncBNTrainingUpdateInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter SyncBNTrainingUpdate proto inferfunction!");
+  TensorDesc tensordesc_input = op.GetInputDesc("running_mean");
+  auto input_shape = tensordesc_input.GetShape().GetDims();
+  DataType input_dtype = tensordesc_input.GetDataType();
+
+  TensorDesc tensordesc_output = op.GetOutputDesc("running_mean_update");
+  tensordesc_output.SetDataType(input_dtype);
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("SyncBNTrainingUpdate", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
+  OP_LOGI(op.GetName().c_str(), "SyncBNTrainingUpdate op_name get successed.");
+
+  tensordesc_output.SetShape(ge::Shape(input_shape));
+  (void)op.UpdateOutputDesc("running_mean_update", tensordesc_output);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(SyncBNTrainingUpdate, SyncBNTrainingUpdateInferShape);
+// ----------------SyncBNTrainingUpdate End-------------------
+
 // ----------------SyncBatchNormBackwardReduce Op-------------------
 IMPLEMT_VERIFIER(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceVerify) {
   return GRAPH_SUCCESS;

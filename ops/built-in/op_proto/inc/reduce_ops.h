@@ -516,6 +516,34 @@ REG_OP(ReduceSumD)
     .OP_END_FACTORY_REG(ReduceSumD)
 
 /**
+*@brief Calculate the total mean based on the mean of each device . \n
+
+*@par Inputs:
+* Three inputs, including:
+*@li x: A Tensor. Must be one of the following types: float16, float32 .
+*@li count: A Tensor. Must be one of the following types: float16, float32 .
+*@li count_sum: A Tensor. Must be one of the following types: float16, float32 . \n
+
+*@par Attributes:
+*@li axes: A required 1D list or tuple of int32 or int64. Specifies the dimensions to reduce.
+*@li keepdims: An optional bool. If "true", retains reduced dimensions with length 1. Defaults to "false" . \n
+
+*@par Outputs:
+*y: The reduced tensor. Has the same type and format as input "x" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator Sum.
+*/
+REG_OP(ReduceMeanWithCount)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(count, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(count_sum, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(axes, ListInt)
+    .ATTR(keep_dims, Bool, false)
+    .OP_END_FACTORY_REG(ReduceMeanWithCount)
+
+/**
 *@brief Calculates the "logical sum" of elements of a tensor in a dimension . \n
 
 *@par Inputs:

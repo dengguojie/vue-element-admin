@@ -1,0 +1,93 @@
+[
+    {
+      "op": "ReduceMeanWithCount",
+      "input_desc": [
+        {
+          "shape": [
+            3,
+            16,
+            32
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3,
+            16,
+            32
+          ],
+          "ori_format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            3,
+            16,
+            32
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3,
+            16,
+            32
+          ],
+          "ori_format": "ND",
+          "param_type": "input",
+          "name": "count",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            3,
+            16,
+            32
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3,
+            16,
+            32
+          ],
+          "ori_format": "ND",
+          "param_type": "input",
+          "name": "count_sum",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            1,
+            16,
+            32
+          ],
+          "format": "ND",
+          "ori_shape": [
+            1,
+            16,
+            32
+          ],
+          "ori_format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "axes",
+          "type": "list_int",
+          "value": [
+            0
+          ]
+        },
+        {
+          "name": "keep_dims",
+          "type": "bool",
+          "value": true
+        }
+      ],
+      "case_name": "test_ReduceMeanWithCount_001"
+    }
+  ]
+  
