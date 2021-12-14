@@ -38,7 +38,7 @@ MAX_REPEAT_NUM = 255
 MAX_INT64 = 2 ** 64 - 1
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class OpBase:
     """
     Class: class that OpBase
@@ -164,14 +164,14 @@ class OpBase:
                     with self.tik_instance.new_stmt_scope():
                         key_func[0](*key_func[1], **key_func[2])
 
-    # pylint: disable=unnecessary-pass
+    # 'pylint: disable=unnecessary-pass
     def tiling_args(self):
         """
         read tiling args, should over write
         """
         pass
 
-    # pylint: disable=unnecessary-pass
+    # 'pylint: disable=unnecessary-pass
     def core_scedule_args(self, core_idx):
         """
         calcu core para base tiling
@@ -214,8 +214,8 @@ def ub_offset(input_ub):
     return input_ub.offset
 
 
-# pylint: disable=too-many-branches,too-many-statements,too-many-locals
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-arguments
 def tik_func_vector(tik_instance, _ub, value, dup_len):
     """
     tik_func_vector
@@ -622,6 +622,9 @@ def ceil_div(int1, int2):
 
 
 def is_vector_core():
+    """
+    check if aicore type is VectorCore
+    """
     aicore_type = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.AICORE_TYPE)
     return aicore_type == "VectorCore"
 

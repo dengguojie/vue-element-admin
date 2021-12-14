@@ -23,8 +23,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument
-# pylint: disable=invalid-name
+# 'pylint: disable=unused-argument
+# 'pylint: disable=invalid-name
 def _broadcast_gradient_args(x, y):
     """
     Return the reduction indices for computing gradients of
@@ -51,7 +51,7 @@ def _broadcast_gradient_args(x, y):
     return rx, ry
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("xdivy_grad")
 def xdivy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     """
@@ -117,7 +117,7 @@ def xdivy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     return output_y1, output_y2
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def xdivy_grad(x1, x2, grad, y1, y2, kernel_name="xdivy_grad"):

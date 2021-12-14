@@ -15,13 +15,14 @@
 """
 unsorted_segment_max
 """
-# pylint: disable=too-many-lines
-# pylint: disable=unused-import
-# pylint: disable=PY001
+# 'pylint: disable=too-many-lines
+# 'pylint: disable=unused-import
+# 'pylint: disable=PY001
 from .unsorted_segment_min import op_select_format
 from .unsorted_segment_min import check_supported
 
-# pylint: disable=unused-argument
+
+# 'pylint: disable=unused-argument
 def unsorted_segment_max(x_dict, segment_ids_dict, num_segments_dict, y_dict,
                          kernel_name="UnsortedSegmentMax"):
     """

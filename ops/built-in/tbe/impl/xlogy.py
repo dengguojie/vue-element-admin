@@ -21,6 +21,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -37,7 +39,7 @@ class Constant:
     TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("xlogy")
 def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     """

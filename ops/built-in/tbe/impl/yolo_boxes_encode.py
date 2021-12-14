@@ -263,7 +263,6 @@ class YoloBoxesEncode():
         -------
         None
         """
-        # with self.tik_inst.for_range(0, self.core_num, block_num=self.core_num) as block_id:
         with self.tik_inst.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             self.calculation_process(block_id)
         self.tik_inst.BuildCCE(

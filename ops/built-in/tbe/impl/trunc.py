@@ -22,10 +22,11 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from te.utils.shape_util import shape_to_list
 
-CONST_ZERO=0.0
+CONST_ZERO = 0.0
 SHAPE_SIZE_LIMIT = 2147483648
 
-# pylint: disable=unused-argument,invalid-name
+
+# 'pylint: disable=unused-argument,invalid-name
 @fusion_manager.register("trunc")
 def trunc_compute(input_x, output_y, kernel_name="trunc"):
     """
@@ -104,5 +105,3 @@ def trunc(input_x, output_y, kernel_name="trunc"):
               "tensor_list": [data_input, res]}
 
     tbe.cce_build_code(schedule, config)
-
-

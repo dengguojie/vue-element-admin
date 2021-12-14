@@ -31,7 +31,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
     """
     get unpack slice info
@@ -40,7 +40,8 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
     shape_x = x.get("shape")
     # infer the value of num
     real_axis = axis + len(shape_x) if axis < 0 else axis
-    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + \
+                         util_common.get_fused_format_str(["N", "H", "W", "C"])
     support_format = ["NC1HWC0", "ND"] + support_ori_format
     if num is None:
         num = shape_x[real_axis]
@@ -64,13 +65,14 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
     return op_cal_info_in_json
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def op_select_format(x, y, num, axis, kernel_name="unpack"):
     """
     unpacks the given dimension of a rank R tensor into rank (R-1) tensors. \n
     1.when unpack by C, but output size not C0 align so don't support NC1HWC0 \n
     2.when split_d by N,H,W, support NC1HWC0 \n
-    3.when x's format is one of [NCHW,NHWC], the lengths of x's shape == 4, dim of axis in x's format != C: support 5HD format \n
+    3.when x's format is one of [NCHW,NHWC], the lengths of x's shape == 4,
+     dim of axis in x's format != C: support 5HD format \n
         example:
         original:
         axis=1
@@ -78,7 +80,8 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
         support conversion to 5HD fromat:
         x's Tensor(shape=(2, 1, 3, 4, 16), "5HD")
     """
-    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + \
+                         util_common.get_fused_format_str(["N", "H", "W", "C"])
 
     # all output attributes are consistent
     ori_format = x.get("ori_format").upper()
@@ -109,7 +112,7 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     return param_dynamic_in_json
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(x, y, num=None, axis=0, kernel_name="unpack"):
     """
     The maximum number of outputs supported by the unpack must be less than 63*63
@@ -203,7 +206,8 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     para_check.check_shape(shape, param_name="x")
 
     # check format
-    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + \
+                         util_common.get_fused_format_str(["N", "H", "W", "C"])
 
     format_list = ["NC1HWC0", "ND"] + support_ori_format
     if dformat == "NC1HWC0":
@@ -374,7 +378,7 @@ def _tiling_axis(shape, dtype):
     return split_axis, split_factor
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     """
@@ -440,7 +444,7 @@ def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     return gm2ub_tensor, ub2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     """
@@ -501,7 +505,7 @@ def _unpack_compute_copy(input_place, y, num, axis, kernel_name="unpack"):
     return gm2ub_tensor_list, ub2gm_tensor_list, virtual_node
 
 
-# pylint: disable=too-many-branches,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-locals
 def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     """
     Create unpack schedule.
@@ -642,7 +646,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     return sch, build_list
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unpack(x, y, num=None, axis=0, kernel_name="unpack"):

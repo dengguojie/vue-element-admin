@@ -15,7 +15,7 @@
 """
 transpose_d
 """
-# pylint: disable=W0613,W0401,C0302
+# 'pylint: disable=W0613,W0401,C0302
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -45,12 +45,12 @@ UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable = unused-argument
-# pylint: disable=too-many-lines,consider-using-in,too-many-boolean-expressions
-# pylint: disable=too-many-branches,too-many-statements,no-else-break,undefined-variable
-# pylint: disable=no-else-return,unnecessary-comprehension,inconsistent-return-statements
-# pylint: disable=too-many-nested-blocks,redeclared-assigned-name,consider-swap-variables
-# pylint: disable=chained-comparison
+# 'pylint: disable = unused-argument
+# 'pylint: disable=too-many-lines,consider-using-in,too-many-boolean-expressions
+# 'pylint: disable=too-many-branches,too-many-statements,no-else-break,undefined-variable
+# 'pylint: disable=no-else-return,unnecessary-comprehension,inconsistent-return-statements
+# 'pylint: disable=too-many-nested-blocks,redeclared-assigned-name,consider-swap-variables
+# 'pylint: disable=chained-comparison
 
 def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
     """
@@ -61,18 +61,18 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
     perm = list(perm)
     if format_x == "ND":
         if perm == [0, 3, 4, 1, 2] or perm == [0, 2, 3, 1]:
-            axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
             axis_reduce_list = None
         elif perm == [3, 2, 0, 1]:
             if shape[3] == 1:
-                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
+                axis_split_matrix = [[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]]
             elif shape[0] == 1 and shape[2] == 1:
-                axis_split_matrix=[
+                axis_split_matrix = [
                     [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
                     [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
                 ]
             else:
-                axis_split_matrix=[
+                axis_split_matrix = [
                     [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [2]])],
                     [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
                     [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])],
@@ -80,7 +80,7 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
                 ]
             axis_reduce_list = None
         elif perm == [0, 3, 1, 2, 4]:
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])],
                 [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [4]])]
@@ -88,22 +88,22 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
             axis_reduce_list = None
         elif (list(perm) == [1, 2, 3, 0] and shape[1] == 1 and shape[3] == 1) or \
                 (list(perm) == [3, 2, 1, 0] and shape[1] == 1 and shape[3] == 1):
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [3]])],
                 [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
             ]
             axis_reduce_list = None
         elif (list(perm) == [3, 0, 2, 1] and shape[0] == 1 and shape[2] == 1):
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [3]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [0]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 2, 1]:
             if shape[1] == 1 or shape[2] == 1:
-                axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+                axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
             else:
-                axis_split_matrix=[
+                axis_split_matrix = [
                     [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
                     [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [2]])],
                     [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [1]])]
@@ -111,40 +111,40 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
             axis_reduce_list = None
         elif perm == [1, 0, 2]:
             if shape[0] == 1 or shape[1] == 1:
-                axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
+                axis_split_matrix = [[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
             else:
-                axis_split_matrix=[
+                axis_split_matrix = [
                     [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])],
                     [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])],
                     [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]
                 ]
             axis_reduce_list = None
         elif perm == [0, 3, 1, 2]:
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [1]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 1, 3, 2]:
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [3]])],
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [2]])]
             ]
             axis_reduce_list = None
         elif perm == [0, 1, 2, 4, 3]:
-            axis_split_matrix=[
+            axis_split_matrix = [
                 [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [4]])],
                 [SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [3]])]
             ]
             axis_reduce_list = None
         elif perm == [2, 0, 1]:
-            axis_split_matrix=[[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])]]
+            axis_split_matrix = [[SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [0]])]]
             axis_reduce_list = None
         elif perm == [0, 2, 3, 4, 1]:
-            axis_split_matrix=[[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [4]])]]
+            axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [4]])]]
             axis_reduce_list = None
         elif perm == [0, 4, 1, 2, 3]:
-            axis_split_matrix=[[SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]]
+            axis_split_matrix = [[SplitInput([0, [4], [-1], [-1]]), SplitOutput([0, [1]])]]
             axis_reduce_list = None
         else:
             axis_split_matrix = None
@@ -156,7 +156,7 @@ def get_op_support_info(input_x, output_y, perm, kernel_name="transpose_d"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 def _get_factor(ele_zero, ele_cnt, total_ele):
     """
     get split factor for _tilling_one_axis function
@@ -367,7 +367,7 @@ def _renew_core_num(shape):
     return device_core_num
 
 
-# pylint: disable=locally-disabled, too-many-locals, too-many-branches
+# 'pylint: disable=locally-disabled, too-many-locals, too-many-branches
 def _tilling_axis_multi_core_fuse(shape, dtype):
     """
     calculate the split parameters according to different shapes
@@ -822,7 +822,7 @@ def _get_params_for_split_row_ir(tvm_ib, shape, dtype):
     return param_map
 
 
-# pylint: disable=locally-disabled, too-many-statements
+# 'pylint: disable=locally-disabled, too-many-statements
 def _multi_core_split_row_ir(dst, data, ir_type):
     """
     function of make ir node builder to transpose last two axes
@@ -1484,7 +1484,7 @@ def _ir_branch_index(shape, dtype):
         return "more_row"
 
 
-# pylint: disable=locally-disabled,unnecessary-lambda
+# 'pylint: disable=locally-disabled,unnecessary-lambda
 def _get_res_ir(data, shape, perm, dtype):
     """
     the function to get the res_ir and parameters
@@ -1948,7 +1948,7 @@ def _ceil_fill(value, block):
     return _ceil_div(value, block)*block
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 def _get_param_one_row_0231(tvm_ib, src_shape, dtype, core_divide):
     """
     calculate parameters for one row 0231 ir builder make function
@@ -6375,7 +6375,7 @@ def _get_param_more_two_dim_10(tvm_ib, src_shape, dtype, core_divide):
     return param_map
 
 
-# pylint: disable=locally-disabled,unused-variable,invalid-name
+# 'pylint: disable=locally-disabled,unused-variable,invalid-name
 def _reg_mov_batch_two_10_col(args):
     """
     reg_mov data in ub for two dim 10 col scene
@@ -22839,7 +22839,7 @@ def _get_branch_0312(src_shape, dtype):
                 return "split_dim_0312_small"
 
 
-# pylint: disable=locally-disabled,too-many-return-statements
+# 'pylint: disable=locally-disabled,too-many-return-statements
 def _get_branch_10(src_shape, dtype):
     """
     judge ir node builder branch when perm is [1, 0]
@@ -23929,7 +23929,7 @@ def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
     return True, ""
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):

@@ -30,7 +30,7 @@ BLOCK_LENGTH = 32
 UB_SIZE_MAX = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_min_d"):
     """
     fusion pass test if num_segments is int32
@@ -60,7 +60,8 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
     if first_shape != ids_length:
         error_manager_vector.raise_err_specific_reson(
             kernel_name,
-            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"\
+            "only supported x.shape[0] equals to segment_ids.shape[0],"
+            " while x.shape[0] is %d, segment_ids.shape[0] is %d"
             % (first_shape, ids_length))
         return False, "x's first dim != segment_ids's first dim"
     total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
@@ -73,7 +74,7 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
     return True, ""
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("unsorted_segment_min_d")
 def unsorted_segment_min_d_compute(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_min_d"):
     """
@@ -83,7 +84,7 @@ def unsorted_segment_min_d_compute(x, segment_ids, y, num_segments, kernel_name=
     return res
 
 
-# pylint: disable =too-many-locals
+# 'pylint: disable =too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unsorted_segment_min_d(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_min_d"):

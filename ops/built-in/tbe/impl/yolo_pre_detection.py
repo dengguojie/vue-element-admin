@@ -21,8 +21,8 @@ yolo_pre_detection
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
 
 RESV_UB = 512
 FP16_MINI = -65504
@@ -77,12 +77,15 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     dtype = check_dic_dic.get("in_dic").get("dtype")
 
     if param_dic['boxes'] <= 0:
-        error_manager_vector.raise_err_input_param_range_invalid("yolo_pre_detection", "boxes", "1", "inf", str(param_dic['boxes']))
+        error_manager_vector.raise_err_input_param_range_invalid("yolo_pre_detection", "boxes", "1", "inf",
+                                                                 str(param_dic['boxes']))
     if param_dic['coords'] != 4:
-        error_manager_vector.raise_err_input_value_invalid("yolo_pre_detection", "coords", "4", str(param_dic['coords']))
+        error_manager_vector.raise_err_input_value_invalid("yolo_pre_detection", "coords", "4",
+                                                           str(param_dic['coords']))
 
     if param_dic['classes'] <= 0:
-        error_manager_vector.raise_err_input_param_range_invalid("yolo_pre_detection", "classes", "1", "inf", str(param_dic['classes']))
+        error_manager_vector.raise_err_input_param_range_invalid("yolo_pre_detection", "classes", "1", "inf",
+                                                                 str(param_dic['classes']))
 
     para_check.check_shape(in_shape, param_name="input")
     para_check.check_shape(out1_shape, param_name="output1")
@@ -919,7 +922,8 @@ class YoloOp(InitTikAndTensor):
         elif yolo_ver.lower() == "v5":
             yolo_mode = 'YOLO_MODE_1'
         else:
-            error_manager_vector.raise_err_input_value_invalid("yolo_pre_detection", "yolo_ver", "v2, v3 or v5", yolo_ver.lower())
+            error_manager_vector.raise_err_input_value_invalid("yolo_pre_detection", "yolo_ver", "v2, v3 or v5",
+                                                               yolo_ver.lower())
 
         return yolo_mode
 

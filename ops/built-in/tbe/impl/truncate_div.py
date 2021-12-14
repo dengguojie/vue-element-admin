@@ -22,7 +22,7 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("truncate_div")
 def truncate_div_compute(input_x, input_y, output_x,
                          kernel_name="truncate_div"):

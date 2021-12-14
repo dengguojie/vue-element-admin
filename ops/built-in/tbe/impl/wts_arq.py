@@ -25,7 +25,7 @@ from impl.util.platform_adapter import para_check
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=invalid-name, too-many-locals
+# 'pylint: disable=invalid-name, too-many-locals
 def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     """
     wts_arq compute
@@ -114,7 +114,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     return y
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments
 @para_check.check_input_type(dict, dict, dict, dict, int, bool, str)
 def wts_arq(w,
             w_min,
@@ -179,7 +179,7 @@ def wts_arq(w,
             "w_min shape dim size:'{}' is different from w shape dim size:'{}'".format(
                 len(shape_w_min), len(shape_w)))
 
-    # pylint: disable=consider-using-enumerate
+    # 'pylint: disable=consider-using-enumerate
     for i in range(len(shape_w_min)):
         if shape_w_min[i] != 1 and shape_w_min[i] != shape_w[i]:
             raise ValueError(
