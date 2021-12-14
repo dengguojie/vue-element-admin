@@ -228,7 +228,7 @@ bool CheckScatterUpdateTensorShape(const std::string& opType, const GeShape& var
     return true;
   }
 
-  for (int64_t i = 0; i < indicesShape.GetDimNum(); i++) {
+  for (size_t i = 0; i < indicesShape.GetDimNum(); i++) {
     OP_TILING_CHECK(
       updatesShape.GetDim(i) != indicesShape.GetDim(i),
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to indicesShape[%zu].",
@@ -236,7 +236,7 @@ bool CheckScatterUpdateTensorShape(const std::string& opType, const GeShape& var
       return false);
   }
 
-  for (int64_t j = 1; j < varShape.GetDimNum(); j++) {
+  for (size_t j = 1; j < varShape.GetDimNum(); j++) {
     int64_t index = j + indicesShape.GetDimNum() - 1;
     OP_TILING_CHECK(
       updatesShape.GetDim(index) != varShape.GetDim(j),
@@ -290,7 +290,7 @@ bool ScatterUpdateTiling(const std::string& opType, const ge::Operator& opParas,
 
   int64_t var_first_shape = varShape.GetDim(0);
   int64_t var_num = 1;
-  for (int64_t i = 1; i < varShape.GetDimNum(); i++) {
+  for (size_t i = 1; i < varShape.GetDimNum(); i++) {
     var_num = var_num * varShape.GetDim(i);
   }
 
