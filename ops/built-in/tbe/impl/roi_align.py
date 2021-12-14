@@ -2029,6 +2029,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
 
     tmp_verify = tik_instance.Scalar(dtype="int32")
     tmp_verify.set_as(roi_y_floor[0])
+    verify.set_as(0)
     with tik_instance.if_scope(tmp_verify < -1):
         verify.set_as(1)
     with tik_instance.if_scope(tmp_verify >= fm_h):
@@ -2582,6 +2583,7 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
             with tik_instance.for_range(0, pw_int * sample_num_w) as grid_num_w:
                 x_tmp = tik_instance.Scalar(dtype="int32")
                 x_tmp.set_as(roi_x_floor[grid_num_w])
+                verify.set_as(0)
                 with tik_instance.if_scope(x_tmp < -1):
                     verify.set_as(1)
                 with tik_instance.if_scope(x_tmp >= fm_w):
@@ -3096,10 +3098,8 @@ def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
     """
     get ret without L1
     """
-    grid_h = tik_instance.Tensor(
-        dtype, [128], name="grid_h", scope=tbe_platform.scope_ubuf)
-    grid_w = tik_instance.Tensor(
-        dtype, [128], name="grid_w", scope=tbe_platform.scope_ubuf)
+    grid_h = tik_instance.Tensor(dtype, [128], name="grid_h", scope=tbe_platform.scope_ubuf)
+    grid_w = tik_instance.Tensor(dtype, [128], name="grid_w", scope=tbe_platform.scope_ubuf)
     if dtype == "float32":
         dtype_num = 1
     else:
@@ -3139,8 +3139,7 @@ def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
             scope=tbe_platform.scope_cbuf)
         cache_index = tik_instance.Scalar(dtype="int32", init_value=-1)
     else:
-        cache_fm = tik_instance.Tensor(
-            dtype, [1], name="cache_fm", scope=tbe_platform.scope_ubuf)
+        cache_fm = tik_instance.Tensor(dtype, [1], name="cache_fm", scope=tbe_platform.scope_ubuf)
         cache_index = tik_instance.Scalar(dtype="int32", init_value=-1)
 
     with tik_instance.for_range(0, rois_valid_in_block) as curr_roi:
@@ -3233,23 +3232,18 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     rois_shape = rois_dict.get("shape")
     dtype = feature_map_dict.get("dtype")
     feature_shape = feature_map_dict.get("shape")
-    feature_map = tik_instance.Tensor(
-        dtype, feature_shape, name="feature_map", scope=tbe_platform.scope_gm)
-    rois = tik_instance.Tensor(
-        dtype, rois_shape, name="rois", scope=tbe_platform.scope_gm)
+    feature_map = tik_instance.Tensor(dtype, feature_shape, name="feature_map", scope=tbe_platform.scope_gm)
+    rois = tik_instance.Tensor(dtype, rois_shape, name="rois", scope=tbe_platform.scope_gm)
     if roisn_dict:
         roisn_shape = roisn_dict.get("shape")
         roisn_dtype = roisn_dict.get("dtype")
-        roisn = tik_instance.Tensor(
-            roisn_dtype, roisn_shape, name="roisn", scope=tbe_platform.scope_gm)
+        roisn = tik_instance.Tensor(roisn_dtype, roisn_shape, name="roisn", scope=tbe_platform.scope_gm)
 
     fm_c1 = feature_shape[1]
     fm_c0 = 16
     proposal_num = rois_shape[0]
-    ret = tik_instance.Tensor(
-        dtype, [rois_shape[0], fm_c1, pool_h, pool_w, fm_c0],
-        name="ret",
-        scope=tbe_platform.scope_gm)
+    ret = tik_instance.Tensor(dtype, [rois_shape[0], fm_c1, pool_h, pool_w, fm_c0], name="ret",
+                              scope=tbe_platform.scope_gm)
     grid_curr_h = tik_instance.Scalar(dtype="int32")
     grid_curr_w = tik_instance.Scalar(dtype="int32")
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
@@ -3406,9 +3400,8 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                                                                 dtype)
                 else:
                     if rois_shape[1] == 5:
-                        rois_ub_n5 = tik_instance.Tensor(
-                            dtype, [128, 5], name="rois_ub_n5",
-                            scope=tbe_platform.scope_ubuf)
+                        rois_ub_n5 = tik_instance.Tensor(dtype, [128, 5], name="rois_ub_n5",
+                                                         scope=tbe_platform.scope_ubuf)
                         tik_instance.data_move(rois_ub_n5[0, 0],
                                                rois[block_i * block_num +
                                                     roi_128_number * 128, 0],
@@ -3531,7 +3524,7 @@ def roi_align(feature_map_dict,
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     if roi_end_mode > 1 and cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910):
         if dtype != "float32":
-            raise RuntimeError("when roi_end_mode is 2, dtype only supports float32")
+            raise RuntimeError("when roi_end_mode is 2, dtype only supports float32, but actually is %s" % dtype)
 
         return roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w,
                               sample_ratio, roi_end_mode, kernel_name)
