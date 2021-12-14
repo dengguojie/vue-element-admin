@@ -61,18 +61,9 @@ struct ReduceCompileInfo {
     bool parsed_success{true};
 
   private:
-    bool GetCompileInfoForProcessControl(ReduceCompileInfo& parsed_compile_info, const nlohmann::json& json_info);
-    bool GetCompileInfoForConst(ReduceCompileInfo& parsed_compile_info, const nlohmann::json& json_info);
-    bool GetCompileInfoForCalculate(std::string op_type, ReduceCompileInfo& parsed_compile_info,
-                                                                   const nlohmann::json& json_info);
-    void ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const std::string& op_type,
-                                const nlohmann::json& parsed_json_obj);
-    bool GetCompileInfoForRunInfo(ReduceCompileInfo& parsed_compile_info, const nlohmann::json& json_info);
-};
-
-struct ReduceGeInfo {
-  ge::DataType axes_type;
-  ge::Tensor axis_tensor;
+    bool GetCompileInfoForProcessControl(const nlohmann::json& json_info);
+    bool GetCompileInfoForConst(const nlohmann::json& json_info);
+    bool GetCompileInfoForCalculate(std::string op_type, const nlohmann::json& json_info);
 };
 
 struct ReduceTilingInfo {
@@ -104,7 +95,7 @@ class Reduce {
  private:
   int32_t CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& axis);
   int64_t GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
-  int64_t GetAlignShapeMul(int32_t axis_index);
+  int64_t GetAlignShapeMul(int32_t axis_index) const;
   int64_t GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index);
   bool CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor, int32_t& block_dim);
   int32_t GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx);
@@ -116,7 +107,7 @@ class Reduce {
 
   bool IsInVector(std::vector<int32_t>& input, int32_t value);
   void EliminateOne();
-  bool GetConstValue(const ge::Tensor& data, const ge::DataType& dtype, std::vector<int32_t>& const_vec);
+  bool GetConstValue(const ge::GeTensor* geTensor, const ge::DataType& dtype, std::vector<int32_t>& const_vec);
   bool CheckCompileInfoForCalculate();
   bool GetGeInfo();
   bool SetInit();
@@ -143,7 +134,7 @@ class Reduce {
 
   bool GetBlockTilingInfo();
   void GetNotMulCoreBlockTiling();
-  bool SetAttrVars(int32_t key);
+  bool SetAttrVars(int32_t key) const;
   int32_t CalcTilingKey();
 
  private:
@@ -151,7 +142,6 @@ class Reduce {
   const ge::Operator& op_paras;
   const ReduceCompileInfo& compileInfo;
   utils::OpRunInfo& run_info;
-  ReduceGeInfo geInfo;
   ReduceTilingInfo reduceTilingInfo;
   ReduceReorderInfo reorderInfo;
 

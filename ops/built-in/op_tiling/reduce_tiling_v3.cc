@@ -50,60 +50,49 @@ namespace {
 
 namespace v3 {
 ReduceCompileInfo::ReduceCompileInfo(const std::string& op_type, const nlohmann::json& json_info) {
-  ParseReduceCompileInfo(this, op_type, json_info);
+  bool ret = GetCompileInfoForCalculate(op_type, json_info);
+  ret = ret && GetCompileInfoForProcessControl(json_info);
+  ret = ret && GetCompileInfoForConst(json_info);
+  parsed_success = ret;
 }
 
-void ReduceCompileInfo::ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const
-                                               std::string& op_type, const nlohmann::json& parsed_json_obj) {
-  bool ret = GetCompileInfoForCalculate(op_type, *parsed_compile_info_ptr, parsed_json_obj);
-  ret = ret && GetCompileInfoForProcessControl(*parsed_compile_info_ptr, parsed_json_obj);
-  ret = ret && GetCompileInfoForConst(*parsed_compile_info_ptr, parsed_json_obj);
-  parsed_compile_info_ptr->parsed_success = ret;
-}
-
-bool ReduceCompileInfo::GetCompileInfoForProcessControl(ReduceCompileInfo& parsed_compile_info,
-                                                        const nlohmann::json& json_info) {
+bool ReduceCompileInfo::GetCompileInfoForProcessControl(const nlohmann::json& json_info) {
   // Optional info from SCH that control the process of tiling
-  parsed_compile_info.idx_before_reduce =
+  idx_before_reduce =
           json_info.count("_idx_before_reduce") > 0 ? json_info.at("_idx_before_reduce").get<uint32_t>() : 0;
-  parsed_compile_info.is_const = json_info.count("_reduce_shape_known") > 0 &&
-                                                                 json_info.at("_reduce_shape_known").get<bool>();
-  parsed_compile_info.zero_ub_factor = json_info.count("_zero_ub_factor") > 0 ?
-                                                                 json_info.at("_zero_ub_factor").get<int64_t>() : -1;
-  parsed_compile_info.is_const_post = json_info.count("_const_shape_post") > 0 &&
-                                                                 json_info.at("_const_shape_post").get<bool>();
+  is_const = json_info.count("_reduce_shape_known") > 0 && json_info.at("_reduce_shape_known").get<bool>();
+  zero_ub_factor = json_info.count("_zero_ub_factor") > 0 ? json_info.at("_zero_ub_factor").get<int64_t>() : -1;
+  is_const_post = json_info.count("_const_shape_post") > 0 && json_info.at("_const_shape_post").get<bool>();
 
   if (json_info.count("_ori_axis") > 0) {
-    parsed_compile_info.ori_axis.first = true;
-    parsed_compile_info.ori_axis.second = json_info.at("_ori_axis").get<std::vector<int32_t>>();
+    ori_axis.first = true;
+    ori_axis.second = json_info.at("_ori_axis").get<std::vector<int32_t>>();
   }
 
   if (json_info.count("axes_idx") > 0) {
-    parsed_compile_info.axes_idx.first = true;
-    parsed_compile_info.axes_idx.second = json_info.at("axes_idx").get<uint32_t>();
+    axes_idx.first = true;
+    axes_idx.second = json_info.at("axes_idx").get<uint32_t>();
   }
 
   if (json_info.count("_compile_pattern") > 0) {
-    parsed_compile_info.compile_pattern.first = true;
-    parsed_compile_info.compile_pattern.second = json_info.at("_compile_pattern").get<std::int32_t>();
+    compile_pattern.first = true;
+    compile_pattern.second = json_info.at("_compile_pattern").get<std::int32_t>();
   }
   return true;
 }
 
-bool ReduceCompileInfo::GetCompileInfoForConst(ReduceCompileInfo& parsed_compile_info,
-                                               const nlohmann::json& json_info) {
+bool ReduceCompileInfo::GetCompileInfoForConst(const nlohmann::json& json_info) {
   if (json_info.count("_block_dims") > 0) {
-    parsed_compile_info.block_dim_map = json_info.at("_block_dims").get<std::unordered_map<std::string, uint32_t>>();
+    block_dim_map = json_info.at("_block_dims").get<std::unordered_map<std::string, uint32_t>>();
   }
   if (json_info.count("_atomic_flags") > 0) {
-    parsed_compile_info.atomic_flags_map = json_info.at("_atomic_flags").get<std::unordered_map<std::string, bool>>();
+    atomic_flags_map = json_info.at("_atomic_flags").get<std::unordered_map<std::string, bool>>();
   }
 
   return true;
 }
 
-bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, ReduceCompileInfo& parsed_compile_info,
-                                                   const nlohmann::json& json_info) {
+bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, const nlohmann::json& json_info) {
   // Required info from SCH that do for calculating
   if (json_info.count("_common_info") > 0) {
     std::vector<int32_t> common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
@@ -112,23 +101,23 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, Re
       return false;
     }
     // Get Data
-    parsed_compile_info.core_num = common_info[ARRAY_INDEX_0];
-    parsed_compile_info.is_keep_dims = (bool)common_info[ARRAY_INDEX_1];
-    parsed_compile_info.min_block_size = common_info[ARRAY_INDEX_2];
-    parsed_compile_info.atomic = (bool)common_info[ARRAY_INDEX_3];
-    parsed_compile_info.coef = common_info[ARRAY_INDEX_4];
+    core_num = common_info[ARRAY_INDEX_0];
+    is_keep_dims = (bool)common_info[ARRAY_INDEX_1];
+    min_block_size = common_info[ARRAY_INDEX_2];
+    atomic = (bool)common_info[ARRAY_INDEX_3];
+    coef = common_info[ARRAY_INDEX_4];
   }
 
   if (json_info.count("_pattern_info") > 0) {
-    parsed_compile_info.pattern_info = json_info.at("_pattern_info").get<std::vector<int32_t>>();
+    pattern_info = json_info.at("_pattern_info").get<std::vector<int32_t>>();
   }
 
   if (json_info.count("_ub_info_rf") > 0) {
-    parsed_compile_info.ub_info_rf = json_info.at("_ub_info_rf").get<std::vector<int32_t>>();
+    ub_info_rf = json_info.at("_ub_info_rf").get<std::vector<int32_t>>();
   }
 
   if (json_info.count("_ub_info") > 0) {
-    parsed_compile_info.ub_info = json_info.at("_ub_info").get<std::vector<int32_t>>();
+    ub_info = json_info.at("_ub_info").get<std::vector<int32_t>>();
   }
 
   return true;
@@ -192,7 +181,7 @@ int64_t Reduce::GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling
   return result;
 }
 
-int64_t Reduce::GetAlignShapeMul(int32_t axis_index) {
+int64_t Reduce::GetAlignShapeMul(int32_t axis_index) const {
   int64_t result = 1;
   for (uint32_t i = axis_index + 1; i < output_shape.size(); i++) {
     if (output_shape[i] == 0) {
@@ -299,23 +288,23 @@ void Reduce::EliminateOne() {
   }
 }
 
-bool Reduce::GetConstValue(const ge::Tensor& data, const ge::DataType& dtype, std::vector<int32_t>& const_vec) {
+bool Reduce::GetConstValue(const ge::GeTensor* geTensor, const ge::DataType& dtype, std::vector<int32_t>& const_vec) {
   size_t size = 0;
-  const uint8_t* data_ptr = data.GetData();
+  const uint8_t* data_ptr = geTensor->GetData().data();
   V_OP_TILING_CHECK((data_ptr != nullptr),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get nullptr while ge reduce axis from GE."),
                     return false);
 
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)data_ptr;
-    size = data.GetSize() / sizeof(int32_t);
+    const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(data_ptr);
+    size = geTensor->GetData().size() / sizeof(int32_t);
     const_vec.resize(size);
     for (size_t i = 0; i < size; i++) {
       const_vec[i] = (int32_t)(*(const_data_ptr + i));
     }
   } else {
-    int64_t* const_data_ptr = (int64_t*)data_ptr;
-    size = data.GetSize() / sizeof(int64_t);
+    const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(data_ptr);
+    size = geTensor->GetData().size() / sizeof(int64_t);
     const_vec.resize(size);
     for (size_t i = 0; i < size; i++) {
       const_vec[i] = static_cast<int32_t>((int64_t)(*(const_data_ptr + i)));
@@ -408,21 +397,21 @@ void Reduce::ChooseAtomic() {
   //         Check normal atomic rules
   reduceTilingInfo.atomic = total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
-                       total_output_count < (int64_t)compileInfo.core_num * block_size / BASE_2 &&
-                       total_reduce_count > (int64_t)compileInfo.core_num / BASE_2;
+                       total_output_count < static_cast<int64_t>(compileInfo.core_num) * block_size / BASE_2 &&
+                       total_reduce_count > static_cast<int64_t>(compileInfo.core_num) / BASE_2;
   // Layer 2 Check if it is nlast_reduce
   //         Check if it is in a0, r, a1 pattern and a0 is 0
   bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
                                              (int32_t)1) != reduce_axis.end() &&
                                              input_shape[0] == (int32_t)1 &&
                                              std::find(reduce_axis.begin(), reduce_axis.end(),
-                                                 (int32_t)(output_shape.size() - 1)) == reduce_axis.end();
+                                                 static_cast<int32_t>(output_shape.size() - 1)) == reduce_axis.end();
   // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
   bool output_shape_limitation = total_output_count <= ubSizeB;
   // Check if outermost reduce axis is larger than or equal to core_num
   bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * BASE_4;
   // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) &&
+  bool n_last_reduce_shape_limitation = ((static_cast<uint32_t>(pattern) & 1) == 1) &&
                                         (input_shape[input_shape.size() - 1] < ubSizeB);
   // AND expression for all checks
   bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
@@ -555,7 +544,7 @@ void Reduce::ProcessReorderAxis(int32_t fused_type) {
 
   // order last non axis, maybe several axis
   for (size_t i = last_reduce_axis_idx + 1; i < input_shape.size(); i++) {
-    if (fused_type == FUSED_NON_REDUCE_AXIS && (int32_t)i < block_tiling_axis) {
+    if (fused_type == FUSED_NON_REDUCE_AXIS && static_cast<int32_t>(i) < block_tiling_axis) {
       reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
     }
     reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
@@ -892,7 +881,7 @@ bool Reduce::FineTuning() {
   // tune_1
   bool tune_1 = split_same_dim && (blk_factor % ub_factor != 0);
   if (tune_1) {
-    float tailPercent = (float)(blk_factor % ub_factor) / (float)ub_factor;
+    float tailPercent = static_cast<float>(blk_factor % ub_factor) / static_cast<float>(ub_factor);
     if (tailPercent >= EIGHTY_PERCENT) {
       return true;
     }
@@ -951,7 +940,7 @@ bool Reduce::DoConstRunTimeBranch() {
   return true;
 }
 
-bool Reduce::SetAttrVars(int32_t key) {
+bool Reduce::SetAttrVars(int32_t key) const {
   return true;
 }
 
@@ -966,7 +955,7 @@ bool Reduce::WriteTilingData() {
     run_info.AddTilingData((int32_t)fusion_dim_value);
     run_info.AddTilingData((int32_t)reduceTilingInfo.ub_tiling_factor);
     run_info.SetBlockDim(1);
-    run_info.SetTilingKey((uint32_t)zero_tiling_key);
+    run_info.SetTilingKey(static_cast<uint32_t>(zero_tiling_key));
     return SetAttrVars(zero_tiling_key);
   }
 
@@ -974,7 +963,7 @@ bool Reduce::WriteTilingData() {
     // runtime
     run_info.SetBlockDim(reduceTilingInfo.const_block_dims);
     run_info.SetClearAtomic(reduceTilingInfo.const_atomic_flag);
-    run_info.SetTilingKey((uint32_t)pattern);
+    run_info.SetTilingKey(static_cast<uint32_t>(pattern));
     return SetAttrVars(pattern);
   }
 
@@ -986,14 +975,14 @@ bool Reduce::WriteTilingData() {
     run_info.AddTilingData((int32_t)reduceTilingInfo.ub_tiling_factor);
     run_info.AddTilingData(static_cast<int32_t>(ubSizeB));
     run_info.AddTilingData(static_cast<int32_t>(ubSizeA));
-    run_info.SetBlockDim((uint32_t)reduceTilingInfo.block_dim);
+    run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
     return true;
   }
 
   // tiling_key
-  run_info.SetBlockDim((uint32_t)reduceTilingInfo.block_dim);
+  run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
   int32_t tiling_key = CalcTilingKey();
-  run_info.SetTilingKey((uint32_t)tiling_key);
+  run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
 
   // pure dma_copy, must skip "1".
   uint32_t offset = 0;
@@ -1051,38 +1040,15 @@ bool Reduce::GetGeInfo() {
   input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(
       op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
 
-  // Get ReduceAxisTensor
-  if (not compileInfo.ori_axis.first) {
-    // axes is tensor
-    // te_fusion will convert axes_idx while do fusion in reduce_op
-    auto axes_desc = compileInfo.axes_idx.first ?
-            ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
-            ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
-    std::string axes_name = axes_desc->GetName();
-    geInfo.axes_type = axes_desc->GetDataType();
-
-    // push data in axis_tensor
-    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name.c_str(), geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
-                      return false);
-    V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]",
-                                                      geInfo.axes_type),
-                      return false);
-  }
   return true;
 }
 
 bool Reduce::SetInit() {
   // Get ReduceAxis
-  if (compileInfo.ori_axis.first) {
-    reduce_axis_ori = compileInfo.ori_axis.second;
-  } else {
-    if (!GetConstValue(geInfo.axis_tensor, geInfo.axes_type, reduce_axis_ori)) {
-      return false;
-    }
+  bool ret = getReduceAxisTensor();
+  if (!ret) {
+    return false;
   }
-
   // Convert reduce axis (-1 -> length+1)
   int32_t max_value = int32_t(input_shape_ori.size());
   int32_t min_value = -1 * max_value;
@@ -1184,36 +1150,32 @@ bool Reduce::DoReduceTiling() {
 }
 
 bool Reduce::getReduceAxisTensor() {
-  // Get ReduceAxisTensor
-  if (not compileInfo.ori_axis.first) {
+  // Get ReduceAxis
+  if (compileInfo.ori_axis.first) {
+    reduce_axis_ori = compileInfo.ori_axis.second;
+  } else {
     // axes is tensor
     // te_fusion will convert axes_idx while do fusion in reduce_op
-    auto axes_desc = compileInfo.axes_idx.first ?
-                       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
-                       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
-    std::string axes_name = axes_desc->GetName();
-    geInfo.axes_type = axes_desc->GetDataType();
+    uint32_t axes_idx = compileInfo.axes_idx.first ? compileInfo.axes_idx.second:
+                   ge::OpDescUtils::GetOpDescFromOperator(op_paras)->GetInputIndexByName("axes");
+    auto axes_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(axes_idx);
+    ge::DataType axes_type = axes_desc->GetDataType();
+    const ge::GeTensor* axis_tensor = ge::OpDescUtils::GetInputConstData(op_paras, axes_idx);
 
     // push data in axis_tensor
-    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name.c_str(), geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+    V_OP_TILING_CHECK(axis_tensor != nullptr,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                       return false);
-    V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
+    V_OP_TILING_CHECK(!(axes_type != ge::DT_INT32 && axes_type != ge::DT_INT64),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]",
-                                                      geInfo.axes_type),
+                                                      axes_type),
                       return false);
+    if (!GetConstValue(axis_tensor, axes_type, reduce_axis_ori)) {
+      return false;
     }
+  }
 
-    // Get ReduceAxis
-    if (compileInfo.ori_axis.first) {
-      reduce_axis_ori = compileInfo.ori_axis.second;
-    } else {
-      if (!GetConstValue(geInfo.axis_tensor, geInfo.axes_type, reduce_axis_ori)) {
-        return false;
-      }
-    }
-
-    return true;
+  return true;
 }
 
 
