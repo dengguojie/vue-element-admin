@@ -74,6 +74,10 @@ const int64_t TILING_MODE_17 = 17;
 // div 0 check
 const int64_t ZERO = 0;
 
+const int64_t UPDATESSIZE_COMPILE_INDEX = 2;
+const int64_t INDICESSIZE_COMPILE_INDEX = 3;
+const int64_t SUPPORTATOMIC_COMPILE_INDEX = 4;
+
 struct ScatterNdTilingParams {
   int64_t tilingMode;
   int64_t indiceStep;
@@ -435,9 +439,9 @@ bool ScatterNdTiling(const std::string& opType, const ge::Operator& opParas, con
   }
   int64_t coreNum = op_info[0];
   int64_t ubSize = op_info[1];
-  int64_t updatesSize = op_info[2];
-  int64_t indicesSize = op_info[3];
-  int64_t supportAtomic = op_info[4];
+  int64_t updatesSize = op_info[UPDATESSIZE_COMPILE_INDEX];
+  int64_t indicesSize = op_info[INDICESSIZE_COMPILE_INDEX];
+  int64_t supportAtomic = op_info[SUPPORTATOMIC_COMPILE_INDEX];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   if (coreNum <= ZERO || ubSize <= ZERO || updatesSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(

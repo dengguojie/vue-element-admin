@@ -46,6 +46,10 @@ const int64_t TILING_MODE_4 = 4;
 const int64_t TILING_MODE_5 = 5;
 // div 0 check
 const int64_t ZERO = 0;
+// varsize intput compile params
+const int64_t VARSIZE_COMPILE_INDEX = 2;
+// indicessize intput compile params
+const int64_t INDICESSIZE_COMPILE_INDEX = 2;
 
 struct ScatterNonAliasingAddTilingParams {
   int64_t tilingMode;
@@ -216,7 +220,7 @@ bool ScatterNonAliasingAddTiling(const std::string& opType, const ge::Operator& 
 
   auto var_desc = operator_info->MutableInputDesc(0);
   auto indices_desc = operator_info->MutableInputDesc(1);
-  auto adds_desc = operator_info->MutableInputDesc(2);
+  auto adds_desc = operator_info->MutableInputDesc(VARSIZE_COMPILE_INDEX);
   auto out_desc = operator_info->MutableOutputDesc(0);
 
   OP_TILING_CHECK(var_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get var_desc shape error."),
@@ -243,8 +247,8 @@ bool ScatterNonAliasingAddTiling(const std::string& opType, const ge::Operator& 
 
   int64_t coreNum = op_info[0];
   int64_t ubSize = op_info[1];
-  int64_t varSize = op_info[2];
-  int64_t indicesSize = op_info[3];
+  int64_t varSize = op_info[VARSIZE_COMPILE_INDEX];
+  int64_t indicesSize = op_info[INDICESSIZE_COMPILE_INDEX];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
