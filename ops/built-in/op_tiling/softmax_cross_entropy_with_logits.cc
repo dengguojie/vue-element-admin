@@ -87,9 +87,9 @@ int64_t GetDtypeSize(const ge::DataType& dtype) {
   return dtype_size;
 }
 
-bool WriteTilingData(const std::string& op_type, const opInfo& op_info, const CompileInfo& compile_info,
+bool WriteTilingData(const std::string& op_type, const CompileInfo& compile_info,
                      TilingInfo& tiling_info, utils::OpRunInfo& run_info, std::vector<int64_t> input_features_shape,
-                     std::vector<int64_t> input_labels_shape, std::array<int64_t, MAX_DIM_LEN>& output_shape) {
+                     std::vector<int64_t> input_labels_shape) {
   GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), compile_info.ub_size);
   GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), compile_info.core_num);
 
@@ -270,8 +270,8 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
   if (dim_len == ND_SHAPE_LEN) {
     ret = ret && DoNdTiling(op_type, op_info, compile_info, tiling_info, input_shapes, out_type, output_shape);
   }
-  ret = ret && WriteTilingData(op_type, op_info, compile_info, tiling_info, run_info, input_features_shape,
-                               input_labels_shape, output_shape);
+  ret = ret && WriteTilingData(op_type, compile_info, tiling_info, run_info, input_features_shape,
+                               input_labels_shape);
   return ret;
 }
 REGISTER_OP_TILING_V3_CUSTOM(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsTiling,

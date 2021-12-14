@@ -201,7 +201,7 @@ namespace optiling
       rows_per_core = row / core_max;
       remain = row % core_max;
     }
-    SortTilingParams params{tiling_mode, need_core, row, col, cols_padding, loop_times, rows_per_core, remain, 
+    SortTilingParams params{tiling_mode, need_core, row, col, cols_padding, loop_times, rows_per_core, remain,
 	                    col_tail_loop, col_block_padding};
     // write tiling params to run_info
     WriteTilingParams(params, run_info);

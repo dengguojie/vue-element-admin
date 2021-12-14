@@ -391,8 +391,7 @@ bool StridedSliceTiling(const std::string& opType, const ge::Operator& opParas, 
     }
 
     if (slice_params.stride_list[i] != 1) {
-      OP_LOGW(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %ld", i,
-                                      slice_params.stride_list[i]);
+      OP_LOGW(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %ld", i, slice_params.stride_list[i]);
       return false;
     }
   }

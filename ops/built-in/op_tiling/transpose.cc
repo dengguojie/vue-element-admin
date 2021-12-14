@@ -14,15 +14,15 @@
 
 #include "transpose.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <iostream>
 #include <math.h>
-#include <limits.h>
+#include <climits>
 
 #include "register/op_tiling.h"
 #include "op_log.h"
@@ -355,7 +355,7 @@ static int64_t AlignX(int64_t a, int64_t x) {
 }
 
 // 1/16 usage of UB with vnchwconv as b16
-static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
+static int64_t CalcVnchwconvPartialUbSize(int64_t ubBlocks) {
   return (ubBlocks * BYTES_PER_BLOCK - UB_RESERVED_KB * BYTES_PER_KB) / BYTES_PER_BLOCK / 2;
 }
 
@@ -443,8 +443,8 @@ static string PadString(string& in, int width = 0) {
   if (width == 0) {
     return s;
   }
-  if ((int)s.size() < width) {
-    for (int i = 0; i < width - (int)in.size(); i++) {
+  if (static_cast<int>(s.size()) < width) {
+    for (int i = 0; i < width - static_cast<int>(in.size()); i++) {
       s += " ";
     }
   }
@@ -591,7 +591,7 @@ static bool IsStrideTooHuge(const ShapeInfo& shapeInfo, const RuntimeInfo& runti
 static bool IsSrcStrideTooHuge(const ShapeInfo& shapeInfo) {
   int64_t vol = 1;
   int64_t repeatAxis = shapeInfo.reducedPerm[shapeInfo.dim - 2];
-  for (size_t i = repeatAxis + 1; i < (size_t)shapeInfo.dim - 1; i++) {
+  for (size_t i = repeatAxis + 1; i < static_cast<size_t>(shapeInfo.dim) - 1; i++) {
     vol *= shapeInfo.reducedInShape[i];
   }
   return (vol - 1) * shapeInfo.lastAxisBurstLen > STRIDE_BOUNDARY;
@@ -601,7 +601,7 @@ static bool IsDstStrideTooHuge(const ShapeInfo& shapeInfo) {
   int64_t vol = 1;
   int64_t repeatAxis = shapeInfo.dim - 2;
   int64_t index = GetPermIndex(shapeInfo.reducedPerm, shapeInfo.dim, repeatAxis);
-  for (size_t i = index + 1; i < (size_t)shapeInfo.dim - 1; i++) {
+  for (size_t i = index + 1; i < static_cast<size_t>(shapeInfo.dim) - 1; i++) {
     vol *= shapeInfo.reducedOutShape[i];
   }
   return (vol - 1) * shapeInfo.lastAxisBurstLen > STRIDE_BOUNDARY;
@@ -1083,7 +1083,7 @@ void RemoveAxis(ShapeInfo& shapeInfo) {
     }
   }
 
-  qsort((void*)&delPerm[0], delPermSize, sizeof(int64_t), DecreaseCompare);
+  qsort(reinterpret_cast<void*>(&delPerm[0]), delPermSize, sizeof(int64_t), DecreaseCompare);
 
   for (int64_t i = 0; i < dim; i++) {
     bool delFlag = false;
@@ -1092,7 +1092,7 @@ void RemoveAxis(ShapeInfo& shapeInfo) {
         delFlag = true;
       }
     }
-    if (delFlag == false) {
+    if (!delFlag) {
       newPerm[newPermSize++] = shapeInfo.perm[i];
     }
   }
@@ -1123,7 +1123,7 @@ void MergeAxis(ShapeInfo& shapeInfo) {
   int64_t mergedShape[TRANSPOSE_MAX_AXIS_NUM] = {0};
   DuplicateArray(shapeInfo.reducedPerm, perm, dim);
   DuplicateArray(shapeInfo.reducedInShape, shape, dim);
-  for(int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+  for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
     newDimPosition[i] = -1;
   }
 
@@ -1150,7 +1150,7 @@ void MergeAxis(ShapeInfo& shapeInfo) {
   dimIndex = 0;
   for (int i = 0; i < dim; i++) {
     if (newDimPosition[i] >= 0) {
-      newDimPosition[dimIndex++] = newDimPosition[i]; 
+      newDimPosition[dimIndex++] = newDimPosition[i];
     }
   }
 
@@ -1178,7 +1178,7 @@ void MergeAxis(ShapeInfo& shapeInfo) {
 }
 
 // Since small shape with too much core will result in data less than one block, so use less core
-void UpdateCoreNum(CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
+void UpdateCoreNum(CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
   if (shapeInfo.totalVolumeActual >= shapeInfo.elePerBlock * compilerInfo.coreNum) {
     compilerInfo.usedCoreNum = compilerInfo.coreNum;
     return;
@@ -1190,7 +1190,7 @@ void UpdateCoreNum(CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) {
   }
 }
 
-static bool IsScenario1B8(ShapeInfo& shapeInfo) {
+static bool IsScenario1B8(const ShapeInfo& shapeInfo) {
   if (shapeInfo.elePerBlock != ELE_NUM_PER_BLOCK_B8) {
     return false;
   }
@@ -1208,7 +1208,7 @@ static bool IsScenario1B8(ShapeInfo& shapeInfo) {
   return true;
 }
 
-static bool IsScenario3B8(ShapeInfo& shapeInfo) {
+static bool IsScenario3B8(const ShapeInfo& shapeInfo) {
   if (shapeInfo.elePerBlock != ELE_NUM_PER_BLOCK_B8) {
     return false;
   }
@@ -1221,7 +1221,7 @@ static bool IsScenario3B8(ShapeInfo& shapeInfo) {
   return true;
 }
 
-static bool IsScenario5B8(ShapeInfo& shapeInfo) {
+static bool IsScenario5B8(const ShapeInfo& shapeInfo) {
   return (shapeInfo.elePerBlock == ELE_NUM_PER_BLOCK_B8);
 }
 
@@ -1307,11 +1307,11 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
   return (shapeInfo.mteMode != MTE_MODE_NULL);
 }
 
-static bool IsScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
+static bool IsScenario10(const ShapeInfo& shapeInfo) {
   return shapeInfo.isLastTwoAlignedAndTrans;
 }
 
-static bool IsScenario11(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo) {
+static bool IsScenario11(const ShapeInfo& shapeInfo) {
   int64_t dim = shapeInfo.dim;
   if (shapeInfo.dim != 2) {
     return false;
@@ -1367,9 +1367,9 @@ static void SetScenario(const string& opType, CompilerInfo& compilerInfo, ShapeI
     UpdateCoreNum(compilerInfo, shapeInfo);
   } else if (IsScenario9(compilerInfo, shapeInfo)) {
     shapeInfo.scenario = SCENARIO_9;
-  } else if (IsScenario11(compilerInfo, shapeInfo)) {
+  } else if (IsScenario11(shapeInfo)) {
     shapeInfo.scenario = SCENARIO_11;
-  } else if (IsScenario10(compilerInfo, shapeInfo)) {
+  } else if (IsScenario10(shapeInfo)) {
     shapeInfo.scenario = SCENARIO_10;
   } else if (IsScenario3B8(shapeInfo)) {
     shapeInfo.scenario = SCENARIO_3;
@@ -1440,7 +1440,7 @@ static void CalcUbReorderFactor(const CompilerInfo& compilerInfo, const ShapeInf
     return;
   }
 
-  if (shapeInfo.isLastAxisHuge == true) {
+  if (shapeInfo.isLastAxisHuge) {
     runtimeInfo.ubReorderFactor = 1;
     return;
   }
@@ -2735,7 +2735,7 @@ static void MakeBeContiguous(const IndexInfo* indexInfo, int64_t& perm, const in
   }
 }
 
-static void CalcSrcDstPerm(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void CalcSrcDstPerm(RuntimeInfo& runtimeInfo) {
   BorrowInfo& bi = runtimeInfo.borrowInfo;
   if (bi.srcNum == 2) {
     if (bi.srcIndexIn[0].idx_out > bi.srcIndexIn[1].idx_out) {
@@ -2900,7 +2900,7 @@ static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo
       ubSize = LAST_TWO_TRANS_MAX_SIZE_B16;  // vnchwconv max repeat is 255
       reservedVol = si.reducedInShape[si.dim - 2] * si.reducedInShape[si.dim - 1] * ci.fp16Times;
     } else {
-      ubSize = CalcVnchwconvPartialUbSize(ci.coreNum, ci.ubSize);
+      ubSize = CalcVnchwconvPartialUbSize(ci.ubSize);
       if (lastAxisTrans) {
         reservedVol = ci.fp16Times;
       }
@@ -3037,7 +3037,7 @@ static void MakeDstIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runt
 /*
  * ubPermRaw: 5,4,1,0; ubPerm: 3,2,1,0
  */
-static void MakeDiscreteBeContiguous(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void MakeDiscreteBeContiguous(RuntimeInfo& runtimeInfo) {
   const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
   int64_t perm[BORROW_MAX_AXIS_NUM_LT];
   for (int i = 0; i < BORROW_MAX_AXIS_NUM_LT; i++) {
@@ -3098,7 +3098,7 @@ static void CalcPermInUb(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
       }
     }
   }
-  MakeDiscreteBeContiguous(shapeInfo, runtimeInfo);
+  MakeDiscreteBeContiguous(runtimeInfo);
 }
 
 static int64_t GetDupAxisInSrc(const RuntimeInfo& runtimeInfo, int64_t index) {
@@ -3209,7 +3209,7 @@ static void ExtendSrcAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int borrowS
   }
 }
 
-static void CalcBorrowLoop(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void CalcBorrowLoop(RuntimeInfo& runtimeInfo) {
   BorrowInfo& bi = runtimeInfo.borrowInfo;
 
   for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
@@ -3238,7 +3238,7 @@ static void CalcBorrowLoop(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo)
   }
 }
 
-static void CalcBorrowLoopS5(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void CalcBorrowLoopS5(RuntimeInfo& runtimeInfo) {
   BorrowInfo& bi = runtimeInfo.borrowInfo;
 
   for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
@@ -3678,7 +3678,7 @@ static void CalcLoop3(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_
 }
 
 static void CalcBurstLen(int j, int64_t* s, int64_t num, const int64_t pi[][BORROW_MAX_AXIS_NUM_LT], int64_t& bl,
-                         int64_t& id) {
+                         const int64_t& id) {
   for (int64_t k = id; k < num; k++) {
     bl *= s[pi[j][k]];
   }
@@ -3945,6 +3945,8 @@ static void CalcRepetStride(const CompilerInfo& compilerInfo, const ShapeInfo& s
     case 0x10:
       RepeatStride10(compilerInfo, shapeInfo, runtimeInfo, step);
       break;
+    default:
+      break;
   }
 }
 
@@ -3973,8 +3975,8 @@ static bool TilingDataScenario4(const CompilerInfo& compilerInfo, const ShapeInf
   RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
-  CalcSrcDstPerm(shapeInfo, runtimeInfo);
-  CalcBorrowLoop(shapeInfo, runtimeInfo);
+  CalcSrcDstPerm(runtimeInfo);
+  CalcBorrowLoop(runtimeInfo);
   CalcBorrowBurstLen(shapeInfo, runtimeInfo);
   CalcOtherAxisIndex(shapeInfo, runtimeInfo);
   CalcPermInUb(shapeInfo, runtimeInfo);
@@ -3991,8 +3993,8 @@ static bool TilingDataScenario5(const CompilerInfo& compilerInfo, const ShapeInf
   RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
-  CalcSrcDstPerm(shapeInfo, runtimeInfo);
-  CalcBorrowLoopS5(shapeInfo, runtimeInfo);
+  CalcSrcDstPerm(runtimeInfo);
+  CalcBorrowLoopS5(runtimeInfo);
   CalcBorrowBurstLen(shapeInfo, runtimeInfo);
   CalcOtherAxisIndex(shapeInfo, runtimeInfo);
   CalcPermInUb(shapeInfo, runtimeInfo);
@@ -4078,7 +4080,7 @@ static void SplitN(int64_t val, int64_t factor, int64_t (*range)[2], int64_t& ra
   }
 }
 
-static void SplitColRowForCores(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
+static void SplitColRowForCores(const ShapeInfo& shapeInfo,
                                 RuntimeInfo& runtimeInfo) {
   const TilingModel& tm = runtimeInfo.tilingModel;
   SplitN(tm.ncr.nVol, tm.sp.nFactor, runtimeInfo.nRange, runtimeInfo.nRangeSize);
@@ -4087,7 +4089,7 @@ static void SplitColRowForCores(const CompilerInfo& compilerInfo, const ShapeInf
   return;
 }
 
-static void SplitNByFactor(RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
+static void SplitNByFactor(RuntimeInfo& runtimeInfo) {
   int64_t factor = runtimeInfo.tilingModel.sp.nFactor;
   runtimeInfo.infoNSize = factor;
   InfoN* info = runtimeInfo.infoN;
@@ -4108,7 +4110,7 @@ static void SplitNByFactor(RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
   }
 }
 
-static bool SplitColByFactor(const CompilerInfo& compilerInfo, RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
+static bool SplitColByFactor(RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
   const TilingModel& tm = runtimeInfo.tilingModel;
   int64_t maxCol = tm.maxCol;
   int64_t factor = tm.sp.colFactor;
@@ -4160,7 +4162,7 @@ static bool SplitColByFactor(const CompilerInfo& compilerInfo, RuntimeInfo& runt
   return true;
 }
 
-static bool SplitRowByFactor(const CompilerInfo& compilerInfo, RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
+static bool SplitRowByFactor(RuntimeInfo& runtimeInfo, int64_t elePerBlock) {
   const TilingModel& tm = runtimeInfo.tilingModel;
   int64_t factor = tm.sp.rowFactor;
   int64_t maxRow = tm.maxRow;
@@ -4455,7 +4457,7 @@ class Model004 : public TilingModel {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxCol = Align16(ubSize, n.rVol, ubSize) / 2;
 
     if ((n.cVol >= 128 * coreNum) && (n.rVol < F2T_THRESHOLD_B32)) {
@@ -4486,11 +4488,11 @@ class Model005 : public TilingModel {
     if (n.rowSize != 1) {
       return false;
     }
-    if (IsValid(ncr, dim) == false) {
+    if (!IsValid(ncr, dim)) {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxRow = Align16(ubSize, n.cVol, ubSize) / 2;
 
     if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol >= 128 * coreNum)) {
@@ -4507,9 +4509,9 @@ class Model005 : public TilingModel {
     return true;
   }
  private:
-  bool IsValid(const NCR& ncr, int64_t dim) {
+  bool IsValid(const NCR& ncr, int64_t dim) const {
     int64_t rowIndex = ncr.row[0];
-    if (rowIndex + (int64_t)ncr.colSize != dim - 1) {
+    if (rowIndex + static_cast<int64_t>(ncr.colSize) != dim - 1) {
       return false;
     }
     return true;
@@ -4562,7 +4564,7 @@ class Model007 : public TilingModel {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxCol = Align16(ubSize, n.rVol, ubSize) / 2;
 
     if ((n.rVol < F2T_THRESHOLD_B32) && (n.cVol * n.rVol >= 2048)) {
@@ -4587,11 +4589,11 @@ class Model008 : public TilingModel {
     if (n.rowSize != 1) {
       return false;
     }
-    if (IsValid(ncr, dim) == false) {
+    if (!IsValid(ncr, dim)) {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxRow = Align16(ubSize, n.cVol, ubSize) / 2;
 
     if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol * n.cVol >= 2048)) {
@@ -4603,9 +4605,9 @@ class Model008 : public TilingModel {
   }
 
  private:
-  bool IsValid(const NCR& ncr, int64_t dim) {
+  bool IsValid(const NCR& ncr, int64_t dim) const {
     int64_t rowIndex = ncr.row[0];
-    if (rowIndex + (int64_t)ncr.colSize != dim - 1) {
+    if (rowIndex + static_cast<int64_t>(ncr.colSize) != dim - 1) {
       return false;
     }
     return true;
@@ -4686,7 +4688,7 @@ class Model004_b16 : public TilingModel {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxCol = Align16(ubSize, n.rVol, ubSize);
 
     if ((n.cVol >= 256 * coreNum) && (n.rVol <= F2T_THRESHOLD_B16)) {
@@ -4720,11 +4722,11 @@ class Model005_b16 : public TilingModel {
     if (n.rowSize != 1) {
       return false;
     }
-    if (IsValid(ncr, dim) == false) {
+    if (!IsValid(ncr, dim)) {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxRow = Align16(ubSize, n.cVol, ubSize);
 
     if ((n.cVol <= F2T_THRESHOLD_B16) && (n.rVol >= 256 * coreNum)) {
@@ -4742,9 +4744,9 @@ class Model005_b16 : public TilingModel {
   }
 
  private:
-  bool IsValid(const NCR& ncr, int64_t dim) {
+  bool IsValid(const NCR& ncr, int64_t dim) const {
     int64_t rowIndex = ncr.row[0];
-    if (rowIndex + (int64_t)ncr.colSize != dim - 1) {
+    if (rowIndex + static_cast<int64_t>(ncr.colSize) != dim - 1) {
       return false;
     }
     return true;
@@ -4797,7 +4799,7 @@ class Model007_b16 : public TilingModel {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxCol = Align16(ubSize, n.rVol, ubSize);
 
     if ((n.rVol < F2T_THRESHOLD_B16) && (n.cVol * n.rVol >= 4096)) {
@@ -4822,11 +4824,11 @@ class Model008_b16 : public TilingModel {
     if (n.rowSize != 1) {
       return false;
     }
-    if (IsValid(ncr, dim) == false) {
+    if (!IsValid(ncr, dim)) {
       return false;
     }
 
-    int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+    int64_t ubSize = CalcVnchwconvPartialUbSize(ubBlocks);
     maxRow = Align16(ubSize, n.cVol, ubSize);
 
     if ((n.cVol < F2T_THRESHOLD_B16) && (n.rVol * n.cVol >= 4096)) {
@@ -4837,9 +4839,9 @@ class Model008_b16 : public TilingModel {
     return true;
   }
  private:
-  bool IsValid(const NCR& ncr, int64_t dim) {
+  bool IsValid(const NCR& ncr, int64_t dim) const {
     int64_t rowIndex = ncr.row[0];
-    if (rowIndex + (int64_t)ncr.colSize != dim - 1) {
+    if (rowIndex + static_cast<int64_t>(ncr.colSize) != dim - 1) {
       return false;
     }
     return true;
@@ -4910,7 +4912,7 @@ static void MakeNCRDecision(const CompilerInfo& compilerInfo, const ShapeInfo& s
   }
 }
 
-static void Composite(RuntimeInfo& runtimeInfo, int64_t coreNum) {
+static void Composite(RuntimeInfo& runtimeInfo) {
   const TilingModel& tm = runtimeInfo.tilingModel;
   int64_t nFactor = tm.sp.nFactor;
   int64_t colFactor = tm.sp.colFactor;
@@ -4945,23 +4947,22 @@ static bool TilingDataScenario7(const CompilerInfo& compilerInfo, const ShapeInf
 
   CalcJumpInfo(runtimeInfo, shapeInfo.dim, shapeInfo.reducedInShape, shapeInfo.reducedOutShape, shapeInfo.reducedPerm);
 
-  SplitColRowForCores(compilerInfo, shapeInfo, runtimeInfo);
+  SplitColRowForCores(shapeInfo, runtimeInfo);
 
-  SplitNByFactor(runtimeInfo, shapeInfo.elePerBlock);
+  SplitNByFactor(runtimeInfo);
 
-  res = SplitColByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+  res = SplitColByFactor(runtimeInfo, shapeInfo.elePerBlock);
   RETURN_IF_FAIL(res);
 
-  res = SplitRowByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+  res = SplitRowByFactor(runtimeInfo, shapeInfo.elePerBlock);
   RETURN_IF_FAIL(res);
 
-  Composite(runtimeInfo, compilerInfo.coreNum);
+  Composite(runtimeInfo);
 
   return IsScenario7Accept(runtimeInfo);
 }
 
-static bool TilingDataScenario8(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
-                                RuntimeInfo& runtimeInfo) {
+static bool TilingDataScenario8() {
   return true;
 }
 
@@ -5045,8 +5046,8 @@ static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeIn
   CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT);
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
-  CalcSrcDstPerm(shapeInfo, runtimeInfo);
-  CalcBorrowLoopS5(shapeInfo, runtimeInfo);
+  CalcSrcDstPerm(runtimeInfo);
+  CalcBorrowLoopS5(runtimeInfo);
   CalcBorrowBurstLen(shapeInfo, runtimeInfo);
   CalcOtherAxisIndex(shapeInfo, runtimeInfo);
   CalcPermInUb(shapeInfo, runtimeInfo);
@@ -5056,7 +5057,7 @@ static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeIn
   return true;
 }
 
-static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t& cFactor, int64_t& rFactor,
+static void CalcCRFactor(int64_t crFactor, int64_t& cFactor, int64_t& rFactor,
                          int64_t colUnitNum, int64_t rowUnitNum) {
   double diff = colUnitNum * 1.0 / rowUnitNum;
 
@@ -5080,9 +5081,9 @@ static void CalcCRFactor(const ShapeInfo & shapeInfo, int64_t crFactor, int64_t&
 }
 
 static void CalcUnit(const ShapeInfo& shapeInfo,
-                    int64_t colUnit, int64_t rowUnit,
-                    int64_t& colUnitNum, int64_t& rowUnitNum,
-                    int64_t& colTail, int64_t& rowTail) {
+                     int64_t colUnit, int64_t rowUnit,
+                     int64_t& colUnitNum, int64_t& rowUnitNum,
+                     int64_t& colTail, int64_t& rowTail) {
   colUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 1] / colUnit;
   rowUnitNum = shapeInfo.reducedInShape[shapeInfo.dim - 2] / rowUnit;
   colTail = shapeInfo.reducedInShape[shapeInfo.dim - 1] % colUnit;
@@ -5093,8 +5094,8 @@ static void Composite3D(const CompilerInfo& compilerInfo, const ShapeInfo& shape
                         int64_t nFactor, int64_t nUnit, int64_t cFactor, int64_t rFactor,
                         int64_t colUnit, int64_t rowUnit, int64_t colTail, int64_t rowTail,
                         int64_t p1Num[], int64_t p2Num[], int64_t loop1[], int64_t loop2[]) {
-  TwoDInfo& twoDInfo = runtimeInfo.twoDInfo;
 
+  TwoDInfo& twoDInfo = runtimeInfo.twoDInfo;
   twoDInfo.infoPerCore2DSize = compilerInfo.coreNum;
   
   twoDInfo.nUnit = nUnit;
@@ -5207,7 +5208,7 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
   nFactor = (nFactor == 0 ? 1: nFactor);
   nFactor = (nFactor > compilerInfo.coreNum ? compilerInfo.coreNum : nFactor);
   int64_t crFactor = compilerInfo.coreNum / nFactor;
-  crFactor = (crFactor == 0 ? 1: crFactor);
+  crFactor = (crFactor == 0 ? 1 : crFactor);
 
   if (shapeInfo.reducedInShape[shapeInfo.dim - 1] < colUnit) {
     colUnit = shapeInfo.reducedInShape[shapeInfo.dim - 1];
@@ -5218,7 +5219,7 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
 
   CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
 
-  CalcCRFactor(shapeInfo, crFactor, cFactor, rFactor, colUnitNum, rowUnitNum);
+  CalcCRFactor(crFactor, cFactor, rFactor, colUnitNum, rowUnitNum);
 
   SplitEvenly(compilerInfo.coreNum, nVol, p1Num[0], p2Num[0], loop1[0], loop2[0], nUnit);
 
@@ -5245,13 +5246,13 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
   return true;
 }
 
-static void Scenario2Guaranteed(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void Scenario2Guaranteed(ShapeInfo& shapeInfo) {
   Reshape(shapeInfo);
   shapeInfo.scenario = SCENARIO_2;
   shapeInfo.isLastAxisHuge = true;
 }
 
-static void Scenario5Guaranteed(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+static void Scenario5Guaranteed(ShapeInfo& shapeInfo) {
   shapeInfo.scenario = SCENARIO_5;
 }
 
@@ -5299,73 +5300,73 @@ bool TransposeCalcTilingData(const string& opType, const CompilerInfo& compilerI
     switch (shapeInfo.scenario) {
       case SCENARIO_0:
         res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_0); 
+        UpdateScenarios(runtimeInfo, SCENARIO_0);
         OP_LOGI(opType.c_str(), "%s", PrintScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_1:
         res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_1); 
+        UpdateScenarios(runtimeInfo, SCENARIO_1);
         OP_LOGD(opType.c_str(), "%s", PrintScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_2:
         res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_2); 
+        UpdateScenarios(runtimeInfo, SCENARIO_2);
         OP_LOGI(opType.c_str(), "%s", PrintScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_3:
         res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_3); 
+        UpdateScenarios(runtimeInfo, SCENARIO_3);
         OP_LOGI(opType.c_str(), "%s", PrintScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_4:
         res = TilingDataScenario4(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_4); 
+        UpdateScenarios(runtimeInfo, SCENARIO_4);
         if (res == false) {
-          Scenario2Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+          Scenario2Guaranteed(shapeInfo);
         } else {
           OP_LOGI(opType.c_str(), "%s", PrintScenario4(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
         break;
       case SCENARIO_5:
         res = TilingDataScenario5(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_5); 
+        UpdateScenarios(runtimeInfo, SCENARIO_5);
         if (res == false) {
-          Scenario2Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+          Scenario2Guaranteed(shapeInfo);
         } else {
           OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
         break;
       case SCENARIO_6:
         res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_6); 
+        UpdateScenarios(runtimeInfo, SCENARIO_6);
         OP_LOGI(opType.c_str(), "%s", PrintScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_7:
         res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_7); 
+        UpdateScenarios(runtimeInfo, SCENARIO_7);
         if (res == false) {
-          Scenario5Guaranteed(compilerInfo, shapeInfo, runtimeInfo);
+          Scenario5Guaranteed(shapeInfo);
         } else {
           OP_LOGI(opType.c_str(), "%s", PrintScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
         break;
       case SCENARIO_8:
-        res = TilingDataScenario8(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_8); 
+        res = TilingDataScenario8();
+        UpdateScenarios(runtimeInfo, SCENARIO_8);
         break;
       case SCENARIO_9:
         res = TilingDataScenario9(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_9); 
+        UpdateScenarios(runtimeInfo, SCENARIO_9);
         OP_LOGI(opType.c_str(), "%s", PrintScenario9(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_10:
         res = TilingDataScenario10(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_10); 
+        UpdateScenarios(runtimeInfo, SCENARIO_10);
         OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       case SCENARIO_11:
         res = TilingDataScenario11(compilerInfo, shapeInfo, runtimeInfo);
-        UpdateScenarios(runtimeInfo, SCENARIO_11); 
+        UpdateScenarios(runtimeInfo, SCENARIO_11);
         OP_LOGI(opType.c_str(), "%s", PrintScenario11(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       default:
