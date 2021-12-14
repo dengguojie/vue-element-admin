@@ -697,6 +697,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             bl1_attach_scope, bl1_attach_axis = _fmap_l1_attach(run_once_mdim)
             if fmap_matrix_flag and not self.l0b_dma_flag:
                 sch[fmap_matrix].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
+            # fmap_l1 axes:
+            #   group, batch, hw, fkk(cin_1*hw*wk), mad->16, cin_0->16
             if fmap_ub is not None:
                 sch[fmap_ub].compute_at(sch[fmap_l1], sch[fmap_l1].op.axis[4])
 
@@ -822,7 +824,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 else:
                     if self.l0b_dma_flag:
                         if fmap_ub is not None:
+                            # fmap_ub axes:
+                            #   batch, cin_1, fmap_h, fmap_w, cin_0->16
+                            # process 16 data at one time
                             sch[fmap_ub].emit_insn(fmap_ub.op.axis[4], 'dma_copy')
+                        # fmap_l1 axes:
+                        #   group, batch, hw_mad_1, fkk(cin_1*hk*wk), mad_0->16, cin_0->16
                         sch[fmap_l1].emit_insn(fmap_l1.op.axis[5], 'dma_copy')
                         sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[0], 'dma_copy')
                     else:
@@ -1028,7 +1035,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         if fmap_fractal.op.tag == "fmap_2_fractal_dma":
             fmap_fractal_before = fmap_fractal.op.input_tensors[0]
             fmap_matrix = fmap_fractal_before.op.input_tensors[0]
-            self.l0b_dma_flag = fmap_fractal.op.attrs['l0b_dma_flag'].value
+            self.l0b_dma_flag = True
         else:
             fmap_matrix = fmap_fractal.op.input_tensors[0]
         fmap = fmap_matrix.op.input_tensors[0]

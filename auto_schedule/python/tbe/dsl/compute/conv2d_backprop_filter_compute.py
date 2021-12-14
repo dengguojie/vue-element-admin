@@ -433,13 +433,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     and self.stride[0] == 1 and self.dilation[2] == 1:
                 self.conv1d_situation = True
 
-        def _check_with_dma(attr, attr_limit):
+        def _set_dma_flag(attr, attr_limit):
             for attr_value in attr:
                 if attr_value > attr_limit:
                     self.l0b_dma_flag = True
 
-        # L1 limitation, Mainly required by chip
         def _min_l1_check():
+            """
+            L1 limitation, Mainly required by chip
+            """
             stride_h, stride_w = self.stride
             _, _, dilation_h, dilation_w = self.dilation
             kernel_h_dilation = (kernel_height - 1) * dilation_h + 1
@@ -470,8 +472,22 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 return False
             return True
 
-        # over-spec scene, replace dma_copy with load_3d
-        def _set_l0b_dma_flag():
+        def _check_dma_mode():
+            """
+            over-spec scene, replace dma_copy with load_3d
+            support scene:
+                1. chip have ub buffer
+                2. not transdata fusion
+                3. dilation is [1, 1, 1, 1]
+            ----------
+            following scene will choose dma mode:
+                1. over l1 buffer
+                2. kernel > 255
+                3. stride > 63
+                4. pad > 255
+                5. w > 4096
+                6. load3d_special_case and w > 63
+            """
             is_dma_scene = (not self.cube_vector_split) and (self.fmap.op.tag != "NHWC_trans_5HD") and \
                            self.dilation == [1, 1, 1, 1]
             if is_dma_scene:
@@ -479,10 +495,10 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 if (not _min_l1_check()) or is_special_case:
                     self.l0b_dma_flag = True
                 if not self.conv1d_situation:
-                    _check_with_dma([self.shape_x_5hd[3], self.shape_grads_5hd[3]], INPUTS_W_MAX)
-                _check_with_dma([kernel_height, kernel_width], 255)
-                _check_with_dma(self.stride, STRIDE_HW_MAX)
-                _check_with_dma(self.pad, 255)
+                    _set_dma_flag([self.shape_x_5hd[3], self.shape_grads_5hd[3]], INPUTS_W_MAX)
+                _set_dma_flag([kernel_height, kernel_width], 255)
+                _set_dma_flag(self.stride, STRIDE_HW_MAX)
+                _set_dma_flag(self.pad, 255)
             elif not _min_l1_check():
                 dict_args = {}
                 dict_args["errCode"] = "E60026"
@@ -492,7 +508,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _set_load3d_special_case_flag()
         _set_conv1d_situation_flag()
         if not self.var_map:
-            _set_l0b_dma_flag()
+            _check_dma_mode()
 
         if not self.l0b_dma_flag:
             _check_variable_range(kernel_height, 1, 255, "height of filter")
@@ -771,6 +787,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                               grads_matrix)
         if not self.flag_all_one_case:
             if not self.var_map:
+                """
+                Load 3D Data Flow:
+                    fmap(DDR) -> fmap_matrix(L1) -> fmap_fractal(nZ, L0B)
+
+                Dma Mode Data Flow:
+                    fmap(DDR) -> fmap_ub(pad, UB) -> fmap_matrix(L1) ->
+                        fmap_fractal_before(zZ, L1) -> fmap_fractal(nZ, L0B)
+                """
                 fmap_ub = None
                 if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
                     pad_top, pad_bottom, pad_left, pad_right = self.pad
@@ -798,7 +822,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     fmap_l1_before = fmap_ub
                 fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
                                                   fmap_l1_before, fmap_dtype)
-                # move fmap to L0B
+                # load 3d: move fmap to L0B
+                # dma mode: change to zZ in L1 first
                 fmap_shape_fmap_matrix = (real_g,
                                           batch_size,
                                           hw_mad_1,
@@ -827,15 +852,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                     )
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
                                                     fmap_matrix, fmap_dtype)
-
+                # dma_mode: move fmap(zZ) to L0B
+                # swap the last two axes
                 if self.l0b_dma_flag:
                     fmap_shape_fmap_matrix = self.shapelist.get('fmap_fmap_matrix')
                     fmap_fractal_with_dma = tvm.compute(fmap_shape_fmap_matrix,
                                                         lambda *indices:
                                                         fmap_fractal(*indices[:-2], indices[-1], indices[-2]),
                                                         name='fmap_2_fractal_dma',
-                                                        tag='fmap_2_fractal_dma',
-                                                        attrs={'l0b_dma_flag': self.l0b_dma_flag})
+                                                        tag='fmap_2_fractal_dma')
                     fmap_fractal = fmap_fractal_with_dma
             else:
                 fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
@@ -1157,8 +1182,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                            attrs={'pad': self.pad, 'stride': self.stride,
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape,
-                                  'group_dict': self.group_dict,
-                                  'l0b_dma_flag': self.l0b_dma_flag})
+                                  'group_dict': self.group_dict})
 
     def _fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
         """
@@ -1248,6 +1272,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 hw_mad_1_indices, fkk_indices,
                 fmap_c0_indices, hw_mad_0_indices) = indices
 
+            # Dma Mode, set fractal be zZ first
             if self.l0b_dma_flag:
                 (group_index, n_vm_index,
                  hw_mad_1_indices, fkk_indices,
@@ -1277,6 +1302,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 c0_vm_index = \
                     (fkk_indices*BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
 
+            # 16 align
             if self.l0b_dma_flag:
                 return tvm.select(tvm.any(hw_vm_index < hw_fuse),
                                   fmap_2_col_matrix(n_vm_index, hw_vm_index,
