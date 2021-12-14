@@ -418,8 +418,8 @@ def proposal_d(cls_prob_dic,
     if feat_stride <= 0 or base_size <= 0 or \
             pre_nms_topn <= 0 or post_nms_topn <= 0:
         error_manager_vector.raise_err_input_value_invalid("proposal_d", "feat_stride, base_size, pre_nms_topn \
-                                                           and post_nms_topn"                                                                             , "greater than 0", "{}, {}, {} \
-                                                           and {}"                                                                  .format(feat_stride, base_size, pre_nms_topn, \
+                                                           and post_nms_topn", "greater than 0", "{}, {}, {} \
+                                                           and {}".format(feat_stride, base_size, pre_nms_topn, \
                                                            post_nms_topn))
 
     if pre_nms_topn > 6000 or post_nms_topn > 6000:

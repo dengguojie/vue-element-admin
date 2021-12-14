@@ -91,7 +91,8 @@ class Pdist():
                 self.num_each_loop = self.ub_size_bytes // (
                     2 * self.fp32_bytes + self.fp16_bytes) // self.num_fp32_each_block * self.num_fp32_each_block
             else:
-                self.num_each_loop = self.ub_size_bytes // 2 // self.fp32_bytes // self.num_fp32_each_block * self.num_fp32_each_block
+                self.num_each_loop = self.ub_size_bytes // 2 // self.fp32_bytes // self.num_fp32_each_block * \
+                                     self.num_fp32_each_block
             self.ub_tensor_each_loop = self.num_each_loop
         # request gm
         self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, self.shape_x, name="input_x_gm", scope=tik.scope_gm)
@@ -110,10 +111,13 @@ class Pdist():
             with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_id:
                 self.init_ub_tensor_and_scalar()
                 with self.tik_instance.for_range(0, num_block_each_core) as block_num_id:
-                    #We conceptually iterate over tuples of (i, j, out_index) where i is the first vector from the input,
-                    # j is the second, and out_index is the result index. and infers what i and j are from the value of out_index.
+                    # We conceptually iterate over tuples of (i, j, out_index)
+                    # where i is the first vector from the input,
+                    # j is the second, and out_index is the result index. and infers
+                    # what i and j are from the value of out_index.
                     with self.tik_instance.for_range(0, self.data_each_block) as k:
-                        out_index = core_id * self.data_each_block * num_block_each_core + block_num_id * self.data_each_block + k
+                        out_index = core_id * self.data_each_block * num_block_each_core + \
+                                    block_num_id * self.data_each_block + k
                         i2 = self.rows - .5
                         expr_i3 = i2 * i2 - 2 * out_index - 1
                         self.scalar_i3.set_as(expr_i3)
@@ -122,16 +126,18 @@ class Pdist():
                         self.scalar_i.set_as(expr_i4)
                         expr_j = out_index - self.rows * self.scalar_i + self.scalar_i * \
                                  (self.scalar_i + 1) / 2 + self.scalar_i + 1
-                        self.pdist_compute_each_core(self.scalar_i * self.num_each_core, expr_j * self.num_each_core, k)
+                        self.pdist_compute_each_core(self.scalar_i * self.num_each_core,
+                                                     expr_j * self.num_each_core, k)
                     if self.p > 0:
                         self.pdist_sum_process(self.data_each_block, 0, 1)
-                    output_y_gm_index = core_id * self.data_each_block * num_block_each_core + block_num_id * self.data_each_block
+                    output_y_gm_index = core_id * self.data_each_block * num_block_each_core + \
+                                        block_num_id * self.data_each_block
                     #to improve the accuracy, convert fp16 to fp32, convert it back to fp16  after calculation
                     if self.dtype_y == "float16":
                         self.pdist_convert(self.dst_sum_fp16_tensor, self.dst_sum_tensor, self.data_each_block,
                                            "float32")
-                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor, 0, 1,
-                                                    1, 0, 0)
+                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor,
+                                                    0, 1, 1, 0, 0)
                     else:
                         self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_tensor, 0, 1, 1,
                                                     0, 0)
@@ -142,7 +148,8 @@ class Pdist():
                 with self.tik_instance.for_range(0, self.data_each_block) as k:
                     #We conceptually iterate over tuples of (i, j, k) where i is the first vector from the input,
                     # j is the second, and k is the result index. and infers what i and j are from the value of k.
-                    out_index = self.ai_core_num * num_block_each_core * self.data_each_block + last_block_id * self.data_each_block + k
+                    out_index = self.ai_core_num * num_block_each_core * self.data_each_block + \
+                                last_block_id * self.data_each_block + k
                     i2 = self.rows - .5
                     expr_i3 = i2 * i2 - 2 * out_index - 1
                     self.scalar_i3.set_as(expr_i3)
@@ -155,7 +162,8 @@ class Pdist():
                 if self.p > 0:
                     self.pdist_sum_process(self.data_each_block, 0, 1)
 
-                output_y_gm_index = self.ai_core_num * num_block_each_core * self.data_each_block + last_block_id * self.data_each_block
+                output_y_gm_index = self.ai_core_num * num_block_each_core * self.data_each_block + \
+                                    last_block_id * self.data_each_block
 
                 #to improve the accuracy, convert fp16 to fp32, convert it back to fp16  after calculation
                 if self.dtype_y == "float16":

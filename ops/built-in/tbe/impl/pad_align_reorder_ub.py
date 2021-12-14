@@ -168,7 +168,7 @@ class PadCompute:
         set input and output tensor
         """
         self.input_x_gm = tik_instance.Tensor(self.dtype,
-                                              [_prod(self.in_shape),],
+                                              [_prod(self.in_shape), ],
                                               name="input_x_gm",
                                               scope=tik.scope_gm)
         self.output_y_gm = tik_instance.Tensor(self.dtype, [
@@ -494,7 +494,7 @@ class PadCompute:
         """
         tik_instance = self.set_tik_instance()
         self.ubuf = tik_instance.Tensor(self.dtype,
-                    [self.ub_maxsize,], name="in_ubuf", scope=tik.scope_ubuf)
+                    [self.ub_maxsize, ], name="in_ubuf", scope=tik.scope_ubuf)
 
         if self.ou_shape != self.in_shape:
             split_core_idx, core_loop_list, model_list = \

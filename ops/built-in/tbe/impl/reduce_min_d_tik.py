@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
