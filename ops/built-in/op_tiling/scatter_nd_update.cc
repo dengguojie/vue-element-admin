@@ -207,7 +207,6 @@ bool ScatterNdUpdateTiling(const std::string& opType, const ge::Operator& opPara
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const std::vector<int64_t>& varShape = input_desc->MutableShape().GetDims();
-  const ge::DataType VarDtype = input_desc->GetDataType();
 
   input_desc = operator_info->MutableInputDesc(1);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
