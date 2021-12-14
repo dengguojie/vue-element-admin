@@ -25,6 +25,8 @@ from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 from impl.dynamic.replication_pad_v3 import replication_pad_v3
 from impl.dynamic.pad_v3_5hd import pad_v3_5hd
+from impl.util import util_select_op_base
+
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -45,6 +47,44 @@ class Constant:
     MODE5 = 5
     THRESHOLD_VALUE = 8192
     BLOCK = 32
+
+
+def op_select_format(x, paddings, constant_values, y, mode, paddings_contiguous, kernel_name="pad_v3"):
+    """
+    when the attr mode is constant, the PadV3 can support HC1HWC0 and ND.
+    """
+    dtype_x = ["float16", "float", "int32", "float16", "float", "int32"]
+    dtype_paddings = ["int32", "int32", "int32", "int64", "int64", "int64"]
+
+    format_tensor = ["ND"] * len(dtype_x)
+    format_scalar = format_tensor
+    if mode == 'constant':
+        format_scalar = format_scalar + format_scalar
+        format_tensor = format_tensor + ["NC1HWC0"] * len(dtype_x)
+        dtype_x = dtype_x + dtype_x
+        dtype_paddings = dtype_paddings + dtype_paddings
+
+    dtype_str_x = ','.join(dtype_x)
+    dtype_str_paddings = ','.join(dtype_paddings)
+    format_str_scalar = ','.join(format_scalar)
+    format_str_tensor = ','.join(format_tensor)
+
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str_x, format=format_str_tensor,
+        unknownshape_format=format_str_tensor)
+    input1 = util_select_op_base.gen_param(
+        classify="input1", name="paddings", datatype=dtype_str_paddings, format=format_str_scalar,
+        unknownshape_format=format_str_scalar)
+    input2 = util_select_op_base.gen_param(
+        classify="input2", name="constant_values", datatype=dtype_str_x, format=format_str_scalar,
+        unknownshape_format=format_str_scalar)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_str_x, format=format_str_tensor,
+        unknownshape_format=format_str_tensor)
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
@@ -302,13 +342,11 @@ class PadV3Init:
                 output_dims = self.tiling_output_shape[i]
                 output_dims.set_as(input_dims + pad_left + pad_right)
 
-    def init_src_dst_gm(self, input_dict_list, output_dict_list, pad_input_idx=0, pad_outnput_idx=0):
+    def init_src_dst_gm(self, input_dict_list, pad_input_idx=0, pad_outnput_idx=0):
         """
         init gm tensor set tiling, input, paddings output tensor(gm)
         :param
         input_dict_list: the dict of input_dict
-        :param
-        output_dict_list: output_dict_list
         :param
         pad_input_idx: pad_input_idx
         :param
@@ -1468,6 +1506,6 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
 
     obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
-    obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
+    obj.init_src_dst_gm((x, paddings), pad_input_idx=0, pad_outnput_idx=0)
 
     return obj.pad_compute()
