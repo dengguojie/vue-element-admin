@@ -394,7 +394,7 @@ def _do_cast(params, src_ubuf, dst_ubuf, data_len, dtype_src, dtype_dst):
     # vconv count of elements every time
     ele_cnt = 128
     vconv_group = 255
-    # vconv_ele = vconv_group * ele_cnt  #32640
+    # `vconv_ele = vconv_group * ele_cnt  #32640`
     vconv_ele = 32640
     if dtype_src == "int8" and dtype_dst == "float16":
         vconv_insn = "vconv_s82f16"
