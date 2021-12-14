@@ -2502,25 +2502,33 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
   vector<int64_t> y_shape;
   auto input_dims = x_shape.GetDims();
   int64_t input_shape_size = x_shape.GetShapeSize();
+  int64_t dims_num = x_shape.GetDimNum();
   if (input_shape_size != UNKNOWN_DIM) {
     // input shape: known
     y_shape.push_back(UNKNOWN_DIM);
     y_shape.push_back(input_dims.size());
-
     std::vector<std::pair<int64_t, int64_t>> range;
-    int64_t dims_num = x_shape.GetDimNum();
     range.emplace_back(std::make_pair(0, input_shape_size));
     range.emplace_back(std::make_pair(dims_num, dims_num));
     y_desc->SetShapeRange(range);
+  } else if (input_dims == UNKNOWN_RANK) {
+    // input shape: unknown rank
+    y_shape.push_back(UNKNOWN_DIM);
+    y_shape.push_back(UNKNOWN_DIM);
   } else {
-    if (input_dims == UNKNOWN_RANK) {
-      // input shape: unknown rank
-      y_shape.push_back(UNKNOWN_DIM);
-      y_shape.push_back(UNKNOWN_DIM);
-    } else {
-      // input shape: unknown dims
-      y_shape.push_back(UNKNOWN_DIM);
-      y_shape.push_back(input_dims.size());
+    // input shape: unknown dims
+    y_shape.push_back(UNKNOWN_DIM);
+    y_shape.push_back(input_dims.size());
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    if (x_desc->GetShapeRange(input_range) == GRAPH_SUCCESS) {
+      int64_t out_shape_max = 1;
+      for (int i = 0; i < dims_num; i++) {
+        out_shape_max *= input_range[i].second;
+      }
+      std::vector<std::pair<int64_t, int64_t>> output_range;
+      output_range.emplace_back(std::make_pair(0, out_shape_max));
+      output_range.emplace_back(std::make_pair(dims_num, dims_num));
+      y_desc->SetShapeRange(output_range);
     }
   }
 

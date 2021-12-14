@@ -22,3 +22,14 @@ TEST_F(where, where_infershape_success){
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(where, where_infershape_unknow_dim){
+  ge::op::Where op;
+  auto shape_x = std::vector<int64_t>({-1});
+  std::vector<std::pair<int64_t, int64_t>> range_x = {{1, 6}};
+  auto format_x = ge::FORMAT_NC1HWC0;
+  auto tensor_desc_x = create_desc_shape_range(shape_x, ge::DT_INT64, format_x, shape_x, format_x, range_x);
+  op.UpdateInputDesc("x", tensor_desc_x);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
