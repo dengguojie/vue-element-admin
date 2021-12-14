@@ -291,7 +291,7 @@ TEST_F(ConcatD, concat_d_infer_shape_dynamic3_fp16) {
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
       {1, 1},
       {12, 12},
-      {2, -1},
+      {1, -1},
       {64, 64},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
@@ -1129,7 +1129,7 @@ TEST_F(ConcatD, concatv2_infer_shape_dynamic6_fp16) {
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {3, -1},
+      {0, -1},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }

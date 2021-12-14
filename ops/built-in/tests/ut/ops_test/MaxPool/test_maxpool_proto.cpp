@@ -380,7 +380,7 @@ TEST_F(MaxPoolProto, maxpool_proto_12) {
 
   // expect result
   std::vector<int64_t> expected_shape = {-1, -1, -1, -1};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {1, -1}, {1, -1}, {1, -1}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{0, -1}, {0, -1}, {0, -1}, {0, -1}};
 
   // create desc
   auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, test_format, shape_x1, test_format, range_x1);

@@ -268,7 +268,7 @@ TEST_F(resize_bilinear_v2_infer_test, resize_bilinear_v2_unknownrangk_nhwc) {
   vector<uint32_t> resize_value = {1, 2};
   // expect result info
   std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1, -1}, {0, -1}, {0, -1}, {1, -1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{0, -1}, {0, -1}, {0, -1}, {0, -1}};
 
   // gen ReduceSum op
   auto test_op = op::ResizeBilinearV2("ResizeBilinearV2");

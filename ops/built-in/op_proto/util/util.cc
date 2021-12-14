@@ -1261,7 +1261,7 @@ void MakeUpShapeRange(const std::vector<int64_t>& shape, std::vector<std::pair<i
   if (range.empty()) {
     for (size_t i = 0; i < shape.size(); i++) {
       if (shape[i] == -1) {
-        range.push_back(std::pair<int64_t, int64_t>(1, -1));
+        range.push_back(std::pair<int64_t, int64_t>(0, -1));
       } else {
         range.push_back(std::pair<int64_t, int64_t>(shape[i], shape[i]));
       }

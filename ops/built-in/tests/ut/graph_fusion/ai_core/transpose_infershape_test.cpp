@@ -199,7 +199,7 @@ TEST_F(Transpose_infer_pass_test, Transpose_infer_pass_test_4) {
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
 
   std::vector<int64_t> expected_shape = {-1, -1, -1, -1};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {1, -1}, {1, -1}, {1, -1}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{0, -1}, {0, -1}, {0, -1}, {0, -1}};
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
@@ -245,7 +245,7 @@ TEST_F(Transpose_infer_pass_test, Transpose_infer_pass_test_5) {
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
 
   std::vector<int64_t> expected_shape = {-1, -1, -1, -1};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, -1}, {1, -1}, {1, -1}, {1, -1}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{0, -1}, {0, -1}, {0, -1}, {0, -1}};
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
