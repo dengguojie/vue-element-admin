@@ -20,7 +20,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
-# 'pylint: disable=not-use-list-comprehension,unused-argument,too-many-locals
+# 'pylint: disable=not-use-list-comprehension,unused-argument,too-many-locals,too-many-arguments
 @fusion_manager.register("renorm")
 def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     """

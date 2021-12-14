@@ -371,6 +371,7 @@ class RoiClass():
         self.range_end.set_as(self.roi_actual_num_ub)
         self.proposal_ub_validnum = self.tik_instance.Scalar("int32")
 
+    # 'pylint: disable=too-many-statements
     def get_proposal_height_width(self, tiling_index, blockid):
         """
         calculate all proposals's height and width which are loaded to ub
@@ -410,7 +411,7 @@ class RoiClass():
                             TYPELEN_DICT[self.dtype] // 32)
                 else:
                     with self.tik_instance.if_scope(
-                        tiling_index == (self.tiling_num - 1)): 
+                        tiling_index == (self.tiling_num - 1)):
                         self.proposal_ub_validnum.set_as(self.roi_max_num - \
                             tiling_index * self.proposal_num_per_tiling)
 

@@ -247,7 +247,7 @@ bool LayerNormBetaGammaBackpropV2Tiling(const std::string& op_type, const ge::Op
   bool dynamic_normal = op_compile_info_json.dynamic_normal;
   int32_t normal_dim = 1;
   int32_t reduce_dim = 1;
-  int32_t i;
+  size_t i;
   if (core_num <= 0) {
     GELOGE(ge::FAILED, "Get invalid core_num.");
     return false;

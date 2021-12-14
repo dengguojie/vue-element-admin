@@ -52,8 +52,8 @@ def _tf_n52n8(tik_instance, rois_ub, rois_n5, block_num):
         rois_ub[rois_num, 4].set_as(rois_n5[rois_num, 4])
 
 
-# pylint: disable=too-many-statements,too-many-locals,too-many-branches
-# pylint: disable=no-member
+# 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# 'pylint: disable=no-member,too-many-arguments
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -250,6 +250,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
            grid_h_fp32, roi_int32_fm_index
 
 
+# 'pylint: disable=too-many-arguments
 def roi_align_tik(tik_instance, feature_map, rois, roisn, ret,
                   scale, pool_h, pool_w, sample_ratio, roi_end_mode=0, aligned=True):
     """
@@ -409,6 +410,7 @@ class RoiExtractor(object):
     """
     roi_extractor op
     """
+    # 'pylint: disable=too-many-arguments
     def __init__(self, feats, rois, roi_feats,
                  finest_scale=56, roi_scale_factor=0,
                  spatial_scale=None, pooled_h=7, pooled_w=7,
@@ -459,7 +461,6 @@ class RoiExtractor(object):
         :return: target_lvls
         """
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
-        data_each_block = BLOCK_BIT_SIZE // dtype_bytes_size
 
         x1_fp16 = self.tik_instance.Tensor("float16", (ALIGN_LEN,), name="rois_x1_fp16", scope=tik.scope_ubuf)
         y1_fp16 = self.tik_instance.Tensor("float16", (ALIGN_LEN,), name="rois_y1_fp16", scope=tik.scope_ubuf)
@@ -760,7 +761,7 @@ class RoiExtractor(object):
         return self.tik_instance
 
 
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

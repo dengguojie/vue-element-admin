@@ -24,11 +24,12 @@ from te.platform.fusion_manager import fusion_manager
 
 
 @fusion_manager.register("rnn_gen_mask")
-class RnnGenMask(object):
+class RnnGenMask():
     """
     class for rnn_gen_mask
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, seq_length, seq_mask, num_step, hidden_size, kernel_name):
         """__init__"""
         self.tik_instance = tik.Tik(tik.Dprofile())
@@ -160,4 +161,3 @@ def rnn_gen_mask(seq_length, seq_mask, num_step, hidden_size, kernel_name="rnn_g
     op_obj = RnnGenMask(seq_length, seq_mask, num_step, hidden_size, kernel_name)
 
     return op_obj.rnn_gen_mask_compute()
-
