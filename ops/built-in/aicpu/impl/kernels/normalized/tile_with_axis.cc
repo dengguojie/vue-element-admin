@@ -32,22 +32,21 @@ uint32_t TileWithAxisCpuKernel::TileComputeByAxis(CpuKernelContext &ctx) {
   if (tiles == 1) {
     T *input0 = reinterpret_cast<T *>(input->GetData());
     T *output0 = reinterpret_cast<T *>(output->GetData());
-    (void)memcpy_s(output0, output->GetDataSize(), input0,
-                   output->GetDataSize());
+    (void)memcpy_s(output0, output->GetDataSize(), input0, output->GetDataSize());
 
     return KERNEL_STATUS_OK;
   }
 
   // 获取input和output的shape
-  std::vector<int64_t> shape_input = input->GetTensorShape()->GetDimSizes();
-  std::vector<int64_t> shape_output = output->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> input_shape = input->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> output_shape = output->GetTensorShape()->GetDimSizes();
   // output赋值, reshape bcast
   Eigen::DSizes<Eigen::DenseIndex, DIMS> in_reshape;
   Eigen::DSizes<Eigen::DenseIndex, DIMS> out_reshape;
   Eigen::array<Eigen::DenseIndex, DIMS> bcast;
   for (int32_t i = 0; i < DIMS; i++) {
-    in_reshape[DIMS - i - 1] = shape_input[i];
-    out_reshape[DIMS - i - 1] = shape_output[i];
+    in_reshape[DIMS - i - 1] = input_shape[i];
+    out_reshape[DIMS - i - 1] = output_shape[i];
     bcast[i] = (i == (DIMS - axis - 1)) ? tiles : 1;
   }
 
@@ -93,7 +92,7 @@ uint32_t TileWithAxisCpuKernel::TileComputeInDims(CpuKernelContext &ctx) {
     case 8:
       return TileComputeByAxis<T, OPTION, 8>(ctx);
     default:
-      KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%zu].",
+      KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%d].",
                        ctx.GetOpType().c_str(), dims);
       return KERNEL_STATUS_PARAM_INVALID;
   }
