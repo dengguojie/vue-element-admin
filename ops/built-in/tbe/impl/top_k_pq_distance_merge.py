@@ -169,7 +169,7 @@ class TopKPQDistanceMerge(object):
         self.tik_instance.vconcat(vconcat_proposal_ub, pq_ivf_ub, vconcat_repeats_num, 0)
         self.tik_instance.vconcat(vconcat_proposal_ub, pq_index_ub, vconcat_repeats_num, 1)
 
-        src_list = [vconcat_proposal_ub[0], 
+        src_list = [vconcat_proposal_ub[0],
                     vconcat_proposal_ub[self.handle_num_align_16 * PROPOSAL_NUM],
                     vconcat_proposal_ub[0],
                     vconcat_proposal_ub[0]]

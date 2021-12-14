@@ -123,7 +123,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     """
     positive_tc_transfer = [("NHWC", "NC1HWC0"), ("NDHWC", "NDC1HWC0"), ("NHWC", "FRACTAL_NZ"), ("ND", "FRACTAL_NZ"),
                              ("NCHW", "FRACTAL_NZ"), ("NDHWC", "FRACTAL_Z_3D"), ("NC1HWC0", "FRACTAL_Z")]
-    positive_ntc_transfer = [("NCHW","NC1HWC0"), ("NCDHW", "NDC1HWC0"), ("HWCN", "FRACTAL_Z"), ("ND", "FRACTAL_Z"),
+    positive_ntc_transfer = [("NCHW", "NC1HWC0"), ("NCDHW", "NDC1HWC0"), ("HWCN", "FRACTAL_Z"), ("ND", "FRACTAL_Z"),
                              ("NCHW", "FRACTAL_Z"), ("DHWCN", "FRACTAL_Z_3D"), ("NCDHW", "FRACTAL_Z_3D")]
     negative_tc_transfer = [("NC1HWC0", "NHWC"), ("NDC1HWC0", "NDHWC"), ("FRACTAL_NZ", "NHWC"), ("FRACTAL_NZ", "ND"),
                              ("FRACTAL_NZ", "NCHW"), ("FRACTAL_Z_3D", "NDHWC"), ("FRACTAL_NZ", "NC1HWC0")]
@@ -215,6 +215,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         four_2_five_c04.four_2_five_c04(src, dst, src_format, dst_format, kernel_name)
     else:
         error_manager_vector.raise_err_specific_reson("trans_data", "not support the format transfer!")
+
 
 # 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.register("trans_data")
