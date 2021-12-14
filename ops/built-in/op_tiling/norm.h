@@ -115,9 +115,8 @@ class Norm {
     bool Init();
     bool GetNormPattern();
     bool EliminateOne();
-    void InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& common_flag,
-                          const int32_t& reduce_flag, const int32_t& broadcast_flag,
-                          const int32_t& reduce_broadcast_flag);
+    void InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
+                          const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const;
     bool FusedAxis();
     bool GetUbSizeInfo();
     bool ProcessBlockTilingAndReorder();
@@ -151,7 +150,7 @@ class Norm {
     bool IsNeedAlignedInUb() const;
     bool GetVarValue();
     bool CalcInputAlignShape();
-    NormBroadcastMode JudgeBroadcastMode(const std::array<int64_t, NORM_MAX_DIM_LEN>& before_shape);
+    NormBroadcastMode JudgeBroadcastMode(const std::array<int64_t, NORM_MAX_DIM_LEN>& before_broadcast_shape) const;
     int32_t CalcMinEliminateOneIndex() const;
     int32_t GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const;
     int64_t CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const;
