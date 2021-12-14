@@ -731,6 +731,27 @@ REG_OP(SegmentMaxD)
     .OP_END_FACTORY_REG(SegmentMaxD)
 
 /**
+*@brief Computes the sum along segments of a tensor . \n
+
+*@par Inputs:
+*Two inputs, including:
+* @li x: A Tensor of type NumberType.
+* @li segment_ids: A Tensor of type IndexNumberType, whose shape is a prefix
+* of "x.shape".
+
+*@par Outputs:
+*y: A Tensor of type NumberType . \n
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator UnsortedSegmentSum.
+*/
+REG_OP(SegmentSum)
+    .INPUT(x, TensorType::NumberType())
+    .INPUT(segment_ids, TensorType::IndexNumberType())
+    .OUTPUT(y, TensorType::NumberType())
+    .OP_END_FACTORY_REG(SegmentSum)
+
+/**
 *@brief Returns a one-hot tensor. The locations represented by index in "x" take value "on_value",
 *         while all other locations take value "off_value" . \n
 
