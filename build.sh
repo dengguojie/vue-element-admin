@@ -118,6 +118,7 @@ set_env(){
   echo  export OP_TEST_FRAME_INSTALL_HOME=\$ASCEND_CODE_HOME/tools/op_test_frame/python >> ~/.bashrc
   echo  export OPS_SOURCE_PATH=\$ASCEND_CODE_HOME/ops/built-in/tbe>> ~/.bashrc
   echo  export ASCEND_OPP_PATH=\$ASCEND_HOME/opp >> ~/.bashrc
+  echo  export TOOLCHAIN_HOME=\$ASCEND_HOME/toolkit >> ~/.bashrc
     
   if [ ! $usr_local ];then
     echo  export PYTHONPATH=\$OPS_SOURCE_PATH:\$OP_TEST_FRAME_INSTALL_HOME:\$ASCEND_HOME/atc/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
