@@ -50,7 +50,6 @@ from .unsorted_segment_prod import unsorted_segment_prod
 from .gather_nd import gather_nd
 from .apply_adagrad_da_d import apply_adagrad_da_d
 from .gather import gather
-from .segment_sum import segment_sum
 from .gather_v2 import gather_v2
 from .max_pool_grad import max_pool_grad
 from .kl_div import kl_div

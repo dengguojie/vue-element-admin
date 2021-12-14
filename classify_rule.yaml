@@ -602,7 +602,6 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
-      - ops/built-in/framework/tf_plugin/segment_sum_plugin.cc
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
@@ -935,7 +934,6 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/scatter_non_aliasing_add.py
       - ops/built-in/tbe/impl/dynamic/scatter_sub.py
       - ops/built-in/tbe/impl/dynamic/scatter_update.py
-      - ops/built-in/tbe/impl/dynamic/segment_sum.py
       - ops/built-in/tbe/impl/dynamic/select_v2.py
       - ops/built-in/tbe/impl/dynamic/sigmoid.py
       - ops/built-in/tbe/impl/dynamic/sigmoid_grad.py

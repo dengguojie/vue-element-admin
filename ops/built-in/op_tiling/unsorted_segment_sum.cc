@@ -161,7 +161,6 @@ struct TilingParamsFp32 {
   int32_t output_ub_init_last_row_times_front_part_last_core_input_scalar;
   int32_t output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar;
   int32_t output_ub_init_last_row_times_last_part_last_core_input_scalar;
-  int32_t num_segments;
 };
 
 struct TilingParamsInt32 {
@@ -207,7 +206,6 @@ struct TilingParamsInt32 {
   int32_t repeat_times_last_part_lastcore;
   int32_t e_mov_times_gm2ub_input_scalar_lastcore;
   int32_t repeat_time_front_part_input_scalar_lastcore;
-  int32_t num_segments;
 };
 
 /******************COMMON_FUNCTION******************/
@@ -273,7 +271,7 @@ bool GetUssCompileParams(const std::string& op_type, const nlohmann::json& op_co
     return false;
   }
   ub_tensor_num = allVars["ub_tensor_num"].get<std::int32_t>();
-  OP_LOGD(UNSORTED_SEGMENT_SUM_OP_TYPE, " : GetCompileParams, core_num[%d], ub_size[%d].", core_num,
+  GELOGD("op [%s] : GetCompileParams, core_num[%d], ub_size[%d].", UNSORTED_SEGMENT_SUM_OP_TYPE.c_str(), core_num,
          ub_size);
   return true;
 }
@@ -329,6 +327,7 @@ bool GetTilingModeNoAtomic(
   id_once_num = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / INT32_BYTE;
   num_segment_max = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / input_byte;
   num_segment_max = num_segment_max / e_size;
+
   if (input_shape.empty()) {
     OP_LOGD("input shape is empty");
     return false;
@@ -340,11 +339,11 @@ bool GetTilingModeNoAtomic(
     // e big id big
     select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID;
     return true;
-  } else if (e_size > e_once_num && ids_size <= id_once_num) {
+  } else if (e_size > e_once_num && ids_size < id_once_num) {
     // e nig id small
     select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID;
     return true;
-  } else if (e_size <= e_once_num && ids_size <= id_once_num) {
+  } else if (e_size < e_once_num && ids_size < id_once_num) {
     // e small id small
     select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID;
     if (need_core > 1 && e_size < output_ub_ele_num_one_row) {
@@ -353,7 +352,7 @@ bool GetTilingModeNoAtomic(
       select_key = SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN;
     }
     return true;
-  } else if (ids_size > id_once_num && e_size <= e_once_num) {
+  } else if (ids_size > id_once_num && e_size < e_once_num) {
     // e small id big
     select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID;
     if (need_core > 1 && e_size < output_ub_ele_num_one_row) {
@@ -881,7 +880,7 @@ void ComputeENumParams(
   }
 }
 
-void InitTilingParams(TilingParamsFp32& params, int32_t num_segments) {
+void InitTilingParams(TilingParamsFp32& params) {
   // common params
   params.select_key_input_scalar = 0;
   params.need_core_num_input_scalar = 0;
@@ -968,12 +967,9 @@ void InitTilingParams(TilingParamsFp32& params, int32_t num_segments) {
   params.output_ub_init_last_row_times_front_part_last_core_input_scalar = 0;
   params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar = 0;
   params.output_ub_init_last_row_times_last_part_last_core_input_scalar = 0;
-
-  // num_segments init params
-  params.num_segments = num_segments;
 }
 
-void InitTilingParams(TilingParamsInt32& params, int32_t num_segments) {
+void InitTilingParams(TilingParamsInt32& params) {
   // common params
   params.select_key_input_scalar = 0;
   params.need_core_num_input_scalar = 0;
@@ -1015,12 +1011,9 @@ void InitTilingParams(TilingParamsInt32& params, int32_t num_segments) {
   params.repeat_times_last_part_lastcore = 0;
   params.e_mov_times_gm2ub_input_scalar_lastcore = 0;
   params.repeat_time_front_part_input_scalar_lastcore = 0;
-
-  // num_segments init params
-  params.num_segments = num_segments;
 }
 
-void WriteTilingParams(const std::string& opType, const TilingParamsFp32& params, OpRunInfo& run_info) {
+void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
   // common params
   ByteBufferPut(run_info.tiling_data, params.select_key_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
@@ -1110,14 +1103,9 @@ void WriteTilingParams(const std::string& opType, const TilingParamsFp32& params
   ByteBufferPut(run_info.tiling_data,
                 params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
-
-  if (opType == "SegmentSum") {
-    // num_segments params
-    ByteBufferPut(run_info.tiling_data, params.num_segments);
-  }
 }
 
-void WriteTilingParams(const std::string& opType, const TilingParamsInt32& params, OpRunInfo& run_info) {
+void WriteTilingParams(const TilingParamsInt32& params, OpRunInfo& run_info) {
   // common params
   ByteBufferPut(run_info.tiling_data, params.select_key_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
@@ -1159,218 +1147,211 @@ void WriteTilingParams(const std::string& opType, const TilingParamsInt32& param
   ByteBufferPut(run_info.tiling_data, params.repeat_times_last_part_lastcore);
   ByteBufferPut(run_info.tiling_data, params.e_mov_times_gm2ub_input_scalar_lastcore);
   ByteBufferPut(run_info.tiling_data, params.repeat_time_front_part_input_scalar_lastcore);
-
-  if (opType == "SegmentSum") {
-    // num_segments params
-    ByteBufferPut(run_info.tiling_data, params.num_segments);
-  }
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& params) {
-  OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
-  OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
-  OP_LOGD(op_type, " : params.input_ele_num_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.select_key_input_scalar=%d", op_type.c_str(), params.select_key_input_scalar);
+  GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
+  GELOGD("op [%s] : params.input_ele_num_front_core_input_scalar=%d", op_type.c_str(),
          params.input_ele_num_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_mov_times_gm2ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_burst_len_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_burst_len_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_burst_len_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_burst_len_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_burst_len_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_burst_len_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_ele_num_ub_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_ele_num_ub_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_rows_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_rows_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_rows_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_rows_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_rows_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_rows_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_mov_times_gm2ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_burst_len_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_burst_len_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_burst_len_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_burst_len_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_ele_num_ub_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_ele_num_ub_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_rows_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_rows_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_front_rows_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_rows_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_rows_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.input_last_rows_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_ele_num_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_ele_num_last_core_input_scalar=%d", op_type.c_str(),
          params.input_ele_num_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_mov_times_gm2ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_burst_len_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_burst_len_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_burst_len_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_burst_len_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_burst_len_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_burst_len_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_ele_num_ub_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_ele_num_ub_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_rows_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_rows_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_rows_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_rows_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_rows_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_rows_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_mov_times_gm2ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_burst_len_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_burst_len_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_burst_len_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_burst_len_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_ele_num_ub_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_ele_num_ub_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_front_rows_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_front_rows_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_front_rows_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_rows_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_rows_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.input_last_rows_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
-  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
-  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_input_scalar=%d", op_type.c_str(), params.e_num_input_scalar);
+  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar=%d", op_type.c_str(), params.e_mov_times_gm2ub_input_scalar);
+  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_ub2gm_front_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
-  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_front_part_input_scalar=%d", op_type.c_str(), params.e_num_front_part_input_scalar);
+  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_ub2gm_last_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
-  OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_last_part_input_scalar=%d", op_type.c_str(), params.e_num_last_part_input_scalar);
+  GELOGD("op [%s] : params.ids_size_input_scalar=%d", op_type.c_str(), params.ids_size_input_scalar);
+  GELOGD("op [%s] : params.ids_ele_num_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_mov_times_gm2ub_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_mov_times_gm2ub_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_front_burst_len_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_front_burst_len_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_front_burst_len_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_last_burst_len_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_last_burst_len_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_last_burst_len_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_mov_times_gm2ub_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_mov_times_gm2ub_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_front_burst_len_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_front_burst_len_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_front_burst_len_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_last_burst_len_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_last_burst_len_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_last_burst_len_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_times_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_times_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_times_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_times_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_times_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_times_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_times_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_times_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_axis_align_front_part_ele_num_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_axis_align_front_part_ele_num_input_scalar=%d", op_type.c_str(),
          params.input_last_axis_align_front_part_ele_num_input_scalar);
-  OP_LOGD(op_type, " : params.input_last_axis_align_floor_ele_num_input_scalar=%d",
+  GELOGD("op [%s] : params.input_last_axis_align_floor_ele_num_input_scalar=%d", op_type.c_str(),
          params.input_last_axis_align_floor_ele_num_input_scalar);
-  OP_LOGD(op_type, " : params.last_part_vadd_mask_input_scalar=%d",
+  GELOGD("op [%s] : params.last_part_vadd_mask_input_scalar=%d", op_type.c_str(),
          params.last_part_vadd_mask_input_scalar);
-  OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_gm2ub_last_burst_len_input_scalar);
 
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
+         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
          params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& params) {
-  OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
-  OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
-  OP_LOGD(op_type, " : params.num_segments_front_core_input_scalar=%d",
+  GELOGD("op [%s] : params.select_key_input_scalar=%d", op_type.c_str(), params.select_key_input_scalar);
+  GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
+  GELOGD("op [%s] : params.num_segments_front_core_input_scalar=%d", op_type.c_str(),
          params.num_segments_front_core_input_scalar);
-  OP_LOGD(op_type, " : params.num_segments_last_core_input_scalar=%d",
+  GELOGD("op [%s] : params.num_segments_last_core_input_scalar=%d", op_type.c_str(),
          params.num_segments_last_core_input_scalar);
-  OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
-  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_size_input_scalar=%d", op_type.c_str(), params.ids_size_input_scalar);
+  GELOGD("op [%s] : params.ids_mov_times_gm2ub_input_scalar=%d", op_type.c_str(),
          params.ids_mov_times_gm2ub_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_front_part_input_scalar);
-  OP_LOGD(op_type, " : params.ids_front_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_front_burst_len_input_scalar=%d", op_type.c_str(),
          params.ids_front_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_input_scalar=%d", op_type.c_str(),
          params.ids_ele_num_ub_last_part_input_scalar);
-  OP_LOGD(op_type, " : params.ids_last_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.ids_last_burst_len_input_scalar=%d", op_type.c_str(),
          params.ids_last_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
-  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
-  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_input_scalar=%d", op_type.c_str(), params.e_num_input_scalar);
+  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar=%d", op_type.c_str(), params.e_mov_times_gm2ub_input_scalar);
+  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_ub2gm_front_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
-  OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_front_part_input_scalar=%d", op_type.c_str(), params.e_num_front_part_input_scalar);
+  GELOGD("op [%s] : params.repeat_time_front_part_input_scalar=%d", op_type.c_str(),
          params.repeat_time_front_part_input_scalar);
-  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_ub2gm_last_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
-  OP_LOGD(op_type, " : params.repeat_time_last_part_input_scalar=%d",
+  GELOGD("op [%s] : params.e_num_last_part_input_scalar=%d", op_type.c_str(), params.e_num_last_part_input_scalar);
+  GELOGD("op [%s] : params.repeat_time_last_part_input_scalar=%d", op_type.c_str(),
          params.repeat_time_last_part_input_scalar);
 
-  OP_LOGD(op_type, " : params.align_scalar=%d",params.align_scalar);
-  OP_LOGD(op_type, " : params.align_scalar_lastcore=%d",
+  GELOGD("op [%s] : params.align_scalar=%d", op_type.c_str(), params.align_scalar);
+  GELOGD("op [%s] : params.align_scalar_lastcore=%d", op_type.c_str(),
          params.align_scalar_lastcore);
-  OP_LOGD(op_type, " : params.e_gm2ub_front_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_gm2ub_front_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_gm2ub_front_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
+  GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
          params.e_gm2ub_last_burst_len_input_scalar);
-  OP_LOGD(op_type, " : params.num_segment_max=%d",
+  GELOGD("op [%s] : params.num_segment_max=%d", op_type.c_str(),
          params.num_segment_max);
-  OP_LOGD(op_type, " : params.num_segment_max_time=%d",
+  GELOGD("op [%s] : params.num_segment_max_time=%d", op_type.c_str(),
          params.num_segment_max_time);
-  OP_LOGD(op_type, " : params.num_segment_max_time_lastcore=%d",
+  GELOGD("op [%s] : params.num_segment_max_time_lastcore=%d", op_type.c_str(),
          params.num_segment_max_time_lastcore);
-  OP_LOGD(op_type, " : params.front_num_segment=%d",
+  GELOGD("op [%s] : params.front_num_segment=%d", op_type.c_str(),
          params.front_num_segment);
-  OP_LOGD(op_type, " : params.front_num_segment_last=%d",
+  GELOGD("op [%s] : params.front_num_segment_last=%d", op_type.c_str(),
          params.front_num_segment_last);
-  OP_LOGD(op_type, " : params.front_num_segment_lastcore=%d",
+  GELOGD("op [%s] : params.front_num_segment_lastcore=%d", op_type.c_str(),
          params.front_num_segment_lastcore);
-  OP_LOGD(op_type, " : params.front_num_segment_last_lastcore=%d",
+  GELOGD("op [%s] : params.front_num_segment_last_lastcore=%d", op_type.c_str(),
          params.front_num_segment_last_lastcore);
-  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d",
+  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
          params.e_ub2gm_front_burst_len_input_scalar_lastcore);
-  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d",
+  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
          params.e_ub2gm_last_burst_len_input_scalar_lastcore);
-  OP_LOGD(op_type, " : params.repeat_times=%d", params.repeat_times);
-  OP_LOGD(op_type, " : params.repeat_times_last_part=%d", params.repeat_times_last_part);
-  OP_LOGD(op_type, " : params.repeat_times_last_part_lastcore=%d",
+  GELOGD("op [%s] : params.repeat_times=%d", op_type.c_str(), params.repeat_times);
+  GELOGD("op [%s] : params.repeat_times_last_part=%d", op_type.c_str(), params.repeat_times_last_part);
+  GELOGD("op [%s] : params.repeat_times_last_part_lastcore=%d", op_type.c_str(),
          params.repeat_times_last_part_lastcore);
-  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar_lastcore=%d",
+  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar_lastcore=%d", op_type.c_str(),
          params.e_mov_times_gm2ub_input_scalar_lastcore);
-  OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar_lastcore=%d",
+  GELOGD("op [%s] : params.repeat_time_front_part_input_scalar_lastcore=%d", op_type.c_str(),
          params.repeat_time_front_part_input_scalar_lastcore);
-  OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
 // tiling function
@@ -1397,62 +1378,37 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
   const std::vector<int64_t>& ids_shape = op_paras.inputs[1].tensor[0].shape;
   const int32_t& input_size = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
   const int32_t& ids_size = std::accumulate(ids_shape.begin(), ids_shape.end(), 1, std::multiplies<int>());
-  OP_LOGD(op_type, " : input_size=%d, ids_size=%d", input_size, ids_size);
+  GELOGD("op [%s] : input_size=%d, ids_size=%d", op_type.c_str(), input_size, ids_size);
   if (input_shape.size() < ids_shape.size()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim of input must be greater than or equal with dim of ids");
     return false;
   }
   for (unsigned i = 0; i < ids_shape.size(); i++) {
-    OP_LOGD(op_type, " ids_shape[i] is %d",ids_shape[i]);
+    GELOGD("op[%s] ids_shape[i] is %d", op_type.c_str(), ids_shape[i]);
     if (input_shape[i] != ids_shape[i]) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
       return false;
     }
   }
   std::string key_num_segments = "num_segments";
-  int32_t num_segments;
-  if (op_type == "SegmentSum") {
-    std::vector<int64_t> shape_value;
-    std::string segment_id_dtype = op_paras.inputs[1].tensor[0].dtype;
-    auto pointer = std::get<0>(op_paras.const_inputs.at("segment_ids"));
-    auto size = std::get<1>(op_paras.const_inputs.at("segment_ids"));
-    uint32_t count = (segment_id_dtype == "int64")   ? size / sizeof(int64_t)
-                    : (segment_id_dtype == "int32") ? size / sizeof(int32_t)
-                    : 0;
-    if (segment_id_dtype == "int64") {
-      auto* data = (int64_t*)pointer;
-      while (count--) {
-        shape_value.push_back(*data++);
-      }
-    }
-    if (segment_id_dtype == "int32") {
-      auto* data = (int32_t*)pointer;
-      while (count--) {
-        shape_value.push_back(*data++);
-      }
-    }
-    num_segments = (*std::max_element(std::begin(shape_value), std::end(shape_value))) + 1;
-    OP_LOGD(op_type, " : num_segments=%d", num_segments);
-  } else {
-    if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
-      return false;
-    }
-    const int32_t* num_segments_ptr =
-      reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
-    num_segments = *num_segments_ptr;
-    if (num_segments <= 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments is small then 0");
-      return false;
-    }
-    OP_LOGD(op_type, " : num_segments=%d", num_segments);
+  if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
+    return false;
   }
+  const int32_t* num_segments_ptr =
+    reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
+  int32_t num_segments = *num_segments_ptr;
+  if (num_segments <= 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments is small then 0");
+    return false;
+  }
+  GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
   if (input_size == 0 || ids_size == 0) {
     TilingParamsFp32 params;
-    InitTilingParams(params, num_segments);
+    InitTilingParams(params);
     params.select_key_input_scalar = 0;
     params.need_core_num_input_scalar = 1;
-    WriteTilingParams(op_type, params, run_info);
+    WriteTilingParams(params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
@@ -1463,7 +1419,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     return true;
   }
   int32_t e_size = input_size / ids_size;
-  OP_LOGD(op_type, " e_size is %d", e_size);
+  GELOGD("op[%s] e_size is %d", op_type.c_str(), e_size);
   const std::string& input_dtype = op_paras.inputs[0].tensor[0].dtype;
   const std::string& ids_dtype = op_paras.inputs[1].tensor[0].dtype;
   bool flag = false;
@@ -1477,7 +1433,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
 
   EleByte output_ele_byte = input_ele_byte;
   int32_t output_ub_ele_num_one_row = BYTE_BLOCK / output_ele_byte;
-  OP_LOGD(op_type, " output_ub_ele_num_one_row is %d", output_ub_ele_num_one_row);
+  GELOGD("op[%s] output_ub_ele_num_one_row is %d", op_type.c_str(), output_ub_ele_num_one_row);
   // get ids dtype
   EleByte ids_ele_byte = FP32_BYTE;
   flag = GetEleDtype(ids_dtype, ids_ele_byte);
@@ -1494,17 +1450,18 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
     return false;
   }
+
   if (input_dtype == DTYPE_FP32) {
     int32_t ub_tensor_size = 0;
     ComputeUbTensorSize(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, num_segments);
     if (e_size == 1) {
       ub_tensor_size = ub_tensor_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
     }
-    OP_LOGD(op_type, " : ub_tensor_size=%d", ub_tensor_size);
+    GELOGD("op [%s] : ub_tensor_size=%d", op_type.c_str(), ub_tensor_size);
     int32_t ub_tensor_ele_num = ub_tensor_size / input_ele_byte;
     // fp32 tiling params
     TilingParamsFp32 params;
-    InitTilingParams(params, num_segments);
+    InitTilingParams(params);
     // select key
     flag = GetTilingMode(input_shape, e_size, input_dtype, ub_tensor_ele_num, params.select_key_input_scalar,
                          num_segments);
@@ -1952,7 +1909,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
           BYTE_BLOCK);
     }
     // write tiling params to run_info
-    WriteTilingParams(op_type, params, run_info);
+    WriteTilingParams(params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
@@ -1963,7 +1920,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
   } else if (input_dtype == DTYPE_INT32 || input_dtype == DTYPE_FP16) {
     // int32 tiling params
     TilingParamsInt32 params;
-    InitTilingParams(params, num_segments);
+    InitTilingParams(params);
     // commmn params
     // select key
     int32_t e_once_num = 0;
@@ -1983,18 +1940,19 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     ComputeUbTensorSizeNoAtomic(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, ub_tensor_size_input,
                                 ub_tensor_size_output, output_ub_ele_num_one_row,
                                 params.need_core_num_input_scalar, mask, num_segments);
-    OP_LOGD(op_type, " : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
-           ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
+    GELOGD("op [%s] : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
+           op_type.c_str(), ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
 
     flag = GetTilingModeNoAtomic(input_shape, e_size, ids_size, input_dtype, ids_dtype, ub_tensor_size,
     ub_tensor_size_input, params.select_key_input_scalar, e_once_num, id_once_num, params.need_core_num_input_scalar,
     output_ub_ele_num_one_row, params.num_segment_max, mask, input_size, num_segments);
-    OP_LOGD(op_type, " :e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", e_once_num,
+    GELOGD("op[%s]:e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", op_type.c_str(), e_once_num,
            id_once_num, params.num_segment_max);
     if (!flag) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetTilingMode failed.");
       return false;
     }
+
     ComputeNumSegmentsParams(
       params.need_core_num_input_scalar, num_segments,
       params.num_segments_front_core_input_scalar, params.num_segments_last_core_input_scalar,
@@ -2024,7 +1982,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       params.repeat_times, params.repeat_times_last_part, params.repeat_times_last_part_lastcore,
       params.e_mov_times_gm2ub_input_scalar_lastcore, params.repeat_time_front_part_input_scalar_lastcore);
     // write tiling params to run_info
-    WriteTilingParams(op_type, params, run_info);
+    WriteTilingParams(params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
@@ -2038,5 +1996,4 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
 }
 
 REGISTER_OP_TILING_FUNC_BUFFERED(UnsortedSegmentSum, UnsortedSegmentSumTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(SegmentSum, UnsortedSegmentSumTiling);
 }  // namespace optiling
