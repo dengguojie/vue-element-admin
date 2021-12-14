@@ -30,6 +30,7 @@ from te.tik import all as _all
 from te.tik import any as _any
 from impl.util import util_select_op_base
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

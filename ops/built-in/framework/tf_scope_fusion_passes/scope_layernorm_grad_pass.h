@@ -40,16 +40,16 @@ class ScopeLayerNormGradPass : public ScopeBasePass {
 
   void GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) override;
 
-  void GenScopePatterns(ScopeFusionPatterns& patterns);
+  void GenScopePatterns(ScopeFusionPatterns& patterns) const;
 
  private:
   std::vector<ge::OperatorPtr> FindOutNodesShouldInScope(const Scope* scope, std::shared_ptr<ScopeGraph>& scope_graph,
                                                          const std::string& mask = "");
 
-  void FindInputXIndex(const Scope* scope, int& index);
+  void FindInputXIndex(const Scope* scope, int& index) const;
 
-  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name);
-  void IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape);
+  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name) const;
+  void IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) const;
   void FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name, int &index);
   void ProcessInputDy(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
   void ProcessInputX(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);

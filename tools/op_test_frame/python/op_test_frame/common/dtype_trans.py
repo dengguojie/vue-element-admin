@@ -21,21 +21,26 @@ dtype_trans module
 
 import numpy as np
 
+
 # 'pylint: disable=too-few-public-methods
-ASCEND_DTYPE_NP_DTYPE_MAP = {
-    "float16": np.float16,
-    "float32": np.float32,
-    "float64": np.float64,
-    "bool": np.bool,
-    "int8": np.int8,
-    "uint8": np.uint8,
-    "int16": np.int16,
-    "uint16": np.uint16,
-    "int32": np.int32,
-    "uint32": np.uint32,
-    "int64": np.int64,
-    "uint64": np.uint64
-}
+class Constant:
+    """
+    This class for Constant.
+    """
+    ASCEND_DTYPE_NP_DTYPE_MAP = {
+        "float16": np.float16,
+        "float32": np.float32,
+        "float64": np.float64,
+        "bool": np.bool,
+        "int8": np.int8,
+        "uint8": np.uint8,
+        "int16": np.int16,
+        "uint16": np.uint16,
+        "int32": np.int32,
+        "uint32": np.uint32,
+        "int64": np.int64,
+        "uint64": np.uint64
+    }
 
 
 
@@ -43,7 +48,7 @@ def get_all_str_dtypes():
     """
     get all str dtypes
     """
-    return ASCEND_DTYPE_NP_DTYPE_MAP.keys()
+    return Constant.ASCEND_DTYPE_NP_DTYPE_MAP.keys()
 
 
 def str_to_np_dtype(dtype: str):
@@ -53,7 +58,7 @@ def str_to_np_dtype(dtype: str):
     if not isinstance(dtype, str):
         return dtype
 
-    return ASCEND_DTYPE_NP_DTYPE_MAP.get(dtype)
+    return Constant.ASCEND_DTYPE_NP_DTYPE_MAP.get(dtype)
 
 
 def np_dtype_to_str(dtype):

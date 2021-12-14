@@ -283,6 +283,7 @@ class OpUTCustomCase(OpUTBaseCase):
                               case_line_num=json_obj.get("case_line_num"),
                               test_func_name=json_obj.get("test_func_name"))
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

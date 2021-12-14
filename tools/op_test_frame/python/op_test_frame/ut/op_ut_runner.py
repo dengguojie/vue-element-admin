@@ -38,6 +38,7 @@ from op_test_frame.utils import file_util
 
 from op_test_frame.ut.op_ut_case_info import CaseUsage
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -225,8 +226,6 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     return res
 
 
-SUCCESS = "success"
-FAILED = "failed"
 
 
 def _check_args(case_dir, test_report, cov_report):
@@ -281,14 +280,16 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
 
     :return: success or failed
     """
+    success = "success"
+    failed = "failed"
     print("start run ops ut time: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
     if not _check_args(case_dir, test_report, cov_report):
-        return FAILED
+        return failed
 
     case_file_info_list, load_has_err = ut_loader.load_ut_cases(case_dir)
     if not case_file_info_list:
         logger.log_err("Not found any test cases.")
-        return FAILED
+        return failed
 
     cov_combine_dir = _build_cov_data_path(cov_report_path)
     rpt_combine_dir = _build_report_data_path(test_report_path)
@@ -382,9 +383,9 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
     print("end run ops ut time: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
     if load_has_err:
         logger.log_err("Has error in case files, you can see error log by key word 'import case file failed'.")
-    run_result = SUCCESS if run_success and not load_has_err else FAILED
+    run_result = success if run_success and not load_has_err else failed
     if test_report.err_cnt > 0 or test_report.failed_cnt > 0:
-        run_result = FAILED
+        run_result = failed
     return run_result
 
 

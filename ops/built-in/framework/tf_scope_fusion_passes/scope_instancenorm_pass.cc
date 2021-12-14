@@ -174,7 +174,7 @@ void ScopeInstanceNormPass::GenerateFusionResult(const std::vector<Scope*>& scop
   return;
 }
 
-void ScopeInstanceNormPass::GenInstancenormScopePatterns(ScopeFusionPatterns& patterns) {
+void ScopeInstanceNormPass::GenInstancenormScopePatterns(ScopeFusionPatterns& patterns) const {
   // match instancenorm
   std::vector<ScopePattern*> instance;
   ScopePattern* instance_norm_cell = new (std::nothrow) ScopePattern();
@@ -194,7 +194,7 @@ void ScopeInstanceNormPass::GenInstancenormScopePatterns(ScopeFusionPatterns& pa
   patterns.push_back(instance);
 }
 
-void ScopeInstanceNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) {
+void ScopeInstanceNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) const {
   // match moments
   std::vector<ScopePattern*> instance;
   ScopePattern* moments_cell = new (std::nothrow) ScopePattern();
@@ -214,7 +214,7 @@ void ScopeInstanceNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& pattern
 }
 
 void ScopeInstanceNormPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
-                                           const std::string& base_name) {
+                                           const std::string& base_name) const {
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
   std::vector<std::string> mul_input_names;
   for (auto& it : nodes_map) {

@@ -20,11 +20,7 @@
  */
 #include "scope_decode_bbox_pass.h"
 
-#include <string>
-#include <cstring>
-
 #include "op_log.h"
-#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 namespace {

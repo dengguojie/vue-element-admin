@@ -20,6 +20,7 @@ file util module
 import os
 import stat
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

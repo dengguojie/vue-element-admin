@@ -27,6 +27,7 @@ from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
 from op_test_frame.ut.op_ut_case_info import OpUTCaseTrace
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

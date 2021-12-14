@@ -40,15 +40,15 @@ class ScopeInstanceNormGradPass : public ScopeBasePass {
 
   void GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) override;
 
-  void GenScopePatterns(ScopeFusionPatterns& patterns);
+  void GenScopePatterns(ScopeFusionPatterns& patterns) const;
 
  private:
   std::vector<ge::OperatorPtr> FindOutNodesShouldInScope(const Scope* scope, std::shared_ptr<ScopeGraph>& scope_graph,
                                                          const std::string& mask = "");
 
-  void FindInputXIndex(const Scope* scope, int& index);
+  void FindInputXIndex(const Scope* scope, int& index) const;
 
-  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name);
+  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name) const;
 
   void FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name, int& index);
   void ProcessInputDy(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);

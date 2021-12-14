@@ -40,7 +40,7 @@ class ScopeFastrcnnPredictionsPass : public ScopeBasePass {
 
   void GenBoolmaskScopePatterns(ScopeFusionPatterns& patterns);
   void GenMapScopePatterns(ScopeFusionPatterns& patterns);
-  void GenScopePatterns(ScopeFusionPatterns& patterns);
+  void GenScopePatterns(ScopeFusionPatterns& patterns) const;
 };
 }  // namespace ge
 #endif  // OPS_BUILT_IN_FRAMEWORK_TF_SCOPE_FUSION_PASSES_SCOPE_FASTRCNN_PREDICTIONS_PASS_H_

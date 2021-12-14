@@ -101,6 +101,7 @@ class FuncCache:
         """
         return self.err_msg
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

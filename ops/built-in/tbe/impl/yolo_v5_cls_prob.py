@@ -22,6 +22,7 @@ from impl import common_util
 from impl import constant_util as constant
 from impl import yolo_v5_correct_region_box
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

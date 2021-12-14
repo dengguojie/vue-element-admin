@@ -29,7 +29,6 @@ from op_test_frame.common import logger
 from . import rts_info
 
 
-
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 # 'pylint: disable=invalid-name,unused-variable,no-self-use
 # 'pylint: disable=too-many-arguments,too-many-public-methods

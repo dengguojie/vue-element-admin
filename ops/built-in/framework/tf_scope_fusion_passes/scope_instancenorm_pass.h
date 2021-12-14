@@ -38,9 +38,9 @@ class ScopeInstanceNormPass : public ScopeBasePass {
   Status LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& scope_graph, std::vector<ScopesResult>& results) override;
   void GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) override;
 
-  void GenInstancenormScopePatterns(ScopeFusionPatterns& patterns);
-  void GenMomentsScopePatterns(ScopeFusionPatterns& patterns);
-  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name);
+  void GenInstancenormScopePatterns(ScopeFusionPatterns& patterns) const;
+  void GenMomentsScopePatterns(ScopeFusionPatterns& patterns) const;
+  void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name) const;
 };
 }  // namespace ge
 #endif  // OPS_BUILT_IN_FRAMEWORK_TF_SCOPE_FUSION_PASSES_SCOPE_INSTANCENORM_PASS_H_

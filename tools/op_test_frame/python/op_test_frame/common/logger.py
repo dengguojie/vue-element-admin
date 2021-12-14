@@ -23,6 +23,7 @@ import inspect
 import traceback
 from datetime import datetime
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -38,7 +39,7 @@ def set_logger_level(level):
     :param level: level
     :return: None
     """
-    
+
     Constant.LOG_LEVEL = level
 
 

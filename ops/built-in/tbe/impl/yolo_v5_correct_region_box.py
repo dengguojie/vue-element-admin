@@ -23,6 +23,7 @@ from te import tik
 
 from impl import constant_util as constant
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -387,7 +388,7 @@ class CorrectBoxComputer():
           """
         # neg two
         NEG_TWO = -2
-        
+
         if tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
