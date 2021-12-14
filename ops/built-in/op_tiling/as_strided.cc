@@ -33,6 +33,19 @@ using namespace std;
 
 using namespace ge;
 namespace optiling {
+static const int64_t BYTES_PER_BLOCK = 32;
+static const int64_t VNC_ROWS = 16;
+static const int64_t MTE_GATE = 4;
+static const int64_t TILING_LAST_STRIDE_IS_ONE = 3000;
+static const int64_t TILING_LAST_DIM_IS_LARGE = 3001;
+static const int64_t TILING_LAST_DIM_IS_SMALL = 3002;
+static const int64_t TILING_INPUT_OR_OUTPUT_IS_ALL_IN = 3003;
+static const int64_t TILING_LAST_LARGE_DIM_LARGE_STRIDE = 3004;
+static const int64_t TILING_LAST_SMALL_DIM_LARGE_STRIDE = 3005;
+static const int64_t TILING_LAST_TWO_DIM_IS_LARGE = 3006;
+static const int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE = 3007;
+static const int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL = 3008;
+static const int64_t TILING_FIRST_STRIDE_IS_SMALL = 3009;
 
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"max_elem_cnt", "core_num"};
@@ -87,6 +100,8 @@ static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t 
 static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row, const int64_t col) {
   int64_t elem_index_in_ori = 0;
   int64_t dim_step = 3;
+  int64_t idx_1 = 1;
+  int64_t idx_2 = 2;
 
   // row and col are 1-based
   if (row == 0 || col == 0) {
@@ -94,9 +109,9 @@ static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row
   } else {
     int64_t n_row = row - 1;
     for (int64_t i = 0; i < as_info.dim_num; i++) {
-      elem_index_in_ori += (n_row / as_info.dim_except_last_paras[i*dim_step+0] %
-                            as_info.dim_except_last_paras[i*dim_step+1] *
-                            as_info.dim_except_last_paras[i*dim_step+2]);
+      elem_index_in_ori += (n_row / as_info.dim_except_last_paras[i*dim_step] %
+                            as_info.dim_except_last_paras[i*dim_step+idx_1] *
+                            as_info.dim_except_last_paras[i*dim_step+idx_2]);
     }
     elem_index_in_ori = elem_index_in_ori + as_info.storage_offset + 1 + (col - 1) * as_info.last_dim_stride;
   }
@@ -507,7 +522,7 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
   }
   int64_t all_in_scheme_ub_offset = GetDivisorAlign(max_elem_in_ub - vnc_col_len, ele_per_block);
   int64_t last_two_dim_len = last_dim_len * rsecond_dim_len;
-  int64_t last_two_dim_raw_elem = ((last_two_dim_len - 1)  /last_dim_len % rsecond_dim_len * rsecond_dim_stride +
+  int64_t last_two_dim_raw_elem = ((last_two_dim_len - 1) / last_dim_len % rsecond_dim_len * rsecond_dim_stride +
                                    (last_two_dim_len - 1) % last_dim_len * last_dim_stride + 1);
 
   int64_t max_valid_elem_a_row = 1;
@@ -538,7 +553,7 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
     as_info.m_axis_0_lp_unit = nlast_dim_len > VNC_ROWS ? VNC_ROWS : nlast_dim_len;
     as_info.m_axis_1_lp_unit = last_dim_len > max_valid_elem_a_row ? max_valid_elem_a_row : last_dim_len;
     as_info.m_axis_1_burst_unit = (as_info.m_axis_1_lp_unit - 1) * last_dim_stride + 1;
-  } else if (dims > 2 && last_two_dim_raw_elem <= vnc_col_len &&
+  } else if (dims > val_2 && last_two_dim_raw_elem <= vnc_col_len &&
              last_two_dim_len >= MTE_GATE * ele_per_block && last_two_dim_len <= vnc_col_len) {
     auto nrsecond_dim_len = GetRangeSize(out_size, 0, dims-val_3);
     SetTilingParamForLastTwoDimIsLarge(vnc_scheme_ub_offset, nrsecond_dim_len, last_two_dim_len,

@@ -30,21 +30,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
-constexpr int64_t BYTES_PER_BLOCK = 32;
-constexpr int64_t VNC_ROWS = 16;
-constexpr int64_t MTE_GATE = 4;
-constexpr int64_t TILING_LAST_STRIDE_IS_ONE = 3000;
-constexpr int64_t TILING_LAST_DIM_IS_LARGE = 3001;
-constexpr int64_t TILING_LAST_DIM_IS_SMALL = 3002;
-constexpr int64_t TILING_INPUT_OR_OUTPUT_IS_ALL_IN = 3003;
-constexpr int64_t TILING_LAST_LARGE_DIM_LARGE_STRIDE = 3004;
-constexpr int64_t TILING_LAST_SMALL_DIM_LARGE_STRIDE = 3005;
-constexpr int64_t TILING_LAST_TWO_DIM_IS_LARGE = 3006;
-constexpr int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE = 3007;
-constexpr int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL = 3008;
-constexpr int64_t TILING_FIRST_STRIDE_IS_SMALL = 3009;
-
 struct AsStridedInfo {
   int64_t tiling_mode;
   int64_t used_core_cnt;
@@ -78,6 +63,12 @@ struct AsStridedInfo {
     rsecond_dim_stride = 0;
     nfirst_cnt_per_row = 1;
     tiling_mode = 1;
+    used_core_cnt = 1;
+    dim_num = 1;
+    mc_pos = 0;
+    out_ub_offset = 0;
+    vnc_col_size = 16;
+    core_step_in = 0;
   }
 };
 
