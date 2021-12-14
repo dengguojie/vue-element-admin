@@ -58,6 +58,9 @@ const int32_t TILING_MODE_7 = 7;
 const int32_t TILING_MODE_8 = 8;
 // the data of one params row can not store in half UB, need tiling and special indices shape: [1]
 const int32_t TILING_MODE_9 = 9;
+const int32_t INDEX_L1SIZE = 2;
+const int32_t INDEX_PARAMSDSIZE = 3;
+const int32_t INDEX_INDICESDSIZE = 4;
 
 struct GatherNdParam {
   int32_t tilingMode;
@@ -84,7 +87,6 @@ struct GatherNdParam {
 
 bool CheckTensorShape(const std::string& opType, GeShape& indicesShape, int32_t indicesLastDim) {
   int32_t indicesDims = indicesShape.GetDimNum();
-
   if (indicesLastDim == 0 && indicesDims == 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckTensorShape, indices.shape is invalid.");
     return false;
@@ -237,9 +239,9 @@ bool GatherNdTiling(const std::string& opType, const ge::Operator& opParas, cons
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse op_info failed."), return false);
   int32_t coreNum = static_cast<int32_t>(op_info[0]);
   int32_t ubSize = static_cast<int32_t>(op_info[1]);
-  int32_t l1Size = static_cast<int32_t>(op_info[2]);
-  int32_t paramsDSize = static_cast<int32_t>(op_info[3]);
-  int32_t indicesDSize = static_cast<int32_t>(op_info[4]);
+  int32_t l1Size = static_cast<int32_t>(op_info[INDEX_L1SIZE]);
+  int32_t paramsDSize = static_cast<int32_t>(op_info[INDEX_PARAMSDSIZE]);
+  int32_t indicesDSize = static_cast<int32_t>(op_info[INDEX_INDICESDSIZE]);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   int32_t availableUbSize = ubSize - RESERVED_UB_SIZE;

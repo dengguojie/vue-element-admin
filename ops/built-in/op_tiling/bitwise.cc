@@ -27,7 +27,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct BitwizeCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
 };
@@ -71,8 +70,7 @@ bool BitwiseTiling(const std::string& op_type, const ge::Operator& op_paras, con
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
   bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
@@ -82,8 +80,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                                  BitwizeCompileInfo& parsed_info) {
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   return true;
 }
 

@@ -35,6 +35,7 @@ const int64_t BLOCK_SIZE = 32;
 const int64_t C0_CONST = 16;
 const int64_t WIDTH_DIM_CONST = 80;
 const int64_t DIM_H = 2;
+const int64_t DIM_W = 3;
 
 // A. block tiling: indices tiling
 // 1. one params row size is smaller than 32B
@@ -170,7 +171,7 @@ bool ROIAlignGradTiling(const std::string& opType, const ge::Operator& opParas, 
 
   int64_t rois_n = rois_shape.GetDim(0);
   int64_t c1_num = y_diff_shape.GetDim(1);
-  int64_t x_width = x_diff_shape.GetDim(3);
+  int64_t x_width = x_diff_shape.GetDim(DIM_W);
   runParams.rois_n = rois_n;
   runParams.c1_num = c1_num;
   runParams.rois_row_lenth = rois_shape.GetDim(1);

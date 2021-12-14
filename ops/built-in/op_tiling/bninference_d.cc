@@ -23,7 +23,6 @@
 using namespace std;
 
 namespace optiling {
-
 struct BninterfaceDCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int64_t> shape;
@@ -68,8 +67,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                                  BninterfaceDCompileInfo& parsed_info) {
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   // get core_num value
   OP_TILING_CHECK(!GetCompileValue(compile_info, "broadcast_mean_shape", parsed_info.shape),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get core_num error"), return false);

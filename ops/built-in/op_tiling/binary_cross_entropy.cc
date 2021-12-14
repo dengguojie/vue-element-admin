@@ -20,7 +20,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct BroadcastCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int32_t> reduce_axis;
@@ -41,8 +40,7 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const ge::Operator& op
                               const BroadcastCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
   if (parsed_info.reduction_is_none) {
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
     return ret;
@@ -83,8 +81,8 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const ge::Operator& op
     float reduce_mean_cof = 1.0;
     for (uint32_t i = 0; i < input_shape.GetDimNum(); i++) {
       if (IsInAxis(reduce_axis, i)) {
-        OP_TILING_CHECK(input_shape.GetDim(i) == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
-                        return false);
+        OP_TILING_CHECK(input_shape.GetDim(i) == 0,
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."), return false);
         reduce_mean_cof = reduce_mean_cof / input_shape.GetDim(i);
       }
     }
@@ -112,21 +110,19 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
     parsed_info.reduction_is_none = true;
     parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_ELEMWISE, compile_info);
     OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                    return false);
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   } else {
     parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
     OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                    return false);
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
     OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_axis", parsed_info.reduce_axis),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get _ori_axis error"),
                     return false);
     std::string dtype;
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo get reduce_mean_cof_dtype error"),
-                    return false);
-    parsed_info.dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+    parsed_info.dtype = ge::DT_MAX;
+    if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+      parsed_info.dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+    }
   }
 
   return true;

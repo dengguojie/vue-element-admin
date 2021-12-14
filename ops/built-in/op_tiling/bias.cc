@@ -23,7 +23,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 struct BiasCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int64_t> broadcast_bias_shape;
@@ -70,8 +69,7 @@ bool BiasTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
   bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
@@ -81,8 +79,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                                  BiasCompileInfo& parsed_info) {
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   // get core_num value
   OP_TILING_CHECK(!GetCompileValue(compile_info, "boardcast_bias_shape", parsed_info.broadcast_bias_shape),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_bias_shape error"),

@@ -37,6 +37,8 @@ const int64_t BLOCK_SIZE = 32;
 // 1. one params row size is smaller than 32B
 // params is not cache
 const int64_t TILING_MODE_1 = 1;
+const int64_t HEIGHT_INDEX = 2;
+const int64_t WIDTH_INDEX = 3;
 
 struct ROIAlignTilingParams {
   int64_t tilingMode;
@@ -157,12 +159,12 @@ bool ROIAlignTiling(const std::string& opType, const ge::Operator& opParas, cons
 
   int64_t rois_n = rois_shape.GetDim(0);
   int64_t c1_num = feature_map_shape.GetDim(1);
-  int64_t x_width = feature_map_shape.GetDim(3);
+  int64_t x_width = feature_map_shape.GetDim(WIDTH_INDEX);
   runParams.rois_n = rois_n;
   runParams.c1_num = c1_num;
   runParams.rois_row_lenth = rois_shape.GetDim(1);
   runParams.x_width = x_width;
-  runParams.x_height = feature_map_shape.GetDim(2);
+  runParams.x_height = feature_map_shape.GetDim(HEIGHT_INDEX);
 
   if (c1_num == 16) {
     runParams.tilingMode = 1;

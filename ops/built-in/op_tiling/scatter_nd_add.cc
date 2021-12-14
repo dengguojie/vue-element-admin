@@ -47,6 +47,9 @@ const int64_t TILING_MODE_4 = 4;
 const int64_t TILING_MODE_5 = 5;
 // div 0 check
 const int64_t ZERO = 0;
+const int64_t INDICES_SIZE_INDEX = 3;
+const int64_t VAR_SIZE_INDEX = 2;
+const int64_t SHAPE_ADDS_INDEX = 2;
 
 struct ScatterNdAddTilingParams {
   int64_t tilingMode;
@@ -193,7 +196,6 @@ bool CheckScatterNdAddTensorShape(const std::string& opType, const GeShape& varS
 
   return true;
 }
-
 }  // namespace scatterndadd
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "var_size", "indices_size"};
@@ -219,7 +221,7 @@ bool ScatterNdAddTiling(const std::string& opType, const ge::Operator& opParas, 
                   return false);
   const GeShape& indicesShape = input_desc->MutableShape();
 
-  input_desc = operator_info->MutableInputDesc(2);
+  input_desc = operator_info->MutableInputDesc(SHAPE_ADDS_INDEX);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& addsShape = input_desc->MutableShape();
@@ -238,8 +240,8 @@ bool ScatterNdAddTiling(const std::string& opType, const ge::Operator& opParas, 
 
   int64_t coreNum = op_info[0];
   int64_t ubSize = op_info[1];
-  int64_t varSize = op_info[2];
-  int64_t indicesSize = op_info[3];
+  int64_t varSize = op_info[VAR_SIZE_INDEX];
+  int64_t indicesSize = op_info[INDICES_SIZE_INDEX];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(

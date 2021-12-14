@@ -20,7 +20,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct BinaryCrossEntropyGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   ge::DataType dtype;
@@ -48,8 +47,7 @@ bool BinaryCrossEntropyGradTiling(const std::string& op_type, const ge::Operator
   OpInfo eletwise_info(input_shapes, type);
 
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
   bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   // reduce_mean_cof is not required when handling pure dma_copy case
 
@@ -77,8 +75,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                                  BinaryCrossEntropyGradCompileInfo& parsed_info) {
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
-                  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   std::string dtype;
   OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo get reduce_mean_cof_dtype error"),

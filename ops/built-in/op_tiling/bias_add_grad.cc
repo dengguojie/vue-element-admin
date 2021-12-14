@@ -20,7 +20,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                        utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());

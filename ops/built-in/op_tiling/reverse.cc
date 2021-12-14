@@ -33,6 +33,11 @@ const int64_t block_num = 16;
 // vnhwc process the min numbers
 const int64_t vnhwc_block_num = 256;
 const int64_t TILING_KEY_FOUR = 4;
+const int64_t MERGED_SHAPE_MIN_SIZE = 7;
+const int64_t MERGED_SHAPE_TOTAL_SIZE = 512;
+const int64_t MAX_ELEMENTS_LAST_LARGE_SIZE_INDEX = 2;
+const int64_t DTYPE_RATE_INDEX = 3;
+const int64_t TOPK_THRESHOLD_INDEX = 4;
 
 struct ResizeV2TilingParams {
   int64_t tiling_key;
@@ -181,11 +186,11 @@ bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, c
   // get max_elements
   compile_params.max_elements = op_info[1];
   // get max_elements_last_large_size
-  compile_params.max_elements_last_large_size = op_info[2];
+  compile_params.max_elements_last_large_size = op_info[MAX_ELEMENTS_LAST_LARGE_SIZE_INDEX];
   // get dtype_rate
-  compile_params.dtype_rate = op_info[3];
+  compile_params.dtype_rate = op_info[DTYPE_RATE_INDEX];
   // get topk_threshold
-  compile_params.topk_threshold = op_info[4];
+  compile_params.topk_threshold = op_info[TOPK_THRESHOLD_INDEX];
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   OP_LOGI(op_type, "tiling run begin.");
@@ -278,7 +283,7 @@ bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, c
   PrintVectorValues(op_type, "merged_shape", merged_shape);
   PrintVectorValues(op_type, "merged_axis", merged_shape);
   // split dim base on aicore num
-  if (merged_shape.size() < 7 && merged_shape.size() > 0) {
+  if (merged_shape.size() < MERGED_SHAPE_MIN_SIZE && merged_shape.size() > 0) {
     int64_t split_dim = 1;
     for (int64_t i = 0; i < compile_params.core_num / 2; i++) {
       int64_t cu_split_core_dim = compile_params.core_num - i;
@@ -297,8 +302,8 @@ bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, c
 
   // after split the core dim, when first is big, will split again
   int64_t total_num = std::accumulate(merged_shape.begin(), merged_shape.end(), 1, std::multiplies<int64_t>());
-  if (merged_shape.size() < 7 && total_num / merged_shape[0] < 512 && merged_shape[0] > modified_input[0] &&
-      modified_input[0] > compile_params.core_num) {
+  if (merged_shape.size() < MERGED_SHAPE_MIN_SIZE && total_num / merged_shape[0] < MERGED_SHAPE_TOTAL_SIZE &&
+      merged_shape[0] > modified_input[0] && modified_input[0] > compile_params.core_num) {
     int64_t split_dim = modified_input[0];
     merged_shape.insert(merged_shape.begin(), split_dim);
     merged_shape[1] = merged_shape[1] / split_dim;
