@@ -307,6 +307,22 @@ case19 = {
     "support_expect": True
 }
 
+case20 = {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 1023),
+                "shape": (1, 1, 1023), "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 1023),
+                "shape": (1, 1, 1023), "param_type": "output"}, -1],
+    "case_name": "case_20",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+
 
 ut_case.add_case(['Ascend910A'], case1)
 ut_case.add_case(['Ascend910A'], case2)
@@ -327,6 +343,7 @@ ut_case.add_case(['Ascend910A'], case16)
 ut_case.add_case(['Ascend910A'], case17)
 ut_case.add_case(['Ascend910A'], case18)
 ut_case.add_case(['Ascend910A'], case19)
+ut_case.add_case(['Ascend310'], case20)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
