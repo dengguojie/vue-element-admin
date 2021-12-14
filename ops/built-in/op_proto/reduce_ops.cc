@@ -2052,10 +2052,33 @@ IMPLEMT_COMMON_INFERFUNC(ReduceLogSumExpInferShape) {
         }
         return GRAPH_SUCCESS;
     }
+    OP_LOGE("ReduceLogSumExp", "Infershape failed.");
     return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(ReduceLogSumExp, ReduceLogSumExpInferShape);
 // ----------------ReduceLogSumExp END-------------------
+
+// ----------------ReduceLogSum Op-------------------
+IMPLEMT_COMMON_INFERFUNC(ReduceLogSumInferShape) {
+    std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
+    if (prof_switch) {
+        before_infer = std::chrono::steady_clock::now();
+    }
+    OP_LOGD(op.GetName().c_str(), "Enter Start ReduceLogSumInferShape");
+    if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
+        if (prof_switch) {
+            after_infer = std::chrono::steady_clock::now();
+            auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+        }
+        return GRAPH_SUCCESS;
+    }
+    OP_LOGE("ReduceLogSum", "Infershape failed.");
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(ReduceLogSum, ReduceLogSumInferShape);
+// ----------------ReduceLogSum END-------------------
 
 }  // namespace ge

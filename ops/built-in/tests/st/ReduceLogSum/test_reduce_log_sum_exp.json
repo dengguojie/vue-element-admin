@@ -1,0 +1,124 @@
+[
+  {
+    "op": "ReduceLogSum",
+    "cast_name": "test_reduce_log_sum_nd_float16_int32_true",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          -1,
+          5,
+          2
+        ],
+        "typical_shape": [
+          3,
+          5,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float16",
+        "value_range":[[0,1]],
+        "data_distribute":"uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          1
+        ],
+        "is_const": true,
+        "type": "int32",
+        "value": [1],
+        "name": "axes"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          -1,
+          1,
+          2
+        ],
+        "typical_shape": [
+          3,
+          1,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "op": "ReduceLogSum",
+    "cast_name": "test_reduce_log_sum_nd_float32_int64_false",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          -1,
+          5,
+          2
+        ],
+        "typical_shape": [
+          3,
+          5,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float32",
+        "value_range":[[0,1]],
+        "data_distribute":"uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          1
+        ],
+        "is_const": true,
+        "type": "int64",
+        "value": [1],
+        "name": "axes"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          -1,
+          2
+        ],
+        "typical_shape": [
+          3,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
+]

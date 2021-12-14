@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-dynamic reduce_log_sum_exp
+dynamic reduce_log_sum
 """
 
 from impl.util.platform_adapter import tbe
@@ -26,13 +26,14 @@ from impl.util.platform_adapter import platform_info
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local,too-many-arguments
-@register_operator_compute("ReduceLogSumExp", op_mode="dynamic", support_fusion=True)
-def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
+@register_operator_compute("ReduceLogSum", op_mode="dynamic", support_fusion=True)
+def reduce_log_sum_compute(x, axes, y, keep_dims=False,
                                impl_mode="high_performance",
-                               kernel_name="reduce_log_sum_exp"):
+                               kernel_name="reduce_log_sum"):
     """
-    reduce_log_sum_exp compute
+    reduce_log_sum compute
 
     Parameters:
     ----------
@@ -47,7 +48,7 @@ def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
     impl_mode: string
         "high_performance" mode or "high_precision" mode
     kernel_name: str
-        cce kernel name, default value is "reduce_log_sum_exp".
+        cce kernel name, default value is "reduce_log_sum".
 
     Returns
     -------
@@ -56,14 +57,13 @@ def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
     """
     x_dtype = x.dtype
     compatible_dtype = x.dtype
-    if platform_info.api_check_support("tbe.dsl.vexp", "float32"):
+    if platform_info.api_check_support("tbe.dsl.vlog", "float32"):
         compatible_dtype = "float32"
     else:
         compatible_dtype = "float16"
     if x_dtype != compatible_dtype:
         x = tbe.cast_to(x, compatible_dtype)
-    res_exp = tbe.vexp(x)
-    reduced = tbe.reduce_sum(res_exp,
+    reduced = tbe.reduce_sum(x,
                              axes,
                              keep_dims)
     res = tbe.vlog(reduced, impl_mode=impl_mode)
@@ -71,16 +71,17 @@ def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
         res = tbe.cast_to(res, x_dtype)
     return res
 
+
 # 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
-@register_operator("ReduceLogSumExp")
+@register_operator("ReduceLogSum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-def reduce_log_sum_exp(x, axes, y, keep_dims=False,
+def reduce_log_sum(x, axes, y, keep_dims=False,
                        impl_mode="high_performance",
-                       kernel_name="reduce_log_sum_exp"):
+                       kernel_name="reduce_log_sum"):
     """reduce a tensor on a certain axes based on sum.
 
     Parameters:
@@ -96,7 +97,7 @@ def reduce_log_sum_exp(x, axes, y, keep_dims=False,
     impl_mode: string
         "high_performance" mode or "high_precision" mode
     kernel_name: str
-        cce kernel name, default value is "reduce_log_sum_exp".
+        cce kernel name, default value is "reduce_log_sum".
 
     Returns
     -------
@@ -131,7 +132,7 @@ def reduce_log_sum_exp(x, axes, y, keep_dims=False,
             data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
                                               dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
-            res = reduce_log_sum_exp_compute(data_input_x, axes_d, y, keep_dims, impl_mode)
+            res = reduce_log_sum_compute(data_input_x, axes_d, y, keep_dims, impl_mode)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():
