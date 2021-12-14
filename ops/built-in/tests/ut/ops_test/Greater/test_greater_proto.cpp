@@ -43,7 +43,9 @@ TEST_F(Greater, Greater_infer_shape_fp16) {
                                              ge::FORMAT_ND, shape_range);
   op.UpdateInputDesc("x1", tensor_desc);
   op.UpdateInputDesc("x2", tensor_desc);
-  
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS); 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
@@ -58,4 +60,13 @@ TEST_F(Greater, Greater_infer_shape_fp16) {
       {2, 100},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(Greater, VerifyGreater_001) {
+  ge::op::Greater op;
+  op.UpdateInputDesc("x1", create_desc({4, 3, 2}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x2", create_desc({4, 3, 2}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

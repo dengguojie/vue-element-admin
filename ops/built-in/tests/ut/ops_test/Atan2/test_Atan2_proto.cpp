@@ -61,3 +61,12 @@ TEST_F(atan2, atan2_infershape_same_test) {
     std::vector<int64_t> expected_output_shape = {1, 3, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(atan2, VerifyAtan2_001) {
+  ge::op::Atan2 op;
+  op.UpdateInputDesc("x1", create_desc({1, 3, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x2", create_desc({1, 3, 4}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

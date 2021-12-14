@@ -420,3 +420,31 @@ TEST_F(dilation2d_infer_test, VerifierDilation2D_018) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(dilation2d_infer_test, InfershapeDilation2D_001) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, -1, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, -1, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 1, 1, 1});
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  std::string padding_mode = "VALID";
+  bool ceil_mode = false;
+  std::string data_format = "NCHW";
+  op.set_attr_strides(stride_list);
+  op.set_attr_rates(rate_list);
+  op.set_attr_padding_mode(padding_mode);
+  op.set_attr_pads(pads);
+  op.set_attr_ceil_mode(ceil_mode);
+  op.set_attr_data_format(data_format);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  std::vector<int64_t> expected_shape = {1, -1, -1, 1024};
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+}

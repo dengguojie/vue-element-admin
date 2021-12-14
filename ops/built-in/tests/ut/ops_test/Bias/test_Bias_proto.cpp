@@ -262,3 +262,97 @@ TEST_F(Bias, InfershapeBias_test_012) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(Bias, InfershapeBias_test_013) {
+  ge::op::Bias op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 10}, {3, 10}, {4, 10}};
+  auto tensor_desc_x =
+      create_desc_shape_range({-1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 3, 4}, ge::FORMAT_ND, shape_range);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("bias_from_blob", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(Bias, InfershapeBias_test_014) {
+  ge::op::Bias op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 10}, {3, 10}, {4, 10}};
+  auto tensor_desc_x =
+      create_desc_shape_range({-1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 3, 4}, ge::FORMAT_ND, shape_range);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("bias_from_blob", true);
+  op.SetAttr("num_axes", 12);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(Bias, InfershapeBias_test_015) {
+  ge::op::Bias op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 10}, {3, 10}, {4, 10}};
+  auto tensor_desc_x =
+      create_desc_shape_range({-1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 3, 4}, ge::FORMAT_ND, shape_range);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("bias_from_blob", false);
+  op.SetAttr("num_axes", 12);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(Bias, InfershapeBias_test_016) {
+  ge::op::Bias op;
+  auto tensor_desc_x = create_desc_with_ori({4, 3, 2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3, 2, 4}, ge::FORMAT_ND);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("axis", -1);
+  op.SetAttr("num_axes", -1);
+  op.SetAttr("bias_from_blob", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Bias, InfershapeBias_test_017) {
+  ge::op::Bias op;
+  auto tensor_desc_x = create_desc_with_ori({4, 3, 2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3, 2, 4}, ge::FORMAT_ND);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("axis", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Bias, InfershapeBias_test_018) {
+  ge::op::Bias op;
+  auto tensor_desc_x = create_desc_with_ori({4, 3, 2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3, 2, 4}, ge::FORMAT_ND);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("num_axes", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Bias, InfershapeBias_test_019) {
+  ge::op::Bias op;
+  auto tensor_desc_x = create_desc_with_ori({4, 3, 2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3, 2, 4}, ge::FORMAT_ND);
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.UpdateInputDesc("bias", tensor_desc_x);
+  op.SetAttr("bias_from_blob", {});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

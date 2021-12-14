@@ -57,3 +57,21 @@ TEST_F(fused_mul_add_n, fused_mul_add_n_case) {
   std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 16}, {1, 16}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(fused_mul_add_n, VerifyFusedMulAddN_001) {
+  ge::op::FusedMulAddN op;
+  op.UpdateInputDesc("x3", create_desc({1}, ge::DT_INT64));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(fused_mul_add_n, VerifyFusedMulAddN_002) {
+  ge::op::FusedMulAddN op;
+  op.UpdateInputDesc("x1", create_desc({1}, ge::DT_INT64));
+  op.UpdateInputDesc("x2", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("x3", create_desc({3}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

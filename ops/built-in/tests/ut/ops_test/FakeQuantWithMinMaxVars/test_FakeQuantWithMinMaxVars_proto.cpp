@@ -140,3 +140,28 @@ TEST_F(fake_quant_with_min_max_vars, fake_quant_with_min_max_vars_failed_case_2)
     EXPECT_EQ(ret2, ge::GRAPH_FAILED);
 
 }
+
+TEST_F(fake_quant_with_min_max_vars, VerifyFakeQuantWithMinMaxVars_001) {
+  ge::op::FakeQuantWithMinMaxVars op;
+  op.SetAttr("num_bits", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(fake_quant_with_min_max_vars, VerifyFakeQuantWithMinMaxVars_002) {
+  ge::op::FakeQuantWithMinMaxVars op;
+  op.SetAttr("narrow_range", "narrow_range");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(fake_quant_with_min_max_vars, VerifyFakeQuantWithMinMaxVars_003) {
+  ge::op::FakeQuantWithMinMaxVars op;
+  op.UpdateInputDesc("x", create_desc({2}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("min", create_desc({2}, ge::DT_FLOAT));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

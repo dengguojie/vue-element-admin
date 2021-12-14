@@ -228,3 +228,43 @@ TEST_F(accumulatenv2, InferShapeAccumulateNV2_003) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(accumulatenv2, VerifyAccumulateNV2_001) {
+  ge::op::AccumulateNV2 op;
+  auto tensor_desc = create_desc({2, 100, 1}, ge::DT_FLOAT16);
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.SetAttr("N", 10);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(accumulatenv2, InfershapeAccumulateNV2_001) {
+  ge::op::AccumulateNV2 op;
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("x", 0, create_desc({}, ge::DT_FLOAT16));
+  op.UpdateDynamicInputDesc("x", 1, create_desc({}, ge::DT_FLOAT16));
+  op.SetAttr("N", 2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+}
+
+TEST_F(accumulatenv2, InfershapeAccumulateNV2_002) {
+  ge::op::AccumulateNV2 op;
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("x", 0, create_desc({}, ge::DT_FLOAT16));
+  op.UpdateDynamicInputDesc("x", 0, create_desc({-2}, ge::DT_FLOAT16));
+  op.SetAttr("N", 2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expect_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expect_output_shape);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+}

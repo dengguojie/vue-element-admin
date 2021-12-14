@@ -56,6 +56,8 @@ TEST_F(AdamApplyOneWithDecayAssign, adam_apply_one_with_decay_assign_case_0) {
   op.UpdateInputDesc("const_mul4_x", tensor_desc_1);
   op.UpdateInputDesc("add2_y", tensor_desc_1);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc0 = op.GetOutputDesc("output0");

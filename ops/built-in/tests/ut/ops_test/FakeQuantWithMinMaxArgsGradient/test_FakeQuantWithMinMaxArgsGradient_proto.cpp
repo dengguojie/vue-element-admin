@@ -32,8 +32,8 @@ class FakeQuantWithMinMaxArgsGradient_UT : public testing::Test {
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_001) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-  op.UpdateInputDesc("gradients", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gradients", create_desc({4, 3, 1}, ge::DT_FLOAT));
 
   float min = -6.0;
   float max = 6.0;
@@ -50,14 +50,14 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
   std::vector<int64_t> expected_output_shape = {4, 3, 1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_002) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
 
   std::string min = "-6.0";
   op.SetAttr("min", min);
@@ -68,7 +68,7 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_003) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
 
   std::string max = "-6.0";
   op.SetAttr("max", max);
@@ -79,10 +79,8 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_004) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-
-  std::string num_bits  = "-6.0";
-  op.SetAttr("num_bits ", num_bits );
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.SetAttr("num_bits", false);
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -90,10 +88,8 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_005) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-
-  std::string narrow_range  = "false";
-  op.SetAttr("narrow_range ", narrow_range );
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.SetAttr("narrow_range", {});
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -101,7 +97,7 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_006) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
 
   float min = 6.0;
   op.SetAttr("min", min);
@@ -114,10 +110,10 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_007) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
 
-  int8_t num_bits  = 0;
-  op.SetAttr("num_bits ", num_bits );
+  int64_t num_bits = 0;
+  op.SetAttr("num_bits", num_bits);
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -125,8 +121,8 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_008) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-  op.UpdateInputDesc("gradients", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gradients", create_desc({4, 3, 1}, ge::DT_FLOAT16));
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -134,8 +130,8 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_009) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-  op.UpdateInputDesc("gradients", create_desc({4, 3}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gradients", create_desc({4, 3}, ge::DT_FLOAT));
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -143,8 +139,8 @@ TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGrad
 
 TEST_F(FakeQuantWithMinMaxArgsGradient_UT, InferShapeFakeQuantWithMinMaxArgsGradient_010) {
   ge::op::FakeQuantWithMinMaxArgsGradient op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-  op.UpdateInputDesc("gradients", create_desc({4, 3, 2}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gradients", create_desc({4, 3, 2}, ge::DT_FLOAT));
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);

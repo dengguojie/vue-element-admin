@@ -88,3 +88,49 @@ TEST_F(FakeQuantWithMinMaxArgs_UT, InferShapeFakeQuantWithMinMaxArgs_004) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(FakeQuantWithMinMaxArgs_UT, InferShapeFakeQuantWithMinMaxArgs_005) {
+  ge::op::FakeQuantWithMinMaxArgs op;
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+
+  float min = -6.0;
+  float max = 6.0;
+  op.SetAttr("min", min);
+  op.SetAttr("max", max);
+  op.SetAttr("num_bits", "num_bits");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(FakeQuantWithMinMaxArgs_UT, InferShapeFakeQuantWithMinMaxArgs_006) {
+  ge::op::FakeQuantWithMinMaxArgs op;
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+
+  float min = -6.0;
+  float max = 6.0;
+  int8_t num_bits = 8;
+  op.SetAttr("min", min);
+  op.SetAttr("max", max);
+  op.SetAttr("num_bits", num_bits);
+  op.SetAttr("narrow_range", "narrow_range");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(FakeQuantWithMinMaxArgs_UT, InferShapeFakeQuantWithMinMaxArgs_007) {
+  ge::op::FakeQuantWithMinMaxArgs op;
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+
+  float min = -6.0;
+  float max = 6.0;
+  int8_t num_bits = -1;
+  op.SetAttr("min", min);
+  op.SetAttr("max", max);
+  op.SetAttr("num_bits", num_bits);
+  op.SetAttr("narrow_range", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

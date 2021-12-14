@@ -60,3 +60,58 @@ TEST_F(addn, addn_infer_shape_fp16) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(addn, InfershapeAddN_001) {
+  ge::op::AddN op;
+  auto tensor_desc = create_desc({}, ge::DT_FLOAT16);
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.SetAttr("N", 2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(addn, InfershapeAddN_002) {
+  ge::op::AddN op;
+  auto tensor_desc = create_desc({-2}, ge::DT_FLOAT16);
+  op.create_dynamic_input_x(1);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.SetAttr("N", 1);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(addn, InfershapeAddN_003) {
+  ge::op::AddN op;
+  auto tensor_desc = create_desc_with_ori({2, 100, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 100, 4}, ge::FORMAT_ND);
+  op.create_dynamic_input_x(2);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.SetAttr("N", 2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {2, 100, 1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
+      {2, 2},
+      {100, 100},
+      {1, 1},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}

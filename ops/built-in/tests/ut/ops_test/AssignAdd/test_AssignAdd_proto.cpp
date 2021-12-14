@@ -55,3 +55,12 @@ TEST_F(AssignAdd, assign_sub_infer_shape_fp16) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(AssignAdd, VerifyAssignAdd_001) {
+  ge::op::AssignAdd op;
+  op.UpdateInputDesc("ref", create_desc({16, 16}, ge::DT_FLOAT));
+  op.UpdateInputDesc("value", create_desc({16, 16}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

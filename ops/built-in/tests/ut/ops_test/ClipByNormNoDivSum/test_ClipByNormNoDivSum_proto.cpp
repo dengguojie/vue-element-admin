@@ -70,3 +70,17 @@ TEST_F(clip_by_norm_no_div_sum, clip_by_norm_no_div_sum_infershape_diff_test_1) 
   std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1,100}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(clip_by_norm_no_div_sum, InfershapeClipByNormNoDivSum_001) {
+  ge::op::ClipByNormNoDivSum op;
+  op.UpdateInputDesc("x", create_desc_shape_range({-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {1}, ge::FORMAT_ND, {{1, 100}}));
+  op.UpdateInputDesc("greater_zeros",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {1}, ge::FORMAT_ND, {{1, 100}}));
+  op.UpdateInputDesc("select_ones",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {1}, ge::FORMAT_ND, {{1, 100}}));
+  op.UpdateInputDesc("maximum_ones",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT16, ge::FORMAT_ND, {1}, ge::FORMAT_ND, {{1, 100}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

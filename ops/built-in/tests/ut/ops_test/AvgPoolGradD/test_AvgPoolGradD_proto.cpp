@@ -95,3 +95,87 @@ TEST_F(AvgPoolGradDTest, avg_pool_grad_d_test_case_2) {
     std::vector<int64_t> expected_output_shape = {6, 16, 4, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_001) {
+  ge::op::AvgPoolGradD op;
+  op.SetAttr("orig_input_shape", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_002) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_003) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  std::vector<int64_t> ksize = {1, 2, 3};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", ksize);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_004) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  std::vector<int64_t> ksize = {1, 2, 3, 4};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("ksize", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_005) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  std::vector<int64_t> ksize = {1, 2, 3, 4};
+  std::vector<int64_t> strides = {1, 2};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("ksize", strides);
+  op.SetAttr("padding", strides);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_006) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  std::vector<int64_t> ksize = {1, 2, 3, 4};
+  std::vector<int64_t> strides = {1, 2};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("ksize", strides);
+  op.SetAttr("padding", "error");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPoolGradDTest, VerifyAvgPoolGradD_007) {
+  ge::op::AvgPoolGradD op;
+  std::vector<int64_t> orig_input_size = {1, 2, 4};
+  std::vector<int64_t> ksize = {1, 2, 3, 4};
+  std::vector<int64_t> strides = {1, 2};
+  op.SetAttr("orig_input_shape", orig_input_size);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("ksize", strides);
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("data_format", "ND");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

@@ -117,3 +117,17 @@ TEST_F(FusedMulAdd, FusedMulAdd_infershape_test_4) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, false);
 }
+
+TEST_F(FusedMulAdd, InfershapeFusedMulAdd_001) {
+  ge::op::FusedMulAdd op;
+
+  op.UpdateInputDesc("x1",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("x2",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("x3",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

@@ -84,3 +84,128 @@ TEST_F(MaxPoolWithArgmaxV2Test, max_pool_with_argmax_v2_2) {
   auto output_y1_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_001) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_002) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_003) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_004) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_005) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_006) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("pads", {1, 1, 1});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_007) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}, {16, 16}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, -1, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 32, 10, 10},
+                                             ge::FORMAT_NC1HWC0, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("pads", {1, 1, 1, 1});
+  op.SetAttr("ceil_mode", {});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_008) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}, {10, 10}};
+  auto tensor_desc =
+      create_desc_shape_range({-2}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 32, 10, 10}, ge::FORMAT_NHWC, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("pads", {1, 1, 1, 1});
+  op.SetAttr("ceil_mode", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(MaxPoolWithArgmaxV2Test, InfershapeMaxPoolWithArgmaxV2_009) {
+  ge::op::MaxPoolWithArgmaxV2 op;
+  std::vector<std::pair<int64_t, int64_t>> shape_ranges = {{1, 6}, {2, 2}, {8, 12}};
+  auto tensor_desc = create_desc_shape_range({-1, 2, 2, 10, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 32, 10, 10},
+                                             ge::FORMAT_NHWC, shape_ranges);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ksize", {1, 1, 3, 3});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("pads", {1, 1, 1, 1});
+  op.SetAttr("ceil_mode", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

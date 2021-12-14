@@ -76,3 +76,50 @@ TEST_F(target_crop_and_resize_infer_test, target_crop_and_resize_infer_test_3) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(target_crop_and_resize_infer_test, InfershapeTargetCropAndResize_001) {
+  ge::op::TargetCropAndResize op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 3, 224, 224}, ge::DT_UINT8, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5, 4}, ge::DT_INT32, ge::FORMAT_ND, {5, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
+  op.set_attr_output_h(100);
+  op.set_attr_output_w(120);
+  op.set_attr_input_format("YUV420SP_U8");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expect_output_shape = {5, 224, 100, 120};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expect_output_shape);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_UINT8);
+}
+
+TEST_F(target_crop_and_resize_infer_test, InfershapeTargetCropAndResize_002) {
+  ge::op::TargetCropAndResize op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 3, 224, 224}, ge::DT_UINT8, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5, 4}, ge::DT_INT32, ge::FORMAT_ND, {5, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
+  op.SetAttr("output_h", true);
+  op.set_attr_input_format("YUV420SP_U8");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(target_crop_and_resize_infer_test, InfershapeTargetCropAndResize_003) {
+  ge::op::TargetCropAndResize op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 3, 224, 224}, ge::DT_UINT8, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5, 4}, ge::DT_INT32, ge::FORMAT_ND, {5, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
+  op.SetAttr("output_h", 220);
+  op.SetAttr("output_w", true);
+  op.set_attr_input_format("YUV420SP_U8");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

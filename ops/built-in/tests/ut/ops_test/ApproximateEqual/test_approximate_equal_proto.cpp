@@ -85,3 +85,13 @@ TEST_F(ApproximateEqual, ApproximateEqual_infershape_test_2) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(ApproximateEqual, VerifyApproximateEqual_001) {
+  ge::op::ApproximateEqual op;
+  op.UpdateInputDesc("x1", create_desc({16}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x2", create_desc({16}, ge::DT_FLOAT16));
+  op.SetAttr("tolerance",true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

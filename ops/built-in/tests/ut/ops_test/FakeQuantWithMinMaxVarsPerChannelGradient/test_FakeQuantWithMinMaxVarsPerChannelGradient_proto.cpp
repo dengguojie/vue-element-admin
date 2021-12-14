@@ -177,7 +177,7 @@ TEST_F(FakeQuantWithMinMaxVarsPerChannelGradient_UT, InferShapeFakeQuantWithMinM
 
 TEST_F(FakeQuantWithMinMaxVarsPerChannelGradient_UT, InferShapeFakeQuantWithMinMaxVarsPerChannelGradient_012) {
   ge::op::FakeQuantWithMinMaxVarsPerChannelGradient op;
-  op.UpdateInputDesc("gradients", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("gradients", create_desc({4, 3, 2}, ge::DT_FLOAT16));
   op.UpdateInputDesc("x", create_desc({4, 3, 2}, ge::DT_FLOAT16));
   op.UpdateInputDesc("min", create_desc({1}, ge::DT_FLOAT16));
   op.UpdateInputDesc("max", create_desc({1}, ge::DT_FLOAT16));

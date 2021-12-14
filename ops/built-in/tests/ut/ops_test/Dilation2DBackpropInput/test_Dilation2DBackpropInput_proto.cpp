@@ -256,10 +256,12 @@ TEST_F(dilation2d_filter_input_test, VerifierDilation2DBackpropInput_006) {
 
 TEST_F(dilation2d_filter_input_test, VerifierDilation2DBackpropInput_007) {
   ge::op::Dilation2DBackpropInput op;
-  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
-                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
   op.UpdateInputDesc(
-      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC,
+                                                          {1, 1024, 17}, ge::FORMAT_NHWC));
   op.SetAttr("data_format", "NCHW");
 
   auto status = op.VerifyAllAttr(true);
@@ -450,7 +452,7 @@ TEST_F(dilation2d_filter_input_test, VerifierDilation2DBackpropInput_017) {
   op.SetAttr("data_format", "NCHW");
   std::vector<int64_t> stride_list = vector<int64_t>({2, 1, 1, 1});
   op.SetAttr("strides", stride_list);
-  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 1, 1, 1});
   op.SetAttr("rates", rate_list);
   op.SetAttr("padding_mode", "SAME");
   std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
@@ -471,14 +473,14 @@ TEST_F(dilation2d_filter_input_test, VerifierDilation2DBackpropInput_018) {
   op.SetAttr("data_format", "NCHW");
   std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
   op.SetAttr("strides", stride_list);
-  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 1, 1, 1});
   op.SetAttr("rates", rate_list);
   op.SetAttr("padding_mode", "CALCULATED");
   std::vector<int64_t> pads = vector<int64_t>({10000, 0, 0, 0});
   op.SetAttr("pads", pads);
 
   auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(dilation2d_filter_input_test, InferShapeDilation2DBackpropInput_001) {

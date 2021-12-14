@@ -44,3 +44,40 @@ TEST_F(maximum_grad,maximum_grad_infershape_diff_test){
     EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
+TEST_F(maximum_grad, InfershapeMaximumGrad_001) {
+  ge::op::MaximumGrad op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc = create_desc_shape_range({-1}, ge::DT_FLOAT16, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("grads", tensor_desc);
+  op.UpdateInputDesc("x1", tensor_desc);
+  op.UpdateInputDesc("x2", tensor_desc);
+  op.SetAttr("grad_x", "error");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(maximum_grad, InfershapeMaximumGrad_002) {
+  ge::op::MaximumGrad op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc = create_desc_shape_range({-1}, ge::DT_FLOAT16, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("grads", tensor_desc);
+  op.UpdateInputDesc("x1", tensor_desc);
+  op.UpdateInputDesc("x2", tensor_desc);
+  op.SetAttr("grad_x", true);
+  op.SetAttr("grad_y", "error");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(maximum_grad, InfershapeMaximumGrad_003) {
+  ge::op::MaximumGrad op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc = create_desc_shape_range({-1}, ge::DT_FLOAT16, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("grads", tensor_desc);
+  op.UpdateInputDesc("x1", tensor_desc);
+  op.UpdateInputDesc("x2", tensor_desc);
+  op.SetAttr("grad_x", false);
+  op.SetAttr("grad_y", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

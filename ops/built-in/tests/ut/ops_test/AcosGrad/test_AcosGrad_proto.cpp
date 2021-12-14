@@ -63,6 +63,11 @@ TEST_F(acosgrad, acosgrad_infer_same_test) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
-
-
-
+TEST_F(acosgrad, VerifyAcosGrad_001) {
+  ge::op::AcosGrad op;
+  op.UpdateInputDesc("y", create_desc({1, 3, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("dy", create_desc({1, 3, 4}, ge::DT_FLOAT16));
+  
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

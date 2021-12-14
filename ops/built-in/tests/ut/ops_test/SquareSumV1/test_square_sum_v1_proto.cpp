@@ -116,3 +116,45 @@ TEST_F(SquareSumV1, static_square_sum_v1_infershape_test) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   EXPECT_EQ(output_desc.GetOriginShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(SquareSumV1, InfershapeSquareSumV1_001) {
+  ge::op::SquareSumV1 op;
+  op.UpdateInputDesc("x", create_desc({2}, ge::DT_FLOAT16));
+  op.SetAttr("axis", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SquareSumV1, InfershapeSquareSumV1_002) {
+  ge::op::SquareSumV1 op;
+  op.UpdateInputDesc("x", create_desc({2}, ge::DT_FLOAT16));
+  std::vector<int64_t> axis = {2, 4};
+  op.SetAttr("axis", axis);
+  op.SetAttr("keep_dims", axis);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SquareSumV1, InfershapeSquareSumV1_003) {
+  ge::op::SquareSumV1 op;
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  std::vector<int64_t> axis = {};
+  op.SetAttr("axis", axis);
+  op.SetAttr("keep_dims", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(SquareSumV1, InfershapeSquareSumV1_004) {
+  ge::op::SquareSumV1 op;
+  op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
+  std::vector<int64_t> axis = {-1, 2, 4};
+  op.SetAttr("axis", axis);
+  op.SetAttr("keep_dims", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

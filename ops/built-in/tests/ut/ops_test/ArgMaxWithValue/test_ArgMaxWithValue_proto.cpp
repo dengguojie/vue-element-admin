@@ -205,3 +205,23 @@ TEST_F(arg_max_with_value, arg_max_with_value_infershape_3) {
   EXPECT_EQ(output_desc_values.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc_values.GetShape().GetDims(), expected_shape);
 }
+
+TEST_F(arg_max_with_value, InfershapeArgMaxWithValue_001) {
+  ge::op::ArgMaxWithValue op;
+  op.UpdateInputDesc("x", create_desc({2, 3}, ge::DT_FLOAT16));
+  op.SetAttr("dimension", -5);
+  op.SetAttr("keep_dims", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(arg_max_with_value, InfershapeArgMaxWithValue_002) {
+  ge::op::ArgMaxWithValue op;
+  op.UpdateInputDesc("x", create_desc({2, 3}, ge::DT_FLOAT16));
+  op.SetAttr("dimension", 11);
+  op.SetAttr("keep_dims", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
