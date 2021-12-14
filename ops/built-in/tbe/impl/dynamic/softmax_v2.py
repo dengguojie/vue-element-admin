@@ -22,7 +22,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_platform
+from impl.util import util_frac_z as fz
 from impl.util import util_select_op_base
+
+
+FP16_MAX = tvm.const(6.5e04, dtype="float16")
+FP32_MAX = tvm.const(3.4e38, dtype="float32")
 
 
 # 'pylint: disable=unused-argument
@@ -37,13 +42,19 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         y's Tensor(shape=(16, 16, 16), "ND")
     """
     input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                           datatype="float16,float32",
-                                           format="ND,ND",
-                                           unknownshape_format="ND,ND")
+                                           datatype="float16,float32,float16,float32,float16,float32,\
+                                                     float16,float32",
+                                           format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                   FRACTAL_NZ,FRACTAL_NZ",
+                                           unknownshape_format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                                FRACTAL_NZ,FRACTAL_NZ")
     output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                            datatype="float16,float32",
-                                            format="ND,ND",
-                                            unknownshape_format="ND,ND")
+                                            datatype="float16,float32,float16,float32,float16,float32,\
+                                                      float16,float32",
+                                            format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                    FRACTAL_NZ,FRACTAL_NZ",
+                                            unknownshape_format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                                 FRACTAL_NZ,FRACTAL_NZ")
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
@@ -80,10 +91,39 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     last_dim = len(input_x.shape) - 1
     vcmax_flag = False
 
+    attributes = input_x.op.attrs
+    disable_fuse_axes = attributes["disable_fuse_axes"]
+    ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
+    ori_format = attributes["ori_format"].value
+    format = attributes["format"].value
+    max_const = FP32_MAX if dtype == "float32" else FP16_MAX
+
     check_axis_list = [-1, last_dim]
     for i in list_axis:
         if i in check_axis_list:
             vcmax_flag = True
+
+    is_use_value = False
+    if len(list_axis) == 2:
+        is_use_value = True
+        idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+        if format in ("NC1HWC0", "NDC1HWC0"):
+            ori_format = ori_format.upper()
+            c = ori_shape[ori_format.find('C')]
+            c = tbe.var('c') if c == -1 else c
+            pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
+        if format in ("FRACTAL_NZ",):
+            c = -1
+            if (idx_c0 - idx_c1) == 2:
+                c = ori_shape[-1]
+            else:
+                c = ori_shape[-2]
+            c = tbe.var('c') if c == -1 else c
+            pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
+
+    if is_use_value:
+        input_x = tbe.set_value(input_x, lambda *i: tvm.all(i[list_axis[0]] > shape[list_axis[0]] - 2, \
+                                                            i[list_axis[1]] > pad_c - 1), -max_const)
 
     if dtype == "float32" and vcmax_flag and \
         not tbe_platform.api_check_support(
@@ -115,14 +155,48 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = tbe.cast_to(data_exp, "float32")
         has_improve_precision = True
+
+    if is_use_value:
+        data_exp = tbe.set_value(data_exp, lambda *i: tvm.all(i[list_axis[0]] > shape[list_axis[0]] - 2, \
+                                                              i[list_axis[1]] > pad_c - 1), 0)
     data_expsum = tbe.reduce_sum(data_exp, list_axis, keepdims=True)
 
-    data_expsum = tbe.broadcast(data_expsum, shape)
-    output = tbe.vdiv(data_exp, data_expsum)
+    if (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
+        tbe_platform.api_check_support("tik.vgatherb")) and \
+            output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
+        data_expsum = tbe.vrec(data_expsum)
+        data_expsum = tbe.broadcast(data_expsum, shape)
+        output = tbe.vmul(data_exp, data_expsum)
+    else:
+        data_expsum = tbe.broadcast(data_expsum, shape)
+        output = tbe.vdiv(data_exp, data_expsum)
+
     if has_improve_precision and dtype == "float16":
         output = tbe.cast_to(output, "float16")
 
     return output
+
+
+def update_5hd_axis(origin_format, list_axis, input_format):
+    """
+    update the axis of 5hd format
+    data using for compute and schedule
+    """
+    if hasattr(list_axis, 'index'):
+        list_axis = list_axis[0]
+
+    axis_str = origin_format[list_axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": [0, ],
+        "C": [1 + offset_6hd, 4 + offset_6hd],
+        "H": [2 + offset_6hd, ],
+        "W": [3 + offset_6hd, ],
+        "D": [1, ]
+    }
+
+    return dict_format_axis.get(axis_str)
 
 
 # 'pylint:disable=invalid-name,too-many-locals
@@ -160,6 +234,9 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
+    ori_format = input_x.get("ori_format")
+    ori_shape = input_x.get("ori_shape")
+    format = input_x.get("format")
 
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
@@ -168,14 +245,29 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     else:
         list_axis = [axis]
 
+    if format in ("NC1HWC0", "NDC1HWC0"):
+        list_axis = update_5hd_axis(ori_format, list_axis, format)
+
+    if fz.is_frac_z(input_x):
+        list_axis = fz.to_frac_z_axis(ori_shape, list_axis)
+
+    extra_params = {}
+    if format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
+        extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
+
     schedules = []
     tensors = []
-    ins = classify([input_x, list_axis], "norm")
+    ins = classify([input_x, list_axis], "norm", extra_params)
 
-    for (x, reduce_axis) in ins:
+    for idx, (x, reduce_axis) in enumerate(ins):
         with tbe.compute():
+            disable_fuse_axes = []
+            if "disable_fuse_axes" in extra_params:
+                disable_fuse_axes = extra_params.get("disable_fuse_axes")[idx]
             shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
-            input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
+            input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x",
+                                      attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": format,
+                                             "disable_fuse_axes": disable_fuse_axes})
             output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
             tensors.append([input_x, output])
 

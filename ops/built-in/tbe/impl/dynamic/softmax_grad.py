@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
+from impl.util import util_frac_z as fz
 
 
 # 'pylint: disable=locally-disabled,unused-argument
@@ -57,22 +58,74 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
         the result of softmax_grad_compute
     """
     dtype = softmax.dtype
-    shape_input2 = shape_util.shape_to_list(grad_softmax.shape)
+    shape = shape_util.shape_to_list(grad_softmax.shape)
+    list_axis = list(axis)
     has_improve_precision = False
+
+    attributes = softmax.op.attrs
+    disable_fuse_axes = attributes["disable_fuse_axes"]
+    ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
+    ori_format = attributes["ori_format"].value
+    format = attributes["format"].value
+
+    is_use_value = False
+    if len(list_axis) == 2:
+        is_use_value = True
+        idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+        if format in ("NC1HWC0", "NDC1HWC0"):
+            ori_format = ori_format.upper()
+            c = ori_shape[ori_format.find('C')]
+            c = tbe.var('c') if c == -1 else c
+            pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
+        if format in ("FRACTAL_NZ",):
+            c = -1
+            if (idx_c0 - idx_c1) == 2:
+                c = ori_shape[-1]
+            else:
+                c = ori_shape[-2]
+            c = tbe.var('c') if c == -1 else c
+            pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
+
+    if is_use_value:
+        softmax = tbe.set_value(softmax, lambda *i: tvm.all(i[list_axis[0]] > shape[list_axis[0]] - 2, \
+                                                            i[list_axis[1]] > pad_c - 1), 0)
 
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         grad_softmax = tbe.cast_to(grad_softmax, "float32")
         softmax = tbe.cast_to(softmax, "float32")
         has_improve_precision = True
     data_vmul = tbe.vmul(softmax, grad_softmax)
+                         
     data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
-    data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
+    data_sum_tmp = tbe.broadcast(data_sum, shape)
     data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
     res = tbe.vmul(softmax, data_sub)
     if has_improve_precision:
         res = tbe.cast_to(res, "float16")
 
     return res
+
+
+def update_5hd_axis(origin_format, list_axis, input_format):
+    """
+    update the axis of 5hd format
+    data using for compute and schedule
+    """
+    if hasattr(list_axis, 'index'):
+        list_axis = list_axis[0]
+
+    axis_str = origin_format[list_axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": [0, ],
+        "C": [1 + offset_6hd, 4 + offset_6hd],
+        "H": [2 + offset_6hd, ],
+        "W": [3 + offset_6hd, ],
+        "D": [1, ]
+    }
+
+    return dict_format_axis.get(axis_str)
 
 
 # 'pylint:disable=too-many-locals,invalid-name
@@ -111,6 +164,9 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape = softmax.get("shape")
     grad_shape = grad_softmax.get("shape")
     dtype = softmax.get("dtype").lower()
+    ori_format = softmax.get("ori_format")
+    ori_shape = softmax.get("ori_shape")
+    format = softmax.get("format")
 
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
@@ -120,14 +176,29 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     else:
         list_axis = [axis]
 
+    if format in ("NC1HWC0", "NDC1HWC0"):
+        list_axis = update_5hd_axis(ori_format, list_axis, format)
+
+    if fz.is_frac_z(softmax):
+        list_axis = fz.to_frac_z_axis(ori_shape, list_axis)
+
+    extra_params = {}
+    if format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
+        extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
+
     schedules = []
     tensors = []
-    ins = classify([softmax, grad_softmax, list_axis], "norm")
+    ins = classify([softmax, grad_softmax, list_axis], "norm", extra_params)
 
-    for (x, grad, reduce_axis) in ins:
+    for idx, (x, grad, reduce_axis) in enumerate(ins):
         with tbe.compute():
+            disable_fuse_axes = []
+            if "disable_fuse_axes" in extra_params:
+                disable_fuse_axes = extra_params.get("disable_fuse_axes")[idx]
             shape_var_new, grad_shape_var_new = shape_util.variable_shape([x, grad], op_mode="norm")
-            softmax = tvm.placeholder(shape_var_new, dtype=dtype, name="softmax")
+            softmax = tvm.placeholder(shape_var_new, dtype=dtype, name="softmax",
+                                      attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": format,
+                                             "disable_fuse_axes": disable_fuse_axes})
             grad_softmax = tvm.placeholder(grad_shape_var_new, dtype=dtype, name="grad_softmax")
             output = softmax_grad_compute(softmax, grad_softmax, grad_x, reduce_axis, kernel_name)
             tensors.append([softmax, grad_softmax, output])

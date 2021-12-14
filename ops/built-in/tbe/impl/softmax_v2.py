@@ -25,8 +25,10 @@ from __future__ import absolute_import
 import math
 
 from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_context
 from impl.util import util_frac_z as fz
 from impl.util import util_select_op_base
+import impl.dynamic as dyn_impl
 import te.lang.cce
 import te.platform.cce_params as cce
 from te import tvm
@@ -199,50 +201,27 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     dtype = input_x.get("dtype").lower()
     ori_input_format = input_x.get("ori_format")
     if length_x_ori == 2:
-        if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1 and shape_x_ori[1] * 2 < UB_SIZE_LIMIT:
-            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND")
-            if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310") or tbe_platform.api_check_support("tik.vgatherb"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float,float",
-                                                       format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float,float",
-                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
-        else:
-            if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16",
-                                                       format="NC1HWC0,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16",
-                                                        format="NC1HWC0,ND")
-            if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float",
-                                                       format="NC1HWC0,ND,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float",
-                                                        format="NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310") or tbe_platform.api_check_support("tik.vgatherb"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0")
+        if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                    datatype="float16,float16,float16",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,float16",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND")
+        if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                    datatype="float16,float16,float16,float",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND,ND")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,float16,float",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND,ND")
+        if tbe_product in ("Ascend910", "Ascend310") or tbe_platform.api_check_support("tik.vgatherb"):
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                    datatype="float16,float16,float16,float,float",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,float16,float,float",
+                                                    format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
     elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or shape_x_ori[-2] % 16 != 0):
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -261,30 +240,22 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                         format="FRACTAL_NZ")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float16,float",
-                                                       format="NC1HWC0,NDC1HWC0,ND,ND")
+                                                       datatype="float16,float16,float16,float,float16,float",
+                                                       format="NC1HWC0,NDC1HWC0,ND,ND,FRACTAL_NZ,FRACTAL_NZ")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float16,float",
-                                                        format="NC1HWC0,NDC1HWC0,ND,ND")
+                                                        datatype="float16,float16,float16,float,float16,float",
+                                                        format="NC1HWC0,NDC1HWC0,ND,ND,FRACTAL_NZ,FRACTAL_NZ")
         if tbe_product in ("Ascend910",) or tbe_platform.api_check_support("tik.vgatherb"):
-            if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[-1] * 2 < UB_SIZE_LIMIT:
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float,\
-                                                                 float16,float,float16,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                               NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float,\
-                                                                  float16,float,float16,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                                NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
-            else:
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float,float16,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float,float16,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                    datatype="float16,float16,float,float,\
+                                                                float16,float,float16,float",
+                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,float,float,\
+                                                                float16,float,float16,float",
+                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
@@ -309,11 +280,15 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                             format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,float,float,float16,float",
-                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                       datatype="float16,float16,float,float,\
+                                                                 float16,float,float16,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                               FRACTAL_NZ,FRACTAL_NZ")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,float16,float,float,float16,float",
-                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                                                        datatype="float16,float16,float,float,\
+                                                                  float16,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0,\
+                                                                FRACTAL_NZ,FRACTAL_NZ")
     else:
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -2687,10 +2662,9 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     # get input_x format
     input_format = input_x.get("format")
     axic_is_c = False
-
+    ori_shape = input_x.get("ori_shape")
     if input_format == "NC1HWC0":
-        if len(input_x.get("ori_shape")) == 2:
-            ori_shape = input_x.get("ori_shape")
+        if len(ori_shape) == 2:
             new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
             input_x["ori_shape"] = new_ori_shape
             if not isinstance(axis, int):
@@ -2705,6 +2679,30 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                     axis[0] = axis[0] + 1
                 else:
                     axis[0] = axis[0] - 1
+        if len(ori_shape) == 3:
+            new_ori_shape = [1, ori_shape[0], ori_shape[1], ori_shape[2]]
+            input_x["ori_shape"] = new_ori_shape
+            if not isinstance(axis, int):
+                axis = list(axis)
+            if not hasattr(axis, 'index'):
+                if axis >= 0:
+                    axis = axis + 1
+            else:
+                if axis[0] >= 0:
+                    axis[0] = axis[0] + 1
+
+    use_dynamic = True
+    if input_format in ("FRACTAL_NZ",) and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0:
+        use_dynamic = False
+    if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and use_dynamic:
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+        return
 
     if input_format in ("NC1HWC0", "NDC1HWC0"):
         if not hasattr(axis, 'index'):

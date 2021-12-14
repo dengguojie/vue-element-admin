@@ -17,9 +17,11 @@ softmax_grad
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
+import impl.dynamic as dyn_impl
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=locally-disabled,unused-argument
@@ -141,6 +143,16 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape_grad_softmax = grad_softmax.get("shape")
     dtype_softmax = softmax.get("dtype")
     input_format = softmax.get("format")
+
+    if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ"):
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name)
+        return
 
     if not isinstance(axis, int):
         axis = list(axis)
