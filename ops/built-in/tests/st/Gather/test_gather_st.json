@@ -96,5 +96,54 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "Gather",
+    "case_name" : "test_gather_with2_batch_dims_001",
+    "calc_expect_func_file" : "test_gather_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+	"shape": [-2],
+	"shape_range": [[1,16]],
+	"typical_shape": [128,1],
+	"type": ["float16"],
+	"value_range": [[0, 1]],
+	"data_distribute" : "uniform",
+	"name": "x"
+      },
+      {
+	"format": "ND",
+	"shape": [-2],
+	"shape_range": [[1,16]],
+	"typical_shape": [128,1],
+	"type": ["int32"],
+	"value_range": [[0, 1]],
+	"data_distribute" : "uniform",
+	"name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+	"shape": [-2],
+	"shape_range": [[1,16]],
+	"typical_shape": [128,1],
+	"type": ["float16"],
+	"name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "validate_indices",
+        "value": false,
+        "type": "bool"
+      },
+      {
+	"name": "batch_dims",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
-]
+]  
