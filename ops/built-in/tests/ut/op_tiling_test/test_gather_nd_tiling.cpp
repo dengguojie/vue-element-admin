@@ -213,3 +213,27 @@ TEST_F(GatherNdTiling, gather_nd_tiling_6) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "6 2 0 1 0 0 16000 1 57 40 280 1 0 1111 2 543056800 0 0 19 678821 1111 0 0 0 0 0 0 ");
 }
+
+TEST_F(GatherNdTiling, gather_nd_tiling_7) {
+  std::string op_name = "GatherNd";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherNd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":4, "
+      "\"params_dsize\":2}}";
+
+  std::vector<int64_t> inputA{800, 611, 1111};
+  std::vector<int64_t> inputB{2, 0};
+  std::vector<int64_t> output{2, 0};
+
+  auto opParas = op::GatherNd("GatherNd");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, indices, inputB, ge::DT_INT32, ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT16, ge::FORMAT_ND, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "8 2 0 1 0 0 0 0 0 0 4175 106400 0 543056800 0 543056800 0 0 19 0 0 0 0 0 0 0 0 ");
+}

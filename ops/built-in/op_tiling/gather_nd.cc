@@ -269,7 +269,10 @@ bool GatherNdTiling(const std::string& opType, const ge::Operator& opParas, cons
   }
   OP_LOGD("GatherNd", "op [GatherNdTiling] : paramsDims=%d, indicesDims=%d, indicesLastDim=%d, paramsRow=%d",
           paramsDims, indicesDims, indicesLastDim, runParams.paramsRow);
-  int64_t indicesPrefix = indicesTotal / indicesLastDim;
+  int64_t indicesPrefix = 1;
+  for (int i = 0; i < indicesDims - 1; i++) {
+    indicesPrefix *= indicesShape.GetDim(i);
+  }
 
   // block tiling: indices tiling
   runParams.needCoreNum = coreNum;
