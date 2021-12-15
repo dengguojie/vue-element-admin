@@ -90,7 +90,6 @@ def _compute(data_input):
     -------
     data_res :  return of rsqrt
     """
-
     inp_shape = data_input.shape
     data_sqrt = tbe.vsqrt(data_input, 1)
     tesor_one = tbe.broadcast(tvm.const(Constant.CONST_ONE, data_input.dtype), inp_shape)

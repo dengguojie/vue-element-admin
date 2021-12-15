@@ -21,7 +21,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.sparse_apply_common import SparseApply
 
 
-# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SparseApplyRMSProp(SparseApply):
     """
         Function: use to store sparse_apply_rms_prop base parameters

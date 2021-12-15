@@ -19,10 +19,13 @@ split_v_d
 from te import tik
 from te import platform as tbe_platform
 
-# vtranspose can deal 16*16
-TRANSPOSE_SIZE = 256
-UNIT = 16
-RESERVED_UB_SIZE = 8 * 1024
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant.
+    """
+    UNIT = 16
 
 
 def ceil(int_x, int_y):
@@ -56,14 +59,14 @@ class SplitEqual():
         self.last_dim = self.shape[1]
         self.split_last_dim = size_splits[0]
         self.output_num = len(self.size_splits)
-        self.x_unit = UNIT
+        self.x_unit = Constant.UNIT
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
         self.block_ele = 32 // self.dtype_size
         self.ub_ele = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // self.dtype_size - \
                       self.block_ele
         self.half_ub_ele = self.ub_ele // 2
         min_unit = self.get_min_unit()
-        self.x_unit = self.half_ub_ele // (UNIT * self.last_dim) // min_unit * min_unit
+        self.x_unit = self.half_ub_ele // (Constant.UNIT * self.last_dim) // min_unit * min_unit
         self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.tik_instance = tik.Tik()
         self.input_tensor = self.tik_instance.Tensor(self.dtype, self.shape, name="gm_in", scope=tik.scope_gm)
@@ -98,20 +101,22 @@ class SplitEqual():
         """
         self.tik_instance.data_move(ub_a, self.input_tensor[x_offset * self.last_dim], 0, 1,
                                     self.x_unit * self.last_dim // self.block_ele, 0, 0)
-        ub_a_src_list = [ub_a[self.x_unit * self.last_dim * i] for i in range(UNIT)]
-        ub_b_dst_list = [ub_b[UNIT * i] for i in range(UNIT)]
-        self.tik_instance.vnchwconv(True, True, ub_b_dst_list, ub_a_src_list, self.x_unit * self.last_dim // UNIT,
-                                    UNIT * UNIT // self.block_ele, UNIT // self.block_ele)
+        ub_a_src_list = [ub_a[self.x_unit * self.last_dim * i] for i in range(Constant.UNIT)]
+        ub_b_dst_list = [ub_b[Constant.UNIT * i] for i in range(Constant.UNIT)]
+        self.tik_instance.vnchwconv(True, True, ub_b_dst_list, ub_a_src_list,
+                                    self.x_unit * self.last_dim // Constant.UNIT,
+                                    Constant.UNIT * Constant.UNIT // self.block_ele, Constant.UNIT // self.block_ele)
         for i in range(self.output_num):
-            offset_ub_b = i * self.split_last_dim * UNIT
-            offset_ub_a = i * self.split_last_dim * UNIT * self.x_unit
+            offset_ub_b = i * self.split_last_dim * Constant.UNIT
+            offset_ub_a = i * self.split_last_dim * Constant.UNIT * self.x_unit
             self.tik_instance.data_move(ub_a[offset_ub_a], ub_b[offset_ub_b], 0, self.x_unit,
-                                        self.split_last_dim * UNIT // self.block_ele,
+                                        self.split_last_dim * Constant.UNIT // self.block_ele,
                                         (self.output_num - 1) * self.split_last_dim, 0)
-        ub_a_src_list_2 = [ub_a[UNIT * i] for i in range(UNIT)]
-        ub_b_dst_list_2 = [ub_b[self.x_unit * self.last_dim * i] for i in range(UNIT)]
-        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2, self.x_unit * self.last_dim // UNIT,
-                                    UNIT // self.block_ele, UNIT * UNIT // self.block_ele)
+        ub_a_src_list_2 = [ub_a[Constant.UNIT * i] for i in range(Constant.UNIT)]
+        ub_b_dst_list_2 = [ub_b[self.x_unit * self.last_dim * i] for i in range(Constant.UNIT)]
+        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2,
+                                    self.x_unit * self.last_dim // Constant.UNIT,
+                                    Constant.UNIT // self.block_ele, Constant.UNIT * Constant.UNIT // self.block_ele)
         for i in range(self.output_num):
             offset_ub_b = self.split_last_dim * self.x_unit * i
             offset_output_gm = x_offset * self.split_last_dim
@@ -121,7 +126,9 @@ class SplitEqual():
     def process_each_core(self, core_ele, core_offset):
         """process_each_core"""
         loop_num = core_ele // self.x_unit
+        # 'pylint:disable=attribute-defined-outside-init
         self.ub_a = self.tik_instance.Tensor(self.dtype, (self.half_ub_ele,), name="ub_a", scope=tik.scope_ubuf)
+        # 'pylint:disable=attribute-defined-outside-init
         self.ub_b = self.tik_instance.Tensor(self.dtype, (self.half_ub_ele,), name="ub_b", scope=tik.scope_ubuf)
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
             loop_offset = core_offset + loop_idx * self.x_unit
