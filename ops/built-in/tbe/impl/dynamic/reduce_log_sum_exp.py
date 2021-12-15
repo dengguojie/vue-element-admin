@@ -26,6 +26,7 @@ from impl.util.platform_adapter import platform_info
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local,too-many-arguments
 @register_operator_compute("ReduceLogSumExp", op_mode="dynamic", support_fusion=True)
 def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
@@ -70,6 +71,7 @@ def reduce_log_sum_exp_compute(x, axes, y, keep_dims=False,
     if x_dtype != compatible_dtype:
         res = tbe.cast_to(res, x_dtype)
     return res
+
 
 # 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 @register_operator("ReduceLogSumExp")
@@ -142,3 +144,4 @@ def reduce_log_sum_exp(x, axes, y, keep_dims=False,
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
+    
