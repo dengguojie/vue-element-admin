@@ -234,6 +234,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/mul_maximum_fusion_pass.cc
   graph_fusion/ai_core/nms_with_mask_fusion_pass.cc
   graph_fusion/ai_core/normalize_fusion_pass.cc
+  graph_fusion/ai_core/argmax_onehot_fusion_pass.cc
   graph_fusion/ai_core/one_hot_fusion_pass.cc
   graph_fusion/ai_core/pack_fusion_pass.cc
   graph_fusion/ai_core/pad_conv2d_fusion_pass.cc
