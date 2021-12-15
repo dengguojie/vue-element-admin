@@ -28,6 +28,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.load3d_common_func import img2col
 
+
 @unique
 class L1MoveStrategy(Enum):
     """
@@ -148,26 +149,26 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                src1_rep_stride=8)
 
     def _vector_dup(self, src, src_start, shape, dup_reg):
-        VECTOR_FP16_SIZE = 128
-        MAX_VECTOR_REPEAT_TIME = 255
+        vector_fp16_size = 128
+        max_vector_repeat_time = 255
 
         ele_num = functools.reduce(lambda x, y: x * y, shape)
-        total_repeat_time = ele_num // VECTOR_FP16_SIZE
-        remain_ele = ele_num % VECTOR_FP16_SIZE
-        mask_value = VECTOR_FP16_SIZE
-        repeat_max_time = total_repeat_time // MAX_VECTOR_REPEAT_TIME
-        remain_repeat_time = total_repeat_time % MAX_VECTOR_REPEAT_TIME
+        total_repeat_time = ele_num // vector_fp16_size
+        remain_ele = ele_num % vector_fp16_size
+        mask_value = vector_fp16_size
+        repeat_max_time = total_repeat_time // max_vector_repeat_time
+        remain_repeat_time = total_repeat_time % max_vector_repeat_time
 
         with self.inst.for_range(0, repeat_max_time) as loop:
-            self.inst.vector_dup(mask_value, src[src_start + loop * MAX_VECTOR_REPEAT_TIME * mask_value],
-                                 dup_reg, MAX_VECTOR_REPEAT_TIME, 1, 8)
+            self.inst.vector_dup(mask_value, src[src_start + loop * max_vector_repeat_time * mask_value],
+                                 dup_reg, max_vector_repeat_time, 1, 8)
 
         if remain_repeat_time > 0:
-            self.inst.vector_dup(mask_value, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value],
+            self.inst.vector_dup(mask_value, src[src_start + repeat_max_time * max_vector_repeat_time * mask_value],
                                  dup_reg, remain_repeat_time, 1, 8)
 
         if remain_ele > 0:
-            self.inst.vector_dup(remain_ele, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value +
+            self.inst.vector_dup(remain_ele, src[src_start + repeat_max_time * max_vector_repeat_time * mask_value +
                                                  remain_repeat_time * mask_value], dup_reg, 1, 1, 8)
 
     def _img2col(self, aux_l1, big_matrix_ub, l1_begin_pos, rep_times):

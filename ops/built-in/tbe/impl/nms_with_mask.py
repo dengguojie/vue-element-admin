@@ -826,7 +826,7 @@ class _NMSHelper():
                                               self.tmp_tensor_ub_fp16_burst,
                                               Constant.BURST_PROPOSAL_NUM, Constant.FP32_SIZE, Constant.FP16_SIZE)
         else:
-            # max. burst is 65535, so max. bytes is 65535*32b, support max. N is 65535*32/2/8=131070 for fp16
+            # `info: max. burst is 65535, so max. bytes is 65535*32b, support max. N is 65535*32/2/8=131070 for fp16
             self.tik_instance.data_move(self.all_inp_proposals_ub_1980_fp32, self.all_inp_proposals_gm_1980, 0, 1,
                                         self.ceil_n * Constant.ELEMENT_NUM *
                                         self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
@@ -935,7 +935,7 @@ class _NMSHelper():
         -------
         None
         """
-        # =16 for fp16, =8 for fp32. here 8 is ncols
+        # `info: =16 for fp16, =8 for fp32. here 8 is ncols
         vector_proposals_max = self.input_vector_mask_max // 8
         offset = 0
 

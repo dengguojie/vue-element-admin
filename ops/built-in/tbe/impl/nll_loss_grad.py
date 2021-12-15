@@ -779,6 +779,7 @@ class NllLossGradCompute:
             elif dst_need_index:
                 names["index_x" + str(var)].set_as(0)
 
+    # 'pylint: disable=too-many-branches
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
         """
