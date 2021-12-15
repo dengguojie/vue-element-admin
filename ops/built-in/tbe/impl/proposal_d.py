@@ -49,7 +49,9 @@ def get_op_support_info(cls_prob_dic,
                         iou_threshold,
                         output_actual_rois_num,
                         kernel_name="cce_proposal"):
-
+    """
+    calculate get_op_support_info
+    """
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
     return op_cal_info_in_json
 
