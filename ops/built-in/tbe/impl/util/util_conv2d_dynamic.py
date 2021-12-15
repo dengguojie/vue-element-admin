@@ -176,6 +176,7 @@ def check_input_range(input_range, idx_h, idx_w, kh_dilate, kw_dilate, pads):
     return ""
 
 
+# 'pylint: disable=unused-variable
 def check_range_l1_size(inputs, kh_dilate, kw_dilate, strides, pads):
     """
     graph mode fuzz, check range[high] exceed l1 buf
