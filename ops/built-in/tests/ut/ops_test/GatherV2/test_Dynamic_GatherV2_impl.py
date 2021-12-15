@@ -73,6 +73,12 @@ def test_op_check_supported(test_arg):
                      {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
                      {"shape": (-1, 128, 512), "dtype": "int64", "format": "NCHW", "ori_shape": (64, 128, 512),
                       "ori_format": "ND"})
+    check_supported({"shape": (7709, 512), "dtype": "float16", "format": "ND", "ori_shape": (7709, 512),
+                     "ori_format": "ND"},
+                     {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (128,), "ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (-1, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (128, 512),
+                      "ori_format": "ND"})
 
 
 def gen_dynamic_gather_v2_case(dict_params, dict_indices, dict_axis, dict_y, batch_dims, kernel_name_val, expect):

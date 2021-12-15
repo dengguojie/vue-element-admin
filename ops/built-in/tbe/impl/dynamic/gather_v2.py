@@ -207,8 +207,8 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, batch_dims=0, kerne
     shape_x = x_dict.get("ori_shape")
     shape_indices = indices_dict.get("ori_shape")
 
-    shape_x_list = [(7709, 512)]
-    shape_indices_list = [(1,)]
+    shape_x_list = [(7709, 512), (17191, 512)]
+    shape_indices_list = [(1,), (128, ), (64, 128)]
 
     if shape_x in shape_x_list and shape_indices in shape_indices_list:
         reason = "shape in bad-performance list."
