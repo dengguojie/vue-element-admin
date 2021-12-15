@@ -18,13 +18,13 @@
  * \file elewise_v3.cc
  * \brief
  */
+#include "elewise_v3.h"
 #include <algorithm>
 #include <unordered_map>
 
+#include "tiling_handler.h"
 #include "graph/op_desc.h"
 #include "graph/utils/op_desc_utils.h"
-#include "elewise_v3.h"
-#include "tiling_handler.h"
 
 namespace optiling {
 namespace v3 {
@@ -187,12 +187,12 @@ bool Elewise::GetShapeUnderCheck(const OpInfo& op_info) {
         return false;
       }
       custom_dim_len = custom_shape_len;
-      custom_input_check.emplace_back(i);
+      custom_input_check.emplace_back(static_cast<int64_t>(i));
     }
   }
   // check same custom inputs shape
   if (!custom_input_check.empty()) {
-    V_CHECK_GT(op_info.GetInputShape().size(), custom_input_check.back(),
+    V_CHECK_GT(static_cast<int64_t>(op_info.GetInputShape().size()), custom_input_check.back(),
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise custom input num may be out of index"),
                return false);
     const std::vector<int64_t>& custom_first_shape = op_info.GetInputShape()[custom_input_check[0]];
@@ -367,7 +367,7 @@ void Elewise::WriteCommonData() const {
     run_info.AddTilingData(elewise_block_axis);
     run_info.AddTilingData(static_cast<int32_t>(block_factor));
     run_info.AddTilingData(elewise_ub_axis);
-    run_info.AddTilingData(ub_factor);
+    run_info.AddTilingData(static_cast<int32_t>(ub_factor));
     run_info.AddTilingData(double_buffer_num);
   } else {
     constexpr uint32_t pure_elewise_var_size = 3;

@@ -22,7 +22,6 @@
 #include "tiling_handler.h"
 
 namespace optiling {
-
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
