@@ -1,0 +1,52 @@
+{
+    "run_cmd": "",
+    "report_list": [
+        {
+            "case_name": "Test_Square_001_sub_1",
+            "status": "success",
+            "trace_detail": {
+                "st_case_info": {
+                    "case_name": "Test_Square_001_sub_1",
+                    "op_params": {
+                        "op": "Square",
+                        "st_mode": "ms_python_train",
+                        "input_desc": [
+                            {
+                                "type": "float16",
+                                "shape": [
+                                    8,
+                                    16,
+                                    8,
+                                    16
+                                ],
+                                "data_distribute": "uniform",
+                                "value_range": [
+                                    0.1,
+                                    1.0
+                                ],
+                                "name": "x"
+                            }
+                        ],
+                        "output_desc": [
+                            {
+                                "type": "float16",
+                                "shape": [
+                                    8,
+                                    16,
+                                    8,
+                                    16
+                                ],
+                                "name": "y"
+                            }
+                        ],
+                        "case_name": "Test_Square_001_sub_1"
+                    },
+                    "input_data_path": "",
+                    "expect_data_paths": null,
+                    "planned_output_data_paths": []
+                },
+                "stage_result": []
+            }
+        }
+    ]
+}

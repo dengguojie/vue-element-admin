@@ -1,0 +1,69 @@
+{
+    "run_cmd": "",
+    "report_list": [
+        {
+            "case_name": "Test_Add_001_case_001",
+            "status": "success",
+            "trace_detail": {
+                "st_case_info": {
+                    "case_name": "Test_Add_001_case_001",
+                    "op_params": {
+                        "op": "Add",
+                        "input_desc": [
+                            {
+                                "format": "NHWC",
+                                "shape": [
+                                    4
+                                ],
+                                "type": "int32",
+                                "data_distribute": "uniform",
+                                "value_range": [
+                                    0.1,
+                                    1.0
+                                ],
+                                "value": [
+                                    1,
+                                    2,
+                                    3,
+                                    4
+                                ]
+                            },
+                            {
+                                "format": "NHWC",
+                                "shape": [
+                                    4
+                                ],
+                                "type": "int32",
+                                "data_distribute": "uniform",
+                                "value_range": [
+                                    0.1,
+                                    1.0
+                                ],
+                                "value": [
+                                    1,
+                                    2,
+                                    3,
+                                    4
+                                ]
+                            }
+                        ],
+                        "output_desc": [
+                            {
+                                "format": "NHWC",
+                                "shape": [
+                                    4
+                                ],
+                                "type": "int32"
+                            }
+                        ],
+                        "case_name": "Test_Add_001_case_001"
+                    },
+                    "input_data_path": "",
+                    "expect_data_paths": null,
+                    "planned_output_data_paths": []
+                },
+                "stage_result": []
+            }
+        }
+    ]
+}

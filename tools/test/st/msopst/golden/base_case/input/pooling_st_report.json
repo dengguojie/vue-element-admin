@@ -1,0 +1,153 @@
+{
+	"run_cmd": "/home/ztest/canndev/tools/op_test_frame/python/op_test_frame/scripts/msopst mi gen -i Pooling_case_20210225145706.json -out ./",
+	"report_list": [{
+		"case_name": "Test_Pooling_001_case_001",
+		"status": "success",
+		"trace_detail": {
+			"st_case_info": {
+				"case_name": "Test_Pooling_001_case_001",
+				"op_params": {
+					"op": "Pooling",
+					"input_desc": [{
+							"format": "NC1HWC0",
+							"ori_format": "NCHW",
+							"shape": [
+								1,
+								2,
+								64,
+								64,
+								16
+							],
+							"ori_shape": [
+								1,
+								32,
+								64,
+								64
+							],
+							"type": "float16",
+							"data_distribute": "uniform",
+							"value_range": [
+								0.1,
+								1.0
+							],
+							"name": "x"
+						},
+						{
+							"format": "UNDEFINED",
+							"shape": [
+								1,
+								64,
+								112,
+								112
+							],
+							"type": "UNDEFINED",
+							"data_distribute": "uniform",
+							"value_range": [
+								0.1,
+								1.0
+							],
+							"name": "matrix"
+						},
+						{
+							"format": "UNDEFINED",
+							"shape": [
+								1,
+								64,
+								112,
+								112
+							],
+							"type": "UNDEFINED",
+							"data_distribute": "uniform",
+							"value_range": [
+								0.1,
+								1.0
+							],
+							"name": "bias"
+						}
+					],
+					"output_desc": [{
+						"format": "NC1HWC0",
+						"ori_format": "NCHW",
+						"shape": [
+							1,
+							2,
+							64,
+							64,
+							16
+						],
+						"ori_shape": [
+							1,
+							32,
+							64,
+							64
+						],
+						"type": "float16",
+						"name": "y"
+					}],
+					"case_name": "Test_Pooling_001_case_001",
+					"attr": [{
+							"name": "window",
+							"type": "list_int",
+							"value": [
+								3,
+								3
+							]
+						},
+						{
+							"name": "stride",
+							"type": "list_int",
+							"value": [
+								2,
+								2
+							]
+						},
+						{
+							"name": "mode",
+							"type": "int",
+							"value": 1
+						},
+						{
+							"name": "offset_x",
+							"type": "int",
+							"value": 0
+						},
+						{
+							"name": "pad",
+							"type": "list_int",
+							"value": [
+								0,
+								0,
+								0,
+								0
+							]
+						},
+						{
+							"name": "global_pooling",
+							"type": "bool",
+							"value": false
+						},
+						{
+							"name": "ceil_mode",
+							"type": "int",
+							"value": 0
+						},
+						{
+							"name": "dilation",
+							"type": "list_int",
+							"value": [
+								1,
+								1,
+								1,
+								1
+							]
+						}
+					]
+				},
+				"input_data_path": null,
+				"expect_data_paths": null,
+				"planned_output_data_paths": null
+			},
+			"stage_result": []
+		}
+	}]
+}

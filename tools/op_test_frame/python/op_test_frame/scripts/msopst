@@ -31,26 +31,15 @@ from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 abnormal_termination = False
 
 
-def _generate_op_project(args, report, machine_type):
+def _generate_json(args, report, machine_type):
     # design test case list from json file
     design = CaseDesign(args.input_file, args.case_name, report)
     case_list, compile_flag = design.design()
     output_path = os.path.realpath(args.output_path)
-    # create op project path and generate op test case code
-    if case_list[0].get('st_mode') == 'ms_python_train':
-        ms_op_generator_instance = MsOpGenerator(
-            case_list, (output_path, args.device_id), machine_type, report)
-        ms_op_generator_instance.generate()
-    else:
-        acl_op_generator_instance = AclOpGenerator(
-            case_list, (output_path, args.device_id, machine_type), report, compile_flag)
-        acl_op_generator_instance.generate()
-
-    # generate data
-    data_generator = DataGenerator(case_list, output_path,
-                                   machine_type, report)
-    data_generator.generate()
-    return case_list
+    # atc tools transform acl_op.json of single operator to om model.
+    if not case_list[0].get('st_mode') == 'ms_python_train':
+        atc_transform = AtcTransformOm(case_list, output_path, compile_flag, machine_type, report)
+        atc_transform.create_acl_op()
 
 
 def _generate_run_cmd_op_project(args, report, machine_type, get_advance_args=None):
@@ -67,8 +56,7 @@ def _generate_run_cmd_op_project(args, report, machine_type, get_advance_args=No
         # atc tools transform acl_op.json of single operator to om model.
         atc_transform = AtcTransformOm(case_list, output_path, compile_flag, machine_type, report)
         atc_transform.transform_acl_json_to_om(args.soc_version, get_advance_args)
-        acl_op_generator_instance = AclOpGenerator(
-            case_list, (output_path, args.device_id, machine_type), report, compile_flag)
+        acl_op_generator_instance = AclOpGenerator(case_list, (output_path, args.device_id, machine_type), report)
         acl_op_generator_instance.generate()
         path = os.path.join(output_path,
                             case_list[0]['op'].replace('/', '_'))
@@ -96,6 +84,31 @@ def _runner_and_compare(args, case_list, report, get_advance_args=None):
         result_comparer.compare(report, path, args.err_thr)
 
 
+def _generate_testcase(args, report, machine_type):
+    # design test case list from st_report.json file
+    report_path = args.input_file
+    utils.check_path_valid(report_path)
+    report.load(report_path)
+    case_list = []
+    for idx, report_obj in enumerate(report.report_list):
+        case_list.append(report_obj.trace_detail.st_case_info.op_params)
+    output_path = os.path.realpath(args.output_path)
+    if len(case_list) == 0:
+        utils.print_error_log("The st_report.json doesn't include operator information.")
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+    if case_list[0].get('st_mode') == 'ms_python_train':
+        ms_op_generator_instance = MsOpGenerator(
+            case_list, (output_path, args.device_id), machine_type, report)
+        ms_op_generator_instance.generate()
+    else:
+        # atc tools transform acl_op.json of single operator to om model.
+        acl_op_generator_instance = AclOpGenerator(case_list, (output_path, args.device_id, machine_type), report)
+        acl_op_generator_instance.generate()
+    # generate data
+    data_generator = DataGenerator(case_list, output_path, machine_type, report)
+    data_generator.generate()
+
+
 def _do_mi_cmd(args, cmd, report):
     try:
         if cmd == "get_shape":
@@ -103,7 +116,9 @@ def _do_mi_cmd(args, cmd, report):
         elif cmd == "change_shape":
             change_shape(args)
         elif cmd == "gen":
-            _generate_op_project(args, report, True)
+            _generate_json(args, report, True)
+        elif cmd == "gen_testcase":
+            _generate_testcase(args, report, True)
         elif cmd == "compare_by_path":
             result_comparer.compare_by_path(args.result_path, args.expect_path)
         elif cmd == "compare":

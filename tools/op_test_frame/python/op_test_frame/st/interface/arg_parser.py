@@ -70,6 +70,9 @@ class MsopstArgParser:
         if sys.argv[2] == 'gen':
             self.input_file = args.input_file
             self.case_name = args.case_name
+            self.output_path = args.output_path
+        if sys.argv[2] == 'gen_testcase':
+            self.input_file = args.input_file
             self._check_device_id(args.device_id)
             self.output_path = args.output_path
         if sys.argv[2] == 'compare':
@@ -195,8 +198,10 @@ class MsopstArgParser:
             'get_shape', help='Get shape.')
         change_shape_parser = subparsers.add_parser(
             'change_shape', help='Change shape.')
-        gen_parser = subparsers.add_parser(
-            'gen', help='Generate test case resource.')
+        gen_json_parser = subparsers.add_parser(
+            'gen', help='Generate acl_op.json for the ascend operator.')
+        gen_testcase_parser = subparsers.add_parser(
+            'gen_testcase', help='Generate testcase resource and data.')
         compare_parser = subparsers.add_parser(
             'compare', help='Compare result data with expect output.')
         compare_by_path_parser = subparsers.add_parser(
@@ -223,22 +228,34 @@ class MsopstArgParser:
             help="<Optional> the output path", required=False)
 
         # gen parser
-        gen_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, .json file, ", required=True)
-        gen_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        gen_parser.add_argument(
-            '-c', "--case_name", dest="case_name", default='all',
-            help="<Optional> the case name to run or gen, splits with ',', like "
-                 "'case0,case1'.", required=False)
-        gen_parser.add_argument(
-            '-d', "--device_id", dest="device_id", default="0",
-            help="<Optional> input device id, default is 0.", required=False)
+        self._mi_gen_parser(gen_json_parser, gen_testcase_parser)
 
         # compare parse
         self._mi_compare_parser(compare_parser, compare_by_path_parser)
+
+    @staticmethod
+    def _mi_gen_parser(gen_json_parser, gen_testcase_parser):
+        # gen acl_op.json
+        gen_json_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, .json file, ", required=True)
+        gen_json_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        gen_json_parser.add_argument(
+            '-c', "--case_name", dest="case_name", default='all',
+            help="<Optional> the case name to run or gen, splits with ',', like "
+                 "'case0,case1'.", required=False)
+        # gen_testcase_parser
+        gen_testcase_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, st_report.json file, ", required=True)
+        gen_testcase_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        gen_testcase_parser.add_argument(
+            '-d', "--device_id", dest="device_id", default="0",
+            help="<Optional> input device id, default is 0.", required=False)
 
     @staticmethod
     def _mi_compare_parser(compare_parser, compare_by_path_parser):

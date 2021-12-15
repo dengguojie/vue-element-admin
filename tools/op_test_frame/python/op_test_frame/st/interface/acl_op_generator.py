@@ -17,7 +17,6 @@ from shutil import Error
 
 from op_test_frame.common import op_status
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 from .const_manager import ConstManager
 from . import utils
 from . import op_st_case_info
@@ -259,13 +258,12 @@ class AclOpGenerator:
     Class for generating acl op testcode.
     """
 
-    def __init__(self, testcase_list, user_setting, report, compile_flag):
+    def __init__(self, testcase_list, user_setting, report):
         self.testcase_list = testcase_list
         self.machine_type = user_setting[2]
         self._check_output_path(user_setting[0], testcase_list)
         self.report = report
         self.device_id = user_setting[1]
-        self.compile_flag = compile_flag
 
     def _check_output_path(self, output_path, testcase_list):
         self.output_path = utils.check_output_path(
@@ -302,12 +300,6 @@ class AclOpGenerator:
                                    ConstManager.TESTCASE_CPP_RELATIVE_PATH
         _append_content_to_file(testcase_cpp_content,
                                 output_testcase_cpp_path)
-
-        ## f3.prepare acl json content and write file
-        if self.machine_type:
-            atc_transform = AtcTransformOm(
-                self.testcase_list, self.output_path, self.compile_flag, self.machine_type, self.report)
-            atc_transform.create_acl_op()
         # deal with report
         gen_acl_result = op_st_case_info.OpSTStageResult(
             op_status.SUCCESS,

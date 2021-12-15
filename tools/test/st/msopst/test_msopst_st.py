@@ -85,7 +85,7 @@ ST_GOLDEN_DYNAMIC_SHAPE_ACL_PROJECT_OUTPUT = './st/msopst/golden/base_case' \
 # MINDSPORE OPERATOR INPUT/OUTPOUT
 ST_MS_GOLDEN_JSON_OUTPUT = './st/msopst/golden/base_case/golden_output' \
                            '/mindspore/json'
-ST_MS_GOLDEN_INPUT_JSON = './st/msopst/golden/base_case/input/ms_case.json'
+ST_MS_GOLDEN_INPUT_JSON = './st/msopst/golden/base_case/input/ms_st_report.json'
 
 ST_GOLDEN_OP_GEN_WITH_VALUE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                              '/test_value_add.json'
@@ -131,6 +131,10 @@ ST_GOLDEN_SCALAR_INPUT_SRC_TESTCASE = './st/msopst/golden/base_case/golden_outpu
                                         '/gen_optional_acl_prj/const_input/TestScalar/testcase.cpp'
 ST_GOLDEN_SCALAR_INPUT_CONFIG_ACL_OP = './st/msopst/golden/base_case/golden_output' \
                                         '/gen_optional_acl_prj/const_input/TestScalar/acl_op.json'
+
+ST_GOLDEN_OP_ADD_REPORT_JSON_INPUT = './st/msopst/golden/base_case/input/add_st_report.json'
+ST_GOLDEN_OP_POOLING_REPORT_JSON_INPUT = './st/msopst/golden/base_case/input/pooling_st_report.json'
+
 
 class NumpyArrar:
     def tofile(self, file_path):
@@ -716,7 +720,7 @@ class TestUtilsMethods(unittest.TestCase):
         of TBE operators
         """
         test_utils.clear_out_path(ST_OUTPUT)
-        args = ['msopst', 'mi', 'gen', '-i', ST_GOLDEN_OP_CASE_JSON_INPUT,
+        args = ['msopst', 'mi', 'gen_testcase', '-i', ST_GOLDEN_OP_POOLING_REPORT_JSON_INPUT,
                 '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
@@ -725,11 +729,8 @@ class TestUtilsMethods(unittest.TestCase):
                         '.check_path_valid'):
                     msopst.main()
         op_output_src = os.path.join(ST_OUTPUT, 'src')
-        op_output_run = os.path.join(ST_OUTPUT, 'run/out/test_data/config/')
         self.assertTrue(test_utils.check_file_context(
             op_output_src, ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC))
-        self.assertTrue(test_utils.check_file_context(
-            op_output_run, ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN))
 
     # ------------------------parse aicpu head file----------------
     def test_create_cmd_for_aicpu_parse_head_file(self):
@@ -814,8 +815,8 @@ class TestUtilsMethods(unittest.TestCase):
         test generate acl code of dynamic shape
         """
         test_utils.clear_out_path(ST_OUTPUT)
-        args = ['msopst', 'mi', 'gen', '-i',
-                ST_GOLDEN_OP_DYNAMIC_SHAPE_JSON_INPUT, '-out', ST_OUTPUT]
+        args = ['msopst', 'mi', 'gen_testcase', '-i',
+                ST_GOLDEN_OP_ADD_REPORT_JSON_INPUT, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
                 with mock.patch(
@@ -871,7 +872,7 @@ class TestUtilsMethods(unittest.TestCase):
         test generate test script for mindspore operator
         """
         test_utils.clear_out_path(ST_OUTPUT)
-        args = ['msopst', 'mi', 'gen', '-i', ST_MS_GOLDEN_INPUT_JSON, '-out',
+        args = ['msopst', 'mi', 'gen_testcase', '-i', ST_MS_GOLDEN_INPUT_JSON, '-out',
                 ST_OUTPUT]
         with pytest.raises(SystemExit) as error:
             with mock.patch('sys.argv', args):
