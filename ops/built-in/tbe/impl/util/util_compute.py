@@ -66,11 +66,13 @@ def check_fc_fuse(input_tensor):
     queue = [input_tensor]
     while queue:
         item = queue.pop(0)
+        if "matmul" not in item.op.tag:
+            continue
         # the min dim size of fc is 2
-        fc_min_dim_flag = len(item.shape) == 2 and item.op.attrs["format"] == "ND"
+        fc_fuse_min_dim_flag = len(item.shape) == 2 and item.op.attrs["format"] == "ND"
         # the max dim size of fc is 4
-        fc_max_dim_flag = len(item.shape) == 4 and item.op.attrs["format"] == "FRACTAL_NZ"
-        if ("matmul" in item.op.tag) and (fc_min_dim_flag or fc_max_dim_flag):
+        fc_fuse_max_dim_flag = len(item.shape) == 4 and item.op.attrs["format"] == "FRACTAL_NZ"
+        if fc_fuse_min_dim_flag or fc_fuse_max_dim_flag:
            return True
     return False
 

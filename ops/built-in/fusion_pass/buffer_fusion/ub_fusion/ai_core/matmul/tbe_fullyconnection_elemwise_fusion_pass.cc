@@ -29,7 +29,6 @@ static const string PATTERN_QUANT = "quant";
 static const string PATTERN_ELTWISE1 = "eltwise1";      // desc name
 static const string PATTERN_ELTWISE2 = "eltwise2";      // desc name
 static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
-static const string PATTERN_OTHER_INPUT1 = "InputData1";  // desc name
 static const string PATTERN_OUTPUT = "output";          // desc name
 static const vector<string> elemWiseWhiteList = {
   "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
@@ -97,17 +96,36 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-          .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .SetHead({PATTERN_FC_MATMUL})
           .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_DEQUANT})
           .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DEQUANT})
           .SetOutputs(PATTERN_DEQUANT, {PATTERN_ELTWISE1})
-          .SetOutputs(PATTERN_OTHER_INPUT1, {PATTERN_ELTWISE1})
           .SetOutputs(PATTERN_ELTWISE1, {PATTERN_ELTWISE2})
           .SetOutputs(PATTERN_ELTWISE2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
 
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
+
+  string fcAddPassName = "TbeFullyconnectionAddRelu6FusionPass";
+  BufferFusionPattern *fcAddPattern = new (std::nothrow) BufferFusionPattern(fcAddPassName, TBE_FUSION_OP_NUM_MAX);
+  FUSION_PASS_CHECK(fcAddPattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass fcAddPattern.", fcAddPassName.c_str());
+  // define pattern rules
+  fcAddPattern
+      ->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
+                  TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({PATTERN_FC_MATMUL})
+      .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_ELTWISE1})
+      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_ELTWISE1})
+      .SetOutputs(PATTERN_ELTWISE1, {PATTERN_ELTWISE2})
+      .SetOutputs(PATTERN_ELTWISE2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
+
+  patterns.push_back(fcAddPattern);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass fcAddPattern.", fcAddPassName.c_str());
   return patterns;
 }
 
@@ -281,8 +299,9 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   }
 
   // check whether the relu/leakyrelu op
-  for (const auto& reluNode : reluNodes) {
+  for (const auto &reluNode : reluNodes) {
     if (elemWiseNodes.empty()) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is %s, Eltwise2 is empty.", reluNode->GetType().c_str());
       if (reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" &&
           find(elemWiseWhiteList.begin(), elemWiseWhiteList.end(), reluNode->GetType()) == elemWiseWhiteList.end()) {
         fusionNodes.clear();
@@ -291,8 +310,9 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
         return SUCCESS;
       }
     } else {
-      bool unvalid_elemWise1_type = reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" &&
-                                    reluNode->GetType() != "Add";
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is %s, Eltwise2 is not empty.", reluNode->GetType().c_str());
+      bool unvalid_elemWise1_type =
+          reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" && reluNode->GetType() != "Add";
       if (unvalid_elemWise1_type) {
         fusionNodes.clear();
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
@@ -303,8 +323,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is add, start this ub fusion.");
         // the input nodes of add must be 2
         FUSION_PASS_CHECK(reluNode->GetAllInDataAnchors().size() != 2,
-                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input nodes must be two"),
-                          return FAILED);
+                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input nodes must be two"), return FAILED);
         // previous nodes are all not FC
         if (!CheckPreNodeIsFcNode(reluNode)) {
           fusionNodes.clear();
@@ -313,8 +332,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
         }
         ge::OutDataAnchorPtr out_anchor = reluNode->GetOutDataAnchor(0);
         FUSION_PASS_CHECK(out_anchor->GetPeerInDataAnchors().size() != 1,
-                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output node must be one"),
-                          return FAILED);
+                          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output node must be one"), return FAILED);
         // the elemwise2 is not relu6
         if (out_anchor->GetPeerInDataAnchors().at(0)->GetOwnerNode()->GetType() != "Relu6") {
           fusionNodes.clear();
@@ -343,11 +361,10 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
 
   // check whether the EltWise op is in the whitelist
   for (const auto &elemWiseNode : elemWiseNodes) {
-    if (find(elemWiseWhiteList.begin(), elemWiseWhiteList.end(), elemWiseNode->GetType()) ==
-        elemWiseWhiteList.end()) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise2 type is %s.", elemWiseNode->GetType().c_str());
+    if (find(elemWiseWhiteList.begin(), elemWiseWhiteList.end(), elemWiseNode->GetType()) == elemWiseWhiteList.end()) {
       fusionNodes.clear();
-      OP_LOGD(FUSED_OP_TYPE.c_str(),
-              "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
               elemWiseNode->GetName().c_str(), elemWiseNode->GetType().c_str());
       return SUCCESS;
     }

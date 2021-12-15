@@ -251,7 +251,7 @@ def test_fc_add_relu6_fusion_xbatch_910_case1(test_arg):
         cce_build_code(sch, config)
 
 # fc+add+relu6 x batch fusion case
-def test_fc_add_relu6_fusion_xbatch_910_case2(test_arg):
+def test_fc_add_relu6_fusion_xbatch_910_input_y_case(test_arg):
     te_set_version("Ascend910")
     with cce():
         tensor_x = tvm.placeholder((8, 32), name="tensor_a", dtype="float16", attrs={'format': "NC1HWC0",
@@ -295,7 +295,7 @@ ut_case.add_cust_test_func(test_func=test_split_fc_3)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_1batch_910_case1)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_1batch_910_case2)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_xbatch_910_case1)
-ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_xbatch_910_case2)
+ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_xbatch_910_input_y_case)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
