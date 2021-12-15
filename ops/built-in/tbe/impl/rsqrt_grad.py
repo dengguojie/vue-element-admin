@@ -70,6 +70,7 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
 # 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
+# 'pylint: disable=too-many-locals
 def rsqrt_grad(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     """
     calculate the backpropagation of rsqrt operation

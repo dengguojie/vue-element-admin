@@ -48,6 +48,7 @@ def _division_sixteen(shape):
     return False
 
 
+# 'pylint: disable = unused-argument
 def op_select_format(grad, x1, x2, y, axis, keepdims,
                      kernel_name="softmax_grad_ext"):
     """select format dynamically"""
@@ -95,8 +96,9 @@ def op_select_format(grad, x1, x2, y, axis, keepdims,
 
 
 def _check_nz_rule(grad, x1, x2, axis):
-
+    # 'pylint: disable = unused-variable
     shape_grad = shape_util.scalar2tensor_one(grad.get("shape"))
+    # 'pylint: disable = unused-variable
     shape_x1 = shape_util.scalar2tensor_one(x1.get("shape"))
     shape_x2 = shape_util.scalar2tensor_one(x2.get("shape"))
 
@@ -117,7 +119,7 @@ def _check_nz_rule(grad, x1, x2, axis):
     if not(len(shape_x2) == 1 and shape_x2[0] == 1):
         error_manager_vector.raise_err_specific_reson("softmax_grad_ext", "the last input tensor should be scalar")
 
-    forward = [i for i in range(len(ori_shape))]
+    forward = list(i for i in range(len(ori_shape)))
     back_forwad = [i-len(ori_shape) for i in range(len(ori_shape))]
     if type(axis) in [list, tuple]:
         axis = list(axis)
@@ -202,6 +204,7 @@ def _broadcast_nz(tensor, shape):
 
 
 @fusion_manager.register("softmax_grad_ext")
+# 'pylint: disable = unused-argument
 def softmax_grad_ext_compute(data_grad, data_x1, data_x2,
                              y, axis, keepdims,
                              kernel_name="softmax_grad_ext"):

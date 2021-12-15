@@ -20,6 +20,7 @@ from te.utils.error_manager import error_manager_vector
 from impl import sparse_apply_common
 
 
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SparseApplyAdagrad(sparse_apply_common.SparseApply):
     """
     Sub class inherited form SparseApply for sparse_apply_adagrad op
