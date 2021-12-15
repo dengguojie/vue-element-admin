@@ -121,7 +121,7 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
         if y.dtype != x_type:
             y = tbe.cast_to(y, dtype=x_type)
 
-        "# return variance"
+        # 'return variance'
         return y
     else:
         epsilon_value = tvm.const(epsilon, dtype=var.dtype)
@@ -131,7 +131,7 @@ def reduce_std_compute(x, mean, dim, unbiased, keepdim, invert, epsilon, kernel_
         if y_invert.dtype != x_type:
             y_invert = tbe.cast_to(y_invert, dtype=x_type)
 
-        "# return the inverse of variance"
+        # 'return the inverse of variance'
         return y_invert
 
 

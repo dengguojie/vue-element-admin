@@ -118,7 +118,7 @@ def reduce_std_compute(x, dim, unbiased, keepdim, kernel_name="reduce_std"):
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
 def reduce_std(x, y1, y2, dim=None, unbiased=True, keepdim=False, kernel_name="reduce_std"):
-
+    # calculating reduce_std
     # calculating data parameters
     check_list = ("float16", "float32")
 
