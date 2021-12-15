@@ -55,7 +55,7 @@ class AsStrided:
     PER_BLOCK_16_ELEMS = 16
     DUP_MASK = 128
     MAX_INT64_VALUE = 2 ** 64 - 1
-    TILING_SPACE = ("int64", 128, 128 * 8)
+    TILING_SPACE = ("int64", 85, 128 * 8)
     TILING_LAST_STRIDE_IS_ONE = 3000
     TILING_LAST_DIM_IS_LARGE = 3001
     TILING_LAST_DIM_IS_SMALL = 3002
@@ -81,6 +81,7 @@ class AsStrided:
         self.tiling_gm = tiling_gm
         self.data_ub = data_ub
         self.tiling_ub = tiling_ub
+        self.tiling_params = tiling_params
         self.tiling_mode, self.used_core_cnt, self.out_ub_offset, self.vnc_col_size = tiling_params[:4]
         self.axis_1_burst_unit, self.axis_1_lp_unit, self.axis_0_lp_unit = tiling_params[4:7]
         self.mc_pos, self.core_step_in = tiling_params[7:9]
@@ -91,7 +92,7 @@ class AsStrided:
         self.storage_offset, self.last_dim_size, self.last_dim_stride = tiling_params[17:20]
         self.rsecond_dim_size, self.rsecond_dim_stride, self.out_lp_step = tiling_params[20:23]
         self.nfirst_cnt_per_row, self.dim_num = tiling_params[23:25]
-        self.dims_info_beg = 25
+        self.dim_info_beg = 25
         self.rsize_reg = self.tik_inst.Scalar(name="rsize_reg")
         self.size_reg = self.tik_inst.Scalar(name="size_reg")
         self.stride_reg = self.tik_inst.Scalar(name="stride_reg")
@@ -136,20 +137,66 @@ class AsStrided:
         with self.tik_inst.else_scope():
             self.axis_1_cur_idx.set_as(axis_1_lp_idx * self.axis_1_lp_unit - self.is_axis_1_back * self.axis_1_backend)
 
+    # 'pylint: disable=too-many-locals, too-many-statements
     def _get_axis_0_elem_idx(self, axis_0_cur_idx):
         """
         get index in input shape for each axis 0 elements
         """
+        var_offset = locals()
         self.axis_0_input_idx.set_as(0)
 
-        # the order is: rsize0, size0, stride0, rsize1, size1, stride1, ...
-        with self.tik_inst.for_range(0, self.dim_num) as dim_idx:
-            self.rsize_reg.set_as(self.tiling_ub[self.dims_info_beg + dim_idx * 3 + 0])
-            self.size_reg.set_as(self.tiling_ub[self.dims_info_beg + dim_idx * 3 + 1])
-            self.stride_reg.set_as(self.tiling_ub[self.dims_info_beg + dim_idx * 3 + 2])
-            self.axis_0_input_idx.set_as(self.axis_0_input_idx + axis_0_cur_idx // self.rsize_reg %
-                                         self.size_reg * self.stride_reg)
-        self.axis_0_input_idx.set_as(self.axis_0_input_idx + self.storage_offset)
+        # the factors order is: rsize0, size0, stride0, rsize1, size1, stride1, ...
+        var_offset["tmp_offset_1"] = (axis_0_cur_idx // self.tiling_params[self.dim_info_beg] %
+                                      self.tiling_params[self.dim_info_beg + 1] *
+                                      self.tiling_params[self.dim_info_beg + 2])
+        for idx, val in enumerate(AsStrided.SCALAR_INDEX[1:20]):
+            gap = val * 3
+            var_offset["tmp_offset_" + str(idx + 2)] = (var_offset["tmp_offset_" + str(val)] +
+                                                        axis_0_cur_idx // self.tiling_params[self.dim_info_beg + gap] %
+                                                        self.tiling_params[self.dim_info_beg + gap + 1] *
+                                                        self.tiling_params[self.dim_info_beg + gap + 2])
+
+        # now suppose the max dimension is 21
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[1]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_1"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[2]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_2"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[3]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_3"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[4]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_4"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[5]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_5"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[6]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_6"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[7]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_7"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[8]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_8"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[9]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_9"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[10]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_10"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[11]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_11"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[12]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_12"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[13]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_13"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[14]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_14"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[15]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_15"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[16]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_16"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[17]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_17"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[18]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_18"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[19]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_19"] + self.storage_offset)
+        with self.tik_inst.if_scope(self.dim_num == AsStrided.SCALAR_INDEX[20]):
+            self.axis_0_input_idx.set_as(var_offset["tmp_offset_20"] + self.storage_offset)
 
     @staticmethod
     def _ceil_div(val_x, val_y):
@@ -454,9 +501,7 @@ class AsStrided:
                                             0, self.burst_valid_elems, self.dtype_factor,
                                             self.reorder_src_stride * self.dtype_factor, 0)
         with self.tik_inst.else_scope():
-            zero_ub = self.tiling_ub.reinterpret_cast_to("int16")
             data_ub = self.data_ub.reinterpret_cast_to("int16")
-            self.tik_inst.vector_dup(AsStrided.PER_BLOCK_16_ELEMS, zero_ub, 0, 1, 0, 0)
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, self.reorder_lp_cnt) as burst_idx:
                     target_offset = (burst_idx * self.burst_valid_elems *
@@ -464,8 +509,8 @@ class AsStrided:
                     source_offset = (self.out_ub_offset * AsStrided.PER_BLOCK_16_ELEMS // self.ele_per_block +
                                      burst_idx * self.reorder_gap * self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS)
                     self.tik_inst.vor(self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS,
-                                      data_ub[target_offset], data_ub[source_offset], zero_ub,
-                                      self.burst_valid_elems, 1, 1, 0, self.dtype_factor, 0, 0)
+                                      data_ub[target_offset], data_ub[source_offset], data_ub[source_offset],
+                                      self.burst_valid_elems, 1, 1, 1, self.dtype_factor, 0, 0)
 
     def _transpose_by_vnchwconv_b16(self, data_len):
         """
@@ -621,23 +666,22 @@ class AsStrided:
                     self.scalar_reg[j].set_as(self.data_ub[in_offset])
                 for j in AsStrided.SCALAR_INDEX[:self.ele_per_block]:
                     self.data_ub[self.out_ub_offset + j].set_as(self.scalar_reg[j])
-                zero_ub = self.tiling_ub.reinterpret_cast_to("int16")
                 data_ub = self.data_ub.reinterpret_cast_to("int16")
-                self.tik_inst.vector_dup(AsStrided.PER_BLOCK_16_ELEMS, zero_ub, 0, 1, 0, 0)
                 mask_value = AsStrided.DUP_MASK
                 if self.ele_per_block == AsStrided.BYTES_PER_BLOCK:
                     repeat_cnt = self.vnc_col_size // 2 // mask_value
                     zero_data_len = repeat_cnt * mask_value * 2
                     self.tik_inst.vor(mask_value,
                                       data_ub[self.out_ub_offset // 2 + AsStrided.PER_BLOCK_16_ELEMS],
-                                      data_ub[self.out_ub_offset // 2], zero_ub,
+                                      data_ub[self.out_ub_offset // 2], data_ub[self.out_ub_offset // 2],
                                       repeat_cnt, 1, 0, 0, 8, 0, 0)
                 else:
                     repeat_cnt = self.dtype_factor * self.vnc_col_size // mask_value
                     zero_data_len = repeat_cnt * mask_value // self.dtype_factor
                     self.tik_inst.vor(mask_value,
                                       data_ub[self.out_ub_offset * self.dtype_factor + AsStrided.PER_BLOCK_16_ELEMS],
-                                      data_ub[self.out_ub_offset * self.dtype_factor], zero_ub,
+                                      data_ub[self.out_ub_offset * self.dtype_factor],
+                                      data_ub[self.out_ub_offset * self.dtype_factor],
                                       repeat_cnt, 1, 0, 0, 8, 0, 0)
 
             # move data out
@@ -985,7 +1029,7 @@ class AsStrided:
         self.tik_inst.BuildCCE(kernel_name=kernel_name,
                                inputs=input_list,
                                outputs=[self.data_out],
-                               flowtable=[self.tiling_gm])
+                               flowtable=[self.tiling_gm], config={"enable_const_fold": True})
 
 
 # 'pylint: disable=invalid-name, too-many-arguments, too-many-locals, unused-argument

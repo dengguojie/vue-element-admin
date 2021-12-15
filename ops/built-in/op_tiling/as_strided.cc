@@ -46,6 +46,7 @@ static const int64_t TILING_LAST_TWO_DIM_IS_LARGE = 3006;
 static const int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE = 3007;
 static const int64_t TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL = 3008;
 static const int64_t TILING_FIRST_STRIDE_IS_SMALL = 3009;
+static const int64_t MAX_DIM_COUNT = 20;
 
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"max_elem_cnt", "core_num"};
@@ -622,7 +623,10 @@ static bool SetMultiCoreTilingParas(const std::string& op_type, const int64_t ma
   return true;
 }
 
-static void Serialize(utils::OpRunInfo& run_info, const AsStridedInfo& as_info) {
+static void Serialize(utils::OpRunInfo& run_info, const AsStridedInfo& as_info, const int64_t save_dim_num) {
+  int64_t dim_step = 3;
+  int64_t zero_params = 0;
+
   run_info.AddTilingData(as_info.tiling_mode);
   run_info.AddTilingData(as_info.used_core_cnt);
   run_info.AddTilingData(as_info.out_ub_offset);
@@ -650,6 +654,9 @@ static void Serialize(utils::OpRunInfo& run_info, const AsStridedInfo& as_info) 
   run_info.AddTilingData(as_info.dim_num);
   for (int64_t i = 0; i < static_cast<int64_t>(as_info.dim_except_last_paras.size()); i++) {
     run_info.AddTilingData(as_info.dim_except_last_paras[i]);
+  }
+  for (int64_t j = 0; j < save_dim_num * dim_step; j++) {
+    run_info.AddTilingData(zero_params);
   }
   run_info.SetBlockDim(as_info.used_core_cnt);
 }
@@ -714,6 +721,7 @@ bool AsStridedTiling(const std::string& op_type,
 
   int64_t max_elem_in_ub = 1;
   int64_t core_num = 1;
+  int64_t save_dim_num = 0;
   if (!GetCompileParams(op_type, op_compile_info, max_elem_in_ub, core_num)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile information failed.");
     return false;
@@ -733,8 +741,16 @@ bool AsStridedTiling(const std::string& op_type,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get tiling parameters failed.");
     return false;
   }
+
+  if (as_info.dim_num > MAX_DIM_COUNT) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the supported maximum dimension is 21 now.");
+    return false;
+  } else {
+    save_dim_num = MAX_DIM_COUNT - as_info.dim_num;
+  }
+
   // send tiling parameters to operator
-  Serialize(run_info, as_info);
+  Serialize(run_info, as_info, save_dim_num);
   // print tiling parameters for debug
   PrintTilingParas(op_type, as_info);
 
