@@ -35,7 +35,7 @@ const int64_t BLOCK_SIZE = 32;  // one block size is 32 Bytes
 const map<string, int64_t> BUCKET_LIST_DTYPES = {
     {"int32", sizeof(int32_t)}, {"int8", sizeof(int8_t)}, {"int16", sizeof(int16_t)}, {"int64", sizeof(int64_t)}};
 
-struct GenADCParam {
+struct GenADCParams {
   int64_t rowNumEachCore;
   int64_t remainingRow;
   int64_t bucketListBurstLen;
@@ -44,8 +44,8 @@ struct GenADCParam {
   int64_t dimNs;
 };
 
-bool checkInputParams(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opInfo) {
-  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetCompileParams begin.");
+bool CheckGenADCParams(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opInfo) {
+  OP_LOGD(opType.c_str(), "op[GenADCTiling] CheckGenADCParams begin.");
 
   if (opInfo == nullptr) {
     OP_LOGE(opType.c_str(), "op[GenADCTiling] opInfo json error.");
@@ -81,12 +81,12 @@ bool checkInputParams(const std::string& opType, const TeOpParas& opParas, const
     return false;
   }
 
-  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetCompileParams run success.");
+  OP_LOGD(opType.c_str(), "op[GenADCTiling] CheckGenADCParams run success.");
   return true;
 }
 
-bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum) {
-  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetCompileParams begin.");
+bool GetGenADCCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum) {
+  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetGenADCCompileParams begin.");
 
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
@@ -96,7 +96,7 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
-  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetCompileParams run success.");
+  OP_LOGD(opType.c_str(), "op[GenADCTiling] GetGenADCCompileParams run success.");
   return true;
 }
 
@@ -104,7 +104,7 @@ int64_t CeilDiv(int64_t x, int64_t y) {
   return (x + y - 1) / y;
 }
 
-void InitRunningParams(GenADCParam& params) {
+void InitGenADCParams(GenADCParams& params) {
   params.rowNumEachCore = 0;
   params.remainingRow = 0;
   params.bucketListBurstLen = 0;
@@ -113,7 +113,7 @@ void InitRunningParams(GenADCParam& params) {
   params.dimNs = 0;
 }
 
-void SetRunningParams(const GenADCParam& runParams, OpRunInfo& runInfo) {
+void SetGenADCParams(const GenADCParams& runParams, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, runParams.rowNumEachCore);
   ByteBufferPut(runInfo.tiling_data, runParams.remainingRow);
   ByteBufferPut(runInfo.tiling_data, runParams.bucketListBurstLen);
@@ -122,7 +122,7 @@ void SetRunningParams(const GenADCParam& runParams, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, runParams.dimNs);
 }
 
-void PrintRunningParams(const GenADCParam& runParams) {
+void PrintGenADCParams(const GenADCParams& runParams) {
   OP_LOGD("GenADC", "op [GenADCTiling] : rowNumEachCore=%d.", runParams.rowNumEachCore);
   OP_LOGD("GenADC", "op [GenADCTiling] : remainingRow=%d.", runParams.remainingRow);
   OP_LOGD("GenADC", "op [GenADCTiling] : bucketListBurstLen=%d.", runParams.bucketListBurstLen);
@@ -143,14 +143,14 @@ bool GenADCTiling(const std::string& opType, const TeOpParas& opParas, const nlo
                   OpRunInfo& runInfo) {
   OP_LOGD(opType.c_str(), "op[GenADCTiling] tiling run begin.");
 
-  bool checkResult = checkInputParams(opType, opParas, opInfo);
+  bool checkResult = CheckGenADCParams(opType, opParas, opInfo);
   if (!checkResult) {
     OP_LOGE(opType.c_str(), "op[GenADCTiling] Failed to check input params.");
     return false;
   }
 
   int64_t coreNum = 0;
-  if (!GetCompileParams(opType, opInfo, coreNum)) {
+  if (!GetGenADCCompileParams(opType, opInfo, coreNum)) {
     OP_LOGE(opType.c_str(), "op[GenADCTiling] Failed to get parameters from compile info.");
     return false;
   }
@@ -160,8 +160,8 @@ bool GenADCTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
   OP_LOGD("GenADC", "op [GenADCTiling] : coreNum=%d.", coreNum);
 
-  GenADCParam runParams;
-  InitRunningParams(runParams);
+  GenADCParams runParams;
+  InitGenADCParams(runParams);
 
   std::vector<int64_t> bucketListShape = opParas.inputs[3].tensor[0].shape;
   int64_t totalBuckets = std::accumulate(bucketListShape.begin(), bucketListShape.end(), 1, std::multiplies<int64_t>());
@@ -188,10 +188,10 @@ bool GenADCTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   runParams.dimNs = bucketListShape[0];
 
-  SetRunningParams(runParams, runInfo);
+  SetGenADCParams(runParams, runInfo);
   runInfo.block_dim = coreNum;
 
-  PrintRunningParams(runParams);
+  PrintGenADCParams(runParams);
 
   OP_LOGD(opType.c_str(), "op[GenADCTiling] tiling run success.");
   return true;

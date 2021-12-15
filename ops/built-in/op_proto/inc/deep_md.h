@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * CCopyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,43 @@ REG_OP(ProdForceSeA)
     .REQUIRED_ATTR(n_a_sel, Int)
     .REQUIRED_ATTR(n_r_sel, Int)
     .OP_END_FACTORY_REG(ProdForceSeA)
+
+/**
+* @brief Calculate ProdVirialSeA. \n
+*
+* @par Inputs:
+* Five inputs, including:
+* @li net_deriv: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li in_deriv: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li rij: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li nlist: A Tensor. dtype is int32.
+* @li natoms: A Tensor. dtype is int32. \n
+*
+* @par Outputs:
+* Two outputs, including:
+* @li virial: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li atom_virial: A Tensor. Must be one of the following types: float16, float32, float64. \n
+*
+* @par Attributes:
+* Two attributes, including:
+* @li n_a_sel: Int value.
+* @li n_r_sel: Int value.
+* @li split_count: Int value.
+* @li split_index: Int value. \n
+*/
+REG_OP(ProdVirialSeA)
+    .INPUT(net_deriv, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(in_deriv, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(rij, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(nlist, TensorType({DT_INT32}))
+    .INPUT(natoms, TensorType({DT_INT32}))
+    .OUTPUT(virial, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(atom_virial, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .REQUIRED_ATTR(n_a_sel, Int)
+    .REQUIRED_ATTR(n_r_sel, Int)
+    .ATTR(split_count, Int, 1)
+    .ATTR(split_index, Int, 0)
+    .OP_END_FACTORY_REG(ProdVirialSeA)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_DEEP_MD_H_

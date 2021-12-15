@@ -372,6 +372,7 @@ from .is_finite import is_finite
 from .non_zero import non_zero
 from .max_pool_v3 import max_pool_v3
 from .gen_adc import gen_adc
+from .prod_virial_se_a import prod_virial_se_a
 from .swish import swish
 from .hard_swish import hard_swish
 from .strided_slice_v3 import strided_slice_v3

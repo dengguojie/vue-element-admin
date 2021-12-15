@@ -184,6 +184,7 @@ set(_optiling_files
   gen_adc.cc
   non_zero.cc
   scan_pq_codes.cc
+  prod_virial_se_a.cc
   strided_slice_v3.cc
   kl_div.cc
   vector_tiling.cc

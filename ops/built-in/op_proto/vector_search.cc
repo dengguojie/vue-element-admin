@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -359,95 +359,5 @@ IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
 
 COMMON_INFER_FUNC_REG(CalcBucketsLimitAndOffset, CalcBucketsLimitAndOffsetInferShape);
 // ----------------CalcBucketsLimitAndOffset END---------------------
-
-// --------------------------ProdVirialSeA Begin---------------------
-IMPLEMT_VERIFIER(ProdVirialSeA, ProdVirialSeAVerify) {
-  AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdVirialSeA"), return GRAPH_FAILED);
-
-  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
-
-  GeTensorDescPtr netDerivDesc = opDesc->MutableInputDesc("net_deriv");
-  std::vector<int64_t> netDerivShape = netDerivDesc->MutableShape().GetDims();
-  CHECK(netDerivShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of net_deriv should be 2"), return GRAPH_FAILED);
-  int64_t nframes = netDerivShape[0];
-
-  GeTensorDescPtr inDerivDesc = opDesc->MutableInputDesc("in_deriv");
-  std::vector<int64_t> inDerivShape = inDerivDesc->MutableShape().GetDims();
-  CHECK(inDerivShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of in_deriv should be 2"), return GRAPH_FAILED);
-  CHECK(inDerivShape[0] != nframes,
-        OP_LOGE(opName.GetString(), "Number of in_deriv samples should match with net_deriv"), return GRAPH_FAILED);
-
-  GeTensorDescPtr rijDesc = opDesc->MutableInputDesc("rij");
-  std::vector<int64_t> rijShape = rijDesc->MutableShape().GetDims();
-  CHECK(rijShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of rij should be 2"), return GRAPH_FAILED);
-  CHECK(rijShape[0] != nframes,
-        OP_LOGE(opName.GetString(), "Number of rij samples should match with net_deriv"), return GRAPH_FAILED);
-
-  GeTensorDescPtr nlistDesc = opDesc->MutableInputDesc("nlist");
-  std::vector<int64_t> nlistShape = nlistDesc->MutableShape().GetDims();
-  CHECK(nlistShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of nlist should be 2"), return GRAPH_FAILED);
-  CHECK(nlistShape[0] != nframes,
-        OP_LOGE(opName.GetString(), "Number of nlist samples should match with net_deriv"), return GRAPH_FAILED);
-
-  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
-  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
-  CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
-  int64_t natomsSize = natomsShape[0];
-  CHECK(natomsSize < 3,
-        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
-
-  CHECK(netDerivDesc->GetDataType() != inDerivDesc->GetDataType(),
-        OP_LOGE(opName.GetString(), "Data type of net_deriv and in_deriv are not match"), return GRAPH_FAILED);
-  CHECK(netDerivDesc->GetDataType() != rijDesc->GetDataType(),
-        OP_LOGE(opName.GetString(), "Data type of net_deriv and rij are not match"), return GRAPH_FAILED);
-
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(ProdVirialSeAInferShape) {
-  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr netDerivDesc = opDesc->MutableInputDesc("net_deriv");
-  std::vector<int64_t> netDerivShape = netDerivDesc->MutableShape().GetDims();
-  std::vector<std::pair<int64_t, int64_t>> netDerivShapeRange;
-  opDesc->MutableInputDesc("net_deriv")->GetShapeRange(netDerivShapeRange);
-  MakeUpShapeRange(netDerivShape, netDerivShapeRange);
-  int64_t nframes = netDerivShape[0];
-
-  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
-  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
-  std::vector<std::pair<int64_t, int64_t>> natomsShapeRange;
-  opDesc->MutableInputDesc("natoms")->GetShapeRange(natomsShapeRange);
-  MakeUpShapeRange(natomsShape, natomsShapeRange);
-
-  std::vector<int64_t> virialShape = {nframes, 9};
-  std::vector<std::pair<int64_t, int64_t>> virialShapeRange = {netDerivShapeRange[0],
-                                                               std::pair<int64_t, int64_t>(9, 9)};
-
-  GeTensorDescPtr virialDesc = opDesc->MutableOutputDesc("virial");
-  virialDesc->SetShape(ge::GeShape(virialShape));
-  virialDesc->SetShapeRange(virialShapeRange);
-  virialDesc->SetDataType(netDerivDesc->GetDataType());
-
-  int64_t nall = 0;
-  if(op.GetAttr("nall", nall) != GRAPH_SUCCESS) {
-    nall = 28328;
-  }
-  int64_t dim = nall * 9;
-  std::vector<int64_t> atomVirialShape = {nframes, dim};
-  std::vector<std::pair<int64_t, int64_t>> atomVirialShapeRange = {netDerivShapeRange[0],
-                                                                   std::pair<int64_t, int64_t>(dim, dim)};
-
-  GeTensorDescPtr atomVirialDesc = opDesc->MutableOutputDesc("atom_virial");
-  atomVirialDesc->SetShape(ge::GeShape(atomVirialShape));
-  atomVirialDesc->SetShapeRange(atomVirialShapeRange);
-  atomVirialDesc->SetDataType(netDerivDesc->GetDataType());
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(ProdVirialSeA, ProdVirialSeAInferShape);
-VERIFY_FUNC_REG(ProdVirialSeA, ProdVirialSeAVerify);
-// --------------------------ProdVirialSeA END---------------------
 
 }  // namespace ge
