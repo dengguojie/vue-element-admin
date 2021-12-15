@@ -38,7 +38,7 @@ bool LpLossIsInAxis(std::vector<int32_t>& input, int32_t value) {
 }
 
 bool LpLossTiling(const std::string& op_type, const ge::Operator& op_paras,
-                              const LpLossCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+                  const LpLossCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
@@ -81,7 +81,7 @@ bool LpLossTiling(const std::string& op_type, const ge::Operator& op_paras,
   float reduce_mean_cof = 1.0;
   for (uint32_t i = 0; i < input_shape.GetDimNum(); i++) {
     if (LpLossIsInAxis(reduce_axis, i)) {
-      OP_TILING_CHECK(input_shape.GetDim(i) == 0, 
+      OP_TILING_CHECK(input_shape.GetDim(i) == 0,
 		      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
                       return false);
       reduce_mean_cof = reduce_mean_cof / input_shape.GetDim(i);

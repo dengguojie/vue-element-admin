@@ -225,7 +225,7 @@ static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num) {
   }
   auto nc_total = x_shape[0] * x_shape[1];
   auto ele_per_core = (nc_total - 1) / core_num + 1;
-  auto core_used = (nc_total - 1) / ele_per_core + 1; 
+  auto core_used = (nc_total - 1) / ele_per_core + 1;
   return core_used;
 }
 
@@ -256,7 +256,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   all_zero = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
                          [](int64_t item) {return item == 0;});
   all_below_three = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
-                         [](int64_t item) {return item < NUM_THREE;});
+                                [](int64_t item) {return item < NUM_THREE;});
   if (all_zero) {
     tiling_key =  TILING_MODE_3;
   }
@@ -267,9 +267,9 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
     ((output_fifth * output_fourth) <= (SPLIT_SECOND * compile_params.size)) && (all_below_three)) {
     tiling_key = TILING_MODE_1;
   }
-  else if ((input_shape[INDEX_TWO] <= (SPLIT_THREE * compile_params.size)) && 
-	    ((output_fifth * output_fourth) > (SPLIT_SECOND * \
-	    compile_params.size)) && (paddings_const_values[INDEX_SIX] <= PADDINGS_MAX_VALUE) && 
+  else if ((input_shape[INDEX_TWO] <= (SPLIT_THREE * compile_params.size)) &&
+            ((output_fifth * output_fourth) > (SPLIT_SECOND * \
+            compile_params.size)) && (paddings_const_values[INDEX_SIX] <= PADDINGS_MAX_VALUE) &&
            (paddings_const_values[INDEX_SEVEN] <= PADDINGS_MAX_VALUE)) {
     tiling_key = TILING_MODE_2;
   }

@@ -191,7 +191,7 @@ static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num, int6
       ele_per_core = (nc_total - 1) / core_used + 1;
     }
   }
-  core_used = (nc_total - 1) / ele_per_core + 1; 
+  core_used = (nc_total - 1) / ele_per_core + 1;
   return core_used;
 }
 

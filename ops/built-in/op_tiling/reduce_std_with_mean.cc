@@ -41,7 +41,7 @@ bool ReduceStdWithMeanIsInAxis(std::vector<int32_t>& input, int32_t value) {
 }
 
 bool ReduceStdWithMeanTiling(const std::string& op_type, const ge::Operator& op_paras,
-                              const ReduceStdWithMeanCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+                             const ReduceStdWithMeanCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
@@ -81,8 +81,8 @@ bool ReduceStdWithMeanTiling(const std::string& op_type, const ge::Operator& op_
   float input_shape_mul = 1.0;
   for (uint32_t i = 0; i < input_shape.GetDimNum(); i++) {
     if (ReduceStdWithMeanIsInAxis(reduce_axis, i)) {
-      OP_TILING_CHECK(input_shape.GetDim(i) == 0, 
-		      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
+      OP_TILING_CHECK(input_shape.GetDim(i) == 0,
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
                       return false);
       input_shape_mul = input_shape_mul * input_shape.GetDim(i);
     }
@@ -115,8 +115,8 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
   parsed_info.attr_unbiased = false;
   std::string attr_unbiased;
   OP_TILING_CHECK(!GetCompileValue(compile_info, "attr_unbiased", attr_unbiased),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get attr_unbiased error"), 
-		  return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get attr_unbiased error"),
+                  return false);
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),

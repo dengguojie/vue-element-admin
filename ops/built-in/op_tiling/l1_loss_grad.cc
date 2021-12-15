@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include "reduce_tiling.h"
 #include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
-#include <iostream>
 #include "op_tiling_util.h"
 
 namespace optiling {
@@ -27,7 +27,7 @@ struct L1LossGradCompileInfo {
 };
 
 bool L1LossGradTiling(const std::string& op_type, const ge::Operator& op_paras,
-                                  const L1LossGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+                      const L1LossGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
                   return false);
@@ -37,7 +37,7 @@ bool L1LossGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                   return false);
 
   const std::vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
-  
+
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
                   return false);

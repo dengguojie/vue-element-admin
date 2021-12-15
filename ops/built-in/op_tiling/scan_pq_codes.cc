@@ -110,7 +110,7 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   bucketNumLow = bucketNumTotal / coreNums;
   bucketNumHigh = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
   highCoreNum = bucketNumTotal % coreNums;
-  
+
   ScanPQCodesTilingParams params{bucketNumTotal, bucketStartBase, bucketNumLow, bucketNumHigh, highCoreNum};
   run_info.block_dim = coreNums;
   ScanPQCodesWriteTilingParams(params, run_info);

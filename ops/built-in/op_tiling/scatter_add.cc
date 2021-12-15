@@ -133,10 +133,10 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "halfUbSize = 0 is not support"),
-                  return );
-  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"), return );
+                  return);
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"), return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
-                  return );
+                  return);
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = indicesNum / (halfUbSize / indicesSize);
@@ -173,15 +173,15 @@ void CalNotAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t 
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
-  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"), return );
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"), return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varUbSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(indicesUbSize == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesUbSize = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesUbSize = 0 is not support"), return);
   OP_TILING_CHECK(varDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varDataEachBlock = 0 is not support"), return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
   runParams.varLastNum = varNum % (varUbSize / varSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / varSize);
@@ -238,12 +238,12 @@ void CalScatterAddHighPerfBranchParams(ScatterAddTilingParams& runParams, int64_
                                        int64_t indicesSize) {
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "halfUbSize = 0 is not support"),
-                  return );
-  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "coreNum = 0 is not support"), return );
+                  return);
+  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "coreNum = 0 is not support"), return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(varDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varDataEachBlock = 0 is not support"), return);
   runParams.tilingMode = TILING_MODE_16;
   runParams.updatesDataNum = updateDataNum;
   runParams.indicesEachCoreData = ceil(float(indicesNum) / coreNum);

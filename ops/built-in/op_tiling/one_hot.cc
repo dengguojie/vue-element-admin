@@ -24,6 +24,10 @@
 
 namespace {
   constexpr int32_t DEPTH_SIZE = 1;
+  // Calcuted acording to the min size of radio of ub and tensor
+  constexpr int32_t RADIO_UB_SIZE_MIN = 19792;
+  // Calcuted acording to the max size of radio of ub and tensor
+  constexpr int32_t RADIO_UB_SIZE_MAX = 39584;
 }
 
 namespace optiling {
@@ -146,11 +150,6 @@ int32_t get_core_num(int32_t numel, std::vector<int64_t> x_shape, int32_t depth,
   }
   return core_used;
 }
-
-// Calcuted acording to the min size of radio of ub and tensor
-#define RADIO_UB_SIZE_MIN 19792
-// Calcuted acording to the max size of radio of ub and tensor
-#define RADIO_UB_SIZE_MAX 39584
 
 int32_t CalTilingMode(std::vector<int64_t> x_shape, int32_t depth, int32_t axis, int32_t core_num) {
   OP_LOGD("CalTilingMode is running");

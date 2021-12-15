@@ -26,7 +26,7 @@ struct MseLossGradCompileInfo {
 };
 
 bool MseLossGradTiling(const std::string& op_type, const ge::Operator& op_paras,
-                                  const MseLossGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+                       const MseLossGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
                   return false);

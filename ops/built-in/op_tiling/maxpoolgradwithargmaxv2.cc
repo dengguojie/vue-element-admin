@@ -20,7 +20,7 @@
  */
 #include <string>
 #include <map>
-#include <math.h>
+#include <cmath>
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
@@ -238,7 +238,7 @@ static void TilingFactor(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, con
   }
 }
 
-static bool IfBlock(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const CompileInfoParams& compile_info,
+static bool IfBlock(const MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const CompileInfoParams& compile_info,
                     const int32_t& ho_outer, const int32_t& ho_inner) {
   if (ho_inner <= 1) {
     return false;

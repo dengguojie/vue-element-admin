@@ -74,8 +74,8 @@ namespace optiling {
         return true;
     }
 
-    static bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, 
-		    int64_t& core_num, int64_t& ub_size, int64_t& input_data_byte) {
+    static bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json,
+                                 int64_t& core_num, int64_t& ub_size, int64_t& input_data_byte) {
         using namespace nlohmann;
         auto all_vars = op_compile_info_json["vars"];
         if (all_vars.count("core_num") == 0) {
