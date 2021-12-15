@@ -76,7 +76,7 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matMulV2Node->GetOpDesc(), TRANSPOSEB, transposeB),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get transpose_b attr failed."), return NOT_CHANGED);
 
-  if (transposeB == false) {
+  if (!transposeB) {
     return NOT_CHANGED;
   }
   size_t constInputDimNum = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX).GetShape().GetDimNum();

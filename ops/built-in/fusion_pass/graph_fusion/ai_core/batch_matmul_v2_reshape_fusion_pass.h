@@ -33,7 +33,7 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
  private:
   Status CreateReshapeNode(ge::ComputeGraph& graph, const ge::OutDataAnchorPtr & out_anchor, const vector<int64_t> & shape,
                            ge::NodePtr& shape_node);
-  Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,  ge::NodePtr& new_node);
+  Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst, const ge::NodePtr& new_node);
   const string FUSED_OP_TYPE ="BatchMatMulV2";
 };
 }  // namespace fe

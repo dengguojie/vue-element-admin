@@ -52,18 +52,19 @@ vector<BufferFusionPattern *> TbeMatmulFixpipeFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules
-  pattern->AddOpDesc(kTypeTransData1, {kOpTypeTransData},
-                   TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
-        .AddOpDesc(kPatternCube, {kPatternGEMM},
-                   TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-        .AddOpDesc(kPatternQuant, {OP_PATTERN_DEQUANT, OP_PATTERN_QUANT, OP_PATTERN_REQUANT},
-                   TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-        .AddOpDesc(kTypeTransData2, {kOpTypeTransData},
-                   TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
-        .SetHead({kTypeTransData1, kPatternCube})
-        .SetOutputs(kTypeTransData1, {kPatternCube})
-        .SetOutputs(kPatternCube, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
-        .SetOutputs(kPatternQuant, {kTypeTransData2}, TBE_OUTPUT_BRANCH_SINGLE, true);
+  pattern
+      ->AddOpDesc(kTypeTransData1, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
+      .AddOpDesc(kPatternCube, {kPatternGEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_DEQUANT, OP_PATTERN_QUANT, OP_PATTERN_REQUANT}, TBE_PATTERN_NUM_NONE,
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kTypeTransData2, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
+      .SetHead({kTypeTransData1, kPatternCube})
+      .SetOutputs(kTypeTransData1, {kPatternCube})
+      .SetOutputs(kPatternCube, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
+      .SetOutputs(kPatternQuant, {kTypeTransData2}, TBE_OUTPUT_BRANCH_SINGLE, true);
 
   patterns.push_back(pattern);
 
@@ -71,8 +72,8 @@ vector<BufferFusionPattern *> TbeMatmulFixpipeFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool TbeMatmulFixpipeFusionPass::MatmulSupportTrans(const ge::NodePtr &node, const bool &is_input) {
-  if(is_input) {
+bool TbeMatmulFixpipeFusionPass::MatmulSupportTrans(const ge::NodePtr &node, const bool &is_input) const {
+  if (is_input) {
     return node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_ND &&
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_FRACTAL_NZ;
   } else {
@@ -90,35 +91,36 @@ void TbeMatmulFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
   }
   ge::NodePtr cube_node = cube_nodes.at(0);
   bool cube_is_matmul = cube_node->GetType() == "MatMulV2" || cube_node->GetType() == "MatMul";
-
-  if (cube_is_matmul) {
-    if (!transdata1_nodes.empty()) {
-      bool weight_trans = true;
-      if (!MatmulSupportTrans(transdata1_nodes[0], true)) {
-        auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata1_nodes[0]);
-        if (iter != fusion_nodes.end()) {
-          fusion_nodes.erase(iter);
-          weight_trans = false;
-        }
-      }
-      if (weight_trans && cube_node->GetInDataNodes().size() >= 2) {
-        ge::NodePtr weight_trans_node = cube_node->GetInDataNodes().at(1);
-        if (weight_trans_node->GetType() == kOpTypeTransData && MatmulSupportTrans(weight_trans_node, true)) {
-          fusion_nodes.push_back(weight_trans_node);
-        }
-      }
-    }
-    if (!transdata2_nodes.empty()) {
-      if (!MatmulSupportTrans(transdata2_nodes[0], false)) {
-        auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata2_nodes[0]);
-        if (iter != fusion_nodes.end()) {
-          fusion_nodes.erase(iter);
-        }
-      }
-    }
-  } else {
+  if (!cube_is_matmul) {
     fusion_nodes.clear();
+    return;
   }
+
+  if (!transdata1_nodes.empty()) {
+    bool weight_trans = true;
+    if (!MatmulSupportTrans(transdata1_nodes[0], true)) {
+      auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata1_nodes[0]);
+      if (iter != fusion_nodes.end()) {
+        fusion_nodes.erase(iter);
+        weight_trans = false;
+      }
+    }
+    if (weight_trans && cube_node->GetInDataNodes().size() >= 2) {
+      ge::NodePtr weight_trans_node = cube_node->GetInDataNodes().at(1);
+      if (weight_trans_node->GetType() == kOpTypeTransData && MatmulSupportTrans(weight_trans_node, true)) {
+        fusion_nodes.push_back(weight_trans_node);
+      }
+    }
+  }
+  if (!transdata2_nodes.empty()) {
+    if (!MatmulSupportTrans(transdata2_nodes[0], false)) {
+      auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata2_nodes[0]);
+      if (iter != fusion_nodes.end()) {
+        fusion_nodes.erase(iter);
+      }
+    }
+  }
+
   return;
 }
 
@@ -146,7 +148,7 @@ Status TbeMatmulFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
   vector<ge::NodePtr> transdata1_nodes = GetMatchedNodesByDescName(kTypeTransData1, mapping);
   vector<ge::NodePtr> cube_nodes = GetMatchedNodesByDescName(kPatternCube, mapping);
   vector<ge::NodePtr> transdata2_nodes = GetMatchedNodesByDescName(kTypeTransData2, mapping);
-  
+
   CheckCubeSupportTransNodes(cube_nodes, transdata1_nodes, transdata2_nodes, fusion_nodes);
 
   if (fusion_nodes.size() == 1) {

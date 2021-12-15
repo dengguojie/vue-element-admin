@@ -18,8 +18,8 @@
  * \file batch_matmul_elementwise_ub_fusion.h
  * \brief batch_matmul and all elementwise ops fusion pattern
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_ELEMENTWISE_UB_FUSION_H_
-#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_ELEMENTWISE_UB_FUSION_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_ELEMENTWISE_UB_FUSION_H
+#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_ELEMENTWISE_UB_FUSION_H
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
@@ -31,7 +31,7 @@ class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
   public:
     explicit TbeBatchMatmulElementWiseFusionPass() {}
 
-    ~TbeBatchMatmulElementWiseFusionPass() {}
+    ~TbeBatchMatmulElementWiseFusionPass() override {}
 
   protected:
     vector<BufferFusionPattern*> DefinePatterns() override;
@@ -44,4 +44,4 @@ class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
 
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_TBE_MATMUL_ELEMWISE_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_TBE_MATMUL_ELEMWISE_H

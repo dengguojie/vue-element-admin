@@ -61,7 +61,7 @@ uint64_t GetHostCpuAtomicId() {
 }
 
 Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNode, ge::ComputeGraph &graph,
-                                vector<ge::NodePtr> &newNodes, const float &shift) {
+                                  vector<ge::NodePtr> &newNodes, const float &shift) {
     OP_LOGI(FUSED_OP_TYPE, "Create new fully power pass host op for dequant node [%s].", fcNode->GetName().c_str());
     std::stringstream opNameTemp;
     // the atomic id of trans nodes must be unique.(start from 0)
@@ -142,7 +142,8 @@ vector<FusionPattern*> FullyConnectionPowerPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE, "Define FullyConnectionPowerPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FullyConnectionPowerPass");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "new an object failed"), return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "new an object failed"),
+                    return patterns);
 
   pattern1->AddOpDesc(PATTERN_FULLYCONNECTION, {"FullyConnection"})
       .AddOpDesc(PATTERN_POWER, {"Power"})
@@ -158,9 +159,10 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   ge::NodePtr powerNode = GetNodeFromMapping(PATTERN_POWER, mapping);
   ge::NodePtr fullyConnectionNode = GetNodeFromMapping(PATTERN_FULLYCONNECTION, mapping);
 
-  FUSION_PASS_CHECK(powerNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode is null"), return PARAM_INVALID);
-  FUSION_PASS_CHECK(fullyConnectionNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fullyConnectionNode is null"),
+  FUSION_PASS_CHECK(powerNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode is null"),
                     return PARAM_INVALID);
+  FUSION_PASS_CHECK(fullyConnectionNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fullyConnectionNode is null"), return PARAM_INVALID);
 
   if (fullyConnectionNode->GetOutDataNodes().size() > 1) {
     return SUCCESS;
@@ -180,13 +182,14 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // Check fc's output is power node
   Status ret = PatternFusionUtil::LinkControlEdge(powerNode, fullyConnectionNode);
 
-  FUSION_PASS_CHECK(
-      ret != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "FcNode[%s]: LinkControlEdge not success.", fullyConnectionNodeName.c_str()),
-      return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "FcNode[%s]: LinkControlEdge not success.",
+                                                   fullyConnectionNodeName.c_str()),
+                    return ret);
 
   ge::OpDescPtr powerDesc = powerNode->GetOpDesc();
-  FUSION_PASS_CHECK(powerDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(powerDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   float power = -1;
@@ -225,21 +228,25 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     /* Create Host Cpu Op */
     OP_LOGI(FUSED_OP_TYPE, "Create host op to calc shift of node:[%s].", fullyConnectionNode->GetName().c_str());
     vector<ge::NodePtr> fusion_nodes;
-    Status ret = CreateFullyPowerPassHostOp(FullyConnectionPowerPassHostOp, fullyConnectionNode, graph,
+    ret = CreateFullyPowerPassHostOp(FullyConnectionPowerPassHostOp, fullyConnectionNode, graph,
         fusion_nodes, shift);
     if (ret != SUCCESS || fusion_nodes.empty()) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Create host cpu op for fc node %s failed", fullyConnectionNode->GetName().c_str());
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Create host cpu op for fc node %s failed",
+                                     fullyConnectionNode->GetName().c_str());
       return ret;
     }
   }
 
   auto outDataAnchor0 = powerNode->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(outDataAnchor0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "get out data anchor of 0"), return FAILED);
+  FUSION_PASS_CHECK(outDataAnchor0 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "get out data anchor of 0"), return FAILED);
   for (auto inDataAnchor : outDataAnchor0->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outDataAnchor0, inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Remove power and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Remove power and outnode edge failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(GetPeerOutAnchorWithInDataAnchor(powerNode, 0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Add innode and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Add innode and outnode edge failed."),
+                      return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE, "FullyConnectionPowerPass fusion success");
@@ -262,8 +269,8 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
   constOutDesc.SetOriginDataType(ge::DT_FLOAT);
   constOutDesc.SetDataType(ge::DT_FLOAT);
 
-  FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "AddOutputDesc failed!"),
-                    return FAILED);
+  FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != GRAPH_SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "AddOutputDesc failed!"), return FAILED);
   constOpDesc->SetType(CONSTANTOPTAB);
 
   ge::GeTensorPtr biasPtr = nullptr;
@@ -272,10 +279,11 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
     biasDataTemp[i] = shift;
   }
 
-  FUSION_PASS_MAKE_SHARED(biasPtr = std::make_shared<ge::GeTensor>(constOutDesc, reinterpret_cast<uint8_t*>(biasDataTemp.get()),
-                                                                   num_output * sizeof(float)),
-                          biasPtr = nullptr;
-                          return PARAM_INVALID);
+  FUSION_PASS_MAKE_SHARED(
+      biasPtr = std::make_shared<ge::GeTensor>(constOutDesc, reinterpret_cast<uint8_t *>(biasDataTemp.get()),
+                                               num_output * sizeof(float)),
+      biasPtr = nullptr;
+      return PARAM_INVALID);
 
   auto ret = biasPtr->SetData(reinterpret_cast<uint8_t*>(biasDataTemp.get()), num_output * sizeof(float));
   if (ret != SUCCESS){

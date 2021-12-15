@@ -69,7 +69,7 @@ Status BatchMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   return SUCCESS;
 }
 
-bool BatchMatmulFusionPass::CheckIsNeedFusion(ge::NodePtr& fused_node) const {
+bool BatchMatmulFusionPass::CheckIsNeedFusion(const ge::NodePtr& fused_node) const {
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
   auto input_desc1 = op.GetInputDesc(0);
   auto input_desc2 = op.GetInputDesc(1);
@@ -82,8 +82,8 @@ bool BatchMatmulFusionPass::CheckIsNeedFusion(ge::NodePtr& fused_node) const {
   return true;
 }
 
-Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node,
-                                               ge::NodePtr& new_node) {
+Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node,
+                                               ge::NodePtr& new_node) const {
   ge::OpDescPtr new_desc = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc = std::make_shared<ge::OpDesc>(fused_node->GetName() + "_MatMul", "MatMul")),
                           return INTERNAL_ERROR);
@@ -148,7 +148,8 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   return SUCCESS;
 }
 
-Status BatchMatmulFusionPass::AddEdgeForMatMulNode(ge::NodePtr& fused_node, ge::NodePtr& matmul_node) {
+Status BatchMatmulFusionPass::AddEdgeForMatMulNode(const ge::NodePtr &fused_node,
+                                                   const ge::NodePtr &matmul_node) const {
   auto peer_out_anchor = GetPeerOutAnchorWithInDataAnchor(fused_node, 0);
   FUSION_PASS_CHECK(peer_out_anchor == nullptr,
                     CUBE_INNER_ERR_REPORT("MatmulFusionPass", "Failed to get peer out anchor of input 0"),
@@ -181,7 +182,7 @@ Status BatchMatmulFusionPass::AddEdgeForMatMulNode(ge::NodePtr& fused_node, ge::
   return SUCCESS;
 }
 
-Status BatchMatmulFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node) {
+Status BatchMatmulFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const {
   for (auto in_anchor : fused_node->GetAllInDataAnchors()) {
     if (in_anchor != nullptr) {
       in_anchor->UnlinkAll();

@@ -41,6 +41,7 @@ using namespace std;
 using json = nlohmann::json;
 using utils = ge::TypeUtils;
 
+namespace {
 const int64_t kIdxMLow = 0;
 const int64_t kIdxMHigh = 1;
 const int64_t kIdxKLow = 2;
@@ -59,6 +60,7 @@ const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
 const int64_t BLOCK_SIZE = 16;
 const int64_t CACHE_TILING_ID_LEN = 7;
+}
 
 namespace optiling {
 

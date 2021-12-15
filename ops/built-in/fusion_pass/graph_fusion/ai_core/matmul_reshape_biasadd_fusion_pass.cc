@@ -157,7 +157,7 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   FUSION_PASS_CHECK((node_bias->GetAllOutDataAnchors().size() != 1),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "now don't support fusion Bias with over 1 output"),
                     return fe::NOT_CHANGED);
-  
+
   auto node_biasadd_output_desc = node_biasadd->GetOpDesc()->GetOutputDesc(0);
   auto node_reshape_output_desc = node_reshape->GetOpDesc()->GetOutputDesc(0);
   // check output dtype
@@ -265,7 +265,7 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   auto node_reshape_output_format = node_reshape_output_desc.GetFormat();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "node bias_add output format is [%s]",
           ge::TypeUtils::FormatToSerialString(node_biasadd_output_format).c_str());
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "node reshape output format is [%s]", 
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "node reshape output format is [%s]",
           ge::TypeUtils::FormatToSerialString(node_reshape_output_format).c_str());
 
   if (node_biasadd_output_format != node_reshape_output_format){

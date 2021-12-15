@@ -18,8 +18,8 @@
  * \file matmul_reshape_bias_fusion_pass.h
  * \brief matmul reshape biasadd fusion pass(matmul --> reshape --> biasadd/add)
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
@@ -36,4 +36,4 @@ class MatMulReshapeBiasAddFusionPass : public PatternFusionBasePass {
 };
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_RESHAPE_BIASADD_FUSION_PASS_H

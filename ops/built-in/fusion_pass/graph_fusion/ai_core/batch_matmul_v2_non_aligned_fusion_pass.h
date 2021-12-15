@@ -17,8 +17,8 @@
 /*!
  * \file batch_matmul_v2_non_aligned_fusion_pass.h
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H
 
 #include <vector>
 
@@ -43,28 +43,28 @@ class BatchMatMulNonAlignedFusionPass : public PatternFusionBasePass {
   ge::NodePtr add_2_node = nullptr;
 
   Status CreatePadDNode(ge::ComputeGraph &graph, const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
-                        ge::NodePtr &pad_node, vector<vector<int64_t>> &paddings);
+                        ge::NodePtr &pad_node, vector<vector<int64_t>> &paddings) const;
   Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::OutDataAnchorPtr &out_anchor,
-                           const vector<int64_t> &shape, ge::NodePtr &shape_node);
-  ge::OpDescPtr CreateListConstDesc(const string &name, vector<int64_t> values);
+                           const vector<int64_t> &shape, ge::NodePtr &shape_node) const;
+  ge::OpDescPtr CreateListConstDesc(const string &name, vector<int64_t> values) const;
   Status CreateReshapePadReshape(ge::ComputeGraph &graph, const ge::InDataAnchorPtr &dst_anchor,
-                                 map<string, vector<int64_t>> &shape_dict, vector<vector<int64_t>> &paddings);
-  Status UpdateConst(ge::NodePtr &shape_node, vector<int64_t> &const_shape);
-  Status UpdateAllShape(ge::NodePtr &cur_node, ge::NodePtr &end_node);
+                                 map<string, vector<int64_t>> &shape_dict, vector<vector<int64_t>> &paddings) const;
+  Status UpdateConst(const ge::NodePtr &shape_node, vector<int64_t> &const_shape) const;
+  Status UpdateAllShape(ge::NodePtr &cur_node, const ge::NodePtr &end_node) const;
   Status GetNodes(const Mapping &mapping);
-  Status DoFusionPattern1(ge::ComputeGraph &graph);
-  Status DoFusionPattern2(ge::ComputeGraph &graph);
-  Status CheckStaticShape();
-  Status CheckNodeShape(ge::NodePtr &node);
-  Status CheckPerm(ge::NodePtr &transpose_node, vector<int64_t> &perm_list);
-  Status CheckBatchMatMul();
-  Status CheckInsertLocPattern1();
-  Status CheckInsertLocPattern2();
-  Status CheckReshapePattern1();
-  Status CheckReshapePattern2();
+  Status DoFusionPattern1(ge::ComputeGraph &graph) const;
+  Status DoFusionPattern2(ge::ComputeGraph &graph) const;
+  Status CheckStaticShape() const;
+  Status CheckNodeShape(const ge::NodePtr &node) const;
+  Status CheckPerm(const ge::NodePtr &transpose_node, const vector<int64_t> &perm_list) const;
+  Status CheckBatchMatMul() const;
+  Status CheckInsertLocPattern1() const;
+  Status CheckInsertLocPattern2() const;
+  Status CheckReshapePattern1() const;
+  Status CheckReshapePattern2() const;
 };
 
 const string BatchMatMulNonAlignedFusionPass::kNameFusionPass = "BatchMatMulNonAlignedFusionPass";
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H

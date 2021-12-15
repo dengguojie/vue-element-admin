@@ -97,16 +97,16 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
-  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
-  int64_t min_tbe_L1space = 0;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+  OpL1FusionType fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_l1space = 0;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
     return;
   }
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   if (!elemWiseNodes1.empty()) {
     AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre);
   }
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
 Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {

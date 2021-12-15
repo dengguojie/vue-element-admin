@@ -147,7 +147,7 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
 }
 
 Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
-                                                 ge::NodePtr& new_node) {
+                                                  const ge::NodePtr& new_node) {
   ge::NodePtr src_node = src->GetOwnerNode();
   ge::NodePtr dst_node = dst->GetOwnerNode();
   if (new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != GRAPH_SUCCESS) {
@@ -158,23 +158,24 @@ Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &sr
     OP_LOGI(new_node->GetName().c_str(), "update output_desc failed.");
     return FAILED;
   }
-  if(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
+  if (ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
     OP_LOGE(dst_node->GetName().c_str(), "Remove input0 edge error.");
     return FAILED;
   }
-  if(ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
+  if (ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
     OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str());
     return FAILED;
   }
-  if(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
+  if (ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
    OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str());
     return FAILED;
   }
   return SUCCESS;
 }
 
-Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph& graph, const ge::OutDataAnchorPtr & out_anchor,
-                                                        const vector<int64_t> & shape, ge::NodePtr& shape_node) {
+Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph &graph,
+                                                         const ge::OutDataAnchorPtr &out_anchor,
+                                                         const vector<int64_t> &shape, ge::NodePtr &shape_node) {
   auto previous_node = out_anchor->GetOwnerNode();
   int idx = out_anchor->GetIdx();
   auto previous_node_desc = previous_node->GetOpDesc()->GetOutputDesc(idx);

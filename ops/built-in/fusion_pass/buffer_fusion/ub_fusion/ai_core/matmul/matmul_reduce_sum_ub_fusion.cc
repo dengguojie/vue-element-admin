@@ -76,9 +76,9 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
   }
 
   vector<AxisSplitMap> split_maps;
-  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
-  int64_t min_tbe_L1space = 0;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+  OpL1FusionType fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_l1space = 0;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
     return;
   }
   auto output0desc = GetCurrNodeOutputDesc(matmulNodes[0], 0);
@@ -93,7 +93,7 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
     DelSplitInfoByOutputAxis(split_maps, batch_index);
   }
 
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
 /*

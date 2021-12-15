@@ -31,11 +31,10 @@ static const string PATTERN_ELTWISE2 = "eltwise2";      // desc name
 static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
 static const string PATTERN_OUTPUT = "output";          // desc name
 static const vector<string> elemWiseWhiteList = {
-  "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
-  "GeluGrad", "Add", "AddN", "FastGelu", "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu", "Mul", "Power", "Relu6D"};
-static const vector<string> matmulWhiteList = {
-  "FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"
-};
+    "Elu",        "LeakyRelu",    "Gelu",    "Softsign", "Relu6", "Relu",  "Softplus",
+    "Sigmoid",    "Tanh",         "Selu",    "GeluGrad", "Add",   "AddN",  "FastGelu",
+    "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu",    "Mul",   "Power", "Relu6D"};
+static const vector<string> matmulWhiteList = {"FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 /*
  * @brief:  define fully connection elemwise fusion pattern
  *
@@ -150,7 +149,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
                   return);
       if (axis == 2) {
         n_axis = 1;
-      } else if(input0desc->GetFormat() == ge::FORMAT_FRACTAL_NZ) {
+      } else if (input0desc->GetFormat() == ge::FORMAT_FRACTAL_NZ) {
         n_axis = 0;
       } else {
         n_axis = 1;
@@ -162,11 +161,11 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
 
   int pre = 0;
   vector<AxisSplitMap> split_maps;
-  OpL1FusionType L1_fusion_type = L1FUSION_DISABLE;
-  int64_t min_tbe_L1space = 0;
+  OpL1FusionType fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_l1space = 0;
   if (!fcNodes.empty()) {
     pre += fcNodes[0]->GetInDataNodes().size() - 1;
-    if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space)) {
+    if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
       return;
     }
   }
@@ -189,7 +188,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (!elemWiseNodes.empty()){
     AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   }
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, L1_fusion_type, min_tbe_L1space);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
 bool CheckPreNodeIsFcNode(const ge::NodePtr& reluNode) {
@@ -250,7 +249,7 @@ bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(con
  * @return bool: fusion status ok or not.
  */
 Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                vector<ge::NodePtr> &fusionNodes) {
+                                                            vector<ge::NodePtr> &fusionNodes) {
   OP_LOGD("Begin to do TbeFullyconnectionElemwiseFusionPass!");
   fusionNodes = GetMatchedNodes(mapping);
 

@@ -32,10 +32,10 @@ class BatchMatmulFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  bool CheckIsNeedFusion(ge::NodePtr& fused_node) const;
-  Status CreateMatMulNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& new_node);
-  Status AddEdgeForMatMulNode(ge::NodePtr& fused_node, ge::NodePtr& matmul_node);
-  Status RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node);
+  bool CheckIsNeedFusion(const ge::NodePtr& fused_node) const;
+  Status CreateMatMulNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& new_node) const;
+  Status AddEdgeForMatMulNode(const ge::NodePtr& fused_node, const ge::NodePtr& matmul_node) const;
+  Status RemoveFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const;
 };
 
 }  // namespace fe

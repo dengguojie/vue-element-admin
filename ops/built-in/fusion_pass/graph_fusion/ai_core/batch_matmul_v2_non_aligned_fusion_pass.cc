@@ -177,7 +177,8 @@ Status BatchMatMulNonAlignedFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckPerm(ge::NodePtr &transpose_node, vector<int64_t> &perm_list) {
+Status BatchMatMulNonAlignedFusionPass::CheckPerm(const ge::NodePtr &transpose_node,
+                                                  const vector<int64_t> &perm_list) const {
   OP_LOGI(kNameFusionPass.c_str(), "Enter CheckPerm.");
   Operator transpose_op = ge::OpDescUtils::CreateOperatorFromNode(transpose_node);
   vector<int64_t> cur_perm_list;
@@ -198,7 +199,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckPerm(ge::NodePtr &transpose_node, v
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckBatchMatMul() {
+Status BatchMatMulNonAlignedFusionPass::CheckBatchMatMul() const {
   OP_LOGI(kNameFusionPass.c_str(), "Enter CheckBatchMatMul.");
   // Check whether the K of the batchmatmul_3_node is not aligned with 16
   bool batchmatmul_3_adj_x1 = false;
@@ -227,7 +228,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckBatchMatMul() {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckStaticShape() {
+Status BatchMatMulNonAlignedFusionPass::CheckStaticShape() const {
   OP_LOGI(kNameFusionPass.c_str(), "Enter CheckStaticShape.");
   FUSION_PASS_CHECK(
       CheckNodeShape(batchmatmul_1_node) != SUCCESS,
@@ -271,7 +272,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckStaticShape() {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckNodeShape(ge::NodePtr &node) {
+Status BatchMatMulNonAlignedFusionPass::CheckNodeShape(const ge::NodePtr &node) const {
   auto node_inputs = node->GetInDataNodes();
   ge::OpDescPtr node_desc = node->GetOpDesc();
   for (size_t i = 0; i < node_inputs.size(); i++) {
@@ -289,7 +290,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckNodeShape(ge::NodePtr &node) {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern1() {
+Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern1() const {
   FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batchmatmul_1_node, 1),
                     OP_LOGW(kNameFusionPass.c_str(), "input of %s is not const node, not match the fusion condition.",
                             batchmatmul_1_node->GetName().c_str()),
@@ -312,7 +313,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern1() {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern2() {
+Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern2() const {
   FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batchmatmul_1_node, 1),
                     OP_LOGW(kNameFusionPass.c_str(), "input of %s is not const node, not match the fusion condition.",
                             batchmatmul_1_node->GetName().c_str()),
@@ -344,7 +345,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern2() {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern1() {
+Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern1() const {
   size_t dim_3 = 3;
   size_t dim_4 = 4;
   GeShape &reshape_1_in_shape = reshape_1_node->GetOpDesc()->MutableInputDesc(0)->MutableShape();
@@ -396,7 +397,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern1() {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern2() {
+Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern2() const {
   size_t dim_3 = 3;
   size_t dim_4 = 4;
   GeShape &reshape_1_in_shape = reshape_1_node->GetOpDesc()->MutableInputDesc(0)->MutableShape();
@@ -477,7 +478,7 @@ Status BatchMatMulNonAlignedFusionPass::GetNodes(const Mapping &mapping) {
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::DoFusionPattern1(ge::ComputeGraph &graph) {
+Status BatchMatMulNonAlignedFusionPass::DoFusionPattern1(ge::ComputeGraph &graph) const {
   OP_LOGI(kNameFusionPass.c_str(), "Enter DoFusionPattern1.");
   // Check perm of TransposeD
   vector<int64_t> perm_list_1 = {0, 2, 1, 3};
@@ -621,7 +622,7 @@ Status BatchMatMulNonAlignedFusionPass::DoFusionPattern1(ge::ComputeGraph &graph
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::DoFusionPattern2(ge::ComputeGraph &graph) {
+Status BatchMatMulNonAlignedFusionPass::DoFusionPattern2(ge::ComputeGraph &graph) const {
   OP_LOGI(kNameFusionPass.c_str(), "Enter DoFusionPattern2.");
   // Check perm of TransposeD
   vector<int64_t> perm_list_1 = {0, 2, 1, 3};
@@ -818,7 +819,7 @@ Status BatchMatMulNonAlignedFusionPass::DoFusionPattern2(ge::ComputeGraph &graph
 
 Status BatchMatMulNonAlignedFusionPass::CreatePadDNode(ge::ComputeGraph &graph, const OutDataAnchorPtr &out_anchor,
                                                        const vector<int64_t> &shape, ge::NodePtr &pad_node,
-                                                       vector<vector<int64_t>> &paddings) {
+                                                       vector<vector<int64_t>> &paddings) const {
   auto previous_node = out_anchor->GetOwnerNode();
   int idx = out_anchor->GetIdx();
   auto previous_node_desc = previous_node->GetOpDesc()->MutableOutputDesc(idx);
@@ -851,7 +852,7 @@ Status BatchMatMulNonAlignedFusionPass::CreatePadDNode(ge::ComputeGraph &graph, 
 }
 
 Status BatchMatMulNonAlignedFusionPass::CreateReshapeNode(ge::ComputeGraph &graph, const OutDataAnchorPtr &out_anchor,
-                                                          const vector<int64_t> &shape, ge::NodePtr &shape_node) {
+                                                          const vector<int64_t> &shape, ge::NodePtr &shape_node) const {
   auto previous_node = out_anchor->GetOwnerNode();
   int idx = out_anchor->GetIdx();
   auto previous_node_desc = previous_node->GetOpDesc()->MutableOutputDesc(idx);
@@ -900,7 +901,7 @@ Status BatchMatMulNonAlignedFusionPass::CreateReshapeNode(ge::ComputeGraph &grap
   return SUCCESS;
 }
 
-ge::OpDescPtr BatchMatMulNonAlignedFusionPass::CreateListConstDesc(const string &name, vector<int64_t> values) {
+ge::OpDescPtr BatchMatMulNonAlignedFusionPass::CreateListConstDesc(const string &name, vector<int64_t> values) const {
   OpDescPtr const_op_desc = nullptr;
   FUSION_PASS_MAKE_SHARED((const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")), return nullptr);
 
@@ -926,7 +927,7 @@ ge::OpDescPtr BatchMatMulNonAlignedFusionPass::CreateListConstDesc(const string 
 Status BatchMatMulNonAlignedFusionPass::CreateReshapePadReshape(ge::ComputeGraph &graph,
                                                                 const InDataAnchorPtr &dst_anchor,
                                                                 map<string, vector<int64_t>> &shape_dict,
-                                                                vector<vector<int64_t>> &paddings) {
+                                                                vector<vector<int64_t>> &paddings) const {
   vector<int64_t> reshape_shape_1 = shape_dict["reshape_shape_1"];
   vector<int64_t> pad_shape = shape_dict["pad_shape"];
   vector<int64_t> reshape_shape_2 = shape_dict["reshape_shape_2"];
@@ -955,7 +956,7 @@ Status BatchMatMulNonAlignedFusionPass::CreateReshapePadReshape(ge::ComputeGraph
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::UpdateConst(ge::NodePtr &shape_node, vector<int64_t> &const_shape) {
+Status BatchMatMulNonAlignedFusionPass::UpdateConst(const ge::NodePtr &shape_node, vector<int64_t> &const_shape) const {
   vector<GeTensorPtr> const_reshape = ge::OpDescUtils::MutableWeights(shape_node);
   FUSION_PASS_CHECK(const_shape.empty(), OP_LOGE(kNameFusionPass.c_str(), "const of reshape is nullptr"),
                     return PARAM_INVALID);
@@ -986,7 +987,7 @@ Status BatchMatMulNonAlignedFusionPass::UpdateConst(ge::NodePtr &shape_node, vec
   return SUCCESS;
 }
 
-Status BatchMatMulNonAlignedFusionPass::UpdateAllShape(ge::NodePtr &cur_node, ge::NodePtr &end_node) {
+Status BatchMatMulNonAlignedFusionPass::UpdateAllShape(ge::NodePtr &cur_node, const ge::NodePtr &end_node) const {
   while (cur_node != end_node) {
     // get cur node input size
     auto node_inputs = cur_node->GetInDataNodes();
