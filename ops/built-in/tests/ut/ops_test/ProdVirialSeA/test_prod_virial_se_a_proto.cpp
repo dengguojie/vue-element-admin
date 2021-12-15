@@ -173,7 +173,7 @@ TEST_F(ProdVirialSeAProtoTest, ProdVirialSeAInferShapeTest_2) {
     std::vector<int64_t> expected_output_shape = {nframes, -1};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
-    std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{nframes, nframes}, {nframes, -1}};
+    std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{nframes, nframes}, {0, -1}};
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
     output_desc.GetShapeRange(output_shape_range);
     EXPECT_EQ(output_shape_range, expected_output_shape_range);
