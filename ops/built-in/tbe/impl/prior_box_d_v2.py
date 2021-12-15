@@ -27,6 +27,7 @@ from te.utils import para_check
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name,unused-argument
+# 'pylint: disable=dangerous-default-value
 def prior_box_d_v2(feature,
                    img,
                    boxes,
