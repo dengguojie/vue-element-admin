@@ -14,13 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+sinh
+"""
 import functools
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -32,6 +35,7 @@ class Constant:
     SCALAR_TWO = 2
 
 
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("sinh")
 def sinh_compute(input_data, output_data, kernel_name="sinh"):
     """algorithm: sinh

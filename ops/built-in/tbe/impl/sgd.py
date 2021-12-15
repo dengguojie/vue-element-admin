@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+sgd
+"""
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe

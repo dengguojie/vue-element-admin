@@ -24,7 +24,13 @@ from te.utils import para_check
 from te.utils.shape_util import broadcast_shapes
 from te.utils.shape_util import shape_to_list
 
-SHAPE_SIZE_LIMIT = 2147483648
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    SHAPE_SIZE_LIMIT = 2147483648
 
 
 # 'pylint: disable=unused-argument,too-many-locals
@@ -53,7 +59,7 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
     predict_shape = shape_to_list(input_predict.shape)
     label_shape = shape_to_list(input_label.shape)
     _, _, shape_max = broadcast_shapes(predict_shape, label_shape)
-    para_check.check_shape_size(shape_max, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_max, Constant.SHAPE_SIZE_LIMIT)
 
     input_predict = tbe.broadcast(input_predict, shape_max)
     input_label = tbe.broadcast(input_label, shape_max)
@@ -99,6 +105,7 @@ def soft_margin_loss_gard_compute(input_predict, input_label, input_dout,
     if dtype == "float32" and not cloud_flag:
         res = tbe.cast_to(res, "float32")
     return res
+
 
 # 'pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

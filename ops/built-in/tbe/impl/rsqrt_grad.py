@@ -22,6 +22,7 @@ from te.utils import shape_util
 from te import tvm
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -29,7 +30,7 @@ class Constant:
     SCALAR = -0.5
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("rsqrt_grad")
 def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     """
@@ -66,6 +67,7 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def rsqrt_grad(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):

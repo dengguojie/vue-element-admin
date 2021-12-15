@@ -27,7 +27,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid_grad")
 def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     """

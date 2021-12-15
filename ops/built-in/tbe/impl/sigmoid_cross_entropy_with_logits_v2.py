@@ -29,9 +29,6 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
 
-SCALAR_ONE = 1
-SCALAR_ZREO = 0
-
 
 # 'pylint: disable=redefined-builtin,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
@@ -156,7 +153,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     const_zero_broadcast = te.lang.cce.broadcast(const_zero, shape_predict)
     const_one_broadcast = te.lang.cce.broadcast(const_one, shape_predict)
 
-    # info: max(-predict,0)
+    # `info: max(-predict,0)
     reversed_predict = te.lang.cce.vsub(const_zero_broadcast, predict)
     max_predict_zero = te.lang.cce.vmaxs(reversed_predict, const_zero)
 
@@ -171,7 +168,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     log_reversed_predict = te.lang.cce.vlog(add_reversed_predict, priority_flag=1)
     add_max_predict = te.lang.cce.vadd(log_reversed_predict, max_predict_zero)
 
-    # info: (1-target)*predict
+    # `info: (1-target)*predict
     sub_target = te.lang.cce.vsub(const_one_broadcast, target)
     mul_predict_target = te.lang.cce.vmul(sub_target, predict)
 

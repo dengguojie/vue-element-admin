@@ -23,9 +23,9 @@ from impl import constant_util as constant
 MAX_UB_ELEMENT_NUMBER = 10240
 
 
-# pylint: disable = locally-disabled,invalid-name,useless-object-inheritance
-# pylint: disable = unused-argument,no-member,consider-using-in
-# pylint: disable=super-with-arguments
+# 'pylint: disable = locally-disabled,invalid-name,useless-object-inheritance
+# 'pylint: disable = unused-argument,no-member,consider-using-in
+# 'pylint: disable=super-with-arguments
 class ScatterNdBase(object):
     """
     Function: use to store scatter_nd base parameters

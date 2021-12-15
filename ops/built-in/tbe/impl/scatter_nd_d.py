@@ -26,6 +26,7 @@ from impl import constant_util
 from impl import common_util
 
 
+# 'pylint: diable=unused-argument
 def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
     """
     when dtype not in ("float", "float32", "float16", "int32"), dynamic shape not support.
@@ -46,11 +47,12 @@ def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
         return False, "279424, dynamic shape high perm branch."
     shape_value += [1]
     update_slice = reduce(lambda a, b: a * b, shape_value[indices_shape[-1]:])
-    if data_size > 0 and update_slice > 0 and update_slice < (32 / data_size):
+    if data_size > 0 and 0 < update_slice < (32 / data_size):
         return False, "ScatterNdD update slice < 32byte, graph not changed."
     return True, ""
 
-# pylint: disable=invalid-name, too-many-locals
+
+# 'pylint: disable=invalid-name, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
@@ -229,7 +231,7 @@ def check_same_shape(shape_x, shape_y):
     return True
 
 
-# pylint: disable=invalid-name, too-many-return-statements
+# 'pylint: disable=invalid-name, too-many-return-statements
 def _check_1d_updates(indices, updates, output_y):
     """
     check if updates are 1-D shape or not
@@ -328,7 +330,7 @@ def _get_batch_elements(updates, core_var_elements):
     return num
 
 
-# pylint: disable=invalid-name, too-many-statements
+# 'pylint: disable=invalid-name, too-many-statements
 def _scatter_nd_d_1d(indices, x, y, kernel_name="scatter_nd_d"):
     """
     do the scatter_nd logic of 1-d update situation

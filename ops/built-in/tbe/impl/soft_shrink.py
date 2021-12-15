@@ -97,3 +97,4 @@ def soft_shrink(input_x, output_y, lambd=0.5, kernel_name="soft_shrink"):
               "tensor_list": [data_input, res]}
 
     tbe.cce_build_code(schedule, config)
+

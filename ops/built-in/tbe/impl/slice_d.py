@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+slice_d
+"""
 from __future__ import absolute_import
 from __future__ import print_function
 
@@ -37,10 +39,15 @@ from impl.strided_slice_d import make_perf_params
 from impl.strided_slice_d import strided_slice_d
 
 
-BURST_LEN = 65535
-BLOCK_SIZE = 32
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    BURST_LEN = 65535
+    BLOCK_SIZE = 32
+    UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
+    AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -78,7 +85,7 @@ class SliceLastDimCompute():
         #The number of bytes of the corresponding data type divided by 8
         self.ele_size = cce.cce_intrin.get_bit_len(self.dtype) // 8
         # align size for product dim, to make sure out data is 32B align
-        self.product_dim_align_size = BLOCK_SIZE // self.ele_size
+        self.product_dim_align_size = Constant.BLOCK_SIZE // self.ele_size
         self.slice_two_dim = False
 
         # check only last dim to be sliced
@@ -101,17 +108,17 @@ class SliceLastDimCompute():
 
         # for moving data continuously, only small last dim is allowed
         # last dim data size <= 32B
-        if self.input_dim_last * self.ele_size > 2 * BLOCK_SIZE:
+        if self.input_dim_last * self.ele_size > 2 * Constant.BLOCK_SIZE:
             self.check_result = False
             return
 
-        if self.output_dim_last * self.ele_size > BLOCK_SIZE:
+        if self.output_dim_last * self.ele_size > Constant.BLOCK_SIZE:
             self.check_result = False
             return
 
         # for dividing cores easily, only big product dim is allowed
         # product dim >= aicore_num * 32 // ele_size
-        aicore_num = AICORE_NUM
+        aicore_num = Constant.AICORE_NUM
         if self.dim_product < self.product_dim_align_size * aicore_num:
             self.check_result = False
             return
@@ -169,8 +176,8 @@ class SliceLastDimCompute():
 
         tik_instance = tik.Tik()
         self.tik_instance = tik_instance
-        aicore_num = AICORE_NUM
-        ub_size = UB_SIZE_B
+        aicore_num = Constant.AICORE_NUM
+        ub_size = Constant.UB_SIZE_B
         begin_offset = self.begin[0]
 
         x = tik_instance.Tensor(self.dtype,
@@ -207,7 +214,7 @@ class SliceLastDimCompute():
 
                 input_size_in_loop = dim_product_size_in_loop\
                                      * self.input_dim_last * self.ele_size
-                burst_length = input_size_in_loop // BLOCK_SIZE
+                burst_length = input_size_in_loop // Constant.BLOCK_SIZE
                 tik_instance.data_move(x_ub,
                                        x[(dim_product_begin + dim_product_begin_in_loop + begin_offset)
                                          * self.input_dim_last],
@@ -221,7 +228,7 @@ class SliceLastDimCompute():
 
                 output_size_in_loop = dim_product_size_in_loop\
                                       * self.output_dim_last * self.ele_size
-                burst_length_out = output_size_in_loop // BLOCK_SIZE
+                burst_length_out = output_size_in_loop // Constant.BLOCK_SIZE
                 tik_instance.data_move(y[(dim_product_begin
                                           + dim_product_begin_in_loop)
                                          * self.output_dim_last],
@@ -244,8 +251,8 @@ class SliceLastDimCompute():
             input_size_in_loop = dim_product_size_in_loop\
                                  * self.input_dim_last * self.ele_size
             burst_length = tik_instance.Scalar(dtype="int64")
-            burst_length.set_as(input_size_in_loop // BLOCK_SIZE)
-            with tik_instance.if_scope(input_size_in_loop % BLOCK_SIZE != 0):
+            burst_length.set_as(input_size_in_loop // Constant.BLOCK_SIZE)
+            with tik_instance.if_scope(input_size_in_loop % Constant.BLOCK_SIZE != 0):
                 burst_length.set_as(burst_length + 1)
             tik_instance.data_move(x_ub,
                                    x[(dim_product_begin + dim_product_begin_in_loop + begin_offset)
@@ -261,8 +268,8 @@ class SliceLastDimCompute():
             output_size_in_loop = dim_product_size_in_loop\
                                   * self.output_dim_last * self.ele_size
             burst_length_out = tik_instance.Scalar(dtype="int64")
-            burst_length_out.set_as(output_size_in_loop // BLOCK_SIZE)
-            with tik_instance.if_scope(output_size_in_loop % BLOCK_SIZE != 0):
+            burst_length_out.set_as(output_size_in_loop // Constant.BLOCK_SIZE)
+            with tik_instance.if_scope(output_size_in_loop % Constant.BLOCK_SIZE != 0):
                 burst_length_out.set_as(burst_length_out + 1)
             tik_instance.data_move(y[(dim_product_begin
                                       + dim_product_begin_in_loop)
@@ -291,7 +298,7 @@ class SliceDiffLastDimCompute():
         #The number of bytes of the corresponding data type divided by 8
         self.ele_size = cce.cce_intrin.get_bit_len(self.dtype) // 8
         # align size for product dim, to make sure out data is 32B align
-        self.product_dim_align_size = BLOCK_SIZE // self.ele_size
+        self.product_dim_align_size = Constant.BLOCK_SIZE // self.ele_size
 
         if self.all_dim < 3:
             self.check_result = False
@@ -318,17 +325,17 @@ class SliceDiffLastDimCompute():
 
         # for moving data continuously, only small last dim is allowed
         # last dim data size <= 32B
-        if self.input_dim_last * self.ele_size > 2 * BLOCK_SIZE:
+        if self.input_dim_last * self.ele_size > 2 * Constant.BLOCK_SIZE:
             self.check_result = False
             return
 
-        if self.output_dim_last * self.ele_size > BLOCK_SIZE:
+        if self.output_dim_last * self.ele_size > Constant.BLOCK_SIZE:
             self.check_result = False
             return
 
         # for dividing cores easily, only big product dim is allowed
         # product dim >= aicore_num * 32 // ele_size
-        aicore_num = AICORE_NUM
+        aicore_num = Constant.AICORE_NUM
         if self.dim_product < self.product_dim_align_size * aicore_num:
             self.check_result = False
             return
@@ -386,8 +393,8 @@ class SliceDiffLastDimCompute():
 
         tik_instance = tik.Tik()
         self.tik_instance = tik_instance
-        aicore_num = AICORE_NUM
-        ub_size = UB_SIZE_B
+        aicore_num = Constant.AICORE_NUM
+        ub_size = Constant.UB_SIZE_B
 
         x = tik_instance.Tensor(self.dtype,
                                 (self.dim_product, self.input_dim_last),
@@ -425,7 +432,7 @@ class SliceDiffLastDimCompute():
 
                 input_size_in_loop = dim_product_size_in_loop\
                                      * self.input_dim_last * self.ele_size
-                burst_length = input_size_in_loop // BLOCK_SIZE
+                burst_length = input_size_in_loop // Constant.BLOCK_SIZE
                 tik_instance.data_move(x_ub,
                                        x[(self.begin_first * input_ele)
                                          + (dim_product_begin
@@ -441,7 +448,7 @@ class SliceDiffLastDimCompute():
 
                 output_size_in_loop = dim_product_size_in_loop\
                                       * self.output_dim_last * self.ele_size
-                burst_length_out = output_size_in_loop // BLOCK_SIZE
+                burst_length_out = output_size_in_loop // Constant.BLOCK_SIZE
                 tik_instance.data_move(y[(dim_product_begin
                                           + dim_product_begin_in_loop)
                                          * self.output_dim_last],
@@ -464,8 +471,8 @@ class SliceDiffLastDimCompute():
             input_size_in_loop = dim_product_size_in_loop\
                                  * self.input_dim_last * self.ele_size
             burst_length = tik_instance.Scalar(dtype="int64")
-            burst_length.set_as(input_size_in_loop // BLOCK_SIZE)
-            with tik_instance.if_scope(input_size_in_loop % BLOCK_SIZE != 0):
+            burst_length.set_as(input_size_in_loop // Constant.BLOCK_SIZE)
+            with tik_instance.if_scope(input_size_in_loop % Constant.BLOCK_SIZE != 0):
                 burst_length.set_as(burst_length + 1)
             tik_instance.data_move(x_ub,
                                    x[(self.begin_first * input_ele)
@@ -483,8 +490,8 @@ class SliceDiffLastDimCompute():
             output_size_in_loop = dim_product_size_in_loop\
                                   * self.output_dim_last * self.ele_size
             burst_length_out = tik_instance.Scalar(dtype="int64")
-            burst_length_out.set_as(output_size_in_loop // BLOCK_SIZE)
-            with tik_instance.if_scope(output_size_in_loop % BLOCK_SIZE != 0):
+            burst_length_out.set_as(output_size_in_loop // Constant.BLOCK_SIZE)
+            with tik_instance.if_scope(output_size_in_loop % Constant.BLOCK_SIZE != 0):
                 burst_length_out.set_as(burst_length_out + 1)
             tik_instance.data_move(y[(dim_product_begin
                                       + dim_product_begin_in_loop)
@@ -645,7 +652,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     calculate the split parameters according to different shapes
     """
     # size of ub
-    ub_size_bytes = UB_SIZE_B - 1024
+    ub_size_bytes = Constant.UB_SIZE_B - 1024
     dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes), divide by 32 to get
     # the numbers of data that can be stored in one block.
@@ -689,10 +696,10 @@ def _tilling_axis(shape, dtype, no_remainder):
             split_factor = shape[last_not_one_axis]
 
     if no_remainder:
-        device_core_num = AICORE_NUM
+        device_core_num = Constant.AICORE_NUM
         if len(shape) >= 2 and split_axis == 0 \
                 and  device_core_num <= shape[0] < (2 * device_core_num) \
-                and shape[0] < BURST_LEN:
+                and shape[0] < Constant.BURST_LEN:
             split_factor = 1
 
     return split_axis, split_factor
@@ -777,7 +784,7 @@ def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
             core_num = size[split_axis] // split_factor
         else:
             core_num = size[0]
-        if (split_axis == len(size) - 1 and split_factor < element_align) or core_num > BURST_LEN:
+        if (split_axis == len(size) - 1 and split_factor < element_align) or core_num > Constant.BURST_LEN:
             split_axis, split_factor = _tilling_axis(size, x.dtype, False)
             axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis], factor=split_factor)
         else:
@@ -838,11 +845,11 @@ def _func_gm_to_ub(args):
 
     with tvm_ib.if_scope(ori_nburst > 0):
         with tvm_ib.if_scope(burst_len > 0):
-            with tvm_ib.if_scope(burst_len <= BURST_LEN):
+            with tvm_ib.if_scope(burst_len <= Constant.BURST_LEN):
                 with tvm_ib.if_scope(src_stride >= 0):
                     with tvm_ib.if_scope(dst_stride >= 0):
-                        with tvm_ib.if_scope(dst_stride <= BURST_LEN):
-                            with tvm_ib.if_scope(src_stride <= BURST_LEN):
+                        with tvm_ib.if_scope(dst_stride <= Constant.BURST_LEN):
+                            with tvm_ib.if_scope(src_stride <= Constant.BURST_LEN):
                                 with tvm_ib.if_scope(ori_nburst <= 4095):
                                     tvm_ib.emit(
                                         tvm.call_extern(
@@ -913,11 +920,11 @@ def _func_gm_to_ub_align(args):
 
     with tvm_ib.if_scope(ori_nburst > 0):
         with tvm_ib.if_scope(burst_len > 0):
-            with tvm_ib.if_scope(burst_len <= BURST_LEN):
+            with tvm_ib.if_scope(burst_len <= Constant.BURST_LEN):
                 with tvm_ib.if_scope(src_stride >= 0):
                     with tvm_ib.if_scope(dst_stride >= 0):
-                        with tvm_ib.if_scope(dst_stride <= BURST_LEN):
-                            with tvm_ib.if_scope(src_stride <= BURST_LEN):
+                        with tvm_ib.if_scope(dst_stride <= Constant.BURST_LEN):
+                            with tvm_ib.if_scope(src_stride <= Constant.BURST_LEN):
                                 with tvm_ib.if_scope(ori_nburst <= 4095):
                                     tvm_ib.emit(
                                         tvm.call_extern(
@@ -1438,10 +1445,10 @@ def _mov_scalar_one(dst, data, begin):
     """
     tvm_ib = tvm.ir_builder.create()
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -2000,8 +2007,8 @@ def _one_core_ir(dst, data, n_begin):
     tvm_ib = tvm.ir_builder.create()
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     src_shape_ele = functools_reduce(lambda x, y: x * y, data.shape[1:])
@@ -2400,10 +2407,10 @@ def _move_sp_vadds_rowzu_8(dst, data, n_begin, row_zu, before, after):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_four = ub_ele // 16
@@ -2460,10 +2467,10 @@ def _move_sp_vadds_rowzu_4(dst, data, n_begin, row_zu, before, after):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_four = ub_ele // 8
@@ -2512,10 +2519,10 @@ def _move_sp_vadds_rowzu_2(dst, data, n_begin, row_zu, before, after):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_four = ub_ele // 4
@@ -2729,10 +2736,10 @@ def _move_sp_vadds_21_20_fp32(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 16
@@ -2975,10 +2982,10 @@ def _move_sp_vadds_91_90_fp32(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 16
@@ -3271,10 +3278,10 @@ def _move_sp_vadds_602_601_fp32(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 16
@@ -3487,10 +3494,10 @@ def _move_sp_vadds_21_20_fp16(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 32
@@ -3724,10 +3731,10 @@ def _move_sp_vadds_91_90_fp16(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 32
@@ -4041,10 +4048,10 @@ def _move_sp_vadds_602_601_fp16(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
     ub_ele_eight = ub_ele // 32
@@ -4121,7 +4128,7 @@ def _move_sp_vadds_32_32_4(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
 
@@ -4275,10 +4282,10 @@ def _move_sp_diff_same_small_dim(dst, data, bl_begin, col_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -4419,10 +4426,10 @@ def _move_sp_diff_same_big_dim(dst, data, bl_begin, col_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -4613,10 +4620,10 @@ def _move_two_diff_same_small_dim(dst, data, bl_begin, col_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -4735,10 +4742,10 @@ def _move_two_diff_same_big_dim(dst, data, bl_begin, col_begin):
     """
 
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -4959,10 +4966,10 @@ def _small_last_32_512_2(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5046,10 +5053,10 @@ def _small_last_32_1024_2_fp32(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5143,10 +5150,10 @@ def _small_last_32_1917_2(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5286,10 +5293,10 @@ def _small_last_65472_2(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5427,10 +5434,10 @@ def _small_last_65472_4(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5616,10 +5623,10 @@ def _small_last_32_300_3_2(dst, data, n_begin):
 
     """
     tvm_ib = tvm.ir_builder.create()
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_one = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5785,8 +5792,8 @@ def _move_n_512_3(dst, data, n_begin):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -5970,8 +5977,8 @@ def _move_n_512_1_2(dst, data, n_begin):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -6055,8 +6062,8 @@ def _move_32_16_fp16(dst, data, r_begin):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 3 // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele * 2,
@@ -6168,8 +6175,8 @@ def _move_n_64_392_392(dst, data, t_begin):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -6317,8 +6324,8 @@ def _last_two_diff_fp16(dst, data, c_begin, r_begin):
 
     float_size = cce.cce_intrin.get_bit_len(data.dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    device_core_num = AICORE_NUM
-    ub_bytes = UB_SIZE_B - 64
+    device_core_num = Constant.AICORE_NUM
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     data_ub = _new_alloc(tvm_ib, dst.dtype, ub_ele,
@@ -6458,14 +6465,14 @@ def _check_scalar_one(shape, size, dtype):
                 return False
 
     a_i, b_i, c_i, d_i = shape
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if a_i < device_core_num:
         if a_i*b_i % device_core_num > 0:
             return False
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     if c_i*d_i > ub_ele:
@@ -6510,7 +6517,7 @@ def _check_one_core(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_true = UB_SIZE_B - 64
+    ub_true = Constant.UB_SIZE_B - 64
     ub_ele = (ub_true // 2 // float_size // cp_align_len)*cp_align_len
 
     src_shape_ele = functools_reduce(lambda x, y: x * y, shape[1:])
@@ -6614,7 +6621,7 @@ def _last_dim_diff(shape, size, dtype):
     if shape[dim - 1] == size[dim - 1]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if shape[0] < device_core_num:
         return False
 
@@ -6638,7 +6645,7 @@ def _last_dim_diff(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_half = ub_ele // 2
 
@@ -6677,7 +6684,7 @@ def _check_sp_diff_same_small_dim(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     col_out = size[1]
@@ -6709,7 +6716,7 @@ def _check_sp_diff_same_big_dim(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     col_out = size[1]
@@ -6736,7 +6743,7 @@ def _check_two_diff_same_small_dim(shape, size, dtype):
     if dim < 4:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if size[0] < device_core_num:
         return False
 
@@ -6752,7 +6759,7 @@ def _check_two_diff_same_small_dim(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     col_out = size[2]
@@ -6778,7 +6785,7 @@ def _check_two_diff_same_big_dim(shape, size, dtype):
     if dim < 4:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if size[0] < device_core_num:
         return False
 
@@ -6794,7 +6801,7 @@ def _check_two_diff_same_big_dim(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 32
+    ub_bytes = Constant.UB_SIZE_B - 32
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
     col_out = size[2]
@@ -6831,7 +6838,7 @@ def _check_21_91_602_1_branch(shape, size, dtype):
     if shape[dim - 1] == size[dim - 1]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if shape[0] < device_core_num:
         return False
 
@@ -6850,7 +6857,7 @@ def _check_21_91_602_1_branch(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     ub_ele_eight = ub_ele // (2 * cp_align_len)
 
@@ -6872,13 +6879,13 @@ def _check_32_32_4(shape, size, dtype):
     if list(shape) != [32, 32, 32] or list(size) != [32, 32, 4]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if device_core_num != 32:
         return False
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     if ub_ele < 32 * 32:
@@ -6910,7 +6917,7 @@ def _check_32_512_2(shape, size, dtype):
     else:
         n_i, col_len, _, row_in = shape
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     c_0 = 16
     n_zu = _ceil_fill(n_i, c_0) // c_0
     if col_len == 1024 and dtype == "float32":
@@ -6927,7 +6934,7 @@ def _check_32_512_2(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     if dim_ele > ub_ele:
@@ -6947,7 +6954,7 @@ def _check_32_1917_2(shape, size, dtype):
     if shape != [32, 1917, 2] or size != [32, 1917, 1]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if device_core_num != 32:
         return False
 
@@ -6957,7 +6964,7 @@ def _check_32_1917_2(shape, size, dtype):
     dim_ele = c_0 * 512 * row_in
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     if dim_ele > ub_ele:
@@ -6980,13 +6987,13 @@ def _check_65472_4_2(shape, size, dtype):
                              ([65472, 4], [65472, 1])):
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if device_core_num != 32:
         return False
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
     row_in = shape[-1]
@@ -7013,7 +7020,7 @@ def _check_32_300_3_2(shape, size, dtype):
     if shape != [32, 300, 3] or size != [32, 300, 2]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     n_i = shape[0]
     c_0 = 16
     n_zu = n_i // c_0
@@ -7022,7 +7029,7 @@ def _check_32_300_3_2(shape, size, dtype):
 
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
     _, col_len, row_in = shape
     col_len_align = _ceil_fill(col_len, cp_align_len)
@@ -7061,7 +7068,7 @@ def _check_n_512_3(shape, size, dtype):
     if shape[0] != size[0]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if shape[0] < device_core_num:
         return False
 
@@ -7072,7 +7079,7 @@ def _check_n_512_3(shape, size, dtype):
             or (sub_shape == [514, 3] and sub_size == [512, 3]):
         float_size = cce.cce_intrin.get_bit_len(dtype) // 8
         cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-        ub_bytes = UB_SIZE_B - 64
+        ub_bytes = Constant.UB_SIZE_B - 64
         ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
 
         sub_ele = functools_reduce(lambda x, y: x*y, sub_size[:])
@@ -7096,7 +7103,7 @@ def _check_n_512_1_2(shape, size, dtype):
     if shape[0] != size[0]:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if shape[0] < device_core_num:
         return False
 
@@ -7106,7 +7113,7 @@ def _check_n_512_1_2(shape, size, dtype):
     if sub_shape == [512, 1, 2] and sub_size == [512, 1, 1]:
         float_size = cce.cce_intrin.get_bit_len(dtype) // 8
         cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-        ub_bytes = UB_SIZE_B - 64
+        ub_bytes = Constant.UB_SIZE_B - 64
         ub_ele = (ub_bytes // 2 // float_size // cp_align_len) * cp_align_len
 
         col_len = shape[1]
@@ -7133,12 +7140,12 @@ def _check_32_16_fp16(shape, size, dtype):
     if row_in != 2 * cp_align_len or row_out != cp_align_len:
         return False
 
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if one_dim % device_core_num != 0:
         return False
 
     n_core = one_dim // device_core_num
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // 3 // float_size // cp_align_len) * cp_align_len
     n_ub = ub_ele // cp_align_len
     if n_core <= n_ub:
@@ -7158,7 +7165,7 @@ def _check_n_64_392_392(shape, size, dtype):
 
     one_d, two_out, three_d, four_d = size
     all_core = one_d * two_out
-    device_core_num = AICORE_NUM
+    device_core_num = Constant.AICORE_NUM
     if all_core < device_core_num:
         return False
 
@@ -7172,7 +7179,7 @@ def _check_n_64_392_392(shape, size, dtype):
         return False
 
     col_len = three_d // 2
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     if ub_ele < row_len:
         return False
@@ -7192,7 +7199,7 @@ def _check_last_two_diff_fp16(shape, size, dtype):
     if dtype != "float16":
         return False
 
-    if len(shape) != 4 or shape[0] != size[0] or (shape[0] * shape[1] % AICORE_NUM) != 0:
+    if len(shape) != 4 or shape[0] != size[0] or (shape[0] * shape[1] % Constant.AICORE_NUM) != 0:
         return False
 
     shape = shape[1:]
@@ -7214,7 +7221,7 @@ def _check_last_two_diff_fp16(shape, size, dtype):
     if row_in * 2 % cp_align_len > 0 or row_out * 2 % cp_align_len > 0:
         return False
 
-    ub_bytes = UB_SIZE_B - 64
+    ub_bytes = Constant.UB_SIZE_B - 64
     ub_ele = (ub_bytes // float_size // cp_align_len) * cp_align_len
     row_new = row_out * 2
     if ub_ele < row_new:
@@ -7300,6 +7307,7 @@ def _update_params_for_other_format(shape, begin, size, input_format, ori_format
 
         return begin_new, size_new
 
+
 # 'pylint: disable=unused-variable
 def get_fused_str(format_char_list):
     """get_fused_str for format
@@ -7363,7 +7371,7 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
         is_size_c_support = \
             dict_zip_size["C"] % hd_format_c0 == 0 or dict_zip_shape["C"] == dict_zip_size["C"] + dict_zip_begin["C"]
         # charge whether support 5HD 6HD
-        # condition:
+        # `info: condition:
         # one: C dim in start is c0 align
         # two: C dim in size is c0 align or size_c = shape_c - start_c(means will slice all remain data from start_c)
         if begin_c_align_flag and is_size_c_support:
@@ -7372,7 +7380,7 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
         is_size_n_support = \
             dict_zip_size["N"] % fz_format_n0 == 0 or dict_zip_shape["N"] == dict_zip_size["N"] + dict_zip_begin["N"]
         # charge whether support FRACTAL_Z，FRACTAL_Z_3D
-        # condition:
+        # `info: condition:
         # one: both N and C dim in start is c0 align
         # two: C dim in size is c0 align or size_c = shape_c - start_c
         # three: N dim in size is n0 align or size_n = shape_n - start_n
@@ -7385,8 +7393,8 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     if len(input_ori_shape) >= 2:
         is_first_last_size_support = size[-1] % nz_format_align == 0 or input_ori_shape[-1] == size[-1] + begin[-1]
         is_second_last_size_support = size[-2] % nz_format_align == 0 or input_ori_shape[-2] == size[-2] + begin[-2]
-        # condition:
-        # one. len >= 2;
+        # `info: condition:
+        # one: len >= 2;
         # two: the value begin[-1] and begin[-2] is align
         # three: -1 dim in size is align or size = shape - start
         # four: -2 dim in size is align or size = shape - start
@@ -7435,7 +7443,7 @@ def _use_strided_slice(ori_x, ori_y):
     input_shape = ori_x.get("ori_shape")
     output_shape = ori_y.get("ori_shape")
     type_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    block_align = BLOCK_SIZE // type_size
+    block_align = Constant.BLOCK_SIZE // type_size
     if input_shape and output_shape and output_shape[-1] % block_align == 0:
         return False
     return True
@@ -7511,12 +7519,12 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
                 size_new = size_new[:slice_dim_num] + [slice_last_size*size_new[slice_dim_num]]
             else:
                 shape_new, begin_new, size_new = [slice_last_size], [0], [slice_last_size]
-        if slice_dim_num == 0 and size_new[0] % AICORE_NUM == 0:
-            shape_split_dim = size_new[0] // AICORE_NUM
+        if slice_dim_num == 0 and size_new[0] % Constant.AICORE_NUM == 0:
+            shape_split_dim = size_new[0] // Constant.AICORE_NUM
             if begin_new[0] % shape_split_dim == 0 and shape_new[0] % shape_split_dim == 0 and shape_split_dim > 0:
                 shape_new = [shape_new[0] // shape_split_dim, shape_split_dim]
                 begin_new = [begin_new[0] // shape_split_dim, 0]
-                size_new = [AICORE_NUM, shape_split_dim]
+                size_new = [Constant.AICORE_NUM, shape_split_dim]
     else:
         _check_parameters(shape, dtype, begin, size, kernel_name)
         shape_new, begin_new, size_new = _update_params(shape, begin, size)
@@ -7685,7 +7693,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
         elif _check_scalar_one(shape_new, size_new, dtype):
             a_i = shape_new[0]
-            device_core_num = AICORE_NUM
+            device_core_num = Constant.AICORE_NUM
             if a_i < device_core_num:
                 b_i = shape_new[1]
                 one_dim = device_core_num

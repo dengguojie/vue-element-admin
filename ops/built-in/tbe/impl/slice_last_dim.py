@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+slice_last_dim
+"""
 # 'pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 
 import math

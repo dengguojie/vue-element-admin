@@ -27,9 +27,6 @@ from te import tvm
 from impl.util.platform_adapter import error_manager_vector
 
 
-VALUE_ONE = 1
-
-
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # 'pylint: disable=too-many-locals, invalid-name, unused-argument
 # 'pylint: disable=unused-variable

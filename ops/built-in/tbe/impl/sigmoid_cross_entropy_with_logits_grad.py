@@ -25,9 +25,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-SCALAR_ONE = 1
-SCALAR_NEGTIVE_ONE = -1
-
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("sigmoid_cross_entropy_with_logits_grad")
