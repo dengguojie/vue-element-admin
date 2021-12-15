@@ -627,7 +627,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
         Return tile_l1_hi
         """
         l0ub_howo = 2 * l0ub_howo if dtype in ("uint8", "int8") else l0ub_howo
-        tile_l1_hi_1 = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
+        tile_l1_hi_1 = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h
         if not howo_split or aligned_flag or dtype == "float16":
             return min(tile_l1_hi_1, fmap_h)
         #  infer bound calculation info
