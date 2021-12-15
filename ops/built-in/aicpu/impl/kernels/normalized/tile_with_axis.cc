@@ -19,14 +19,14 @@ template <typename T, int32_t OPTION, int32_t DIMS>
 uint32_t TileWithAxisCpuKernel::TileComputeByAxis(CpuKernelContext &ctx) {
   Tensor *input = ctx.Input(kFirstInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
-  
+
   int32_t axis = 1;
   AttrValue *axis_attr = ctx.GetAttr("axis");
-  if(axis_attr != nullptr) {
+  if (axis_attr != nullptr) {
     axis = axis_attr->GetInt();
     axis = (axis < 0) ? (axis + DIMS) : axis;
   }
-  
+
   // tiles == 1, output跟input一样
   int32_t tiles = ctx.GetAttr("tiles")->GetInt();
   if (tiles == 1) {
@@ -115,7 +115,7 @@ uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) {
 
   // 判断axis是不是在input的轴范围内，可选参数
   AttrValue *axis_attr = ctx.GetAttr("axis");
-  if(axis_attr != nullptr) {
+  if (axis_attr != nullptr) {
     axis = axis_attr->GetInt();
     auto dims = input->GetTensorShape()->GetDims();
     axis = (axis < 0) ? (axis + dims) : axis;
@@ -124,10 +124,10 @@ uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) {
         return KERNEL_STATUS_PARAM_INVALID;
     }
   }
-  
+
   // 判断tiles必须大于0，必选参数
   AttrValue *tiles_attr = ctx.GetAttr("tiles");
-  if(tiles_attr == nullptr) {
+  if (tiles_attr == nullptr) {
     KERNEL_LOG_ERROR("TileWithAxis tiles is null.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -136,7 +136,7 @@ uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("TileWithAxis tiles[%d] is valid.", tiles);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  
+
   // 判断outshape轴axis的大小是否是input轴axis大小*tiles
   std::vector<int64_t> shape_input = input->GetTensorShape()->GetDimSizes();
   std::vector<int64_t> shape_output = output->GetTensorShape()->GetDimSizes();

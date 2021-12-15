@@ -2,8 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  */
 
-#ifndef AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H_
-#define AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H_
+#ifndef AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H
+#define AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H
 
 #include "cpu_kernel.h"
 #include "cpu_types.h"
@@ -29,4 +29,4 @@ class TileWithAxisCpuKernel : public CpuKernel {
   uint32_t TileCompute(CpuKernelContext &ctx);
 };
 }  // namespace aicpu
-#endif  // AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H_
+#endif  // AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H
