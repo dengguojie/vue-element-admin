@@ -2520,7 +2520,8 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
     y_shape.push_back(UNKNOWN_DIM);
     y_shape.push_back(input_dims.size());
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    if (x_desc->GetShapeRange(input_range) == GRAPH_SUCCESS && input_range.size()) {
+    if ((x_desc->GetShapeRange(input_range) == GRAPH_SUCCESS) &&
+        (input_range.size() == dims_num)) {
       int64_t out_shape_max = 1;
       for (int i = 0; i < dims_num; i++) {
         out_shape_max *= input_range[i].second;
