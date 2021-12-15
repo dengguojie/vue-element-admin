@@ -45,7 +45,6 @@ def gen_kernel_name(input_shape, weights_shape):
     return kernel_name
 
 def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, expect):
-
     input_shape = inputs.get('ori_shape')
     weights_shape = weights.get('ori_shape')
     kernel_name = gen_kernel_name(input_shape, weights_shape)
