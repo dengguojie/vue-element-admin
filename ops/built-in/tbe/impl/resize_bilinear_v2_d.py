@@ -43,9 +43,9 @@ HW_SIZE_2048 = 2048
 VBI_BLOCK_COUNT = 8
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2**(-126)
-# define a scalar, value = 2**(50)
+# `define a scalar, value = 2**(50)`
 SCALAR_MUL_FP32 = 2**50
-# define a scalar, value = 2**(26)
+# `define a scalar, value = 2**(26)`
 SCALAR_MUL2_FP32 = 2**26
 
 
@@ -105,7 +105,8 @@ def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
     """
     # dynamic_white_list format:
     # [batch, ceil(channel, shape_c0) * shape_c0, in_height, in_width, out_height, out_width]
-    dynamic_white_list = [[4, 16, 480, 640, 800, 1067], [400, 2048, 7, 7, 33, 33], [1, 16, 240, 240, 960, 960], [1, 16, 480, 480, 1920, 1920]]
+    dynamic_white_list = [[4, 16, 480, 640, 800, 1067], [400, 2048, 7, 7, 33, 33], [1, 16, 240, 240, 960, 960],
+                          [1, 16, 480, 480, 1920, 1920]]
 
     shape_c0 = 16
     dict_zip_shape = dict(zip(list(ori_format), ori_input_shape))
@@ -131,7 +132,7 @@ def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
     return True
 
 
-# 'pylint: disable=unused-argument,unused-variable,too-many-arguments
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-return-statements
 def check_supported(images, y, size, align_corners=False, half_pixel_centers=False, kernel_name="resize_bilinear_v2"):
     """
     To check whether the AICORE operator can support
@@ -186,7 +187,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         ir build part
         -------------
         Process:
-            1. input H/W = output H/W
+            `1. input H/W = output H/W`
             2. input H/W = (1,1)
             3. output H/W = (1,1)
             4. normal input/output H/W
@@ -240,7 +241,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
     f16_c0 = 16
     c0 = 8 if dtype == "float32" else 16
 
-    # No.1 situation : input H/W = output H/W
+    # `No.1 situation : input H/W = output H/W`
     if h_in == h_out and w_in == w_out:
         # Note:
         #   1. all data move in and out directly whatever the dtype is
@@ -320,7 +321,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                                                              offset=tail_start * c0),
                                             trans_station_fp32.access_ptr('r'), 0, 1, tail_counts * 2, 0, 0))
 
-    # No.2 situation : input H/W = (1,1)
+    # `No.2 situation : input H/W = (1,1)`
     elif h_in == 1 and w_in == 1:
         # Note:
         #   1. input f16 dtype convert to f32 then expand
@@ -2592,14 +2593,14 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                 outputs.access_ptr('w', offset=loop_lev2 * 6 * HW_SIZE_512 * f16_c0),
                                                 f32_out.access_ptr('r'), 0, 1, tail_lev2, 0, 0))
 
-    # No.3 situation : output H/W = (1,1)
+    # `No.3 situation : output H/W = (1,1)`
     elif h_out == 1 and w_out == 1 and \
             ((half_pixel_centers and h_in % 2 == 1 and w_in % 2 == 1)
              or (half_pixel_centers is False)):
         # Note:
         #   1. pick data from out directly
         #   2. large output data use L1 optimize
-        # No.3 situation : output H/W = (1,1) : input f16 dtype
+        # `No.3 situation : output H/W = (1,1) : input f16 dtype`
         if half_pixel_centers:
             in_offset = int(h_in * 0.5 - 0.5) * w_in * 16 + \
                         int(w_in * 0.5 - 0.5) * 16
@@ -2621,13 +2622,13 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             #   1. output data larger than HW_SIZE_512 * 8 should use L1 optimize
             #   2. output small data do not need L1
 
-            # No.3 situation : output H/W = (1,1) : input f16 dtype : large data
+            # `No.3 situation : output H/W = (1,1) : input f16 dtype : large data`
             if expand_loop > f16_size:
 
                 loop_level1 = expand_loop // l1_half
                 tail_level1 = expand_loop % l1_half
 
-                # No.3 situation : output H/W = (1,1): input f16 dtype: large data: loop_level1 > 0
+                # `No.3 situation : output H/W = (1,1): input f16 dtype: large data: loop_level1 > 0`
                 if loop_level1 > 0:
                     # level_1 loop
                     with ib.for_range(0, loop_level1) as i1:
@@ -2711,7 +2712,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                + i2 * f16_size * f16_c0),
                                     out_ub_f32.access_ptr('r'),
                                     0, 1, f16_size * 2, 0, 0))
-                # No.3 situation : output H/W = (1,1): input f16 dtype:
+                # `No.3 situation : output H/W = (1,1): input f16 dtype:`
                 # large data: tail_level1 > 0
                 if tail_level1 > 0:
                     # Note:
@@ -2775,7 +2776,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     # level_1 loop
                     loop_l1 = tail_level1 // f16_size
                     tail_l1 = tail_level1 % f16_size
-                    # No.3 situation : output H/W=(1,1): input f16 dtype:
+                    # `No.3 situation : output H/W=(1,1): input f16 dtype:`
                     # tail_level1>0: loop_l1>0
                     if loop_l1 > 0:
                         with ib.for_range(0, loop_l1) as i2:
@@ -2799,7 +2800,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     out_ub_f32.access_ptr('r'),
                                     0, 1, f16_size * 2, 0, 0))
 
-                    # No.3 situation : output H/W=(1,1): input f16 dtype: tail_level1>0: tail_l1>0
+                    # `No.3 situation : output H/W=(1,1): input f16 dtype: tail_level1>0: tail_l1>0`
                     if tail_l1 > 0:
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
@@ -2821,7 +2822,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 out_ub_f32.access_ptr('r'),
                                 0, 1, tail_l1 * 2, 0, 0))
             else:
-                # No.3 situation : output H/W = (1,1) : input f16 dtype : small data
+                # `No.3 situation : output H/W = (1,1) : input f16 dtype : small data`
 
                 # Note:
                 #   1. pick gap out of range need copy many times
@@ -2858,7 +2859,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         out_ub_f32.access_ptr('r'), 0, 1, expand_loop * 2, 0, 0))
 
         else:
-            # No.3 situation : output H/W = (1,1) : input f32 dtype
+            # `No.3 situation : output H/W = (1,1) : input f32 dtype`
             expand_loop = reduce_func(lambda x, y: x * y, size_out) // f16_c0
             gap_limit = (1 << 16) - 1
             f32_stride = (w_in * h_in - 1) * 2
@@ -2874,14 +2875,14 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             #   1. output data larger than HW_SIZE_512 * 8 should use L1 optimize
             #   2. output small data do not need L1
 
-            # No.3 situation : output H/W = (1,1) : input f32 dtype : large data
+            # `No.3 situation : output H/W = (1,1) : input f32 dtype : large data`
             if expand_loop > f32_size:
 
                 f32_half = l1_half // 2
                 loop_level1 = expand_loop // f32_half
                 tail_level1 = expand_loop % f32_half
 
-                # No.3 situation : output H/W = (1,1): input f32 dtype:
+                # `No.3 situation : output H/W = (1,1): input f32 dtype:`
                 # large data: loop_level1 > 0
                 if loop_level1 > 0:
                     # level_1 loop
@@ -2962,7 +2963,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                + i2 * f32_size * f32_c0),
                                     f32_in.access_ptr('r'),
                                     0, 1, f32_size, 0, 0))
-                # No.3 situation : output H/W = (1,1): input f32 dtype:
+                # `No.3 situation : output H/W = (1,1): input f32 dtype:`
                 # large data: tail_level1 > 0
                 if tail_level1 > 0:
                     # Note:
@@ -3026,7 +3027,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     # level_1 loop
                     loop_l1 = tail_level1 * 2 // f32_size
                     tail_l1 = tail_level1 * 2 % f32_size
-                    # No.3 situation : output H/W=(1,1): input f32 dtype: tail_level1>0: loop_l1>0
+                    # `No.3 situation : output H/W=(1,1): input f32 dtype: tail_level1>0: loop_l1>0`
                     if loop_l1 > 0:
                         ib.emit(
                             tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
@@ -3050,7 +3051,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     f32_out.access_ptr('r'),
                                     0, 1, f32_size, 0, 0))
 
-                    # No.3 situation : output H/W=(1,1): input f32 dtype: tail_level1>0: tail_l1>0
+                    # `No.3 situation : output H/W=(1,1): input f32 dtype: tail_level1>0: tail_l1>0`
                     if tail_l1 > 0:
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
@@ -3070,7 +3071,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 f32_out.access_ptr('r'),
                                 0, 1, tail_l1, 0, 0))
             else:
-                # No.3 situation : output H/W = (1,1) :
+                # `No.3 situation : output H/W = (1,1) :`
                 # input f32 dtype : small data
 
                 # Note:
@@ -4659,18 +4660,18 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     x2x3_ub_unfold.access_ptr('r', offset=HW_SIZE_512 * 8), _repeat * 2, 1, 0, 1, 8, 0,
                                     8))
 
-                # x0 = x0*(1-Yv)*(1-Xu)     offset = 0
+                # `x0 = x0*(1-Yv)*(1-Xu)     offset = 0`
                 ib.emit(
                     tvm.call_extern(x0x1_ub.dtype, "vmul", x0x1_ub.access_ptr('w'),
                                     x_scale_512_ub.access_ptr('r', offset=scale_offset * 8), x0x1_ub.access_ptr('r'),
                                     _repeat, 2, 1, 2, 16, 8, 16))
 
-                # x2 = x2*Yv*(1-Xu)    offset = 0
+                # `x2 = x2*Yv*(1-Xu)    offset = 0`
                 ib.emit(
                     tvm.call_extern(x2x3_ub.dtype, "vmul", x2x3_ub.access_ptr('w'),
                                     x_scale_512_ub.access_ptr('r', offset=scale_offset * 8), x2x3_ub.access_ptr('r'),
                                     _repeat, 2, 1, 2, 16, 8, 16))
-                # x0 = x0*(1-Yv)*(1-Xu)  offset = 8
+                # `x0 = x0*(1-Yv)*(1-Xu)  offset = 8`
                 ib.emit(
                     tvm.call_extern(x0x1_ub.dtype, "vmul", x0x1_ub.access_ptr('w', offset=8),
                                     x_scale_512_ub.access_ptr('r', offset=scale_offset * 8),
