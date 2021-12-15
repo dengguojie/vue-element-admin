@@ -49,6 +49,8 @@ class Constant:
     BLOCK = 32
 
 
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def op_select_format(x, paddings, constant_values, y, mode, paddings_contiguous, kernel_name="pad_v3"):
     """
     when the attr mode is constant, the PadV3 can support HC1HWC0 and ND.
