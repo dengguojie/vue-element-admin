@@ -809,20 +809,14 @@ class ResizeNearestNeighborV2Grad:
                 self.tik_instance.vadds(1, height_output_fp32, height_output_fp32, -1.0, 1, 1, 1, 8, 8)
                 self.tik_instance.vadds(1, height_input_fp32, height_input_fp32, -1.0, 1, 1, 1, 8, 8)
 
-            self.tik_instance.vrec(1, height_output_fp32[self.block_num:], height_output_fp32, 1, 1, 1, 8, 8)
-            _tik_fuc_vrec_newton(self.tik_instance, height_output_fp32[self.block_num:], height_output_fp32,
-                                 1, block_num=self.block_num)
-            self.tik_instance.vmul(1, height_input_fp32, height_input_fp32, height_output_fp32[self.block_num:],
+            self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32,
                                    1, 1, 1, 1, 8, 8, 8)
             self.resize_scale_h.set_as(height_input_fp32[0])
 
             with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
                 self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
                 self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
-            self.tik_instance.vrec(1, width_output_fp32[self.block_num:], width_output_fp32, 1, 1, 1, 8, 8)
-            _tik_fuc_vrec_newton(self.tik_instance, width_output_fp32[self.block_num:], width_output_fp32,
-                                 1, block_num=self.block_num)
-            self.tik_instance.vmul(1, width_input_fp32, width_input_fp32, width_output_fp32[self.block_num:],
+            self.tik_instance.vdiv(1, width_input_fp32, width_input_fp32, width_output_fp32,
                                    1, 1, 1, 1, 8, 8, 8)
             self.resize_scale_w.set_as(width_input_fp32[0])
 
@@ -894,47 +888,6 @@ class ResizeNearestNeighborV2Grad:
                                    flowtable=(self.tiling_gm,), config=opt_config)
 
         return self.tik_instance
-
-
-def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=6, block_num=16):
-    """
-    only do newton for vrec result
-
-    Parameters
-    ----------
-    tik_instance: class
-        tik_instance
-    vrec_ub: ub
-        the result of vrec
-    origin_ub: ub
-        the origin input for vrec
-    do_len: int
-        vrec num
-    newton_iteration: int
-        do newton iteration
-    block_num: int
-        num in one block
-
-    Returns
-    -------
-    None
-    """
-    with tik_instance.new_stmt_scope():
-        vrec_newton_1 = tik_instance.Tensor(
-            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
-            name="vrec_newton_1", scope=tik.scope_ubuf)
-        vrec_newton_2 = tik_instance.Tensor(
-            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
-            name="vrec_newton_2", scope=tik.scope_ubuf)
-
-        def _one_newton():
-            tik_instance.vmul(1, vrec_newton_1, vrec_ub, origin_ub, 1, 1, 1, 1, 8, 8, 8)
-            tik_instance.vmuls(1, vrec_newton_2, vrec_newton_1, -1, 1, 1, 1, 8, 8)
-            tik_instance.vadds(1, vrec_newton_1, vrec_newton_2, 2, 1, 1, 1, 8, 8)
-            tik_instance.vmul(1, vrec_ub, vrec_newton_1, vrec_ub, 1, 1, 1, 1, 8, 8, 8)
-
-        for _ in range(newton_iteration):
-            _one_newton()
 
 
 def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):

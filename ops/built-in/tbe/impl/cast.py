@@ -379,6 +379,7 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         config = {
             "print_ir": False,
             "name": kernel_name,
-            "tensor_list": [data, res]
+            "tensor_list": [data, res],
+            "bool_storage_as_1bit": False
         }
         tbe.cce_build_code(sch, config)
