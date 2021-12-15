@@ -120,10 +120,10 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get _ori_axis error"),
                     return false);
     std::string dtype;
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo get reduce_mean_cof_dtype error"),
-                    return false);
-    parsed_info.dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+    parsed_info.dtype = ge::DT_MAX;
+    if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+      parsed_info.dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+    }
   }
 
   return true;

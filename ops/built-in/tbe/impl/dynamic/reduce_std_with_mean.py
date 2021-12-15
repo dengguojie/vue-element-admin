@@ -25,6 +25,20 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpPatternMode
 
+# 'pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
+# Analysis parameter dim
+def reduce_std_check_dim(axis_dim, shape_x, dim):
+    """
+    reduce_std_check_dim
+    """
+    dims = len(shape_x)
+
+    for i in dim:
+        if ((i < 0) and ((i + dims) in axis_dim)) or (i in axis_dim):
+            continue
+        axis_dim.append(int((i + dims) % dims))
+    return axis_dim
+
 
 # 'pylint: disable=invalid-name,too-many-arguments,too-many-locals,too-many-branches,unused-argument
 @register_operator_compute("ReduceStdWithMean", op_mode="dynamic", support_fusion=True)
@@ -65,9 +79,12 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
 
     shape_x = shape_util.shape_to_list(x.shape)
 
+    axis_dim = []
+    axis_dim = reduce_std_check_dim(axis_dim, shape_x, dim)
+
     reduce_ele = 1.0
-    for i in shape_x:
-        reduce_ele *= i
+    for i in axis_dim:
+        reduce_ele *= shape_x[i]
     dtype = x.dtype
     # broadcast
     mu_broadcast = mean
@@ -79,8 +96,10 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
     if unbiased:
         # Divided by N or (N-1)
         if isinstance(reduce_ele, float):
-            cof_unbiased = (reduce_ele - 1.0)**(-1)
-            cof_unbiased = tvm.const(cof_unbiased, dtype=dtype)
+            cof_unbiased = 1.0
+            if reduce_ele != 1.0:
+                cof_unbiased = (reduce_ele - 1.0)**(-1)
+                cof_unbiased = tvm.const(cof_unbiased, dtype=dtype)
         else:
             cof_unbiased = tbe.var("cof_unbiased", dtype=dtype)
             if dtype == "float16":
