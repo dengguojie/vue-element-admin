@@ -23,7 +23,7 @@
 #include "vector_tiling_profiling.h"
 
 namespace {
-  constexpr int32_t DEPTH_SIZE = 2;
+  constexpr int32_t DEPTH_SIZE = 1;
 }
 
 namespace optiling {

@@ -54,7 +54,7 @@ class Constant:
 
 # 'pylint: disable=too-many-public-methods,too-many-instance-attributes,too-many-arguments
 # 'pylint: disable=unused-argument,too-many-statements,too-many-locals,invalid-name
-class OneHot():
+class OneHot:
     """
     The class of OneHot op
     """
@@ -536,8 +536,9 @@ class OneHot():
         self.vec_dump_off_value_tensor_ub(off_value_ub_size)
         with self.tik_instance.for_range(0, (end - begin)) as i:
             self.index_scalar.set_as(self.x_ub[i])
-            self.index_scalar.set_as(i * self.depth + self.index_scalar)
-            self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
+            with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                self.index_scalar.set_as(i * self.depth + self.index_scalar)
+                self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
 
         with self.tik_instance.if_scope((end - begin) * self.depth // self.off_value_each_block > 0):
             self.tik_instance.data_move(self.y_gm[id_number *
@@ -600,9 +601,9 @@ class OneHot():
         with self.tik_instance.for_range(0, (end - begin) // line_num) as i:
             with self.tik_instance.for_range(0, line_num) as j:
                 self.index_scalar.set_as(self.x_ub[i * line_num + j])
-                self.index_scalar.set_as(j * self.depth + self.index_scalar)
-                self.off_value_tensor_ub[self.index_scalar].set_as(
-                    self.on_value)
+                with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                    self.index_scalar.set_as(j * self.depth + self.index_scalar)
+                    self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
             self.tik_instance.data_move(self.y_gm[id_number *
                                                   self.not_last_core_numel *
                                                   self.depth +
@@ -618,17 +619,17 @@ class OneHot():
 
             with self.tik_instance.for_range(0, line_num) as j:
                 self.index_scalar.set_as(self.x_ub[i * line_num + j])
-                self.index_scalar.set_as(j * self.depth + self.index_scalar)
-                self.off_value_tensor_ub[self.index_scalar].set_as(
-                    self.off_value)
+                with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                    self.index_scalar.set_as(j * self.depth + self.index_scalar)
+                    self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
 
         with self.tik_instance.if_scope((end - begin) % line_num > 0):
             with self.tik_instance.for_range(0, (end - begin) % line_num) as k:
                 self.index_scalar.set_as(
                     self.x_ub[(end - begin) // line_num * line_num + k])
-                self.index_scalar.set_as(k * self.depth + self.index_scalar)
-                self.off_value_tensor_ub[self.index_scalar].set_as(
-                    self.on_value)
+                with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                    self.index_scalar.set_as(k * self.depth + self.index_scalar)
+                    self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
             self.tik_instance.data_move(self.y_gm[id_number *
                                                   self.not_last_core_numel *
                                                   self.depth +
@@ -710,40 +711,28 @@ class OneHot():
 
         with self.tik_instance.for_range(0, (end - begin)) as i:
             self.index_scalar.set_as(self.x_ub[i])
-            with self.tik_instance.if_scope(tik.all(self.depth % self.off_value_each_block > 0,
-                                                    self.index_scalar > max_y_index)):
-                block_index.set_as(self.index_scalar %
-                                   max_y_index +
-                                   (self.off_value_each_block -
-                                    (self.depth -
-                                     max_y_index)))
-                self.off_value_tensor_ub[block_index].set_as(self.on_value)
-                self.tik_instance.data_move(self.y_gm[id_number *
-                                                      self.not_last_core_numel *
-                                                      self.depth +
-                                                      i *
-                                                      self.depth +
-                                                      max_y_index -
-                                                      (self.off_value_each_block -
-                                                       (self.depth -
-                                                        max_y_index))], self.off_value_tensor_ub, 0, 1, 1, 0, 0)
-                self.off_value_tensor_ub[block_index].set_as(self.off_value)
+            with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                with self.tik_instance.if_scope(tik.all(self.depth % self.off_value_each_block > 0,
+                                                        self.index_scalar > max_y_index)):
+                    block_index.set_as(self.index_scalar % max_y_index + (self.off_value_each_block -
+                                      (self.depth - max_y_index)))
+                    self.off_value_tensor_ub[block_index].set_as(self.on_value)
+                    self.tik_instance.data_move(self.y_gm[id_number * self.not_last_core_numel *
+                                                          self.depth + i * self.depth +
+                                                          max_y_index - (self.off_value_each_block -
+                                                           (self.depth - max_y_index))],
+                                                self.off_value_tensor_ub, 0, 1, 1, 0, 0)
+                    self.off_value_tensor_ub[block_index].set_as(self.off_value)
 
-            with self.tik_instance.else_scope():
-                block_index.set_as(
-                    self.index_scalar %
-                    self.off_value_each_block)
-                self.off_value_tensor_ub[block_index].set_as(self.on_value)
-                self.tik_instance.data_move(self.y_gm[id_number *
-                                                      self.not_last_core_numel *
-                                                      self.depth +
-                                                      i *
-                                                      self.depth +
-                                                      self.index_scalar //
-                                                      self.off_value_each_block *
-                                                      self.off_value_each_block], self.off_value_tensor_ub, 0, 1,
-                                            1, 0, 0)
-                self.off_value_tensor_ub[block_index].set_as(self.off_value)
+                with self.tik_instance.else_scope():
+                    block_index.set_as(self.index_scalar % self.off_value_each_block)
+                    self.off_value_tensor_ub[block_index].set_as(self.on_value)
+                    self.tik_instance.data_move(self.y_gm[id_number * self.not_last_core_numel *
+                                                          self.depth + i * self.depth +
+                                                          self.index_scalar // self.off_value_each_block *
+                                                          self.off_value_each_block], self.off_value_tensor_ub, 0, 1,
+                                                1, 0, 0)
+                    self.off_value_tensor_ub[block_index].set_as(self.off_value)
 
     # last axis with ub size is less than x and enough to off_value_tensor
     # some lines
@@ -802,13 +791,14 @@ class OneHot():
                         with self.tik_instance.for_range(0, line_num) as ele:
                             self.index_scalar.set_as(
                                 self.x_ub[k * line_num + ele])
-                            self.index_scalar.set_as(
-                                ele * self.depth + self.index_scalar)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.on_value)
+                            with self.tik_instance.if_scope(
+                                    tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                                self.index_scalar.set_as(
+                                    ele * self.depth + self.index_scalar)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(
+                                    self.on_value)
 
-                        offset.set_as(
-                            ((x_move_times - 1) * self.per_part_unused_ub + k * line_num) * self.depth)
+                        offset.set_as(((x_move_times - 1) * self.per_part_unused_ub + k * line_num) * self.depth)
                         self.tik_instance.data_move(self.y_gm[id_number *
                                                               self.not_last_core_numel *
                                                               self.depth +
@@ -821,10 +811,10 @@ class OneHot():
                         with self.tik_instance.for_range(0, line_num) as ele:
                             self.index_scalar.set_as(
                                 self.x_ub[k * line_num + ele])
-                            self.index_scalar.set_as(
-                                ele * self.depth + self.index_scalar)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.off_value)
+                            with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0,
+                                                                    self.index_scalar < self.depth)):
+                                self.index_scalar.set_as(ele * self.depth + self.index_scalar)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
 
                 remain = self.tik_instance.Scalar(dtype='int32', name='remain')
                 remain.set_as(
@@ -836,29 +826,20 @@ class OneHot():
                         self.index_scalar.set_as(self.x_ub[
                             (end - begin) % self.per_part_unused_ub //
                             line_num * line_num + ele])
-                        self.index_scalar.set_as(
-                            ele * self.depth + self.index_scalar)
-                        self.off_value_tensor_ub[self.index_scalar].set_as(
-                            self.on_value)
+                        with self.tik_instance.if_scope(
+                                tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                            self.index_scalar.set_as(ele * self.depth + self.index_scalar)
+                            self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
 
-                    offset.set_as(((x_move_times -
-                                    1) *
+                    offset.set_as(((x_move_times - 1) *
                                    self.per_part_unused_ub +
-                                   (end -
-                                    begin) %
-                                   self.per_part_unused_ub //
-                                   line_num *
-                                   line_num) *
-                                  self.depth)
+                                   (end - begin) %
+                                   self.per_part_unused_ub // line_num * line_num) * self.depth)
                     with self.tik_instance.if_scope(self.depth * remain // self.off_value_each_block > 0):
-                        self.tik_instance.data_move(self.y_gm[offset +
-                                                              self.not_last_core_numel *
-                                                              id_number *
-                                                              self.depth], self.off_value_tensor_ub, 0, 1, self.depth *
-                                                    remain //
-                                                    self.off_value_each_block, 0, 0)
-                        self.align_to_32_last_block(
-                            self.depth * remain, offset, id_number)
+                        self.tik_instance.data_move(self.y_gm[offset + self.not_last_core_numel *
+                                                              id_number * self.depth], self.off_value_tensor_ub,
+                                                    0, 1, self.depth * remain // self.off_value_each_block, 0, 0)
+                        self.align_to_32_last_block(self.depth * remain, offset, id_number)
 
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(self.per_part_unused_ub // line_num > 0):
@@ -866,10 +847,12 @@ class OneHot():
                         with self.tik_instance.for_range(0, line_num) as ele:
                             self.index_scalar.set_as(
                                 self.x_ub[k * line_num + ele])
-                            self.index_scalar.set_as(
-                                ele * self.depth + self.index_scalar)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.on_value)
+                            with self.tik_instance.if_scope(
+                                    tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                                self.index_scalar.set_as(
+                                    ele * self.depth + self.index_scalar)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(
+                                    self.on_value)
                         offset = self.tik_instance.Scalar(
                             dtype='int32', name='offset')
                         offset.set_as(
@@ -885,31 +868,23 @@ class OneHot():
                             self.depth * line_num, offset, id_number)
 
                         with self.tik_instance.for_range(0, line_num) as ele:
-                            self.index_scalar.set_as(
-                                self.x_ub[k * line_num + ele])
-                            self.index_scalar.set_as(
-                                ele * self.depth + self.index_scalar)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.off_value)
+                            self.index_scalar.set_as(self.x_ub[k * line_num + ele])
+                            with self.tik_instance.if_scope(
+                                    tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                                self.index_scalar.set_as(ele * self.depth + self.index_scalar)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
 
                 with self.tik_instance.if_scope(self.per_part_unused_ub % line_num > 0):
                     with self.tik_instance.for_range(0, self.per_part_unused_ub % line_num) as ele:
-                        self.index_scalar.set_as(
-                            self.x_ub[self.per_part_unused_ub // line_num * line_num + ele])
-                        self.index_scalar.set_as(
-                            ele * self.depth + self.index_scalar)
-                        self.off_value_tensor_ub[self.index_scalar].set_as(
-                            self.on_value)
+                        self.index_scalar.set_as(self.x_ub[self.per_part_unused_ub // line_num * line_num + ele])
+                        with self.tik_instance.if_scope(
+                                tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                            self.index_scalar.set_as(ele * self.depth + self.index_scalar)
+                            self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
 
-                    offset = self.tik_instance.Scalar(
-                        dtype='int32', name='offset')
-                    offset.set_as(
-                        (i *
-                         self.per_part_unused_ub +
-                         self.per_part_unused_ub //
-                         line_num *
-                         line_num) *
-                        self.depth)
+                    offset = self.tik_instance.Scalar(dtype='int32', name='offset')
+                    offset.set_as((i * self.per_part_unused_ub + self.per_part_unused_ub // line_num *
+                                   line_num) * self.depth)
                     self.tik_instance.data_move(self.y_gm[id_number *
                                                           self.not_last_core_numel *
                                                           self.depth +
@@ -918,17 +893,14 @@ class OneHot():
                                                 line_num *
                                                 self.depth //
                                                 self.off_value_each_block, 0, 0)
-                    self.align_to_32_last_block(
-                        self.per_part_unused_ub %
-                        line_num * self.depth, offset, id_number)
+                    self.align_to_32_last_block(self.per_part_unused_ub % line_num * self.depth, offset, id_number)
 
                     with self.tik_instance.for_range(0, self.per_part_unused_ub % line_num) as ele:
-                        self.index_scalar.set_as(
-                            self.x_ub[self.per_part_unused_ub // line_num * line_num + ele])
-                        self.index_scalar.set_as(
-                            ele * self.depth + self.index_scalar)
-                        self.off_value_tensor_ub[self.index_scalar].set_as(
-                            self.off_value)
+                        self.index_scalar.set_as(self.x_ub[self.per_part_unused_ub // line_num * line_num + ele])
+                        with self.tik_instance.if_scope(
+                                tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                            self.index_scalar.set_as(ele * self.depth + self.index_scalar)
+                            self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
 
     # last axis with ub size is less than x smaller than off_value_tensor one
     # line
@@ -969,12 +941,11 @@ class OneHot():
                                                   part_num], self.off_value_tensor_ub, 0, 1, part_num //
                                         self.off_value_each_block, 0, 0)
         with self.tik_instance.if_scope(self.depth * (end - begin) % part_num // self.off_value_each_block > 0):
-            self.tik_instance.data_move(
-                self.y_gm[id_number * self.not_last_core_numel * self.depth + move_times * part_num],
+            self.tik_instance.data_move(self.y_gm[id_number * self.not_last_core_numel *
+                                                  self.depth + move_times * part_num],
                 self.off_value_tensor_ub, 0, 1,
                 (self.depth * (end - begin)) % part_num // self.off_value_each_block, 0, 0)
-            self.align_to_32_last_block(
-                self.depth * (end - begin) % part_num, move_times * part_num, id_number)
+            self.align_to_32_last_block(self.depth * (end - begin) % part_num, move_times * part_num, id_number)
 
         with self.tik_instance.for_range(0, x_move_times) as i:
             self.tik_instance.data_move(self.x_ub,
@@ -987,45 +958,43 @@ class OneHot():
             with self.tik_instance.if_scope(i == x_move_times - 1):
                 with self.tik_instance.for_range(0, (end - begin) % self.per_part_unused_ub) as index:
                     self.index_scalar.set_as(self.x_ub[index])
-                    with self.tik_instance.for_range(0, Constant.cal_num) as j:
-                        with self.tik_instance.if_scope(
-                                tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
-                            self.index_scalar.set_as(
-                                self.index_scalar - (j * part_num))
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.on_value)
-                            self.tik_instance.data_move(self.y_gm[((end -
-                                                                    begin) //
-                                                                   self.per_part_unused_ub *
-                                                                   self.per_part_unused_ub +
-                                                                   index) *
-                                                                  self.depth +
-                                                                  j *
-                                                                  part_num], self.off_value_tensor_ub, 0, 1, part_num //
-                                                        self.off_value_each_block, 0, 0)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.off_value)
+                    with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
+                            with self.tik_instance.if_scope(
+                                    tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
+                                self.index_scalar.set_as(self.index_scalar - (j * part_num))
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
+                                self.tik_instance.data_move(self.y_gm[((end -
+                                                                        begin) //
+                                                                       self.per_part_unused_ub *
+                                                                       self.per_part_unused_ub +
+                                                                       index) *
+                                                                      self.depth +
+                                                                      j *
+                                                                      part_num], self.off_value_tensor_ub,
+                                                            0, 1, part_num //
+                                                            self.off_value_each_block, 0, 0)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
             with self.tik_instance.else_scope():
                 with self.tik_instance.for_range(0, self.per_part_unused_ub) as index:
                     self.index_scalar.set_as(self.x_ub[index])
-                    with self.tik_instance.for_range(0, Constant.cal_num) as j:
-                        with self.tik_instance.if_scope(
-                                tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
-                            self.index_scalar.set_as(
-                                self.index_scalar - (j * part_num))
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.on_value)
-                            self.tik_instance.data_move(self.y_gm[id_number *
-                                                                  self.not_last_core_numel +
-                                                                  (i *
-                                                                   self.per_part_unused_ub +
-                                                                   index) *
-                                                                  self.depth +
-                                                                  j *
-                                                                  part_num], self.off_value_tensor_ub, 0, 1, part_num //
-                                                        self.off_value_each_block, 0, 0)
-                            self.off_value_tensor_ub[self.index_scalar].set_as(
-                                self.off_value)
+                    with self.tik_instance.if_scope(tik.all(self.index_scalar >= 0, self.index_scalar < self.depth)):
+                        with self.tik_instance.for_range(0, Constant.cal_num) as j:
+                            with self.tik_instance.if_scope(
+                                    tik.all(self.index_scalar < part_num * (j + 1), self.index_scalar >= part_num * j)):
+                                self.index_scalar.set_as(self.index_scalar - (j * part_num))
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.on_value)
+                                self.tik_instance.data_move(self.y_gm[id_number *
+                                                                      self.not_last_core_numel +
+                                                                      (i *
+                                                                       self.per_part_unused_ub +
+                                                                       index) *
+                                                                      self.depth +
+                                                                      j *
+                                                                      part_num], self.off_value_tensor_ub,
+                                                            0, 1, part_num //
+                                                            self.off_value_each_block, 0, 0)
+                                self.off_value_tensor_ub[self.index_scalar].set_as(self.off_value)
 
     # first axis with ub enough for all
     def one_hot_first_axis_first_mode(self, id_number):
@@ -1167,9 +1136,7 @@ class OneHot():
                                         self.off_value_each_block, 0, 0)
             self.align_to_32_last_block_first_dim(
                 self.numel_shape_x *
-                (
-                    end -
-                    begin) %
+                (end - begin) %
                 off_value_tensor_ub_size,
                 move_times *
                 off_value_tensor_ub_size,
@@ -2511,7 +2478,6 @@ def check_supported(x, depth, on_value, off_value, y, axis,
     return False, reason
 
 
-
 def _check_param(x, depth, on_value, off_value):
     """
     check parameters, if one is invalid, then raise error
@@ -2533,12 +2499,12 @@ def _check_param(x, depth, on_value, off_value):
     -------
     None
     """
-    x_dtype = x.get("dtype")
-    depth_dtype = depth.get("dtype")
-    on_value_dtype = on_value.get("dtype")
-    off_value_dtype = off_value.get("dtype")
-    para_check.check_dtype(x_dtype, ["int32"])
-    para_check.check_dtype(depth_dtype, ["int32"])
+    x_dtype = x.get("dtype").lower()
+    depth_dtype = depth.get("dtype").lower()
+    on_value_dtype = on_value.get("dtype").lower()
+    off_value_dtype = off_value.get("dtype").lower()
+    para_check.check_dtype(x_dtype, ["int32",])
+    para_check.check_dtype(depth_dtype, ["int32",])
     para_check.check_dtype(on_value_dtype, ["int32", "float32", "float16"])
     para_check.check_dtype(off_value_dtype, ["int32", "float32", "float16"])
 
