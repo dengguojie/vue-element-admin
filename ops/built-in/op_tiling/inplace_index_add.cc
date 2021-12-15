@@ -39,8 +39,8 @@ const int32_t TILING_MODE_4 = 4;
 const int32_t TILING_MODE_5 = 5;
 const int32_t TILING_MODE_6 = 6;
 const int32_t TILING_MODE_7 = 7;
-const int32_t DIVIDE_NUM=9;
-const int32_t TILING_FACTOR_TWO=2;
+const int32_t DIVIDE_NUM = 9;
+const int32_t TILING_FACTOR_TWO = 2;
 
 struct InplaceIndexAddTilingParam {
   int32_t tilingMode;

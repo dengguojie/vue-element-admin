@@ -118,7 +118,7 @@ static int GetAlignNum(int32_t dim_size, int32_t align_size) {
 }
 
 static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, const ge::DataType& dtype, int32_t axis,
-                           int32_t ub_ele, int32_t core_num) {
+                           int32_t core_num) {
   // set block and vector
   int32_t data_each_block = 8;
   int32_t data_each_vector = 64;
@@ -362,7 +362,7 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
   TilingParam param;
   memset_s(&param, sizeof(param), 0, sizeof(param));
   ge::DataType dtype = op_paras.GetInputDesc(0).GetDataType();
-  CalTilingParam(param, input_shape, dtype, axis, ub_ele, core_num);
+  CalTilingParam(param, input_shape, dtype, axis, core_num);
   SetTilingParam(param, run_info);
   PrintParam(param);
 

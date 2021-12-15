@@ -116,7 +116,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     int32_t temp_size = 1;
     bool need_split = false;
 
-    for (int32_t i = 4; i > 1; i --) {
+    for (int32_t i = 4; i > 1; i--) {
         temp_size = temp_size * input_shape[i];
         if (temp_size >= bound_size) {
             split_axis = i;

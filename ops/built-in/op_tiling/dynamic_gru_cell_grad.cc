@@ -80,10 +80,10 @@ void SetGRUGradRunInfo(map<std::string, int64_t> tilingPara, OpRunInfo& runInfo)
 
 void PrintGRUGradParams(const std::string& op_type, map<std::string, int64_t> tilingPara) {
   OP_LOGD(op_type.c_str(), "DynamicGRUCellGradTiling: coreNum=%lld, loopNum=%lld, \
-        loopEle=%lld, blockSize=%lld, tailNum=%lld, tailCoreNum=%lld, tailLoopEle=%lld,\
-	tailLastEle=%lld, tSize=%lld, fuseSize=%lld.", tilingPara["coreNum"], tilingPara["loopNum"],
-	tilingPara["loopEle"], tilingPara["blockSize"], tilingPara["tailNum"], tilingPara["tailCoreNum"],
-	tilingPara["tailLoopEle"], tilingPara["tailLastEle"],tilingPara["tSize"],tilingPara["fuseSize"]);
+          loopEle=%lld, blockSize=%lld, tailNum=%lld, tailCoreNum=%lld, tailLoopEle=%lld,\
+	      tailLastEle=%lld, tSize=%lld, fuseSize=%lld.", tilingPara["coreNum"], tilingPara["loopNum"],
+	      tilingPara["loopEle"], tilingPara["blockSize"], tilingPara["tailNum"], tilingPara["tailCoreNum"],
+	      tilingPara["tailLoopEle"], tilingPara["tailLastEle"], tilingPara["tSize"], tilingPara["fuseSize"]);
 }
 
 bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
