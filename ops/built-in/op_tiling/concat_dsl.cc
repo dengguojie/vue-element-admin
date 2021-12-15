@@ -283,8 +283,8 @@ void Concat::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& 
   }
 }
 
-void Concat::DoGeneralUbTiling(const int64_t factor_n) {
-  V_OP_TILING_CHECK((factor_n != 0), VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."), return );
+void Concat::DoGeneralUbTiling(int64_t factor_n) {
+  V_OP_TILING_CHECK((factor_n != 0), VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."), return);
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t row_limit = ROW_ALIGN_FACTOR;
   bool is_ub_factor_less_block = output_shapes[1] % factor_n != 0 && output_shapes[1] % factor_n < ele_in_block;
@@ -320,7 +320,7 @@ void Concat::DoGeneralUbTiling(const int64_t factor_n) {
   DoUbSplitZeroAxis(factor_m);
 }
 
-void Concat::DoNoAlignUbTiling(const int64_t factor_n) {
+void Concat::DoNoAlignUbTiling(int64_t factor_n) {
   no_align = true;
   all_one_concat = input_nums == output_shapes[1];
   int64_t ele_in_block = GetElementByType(dtype);
@@ -339,7 +339,7 @@ void Concat::DoNoAlignUbTiling(const int64_t factor_n) {
   DoUbSplitZeroAxis(factor_m);
 }
 
-void Concat::DoUbSplitZeroAxis(const int64_t factor_m) {
+void Concat::DoUbSplitZeroAxis(int64_t factor_m) {
   int64_t ele_in_block = GetElementByType(dtype);
   if (output_shapes[0] > factor_m) {
     low_ub_factor = factor_m;
@@ -358,7 +358,7 @@ void Concat::DoOneConcatUbTiling() {
     core_size = c_info.core_num / output_shapes[0];
   }
   V_OP_TILING_CHECK((max_available_ub != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."), return );
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."), return);
   if (output_shapes[1] / max_available_ub < core_size &&
       output_shapes[1] > HALF_REPEAT_BLOCK_NUM * ele_in_block * core_size) {
     max_available_ub = (output_shapes[1] + core_size - 1) / core_size;

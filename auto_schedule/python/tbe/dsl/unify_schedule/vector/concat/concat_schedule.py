@@ -36,7 +36,7 @@ from .concat_tilingcase import ConcatTilingCase
 
 DEFAULT = "default"
 DMA_COPY = "dma_copy"
-VECTOR_CONCAT = "data_mov"
+VECTOR_CONCAT = "vector_concat"
 PHONY_INSN = "phony_insn"
 
 BLOCK_SIZE_BYTE = 32

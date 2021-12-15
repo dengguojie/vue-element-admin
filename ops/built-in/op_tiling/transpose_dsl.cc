@@ -122,7 +122,6 @@ bool Transpose::GenerateOutputShape() {
   int64_t real_index = 0;
   bool is_first_in = true;
   for (size_t i = 0; i < src_dim_len; i++) {
-    int64_t cur_dim_value = shape.GetDim(i);
     GenerateShape(shape.GetDim(i), i, real_index, is_first_in);
   }
   V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
