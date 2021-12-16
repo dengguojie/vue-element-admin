@@ -61,28 +61,6 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   patterns.push_back(pattern0);
 
-  // define pattern rules
-  string passName1 = "TbeFullyconnectionDequantElemwiseQuantFusionPass";
-  BufferFusionPattern *pattern1 = new(std::nothrow) BufferFusionPattern(passName1, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."),
-  return patterns);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
-
-  pattern1
-    ->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
-      TBE_PATTERN_NUM_DEFAULT)
-    .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-    .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-    .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-    .AddOpDesc(PATTERN_QUANT, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-    .SetHead({PATTERN_FC_MATMUL})
-    .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_DEQUANT})
-    .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DEQUANT})
-    .SetOutputs(PATTERN_DEQUANT, {PATTERN_ELTWISE1})
-    .SetOutputs(PATTERN_ELTWISE1, {PATTERN_QUANT});
-  patterns.push_back(pattern1);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName1.c_str());
-
   string passName = "TbeFullyconnectionElemwiseDequantFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName, TBE_FUSION_OP_NUM_MAX);
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
@@ -206,42 +184,6 @@ bool CheckPreNodeIsFcNode(const ge::NodePtr& reluNode) {
   return false;
 }
 
-bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(const BufferFusionMapping &mapping){
-  // check matmul dequant gelu quant pass
-  vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
-  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
-  vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
-  vector<ge::NodePtr> quantNodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
-  if (!dequantNodes.empty() && !quantNodes.empty() && !reluNodes.empty() && elemWiseNodes.empty()) {
-    for (const auto &reluNode: reluNodes) {
-      bool is_quant_flag = false;
-      for (auto out_anchor: reluNode->GetAllOutDataAnchors()) {
-        for (auto next_in_anchor: out_anchor->GetPeerInDataAnchors()) {
-          ge::NodePtr nextNode = next_in_anchor->GetOwnerNode();
-          if (nextNode == nullptr || nextNode->GetType() != "AscendQuant") {
-            if (nextNode == nullptr) {
-              OP_LOGD(FUSED_OP_TYPE.c_str(),
-                      "elemwise node connect to nullptr, skip this node!");
-            } else {
-              OP_LOGD(FUSED_OP_TYPE.c_str(),
-                      "elemwise node connect to type[%s], is not supported for this ub fusion pass, skip this node!",
-                      nextNode->GetType().c_str());
-            }
-            continue;
-          }
-          is_quant_flag = true;
-        }
-      }
-      if (!is_quant_flag || reluNode->GetType() != "Gelu") {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
-                reluNode->GetName().c_str(), reluNode->GetType().c_str());
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -290,11 +232,6 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
               fcNode->GetName().c_str(), fcNode->GetType().c_str());
       return SUCCESS;
     }
-  }
-
-  if (!CheckMatmulDequantGeluQuantFusion(mapping)){
-    fusionNodes.clear();
-    return SUCCESS;
   }
 
   // check whether the relu/leakyrelu op
