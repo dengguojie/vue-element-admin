@@ -20,6 +20,7 @@ Schedule of conv2d.
 import re
 import math
 from enum import Enum
+from tbe.dsl.base import operation
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
 from tbe.dsl.compute.conv_compute import is_support_v220
@@ -577,6 +578,10 @@ def check_dyn_quantfuse_doubleout(tensor_list, outs):
     tensor_list
 
     """
+    # avoid vector ops by using pattern
+    context_pattern = operation.get_context().get_current_compute().get_pattern()
+    if "Convolution" not in context_pattern:
+        return tensor_list
     if hasattr(ConvParam, "conv_deq_req_double_out"):
         if ConvParam.conv_deq_req_double_out:
             tensor_list = tensor_list[:-2]
