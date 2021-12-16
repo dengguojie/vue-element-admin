@@ -220,7 +220,7 @@ class TransBackwardSchedule(TransdataBaseSchedule):
             """
             Func: Classified transpose_tensor's axis into UB Internal and UB External
             """
-            ub_internal_input = {perm[x] for x in range(perm[split_i], length, 1)}
+            ub_internal_input = {perm.index(x) for x in range(perm[split_i], length, 1)}
             ub_internal_output = set(range(split_o, length, 1))
             self.axis_in_ub = ub_internal_output.union(ub_internal_input)
             self.axis_not_in_ub = set(range(length)).difference(self.axis_in_ub)

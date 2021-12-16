@@ -117,16 +117,16 @@ class TransdataComputation(Computation):
         _out = []
         for split_i in range(_length - 1, -1, -1):
             # axises in ub by split input that base on output
-            input_axis_inner = {_perm[x] for x in range(split_i + 1, _length, 1)}
+            input_axis_inner = {_perm.index(x) for x in range(split_i + 1, _length, 1)}
             for split_o in range(_length - 1, -1, -1):
                 # axises in ub by split output
                 output_axis_inner = set(range(split_o + 1, _length, 1))
-                if split_o in input_axis_inner or _perm[split_i] in output_axis_inner:
+                if split_o in input_axis_inner or _perm.index(split_i) in output_axis_inner:
                     continue
                 output_axis_inner = output_axis_inner.union(input_axis_inner)
                 axis_outer = set(range(_length)).difference(output_axis_inner)
                 for split_b in axis_outer:
-                    _out.append([split_b, _perm[split_i], split_o])
+                    _out.append([split_b, _perm.index(split_i), split_o])
         return _out
 
     @staticmethod
@@ -244,7 +244,8 @@ class TransdataComputation(Computation):
 
         _format = {"ub_category": "int", "shape_type": "int", "block_split_idx": "int",
                    "ub_split_first_idx": "int", "ub_split_second_idx": "int",
-                   "block_factor": "int", "ub_first_factor": "int", "ub_second_factor": "int"}
+                   "block_factor": "int", "ub_first_factor": "int", "ub_second_factor": "int",
+                   "block_dim": "int"}
         tiling_data = op_tiling.decode(run_info["tiling_data"], _format)
 
         cst_case.ub_category = tiling_data["ub_category"]
@@ -262,7 +263,7 @@ class TransdataComputation(Computation):
         if block_dims is None:
             block_dims = {}
             add_compile_info_inner(CompileInfo.CONST_BLOCK_DIMS, block_dims)
-        block_dims[str(cst_case.tiling_key)] = run_info["block_dim"]
+        block_dims[str(cst_case.tiling_key)] = tiling_data["block_dim"]
         return [cst_case, ]
 
     def apply_dynamic_compile_info(self):

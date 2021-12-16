@@ -27,37 +27,56 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
+
+#include "error_log.h"
 #include "vector_tiling.h"
+#include "vector_tiling_log.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
+constexpr size_t OFFSET_2 = 2;
+constexpr size_t STRIDE_16 = 16;
+constexpr size_t STRIDE_2 = 2;
+constexpr int64_t MAX_DIM = 8;
+constexpr int64_t DEFAULT = -1;
 
-static const int64_t OFFSET_2 = 2;
-static const int64_t STRIDE_16 = 16;
-static const int64_t STRIDE_2 = 2;
-static const int64_t AXIS_OUT_UB = 0;
-static const int64_t AXIS_IN_UB = 1;
-static const int64_t AXIS_IN_FIRST_UB_SPLIT = 2;
-static const int64_t AXIS_IN_SECOND_UB_SPLIT = 3;
-static const float THRESHOLD = 0.95;
+constexpr int64_t PACKET_SENDING_RATE = 256;
+constexpr int64_t BLOCK = 32;
+constexpr int64_t INT8_BYTE = 1;
+constexpr int64_t FP16_BYTE = 2;
+constexpr int64_t FP32_BYTE = 4;
+constexpr int64_t FP32_TRANSPOSE_LIMIT = 128;
 
-static const int64_t FP32_TRANSPOSE_LIMIT = 128;
-static const int64_t MAX_DIM_NUM = 8;
-static const int64_t BLOCK = 32;
-static const int64_t FP16 = 2;
-static const int64_t INT8 = 1;
-static const int64_t FP32 = 4;
-static const int64_t DEFAULT_VALUE = -1;
-static const int64_t BaseSch = 0;
-static const int64_t BorrowNSch = 1;
-static const int64_t BorrowHSch = 2;
-static const int64_t StorageAlignBranch = 0;
-static const int64_t CommonAlignBranch = 1;
-static const int64_t PACKET_SENDING_RATE = 256;
+constexpr int64_t BaseSch = 0;
+constexpr int64_t BorrowNSch = 1;
+constexpr int64_t BorrowHSch = 2;
+constexpr int64_t StorageAlign = 0;
+constexpr int64_t CommonAlign = 1;
+constexpr int64_t EXISTED_C1C0 = 2;
 
-static const int64_t CONST_KEY = 123;
-static const int64_t FORWARD_KEY = 2;
-static const int64_t BACKWARD_KEY = 3;
-static const size_t KEY_NUM = 7;
+constexpr int64_t CONST_KEY = 123;
+constexpr int64_t FORWARD_KEY = 2;
+constexpr int64_t BACKWARD_KEY = 3;
+
+struct Shape {
+  int64_t shape[MAX_DIM];
+  size_t size;
+
+  void Reset() {
+    size = MAX_DIM;
+    for (size_t i = 0; i < size; i++) {
+      shape[i] = DEFAULT;
+    }
+  }
+
+  void SetSize(size_t num) {
+    size = num;
+  }
+
+  Shape() {
+    Reset();
+  }
+};
 
 struct CompileInfoTransdataDSL {
   // construct func
@@ -69,112 +88,47 @@ struct CompileInfoTransdataDSL {
   bool is_const_compile{false};
   bool is_const{false};
   bool is_forward{false};
-  int64_t align_size{DEFAULT_VALUE};
-  int64_t pad_align_size{DEFAULT_VALUE};
-  int64_t core_num{DEFAULT_VALUE};
-  std::vector<int64_t> src_pad;
-  std::vector<int64_t> src_fuse;
-  std::vector<int64_t> permute;
-  std::vector<int64_t> unknown_dims;
+  int64_t align_size{DEFAULT};
+  int64_t pad_align_size{DEFAULT};
+  int64_t core_num{DEFAULT};
+  std::vector<size_t> src_pad;
+  std::vector<size_t> src_fuse;
+  std::vector<size_t> permute;
+  std::vector<size_t> unknown_dims;
   std::vector<std::vector<int64_t>> ub_info;
   std::unordered_map<std::string, int32_t> const_block_dims;
 };
 
-struct TilingInfoTransdataDSL {
-  int64_t blk_dim{DEFAULT_VALUE};
-  int64_t blk_idx{DEFAULT_VALUE};
-  int64_t blk_factor{DEFAULT_VALUE};
-  int64_t ub_0_idx{DEFAULT_VALUE};
-  int64_t ub_0_factor{DEFAULT_VALUE};
-  int64_t ub_1_idx{DEFAULT_VALUE};
-  int64_t ub_1_factor{DEFAULT_VALUE};
-  int64_t mte2_burst_len{DEFAULT_VALUE};
-  int64_t mte3_burst_len{DEFAULT_VALUE};
-  int64_t core{DEFAULT_VALUE};
-  bool split_once{false};
-  float percent{0};
+struct MTEInfo {
+  int64_t virLen;
+  int64_t mainLen;
+  int64_t tailLen;
+
+  void Reset() {
+    virLen = DEFAULT;
+    mainLen = DEFAULT;
+    tailLen = DEFAULT;
+  }
+
+  MTEInfo() {
+    Reset();
+  }
 };
 
-struct TransdataDSLMTEInfo {
-  int64_t virLen{DEFAULT_VALUE};
-  int64_t mainLen{DEFAULT_VALUE};
-  int64_t tailLen{DEFAULT_VALUE};
-};
-
-class TransdataBase {
+class TransdataClassify {
  public:
-  explicit TransdataBase(const std::string& _op_type, const ge::Operator& _op_paras,
-                         const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info)
-      : op_type(_op_type), op_paras(_op_paras), compileInfo(_compileInfo), run_info(_run_info) {
+  explicit TransdataClassify(const ge::Operator& _op_paras, const CompileInfoTransdataDSL& _compileInfo)
+      : op_paras(_op_paras), compileInfo(_compileInfo) {
   }
-  ~TransdataBase() {
+  ~TransdataClassify() {
   }
-  bool DoTiling();
+  void GetInputOutput(Shape& input, Shape& output, Shape& reshape);
+  int64_t ChooseStrategy(Shape& input, Shape& output) const;
 
  private:
-  bool CalcTiling();
-  bool WriteTilingData();
-
-  bool UpdateValue();
-  bool IsConstRuntime();
-  bool GetInputOutput();
-  bool ChooseStrategy();
-  bool BaseUBTiling();
-  bool BaseBlockTiling();
-
-  bool InferInput();
-  bool InferOutput();
-  bool DoFusing(int64_t* input, int64_t* output, size_t ori_length);
-
-  bool UBTilingFilter(int64_t* input, int64_t* output, int64_t array_length);
-  bool UBTilingForwardProcess(int64_t* input, int64_t* output, size_t array_length);
-  bool UBTilingBackwardProcess(int64_t* input, int64_t* output, size_t array_length);
-  void UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2, int64_t mte3,
-                      float percent, int64_t core);
-
-  void FindAxisInUB(int64_t* axis_in_ub, int64_t length);
-  void ForwardBlockProcess(const int64_t* axis_in_ub);
-  void BackwardBlockProcess(const int64_t* axis_in_ub);
-
- private:
-  int64_t SetAlign(int64_t value, int64_t align_factor) const;
-  int64_t Prod(const int64_t* input, int64_t ptr, int64_t length) const;
-  int32_t CalcTilingKey();
-  int64_t LimitMap(int64_t factor) const;
-  bool CommonAlignLimit(int64_t dim_len, int64_t ub_size);
-  void StorageAlign(int64_t* new_input, int64_t* new_out, int64_t* input);
-  bool CheckValidSplit(const int64_t* input, const int64_t* output, int64_t ptrA, int64_t ptrB);
-  void GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo& mte);
-
- private:
-  const std::string& op_type;
   const ge::Operator& op_paras;
   const CompileInfoTransdataDSL& compileInfo;
-  utils::OpRunInfo& run_info;
-
-  int64_t input_shape[MAX_DIM_NUM] = {0};
-  int64_t output_shape[MAX_DIM_NUM] = {0};
-  int64_t reshape[MAX_DIM_NUM] = {0};
-  int64_t reshape_mapping_output[MAX_DIM_NUM] = {0};
-  int64_t possible_ub_tiling[MAX_DIM_NUM * MAX_DIM_NUM] = {0};
-
-  size_t size_input{0};
-  size_t size_output{0};
-  size_t size_reshape{0};
-  size_t computeType{0};
-  size_t shapeType{0};
-
-  int64_t c0_idx{DEFAULT_VALUE};
-  int64_t c1_idx{DEFAULT_VALUE};
-  int64_t UBSize{DEFAULT_VALUE};
-  int64_t ub_tiling_num{DEFAULT_VALUE};
-
-  bool is_last_transpose{false};
-  bool isDataMove{true};
-
-  TilingInfoTransdataDSL tilingInfo;
-  TransdataDSLMTEInfo mte2;
-  TransdataDSLMTEInfo mte3;
+  void DoFusing(Shape& input, Shape& output, Shape& reshape);
 };
 
 class TransdataTilingHandler : public AutoTilingHandler {
@@ -192,6 +146,24 @@ class TransdataTilingHandler : public AutoTilingHandler {
  private:
   const CompileInfoTransdataDSL compileInfo;
 };
+
+namespace transdata_dsl {
+int64_t SetAlign(int64_t value, int64_t align_factor);
+
+template <typename T>
+int64_t VectorIndex(const std::vector<T>& input, T value) {
+  for (int64_t i = 0; i < static_cast<int64_t>(input.size()); i++) {
+    if (input[i] == value) {
+      return i;
+    }
+  }
+  return DEFAULT;
+}
+
+int64_t Prod(const int64_t* input, size_t ptr, size_t length);
+
+int64_t CeilDiv(int64_t value, int64_t factor);
+}  // namespace transdata_dsl
 }  // namespace optiling
 
 #endif  // TRANSDATA_DSL_H

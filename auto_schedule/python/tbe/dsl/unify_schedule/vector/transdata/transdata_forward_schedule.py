@@ -217,7 +217,7 @@ class TransForwardSchedule(TransdataBaseSchedule):
         split_o = case.ub_split_second_idx
         split_b = case.block_split_idx
 
-        input_inner = {perm[x] for x in range(perm[split_i], length, 1)}
+        input_inner = {perm.index(x) for x in range(perm[split_i], length, 1)}
         output_inner = set(range(split_o, length, 1))
         output_inner = output_inner.union(input_inner)
         outer = set(range(length)).difference(output_inner)

@@ -28,11 +28,12 @@
 #include "graph/utils/op_desc_utils.h"
 #include "op_tiling/vector_tiling.h"
 #include "op_tiling/transdata_dsl.h"
+#include "op_tiling/transdata_dsl_general.h"
 #include "op_tiling/tiling_handler.h"
 
 using namespace std;
-using namespace ge;
 using namespace optiling;
+using namespace optiling::transdata_dsl;
 
 class TransdataTiling : public testing::Test {
 protected:
@@ -116,7 +117,14 @@ TEST_F(TransdataTiling, TransdataTiling0) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -164,7 +172,15 @@ TEST_F(TransdataTiling, TransdataTiling1) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -214,7 +230,14 @@ TEST_F(TransdataTiling, TransdataTiling2) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -263,7 +286,14 @@ TEST_F(TransdataTiling, TransdataTiling3) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -311,7 +341,14 @@ TEST_F(TransdataTiling, TransdataTiling4) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -359,7 +396,14 @@ TEST_F(TransdataTiling, TransdataTiling5) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -407,7 +451,14 @@ TEST_F(TransdataTiling, TransdataTiling6) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }
 
@@ -455,6 +506,13 @@ TEST_F(TransdataTiling, TransdataTiling8) {
 
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
-  optiling::TransdataBase transdata("Transdata", op_paras, op_compile_info, runInfo);
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
   ASSERT_TRUE(transdata.DoTiling());
 }

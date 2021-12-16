@@ -18,6 +18,7 @@ set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   transdata_dsl.cc
+  transdata_dsl_general.cc
   scatter_non_aliasing_add.cc
   binary_cross_entropy.cc
   binary_cross_entropy_grad.cc
