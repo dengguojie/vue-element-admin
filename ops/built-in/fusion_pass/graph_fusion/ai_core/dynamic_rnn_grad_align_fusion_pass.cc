@@ -181,24 +181,24 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
 
     ge::NodePtr basicLstmCellStateGradNode = graph.AddNode(basicLstmCellStateGradDesc);
     FUSION_PASS_CHECK(basicLstmCellStateGradNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     basicLstmCellStateGradDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:basicLstmCellStateGradNode is null, fusion failed."),
                       failStatus = true);
     basicLstm_cell_state_grad_nodes.push_back(basicLstmCellStateGradNode);
     newNodes.push_back(basicLstmCellStateGradNode);
 
     ge::NodePtr matmulNode = graph.AddNode(lstmBatchMatMulDesc);
     FUSION_PASS_CHECK(matmulNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmBatchMatMulDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "fusionNode:matmulNode is null, fusion failed."),
                       failStatus = true);
     matmul_nodes.push_back(matmulNode);
     newNodes.push_back(matmulNode);
 
     ge::NodePtr splitNode = graph.AddNode(lstmSplitDesc);
     FUSION_PASS_CHECK(splitNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:splitNode is null, fusion failed."),
                       failStatus = true);
     split_nodes.push_back(splitNode);
     newNodes.push_back(splitNode);
@@ -762,15 +762,15 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
 
   ge::NodePtr lstmSplitC = graph.AddNode(lstmSplitCDesc);
   FUSION_PASS_CHECK(lstmSplitC == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   lstmSplitCDesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:lstmSplitC is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(lstmSplitC);
 
   ge::NodePtr lstmSplitDy = graph.AddNode(lstmSplitDyDesc);
   FUSION_PASS_CHECK(lstmSplitDy == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   lstmSplitDyDesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:lstmSplitDy is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(lstmSplitDy);
 
@@ -782,36 +782,36 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
   if (tSizeJudge != 1) {
     lstmSplitI = graph.AddNode(lstmSplitIDesc);
     FUSION_PASS_CHECK(lstmSplitI == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitIDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmSplitI is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmSplitI);
 
     lstmSplitJ = graph.AddNode(lstmSplitJDesc);
     FUSION_PASS_CHECK(lstmSplitJ == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitJDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmSplitJ is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmSplitJ);
 
     lstmSplitF = graph.AddNode(lstmSplitFDesc);
     FUSION_PASS_CHECK(lstmSplitF == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitFDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmSplitF is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmSplitF);
 
     lstmSplitO = graph.AddNode(lstmSplitODesc);
     FUSION_PASS_CHECK(lstmSplitO == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitODesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmSplitO is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmSplitO);
 
     lstmSplitTanh = graph.AddNode(lstmSplitTanhDesc);
     FUSION_PASS_CHECK(lstmSplitTanh == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmSplitTanhDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmSplitTanh is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmSplitTanh);
   }
@@ -819,8 +819,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
   if (tSizeJudge != 1) {
     lstmXConcatD = graph.AddNode(lstmXConcatDDesc);
     FUSION_PASS_CHECK(lstmXConcatD == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmXConcatDDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmXConcatD is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmXConcatD);
   }
@@ -829,8 +829,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
   if (tSizeJudge != 1) {
     lstmGageConcatD = graph.AddNode(lstmGageConcatDDesc);
     FUSION_PASS_CHECK(lstmGageConcatD == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     lstmGageConcatDDesc->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode:lstmGageConcatD is null, fusion failed."),
                       failStatus = true);
     newNodes.push_back(lstmGageConcatD);
   }
@@ -1145,8 +1145,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGr
   // create concat node
   ge::NodePtr splitNode = graph.AddNode(splitDesc);
   FUSION_PASS_CHECK(splitNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   splitNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:splitNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(splitNode);
 
@@ -1202,8 +1202,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddHConcatNode(ge::NodePtr dynamicRNN
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   FUSION_PASS_CHECK(concatNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:concatNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1256,8 +1256,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddConcatNode(ge::NodePtr dynamicRNNG
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   FUSION_PASS_CHECK(concatNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:concatNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1310,8 +1310,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddConcatNodeT_1(ge::NodePtr dynamicR
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   FUSION_PASS_CHECK(concatNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:concatNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1368,8 +1368,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNG
   // create matmul node
   ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
   FUSION_PASS_CHECK(matmulNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   matmulNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:matmulNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(matmulNode);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge for matmulDw.");
@@ -1409,8 +1409,8 @@ Status DynamicRNNGradAlignFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNG
   // create reduce_sum node
   ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
   FUSION_PASS_CHECK(reduceSumNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   reduceSumNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:reduceSumNode is null, fusion failed."),
                     return FAILED);
   newNodes.push_back(reduceSumNode);
 
@@ -1422,18 +1422,56 @@ Status DynamicRNNGradAlignFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNG
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddTransposeNode:check failed, fusion failed."),
       return FAILED);
 
+  // create transdata dw desc
+  ge::OpDescPtr transdataDwDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((transdataDwDesc = std::make_shared<ge::OpDesc>(
+      dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/transdataDw", "TransDataRNN")),
+                          return FAILED);
+  transdataDwDesc = SetDescForTransdataDw(transdataDwDesc);
+  // create trans dw node
+  ge::NodePtr transDwNode = graph.AddNode(transdataDwDesc);
+  FUSION_PASS_CHECK(transDwNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:transDwNode is null, fusion failed."),
+                    return FAILED);
+  newNodes.push_back(transDwNode);
+
   // edge
   ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), reduceSumNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), transposeNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), transDwNode->GetInDataAnchor(0));
 
   if (dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {  // dw
       inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), inAnchorPtr);
+      ge::GraphUtils::AddEdge(transDwNode->GetOutDataAnchor(0), inAnchorPtr);
     }
   }
 
   return SUCCESS;
+}
+
+OpDescPtr &DynamicRNNGradAlignFusionPass::SetDescForTransdataDw(OpDescPtr &transdataDwDesc) const {
+  // input for transdata
+  vector<int64_t> trans_zn_rnn_dims{input_nz_dim + hidden_nz_dim, hidden_nz_dim * 4, 16, 16};
+  vector<int64_t> trans_ori_nd_dims{input_dim + hidden_dim, hidden_dim * 4};
+  GeTensorDesc transDwInDesc =
+      GeTensorDesc(GeShape(trans_zn_rnn_dims), FORMAT_FRACTAL_ZN_RNN, DT_FLOAT16);
+  transDwInDesc.SetOriginShape(GeShape(trans_ori_nd_dims));
+  transDwInDesc.SetOriginFormat(FORMAT_ND);
+  transdataDwDesc->AddInputDesc("trans_src", transDwInDesc);
+  //output for tarnsdata
+  GeTensorDesc transdwOutDesc =
+      GeTensorDesc(GeShape(trans_ori_nd_dims), FORMAT_ND, DT_FLOAT16);
+  transdwOutDesc.SetOriginShape(GeShape(trans_ori_nd_dims));
+  transdwOutDesc.SetOriginFormat(FORMAT_ND);
+  transdataDwDesc->AddOutputDesc("trans_dsc", transdwOutDesc);
+  // attr
+  AttrUtils::SetStr(transdataDwDesc, "src_format", "FRACTAL_ZN_RNN");
+  AttrUtils::SetStr(transdataDwDesc, "dst_format", "ND");
+  AttrUtils::SetInt(transdataDwDesc, "input_size", input_dim);
+  AttrUtils::SetInt(transdataDwDesc, "hidden_size", hidden_dim);
+  return transdataDwDesc;
 }
 
 Status DynamicRNNGradAlignFusionPass::AddDbReduceSumNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr lstmInputGradNode,
@@ -1531,33 +1569,72 @@ Status DynamicRNNGradAlignFusionPass::AddDbReduceSumNode(ge::NodePtr dynamicRNNG
   ge::AttrUtils::SetInt(reduceSumDesc, "hidden_size", hidden_dim);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "create  Transdata RNN_BIAS for db.");
 
-  // create reduce_sum node
+  // create transdata db desc
+  ge::OpDescPtr transdataDbDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((transdataDbDesc = std::make_shared<ge::OpDesc>(
+      dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Db/transdataDb", "TransDataRNN")), return FAILED);
+  transdataDbDesc = SetDescForTransdataDb(transdataDbDesc);
+
+  // create matmul reduce_sum transdata node
   ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
   FUSION_PASS_CHECK(matmulNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   matmulNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:matmulNode is null, fusion failed."),
                     return FAILED);
   newNodes.push_back(matmulNode);
+
   ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
   FUSION_PASS_CHECK(reduceSumNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   reduceSumNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:reduceSumNode is null, fusion failed."),
                     return FAILED);
   newNodes.push_back(reduceSumNode);
+
+  ge::NodePtr transDataDbNode = graph.AddNode(transdataDbDesc);
+  FUSION_PASS_CHECK(transDataDbNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:transDataDbNode is null, fusion failed."),
+                    return FAILED);
+  newNodes.push_back(transDataDbNode);
 
   // Edge
   ge::GraphUtils::AddEdge(lstmInputGradNode->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(1));
   ge::GraphUtils::AddEdge(const_one_node->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), reduceSumNode->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), transDataDbNode->GetInDataAnchor(0));
   if (dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
+      ge::GraphUtils::AddEdge(transDataDbNode->GetOutDataAnchor(0), inAnchorPtr);
     }
   }
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "end create reduceSumD for db.");
   return SUCCESS;
+}
+
+OpDescPtr &DynamicRNNGradAlignFusionPass::SetDescForTransdataDb(OpDescPtr &transdataDbDesc) const {
+  // input for transdata
+  vector<int64_t> trans_dims{hidden_nz_dim * 4 * 16};
+  vector<int64_t> trans_origin_dims{hidden_dim * 4};
+  GeTensorDesc transDbInputDesc =
+      GeTensorDesc(GeShape(trans_dims), FORMAT_ND_RNN_BIAS, DT_FLOAT16);
+  transDbInputDesc.SetOriginShape(GeShape(trans_origin_dims));
+  transDbInputDesc.SetOriginFormat(FORMAT_ND);
+  transdataDbDesc->AddInputDesc("trans_src", transDbInputDesc);
+  //output for tarnsdata
+  GeTensorDesc transDboutputDesc =
+      GeTensorDesc(GeShape(trans_origin_dims), FORMAT_ND, DT_FLOAT16);
+  transDboutputDesc.SetOriginShape(GeShape(trans_origin_dims));
+  transDboutputDesc.SetOriginFormat(FORMAT_ND);
+  transdataDbDesc->AddOutputDesc("trans_dsc", transDboutputDesc);
+
+  // attr
+  AttrUtils::SetStr(transdataDbDesc, "src_format", "ND_RNN_BIAS");
+  AttrUtils::SetStr(transdataDbDesc, "dst_format", "ND");
+  AttrUtils::SetInt(transdataDbDesc, "input_size", input_dim);
+  AttrUtils::SetInt(transdataDbDesc, "hidden_size", hidden_dim);
+  return transdataDbDesc;
 }
 
 ge::NodePtr DynamicRNNGradAlignFusionPass::AddTransposeNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
@@ -1596,8 +1673,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddTransposeNode(ge::NodePtr dynamicR
   // create transpose node
   ge::NodePtr transposeNode = graph.AddNode(transposeDesc);
   FUSION_PASS_CHECK(transposeNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   transposeNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusionNode:transposeNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(transposeNode);
 

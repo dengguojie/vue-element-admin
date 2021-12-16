@@ -139,6 +139,10 @@ class DynamicRNNGradAlignFusionPass : public PatternFusionBasePass {
                                             const ge::GeShape &output_shape) const;
 
   vector<int64_t> getOutputDimsForGradCell(const ge::OpDescPtr &basicLstmCellStateGradDesc) const;
+
+  ge::OpDescPtr &SetDescForTransdataDb(ge::OpDescPtr &transdataDbDesc) const;
+
+  ge::OpDescPtr &SetDescForTransdataDw(ge::OpDescPtr &transdataDwDesc) const;
 };
 
 }  // namespace fe
