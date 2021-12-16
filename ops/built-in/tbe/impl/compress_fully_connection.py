@@ -30,8 +30,6 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 NoneType = type(None)
 L1FUSION_INPUT_CTR = 2
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-# pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
 def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, format_x_ori):
     """
     get format from get_matmul_performance_format function
@@ -85,9 +83,6 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
     format_list = format_x+","+format_x
     return format_list
 
-
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-# pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
 def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose, axis, offset_x,
                      kernel_name="fully_connection"):
     """
@@ -204,9 +199,6 @@ def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose
 
     return param_dynamic_in_json
 
-
-# pylint: disable=locally-disabled,too-many-arguments, too-many-locals
-# pylint: disable=too-many-statements, invalid-name, unused-argument
 def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
                                 num_output, transpose, axis, offset_x,
                                 kernel_name="compress_fully_connection"):

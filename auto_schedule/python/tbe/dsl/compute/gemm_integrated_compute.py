@@ -311,7 +311,6 @@ class GEMMCompute(FormatCompute):
         op_type_flag = GEMMComputeParam.get_op_type_flag(
             self.format_a, self.format_b, self.mmad_mode)
 
-        # If Batch Matmul, n_shape = n1 * n0 else n_shape = N_ori_shape
         aligned_coeff = 1 if tensor_b_length == 3 else self.block_out
         batch_idx_offset = 1 if GEMMComputeParam.batch_b else 0
         n_dim = (batch_idx_offset + 1) if self.trans_b else batch_idx_offset

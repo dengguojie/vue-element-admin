@@ -134,9 +134,6 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
 
     return op_cal_info_in_json
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unnecessary-comprehension
-# pylint: disable=too-many-branches, too-many-statements, too-many-locals
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     Check the given shape for matrix A, B and bias == legal
@@ -307,8 +304,6 @@ def _get_input_shape_b(shape_y, transpose, src_dtype):
         res.append(dim_b)
     return res
 
-
-# pylint: disable=too-many-return-statements
 def _check_batch_range(input_x, input_y):
     """
     Check the batch shape and range legal
@@ -463,7 +458,6 @@ def check_supported(input_x,
     return True, ""
 
 
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 @tbe_platform.fusion_manager.register("batch_matmul_v2")
 def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
                          trans_b=False, offset_x=0, kernel_name="matmul"):
@@ -546,8 +540,6 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
 
     return result
 
-
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_z={}, trans_a=False,
                               trans_b=False, offset_x=0, kernel_name="matmul"):
     """
@@ -627,9 +619,6 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals, no-member
-# pylint: disable=too-many-statements, dangerous-default-value
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
                             para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

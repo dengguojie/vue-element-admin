@@ -148,31 +148,41 @@ void Tiling::SetAttachFlag()
   bool template7 = m_al1 != NONE && n_bl1 != NONE && kAl1FullLoad && !kBl1FullLoad;
   bool template8 = m_al1 != NONE && n_bl1 != NONE && !kAl1FullLoad && kBl1FullLoad;
   bool template9 = m_al1 != NONE && n_bl1 != NONE && !kAl1FullLoad && !kBl1FullLoad;
-  if (template1 || template2 || template3) {
+  bool condition1 = template1 || template2 || template3;
+  bool condition2 = template4 || template6 || template7;
+  bool condition3 = template5 || template8 || template9;
+  bool condition4 = template1 || template4 || template5;
+  bool condition5 = template2 || template6 || template8;
+  bool condition6 = template3 || template7 || template9;
+  bool condition7 = template1 || template2 || template4 || template6;
+  bool condition8 = template3 || template7;
+  bool condition9 = template5 || template8;
+
+  if (condition1) {
     pingpong["al1_attach_flag"] = ATTACH_FLAG_ZERO;
   }
-  if (template4 || template6 || template7) {
+  if (condition2) {
     pingpong["al1_attach_flag"] = ATTACH_FLAG_ONE;
   }
-  if (template5 || template8 || template9) {
+  if (condition3) {
     pingpong["al1_attach_flag"] = ATTACH_FLAG_TWO;
   }
-  if (template1 || template4 || template5) {
+  if (condition4) {
     pingpong["bl1_attach_flag"] = ATTACH_FLAG_ZERO;
   }
-  if (template2 || template6 || template8) {
+  if (condition5) {
     pingpong["bl1_attach_flag"] = ATTACH_FLAG_ONE;
   }
-  if (template3 || template7 || template9) {
+  if (condition6) {
     pingpong["bl1_attach_flag"] = ATTACH_FLAG_TWO;
   }
-  if (template1 || template2 || template4 || template6) {
+  if (condition7) {
     pingpong["abkl1_attach_flag"] = ATTACH_FLAG_ZERO;
   }
-  if (template3 || template7) {
+  if (condition8) {
     pingpong["abkl1_attach_flag"] = ATTACH_FLAG_ONE;
   }
-  if (template5 || template8) {
+  if (condition9) {
     pingpong["abkl1_attach_flag"] = ATTACH_FLAG_TWO;
   }
   if (template9) {
@@ -278,23 +288,23 @@ void AL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalc
 
 void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator,
                           const int64_t nFactorTwoCandidates[][2], const int64_t mFactorTwoCandidates[][2],
-                          const int64_t &nFactor, const int64_t &mFactor)
-{
-  for (auto const &n0: nFactorTwoCandidates[nFactor]) {
-    for (auto const &m0: mFactorTwoCandidates[mFactor]) {
+                          const int64_t &nFactor, const int64_t &mFactor) {
+  for (auto const &n0 : nFactorTwoCandidates[nFactor]) {
+    for (auto const &m0 : mFactorTwoCandidates[mFactor]) {
       if (m0 <= 0 || n0 <= 0) {
         continue;
       }
-      if (m0 * n0 * KBYTES <= L0c_Size) {
-        blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
-        blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
-        blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
-        if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
-          blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
-          blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
-          blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
-          blockDimCalculator.tmp_value = 0;
-        }
+      if (m0 * n0 * KBYTES > L0c_Size) {
+        continue;
+      }
+      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
+      blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
+      blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
+      if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
+        blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
+        blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
+        blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
+        blockDimCalculator.tmp_value = 0;
       }
     }
   }
@@ -575,9 +585,7 @@ void SetResFactors(int64_t *resFactors, const L0Status &l0Status)
   resFactors[IDX_SIX] = l0Status.final_mul;
 }
 
-void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status,
-                      int64_t *parasCombo)
-{
+void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status, int64_t parasCombo[9]) {
   GetL0StatusFromParasCombo(l0Status, parasCombo);
   int64_t majorDim = l2Status.m;
   int64_t minorDim = l2Status.n;
@@ -639,16 +647,12 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
   }
 
   // check both L0C utilization and loadsize to control LOC LOA LOB DB
-  int64_t dbL0aL0cDbOn = 2;
-  int64_t dbL0bL0cDbOn = 2;
   int64_t m0L0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_ZERO];
   int64_t k0L0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_ONE];
   int64_t n0L0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_TWO];
   int64_t loadSizeL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_THREE];
   int64_t l0cUseL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_FOUR];
 
-  int64_t dbL0aL0cDbOff = 2;
-  int64_t dbL0bL0cDbOff = 2;
   int64_t m0L0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_ZERO];
   int64_t k0L0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_ONE];
   int64_t n0L0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_TWO];
@@ -656,6 +660,8 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
   int64_t l0cUseL0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_FOUR];
 
   if ((l0cUseL0cDbOff > l0cUseL0cDbOn) || (loadSizeL0cDbOff < loadSizeL0cDbOn)) {
+    int64_t dbL0aL0cDbOff = 2;
+    int64_t dbL0bL0cDbOff = 2;
     l0Status.db_l0c = DB_OFF;
     l0Status.db_l0a = dbL0aL0cDbOff;
     l0Status.db_l0b = dbL0bL0cDbOff;
@@ -663,6 +669,8 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
     l0Status.k_l0 = k0L0cDbOff;
     l0Status.n_l0 = n0L0cDbOff;
   } else {
+    int64_t dbL0aL0cDbOn = 2;
+    int64_t dbL0bL0cDbOn = 2;
     l0Status.db_l0c = DB_ON;
     l0Status.db_l0a = dbL0aL0cDbOn;
     l0Status.db_l0b = dbL0bL0cDbOn;
@@ -678,11 +686,9 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
   OP_LOGD(op_type.c_str(), "tiling db_cub:%lld", l0Status.db_cub);
 }
 
-int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status)
-{
-  int64_t curL1Size;
-  curL1Size =
-    l1Status.m_al1 * l0Status.m_l0 * BLOCK_SIZE * l1Status.kal1_16 * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES +
+int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status) {
+  int64_t curL1Size =
+      l1Status.m_al1 * l0Status.m_l0 * BLOCK_SIZE * l1Status.kal1_16 * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES +
       l1Status.n_bl1 * l0Status.n_l0 * BLOCK_SIZE * l1Status.kbl1_16 * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
   return curL1Size;
 }
@@ -690,8 +696,7 @@ int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status)
 void L1StatusBothFullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
                           int64_t res[][7])
 {
-  int64_t curL1Size;
-  curL1Size = GetL1Size(l1Status, l0Status);
+  int64_t curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= L1_Size) {
     l1Status.both_full_load = true;
     l1Status.load_size = l2Status.m + l2Status.n;
@@ -925,8 +930,7 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
   l1Status.SetStatus(l0Status.k_l0, l0Status.k_l0, 1, 1, DB_ON, DB_ON);
   L1StatusNeitherFullLoad(l2Status, params, l0Status, l1Status, res);
   // choose the final factors
-  int64_t *tmpFactors;
-  tmpFactors = res[IDX_THREE];
+  int64_t *tmpFactors = res[IDX_THREE];
   int64_t tmpLoadSize = tmpFactors[IDX_SIX];
   if (l1Status.al1_full_load &&
     (res[IDX_ONE][IDX_SIX] < tmpLoadSize ||

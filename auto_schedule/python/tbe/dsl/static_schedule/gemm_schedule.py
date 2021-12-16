@@ -242,7 +242,6 @@ class GEMM_Schedule:
         ub_factor_parts = ub_factor if is_nd else ub_parts_nz
         c_gm_emit_axis, fixpipe_axis = util.split_ub(c_gm, sch, l1_m_axis, l1_n_axis,
                                                      ub_factor_parts, is_nd, handle_ub)
-        # l1_m_axis = [al1_axis, l0c_m_axis, ub_m_axis], l1_n_axis = [bl1_attch, l0c_n_axis, ub_n_axis]
         # attach tensor of l0c and bias, c_slice_axis is l1_m_axis[1]
         sch[c_l0c].compute_at(sch[c_gm], l1_m_axis[1])
         sch[c_l0c].buffer_align(
@@ -255,7 +254,6 @@ class GEMM_Schedule:
         util.attach_of_ub(sch, tensor_map, fixpipe_axis)
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
         util.attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, batch_inner)
-        # split k, k_axis = [l1a_k_axis, l1b_k_axis, l0_k_axis]
         k_axis = util.split_k(c_l0c, sch, tiling["AL0_matrix"][1], al1_parts[0], bl1_parts[0])
         # attach of l0a and l0b tensor
         sch[a_l0a].compute_at(sch[c_l0c], k_axis[2])

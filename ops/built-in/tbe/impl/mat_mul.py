@@ -305,9 +305,6 @@ def _is_fuzzily_build():
     context = op_context.get_context()
     return (context and context.get_build_type() == "fuzzily_build")
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument, too-many-statements
-# pylint: disable=dangerous-default-value
 def check_supported(input_x1,
                     input_x2,
                     bias,
@@ -392,9 +389,6 @@ def check_supported(input_x1,
     return res
 
 
-# pylint: disable=locally-disabled, too-many-arguments,unexpected-keyword-arg,no-value-for-parameter
-# pylint: disable=locally-disabled, simplifiable-if-expression
-# pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 @tbe_platform.fusion_manager.register("mat_mul")
 def mat_mul_compute(input_x1,
                     input_x2,
@@ -476,7 +470,6 @@ def mat_mul_compute(input_x1,
 
     return result
 
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def mat_mul_compute_self(input_x1,
                          input_x2,
                          bias,
@@ -663,9 +656,6 @@ def _matmul_vector_one(shape_a, shape_b, src_type, trans_a, trans_b, bias, kerne
     tbe.build(schedule, config)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
-# pylint: disable=too-many-locals, line-too-long
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
                             para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,10 +60,10 @@ const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
 const int64_t BLOCK_SIZE = 16;
 const int64_t CACHE_TILING_ID_LEN = 7;
+const int64_t DIM_NUM = 3;
 }
 
 namespace optiling {
-
 struct OpRunInfoParas {
   BatchmatmulParas params;
   int64_t batch_single_core = 1;
@@ -95,7 +95,7 @@ bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::G
 {
   int32_t num_dima = shape_a.GetDimNum();
   int32_t num_dimb = shape_b.GetDimNum();
-  if (num_dima < 3 && num_dimb < 3) {
+  if (num_dima < DIM_NUM && num_dimb < DIM_NUM) {
     params.batch = 1;
     return true;
   }
@@ -138,7 +138,7 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
   int32_t idx_k_of_a = num_dima - 1;
   int32_t idx_k_of_b = num_dimb - 2;
   int32_t idx_n_of_b = num_dimb - 1;
-  auto& repo_attr = compile_info["attrs"];
+  const auto& repo_attr = compile_info["attrs"];
   auto trans_a = repo_attr["transpose_a"];
   auto trans_b = repo_attr["transpose_b"];
   if (trans_a) {
@@ -482,5 +482,4 @@ REGISTER_OP_TILING_FUNC_BUFFERED_V2(BatchMatMul, GEMMTiling
 );
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(BatchMatMulV2, GEMMTiling
 );
-
 }  // namespace optiling

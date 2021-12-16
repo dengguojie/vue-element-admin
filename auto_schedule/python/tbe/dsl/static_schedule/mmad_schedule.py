@@ -912,7 +912,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     Returns : if it is true,then we can get the valid schedule
 
     """
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     res_real = res[0]
     if _get_gemm_integrated_flag(res_real):
         return gemm_schedule_integrated(res, sch_list, dynamic_para)
@@ -943,7 +942,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         """
         if tensor not in compute_tensors_local:
             compute_tensors_local.append(tensor)
-        # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         tensor_list = tensor.op.input_tensors
         for one_tensor in tensor_list:
             # check which tensor has not been checked
@@ -2118,8 +2116,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         """
         CUT73 schedule method
         """
-
-        # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         # tiling L1 and L0 on tensor_c
         l1_n_outer, l1_n_inner = sch[tensor_c].split(
             tensor_c.op.axis[tensor_len_c - 4], factor=n_l1_tile)

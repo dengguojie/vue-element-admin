@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@
 
 namespace domi {
 
-Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest)
+{
   ge::AscendString op_name;
   CHECK(op_dest.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   const ge::onnx::NodeProto* node =
@@ -51,7 +52,7 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   CHECK(op_desc == nullptr, ONNX_PLUGIN_LOGE(op_name.GetString(), "Get op desc failed."), return FAILED);
-  //The fmap should be NCHW
+  // The fmap should be NCHW
   ge::GeTensorDesc output_y_desc = op_desc->GetOutputDesc(0);
   output_y_desc.SetOriginFormat(ge::FORMAT_NCHW);
   output_y_desc.SetFormat(ge::FORMAT_NCHW);

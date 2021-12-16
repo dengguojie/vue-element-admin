@@ -115,9 +115,6 @@ def _get_input_shape_b(shape_y, transpose):
         res.append(dim_b)
     return res
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument, too-many-statements
-# pylint: disable=dangerous-default-value
 def check_supported(input_x1,
                     input_x2,
                     compress_index,
@@ -178,9 +175,6 @@ def check_supported(input_x1,
     return res
 
 
-# pylint: disable=locally-disabled, too-many-arguments,unexpected-keyword-arg,no-value-for-parameter
-# pylint: disable=locally-disabled, simplifiable-if-expression
-# pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
 @tbe_platform.fusion_manager.fusion_manager.register("compress_mat_mul")
 def compress_mat_mul_compute(input_x1,
                              input_x2,
@@ -257,7 +251,6 @@ def compress_mat_mul_compute(input_x1,
 
     return tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def compress_mat_mul_compute_self(input_x1,
                                   input_x2,
                                   compress_index,
@@ -401,9 +394,6 @@ def get_op_support_info(input_x1,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
-# pylint: disable=too-many-locals, line-too-long
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT,

@@ -27,7 +27,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status ParseParamBatchMatMul(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamBatchMatMul(const Message* op_src, ge::Operator& op_dest)
+{
   ge::AscendString op_name;
   CHECK(op_dest.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 

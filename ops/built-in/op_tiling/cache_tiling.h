@@ -221,8 +221,6 @@ MKNParasCombo GetParasCombo(const int64_t& index, const int64_t& blockValue);
 void GetFinalMkn(L0Status& l0Status, const L2Status& l2Status);
 void GetL0StatusFromParasCombo(L0Status& l0Status, int64_t* parasCombo);
 void SetResFactors(int64_t* resFactors, const L0Status& l0Status);
-void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status,
-                      int64_t *parasCombo);
 void GetL0Factors(const std::string& op_type, const L2Status& l2Status, const int64_t& blockValue,
                   L0Status& l0Status);
 int64_t GetL1Size(const L1Status& l1Status, const L0Status& l0Status);

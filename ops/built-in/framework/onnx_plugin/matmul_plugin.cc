@@ -17,7 +17,8 @@
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
-Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
+Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest)
+{
   ge::AscendString op_name;
   CHECK(op_dest.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);

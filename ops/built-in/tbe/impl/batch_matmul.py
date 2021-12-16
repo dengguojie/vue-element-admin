@@ -15,7 +15,6 @@
 """
 batch_matmul
 """
-# pylint: disable=ungrouped-imports
 import functools
 
 from impl import batch_matmul_vector
@@ -134,9 +133,6 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
 
     return op_cal_info_in_json
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unnecessary-comprehension
-# pylint: disable=too-many-branches, too-many-statements, too-many-locals
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     Check the given shape for matrix A, B and bias == legal
@@ -266,7 +262,6 @@ def _get_input_shape(shape_x):
         res.append(dim_b)
     return res
 
-# pylint: disable=too-many-return-statements
 def _check_batch_range(input_x, input_y):
     """
     Check the batch shape and range legal
@@ -312,9 +307,6 @@ def _check_batch_range(input_x, input_y):
 
     return True
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=dangerous-default-value, no-member
-# pylint: disable=too-many-statements, unused-argument
 def op_select_format(input_x, input_y, bias=None, output_z=None, trans_a=False,
                      trans_b=False, kernel_name="matmul"):
     """
@@ -423,7 +415,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     return True, ""
 
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
+
 @tbe_platform.fusion_manager.register("batch_matmul")
 def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,
                          trans_b=False, kernel_name="matmul"):
@@ -500,7 +492,6 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
     return result
 
-# pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=False,
                               trans_b=False, kernel_name="matmul"):
     """
@@ -576,9 +567,6 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals, no-member
-# pylint: disable=too-many-statements, dangerous-default-value
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
                             para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)

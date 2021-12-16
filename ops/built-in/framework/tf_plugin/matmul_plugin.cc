@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2018. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status AutoMappingFnMatMulV2(const ge::Operator& op_src, ge::Operator& op) {
+Status AutoMappingFnMatMulV2(const ge::Operator& op_src, ge::Operator& op)
+{
   Status ret = AutoMappingByOpFn(op_src, op);
   if (ret != SUCCESS) {
     CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "tensorflow plugin parser failed. auto mapping failed.");

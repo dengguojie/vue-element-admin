@@ -17,7 +17,6 @@
 """
 mmad_compute
 """
-# pylint: disable=too-many-lines
 from __future__ import absolute_import
 
 from functools import reduce as functools_reduce
@@ -2504,7 +2503,6 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             attrs={'shape': fusion_out_shape,
                                    'format': format_out})
     else:
-        # gemv,c=A*B=(B`A`)`,so B`A` is gevm
         if tensor_a_length in (2, 4):
             if trans_a:
                 if is_fractal_a:
@@ -4070,8 +4068,7 @@ class MatMulCompute:
         if not in_dynamic():
             self._check_attrs()
         self._get_l1_shape()
-        # C = A * B
-        
+
         tensor_a_length = len(self.tensor_a.shape)
         tensor_b_length = len(self.tensor_b.shape)
 

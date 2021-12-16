@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2018. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
-Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op) {
+Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op)
+{
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
