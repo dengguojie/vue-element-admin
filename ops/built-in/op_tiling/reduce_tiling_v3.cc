@@ -18,12 +18,11 @@
  * \file reduce_tiling.cpp
  * \brief tiling function of op
  */
-
+#include "reduce_tiling_v3.h"
 #include <algorithm>
 #include "error_log.h"
-#include "graph/utils/op_desc_utils.h"
-#include "reduce_tiling_v3.h"
 #include "tiling_handler.h"
+
 
 namespace optiling {
 namespace {
@@ -296,14 +295,16 @@ bool Reduce::GetConstValue(const ge::GeTensor* geTensor, const ge::DataType& dty
                     return false);
 
   if (dtype == ge::DT_INT32) {
-    const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(data_ptr);
+    const void* const_data_ptr_void = static_cast<const void*>(data_ptr);
+    const int32_t* const_data_ptr = static_cast<const int32_t*>(const_data_ptr_void);
     size = geTensor->GetData().size() / sizeof(int32_t);
     const_vec.resize(size);
     for (size_t i = 0; i < size; i++) {
       const_vec[i] = (int32_t)(*(const_data_ptr + i));
     }
   } else {
-    const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(data_ptr);
+    const void* const_data_ptr_void = static_cast<const void*>(data_ptr);
+    const int64_t* const_data_ptr = static_cast<const int64_t*>(const_data_ptr_void);
     size = geTensor->GetData().size() / sizeof(int64_t);
     const_vec.resize(size);
     for (size_t i = 0; i < size; i++) {

@@ -24,6 +24,7 @@
 #include <cmath>
 #include <vector>
 #include "vector_tiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 namespace v3 {
