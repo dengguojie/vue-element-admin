@@ -49,6 +49,12 @@ constexpr int64_t BIG_TO_SMALL_FLAG = 10;
 const char INNERTUNEPARAM[] = "_tune_param";
 const char TUNEPARAM[] = "tune_param";
 
+const int64_t INDEX_0 = 0;
+const int64_t INDEX_1 = 1;
+const int64_t INDEX_2 = 2;
+const int64_t INDEX_3 = 3;
+const int64_t MODE_5 = 5;
+
 struct ResizeClassTilingParams {
   int64_t tiling_key;
   int64_t input_batch;
@@ -81,13 +87,32 @@ struct ResizeClassCompileParams {
   std::string op_type;
 };
 
+struct ResizeCommonInputCompile {
+  int64_t core_num;
+  int64_t max_w_len;
+  int64_t align_corners;
+  int64_t half_pixel_centers;
+  // tune_params{tiling_key, cut_batch_c1_num, cut_height_num, cut_width_num}
+  vector<int64_t> tune_params{0, 0, 0, 0};
+};
+
+/*
+ * @brief: parsing json format to custom compile_info structure
+ * @param [in] compile_info: the compile json info
+ * @param [in] op_type: the op name
+ * @param [out] compile_value: compile_info structur
+ */
+bool ResizeCommonParseFunc(const std::string& op_type, const nlohmann::json& compile_info,
+                           ResizeCommonInputCompile& compile_value);
+
 /*
  * @brief: print the tiling info and compile info
  * @param [in] compile_info: the compile json info
  * @param [in] compile_params: the compile info struct
  * @param [out] compile_params: set the compile_params from compile_info json
  */
-bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params);
+bool GetResizeClassCompileParams(const ResizeCommonInputCompile& compile_info,
+                                 ResizeClassCompileParams& compile_params);
 
 /*
  * @brief: set the tuneParams of compile_params
@@ -95,7 +120,7 @@ bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClass
  * @param [in] compile_params: the compile info struct
  * @param [out] compile_params: set the tuneParams from compile_info json
  */
-bool GetResizeClassTuneParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params);
+void GetResizeClassTuneParams(const ResizeCommonInputCompile& compile_info, ResizeClassCompileParams& compile_params);
 
 /*
  * @brief: print the tiling info and compile info
