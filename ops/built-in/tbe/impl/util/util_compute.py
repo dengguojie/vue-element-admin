@@ -24,6 +24,7 @@ from te.lang.cce.te_compute.elewise_compute import vdiv
 
 BATCH_MATMUL_LENGTH = 5
 
+
 def sign(input_data):
     """
     Algrithm:

@@ -21,6 +21,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -33,7 +35,7 @@ class Constant:
     MAX_CONST_HALF = 2**12
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("xdivy")
 def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     """

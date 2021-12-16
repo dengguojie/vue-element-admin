@@ -371,7 +371,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
             param['burlen'].set_as(
                 self.get_burlen(self.boxes*self.width*self.height))
 
-            # a face = h*w*box
+            # `a face = h*w*box`
             with self.instance.for_range(VALUE_ZERO, faces) as loop:
                 param['ub_d'] =\
                     self.instance.Tensor(self.dtype,

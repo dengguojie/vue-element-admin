@@ -17,7 +17,7 @@
 """
 unsorted_segment_sum_d
 """
-# pylint: disable=locally-disabled,too-many-lines,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-statements
 import operator
 from functools import reduce as functools_reduce
 
@@ -38,8 +38,8 @@ MAX_CORE_NUM = cce.get_soc_spec(cce.CORE_NUM)
 REPEAT_BLOCK_NUM = 8
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-branches,unused-argument,too-many-locals
-# pylint: disable=too-many-boolean-expressions
+# 'pylint: disable=locally-disabled,invalid-name,too-many-branches,unused-argument,too-many-locals
+# 'pylint: disable=too-many-boolean-expressions
 def get_cce_product_version():
     """
     get the current product version
@@ -100,7 +100,6 @@ def op_select_format(x, segment_ids, y, num_segments,
         input1_ori_dtype = "int32,int32,int32"
         input1_ori_format = "ND,ND,ND"
     ori_dtype = x.get("dtype").lower()
-    ori_shape = list(x.get("ori_shape"))
     id_size = _prod(segment_ids_shape)
     if (ori_dtype in ("float16", "float32")) and atomic_add and (num_segments > 10000 or id_size > 10000):
         input0 = gen_param(classify="input0", name="x",
@@ -185,7 +184,7 @@ def _apply_for_new_alloc(ib_,
     return tmp_buffer
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
 class SegmentParams():
     """
     parameters for Segment
@@ -389,13 +388,13 @@ def _do_vector_dup(ubuf, dup_len, dtype, params, val=0):
         _dump(tail_len, num_cycle * vec_buffer_max_len)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-statements
 def _do_cast(params, src_ubuf, dst_ubuf, data_len, dtype_src, dtype_dst):
     # vconv count of elements every time
     ele_cnt = 128
     vconv_group = 255
-    # vconv_ele = vconv_group * ele_cnt  #32640
+    # `vconv_ele = vconv_group * ele_cnt  #32640`
     vconv_ele = 32640
     if dtype_src == "int8" and dtype_dst == "float16":
         vconv_insn = "vconv_s82f16"
@@ -1072,7 +1071,7 @@ def _one_in_multi_out_fun(num_segments, input_buf, segment_ids, params):
             params.refresh_dtype("float16")
         _do_vadd(data_len, output_offset, input_offset, masks, params)
 
-    # pylint: disable=locally-disabled,unused-argument
+    # 'pylint: disable=locally-disabled,unused-argument
     def _ub_cp(_main_cp_fun, data_len, index, params, block_offset):
         """
          _main_cp_fun : _main_cp_fun
@@ -1360,7 +1359,7 @@ def _multi_in_multi_out_fun(num_segments, input_buf, segment_ids, params):
     else:
         if params.src_dtype == "float16" and element_len < 16:
             params.device_core_num = 1
-        if params.src_dtype in("float32", "int32") and element_len < 8:
+        if params.src_dtype in ("float32", "int32") and element_len < 8:
             params.device_core_num = 1
         if _apply_bufs(ids_len, input_len, element_len, params) is False:
             return False
@@ -1457,7 +1456,7 @@ def _multi_in_multi_out_fun_large(num_segments, input_buf, segment_ids,
             return False
         if params.src_dtype == "float16" and params.element_len % one_time_len < 16:
             params.device_core_num = 1
-        if params.src_dtype in("float32", "int32") and params.element_len % one_time_len < 8:
+        if params.src_dtype in ("float32", "int32") and params.element_len % one_time_len < 8:
             params.device_core_num = 1
 
     element_len = params.element_len
@@ -1857,7 +1856,7 @@ def _get_target_core_num(ele_num_segments_ids):
     return target_core_num
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 def _compute_atomic_once_in_once_out(in_shape, num_segments, dtype, ins,
                                      output_buf, gm_align):
     input_buf = ins[0]
@@ -2568,7 +2567,7 @@ def _intrin_factor(in_shape, num_segments, dtype, ins, output_buf, gm_align):
     return ib_.get()
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unsorted_segment_sum_d(x,

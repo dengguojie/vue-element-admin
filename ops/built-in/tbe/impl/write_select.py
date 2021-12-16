@@ -26,7 +26,7 @@ PARA_LIST_LEN = 5
 NAME_INDEX = [0]
 
 
-# pylint: disable=locally-disabled,unnecessary-lambda,unused-argument
+# 'pylint: disable=locally-disabled,unnecessary-lambda,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("write_select")
 def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
     """
@@ -64,7 +64,7 @@ def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals,unexpected-keyword-arg
+# 'pylint: disable=locally-disabled,too-many-locals,unexpected-keyword-arg
 @para_check.check_input_type(dict, dict, str)
 def write_select(input_x, output_x, kernel_name="write_select"):
     """

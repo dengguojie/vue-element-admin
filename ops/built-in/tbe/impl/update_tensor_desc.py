@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import para_check
 
+
 # 'pylint: disable=too-few-public-methods
 class UpdateTensorDesc:
     """
@@ -78,6 +79,7 @@ class UpdateTensorDesc:
         return self.tik_instance
 
 
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 @register_operator("UpdateTensorDesc")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)

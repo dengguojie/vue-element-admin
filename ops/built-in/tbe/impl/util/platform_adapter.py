@@ -56,6 +56,7 @@ def register_operator_compute(op_type, op_mode="dynamic", support_fusion=False):
     return tbe_register.register_op_compute(op_type, op_mode, support_fusion)
 
 
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class OpPatternMode:
     """
     op pattern mode
@@ -67,6 +68,7 @@ class OpPatternMode:
     TRANSDATA = "transdata"
 
 
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class OpImplMode:
     """
     op implement mode high_performance or high_precision
@@ -75,6 +77,7 @@ class OpImplMode:
     HIGH_PRECISION = "high_precision"
 
 
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class TbeContextKey:
     """
     TbeContextKey
@@ -82,6 +85,7 @@ class TbeContextKey:
     PATTERN = "pattern"
 
 
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class PlatformApi:
     """
     platform API
@@ -273,7 +277,7 @@ tik = tbe_tik
 tvm = tbe_tvm
 tbe_context = platform_tbe.common.context
 log = tbe_log
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 tbe_platform = PlatformApi
 tuple_sum = te_tuple_sum
 # a100

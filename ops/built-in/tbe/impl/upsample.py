@@ -29,7 +29,7 @@ C0 = 16
 INT8_C0_SIZE = 32
 
 
-#pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, stride_w):
     """
     input_shape:input dic shape
@@ -125,7 +125,7 @@ def _cal_shape(dshape, stride_h, stride_w):
     return output_shape
 
 
-#pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
+# 'pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
 def _gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     """
     gen upsample calclate produce and and tensor
@@ -273,7 +273,7 @@ def _tilling_spilt_axis(schedule, tensor_dic, stride_h, stride_w):
     return tilling_spilt_axis_dic
 
 
-#pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
+# 'pylint: disable=locally-disabled,unnecessary-lambda,too-many-arguments
 def _cal_axis_spilt(input_x, stride_h, stride_w, tilling_spilt_axis_dic, tensor_dic, schedule):
     """
    spilt  axis to cal
@@ -433,7 +433,7 @@ def _bind_multcore(axis, x, schedule, res_op):
     return res_out, res_in
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

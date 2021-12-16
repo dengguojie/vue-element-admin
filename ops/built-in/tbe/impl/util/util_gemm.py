@@ -16,7 +16,6 @@
 util_gemm
 """
 import warnings
-from impl.util.platform_adapter import error_manager_cube
 
 
 RANGE_MAX = 2147483647 # 2**31-1
@@ -33,7 +32,11 @@ def _get_shape_gear(dim, shape_gear):
         pos += 1
     return (shape_gear[pos - 1] + 1, shape_gear[pos])
 
+
 def cal_gemm_shape_range(shape, ori_format):
+    """
+    cal gemm shape range
+    """
     shape_range = []
     shape_len = len(shape)
     if ori_format == "ND":
@@ -55,15 +58,24 @@ def cal_gemm_shape_range(shape, ori_format):
 
 
 def _generate_unknown_shape_gemm(shape):
+    """
+    generate unknown shape gemm
+    """
     return [DYNAMIC_DIM_VAL for i in shape]
 
 
 def generalize_input_keep_rank_gemm(input_dict):
+    """
+    generalize input keep rank gemm
+    """
     if input_dict.get("ori_format") in ("ND"):
         input_dict["ori_shape"] = _generate_unknown_shape_gemm(input_dict["ori_shape"])
 
 
 def is_graph_mode(tensor):
+    """
+    check whether is graph mode
+    """
     # check graph mode or single mode in fuzzy compile
     if ((DYNAMIC_DIM_VAL in tensor.get("ori_shape") and "ori_range" in tensor.keys()) or
         list(tensor.get("ori_shape")) == DYNAMIC_UNKNOWN_RANK):
@@ -72,6 +84,9 @@ def is_graph_mode(tensor):
 
 
 def matmul_range_check(input_x1, input_x2, bias):
+    """
+    check matmul range
+    """
     x1_ori_range = input_x1.get("range")
     x2_ori_range = input_x2.get("range")
     input_list = [x1_ori_range, x2_ori_range]

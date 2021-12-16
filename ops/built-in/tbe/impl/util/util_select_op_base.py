@@ -26,6 +26,7 @@ def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1FusionEnable=0, mi
     """
     op_cal_info = {}
     op_slice_info = {}
+
     def _get_axis_split_in_json(axis_split_list):
         splitMaps = []
         if axis_split_list is None:
@@ -133,8 +134,8 @@ def _split_multi_input_list(one_input_list):
     dict
     """
 
-    return {"idx":one_input_list[0],"axis":one_input_list[1],"headOverLap":one_input_list[2], \
-            "tailOverLap":one_input_list[3]}
+    return {"idx": one_input_list[0], "axis": one_input_list[1], "headOverLap": one_input_list[2],
+            "tailOverLap": one_input_list[3]}
 
 
 def _split_multi_output_list(one_output_list):
@@ -215,7 +216,7 @@ def get_dynamic_param_in_json(param_desc_list):
     return param_dynamic_in_json
 
 
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,redefined-builtin
 def gen_param(classify, name, datatype, format, unknownshape_format=None):
     return ParamItem(classify=classify,
                      element=Element(name=name,
@@ -224,6 +225,7 @@ def gen_param(classify, name, datatype, format, unknownshape_format=None):
                                      unknownshape_format=unknownshape_format))
 
 
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class Element:
     def __init__(self, name, datatype, format, unknownshape_format):
         self.name = name
@@ -231,26 +233,36 @@ class Element:
         self.format = format
         self.unknownshape_format = unknownshape_format
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class ParamItem:
     def __init__(self, classify, element):
         self.classify = classify
         self.element = element
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class SplitInput:
     def __init__(self, *input_array):
         self.input_array = input_array
         self.input_split_num = len(input_array)
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class SplitOutput:
     def __init__(self, *output_array):
         self.output_array = output_array
         self.output_split_num = len(output_array)
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class ReduceInput:
     def __init__(self, *input_array):
         self.reduce_input = input_array
         self.reduce_input_num = len(input_array)
 
+
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class ReduceOutput:
     def __init__(self, *output_array):
         self.reduce_output = output_array

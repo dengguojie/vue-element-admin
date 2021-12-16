@@ -40,6 +40,7 @@ SCALAR_MUL2_FP32 = 2 ** (26)
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 
+
 def ceil(x_1, x_2):
     """
     do ceiling division
@@ -272,7 +273,7 @@ def update_shape_base_other_format(input_dict):
     return input_dict
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def update_shape_base_other_format_dynamic(input_dict):
     """
     update_axis_for_other_format_dynamic: when format is changed, the axis will be updated
@@ -320,7 +321,7 @@ def update_shape_base_other_format_dynamic(input_dict):
                     if shape_d_dim > 0:
                         upper = None if input_range[0][1] is None else int(math.ceil(input_range[0][1] / shape_d_dim))
                         lower = 1 if int(math.floor(input_range[0][0] / shape_d_dim)) == 0 else int(
-                            math.floor(input_range[0][0] /shape_d_dim))
+                            math.floor(input_range[0][0] / shape_d_dim))
                         temp_range = [(lower, upper)]
                 else:
                     shape_c1_dim = new_shape[0] // shape_d_dim
@@ -352,7 +353,7 @@ def get_fused_format_str(format_char_list):
     return format_str_list
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def is_dynamic_input(_inputs):
     """
     is_dynamic_input: check whether the shape contain -1
@@ -652,6 +653,7 @@ def is_same_group(_inputs):
             return False
     return True
 
+
 def check_load3d_w_out_1_support():
     """
     check if current soc version load3d instruction support w_out==1 or not
@@ -671,5 +673,14 @@ def check_load3d_w_out_1_support():
 
 
 def is_vector_core():
+    """
+    check if aicore_type is VectorCore
+    -------
+
+    Returns
+    -------
+    True: is VectorCore
+    False: is not VectorCore
+    """
     aicore_type = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.AICORE_TYPE)
     return aicore_type == "VectorCore"

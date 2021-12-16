@@ -555,7 +555,7 @@ def _check_scalar_shape(shape_list, name_idx_map, scalar_name):
     return all(para_check.is_scalar(item) for item in need_to_check)
 
 
-# pylint: disable=locally-disabled, too-few-public-methods
+# 'pylint: disable=locally-disabled, too-few-public-methods
 class ApplyOpConfig:
     """
     configuration of apply op
@@ -623,6 +623,7 @@ def _check_shape_and_dtype(config, name_idx_map, same_flag):
     return shape_list, dtype_list
 
 
+# 'pylint: disable=too-many-locals
 def common_apply_op_process(config, kernel_name, same_flag=True):
     """
     Parameters

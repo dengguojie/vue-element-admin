@@ -19,18 +19,13 @@ public function for cube dynamic
 from __future__ import absolute_import
 import warnings
 import math
-import copy
 
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import CubeParaProcess
-import impl.util.util_deconv_comm as comm
-from te.platform import get_soc_spec
-from te.platform import cce_params
 from tbe.common.context import get_context
 from tbe.common.utils import log
 
@@ -66,6 +61,7 @@ def get_format_attr(w_shape, w_format):
     return kh, kw
 
 
+# 'pylint: disable=too-many-arguments, too-many-locals
 def modify_input_range(inputs, in_range_nchw, data_type, idx_h, idx_w, attr_params):
     '''
     check for not bigger than L1
@@ -110,6 +106,8 @@ def modify_input_range(inputs, in_range_nchw, data_type, idx_h, idx_w, attr_para
 
     return new_in_range_nchw
 
+
+# 'pylint: disable=too-many-arguments, too-many-locals
 def check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads):
     """
     check exceed l1 buf
@@ -150,6 +148,7 @@ def create_fuzz_range(op_type, dim_value, grade_item):
     return [low, high]
 
 
+# 'pylint: disable=too-many-arguments
 def check_graph_mode(tensor):
     """
     check graph mode or single mode in fuzz compile
@@ -177,6 +176,7 @@ def check_input_range(input_range, idx_h, idx_w, kh_dilate, kw_dilate, pads):
     return ""
 
 
+# 'pylint: disable=unused-variable
 def check_range_l1_size(inputs, kh_dilate, kw_dilate, strides, pads):
     """
     graph mode fuzz, check range[high] exceed l1 buf
@@ -258,6 +258,7 @@ def check_conv2d_range(inputs, weights, strides, pads, dilations):
     return check_result
 
 
+# 'pylint: disable=too-many-arguments
 def correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, kw_dilate, pads):
     """
     correct range[low] for  output >= 1
@@ -318,7 +319,7 @@ class Conv2dParaProcess(CubeParaProcess):
             dict["dtype"] = tensor.dtype
             dict["ori_format"] = tensor.op.attrs['ori_format'].value
 
-            if need_range == True:
+            if need_range is True:
                 dict["range"] = []
                 for one_range in tensor.op.attrs['range']:
                     range_list = []
@@ -365,11 +366,11 @@ class Conv2dParaProcess(CubeParaProcess):
         if in_shape[C_DIM] == DYNAMIC_FLAG:
             err_man.raise_err_specific_user(
                 self.op_type, "dynamic c dimension is not supported yet.")
-        soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
 
+    # 'pylint: disable=too-many-arguments
     def _calc_shape(self, in_shape, w_shape, in_range, y_range, group_para):
         """
         calculate shape for mmad
@@ -382,7 +383,7 @@ class Conv2dParaProcess(CubeParaProcess):
 
         in_shape_nc1hwc0 = [in_shape[N_DIM], in_shape[C_DIM] // block_size_k,
                             in_shape[H_DIM], in_shape[W_DIM], block_size_k]
-        if self.is_tensor == False:
+        if self.is_tensor is False:
             if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[N_DIM] = operation.var("batch_n", in_range[N_DIM])
                 operation.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
@@ -412,7 +413,11 @@ class Conv2dParaProcess(CubeParaProcess):
                               group_para.get("cout1_opt"), block_size_n, block_size_k)
         return in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z
 
+    # 'pylint: disable=too-many-locals
     def correct_in_range(self, in_range_nchw, w_shape_nchw):
+        """
+        correct in range
+        """
         #correct in_range when w_range=[1, None] or fuzz_build mode
         DYNAMIC_FMAP_W_MIN = 1
         DYNAMIC_FMAP_W_MAX = 4096
@@ -456,6 +461,7 @@ class Conv2dParaProcess(CubeParaProcess):
 
         return new_in_range_nchw
 
+    # 'pylint: disable= too-many-locals
     def check_paras(self):
         """
         check original paras
@@ -516,7 +522,7 @@ class Conv2dParaProcess(CubeParaProcess):
         """
 
         param = self.check_paras()
-        if self.is_tensor == False:
+        if self.is_tensor is False:
             input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
             weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
             if self.bias:
@@ -533,4 +539,3 @@ class Conv2dParaProcess(CubeParaProcess):
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
                 "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range")}
-

@@ -15,15 +15,15 @@
 """
 unsorted_segment_min
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from te import platform
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
-# pylint: disable=too-many-locals,too-few-public-methods,unused-argument
-# pylint: disable=consider-using-enumerate,too-many-return-statements,too-many-branches,unnecessary-pass
+# 'pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-locals,too-few-public-methods,unused-argument
+# 'pylint: disable=consider-using-enumerate,too-many-return-statements,too-many-branches,unnecessary-pass
 
 def op_select_format(x, segment_ids, num_segments, y,
                      kernel_name="unsorted_segment_min"):
@@ -135,7 +135,7 @@ def check_supported(x, segment_ids, num_segments, y,
     return True
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def unsorted_segment_min(x_dict, segment_ids_dict, num_segments_dict, y_dict,
                          kernel_name="UnsortedSegmentMin"):
     """
