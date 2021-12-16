@@ -3868,25 +3868,31 @@ void GetRangeInterSection(const std::pair<int64_t, int64_t> &new_range, std::pai
   }
 }
 
+void ResetRangewithEmptyInputRange(OpDescPtr &op_desc, const AscendString op_name, size_t i,
+                                   vector<std::pair<int64_t, int64_t>> &range) {
+  if (!range.empty()) {
+    return;
+  }
+  static std::pair<int64_t, int64_t> default_range = {1, -1};
+  auto dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
+  for (auto dim : dims) {
+    if (dim == -1) {
+      OP_LOGW(op_name.GetString(), "input%zu tensor has no range but contains -1, use range [1, -1]", i);
+      range.push_back(default_range);
+    } else {
+      range.push_back({dim, dim});
+    }
+  }
+}
+
 void GetEquationRangeInterSection(OpDescPtr &op_desc, const AscendString op_name,
                                   const vector<std::string> &in_equ_list,
                                   std::map<char, std::pair<int64_t, int64_t>> &ranges) {
-  static std::pair<int64_t, int64_t> default_range = {1, -1};
   for (size_t i = 0; i < in_equ_list.size(); ++i) {
     const std::string &equ_temp = in_equ_list[i];
     vector<std::pair<int64_t, int64_t>> range;
     op_desc->MutableInputDesc(i)->GetShapeRange(range);
-    if (range.empty()) {
-      auto dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
-      for (auto dim : dims) {
-        if (dim == -1) {
-          OP_LOGW(op_name.GetString(), "input%zu tensor has no range but contains -1, use range [1, -1]", i);
-          range.push_back(default_range);
-        } else {
-          range.push_back({dim, dim});
-        }
-      }
-    }
+    ResetRangewithEmptyInputRange(op_desc, op_name, i, range);
 
     if (range.size() < equ_temp.size()) {
       OP_LOGW(op_name.GetString(), "skip range, range size: %zu, equation: %s", range.size(), equ_temp.c_str());

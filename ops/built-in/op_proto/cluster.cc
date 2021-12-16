@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "util/util.h"
 
 namespace ge {
-
 // ------------ KMeansCentroids -----------------
 IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   AscendString op_name;
@@ -140,5 +139,4 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
 
 INFER_FUNC_REG(KMeansCentroids, KMeansCentroidsInfer);
 // ------------ KMeansCentroids END -----------------
-
 }  // namespace ge

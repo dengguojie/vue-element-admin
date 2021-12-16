@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ bool Conv3DTiling(const std::string& opType,
     return false;
   }
 
+  // the dim index of input x channel is 2
   if (opCompileInfo.contains("fmap_c1") && opParas.GetInputDesc(0).GetShape().GetDim(2) != opCompileInfo["fmap_c1"]) {
     CUBE_INNER_ERR_REPORT(opType.c_str(), "not support, input x channel should be equal to filter * groups");
     return false;

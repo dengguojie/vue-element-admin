@@ -1,6 +1,6 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
- *
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,6 +29,7 @@
 namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;
   constexpr int32_t kConv3dBpInputsNum = 3;
+  constexpr int32_t kConv3DBpFilterDedyInputIdx = 2;
 }
 
 namespace optiling {
@@ -46,25 +47,26 @@ bool Conv3DBpFilterTiling(const std::string& op_type,
                           utils::OpRunInfo& run_info) {
   bool invalid_input = (op_paras.GetInputsSize() < kConv3dBpInputsNum ||
       (op_paras.GetInputDesc(0).GetShape().GetDimNum() != kConv3dDimSizeLimit) ||
-      (op_paras.GetInputDesc(2).GetShape().GetDimNum() != kConv3dDimSizeLimit));
+      (op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDimNum() != kConv3dDimSizeLimit));
   if (invalid_input) {
     OP_LOGE(op_type.c_str(), "Input paramters check failed");
     return false;
   }
-
+  // the dim index of input x channel is 2
   if (compile_info.contains("fmap_c1") && op_paras.GetInputDesc(0).GetShape().GetDim(2) != compile_info["fmap_c1"]) {
     OP_LOGE(op_type.c_str(), "not support, input x channel should be equal to filter * groups");
     return false;
   }
-
-  if (compile_info.contains("dedy_c1") && op_paras.GetInputDesc(2).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
+  // the dim index of input dedy channel is 2
+  if (compile_info.contains("dedy_c1") &&
+      op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
     OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
 
   return Conv3DCommonTiling("Conv3DBackpropFilter",
                             op_paras.GetInputDesc(0).GetShape().GetDims(),
-                            op_paras.GetInputDesc(2).GetShape().GetDims(),
+                            op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDims(),
                             compile_info,
                             run_info);
 }

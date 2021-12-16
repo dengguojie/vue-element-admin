@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ bool Conv3DBackpropInputTiling(const std::string& op_type,
     return false;
   }
 
+  // the dim index of input dedy channel is 2
   if (compile_info.contains("dedy_c1") &&
       op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");

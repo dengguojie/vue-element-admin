@@ -635,11 +635,9 @@ TEST_F(einsum_fusion_test, einsum_fusion_dynamic_test_1) {
   auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{21, 31, 41};
-  vector<std::pair<int64_t, int64_t>> input_x1_range = {{21, 21}, {31, 31}, {41, 41}};
   ge::Shape input_x1_shape(input_x1_vec);
   ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
   input_x1_desc.SetOriginShape(input_x1_shape);
-  input_x1_desc.SetShapeRange(input_x1_range);
 
   std::vector<int64_t> input_x2_vec{41, 52, -1};
   vector<std::pair<int64_t, int64_t>> input_x2_range = {{41, 41}, {52, 52}, {36, 56}};

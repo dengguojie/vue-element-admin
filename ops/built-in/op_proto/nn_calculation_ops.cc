@@ -2934,11 +2934,11 @@ static bool GetConv2dBpAttrInfo(const OpDetailInfo &op_info, const PosInfo &y_fo
   std::vector<int32_t> dilations_list;
   AttrUtils::GetListInt(op_info.op_desc, "dilations", dilations_list);
 
+  map<string, string> err_map;
   int32_t stride_h = strides_list[y_format_pos.h_position];
   int32_t stride_w = strides_list[y_format_pos.w_position];
   if (stride_h <= 0 || stride_w <= 0) {
     OP_LOGE(op_info.op_name.GetString(), "strides should be positive, actual is [%d,%d].", stride_h, stride_w);
-    map<string, string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = op_info.op_name.GetString();
     err_map["expected_value"] = "positive";
@@ -2951,7 +2951,6 @@ static bool GetConv2dBpAttrInfo(const OpDetailInfo &op_info, const PosInfo &y_fo
   int32_t dilation_w = dilations_list[y_format_pos.w_position];
   if (dilation_h <= 0 || dilation_w <= 0) {
     OP_LOGE(op_info.op_name.GetString(), "dilations should be positive, actual is [%d,%d].", dilation_h, dilation_w);
-    map<string, string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = op_info.op_name.GetString();
     err_map["expected_value"] = "positive";
@@ -7738,15 +7737,12 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   return true;
 }
 
-static void InferHWConv3dBackpropInput(const SliceTuple& infer_dhw,
-                                       const vector<int64_t>& output,
-                                       vector<int64_t>& input,
-                                       vector<int32_t>& pad_list,
-                                       uint32_t pad_idx) {
-  int32_t kernel = 0;
-  int32_t dilation = 0;
-  int32_t stride = 0;
+static void InferHWConv3dBackpropInput(const SliceTuple &infer_dhw, const vector<int64_t> &output,
+                                       vector<int64_t> &input, vector<int32_t> &pad_list, uint32_t pad_idx) {
   int32_t input_size = 0;
+  int32_t stride = 0;
+  int32_t dilation = 0;
+  int32_t kernel = 0;
   std::tie(kernel, dilation, stride, input_size) = infer_dhw;
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
