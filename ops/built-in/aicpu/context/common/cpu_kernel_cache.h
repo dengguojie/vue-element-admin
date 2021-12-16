@@ -203,7 +203,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    */
   std::shared_ptr<CpuKernelContext> GetCpuKernelContextWithBlock(
       std::shared_ptr<ExtInfoMsg> extInfoMsg, const char *nodedef, uint32_t nodedef_len,
-      std::shared_ptr<NodeDef> &nodedef_proto, struct BlkDimInfo *blkDimInfo);
+      std::shared_ptr<NodeDef> &nodedef_proto, struct BlkDimInfo *blkdim_info);
 
   /*
    * get bit status on pos
