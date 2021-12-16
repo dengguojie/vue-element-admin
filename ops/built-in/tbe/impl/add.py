@@ -334,6 +334,12 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
     format_flag["NC1HWC0"] = format_5hd_flag and format_flag.get("NC1HWC0")
 
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
+                             (len(shape_x) == len(shape_y) == 1 and format_x == format_y and
+                              format_y in ("NHWC",) and shape_x[0] == 1) or \
+                             (len(shape_x) == len(shape_y) == 1 and format_x == format_y and
+                              format_x in ("NHWC",) and shape_y[0] == 1)
+
     format_list = [i for i in format_flag if format_flag.get(i)]
     for dtype in dtype_list:
         dtype_total = dtype_total + [dtype] * len(format_list)

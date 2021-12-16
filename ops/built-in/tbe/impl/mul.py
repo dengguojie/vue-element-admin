@@ -568,32 +568,6 @@ def op_select_format(x, y, output, kernel_name="mul"):
         support conversion to NC1HWC0 operation:\n
         x's Tensor(shape=(1, 5, 1, 1, 16), "NC1HWC0")\n
         y's Tensor(shape=(1, 5, 1, 1, 16), "NC1HWC0")\n
-
-    29.when the lengths of x's shape and y's shape are the same and equal to 4,
-    the formats of x and y are the same and are one of (NHWC,),
-    x's dim of c == x's dim of h == x's dim of w == 1, and x's dim of n == y's dim of n:
-    support ND, NC1HWC0 format.\n
-
-        example:\n
-        original:\n
-        x's Tensor(shape=(256, 1, 1, 1), "NHWC")\n
-        y's Tensor(shape=(256, 56, 56, 24), "NHWC")\n
-        support conversion to NC1HWC0 operation:\n
-        x's Tensor(shape=(256, 1, 1, 1, 16), "NC1HWC0")\n
-        y's Tensor(shape=(256, 2, 56, 56, 16), "NC1HWC0")\n
-
-    30.when the lengths of x's shape and y's shape are the same and equal to 4,
-    the formats of x and y are the same and are one of (NHWC,),
-    y's dim of c == y's dim of h == y's dim of w == 1, and x's dim of n == y's dim of n:
-    support ND, NC1HWC0 format.\n
-
-        example:\n
-        original:\n
-        x's Tensor(shape=(256, 56, 56, 24), "NHWC")\n
-        y's Tensor(shape=(256, 1, 1, 1), "NHWC")\n
-        support conversion to NC1HWC0 operation:\n
-        x's Tensor(shape=(256, 2, 56, 56, 16), "NC1HWC0")\n
-        y's Tensor(shape=(256, 1, 1, 1, 16), "NC1HWC0")\n
     """
     param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
     if param_dynamic_in_json is not None:
@@ -640,13 +614,9 @@ def op_select_format(x, y, output, kernel_name="mul"):
     if x_flag.get("5d") or x_flag.get("4d"):
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
-        x_wdim = shape_x[format_x.index("W")]
-        x_hdim = shape_x[format_x.index("H")]
     if y_flag.get("5d") or y_flag.get("4d"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
-        y_wdim = shape_y[format_y.index("W")]
-        y_hdim = shape_y[format_y.index("H")]
     # 'pylint: unused-variable
     common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
             not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
@@ -699,16 +669,11 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                  shape_y[0] // 16 == 1)))) or \
                              (x_flag.get("4d") and y_flag.get("4d") and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
 
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or \
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
                              (len(shape_x) == len(shape_y) == 1 and format_x == format_y and
-                             format_y in ("NHWC",) and shape_x[0] == 1) or \
+                              format_y in ("NHWC",) and shape_x[0] == 1) or \
                              (len(shape_x) == len(shape_y) == 1 and format_x == format_y and
-                             format_x in ("NHWC",) and shape_y[0] == 1)
-
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or \
-                             (x_flag["4d"] and y_flag["4d"] and format_x == format_y and
-                              format_y in ("NHWC",) and x_ndim == y_ndim and
-                              (x_cdim == x_hdim == x_wdim == 1 or y_cdim == y_hdim == y_wdim == 1))
+                              format_x in ("NHWC",) and shape_y[0] == 1)
 
     # NDC1HWC0 FRACTAL_Z_3D
     format_list = [i for i in format_flag if format_flag.get(i)]
