@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,10 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const char PATTERN_MATMUL[] = "batch_matmul";
 static const char PATTERN_REDUCESUM[] = "reduce_sum_d";
 static const char PATTERN_CAST[] = "cast";
+static const int kNumTwo = 2;
 
 /*
  * @brief:  define matmul op fusion pattern
@@ -85,9 +85,9 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
   FUSION_PASS_CHECK(output0desc == nullptr,
               CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "output0desc is null"),
               return);
-  FUSION_PASS_CHECK(output0desc->GetOriginShape().GetDims().size() < 2,
+  FUSION_PASS_CHECK(output0desc->GetOriginShape().GetDims().size() < kNumTwo,
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Matmul output shape dims < 2."), return);
-  int batch_lenth = output0desc->GetOriginShape().GetDims().size() - 2;
+  int batch_lenth = output0desc->GetOriginShape().GetDims().size() - kNumTwo;
 
   for (int batch_index = 0; batch_index < batch_lenth; batch_index++){
     DelSplitInfoByOutputAxis(split_maps, batch_index);

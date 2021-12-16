@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,12 +109,14 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     int64_t biasDim;
     int64_t inputNDim;
     if (secondInputShape.GetDims().size() == 1) {
-      if (nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2){
+      bool valid_op_type = nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2;
+      if (valid_op_type){
         FUSION_PASS_CHECK(firstInputShape.GetDims().size() != 2,
                           OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       }
-      if (PatternFusionUtil::IsUnknownShape(secondInputShape.GetDim(DIMENSION_0)) ||
-          PatternFusionUtil::IsUnknownShape(firstInputShape.GetDim(DIMENSION_1))) {
+      bool unvalid_shape = PatternFusionUtil::IsUnknownShape(secondInputShape.GetDim(DIMENSION_0)) ||
+                           PatternFusionUtil::IsUnknownShape(firstInputShape.GetDim(DIMENSION_1));
+      if (unvalid_shape) {
         OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
@@ -122,12 +124,14 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       uint32_t inputDimLength = firstInputShape.GetDims().size();
       inputNDim = firstInputShape.GetDim(inputDimLength - 1);
     } else {
-      if (nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2){
+      bool valid_op_type = nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2;
+      if (valid_op_type){
         FUSION_PASS_CHECK(secondInputShape.GetDims().size() != 2,
                           OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       }
-      if (PatternFusionUtil::IsUnknownShape(secondInputShape.GetDim(DIMENSION_1)) ||
-          PatternFusionUtil::IsUnknownShape(firstInputShape.GetDim(DIMENSION_0))) {
+      bool unvalid_shape = PatternFusionUtil::IsUnknownShape(secondInputShape.GetDim(DIMENSION_1)) ||
+                           PatternFusionUtil::IsUnknownShape(firstInputShape.GetDim(DIMENSION_0));
+      if (unvalid_shape) {
         OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
@@ -141,45 +145,36 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
   // to add node bias as third input, nodeMatMul must have 2 InDataAnchor
   // and 2 InputDesc(referenced AddLinkFrom())
-  if (matMulOpDesc->GetInputsSize() != MATMUL_INPUT_NUM) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should have 2 inputs, acutal %zu",
-            nodeMatMul->GetInAllNodes().size());
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(matMulOpDesc->GetInputsSize() != MATMUL_INPUT_NUM,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should have 2 inputs, acutal %zu",
+                            nodeMatMul->GetInAllNodes().size()), return NOT_CHANGED);
 
   // check nodeMatMul must have only one output to nodeBiasAdd
-  if (nodeMatMul->GetOutDataNodes().size() != 1) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should only have 1 output, actual %zu",
-            nodeMatMul->GetOutDataNodes().size());
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(nodeMatMul->GetOutDataNodes().size() != 1,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should only have 1 output, actual %zu",
+                            nodeMatMul->GetOutDataNodes().size()), return NOT_CHANGED);
 
   // check biasAddOpDesc should only have one outputTensroDesc
-  if (biasAddOpDesc->GetAllOutputsDesc().size() != 1) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "BiasAdd node should only have 1 output, actual %zu",
-            biasAddOpDesc->GetAllOutputsDesc().size());
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(biasAddOpDesc->GetAllOutputsDesc().size() != 1,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "BiasAdd node should only have 1 output, actual %zu",
+                            biasAddOpDesc->GetAllOutputsDesc().size()), return NOT_CHANGED);
 
   // check Bias node should only have 1 output, because ge::graph haven't offer
   // method to modify node anchor, only way to add anchor is AddLinkFrom
-  if (nodeBias->GetAllOutDataAnchors().size() != 1) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "now don't support fusion Bias with over 1 output");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(nodeBias->GetAllOutDataAnchors().size() != 1,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "now don't support fusion Bias with over 1 output"),
+                    return NOT_CHANGED);
 
   // add HAS_BIAS attr to MatMul, and set value with "true"
-  if (ge::AttrUtils::SetBool(matMulOpDesc, HAS_BIAS, true) == false) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(matMulOpDesc, HAS_BIAS, true) == false,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed"),
+                    return FAILED);
 
   // add link from nodeBias to nodeMatMul,x3 is the name of third input of
   // MatMul in IR matmul.h
-  if (nodeMatMul->AddLinkFrom("bias", nodeBias) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add link from Bias to MatMul failed");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(nodeMatMul->AddLinkFrom("bias", nodeBias) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add link from Bias to MatMul failed"),
+                    return FAILED);
 
   vector<bool> isInputConst;
   for (auto &anchor : nodeMatMul->GetAllInDataAnchors()) {

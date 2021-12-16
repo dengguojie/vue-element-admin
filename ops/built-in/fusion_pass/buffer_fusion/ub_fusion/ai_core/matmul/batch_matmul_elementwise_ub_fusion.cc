@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,8 @@ vector<BufferFusionPattern*> TbeBatchMatmulElementWiseFusionPass::DefinePatterns
   return patterns;
 }
 
-void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                       std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
@@ -109,7 +110,8 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
-Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
+                                                           vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulElementWiseFusionPass!");
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
@@ -118,8 +120,7 @@ Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMap
   FUSION_PASS_CHECK(elemNode.empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
                     return SUCCESS);
-  vector<string>::iterator ret;
-  ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
+  vector<string>::iterator ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
   if (ret == elem_typelist.end()) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, div, muladd and Relu in first elemwise");
     return SUCCESS;
@@ -148,10 +149,10 @@ Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMap
                   return FAILED);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
-    vector<int64_t> allDims;
-    allDims.resize(input0Dims.size() + input1Dims.size());
-    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
-    for (auto singleDim : allDims) {
+    vector<int64_t> allDim;
+    allDim.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDim.begin());
+    for (auto singleDim : allDim) {
       if (singleDim < 0) {
         fusion_nodes.clear();
         OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");

@@ -1,5 +1,5 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include "common/util/platform_info.h"
 
 namespace fe {
-
 static const char kTypeTransData1[] = "transdata1";
 static const char kPatternCube[] = "cube";
 static const char kPatternGEMM[] = "GEMM";
@@ -32,6 +31,7 @@ static const char kPatternQuant[] = "quant";
 static const char kTypeTransData2[] = "transdata2";
 static const string kOpTypeTransData = "TransData";
 static const int kFusionOpNumMax = 10;
+static const int kNumTwo = 2;
 static const string kFusedOpType = "FusedOp";
 
 /*
@@ -95,8 +95,9 @@ void TbeMatmulFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
     fusion_nodes.clear();
     return;
   }
-
-  if (!transdata1_nodes.empty()) {
+  bool transdata1_nodes_no_empty = cube_is_matmul && !transdata1_nodes.empty();
+  bool transdata2_nodes_no_empty = cube_is_matmul && !transdata2_nodes.empty();
+  if (transdata1_nodes_no_empty) {
     bool weight_trans = true;
     if (!MatmulSupportTrans(transdata1_nodes[0], true)) {
       auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata1_nodes[0]);
@@ -105,14 +106,14 @@ void TbeMatmulFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
         weight_trans = false;
       }
     }
-    if (weight_trans && cube_node->GetInDataNodes().size() >= 2) {
+    if (weight_trans && cube_node->GetInDataNodes().size() >= kNumTwo) {
       ge::NodePtr weight_trans_node = cube_node->GetInDataNodes().at(1);
       if (weight_trans_node->GetType() == kOpTypeTransData && MatmulSupportTrans(weight_trans_node, true)) {
         fusion_nodes.push_back(weight_trans_node);
       }
     }
   }
-  if (!transdata2_nodes.empty()) {
+  if (transdata2_nodes_no_empty) {
     if (!MatmulSupportTrans(transdata2_nodes[0], false)) {
       auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata2_nodes[0]);
       if (iter != fusion_nodes.end()) {
@@ -135,14 +136,11 @@ Status TbeMatmulFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeMatmulFixpipeFusionPass.");
   PlatformInfo platformInfo;
   OptionalInfo optionalInfo;
-  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS) {
-    OP_LOGW(kFusedOpType.c_str(), "Get platform info failed, not fusion.");
-    return SUCCESS;
-  }
-  if (platformInfo.ai_core_spec.cube_vector_split != 1) {
-    OP_LOGD(kFusedOpType.c_str(), "Fusion pass not support cube vector split.");
-    return SUCCESS;
-  }
+  FUSION_PASS_CHECK(
+              PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
+              OP_LOGW(kFusedOpType.c_str(), "Get platform info failed, not fusion."), return SUCCESS);
+  FUSION_PASS_CHECK(platformInfo.ai_core_spec.cube_vector_split != 1,
+                    OP_LOGD(kFusedOpType.c_str(), "Fusion pass not support cube vector split."), return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
 
   vector<ge::NodePtr> transdata1_nodes = GetMatchedNodesByDescName(kTypeTransData1, mapping);

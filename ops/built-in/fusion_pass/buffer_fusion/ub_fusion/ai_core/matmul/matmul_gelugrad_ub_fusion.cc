@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const char PATTERN_MATMUL[] = "matmul";
 static const char PATTERN_ELTWISE[] = "eltwise";
 static const char PATTERN_OTHER_INPUT1[] = "otherInput1";
@@ -180,12 +179,13 @@ Status MatmulGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping
   // multi input node can not be fused except head node
   for (auto& item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-    if (opdesc != item.first->types.end()) {
-      for (auto& node : item.second) {
-        auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
-        if (nodePtr != fusionNodes.end()) {
-          fusionNodes.erase(nodePtr);
-        }
+    if (opdesc == item.first->types.end()) {
+      continue;
+    }
+    for (auto& node : item.second) {
+      auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
+      if (nodePtr != fusionNodes.end()) {
+        fusionNodes.erase(nodePtr);
       }
     }
   }

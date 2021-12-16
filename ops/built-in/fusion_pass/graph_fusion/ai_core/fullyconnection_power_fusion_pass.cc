@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ static const std::string FC_POWER_OP_OUTPUT = "fc_power_output";
 static const std::string POWER_SHIFT = "shift";
 static const int FC_BIAS_INDEX = 2;
 static const int FC_POWER_HOST_OP_BIAS_INDEX = 0;
+static const int kInputNumTwo = 2;
 static const std::string FullyConnectionPowerPassHostOp = "FullyConnectionPowerPassHostOp";
 
 uint64_t GetHostCpuAtomicId() {
@@ -68,41 +69,50 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
     opNameTemp << opType << "_" << GetHostCpuAtomicId();
     ge::OpDescPtr fcPowerHostOp = nullptr;
     FUSION_PASS_MAKE_SHARED((fcPowerHostOp = std::make_shared<ge::OpDesc>(opNameTemp.str(), opType)), return FAILED);
-    FUSION_PASS_CHECK(fcPowerHostOp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "create new host op failed"), return FAILED);
+    FUSION_PASS_CHECK(fcPowerHostOp == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "create new host op failed"), return FAILED);
     // add input and output desc of new host op
     vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(fcNode);
-    FUSION_PASS_CHECK(weights.size() < 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc weights get failed"), return FAILED);
+    FUSION_PASS_CHECK(weights.size() < 2,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc weights get failed"), return FAILED);
     ge::GeTensorPtr biasTensorPtr = weights[1];
     ge::GeTensorDesc biasTensorDesc = biasTensorPtr->GetTensorDesc();
 
     FUSION_PASS_CHECK(fcPowerHostOp->AddInputDesc(FC_POWER_OP_INPUT, biasTensorDesc) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "failed to add input desc to fcPowerHostOp."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "failed to add input desc to fcPowerHostOp."),
+                      return FAILED);
     FUSION_PASS_CHECK(fcPowerHostOp->MutableInputDesc(0) == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "get input desc 0 failed"),
                       return FAILED);
     fcPowerHostOp->MutableInputDesc(0)->SetOriginDataType(biasTensorDesc.GetDataType());
-    fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+    fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(
+                                        static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableInputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
 
     FUSION_PASS_CHECK(fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "failed to add output desc to fcPowerHostOp."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "failed to add output desc to fcPowerHostOp."),
+                      return FAILED);
     FUSION_PASS_CHECK(fcPowerHostOp->MutableOutputDesc(0) == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "get output desc 0 failed"),
                       return FAILED);
-    fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+    fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(
+                                         static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
     fcPowerHostOp->MutableOutputDesc(0)->SetDataType(biasTensorDesc.GetDataType());
     fcPowerHostOp->MutableOutputDesc(0)->SetShape(biasTensorDesc.GetShape());
 
     auto fcPowerNode = graph.AddNode(fcPowerHostOp);
-    FUSION_PASS_CHECK(fcPowerNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "add new host op to graph failed"), return FAILED);
+    FUSION_PASS_CHECK(fcPowerNode == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "add new host op to graph failed"), return FAILED);
     newNodes.emplace_back(fcPowerNode);
 
     // Add edges between fc bias <--> new_host_cpu_op:0
     ge::InDataAnchorPtr fcInputAnchor = fcNode->GetInDataAnchor(FC_BIAS_INDEX);
-    FUSION_PASS_CHECK(fcInputAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc get const anchor failed"), return false);
+    FUSION_PASS_CHECK(fcInputAnchor == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc get const anchor failed"), return false);
     ge::OutDataAnchorPtr fcBiasPeerOutAnchor = fcInputAnchor->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(fcBiasPeerOutAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc get const failed"), return false);
+    FUSION_PASS_CHECK(fcBiasPeerOutAnchor == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fc get const failed"), return false);
     auto fcPowerHostOpInputAnchor = fcPowerNode->GetInDataAnchor(FC_POWER_HOST_OP_BIAS_INDEX);
     if (ge::GraphUtils::AddEdge(fcBiasPeerOutAnchor, fcPowerHostOpInputAnchor) != ge::GRAPH_SUCCESS) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "Add Edge between const and new host op failed.");
@@ -162,8 +172,8 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   FUSION_PASS_CHECK(powerNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "powerNode is null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(fullyConnectionNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fullyConnectionNode is null"), return PARAM_INVALID);
-
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "fullyConnectionNode is null"),
+                    return PARAM_INVALID);
   if (fullyConnectionNode->GetOutDataNodes().size() > 1) {
     return SUCCESS;
   }
@@ -213,7 +223,7 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t inputs_num = fullyConnectionNode->GetOpDesc()->GetInputsSize();
   // create bias node
   bool hasBias = true;
-  if (inputs_num == 2) {
+  if (inputs_num == kInputNumTwo) {
     AddBiasNode(graph, fullyConnectionNode, shift, num_output, fusionNodes);
     hasBias = false;
   }
@@ -307,7 +317,9 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
   ret = fcNode->AddLinkFrom("b", constNode);
   if (ret != SUCCESS){
     biasPtr = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "FcNode[%s]: add edge between new const node and fc node failed!", fcNode->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE,
+                                   "FcNode[%s]: add edge between new const node and fc node failed!",
+                                   fcNode->GetName().c_str());
     return ret;
   }
   return SUCCESS;

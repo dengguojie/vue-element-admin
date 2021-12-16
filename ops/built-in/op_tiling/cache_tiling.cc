@@ -277,9 +277,9 @@ void AL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalc
     blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size;
     blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
     blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
-    if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
-      blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
+    if (blockDimCalculator.total_load_size >= blockDimCalculator.tmp_load_size) {
       blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
+      blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
       blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
       blockDimCalculator.tmp_value = 0;
     }

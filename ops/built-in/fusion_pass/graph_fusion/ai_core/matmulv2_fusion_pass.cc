@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,8 @@ vector<FusionPattern*> MatMulV2FusionPass::DefinePatterns() {
 Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MatMulV2FusionPass fusion begin");
   ge::NodePtr matMulV2Node = GetNodeFromMapping(PATTERN_MATMULV2, mapping);
-  FUSION_PASS_CHECK(matMulV2Node == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
+  FUSION_PASS_CHECK(matMulV2Node == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   bool transposeB = false;
@@ -124,18 +125,18 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   perm.push_back(0);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(transposeOpdesc, PERM, perm),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set perm to %s failed.", transposeOpdesc->GetName().c_str()),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Set perm to %s failed.", transposeOpdesc->GetName().c_str()), return FAILED);
 
   ge::GeTensorDesc inputDesc = constNode->GetOpDesc()->GetOutputDesc(0);
   ge::GeTensorDesc outputDesc = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX);
 
   FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.", transposeOpdesc->GetName().c_str()),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.",
+                    transposeOpdesc->GetName().c_str()), return FAILED);
   FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.", transposeOpdesc->GetName().c_str()),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.",
+                    transposeOpdesc->GetName().c_str()), return FAILED);
 
   ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
   FUSION_PASS_CHECK(transposeNode == nullptr,
@@ -145,7 +146,8 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::InDataAnchorPtr dst = matMulV2Node->GetInDataAnchor(CONST_INDEX);
 
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove %s input0 edge error", matMulV2Node->GetName().c_str()),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove %s input0 edge error",
+                    matMulV2Node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, transposeNode->GetInDataAnchor(0)) != SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",

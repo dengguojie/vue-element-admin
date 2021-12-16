@@ -1,5 +1,5 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,9 +49,12 @@ vector<BufferFusionPattern *> TbeMatmulDequantFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   // define pattern rules Matmul-->AcendDeQuant
-  pattern1->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-          .AddOpDesc(kPatternMatmul, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-          .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+  pattern1->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                      TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(kPatternMatmul, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT,
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .SetHead({kPatternMatmul})
           .SetOutputs(kPatternMatmul, {kPatternDequant})
           .SetOutputs(kPatternOtherInput, {kPatternDequant});
@@ -68,19 +71,20 @@ vector<BufferFusionPattern *> TbeMatmulDequantFusionPass::DefinePatterns() {
  * @param [out] mapping: nodes matched by pattern
  * @return bool: fusion status ok or not.
  */
-Status TbeMatmulDequantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
+Status TbeMatmulDequantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
+                                                  vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeMatmulDequantFusionPass!");
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
   for (auto &item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-
-    if (opdesc != item.first->types.end()) {
-      for (auto &node : item.second) {
-        auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-        if (node_ptr != fusion_nodes.end()) {
-          fusion_nodes.erase(node_ptr);
-        }
+    if (opdesc == item.first->types.end()) {
+      continue;
+    }
+    for (auto &node : item.second) {
+      auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
+      if (node_ptr != fusion_nodes.end()) {
+        fusion_nodes.erase(node_ptr);
       }
     }
   }

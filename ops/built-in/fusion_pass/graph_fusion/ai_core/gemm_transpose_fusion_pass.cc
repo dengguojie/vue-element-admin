@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ namespace {
 static const char GEMM[] = "GEMM";
 static const char PATTERN_GEMM[] = "GEMM";
 static const int ALIGN_LENGTH = 16;
+static const int kNumTwo = 2;
 }  // namespace
 
 vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
@@ -72,7 +73,7 @@ Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph, const
   FUSION_PASS_CHECK(perm.size() > 2,
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "perm is error"),
                     return FAILED);
-  vector<int64_t> next_in_shape(2);
+  vector<int64_t> next_in_shape(kNumTwo);
   for (size_t i = 0; i < perm.size(); ++i) {
     if (perm.size() > next_in_shape.size()) {
       return FAILED;
@@ -166,7 +167,6 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   bool transpose_a = false;
   bool transpose_b = false;
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(gemm_node);
-
   if (op.GetAttr("transpose_a", transpose_a) != GRAPH_SUCCESS) {
     OP_LOGI(
         FUSED_OP_TYPE.c_str(),

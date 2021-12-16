@@ -133,7 +133,7 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     mutableIndesc->SetShape(ge::GeShape(out_shape));
     mutableIndesc->SetOriginShape(ge::GeShape(out_shape));
     auto in_anchor = next_node->GetInDataAnchor(idx);
-    auto out_anchor = in_anchor->GetPeerOutAnchor();
+    out_anchor = in_anchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get peer out anchor."),
                       return FAILED);
     Status ret = InsertNode(out_anchor, in_anchor, out_reshape_node);

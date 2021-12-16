@@ -50,6 +50,7 @@ class TbeFullyconnectionElemwiseFusionPass : public BufferFusionPassBase {
 private:
   const string FUSED_OP_TYPE = "FusedOp";
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+  Status CheckDynamicMode(vector<ge::NodePtr>& matmulNodes, std::vector<ge::NodePtr>& fusionNodes) const;
 };
 
 }  // namespace fe

@@ -58,6 +58,8 @@ class BatchMatmulDropOutDoMaskV3DFusionPass : public BufferFusionPassBase {
  private:
   const string FUSED_OP_TYPE = "batchmatmul_dropout_do_mask_fused_op";
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+  Status CheckDropoutOutNode(const ge::NodePtr &dropout_out_node, const ge::NodePtr &dropout_control_node,
+                             std::vector<ge::NodePtr>& add_nodes);
 };
 
 }  // namespace fe

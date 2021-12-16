@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,8 @@ vector<BufferFusionPattern*> MatmulDropOutDoMaskV3DFusionPass::DefinePatterns() 
   return patterns;
 }
 
-void MatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+void MatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                    std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_DROPOUTDOMASKV3D, mapping);
   vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(PATTERN_ADD, mapping);

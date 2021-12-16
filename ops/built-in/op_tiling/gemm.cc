@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,8 @@ const int64_t kBlockIn = 16;
 const int64_t kBlockReduce = 16;
 const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
+const int64_t kMinBatchDimNum = 3;
+const int64_t kNumTwo = 2;
 const int64_t BLOCK_SIZE = 16;
 const int64_t CACHE_TILING_ID_LEN = 7;
 const int64_t DIM_NUM = 3;
@@ -106,7 +108,7 @@ bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::G
   int32_t num_dim = shape_long.GetDimNum();
   int32_t offset = num_dim - shape_short.GetDimNum();
 
-  for (int32_t i = num_dim - 3; i >= offset; --i) {
+  for (int32_t i = num_dim - kMinBatchDimNum; i >= offset; --i) {
     int64_t short_value = shape_short.GetDim(i - offset);
     int64_t long_value = shape_long.GetDim(i);
     CHECK((short_value != long_value && short_value != 1 && long_value != 1),
@@ -117,7 +119,7 @@ bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::G
   }
 
   int64_t batch_value = 1;
-  for (int32_t i = 0; i < num_dim - 2; ++i) {
+  for (int32_t i = 0; i < num_dim - kNumTwo; ++i) {
     batch_value *= shape_broadcast.GetDim(i);
   }
   params.batch = batch_value;
@@ -134,20 +136,20 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
 
   int32_t num_dima = ori_shape_a.GetDimNum();
   int32_t num_dimb = ori_shape_b.GetDimNum();
-  int32_t idx_m_of_a = num_dima - 2;
+  int32_t idx_m_of_a = num_dima - kNumTwo;
   int32_t idx_k_of_a = num_dima - 1;
-  int32_t idx_k_of_b = num_dimb - 2;
+  int32_t idx_k_of_b = num_dimb - kNumTwo;
   int32_t idx_n_of_b = num_dimb - 1;
   const auto& repo_attr = compile_info["attrs"];
   auto trans_a = repo_attr["transpose_a"];
   auto trans_b = repo_attr["transpose_b"];
   if (trans_a) {
     idx_m_of_a = num_dima - 1;
-    idx_k_of_a = num_dima - 2;
+    idx_k_of_a = num_dima - kNumTwo;
   }
   if (trans_b) {
     idx_k_of_b = num_dimb - 1;
-    idx_n_of_b = num_dimb - 2;
+    idx_n_of_b = num_dimb - kNumTwo;
   }
 
   CHECK((ori_shape_a.GetDim(idx_k_of_a) != ori_shape_b.GetDim(idx_k_of_b)),
@@ -283,7 +285,7 @@ void FillRunInfoParas(OpRunInfoParas& runinfoparas, Tiling& tiling)
   if (!block_dim.empty()) {
     runinfoparas.batch_dim = block_dim[0];
     runinfoparas.n_dim = block_dim[1];
-    runinfoparas.m_dim = block_dim[2];
+    runinfoparas.m_dim = block_dim[kNumTwo];
   }
   auto& aL0_matrix = tiling.mParam["AL0_matrix"];
   if (!aL0_matrix.empty()) {

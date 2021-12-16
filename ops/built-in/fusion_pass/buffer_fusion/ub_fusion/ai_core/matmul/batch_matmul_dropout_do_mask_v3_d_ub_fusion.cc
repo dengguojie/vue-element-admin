@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,37 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
 
   return patterns;
 }
+
+Status BatchMatmulDropOutDoMaskV3DFusionPass::CheckDropoutOutNode(const ge::NodePtr &dropout_out_node,
+                                                                  const ge::NodePtr &dropout_control_node,
+                                                                  std::vector<ge::NodePtr>& add_nodes) {
+  FUSION_PASS_CHECK(dropout_out_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
+  bool invalid_node = dropout_out_node->GetType() != "Add" || add_nodes.empty();
+  FUSION_PASS_CHECK(
+    invalid_node && ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
+      dropout_out_node->GetInControlAnchor()) != SUCCESS,
+    OP_LOGD(FUSED_OP_TYPE.c_str(),
+            "Adding control-edge between BatchMatMul and DropOutDoMaskV3D's output node is failed."),
+            return FAILED);
+  if (!invalid_node) {
+    // dropout_out_node is add_node
+    for (const auto& add_out_node : dropout_out_node->GetOutAllNodes()) {
+      FUSION_PASS_CHECK(add_out_node == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
+      if (add_out_node->GetInControlAnchor() != nullptr) {
+        FUSION_PASS_CHECK(
+          ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
+                                  add_out_node->GetInControlAnchor()) != SUCCESS,
+          OP_LOGD(FUSED_OP_TYPE.c_str(),
+                  "Adding control-edge between BatchMatMul and Add's output node is failed"),
+          return FAILED);
+      }
+    }
+  }
+  return SUCCESS;
+}
+
 
 void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
@@ -173,30 +204,9 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
                 "Removing control-edge between BatchMatMul and DropOutDoMaskV3D is failed."),
         return FAILED);
       for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
-        FUSION_PASS_CHECK(dropout_out_node == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
-        if (dropout_out_node->GetType() != "Add" || add_nodes.empty()) {
-          FUSION_PASS_CHECK(
-            ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
-              dropout_out_node->GetInControlAnchor()) != SUCCESS,
-            OP_LOGD(FUSED_OP_TYPE.c_str(),
-                    "Adding control-edge between BatchMatMul and DropOutDoMaskV3D's output node is failed."),
-                    return FAILED);
-        } else {
-          // dropout_out_node is add_node
-          for (const auto& add_out_node : dropout_out_node->GetOutAllNodes()) {
-            FUSION_PASS_CHECK(add_out_node == nullptr,
-                              OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
-            if (add_out_node->GetInControlAnchor() != nullptr) {
-              FUSION_PASS_CHECK(
-                ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
-                                        add_out_node->GetInControlAnchor()) != SUCCESS,
-                OP_LOGD(FUSED_OP_TYPE.c_str(),
-                        "Adding control-edge between BatchMatMul and Add's output node is failed"),
-                return FAILED);
-            }
-          }
-        }
+        Status sta = CheckDropoutOutNode(dropout_out_node, dropout_control_node, add_nodes);
+        FUSION_PASS_CHECK(sta != SUCCESS, OP_LOGD(FUSED_OP_TYPE.c_str(),"Check dropout out node failed."),
+                          return FAILED);
       }
     }
   }
