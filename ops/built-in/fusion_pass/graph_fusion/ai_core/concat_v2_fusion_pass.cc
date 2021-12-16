@@ -119,6 +119,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
           OpDescUtils::ClearInputDesc(fusedDesc, whereI[i] - i);
           ge::NodeUtils::ClearInDataAnchor(fused_node,fused_node->GetInDataAnchor(whereI[i] - i));
       }
+      UpdateInputName(fusedDesc); 
   }
   num_N_new = num_N - num_N_del;
   ge::AttrUtils::SetInt(fusedDesc, "N", num_N_new);
