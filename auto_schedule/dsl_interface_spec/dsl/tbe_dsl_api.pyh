@@ -153,3 +153,5 @@ def gather(params, indices, axis=None, batch_dims=0):
 def gather_nd(params, indices, batch_dims=0):
 
 def transdata(tensor, dst_shape, axes_map, pad_value=0):
+
+def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):

@@ -42,6 +42,7 @@ from .compute import inplace
 from .compute import pooling2d as pooling2d_compute
 from .compute import pooling3d as pooling3d_compute
 from .compute import pooling3d_max_grad_grad as pooling3d_max_grad_grad_compute
+from .compute import conv_compute
 from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
@@ -1558,3 +1559,41 @@ def gather_nd(params, indices, batch_dims=0):
     :return:
     """
     return array.gather_nd(params, indices, batch_dims)
+
+def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
+    """
+    conv
+
+    Parameters
+    ----------
+    data: feature map
+
+    weight: filter
+
+    para_dict: dict of params
+
+    dsl_flag: true if not from topi
+
+    Returns
+    -------
+    tensor: res
+    """
+    weight_frac_z = list(i.value for i in weight.shape)
+    cikhkw, co1, co0, ci0 = weight_frac_z
+    filter_h, filter_w = para_dict["filter_h"], para_dict["filter_w"]
+    cout, cin, kernel_h, kernel_w = co1*co0, (ci0*cikhkw)//(filter_h*filter_w), filter_h, filter_w
+    para_dict["weight_ori_shape_nchw"] = (cout, cin, kernel_h, kernel_w)
+    para_dict["group_opt"] = 1
+    para_dict["dilate_h"] = 1
+    para_dict["dilate_w"] = 1
+    para_dict["c1_opt"] = 1
+    para_dict["a_shape"] = list(i.value for i in data.shape)
+    para_dict["group"] = 1
+    para_dict["cout1_opt"] = list(i.value for i in data.shape)[2]
+    para_dict["fusion_para"] = {
+            "fmap_l1_addr_flag": "nothing",
+            "fmap_l1_valid_size": -1,
+            "slice_offset": (0, 0, 0, 0, 0),
+            }
+    
+    return conv_compute.conv(data, weight, para_dict, optim_dict, dsl_flag)
