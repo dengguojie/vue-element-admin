@@ -649,10 +649,10 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
         split_mov.split_mov_compute()
         return
 
-    list_shape = list(shape)
-    supported_shapes = [[4, 300, 257, 600], [8, 46, 46, 63], [8, 46, 46, 84]]
-    if list_shape in supported_shapes:
-        split_equal = SplitEqual(new_shape, dtype_lower, new_split_dim, new_size_splits, kernel_name)
+    is_split_last_dim = new_split_dim == 1
+    if is_split_last_dim:
+        re_shape, re_dtype, re_size_splits = SplitEqual.reinter_split_equal(new_shape, dtype_lower, new_size_splits)
+        split_equal = SplitEqual(re_shape, re_dtype, new_split_dim, re_size_splits, kernel_name)
         if split_equal.check_support():
             split_equal.run()
             return

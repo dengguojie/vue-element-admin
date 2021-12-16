@@ -50,7 +50,7 @@ class Constant:
     # compute big last axis
     MODE3 = 3
     # reserved ub size
-    RESERVED_UB_SIZE = 16 * 1024
+    RESERVED_UB_SIZE = 8 * 1024
     # ub to fill gm block num
     FILL_NUM = 256
     # mask

@@ -57,7 +57,7 @@ class SplitEqual():
         self.kernel_name = kernel_name
         self.first_dim = self.shape[0]
         self.last_dim = self.shape[1]
-        self.split_last_dim = size_splits[0]
+        self.sum_size_list = self.get_sum_list(self.size_splits)
         self.output_num = len(self.size_splits)
         self.x_unit = Constant.UNIT
         self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
@@ -81,8 +81,6 @@ class SplitEqual():
         """
         check if input shape can select this branch
         """
-        if len(set(self.size_splits)) != 1:
-            return False
         if self.dtype not in ("float16",):
             return False
         if self.first_dim <= 512:
@@ -107,21 +105,20 @@ class SplitEqual():
                                     self.x_unit * self.last_dim // Constant.UNIT,
                                     Constant.UNIT * Constant.UNIT // self.block_ele, Constant.UNIT // self.block_ele)
         for i in range(self.output_num):
-            offset_ub_b = i * self.split_last_dim * Constant.UNIT
-            offset_ub_a = i * self.split_last_dim * Constant.UNIT * self.x_unit
+            offset_ub_b = self.sum_size_list[i] * Constant.UNIT
+            offset_ub_a = self.sum_size_list[i] * Constant.UNIT * self.x_unit
             self.tik_instance.data_move(ub_a[offset_ub_a], ub_b[offset_ub_b], 0, self.x_unit,
-                                        self.split_last_dim * Constant.UNIT // self.block_ele,
-                                        (self.output_num - 1) * self.split_last_dim, 0)
+                                        self.size_splits[i] * Constant.UNIT // self.block_ele,
+                                        self.last_dim - self.size_splits[i], 0)
         ub_a_src_list_2 = [ub_a[Constant.UNIT * i] for i in range(Constant.UNIT)]
         ub_b_dst_list_2 = [ub_b[self.x_unit * self.last_dim * i] for i in range(Constant.UNIT)]
-        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2,
-                                    self.x_unit * self.last_dim // Constant.UNIT,
+        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2, self.x_unit * self.last_dim // Constant.UNIT,
                                     Constant.UNIT // self.block_ele, Constant.UNIT * Constant.UNIT // self.block_ele)
         for i in range(self.output_num):
-            offset_ub_b = self.split_last_dim * self.x_unit * i
-            offset_output_gm = x_offset * self.split_last_dim
+            offset_ub_b = self.sum_size_list[i] * self.x_unit
+            offset_output_gm = x_offset * self.size_splits[i]
             self.tik_instance.data_move(self.output_tensor_list[i][offset_output_gm], ub_b[offset_ub_b], 0, 1,
-                                        self.split_last_dim * self.x_unit // self.block_ele, 0, 0)
+                                        self.size_splits[i] * self.x_unit // self.block_ele, 0, 0)
 
     def process_each_core(self, core_ele, core_offset):
         """process_each_core"""
@@ -136,11 +133,27 @@ class SplitEqual():
 
     def get_min_unit(self):
         """get_min_unit"""
-        list_sixteen = {1, 2, 4, 8, 16}
-        for i in list_sixteen:
-            if self.split_last_dim * i % 16 == 0:
-                return i
+        if len(set(self.size_splits)) == 1:
+            list_sixteen = {1, 2, 4, 8, 16}
+            for i in list_sixteen:
+                if self.size_splits[0] * i % 16 == 0:
+                    return i
         return 16
+    
+    @staticmethod
+    def get_sum_list(size_splits):
+        return list(map(lambda i:sum(size_splits[:i]), range(len(size_splits))))
+    
+    @staticmethod
+    def reinter_split_equal(new_shape, dtype_lower, new_size_splits):
+        re_shape = new_shape
+        re_dtype = dtype_lower
+        re_size_splits = new_size_splits
+        if dtype_lower == "float32" and not tbe_platform.api_check_support("tik.vnchwconv", "float32"):
+            re_shape[-1] *= 2
+            re_dtype = "float16"
+            re_size_splits = list(map(lambda x:x*2, re_size_splits))
+        return re_shape, re_dtype, re_size_splits
 
     def run(self):
         """run function
