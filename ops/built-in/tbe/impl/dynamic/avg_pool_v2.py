@@ -247,7 +247,7 @@ def calculate_pads_expr(in_shape_nc1hwc0, ksize, strides, padding, cor_pads, cei
             pad_right = (output_w - 1)*stride_w + k_w - input_w - pad_left
             pad_bottom = tvm.max(pad_bottom, 0)
             pad_right = tvm.max(pad_right, 0)
-        else: # VALID
+        else:  # VALID
             pad_top, pad_bottom, pad_left, pad_right = cor_pads
             if ceil_mode:
                 output_h = (input_h - k_h + stride_h - 1)//stride_h + 1
@@ -289,11 +289,11 @@ def check_hw_is_dynamic(input_shape):
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
 @register_operator("AvgPoolV2")
-@para_check.check_input_type(dict, (dict, Constant.NONETYPE), dict, (list, tuple), (list, tuple),
-                             str, (list, tuple), str, bool, bool, bool, str)
-def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+@para_check.check_input_type(dict, (dict, Constant.NONETYPE), dict, dict, (list, tuple), (list, tuple),
+                             str, (list, tuple), str, bool, bool, bool, int, str)
+def avg_pool_v2(x, weight, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                 data_format="NCHW", global_pooling=False, ceil_mode=False,
-                exclusive=True, kernel_name="avg_pool_v2"):
+                exclusive=True, offset_x=0, kernel_name="avg_pool_v2"):
     """
     Parameters
     ----------
@@ -427,7 +427,7 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
                 mean_matrix_avgv2 = tvm.compute(mean_matrix_shape, lambda m, c0:
                                                 tvm.max(
                                                     (tvm.min((m // out_w)*stride_h-pad_t+k_h, input_h) -
-                                                     tvm.max((m // out_w)*stride_h-pad_t, 0)) * \
+                                                     tvm.max((m // out_w)*stride_h-pad_t, 0)) *
                                                     (tvm.min((m % out_w)*stride_w-pad_l+k_w, input_w) -
                                                      tvm.max((m % out_w)*stride_w-pad_l, 0)), 1),
                                                 name="mean_matrix_avgv2")
@@ -449,9 +449,9 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
                                            tag="elewise_binary_mul")
                 else:
                     c_ub_avg = tvm.compute(res_shape, lambda n, c1, m, c0:
-                                            tvm.div(conv_res(n, c1, m, c0), mean_matrix_fp16(m, c0)),
-                                            name="c_ub_avg",
-                                            tag="elewise_binary_div")
+                                           tvm.div(conv_res(n, c1, m, c0), mean_matrix_fp16(m, c0)),
+                                           name="c_ub_avg",
+                                           tag="elewise_binary_div")
                 ConvParam.tensor_map["mean_matrix_avgv2"] = mean_matrix_avgv2
 
         with tvm.target.cce():

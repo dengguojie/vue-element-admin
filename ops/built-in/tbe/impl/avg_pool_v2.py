@@ -35,9 +35,9 @@ class Constant:
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,no-else-raise,unnecessary-lambda
-def check_supported(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+def check_supported(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                     data_format="NCHW", global_pooling=False, ceil_mode=False,
-                    exclusive=True, kernel_name="avg_pool_v2",
+                    exclusive=True, offset_x=0, kernel_name="avg_pool_v2",
                     impl_mode="high_performance"):
     """
     Parameters
@@ -246,8 +246,8 @@ def _avg_pool_v2_check_rule(input_shape, input_dtype, output_dtype, input_format
     """
     # check input and output
     para_check.check_shape(input_shape)
-    para_check.check_dtype(input_dtype, ["float16"])
-    para_check.check_dtype(output_dtype, ["float16"])
+    para_check.check_dtype(input_dtype, ["float16", "int8"])
+    para_check.check_dtype(output_dtype, ["float16", "int32"])
 
     _check_window_rule(ksize, strides, pads, data_format)
 
@@ -299,9 +299,9 @@ def _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksiz
 # 'pylint: disable=unnecessary-lambda,redefined-builtin,too-many-locals
 # 'pylint: disable=unnecessary-lambda,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("avg_pool_v2")
-def avg_pool_v2_compute(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+def avg_pool_v2_compute(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                         data_format="NCHW", global_pooling=False, ceil_mode=False,
-                        exclusive=True, kernel_name="avg_pool_v2",
+                        exclusive=True, offset_x=0, kernel_name="avg_pool_v2",
                         impl_mode="high_performance"):
     """
     algorithm: avg_pool_V2
@@ -362,8 +362,8 @@ def avg_pool_v2_compute(x, filter, y, ksize, strides, padding="CALCULATED", pads
         pad = _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksize_w,
                               dilations, pads, ceil_mode)
         _check_pads(pad, ksize_h, ksize_w)
-        res = conv2d_compute(x, filter, None, None, y, strides, pad, dilations, groups=inputc,
-                             data_format=data_format, offset_x=0, kernel_name=kernel_name)
+        res = conv2d_compute(x, filter, bias, None, y, strides, pad, dilations, groups=inputc,
+                             data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
     else:
         res = avg_pool_v2_compute1(x, y, ksize, strides, padding, data_format, False, kernel_name, impl_mode)
 
@@ -448,14 +448,15 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
     return res
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def avg_pool_v2(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                 data_format="NCHW", global_pooling=False, ceil_mode=False,
-                exclusive=True, kernel_name="avg_pool_v2",
+                exclusive=True, offset_x=0, kernel_name="avg_pool_v2",
                 impl_mode="high_performance"):
     """
     Parameters
@@ -494,6 +495,21 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
     None
     """
     # get shape&dtype
+    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
+    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
+    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
+    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
+    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
+    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
+    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
     input_shape = x.get("shape")
     input_ori_shape = x.get("ori_shape")
     input_dtype = x.get("dtype")
@@ -557,8 +573,8 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
 
         _check_pads(pad, ksize_h, ksize_w)
         filter_n = inputc
-        conv2d(x, filter, None, None, y, strides, pad, dilations,
-               groups=filter_n, data_format=data_format, offset_x=0,
+        conv2d(x, filter, bias, None, y, strides, pad, dilations,
+               groups=filter_n, data_format=data_format, offset_x=offset_x,
                kernel_name=kernel_name)
     else:
         tensor_in = tvm.placeholder(input_shape, name="tensor_in", dtype=input_dtype, attrs=attr)

@@ -2252,7 +2252,12 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   output_shape.SetDim(position_h, output_h);
   output_shape.SetDim(position_w, output_w);
   output_desc->SetShape(output_shape);
-  output_desc->SetDataType(input_dtype);
+  if (input_dtype == ge::DT_INT8) {
+    output_desc->SetDataType(ge::DT_INT32);
+  } else {
+    output_desc->SetDataType(input_dtype);
+  }
+  
 
   bool isDynamic = (input_n == -1) || (input_c == -1) || (input_h == -1) || (input_w == -1);
   if (isDynamic) {

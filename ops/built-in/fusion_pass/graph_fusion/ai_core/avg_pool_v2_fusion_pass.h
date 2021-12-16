@@ -35,6 +35,13 @@ class AvgPoolV2FusionPass : public PatternFusionBasePass {
   ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode, ge::Format& inputOriginFormat);
   Status GenCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride, vector<int64_t> pad,
                       const int64_t dimH, const int64_t dimW, uint16_t& output1);
+  Status Calc4DWeightAvgPool(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
+                             const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp);
+  Status DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::NodePtr poolingNode, vector<ge::NodePtr>& fusionNodes,
+		                           int64_t& ksizeH, int64_t& ksizeW, int64_t& inputC);
+  Status GetWeightOfConvAvgpool(const std::string& opName, const int8_t* filterInt8Data,
+                                const std::vector<int64_t>& filterDims, std::unique_ptr<int32_t[]>& weightInt8OutParam);
+  Status UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePtr& const_node, float& area_factor);
   const string FUSED_OP_TYPE = "AvgPoolV2";
 };
 }  // namespace fe
