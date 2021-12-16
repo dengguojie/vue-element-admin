@@ -53,6 +53,14 @@ std::string to_string(const ge::Format& format) {
   return ge::TypeUtils::FormatToSerialString(format);
 }
 
+int64_t GetTensorNum(const GeShape& shape) {
+  int64_t shapeNum = 1;
+  if (!shape.IsScalar()) {
+    shapeNum = shape.GetShapeSize();
+  }
+  return shapeNum;
+}
+
 int64_t GetByteLenByString(const std::string& op_type) {
   auto find_it = STR_TO_DATATYPE.find(op_type);
   if (find_it != STR_TO_DATATYPE.end()) {
