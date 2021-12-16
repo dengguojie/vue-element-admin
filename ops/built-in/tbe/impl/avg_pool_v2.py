@@ -495,21 +495,6 @@ def avg_pool_v2(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(
     None
     """
     # get shape&dtype
-    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
-    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
-    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
-    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
-    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func+++++++++++++++++++")
-    print("++++++++++++++++enter check_supported func+++++++++++++++++++")
-    print("++++++++++++++++enter avg_pool_v2 func: filter not None+++++++++++++++++++")
     input_shape = x.get("shape")
     input_ori_shape = x.get("ori_shape")
     input_dtype = x.get("dtype")
