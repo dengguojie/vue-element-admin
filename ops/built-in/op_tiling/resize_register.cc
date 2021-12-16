@@ -121,6 +121,8 @@ static bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& o
     get_tiling_result = GetResizeNearestNeighborV2Tiling(compile_params, tiling_params);
   } else if (op_type == "ResizeBilinearV2") {
     get_tiling_result = GetResizeBilinearV2Tiling(compile_params, tiling_params);
+  } else if (op_type == "SyncResizeBilinearV2") {
+    get_tiling_result = GetResizeBilinearV2Tiling(compile_params, tiling_params);
   } else {
     get_tiling_result = GetResizeNearestNeighborV2GradTiling(compile_params, tiling_params);
   }
