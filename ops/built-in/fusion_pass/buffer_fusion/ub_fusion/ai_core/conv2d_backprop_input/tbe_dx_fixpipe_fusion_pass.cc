@@ -117,9 +117,9 @@ bool TbeDxFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, c
 }
 
 void TbeDxFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr> &cube_nodes,
-                                                            const vector<ge::NodePtr> &transdata1_nodes,
-                                                            const vector<ge::NodePtr> &transdata2_nodes,
-                                                            vector<ge::NodePtr> &fusion_nodes) {
+                                                        const vector<ge::NodePtr> &transdata1_nodes,
+                                                        const vector<ge::NodePtr> &transdata2_nodes,
+                                                        vector<ge::NodePtr> &fusion_nodes) {
   if (cube_nodes.empty()) {
     return;
   }
@@ -161,7 +161,7 @@ void TbeDxFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr
  * @return bool: fusion status ok or not.
  */
 Status TbeDxFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                  vector<ge::NodePtr> &fusion_nodes) {
+                                              vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeDxFixpipeFusionPass.");
   PlatformInfo platformInfo;
   OptionalInfo optionalInfo;

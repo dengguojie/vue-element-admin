@@ -58,8 +58,8 @@ namespace {
 }
 
 bool IsVectorImpl(const vector<int64_t> &fmap_shape,
-  const vector<int64_t> &ksize,
-  const vector<int64_t> &pads)
+                  const vector<int64_t> &ksize,
+                  const vector<int64_t> &pads)
 {
   int64_t fd = fmap_shape[1];
   int64_t fh = fmap_shape[2];
@@ -109,7 +109,7 @@ void GenFilter(int64_t filter_size, float val, uint16_t *data)
   for (uint64_t i = 0, idx = 0; i < block_num; ++i) {
     for (uint64_t j = 0; j < kC0; ++j) {
       for (uint64_t k = 0; k < kC0 && idx < (static_cast<uint64_t>(filter_size)); ++k) {
-        float tmp = j == k ? val: 0;
+        float tmp = j == k ? val : 0;
         tmp_val = tmp;
         data[idx++] = tmp_val.val;
       }
@@ -190,7 +190,7 @@ GeTensorPtr CreateFilterNode(const vector<int64_t> &filter_ori_shape_vec, float 
   }
   GeTensorPtr filter_ptr{nullptr};
   shared_ptr<uint16_t> filter_mem(new (nothrow) uint16_t[filter_size],
-                                    default_delete<uint16_t[]>());
+                                  default_delete<uint16_t[]>());
   FUSION_PASS_CHECK(filter_mem.get() == nullptr,
                     CUBE_INNER_ERR_REPORT(kOpType.c_str(), "Filter is NULL."),
                     return nullptr);
@@ -288,7 +288,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   TransformFormat(strides, format_str, strides_formated, kStridesFormat);
 
   GeTensorDesc grads_tensor_desc = op_desc->GetInputDesc("grads");
-  string grads_ori_format_str = grads_tensor_desc.GetOriginFormat() == FORMAT_NCDHW? "NCDHW": "NDHWC";
+  string grads_ori_format_str = grads_tensor_desc.GetOriginFormat() == FORMAT_NCDHW ? "NCDHW" : "NDHWC";
   vector<int64_t> grads_ori_shape_vec = grads_tensor_desc.GetShape().GetDims();
   vector<int64_t> grads_ori_shape_vec_formated(kOriShapeDim);
   if (!is_dynamic && (HasVal(grads_ori_shape_vec, -1) || HasVal(grads_ori_shape_vec, -2))) {
@@ -355,7 +355,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     }
     GeTensorPtr multiplier_ptr;
     shared_ptr<uint16_t> multiplies_mem(new (nothrow) uint16_t[grads_size],
-                                      default_delete<uint16_t[]>());
+                                        default_delete<uint16_t[]>());
     FUSION_PASS_CHECK(multiplies_mem.get() == nullptr,
                       CUBE_INNER_ERR_REPORT(kOpType.c_str(), "multiplies is NULL."),
                       return PARAM_INVALID);

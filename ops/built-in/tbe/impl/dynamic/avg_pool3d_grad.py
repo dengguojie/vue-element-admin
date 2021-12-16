@@ -339,7 +339,6 @@ def _trans_range_to_6d(fmap_range, fmap_ori_format):
 
     return [fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0]
 
-#pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator("AvgPool3DGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

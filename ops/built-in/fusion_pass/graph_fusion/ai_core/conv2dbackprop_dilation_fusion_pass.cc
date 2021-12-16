@@ -53,7 +53,7 @@ static const string kAttrOrgFmt = "origin_format";
 
 #define CHECK_POSITION(position)                                                                        \
   {                                                                                                     \
-    if (position == std::string::npos) {                                                                \
+    if ((position) == std::string::npos) {                                                                \
         OP_LOGI(PATTERN_CONV2DBACKPROPINPUT.c_str(), "get position failed:%s:%d", #position, position); \
         return FAILED;                                                                                  \
     }                                                                                                   \
@@ -375,7 +375,7 @@ Status Conv2DbpInputDilationFusionPass::Relink(
       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
         "fail to remove edge between conv2dbp_input_node and y_node"),
       return FAILED);
-    if (pad_node != nullptr) { 
+    if (pad_node != nullptr) {
         FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(pad_node->GetOutDataAnchor(0),
           y_node->GetInDataAnchor(i)) != SUCCESS,
@@ -390,7 +390,7 @@ Status Conv2DbpInputDilationFusionPass::Relink(
         return FAILED);
     }
    }
-   if(pad_node != nullptr) {
+   if (pad_node != nullptr) {
          FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(dilation_node->GetOutDataAnchor(0),
                                 pad_node->GetInDataAnchor(0)) != SUCCESS,
                                 ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
@@ -401,11 +401,11 @@ Status Conv2DbpInputDilationFusionPass::Relink(
                                 ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
                                 "fail to add edge between conv2dbp_input_node  and dilation_node"),
                                 return FAILED);
- 
+
    } else {
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(conv2dbp_input_node->GetOutDataAnchor(sub_anchor),
                                 dilation_node->GetInDataAnchor(0)) != SUCCESS,
-                                ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), 
+                                ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
                                 "fail to add edge between conv2dbp_input_node and dilation_node"),
                                 return FAILED);
    }
@@ -505,7 +505,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
       return FAILED);
   for (auto in_data_anchor : outdata_anchor->GetPeerInDataAnchors()) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "all idx is:");
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "idx = %d",in_data_anchor->GetIdx());
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "idx = %d", in_data_anchor->GetIdx());
         y_idxs.push_back(in_data_anchor->GetIdx());
   }
   auto y_anchor_ptr = GetPeerInAnchorByOutDataAnchor(outdata_anchor, 0);
@@ -601,7 +601,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
     return NOT_CHANGED;
   }
 
-  dilation_hw = post_get_hw_not_pad(out_backprop_ori_shape,strides, pos_backprop_out_h, pos_backprop_out_w);
+  dilation_hw = post_get_hw_not_pad(out_backprop_ori_shape, strides, pos_backprop_out_h, pos_backprop_out_w);
   if (pre_dilation) {
     pad_hw = pre_get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w,
                                filter_ori_shape, pos_filter_h, pos_filter_w, pads);
@@ -634,7 +634,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
     ge::GeTensorDesc dilation_y_desc = *(y_desc_ptr.get());
     if (pad_hw[0] != 0 || pad_hw[1] != 0) {
         FUSION_PASS_CHECK(generate_pad_node(&graph, &dilation_y_desc,
-        &y_desc, &pad_node, pad_hw, basename) != SUCCESS, 
+        &y_desc, &pad_node, pad_hw, basename) != SUCCESS,
         ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
         "fail to generate pad node"),
         return FAILED);

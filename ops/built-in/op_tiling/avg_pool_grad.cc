@@ -70,7 +70,7 @@ void merge_compile_info(const nlohmann::json& compile_info, nlohmann::json &opIn
  * @return bool: success or not
  */
 bool AvgPoolGradTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
-                         utils::OpRunInfo& runInfo) {
+                       utils::OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;

@@ -32,7 +32,7 @@ class TbeConv3dElemwisePass : public BufferFusionPassBase {
   TbeConv3dElemwisePass() {
   }
 
-  ~TbeConv3dElemwisePass() {
+  ~TbeConv3dElemwisePass() override {
   }
 
  protected:

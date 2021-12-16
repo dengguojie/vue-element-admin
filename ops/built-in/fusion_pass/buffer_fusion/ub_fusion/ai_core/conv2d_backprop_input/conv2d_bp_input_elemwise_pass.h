@@ -33,7 +33,7 @@ class TbeDxElemwisePass : public BufferFusionPassBase {
   TbeDxElemwisePass() {
   }
 
-  ~TbeDxElemwisePass() {
+  ~TbeDxElemwisePass() override {
   }
 
  protected:

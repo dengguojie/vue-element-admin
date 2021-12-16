@@ -206,7 +206,7 @@ def get_op_support_info(grads,
     else:
         l1_fusion_tag = _L1FUSION_INPUT_CTR
         min_tbe_l1_space = _cal_min_l1space()
-        
+
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
                                                               axis_reduce_info,
                                                               l1_fusion_tag,
@@ -260,7 +260,6 @@ def _check_ksize_stride_val(ksize, strides):
         error_manager_cube.raise_err_specific('avg_pool3d_grad_d',
                                               "strides's N dim and C dim only support val equal 1.")
 
-#pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _avg_pool3d_grad_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
     para_check.check_shape(input_shape)
     para_check.check_dtype(input_dtype, ("float16", ))
@@ -282,7 +281,6 @@ def _correct_pads(input_shape, fmap_shape, ksize, strides, pads):
     return [pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right]
 
 
-#pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT,

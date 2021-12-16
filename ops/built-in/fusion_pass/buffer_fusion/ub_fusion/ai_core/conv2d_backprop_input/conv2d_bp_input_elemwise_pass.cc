@@ -104,7 +104,7 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     inpre += 1;
     vector<int64_t> cout_dim = {1};
     vector<int64_t> split_flag = {-1};
-    for(auto &split_map : split_maps) {
+    for (auto &split_map : split_maps) {
       auto output_split_infos = split_map.GetOutputSplitInfoVec();
       auto input_split_infos = split_map.GetInputSplitInfoVec();
       if (output_split_infos.empty() || input_split_infos.empty() || output_split_infos[0].GetAxis().empty()) {

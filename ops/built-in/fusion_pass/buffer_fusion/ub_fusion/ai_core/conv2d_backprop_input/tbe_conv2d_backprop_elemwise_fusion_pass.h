@@ -25,7 +25,7 @@ class Conv2DBackpropElemwiseFusionPass : public BufferFusionPassBase {
  public:
   explicit Conv2DBackpropElemwiseFusionPass() {}
 
-  ~Conv2DBackpropElemwiseFusionPass() {}
+  ~Conv2DBackpropElemwiseFusionPass() override {}
 
  protected:
   /*

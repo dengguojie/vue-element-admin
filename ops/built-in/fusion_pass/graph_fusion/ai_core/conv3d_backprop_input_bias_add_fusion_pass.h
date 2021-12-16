@@ -32,10 +32,10 @@ protected:
 private:
   Status ConvertDxToTranspose(ge::ComputeGraph &graph, Mapping &mapping,
                               vector<ge::NodePtr> &fusion_nodes);
-  Status ConnectEdges(ge::NodePtr &conv_node, ge::NodePtr &bias_node,
-                      ge::NodePtr &bias_const_node, ge::NodePtr &conv3d_transpose_d);
-  void SetOpAttr(ge::OpDescPtr &conv_op, ge::OpDescPtr &bias_const_op,
-                 ge::OpDescPtr &conv3d_transpose_d_op);
+  Status ConnectEdges(const ge::NodePtr &conv_node, const ge::NodePtr &bias_node,
+                      const ge::NodePtr &bias_const_node, const ge::NodePtr &conv3d_transpose_d) const;
+  void SetOpAttr(const ge::OpDescPtr &conv_op, const ge::OpDescPtr &bias_const_op,
+                 ge::OpDescPtr &conv3d_transpose_d_op) const;
   const string FUSED_OP_TYPE = "Conv3DBackpropInputD";
 };
 }  // namespace fe

@@ -26,7 +26,7 @@ class TbeConv2DBackpropDequantQuantFusionPass : public BufferFusionPassBase {
  public:
   explicit TbeConv2DBackpropDequantQuantFusionPass() {}
 
-  ~TbeConv2DBackpropDequantQuantFusionPass() {}
+  ~TbeConv2DBackpropDequantQuantFusionPass() override {}
 
  protected:
   /*

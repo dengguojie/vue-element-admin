@@ -97,8 +97,8 @@ bool TbeDwFixpipeFusionPass::IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr>
   return true;
 }
 
-bool TbeDwFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input) {
-  if(is_input) {
+bool TbeDwFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input) const {
+  if (is_input) {
     return node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC &&
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NC1HWC0;
   } else {
@@ -106,8 +106,8 @@ bool TbeDwFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, co
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NHWC;
   }
 }
-bool TbeDwFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input) {
-  if(is_input) {
+bool TbeDwFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input) const {
+  if (is_input) {
     return node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC &&
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_FRACTAL_Z;
   } else {
@@ -117,9 +117,9 @@ bool TbeDwFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, c
 }
 
 void TbeDwFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr> &cube_nodes,
-                                                            const vector<ge::NodePtr> &transdata1_nodes,
-                                                            const vector<ge::NodePtr> &transdata2_nodes,
-                                                            vector<ge::NodePtr> &fusion_nodes) {
+                                                        const vector<ge::NodePtr> &transdata1_nodes,
+                                                        const vector<ge::NodePtr> &transdata2_nodes,
+                                                        vector<ge::NodePtr> &fusion_nodes) {
   if (cube_nodes.empty()) {
     return;
   }
@@ -161,7 +161,7 @@ void TbeDwFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr
  * @return bool: fusion status ok or not.
  */
 Status TbeDwFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                  vector<ge::NodePtr> &fusion_nodes) {
+                                              vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeDwFixpipeFusionPass.");
   PlatformInfo platformInfo;
   OptionalInfo optionalInfo;

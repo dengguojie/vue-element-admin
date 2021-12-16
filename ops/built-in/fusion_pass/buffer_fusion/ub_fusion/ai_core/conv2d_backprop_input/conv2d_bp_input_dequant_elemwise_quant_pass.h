@@ -34,7 +34,7 @@ class TbeDxDeqElemQuantPass : public BufferFusionPassBase {
   TbeDxDeqElemQuantPass() {
   }
 
-  ~TbeDxDeqElemQuantPass() {
+  ~TbeDxDeqElemQuantPass() override {
   }
 
  protected:

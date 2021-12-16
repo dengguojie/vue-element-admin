@@ -18,10 +18,11 @@
  * \file cube_tiling.cpp
  * \brief
  */
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
-#include "cube_tiling_new.h"
+
 #include "../op_proto/util/error_util.h"
+#include "cube_tiling_new.h"
 
 namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;

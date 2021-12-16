@@ -537,11 +537,11 @@ def general_schedule(
                 # -----------------------------------------------------------------
                 #   "dy_l1"       |   >1   | >=0 |    false    | a_ddr->a_ub->a_filling->a_l1->load3d
                 # "dy_l1_cut"     |   >1   |  <0 |    false    | a_ddr->a_ub->a_filling->a_filling_cut->load3d
-                # "dy_l1_modify"  |   =1   |  <0 |    false    | a_ddr->a_l1_cut->l0ad3d
-                #     ""          |   =1   | >=0 |    false    | a_ddr->(cache_read al1)->load3d
-                #     ""          |   =1   |  =0 |    true     | a_ddr->a_col_before_a_col(dma_copy)
+                # "dy_l1_modify"  |   1    |  <0 |    false    | a_ddr->a_l1_cut->l0ad3d
+                #     ""          |   1    | >=0 |    false    | a_ddr->(cache_read al1)->load3d
+                #     ""          |   1    |  0  |    true     | a_ddr->a_col_before_a_col(dma_copy)
                 # "dy_filling_dma"|   >1   | all |    true     | a_ddr->a_ub->a_filling->a_col_before_a_col(dma_copy)
-                #  "dy_pad_dma"   |   =1   | !=0 |    true     | a_ddr->a_ub->a_filling->a_col_before_a_col(dma_copy)
+                #  "dy_pad_dma"   |   1    | !=0 |    true     | a_ddr->a_ub->a_filling->a_col_before_a_col(dma_copy)
                 ub_tensor_tag = ["dy_l1", "dy_l1_cut", "ub_filling_dma", "ub_pad_dma"]
                 a_filling_in_ub_flag = al1_tag in ub_tensor_tag
                 tensor_attr["a_filling_in_ub_flag"] = a_filling_in_ub_flag
@@ -555,7 +555,7 @@ def general_schedule(
                 _fill_a_tensormap_dynamic()
             else:
                 _fill_a_tensormap()
-            
+
             if not tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
                 b_l1 = sch.cache_read(b_ddr, tbe_platform_info.scope_cbuf, [b_col])
             tensor_map["b_l1"] = b_l1
@@ -1926,7 +1926,7 @@ def general_schedule(
             else:
                 sch_agent.same_attach(a_ub, a_filling)
             if "a_zero" in tensor_map:
-                # l0a_dma_scenes if pad!=0 and stride=1, there is no a_zero
+                # l0a_dma_scenes if pad!=0 and stride is 1, there is no a_zero
                 sch_agent.same_attach(a_zero, a_filling)
         else:
             filling_w = cube_util.shape_to_list(a_avg.shape)[3]
@@ -2174,7 +2174,7 @@ def general_schedule(
             if l1_fusion_type != -1 and input_mem[0] == 1:
                 sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
-                if tensor_attr.get("FM_NHWC_TRANS_5HD"): 
+                if tensor_attr.get("FM_NHWC_TRANS_5HD"):
                     #nd2nz emit insn should be under the batch axis
                     sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[1], "dma_copy", {"layout_transform": "nd2nz"})
                 else:
@@ -2196,7 +2196,7 @@ def general_schedule(
             )
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
-            
+
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
 
             if not support_ub_to_l1 and (stride_h > 1 or stride_w > 1):
@@ -2383,7 +2383,7 @@ def general_schedule(
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
-        if (cube_vector_split and "impl_mode" in c_col.op.attrs and 
+        if (cube_vector_split and "impl_mode" in c_col.op.attrs and
             c_col.op.attrs["impl_mode"] == "high_performance"):
             mad_dict["hf32"] = 1
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)

@@ -76,7 +76,7 @@ Status Conv3DbpInputBiasAddFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &
 }
 
 Status Conv3DbpInputBiasAddFusionPass::ConvertDxToTranspose(ge::ComputeGraph &graph, Mapping &mapping,
-                                                               vector<ge::NodePtr> &fusion_nodes) {
+                                                            vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD("Start to convert Conv3DBackpropInputD to Conv3DTransposeD.");
   ge::NodePtr conv_node = GetNodeFromMapping(PATTERN_CUBENODE, mapping);
   FUSION_PASS_CHECK(conv_node == nullptr,
@@ -135,9 +135,9 @@ Status Conv3DbpInputBiasAddFusionPass::ConvertDxToTranspose(ge::ComputeGraph &gr
   return SUCCESS;
 }
 
-void Conv3DbpInputBiasAddFusionPass::SetOpAttr(ge::OpDescPtr &conv_op,
-                                               ge::OpDescPtr &bias_const_op,
-                                               ge::OpDescPtr &conv3d_transpose_d_op) {
+void Conv3DbpInputBiasAddFusionPass::SetOpAttr(const ge::OpDescPtr &conv_op,
+                                               const ge::OpDescPtr &bias_const_op,
+                                               ge::OpDescPtr &conv3d_transpose_d_op) const {
   /*
   * Conv3DBackpropInputD: input0 (filter), input1 (out_backprop)
   *   attr_list: input_size, strides, pads, dilations, groups, data_format
@@ -211,10 +211,10 @@ void Conv3DbpInputBiasAddFusionPass::SetOpAttr(ge::OpDescPtr &conv_op,
   ge::AttrUtils::SetInt(conv3d_transpose_d_op, "offset_x", 0);
 }
 
-Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(ge::NodePtr &conv_node,
-                                                    ge::NodePtr &bias_node,
-                                                    ge::NodePtr &bias_const_node,
-                                                    ge::NodePtr &conv3d_transpose_d) {
+Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(const ge::NodePtr &conv_node,
+                                                    const ge::NodePtr &bias_node,
+                                                    const ge::NodePtr &bias_const_node,
+                                                    const ge::NodePtr &conv3d_transpose_d) const {
   /*
   * ============= src edges ================
   *

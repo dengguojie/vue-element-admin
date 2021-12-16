@@ -129,7 +129,7 @@ def _check_inputs(fmap, filter, ksize, strides, pads, ceil_mode, data_format):
     if ceil_mode:
         error_manager_cube.raise_err_specific(_OP_NAME,
                                               "ceil_mode only support false.")
-    # not support -2 and fmap_c = -1
+    # not support -2 and fmap_c is -1
     if len(fmap_shape) == 1 and fmap_shape[0] == -2:
         error_manager_cube.raise_err_specific(_OP_NAME,
                                               "input:x not support -2 current.")

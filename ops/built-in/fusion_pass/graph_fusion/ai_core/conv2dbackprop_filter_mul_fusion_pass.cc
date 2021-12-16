@@ -140,7 +140,7 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
  * @return success for add a const node to mul node
  */
 Status Conv2DbpFilterMulFusionPass::AddAssit(ge::NodePtr& mulNode,
-                                             const int64_t matrixSize) {
+                                             const int64_t matrixSize) const {
   // get OriginDesc info
   ge::ConstGeTensorDescPtr inputDesc0 = GetCurrNodeInputDesc(mulNode, 0);
   FUSION_PASS_CHECK(inputDesc0 == nullptr,

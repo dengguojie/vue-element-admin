@@ -47,7 +47,7 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
       }
     } else if (pSize != 0) {
       ge::OpsConvAttrValueErrReport(op_name.GetString(), "pad_size", "[0,1," + to_string(MAX_PAD_SIZE) + "]",
-                                   to_string(pSize));
+                                    to_string(pSize));
       OP_LOGE(op_name.GetString(), "pad size is invalid, actual is: %d.", pSize);
       return false;
     }
@@ -82,7 +82,7 @@ static bool SetStrides(const caffe::ConvolutionParameter& convParam, const ge::A
       }
     } else if (sSize != 0) {
       ge::OpsConvAttrValueErrReport(op_name.GetString(), "stride_size", "[0,1," + to_string(MAX_STRIDE_SIZE) + "]",
-                                   to_string(sSize));
+                                    to_string(sSize));
       OP_LOGE(op_name.GetString(), "stride size is invalid, actual is: %d.", sSize);
       return false;
     }
@@ -106,7 +106,7 @@ static bool SetDilations(const caffe::ConvolutionParameter& convParam, const ge:
     }
   } else if (dSize != 0) {
     ge::OpsConvAttrValueErrReport(op_name.GetString(), "dilation_size", "[0,1," + to_string(MAX_DILATION_SIZE) + "]",
-                                   to_string(dSize));
+                                  to_string(dSize));
     OP_LOGE(op_name.GetString(), "dilation size is invalid, actual is: %d.", dSize);
     return false;
   }
@@ -131,14 +131,14 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
 
   if (layer->bottom_size() != 1) {
     ge::OpsConvAttrValueErrReport(op_name.GetString(), "Deconvolution layer bottom num", "1",
-                                   to_string(layer->bottom_size()));
+                                  to_string(layer->bottom_size()));
     OP_LOGE(op_name.GetString(), "Deconvolution layer bottom num(%d) must be 1", layer->bottom_size());
     return FAILED;
   }
 
   if (layer->top_size() != 1) {
     ge::OpsConvAttrValueErrReport(op_name.GetString(), "Deconvolution layer top num", "1",
-                                   to_string(layer->top_size()));
+                                  to_string(layer->top_size()));
     OP_LOGE(op_name.GetString(), "Deconvolution layer top num(%d) must be 1", layer->top_size());
     return FAILED;
   }

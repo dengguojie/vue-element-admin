@@ -427,7 +427,7 @@ ut_case.add_case(["Ascend910A"], dx_h_range_lower_bound_less_than_1)
 ut_case.add_case(["Ascend910A"], dx_h_range_lower_bound_grest_than_upper_bound)
 ut_case.add_case(["Ascend910A"], data_format_ND)
 ut_case.add_case(["Ascend910A"], filter_ori_format_ND)
-ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
+# ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_dedy_w_too_large)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_strideHW_1_dedy_w_too_large)
 

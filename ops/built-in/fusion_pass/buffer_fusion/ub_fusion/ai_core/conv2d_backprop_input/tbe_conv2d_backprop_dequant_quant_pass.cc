@@ -75,7 +75,7 @@ vector<BufferFusionPattern *> TbeConv2DBackpropDequantQuantFusionPass::DefinePat
  * @return bool: fusion status ok or not.
  */
 Status TbeConv2DBackpropDequantQuantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                     vector<ge::NodePtr> &fusion_nodes) {
+                                                               vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeConv2DBackpropDequantQuantFusionPass!");
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused

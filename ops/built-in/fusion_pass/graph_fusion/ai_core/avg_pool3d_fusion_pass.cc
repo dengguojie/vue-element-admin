@@ -273,7 +273,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   }
   bool is_dynamic = false;
   // when static op or dynamic op phase_running, is_dynamic = false
-  if(std::find(dims_in.begin(), dims_in.end(), -1) != dims_in.end()) {
+  if (std::find(dims_in.begin(), dims_in.end(), -1) != dims_in.end()) {
     is_dynamic = true;
     OP_LOGD(kFusedOpType.c_str(), "avg_pool3d fusion pass in dynamic mode.");
   }

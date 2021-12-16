@@ -118,7 +118,7 @@ Status Conv2DbpInputBiasAddFusionPass::convert_dx_to_transpose(ge::ComputeGraph 
   FUSION_PASS_CHECK(conv2d_transpose_d == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new Conv2DTransposeD not success."),
                     return PARAM_INVALID);
-    
+
   fusion_nodes.push_back(conv2d_transpose_d);
 
   if (connect_edges(conv_node, bias_node, bias_const_node, conv2d_transpose_d) != SUCCESS) {

@@ -96,7 +96,7 @@ vector<BufferFusionPattern *> Conv2DBackpropElemwiseFusionPass::DefinePatterns()
  * @return bool: fusion status ok or not.
  */
 Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                           vector<ge::NodePtr> &fusion_nodes) {
+                                                        vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do Conv2dBackpropInputElemwiseFusion!");
   vector<ge::NodePtr> elem1_node = GetMatchedNodesByDescName(kPatternEltwise1, mapping);
   vector<ge::NodePtr> elem_node = GetMatchedNodesByDescName(kPatternEltwise, mapping);

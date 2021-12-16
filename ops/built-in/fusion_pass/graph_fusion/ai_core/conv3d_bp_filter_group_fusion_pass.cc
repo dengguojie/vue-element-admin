@@ -66,7 +66,7 @@ vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
 }
 
 Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_desc,
-                                                      const std::string& name, int64_t& channel) {
+                                                      const std::string& name, int64_t& channel) const {
   FUSION_PASS_CHECK(dw_desc == nullptr,
                     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw_desc is NULL."),
                     return FAILED);
@@ -85,14 +85,14 @@ Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_de
     channel = dims[1];
   } else {
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-      "original format[%d] of the input is unsupported.", format);
+                          "original format[%d] of the input is unsupported.", format);
     return FAILED;
   }
 
   return SUCCESS;
 }
 
-int64_t Conv3DBpFilterGroupFusionPass::LCM(int64_t numL, int64_t numR) {
+int64_t Conv3DBpFilterGroupFusionPass::LCM(int64_t numL, int64_t numR) const {
   if (numR == 0 || numL == 0) {
     return 1;
   }
@@ -110,9 +110,9 @@ Status Conv3DBpFilterGroupFusionPass::CalculateGroup(int64_t in_channel, int64_t
                                                      std::map<std::string, int64_t>& group_map) {
   if (in_channel % groups != 0 || out_channel % groups != 0) {
     OP_LOGW(FUSED_OP_TYPE.c_str(),
-      "The number of input channel(%lld) or output channel(%lld) of "
-      "the dw node is not divisible by groups(%lld).",
-      in_channel, out_channel, groups);
+            "The number of input channel(%lld) or output channel(%lld) of "
+            "the dw node is not divisible by groups(%lld).",
+            in_channel, out_channel, groups);
     return FAILED;
   }
 
@@ -132,9 +132,9 @@ Status Conv3DBpFilterGroupFusionPass::CalculateGroup(int64_t in_channel, int64_t
   group_map["groups"] = groups;
 
   OP_LOGI(FUSED_OP_TYPE.c_str(),
-    "The group_map value: real_g[%lld], mag_factor[%lld], cin1_g[%lld], "
-    "cout_g[%lld], in_channel[%lld], out_channel[%lld], groups[%lld].",
-    real_g, mag_factor, cin1_g, cout_g, in_channel, out_channel, groups);
+          "The group_map value: real_g[%lld], mag_factor[%lld], cin1_g[%lld], "
+          "cout_g[%lld], in_channel[%lld], out_channel[%lld], groups[%lld].",
+          real_g, mag_factor, cin1_g, cout_g, in_channel, out_channel, groups);
 
   return SUCCESS;
 }
@@ -187,7 +187,7 @@ void Conv3DBpFilterGroupFusionPass::SetMultiplierValue(float* data, const std::v
   int64_t groups = group_map.at("groups");
 
   int64_t cin_group = in_channel / groups;
-  int64_t cout_group = out_channel /groups;
+  int64_t cout_group = out_channel / groups;
   int64_t g_base = kernel_depth * cin1_g * kernel_height * kernel_width * cout_g * CHANNEL_MIN;
   int64_t d_base = cin1_g * kernel_height * kernel_width * cout_g * CHANNEL_MIN;
   int64_t cin_base = kernel_height * kernel_width * cout_g * CHANNEL_MIN;
@@ -275,7 +275,7 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
 
 bool Conv3DBpFilterGroupFusionPass::GenerateMulNode(ge::ComputeGraph& graph,
                                                     const ge::OpDescPtr& conv_desc,
-                                                    ge::NodePtr& mul_node) {
+                                                    ge::NodePtr& mul_node) const {
   OpDescPtr mul_desc;
   string conv_name = conv_desc->GetName();
   GeTensorDesc conv_out_desc = conv_desc->GetOutputDesc(0);
@@ -295,8 +295,9 @@ bool Conv3DBpFilterGroupFusionPass::GenerateMulNode(ge::ComputeGraph& graph,
   return true;
 }
 
-bool Conv3DBpFilterGroupFusionPass::Relink(ge::NodePtr& conv_node,
-  ge::NodePtr& mul_node, ge::NodePtr& const_node) {
+bool Conv3DBpFilterGroupFusionPass::Relink(const ge::NodePtr& conv_node,
+                                           const ge::NodePtr& mul_node,
+                                           const ge::NodePtr& const_node) const {
   Node::Vistor<NodePtr> out_nodes = conv_node->GetOutAllNodes();
   std::vector<int> outAnchorIndexes;
   ge::OutDataAnchorPtr convNodePtr = conv_node->GetOutDataAnchor(0);
@@ -351,13 +352,13 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw_desc is null."),
                     return FAILED);
 
-  int64_t groups =1;
+  int64_t groups = 1;
   bool has_group_flag = ge::AttrUtils::GetInt(dw_desc, "groups", groups);
   if (!has_group_flag || groups <= 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(),
-      "The dw node[name=%s, type=%s] doesn't have the attribute "
-      "groups, or the value is not more than 1.",
-      dw_desc->GetName().c_str(), dw_desc->GetType().c_str());
+            "The dw node[name=%s, type=%s] doesn't have the attribute "
+            "groups, or the value is not more than 1.",
+            dw_desc->GetName().c_str(), dw_desc->GetType().c_str());
     return NOT_CHANGED;
   }
 
@@ -379,7 +380,7 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   if (PatternFusionUtil::IsUnknownShape(dx_channel) ||
       PatternFusionUtil::IsUnknownShape(dy_channel)) {
     OP_LOGW(FUSED_OP_TYPE.c_str(),
-             "Conv3DBpFilterGroupFusionPass cannot be applied for unkonwn shape.");
+            "Conv3DBpFilterGroupFusionPass cannot be applied for unkonwn shape.");
     return NOT_CHANGED;
   }
 

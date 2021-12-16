@@ -34,7 +34,7 @@ protected:
 
 private:
   ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& dwOutNode, ge::Format& inputOriginFormat);
-  Status AddAssit(ge::NodePtr& mulNode, const int64_t matrixSize);
+  Status AddAssit(ge::NodePtr& mulNode, const int64_t matrixSize) const;
   const string FUSED_OP_TYPE = "Conv2DBackpropFilterD";
 };
 } // namespace fe

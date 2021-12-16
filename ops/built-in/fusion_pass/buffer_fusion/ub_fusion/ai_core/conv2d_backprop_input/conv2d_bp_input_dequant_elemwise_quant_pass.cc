@@ -191,7 +191,7 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
   int elem_inpre = inpre + 2;
   vector<int64_t> cout_dim = {c_dim};
   vector<int64_t> split_flag = {-1};
-  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+  for (auto it = split_maps.begin(); it != split_maps.end(); ++it) {
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     auto output_split_infos = (*it).GetOutputSplitInfoVec();
     if (input_split_infos.empty() || output_split_infos.empty()) {

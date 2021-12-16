@@ -23,7 +23,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 
 
-# pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -33,7 +32,6 @@ class Constant:
     BATCH_PER_CORE = 8
 
 
-# pylint: disable=too-many-lines,too-few-public-methods,unused-variable,invalid-name,no-else-raise
 class Dbn2Conv2dBackpropFilter:
     """
     class of fused_dbn2_dw

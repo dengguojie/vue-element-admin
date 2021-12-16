@@ -27,7 +27,7 @@ class TbeDxFixpipeFusionPass : public BufferFusionPassBase {
  public:
   explicit TbeDxFixpipeFusionPass() {}
 
-  ~TbeDxFixpipeFusionPass() {}
+  ~TbeDxFixpipeFusionPass() override {}
 
  protected:
   /*

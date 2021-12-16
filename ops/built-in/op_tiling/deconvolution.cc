@@ -38,7 +38,7 @@ namespace optiling {
  * @return bool: success or not
  */
 bool DeConvlutionTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
-                         utils::OpRunInfo& runInfo) {
+                        utils::OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
@@ -52,7 +52,7 @@ bool DeConvlutionTiling(const std::string& opType, const ge::Operator& opParas, 
   auto output_ori_format = ge::TypeUtils::FormatToSerialString(opParas.GetOutputDesc(0).GetOriginFormat()).c_str();
   GELOGD("Current format is %s, Ori format is %s", output_format, output_ori_format);
 
-  if(opCompileInfo.empty()) {
+  if (opCompileInfo.empty()) {
     GELOGD("op compile info is empty");
     return false;
   }

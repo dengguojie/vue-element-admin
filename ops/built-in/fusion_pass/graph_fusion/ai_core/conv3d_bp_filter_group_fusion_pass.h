@@ -30,10 +30,10 @@ class Conv3DBpFilterGroupFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
 
  private:
-  bool Relink(ge::NodePtr& conv_node, ge::NodePtr& mul_node, ge::NodePtr& const_node);
+  bool Relink(const ge::NodePtr& conv_node, const ge::NodePtr& mul_node, const ge::NodePtr& const_node) const;
   bool GenerateMulNode(ge::ComputeGraph& graph,
                        const ge::OpDescPtr& conv_desc,
-                       ge::NodePtr& mul_node);
+                       ge::NodePtr& mul_node) const;
   bool GenMultiplier(ge::ComputeGraph& graph, const std::vector<int64_t>& dims,
                      const std::map<std::string, int64_t>& group_map,
                      const ge::OpDescPtr& conv_desc,
@@ -43,8 +43,8 @@ class Conv3DBpFilterGroupFusionPass : public PatternFusionBasePass {
   Status TransOutDims2dhwcn(const ge::OpDescPtr& dw_desc, std::vector<int64_t>& dims);
   Status CalculateGroup(int64_t in_channel, int64_t out_channel, int64_t groups,
                         std::map<std::string, int64_t>& group_map);
-  int64_t LCM(int64_t numL, int64_t numR);
-  Status GetChannelValue(const ge::OpDescPtr& dw_desc, const std::string& name, int64_t& channel);
+  int64_t LCM(int64_t numL, int64_t numR) const;
+  Status GetChannelValue(const ge::OpDescPtr& dw_desc, const std::string& name, int64_t& channel) const;
 
   const string FUSED_OP_TYPE = "Conv3d_bp_filter_group";
 };

@@ -26,7 +26,7 @@ class TbeConv2DBackpropRequantFusionPass : public BufferFusionPassBase {
  public:
   explicit TbeConv2DBackpropRequantFusionPass() {}
 
-  ~TbeConv2DBackpropRequantFusionPass() {}
+  ~TbeConv2DBackpropRequantFusionPass() override {}
 
  protected:
   /*
