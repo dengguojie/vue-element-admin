@@ -102,7 +102,7 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "indicesSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(varDataEachBlock == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varDataEachBlock = 0 is not support"), return );
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include "eletwise.h"
+
+#include <iostream>
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "error_log.h"
-#include <iostream>
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
+#include "eletwise.h"
 
 namespace optiling {
 struct SmoothL1LossV2CompileInfo {
@@ -39,7 +40,7 @@ bool SmoothL1LossV2IsInAxis(std::vector<int32_t>& input, int32_t value) {
 }
 
 bool SmoothL1LossV2Tiling(const std::string& op_type, const ge::Operator& op_paras,
-                              const SmoothL1LossV2CompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+                          const SmoothL1LossV2CompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),

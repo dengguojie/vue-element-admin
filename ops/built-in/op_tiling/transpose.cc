@@ -46,8 +46,9 @@ namespace optiling {
 // PTA: protect transpose array
 #define PTA(...) __VA_ARGS__
 #define BUILD_T_ID(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm) \
-  (((int64_t)dup << 56) + ((int64_t)srcAxisNum << 53) + ((int64_t)dstAxisNum << 50) + ((int64_t)srcPerm << 36) + \
-   ((int64_t)dstPerm << 26) + (int64_t)ubPerm)
+  ((static_cast<int64_t>(dup) << 56) + (static_cast<int64_t>(srcAxisNum) << 53) + \
+  (static_cast<int64_t>(dstAxisNum) << 50) + (static_cast<int64_t>(srcPerm) << 36) + \
+   (static_cast<int64_t>(dstPerm) << 26) + static_cast<int64_t>(ubPerm))
 #define ADD_T_ITEM(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm, perms) \
   do { \
       uint64_t id = BUILD_T_ID(dup, srcAxisNum, dstAxisNum, srcPerm, dstPerm, ubPerm); \
@@ -853,7 +854,7 @@ static bool AddShapePerm(const string& opType, const ge::Operator& paras, Compil
       shapeInfo.permSize = 6;
       shapeInfo.origDim = 6;
       shapeInfo.dim = 6;
-      shapeInfo.inShapeSize = 6; 
+      shapeInfo.inShapeSize = 6;
       shapeInfo.outShapeSize = 6;
       return true;
     }
@@ -882,7 +883,7 @@ static bool AddShapePerm(const string& opType, const ge::Operator& paras, Compil
       shapeInfo.permSize = 6;
       shapeInfo.origDim = 6;
       shapeInfo.dim = 6;
-      shapeInfo.inShapeSize = 6; 
+      shapeInfo.inShapeSize = 6;
       shapeInfo.outShapeSize = 6;
       return true;
     }
@@ -911,7 +912,7 @@ static bool AddShapePerm(const string& opType, const ge::Operator& paras, Compil
       shapeInfo.permSize = 6;
       shapeInfo.origDim = 6;
       shapeInfo.dim = 6;
-      shapeInfo.inShapeSize = 6; 
+      shapeInfo.inShapeSize = 6;
       shapeInfo.outShapeSize = 6;
       return true;
     }
@@ -3762,8 +3763,8 @@ static void SetVol(const ShapeInfo& si, RuntimeInfo& ri, int64_t step[UB_REORDER
 #define SET_P4(d0, p0, p1, p2, p3) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2, step[d0][3] = p3
 #define SET_P6(d0, p0, p1, p2, p3, p4, p5) \
   do { \
-      step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2; \
-      step[d0][3] = p3, step[d0][4] = p4, step[d0][5] = p5; \
+      step[d0][0] = (p0), step[d0][1] = (p1), step[d0][2] = (p2); \
+      step[d0][3] = (p3), step[d0][4] = (p4), step[d0][5] = (p5); \
   } while(0)
 
 static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
@@ -5407,7 +5408,7 @@ bool GetCompileParams(const string& opType, const TransposeInputCompile& opCompi
 
 #define ADD_TILING_DATA_TO_RUN_INFO(vec, size) \
   do { \
-      runInfo.AddTilingData((char*)(&vec[0]), size * sizeof(int64_t)); \
+      runInfo.AddTilingData((char*)(&(vec)[0]), (size) * sizeof(int64_t)); \
       runInfo.SetBlockDim(compilerInfo.coreNum); \
       runInfo.AddWorkspace(1024); \
   } while(0)

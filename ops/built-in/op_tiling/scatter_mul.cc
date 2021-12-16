@@ -114,9 +114,9 @@ void CalScatterMulOrDivBranchRunningParams(ScatterMulOrDivTilingParams& runParam
   }
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return );
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varUbSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(indicesUbSize == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesUbSize = 0 is not support"), return );
   OP_TILING_CHECK(varDataEachBlock == 0,

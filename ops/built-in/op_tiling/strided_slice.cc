@@ -132,7 +132,7 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     parameters.tiling_mode = 2;
   }
 
-  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= SHAPE_LEN && 
+  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= SHAPE_LEN &&
       dtype == DT_FLOAT16 && CalShapeMul(parameters.output_shape, 0, shape_len - NUM_THREE) % core_num == 0 &&
       parameters.output_shape[shape_len - 2] >= 16 &&
       parameters.input[shape_len - 1] * TILING_FACTOR_256 <= CalVnchwUbSize(ub_size, dtype_size)) {
