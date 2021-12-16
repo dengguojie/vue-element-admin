@@ -181,7 +181,7 @@ void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_
   tiling_info.key = key;
 }
 
-bool DoNdTiling(const std::string& op_type, const opInfo& op_info, CompileInfo& compile_info, TilingInfo& tiling_info,
+bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInfo& tiling_info,
                 std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes, ge::DataType& out_type,
                 const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGI("op [%s]: DoTiling func running", op_type.c_str());
@@ -201,7 +201,7 @@ bool DoNdTiling(const std::string& op_type, const opInfo& op_info, CompileInfo& 
     return false;
   } else if ((c_size * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
     // for open multi-core
-    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * BTYPE_PER_BLOCK)
+    block_nparts = (n_h_w * dtype_size) >= (static_cast<int32_t>(compile_info.core_num) * BTYPE_PER_BLOCK)
                        ? compile_info.core_num
                        : n_h_w * dtype_size / BTYPE_PER_BLOCK;
     int32_t block_tiling_inner_loop = n_h_w / block_nparts;
@@ -217,9 +217,6 @@ bool DoNdTiling(const std::string& op_type, const opInfo& op_info, CompileInfo& 
   tiling_info.ub_factor = ub_factor;
   tiling_info.ub_axis = ub_axis;
 
-  const std::vector<bool>& flag_info = op_info.flag_info;
-  // is_special_pattern index in flag_info is 3
-  bool is_special_pattern = flag_info[3];
   CalNdKey(tiling_info, input_shapes);
 
   return true;
@@ -255,7 +252,6 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
     VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "Invalid input dtype");
     return false;
   }
-  const std::vector<bool>& flag_info = op_info.flag_info;
   std::array<int64_t, MAX_DIM_LEN> output_shape;
   bool ret = CompletedShapes(input_shapes, output_shape, dim_len, op_type, op_paras);
   // not use pure template
@@ -268,7 +264,7 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
   tiling_info.key = key;
 
   if (dim_len == ND_SHAPE_LEN) {
-    ret = ret && DoNdTiling(op_type, op_info, compile_info, tiling_info, input_shapes, out_type, output_shape);
+    ret = ret && DoNdTiling(op_type, compile_info, tiling_info, input_shapes, out_type, output_shape);
   }
   ret = ret && WriteTilingData(op_type, compile_info, tiling_info, run_info, input_features_shape,
                                input_labels_shape);
