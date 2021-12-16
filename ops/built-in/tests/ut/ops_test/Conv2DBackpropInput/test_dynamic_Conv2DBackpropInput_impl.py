@@ -503,7 +503,7 @@ def test_conv2d_backprop_input_fuzz_build_upper_limit(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW',
-        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed', {"mode": "keep_rank"}]
+        'conv2d_backprop_input_fuzz_build_generalization_range_max_fixed_case', {"mode": "keep_rank"}]
     conv2d_backprop_input_generalization(*input_list)
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_upper_limit)
 

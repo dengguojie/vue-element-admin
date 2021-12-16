@@ -224,7 +224,7 @@ def modify_w_range_max(fmap: dict, infilter: dict, dedy: dict, strides: list, da
             dedy_h_max = dedy_h_max - 1
             continue
         dedy_h_max = dedy_h_max - 1
-    warnings.warn("{}, Input shape is too large, the minimum tiling may exceed L1_Buffer", op_type)
+    warnings.warn("{}, Input shape is too large, the minimum tiling may exceed L1_Buffer".format(op_type))
     return {"is_exceed_l1": True}
 
 
