@@ -311,10 +311,116 @@
         "name": "axes",
         "type": "list_int",
         "value": [
-          0
+          -1
         ]
       }
     ],
     "case_name": "test_SoftmaxV2_006"
+  },
+  {
+    "op": "SoftmaxV2",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          6,
+          546,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          8,
+          8732,
+          81
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          6,
+          546,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          8,
+          8732,
+          81
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          -1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_007"
+  },
+  {
+    "op": "SoftmaxV2",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          6,
+          546,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          8,
+          8732,
+          90
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          6,
+          546,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          8,
+          8732,
+          90
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          -1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_008"
   }
 ]

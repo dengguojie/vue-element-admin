@@ -925,7 +925,7 @@ class Dilation2D(Dilation2DBase):
                                                scope=tbe_platform.scope_ubuf)
 
         mask_ub_size = self.tiling_params["ub_size_info"].get("mask_ub")
-        mask_ub = self.instance.Tensor("uint16", (mask_ub_size,), 
+        mask_ub = self.instance.Tensor("uint16", (mask_ub_size,),
                                        name="mask_ub",
                                        scope=tbe_platform.scope_ubuf)
 

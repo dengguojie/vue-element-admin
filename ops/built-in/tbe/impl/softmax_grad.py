@@ -140,9 +140,9 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     None
     """
     shape_softmax = softmax.get("shape")
-    shape_grad_softmax = grad_softmax.get("shape")
     dtype_softmax = softmax.get("dtype")
     input_format = softmax.get("format")
+    shape_grad_softmax = grad_softmax.get("shape")
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ"):
         context = tbe_context.op_context.get_context()

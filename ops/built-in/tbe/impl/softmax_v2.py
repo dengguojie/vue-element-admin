@@ -2692,8 +2692,16 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                     axis[0] = axis[0] + 1
 
     use_dynamic = True
-    if input_format in ("FRACTAL_NZ",) and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0:
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+
+    if _is_special_cases(ori_shape, 0):
         use_dynamic = False
+    if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        use_dynamic = False
+    if input_format in ("FRACTAL_NZ",) and \
+        ((ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0) or ori_shape[-1] in (21841,)):
+        use_dynamic = False
+
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and use_dynamic:
         context = tbe_context.op_context.get_context()
         if context is not None:

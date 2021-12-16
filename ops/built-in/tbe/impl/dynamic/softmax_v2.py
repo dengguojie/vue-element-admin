@@ -26,8 +26,13 @@ from impl.util import util_frac_z as fz
 from impl.util import util_select_op_base
 
 
-FP16_MAX = tvm.const(6.5e04, dtype="float16")
-FP32_MAX = tvm.const(3.4e38, dtype="float32")
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    FP16_MAX = tvm.const(6.5e04, dtype="float16")
+    FP32_MAX = tvm.const(3.4e38, dtype="float32")
 
 
 # 'pylint: disable=unused-argument
@@ -60,7 +65,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return param_dynamic_in_json
 
 
-# 'pylint:disable=too-many-locals
+# 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
@@ -95,8 +100,8 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     disable_fuse_axes = attributes["disable_fuse_axes"]
     ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
     ori_format = attributes["ori_format"].value
-    format = attributes["format"].value
-    max_const = FP32_MAX if dtype == "float32" else FP16_MAX
+    input_format = attributes["format"].value
+    max_const = Constant.FP32_MAX if dtype == "float32" else Constant.FP16_MAX
 
     check_axis_list = [-1, last_dim]
     for i in list_axis:
@@ -105,14 +110,16 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     is_use_value = False
     if len(list_axis) == 2:
-        is_use_value = True
-        idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
-        if format in ("NC1HWC0", "NDC1HWC0"):
+        if input_format in ("NC1HWC0", "NDC1HWC0"):
+            is_use_value = True
+            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
             ori_format = ori_format.upper()
             c = ori_shape[ori_format.find('C')]
             c = tbe.var('c') if c == -1 else c
             pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
-        if format in ("FRACTAL_NZ",):
+        if input_format in ("FRACTAL_NZ",):
+            is_use_value = True
+            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
             c = -1
             if (idx_c0 - idx_c1) == 2:
                 c = ori_shape[-1]
@@ -236,7 +243,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     dtype = input_x.get("dtype").lower()
     ori_format = input_x.get("ori_format")
     ori_shape = input_x.get("ori_shape")
-    format = input_x.get("format")
+    input_format = input_x.get("format")
 
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
@@ -245,14 +252,14 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     else:
         list_axis = [axis]
 
-    if format in ("NC1HWC0", "NDC1HWC0"):
-        list_axis = update_5hd_axis(ori_format, list_axis, format)
+    if input_format in ("NC1HWC0", "NDC1HWC0"):
+        list_axis = update_5hd_axis(ori_format, list_axis, input_format)
 
     if fz.is_frac_z(input_x):
         list_axis = fz.to_frac_z_axis(ori_shape, list_axis)
 
     extra_params = {}
-    if format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
+    if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
         extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
 
     schedules = []
@@ -266,7 +273,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 disable_fuse_axes = extra_params.get("disable_fuse_axes")[idx]
             shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x",
-                                      attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": format,
+                                      attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": input_format,
                                              "disable_fuse_axes": disable_fuse_axes})
             output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
             tensors.append([input_x, output])
