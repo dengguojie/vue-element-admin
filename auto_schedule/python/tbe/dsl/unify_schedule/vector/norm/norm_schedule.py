@@ -487,7 +487,8 @@ class NormNormalSchedule:
             if util.expr_equal(ub_ori_axis, 1):
                 return
         ub_factor = self._ub_split_result.get("factor")
-        if isinstance(ub_factor, int) and ub_factor == 1:
+        can_not_rfactor = self._tiling_case.ub_split_axis_index != 0 and isinstance(ub_factor, int) and ub_factor == 1
+        if can_not_rfactor:
             return
         reorder_axis = self._reorder_map.get(self._res_tensor)
         ub_inner_index = reorder_axis.index(self._ub_split_result["inner_itervar"])
@@ -826,7 +827,7 @@ class NormWorkspaceSchedule:
 
         self._cache_read_tensors = set()
         self._cache_write_tensors = set()
-        self._cache_clone_tensors = set()
+        self._cache_clone_tensors = []
         # key is ub_buffer
         # value is a dict with key: ori_tensor, value: split_tensor
         self._cache_read_buffer_and_tensor_dual_map = {}
@@ -959,7 +960,7 @@ class NormWorkspaceSchedule:
         self._real_workspace_tensor_list.extend(broadcast_fork_workspace_list)
 
     def _calc_cache_clone(self):
-        self._cache_clone_tensors.update(self._graph_info.cache_clone_tensor_set)
+        self._cache_clone_tensors = self._graph_info.cache_clone_tensor_list[:]
 
     def _do_cache_clone(self):
         for cache_clone_tensor in self._cache_clone_tensors:

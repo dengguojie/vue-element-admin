@@ -214,13 +214,25 @@ def judge_tvm_shape_equal(shape_a, shape_b):
     return True
 
 
-def _traverse_tensor(root_tensor, visited_set, traverse_map, stop_tensor_set=None):
+def _traverse_tensor_set(root_tensor, visited_set, traverse_map, stop_tensor_set=None):
     visited_set.add(root_tensor)
     if stop_tensor_set is not None and root_tensor in stop_tensor_set:
         return
     if root_tensor in traverse_map:
         for input_tensor in traverse_map.get(root_tensor):
-            _traverse_tensor(input_tensor, visited_set, traverse_map, stop_tensor_set)
+            _traverse_tensor_set(input_tensor, visited_set, traverse_map, stop_tensor_set)
+    else:
+        return
+
+
+def _traverse_tensor_list(root_tensor, visited_list, traverse_map, stop_tensor_set=None):
+    if root_tensor not in visited_list:
+        visited_list.append(root_tensor)
+    if stop_tensor_set is not None and root_tensor in stop_tensor_set:
+        return
+    if root_tensor in traverse_map:
+        for input_tensor in traverse_map.get(root_tensor):
+            _traverse_tensor_list(input_tensor, visited_list, traverse_map, stop_tensor_set)
     else:
         return
 
@@ -511,7 +523,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
     disable_fuse_axes = __save_temp_disable_fuse_axes_info()
     run_info = do_op_tiling("AutoTiling", get_compile_info(), inputs, outputs)
     __rollback_disable_fuse_axes(disable_fuse_axes)
-    
+
     tiling_format = __select_tiling_format()
     tiling_data = decode(run_info["tiling_data"], tiling_format)
 
@@ -779,7 +791,7 @@ class NormComputeGraphInfo:
         # workspace tensor and cache clone tensor
         self.workspace_tensor_set: Set[Tensor] = set()
         self.workspace_and_reduce_tensor_set: Set[Tensor] = set()
-        self.cache_clone_tensor_set: Set[Tensor] = set()
+        self.cache_clone_tensor_list: List[Tensor] = []
         self.cache_clone_tensor_and_num_path_map: Dict[Tensor, int] = {}
         # extra workspace tensor and its info
         self.workspace_info_map: Dict[Tensor, Dict] = {}
@@ -1005,7 +1017,7 @@ class NormComputeGraphInfo:
         # broadcast fork tensor
         for broadcast_tensor in self.broadcast_tensor_set:
             visited_set = set()
-            _traverse_tensor(broadcast_tensor, visited_set, self.tensor_producers_map)
+            _traverse_tensor_set(broadcast_tensor, visited_set, self.tensor_producers_map)
             # visited tensor cannot include reduce tensor
             if visited_set & self.reduce_tensor_set:
                 continue
@@ -1015,7 +1027,7 @@ class NormComputeGraphInfo:
         # output reduce fork tensor
         for out_tensor in self.real_pure_output_tensor_set & self.after_reduce_tensor_set:
             visited_set = set()
-            _traverse_tensor(out_tensor, visited_set, self.tensor_producers_map, self.reduce_tensor_set)
+            _traverse_tensor_set(out_tensor, visited_set, self.tensor_producers_map, self.reduce_tensor_set)
             for single_tensor in visited_set:
                 self.reduce_fork_tensor_set.add(single_tensor)
 
@@ -1027,12 +1039,14 @@ class NormComputeGraphInfo:
             if mid_output in self.after_reduce_tensor_set:
                 # after mid output tensor and before broadcast
                 after_visited_set = set()
-                _traverse_tensor(mid_output, after_visited_set, self.tensor_consumers_map, self.broadcast_tensor_set)
+                _traverse_tensor_set(mid_output, after_visited_set, self.tensor_consumers_map,
+                                     self.broadcast_tensor_set)
                 for single_tensor in after_visited_set - self.broadcast_tensor_set:
                     self.after_mid_out_and_before_broadcast_tensor_set.add(single_tensor)
                 # before mid output tensor and after reduce
                 before_visited_set = set()
-                _traverse_tensor(mid_output, before_visited_set, self.tensor_producers_map, self.reduce_tensor_set)
+                _traverse_tensor_set(mid_output, before_visited_set, self.tensor_producers_map,
+                                     self.reduce_tensor_set)
                 for single_tensor in before_visited_set:
                     self.before_mid_out_and_after_reduce_tensor_set.add(single_tensor)
 
@@ -1059,14 +1073,14 @@ class NormComputeGraphInfo:
             # mte2 mte3 count 1.5
             # vector count 1
             # reduce and broadcast choose workspace
-            visited_set = set()
+            visited_list = []
             # workspace need mte3 and at least 2 mte2
             workspace_count = 1.5 + 2 * 1.5
             cache_clone_count = 0
-            _traverse_tensor(cross_hierarchy_tensor, visited_set, self.tensor_producers_map)
-            for count_tensor in visited_set:
+            _traverse_tensor_list(cross_hierarchy_tensor, visited_list, self.tensor_producers_map)
+            for count_tensor in visited_list:
                 if count_tensor in self.reduce_tensor_set | self.broadcast_tensor_set:
-                    return "workspace", visited_set
+                    return "workspace", visited_list
                 if count_tensor in self.input_tensor_set:
                     workspace_count += 1 * 1.5
                     cache_clone_count += 2 * 1.5
@@ -1074,8 +1088,13 @@ class NormComputeGraphInfo:
                     workspace_count += 1
                     cache_clone_count += 1 * 2
             if workspace_count > cache_clone_count:
-                return "cache_clone", visited_set
-            return "workspace", visited_set
+                return "cache_clone", visited_list
+            return "workspace", visited_list
+
+        def _update_cache_clone_list(visited_tensor):
+            for tensor in visited_tensor:
+                if tensor not in self.cache_clone_tensor_list:
+                    self.cache_clone_tensor_list.append(tensor)
 
         cross_hierarchy_tensor_set = set()
         tensors_and_num_path_map = {}
@@ -1100,9 +1119,9 @@ class NormComputeGraphInfo:
                 self.workspace_tensor_set.add(single_tensor)
                 self.workspace_and_reduce_tensor_set.add(single_tensor)
                 continue
-            self.cache_clone_tensor_set = self.cache_clone_tensor_set | visited_tensor
+            _update_cache_clone_list(visited_tensor)
 
-        for single_tensor in self.cache_clone_tensor_set:
+        for single_tensor in self.cache_clone_tensor_list:
             self.cache_clone_tensor_and_num_path_map[single_tensor] = \
                 tensors_and_num_path_map[single_tensor] if single_tensor in tensors_and_num_path_map else 1
 

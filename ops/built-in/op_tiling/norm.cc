@@ -361,7 +361,7 @@ bool Norm::EliminateOne() {
 }
 
 void Norm::InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
-                          const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const {
+                            const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const {
   for (const auto& idx : reduce_axis_ori) {
     flags[idx] = reduce_flag;
   }
