@@ -677,11 +677,11 @@ def trans_data_rnn_positive_source(src, dst, input_size, hidden_size, kernel_nam
             with tik_inst.if_scope(block_idx < used_core_cnt0):
                 tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
                 tp_args = tiling_params0
-                _func_transform_100(tensor_args, tp_args) 
+                _func_transform_100(tensor_args, tp_args)
             with tik_inst.if_scope(block_idx < used_core_cnt1):
                 tensor_args = [tik_inst, block_idx,
                                src_in_gm[input_size * in_shape[1]],
-                               dst_out_gm[output0_size * out_shape[1] * out_shape[2] * out_shape[3]], 
+                               dst_out_gm[output0_size * out_shape[1] * out_shape[2] * out_shape[3]],
                                src_ub, block_elem_cnt, hidden_size, in_dtype]
                 tp_args = tiling_params1
                 _func_transform_100(tensor_args, tp_args)

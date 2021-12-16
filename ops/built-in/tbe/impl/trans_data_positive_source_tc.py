@@ -1435,7 +1435,7 @@ def _check_input_output_n_same(in_shape, in_format, out_format):
         axis_n = tdc.NI_16
     elif (in_format_upper, out_format_upper) in [("ND", "FRACTAL_NZ"), ("NCHW", "FRACTAL_NZ"), ("NHWC", "FRACTAL_NZ")]:
         in_shape_len = len(in_shape)
-        if in_shape_len == 1 or in_shape_len == 2:
+        if in_shape_len in (1, 2):
             axis_n = in_shape[0]
         else:
             axis_n = in_shape[-2]

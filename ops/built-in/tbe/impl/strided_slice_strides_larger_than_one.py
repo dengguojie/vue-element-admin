@@ -835,6 +835,7 @@ class StridedSliceStridesLargerThanOne:
                                    config=opt_config)
         return self.tik_instance
 
+
 # 'pylint: disable=too-many-arguments
 def strided_slice_strides_larger_than_one(input_shape, dtype, begin, end, strides, kernel_name):
     """
