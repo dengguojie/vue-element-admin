@@ -142,16 +142,20 @@ Status AArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       OP_LOGW(FUSED_OP_TYPE.c_str(), "aixs only support int32 and int64 in AICORE");
       return NOT_CHANGED;
     }
-    if (aixs_const_vala > x_dima || aixs_const_valb > x_dimb) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "aixs is out of size");
-      return NOT_CHANGED;
-    }
     if (aixs_const_vala < 0) {
       aixs_const_vala += x_dima;
     }
     if (aixs_const_valb < 0) {
       aixs_const_valb += x_dimb;
     }
+    FUSION_PASS_CHECK((aixs_const_vala > static_cast<int64_t>(x_dima) - 1 || aixs_const_vala < 0),
+                       OP_LOGW(FUSED_OP_TYPE.c_str(),
+                               "Node:%s's dimension is invalid.shape dim is [%ld], axis is [%ld]",
+                               x_dima, aixs_const_vala), return NOT_CHANGED);
+    FUSION_PASS_CHECK((aixs_const_valb > static_cast<int64_t>(x_dimb) - 1 || aixs_const_valb < 0),
+                       OP_LOGW(FUSED_OP_TYPE.c_str(),
+                               "Node:%s's dimension is invalid.shape dim is [%ld], axis is [%ld]",
+                               x_dimb, aixs_const_valb), return NOT_CHANGED);
     if (x_input_shapea.at(aixs_const_vala) != -1 || x_input_shapeb.at(aixs_const_valb) != -1) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "input[0]'s shape is static shape.");
       if (x_input_shapea.at(aixs_const_vala) < COMP || x_input_shapeb.at(aixs_const_valb) < COMP) {
