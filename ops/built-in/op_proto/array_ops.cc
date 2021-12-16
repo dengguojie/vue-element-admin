@@ -2524,6 +2524,10 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
         (input_range.size() == dims_num)) {
       int64_t out_shape_max = 1;
       for (int i = 0; i < dims_num; i++) {
+        if (input_range[i].second < 0) {
+          out_shape_max = input_range[i].second;
+          break;
+        }
         out_shape_max *= input_range[i].second;
       }
       std::vector<std::pair<int64_t, int64_t>> output_range;
