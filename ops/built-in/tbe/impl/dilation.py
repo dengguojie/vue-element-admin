@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +15,7 @@
 """
 dilation
 """
+from os import lstat
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe
@@ -28,7 +27,8 @@ from impl.util import util_select_op_base
 L1FUSION_INPUT_CTR = 2
 
 
-def get_op_support_info(x, y, dilations, pads=None, padding_value=0.0, kernel_name="dilation"):
+def get_op_support_info(x: dict, y: dict, dilations: list, pads: list = None,
+                        padding_value: float = 0.0, kernel_name: str = "dilation") -> str:
     """
     the split formation of dilation
     :param x: dict, input

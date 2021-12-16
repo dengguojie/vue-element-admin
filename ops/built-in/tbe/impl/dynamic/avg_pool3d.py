@@ -65,7 +65,7 @@ _KSIZE_MIN = 1
 _KSIZE_MAX = 255
 
 
-def _check_inputs(fmap, filter, ksize, strides, pads, ceil_mode, data_format):
+def _check_inputs(fmap, kernel, ksize, strides, pads, ceil_mode, data_format):
     def __check_data_fomat(format_name, checked_format, excepted_format_list):
         if checked_format not in excepted_format_list:
             dict_args = {
@@ -76,43 +76,38 @@ def _check_inputs(fmap, filter, ksize, strides, pads, ceil_mode, data_format):
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    def __check_dim(dims_name, dims, range_min, range_max):
+    def __check_dim(dims_name, dims, range_min, range_max) -> None:
         if (len(dims) > range_max or len(dims) < range_min):
             error_manager_vector.raise_err_input_param_range_invalid(
                 _OP_NAME, dims_name, range_min, range_max, len(dims))
 
-    def __check_range(dim_name, range, range_min=1, range_max=None):
-        if range[0] < range_min:
+    def __check_range(dim_name, dim_range, range_min=1, range_max=None) -> None:
+        if dim_range[0] < range_min:
             error_manager_cube.raise_err_specific(
-                _OP_NAME + " " + dim_name,
-                "the lower bound of range should be larger than {}".format(range_min))
-        if not range[1]:
+                _OP_NAME + " " + dim_name, "the lower bound of range should be larger than {}".format(range_min))
+        if not dim_range[1]:
             return
-        if (range_max is not None) and (range[1] > range_max):
+        if (range_max is not None) and (dim_range[1] > range_max):
             error_manager_cube.raise_err_specific(
-                _OP_NAME + " " + dim_name,
-                "the upper bound of range should be less than {}".format(range_max))
-        if range[0] > range[1]:
+                _OP_NAME + " " + dim_name, "the upper bound of range should be less than {}".format(range_max))
+        if dim_range[0] > dim_range[1]:
             error_manager_cube.raise_err_specific(
-                _OP_NAME + " " + dim_name,
-                "the upper bound of range should be larger than lower bound")
+                _OP_NAME + " " + dim_name, "the upper bound of range should be larger than lower bound")
 
-    def __check_attr_range(attr_name, attr_list, attr_min, attr_max):
+    def __check_attr_range(attr_name, attr_list, attr_min, attr_max) -> None:
         for i in attr_list:
             if ((i < attr_min) or (i > attr_max)):
                 error_manager_cube.raise_err_attr_range_invalid(
-                    _OP_NAME, "[{},{}]".format(attr_min, attr_max),
-                    attr_name, str(attr_list))
+                    _OP_NAME, "[{},{}]".format(attr_min, attr_max), attr_name, str(attr_list))
 
-    def __check_shape_in_range(attr_name, shape, vrange):
-        for i in range(len(shape)):
-            if (shape[i] != -1 and (shape[i] != vrange[i][0]
-                    or shape[i] != vrange[i][1])):
+    def __check_shape_in_range(attr_name, shape, vrange) -> None:
+        length = len(shape)
+        for i in range(length):
+            if (shape[i] != -1 and (shape[i] != vrange[i][0] or shape[i] != vrange[i][1])):
                 error_manager_cube.raise_err_specific(
-                    _OP_NAME + " " + attr_name,
-                    "shape:{} is not in range:{}".format(shape, vrange))
+                    _OP_NAME + " " + attr_name, "shape:{} is not in range:{}".format(shape, vrange))
 
-    def __check_shape_valid(dim_name, dim_val, vmin, vmax):
+    def __check_shape_valid(dim_name, dim_val, vmin, vmax) -> None:
         if dim_val != -1 and (((vmin is not None) and dim_val < vmin) or
                 ((vmax is not None) and dim_val > vmax)):
             error_manager_cube.raise_err_specific(
@@ -124,21 +119,18 @@ def _check_inputs(fmap, filter, ksize, strides, pads, ceil_mode, data_format):
     fmap_format = fmap.get("ori_format")
     # check input dtype
     para_check.check_dtype_rule(fmap.get('dtype'), ['float16'], "x")
-    para_check.check_dtype_rule(filter.get('dtype'), ['float16'], "filter")
+    para_check.check_dtype_rule(kernel.get('dtype'), ['float16'], "filter")
     # not support ceil_mode
     if ceil_mode:
         error_manager_cube.raise_err_specific(_OP_NAME,
                                               "ceil_mode only support false.")
-    # not support -2 and fmap_c is -1
     if len(fmap_shape) == 1 and fmap_shape[0] == -2:
-        error_manager_cube.raise_err_specific(_OP_NAME,
-                                              "input:x not support -2 current.")
+        error_manager_cube.raise_err_specific(_OP_NAME, "input:x not support -2 current.")
     if fmap_shape[fmap.get("ori_format").index('C')] == -1:
-        error_manager_cube.raise_err_specific(_OP_NAME,
-                                              "fmap c dim not support -1 current.")
+        error_manager_cube.raise_err_specific(_OP_NAME, "fmap c dim not support -1 current.")
     # check format
     __check_data_fomat("fmap's format", fmap.get("ori_format"), _FORMAT_WHITE_LIST)
-    __check_data_fomat("filter's format", filter.get("ori_format"), _FILTER_WHITE_LIST)
+    __check_data_fomat("filter's format", kernel.get("ori_format"), _FILTER_WHITE_LIST)
     __check_data_fomat("data_format", data_format, _FORMAT_WHITE_LIST)
     # check shape and range dims
     __check_dim("fmap's ori_shape", fmap.get("ori_shape"), _ORI_SHAPE_DIM, _ORI_SHAPE_DIM)
@@ -170,17 +162,18 @@ def _check_inputs(fmap, filter, ksize, strides, pads, ceil_mode, data_format):
     __check_shape_in_range("fmap's shape", fmap.get("shape"), fmap_range)
     # check slice window
     for dim_format in _PADS_FORMAT:
+        shape_legal_flag = (fmap_shape[fmap.get("ori_format").index(dim_format)] +
+                            pads[2 * _PADS_FORMAT.index(dim_format)] +
+                            pads[2 * _PADS_FORMAT.index(dim_format) + 1] < ksize[data_format.index(dim_format)])
         if (fmap_shape[fmap.get("ori_format").index(dim_format)] != -1 and
             pads[2 * _PADS_FORMAT.index(dim_format)] != -1 and
             pads[2 * _PADS_FORMAT.index(dim_format) + 1] != -1 and
-            (fmap_shape[fmap.get("ori_format").index(dim_format)] +
-                pads[2 * _PADS_FORMAT.index(dim_format)] +
-                pads[2 * _PADS_FORMAT.index(dim_format) + 1] <
-                ksize[data_format.index(dim_format)])):
+            shape_legal_flag):
             error_manager_cube.raise_err_specific(
                 _OP_NAME,
                 "kernel:{} should smaller than fmap:{} + pads:{} in D,H,W dims.".format(
                     ksize, fmap_shape, pads))
+
 
 def _update_dynamic_pads(fmap_shape, ksize, strides, pads):
     _, fmap_d, fmap_h, fmap_w, _ = fmap_shape
@@ -203,8 +196,10 @@ def _update_dynamic_pads(fmap_shape, ksize, strides, pads):
         pads = [pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right]
     return list(pads)
 
+
 def _get_output(fmap, ksize, padf, padb, stride):
     return (fmap + padf + padb - ksize) // stride + 1
+
 
 def _calc_output_shape(fmap_shape, ksize, strides, pads):
     if not all(i == 0 for i in pads):
@@ -216,6 +211,7 @@ def _calc_output_shape(fmap_shape, ksize, strides, pads):
         output_h = (fmap_shape[_H_DIM_5D] - ksize[_H_DIM_5D]) // strides[_H_DIM_5D] + 1
         output_w = (fmap_shape[_W_DIM_5D] - ksize[_W_DIM_5D]) // strides[_W_DIM_5D] + 1
     return [fmap_shape[_N_DIM_5D], output_d, output_h, output_w, fmap_shape[_C_DIM_5D]]
+
 
 def _range_correction(fmap_range, ksize, strides, pads):
     _, ksize_d, ksize_h, ksize_w, _ = ksize
@@ -256,6 +252,7 @@ def _range_correction(fmap_range, ksize, strides, pads):
                             (out_h_lower, out_h_upper), (out_w_lower, out_w_upper), (_C0_SIZE, _C0_SIZE)]
     return fmap_range_updated, output_range_updated
 
+
 def _init_dynamic_shape_var(fmap_shape, fmap_range, output_range):
     if (fmap_shape[_N_DIM_5D] == _DYNAMIC_FLAG or
             all(i != _DYNAMIC_FLAG for i in fmap_shape)):
@@ -277,6 +274,7 @@ def _init_dynamic_shape_var(fmap_shape, fmap_range, output_range):
         operation.add_exclude_bound_var(w_out)
         operation.add_exclude_bound_var(fmap_shape[_W_DIM_5D])
     return fmap_shape
+
 
 def _trans_range_to_6d(shape_range, ori_format):
     range_5d = util_conv3d.transform_shape_with_format(ori_format,
@@ -316,29 +314,23 @@ def avg_pool3d(x,
 
     Parameters:
     ----------
-    x : dict, shape and dtype of input_data,
-        only support float16, shape is 5 dims, format is NDC1HWC0
+    x : dict, shape and dtype of input_data, only support float16, shape is 5 dims, format is NDC1HWC0
 
     filter : dict, fractal_z_3d layout, float16 dtype
 
     y : dict, shape and dtype of output_data, only support float16
 
-    ksize : list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    ksize : list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
-    strides : list or tuple, the stride of avg_pool3d window,
-              only support avg_pool3d in D or H or W
+    strides : list or tuple, the stride of avg_pool3d window, only support avg_pool3d in D or H or W
 
     pads : list or tuple, count of padding zero or d,h,w axis
 
-    ceil_mode: when True, will use ceil instead of floor in the formula to
-               compute the output shape
+    ceil_mode: when True, will use ceil instead of floor in the formula to compute the output shape
 
-    count_include_pad: when True, will include the zero-padding in the
-                       averaging calculation.
+    count_include_pad: when True, will include the zero-padding in the averaging calculation.
 
-    divisor_override: if specified, it will be used as divisor, otherwise size
-                      of the pooling region will be used.
+    divisor_override: if specified, it will be used as divisor, otherwise size of the pooling region will be used.
 
     data_format : str, default = "NDHWC"
 
@@ -417,18 +409,20 @@ def avg_pool3d(x,
                 "fused_num": _FUSED_NUM,
             }
             conv_res = tbe.conv3d(fmap_plh, filter_plh, align_filter_shape, para_dict)
-            mean_matrix_init = tvm.compute(mul_shape, lambda n, c1, hw, c0:
-                ((tvm.min((n % mul_d) * stride_d + kd, dync_pads[0] + fmap_d) - tvm.max(dync_pads[0], (n % mul_d) * stride_d)) *
-                (tvm.min((hw // mul_w) * stride_h + kh, dync_pads[2] + fmap_h) - tvm.max(dync_pads[2], (hw // mul_w) * stride_h)) *
-                (tvm.min((hw % mul_w) * stride_w + kw, dync_pads[4] + fmap_w) - tvm.max(dync_pads[4], (hw % mul_w) * stride_w))).astype("int"),
-                name="mean_matrix_init",
-                tag="mean_matrix_init"
+            mean_lambda = lambda n, c1, hw, c0: ((tvm.min((n % mul_d) * stride_d + kd, dync_pads[0] + fmap_d) -
+                                                  tvm.max(dync_pads[0], (n % mul_d) * stride_d)) *
+                                                 (tvm.min((hw // mul_w) * stride_h + kh, dync_pads[2] + fmap_h) -
+                                                  tvm.max(dync_pads[2], (hw // mul_w) * stride_h)) *
+                                                 (tvm.min((hw % mul_w) * stride_w + kw, dync_pads[4] + fmap_w) -
+                                                  tvm.max(dync_pads[4], (hw % mul_w) * stride_w))).astype("int")
+            mean_matrix_init = tvm.compute(
+                mul_shape, mean_lambda, name="mean_matrix_init", tag="mean_matrix_init"
             )
             mean_matrix_fp16 = tvm.compute(mul_shape, lambda *index:
                                     mean_matrix_init(*index).astype("float16"),
                                     name="mean_matrix_fp16")
-            mul_res = tvm.compute(mul_shape, lambda n, c1, hw, c0:
-                        conv_res[n][c1][hw][c0] / mean_matrix_fp16[n][c1][hw][c0],
+            mul_lambda = lambda n, c1, hw, c0: conv_res[n][c1][hw][c0] / mean_matrix_fp16[n][c1][hw][c0]
+            mul_res = tvm.compute(mul_shape, mul_lambda,
                         name="mean_matrix_mul", tag="mean_matrix_mul")
         with tvm.target.cce():
             sch = tbe.auto_schedule(mul_res)

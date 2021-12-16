@@ -16,16 +16,34 @@
 util_conv3d
 """
 from impl.util.platform_adapter import error_manager_util
-from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe_platform
 
 BIAS_LENGTH = 1
 DYNAMIC_DIM_VAL = -1
 _BLOCK_SIZE = 16
 
+
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):
+    """
+    algorithm: transform_shape_with_exception
 
+    Parameters:
+    -------------
+    src_format: format of ori_shape
+
+    to_format: format of dst_shape
+
+    ori_shape: origin shape
+
+    format_white_list: white list of format
+
+    attr_name: name of attr
+
+    Returns
+    ---------
+    new shape
+    """
     res = transform_shape_with_format(src_format, to_format, ori_shape,
                                       format_white_list)
     if res is None:
@@ -39,7 +57,25 @@ def transform_shape_with_exception(src_format, to_format, ori_shape,
                            error_manager_util.get_error_message(dict_args))
     return res
 
+
 def transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
+    """
+    algorithm: transform_shape_with_format
+
+    Parameters:
+    -------------
+    src_format: format of ori_shape
+
+    to_format: format of dst_shape
+
+    ori_shape: origin shape
+
+    format_white_list: white list of format
+
+    Returns
+    ---------
+    new shape
+    """
     # input format is not expected
     if ((src_format not in format_white_list) or
         (to_format not in format_white_list)):
@@ -48,12 +84,13 @@ def transform_shape_with_format(src_format, to_format, ori_shape, format_white_l
     if src_format == to_format:
         return list(ori_shape)
     res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
+    for i, _ in enumerate(to_format):
+        for j, _ in enumerate(src_format):
             if to_format[i] == src_format[j]:
                 res_shape[i] = ori_shape[j]
                 break
     return res_shape
+
 
 def check_bias(bias, res_dtype):
     """
@@ -63,7 +100,7 @@ def check_bias(bias, res_dtype):
     ----------
 
     bias: A dict with keys(shape and dtype) or None
-        input bias tensor
+    input bias tensor
 
     res_dtype: The dtype of output
 
@@ -92,7 +129,18 @@ def check_bias(bias, res_dtype):
                             error_manager_util.get_error_message(dict_args))
 
 
-def generalize_input_keep_rank(param_dict):
+def generalize_input_keep_rank(param_dict: dict) -> dict:
+    """
+    algorithm: generalize_input_keep_rank
+
+    Parameters:
+    -------------
+    param_dict: dict of params
+
+    Returns
+    ---------
+    None
+    """
     ori_shape, ori_format = param_dict["ori_shape"], param_dict["ori_format"]
     idx_n = ori_format.find('N')
     idx_d = ori_format.find('D')
@@ -105,7 +153,27 @@ def generalize_input_keep_rank(param_dict):
     param_dict["ori_shape"] = tuple(ori_shape)
 
 
-def check_l1_limitation_dx(w_value, stride_d, filter_h_dilation, filter_d_dilation, block_size_k):
+def check_l1_limitation_dx(w_value: int, stride_d: int, filter_h_dilation: int,
+                           filter_d_dilation: int, block_size_k: int) -> None:
+    """
+    algorithm: check_l1_limitation_dx
+
+    Parameters:
+    -------------
+    w_value: w value
+
+    stride_d: stride of d dim
+
+    filter_h_dilation: h dim of filter after dilation
+
+    filter_d_dilation: d dim of filter after dilation
+
+    block_size_k: block size of k dim
+
+    Returns
+    ---------
+    None
+    """
     if w_value > _BLOCK_SIZE:
         h_value_max = filter_h_dilation
     else:

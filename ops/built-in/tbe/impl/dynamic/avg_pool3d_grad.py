@@ -57,9 +57,9 @@ _KSIZE_MIN = 1
 _KSIZE_MAX = 255
 
 
-def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, ceil_mode,
+def _check_inputs(grads, weight, output, output_range, ksize, strides, pads, ceil_mode,
                   count_include_pad, divisor_override, data_format):
-    def __check_data_fomat(format_name, checked_format, excepted_format_list):
+    def __check_data_fomat(format_name, checked_format, excepted_format_list) -> None:
         if checked_format not in excepted_format_list:
             dict_args = {
                 'errCode': 'E62002',
@@ -69,7 +69,7 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    def __check_params_dims(ksize, strides, pads):
+    def __check_params_dims(ksize, strides, pads) -> None:
         if len(ksize) != _KSIZE_DIM_SIZE:
             error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d_grad',
                                                                     'ksize',
@@ -89,7 +89,7 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
                                                                     _PADS_DIM_SIZE,
                                                                     len(pads))
 
-    def __check_dim_range(dims_name, dims, range_min, range_max):
+    def __check_dim_range(dims_name, dims, range_min, range_max) -> None:
         if (len(dims) > range_max or len(dims) < range_min):
             error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d_grad',
                                                                     dims_name,
@@ -97,30 +97,30 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
                                                                     range_max,
                                                                     len(dims))
 
-    def __check_range(dim_name, range, range_min=1, range_max=None):
-        if range[0] < range_min:
+    def __check_range(dim_name, dim_range, range_min=1, range_max=None) -> None:
+        if dim_range[0] < range_min:
             error_manager_cube.raise_err_specific(
                 "avg_pool3d_grad's " + dim_name,
                 "the lower bound of range should be larger than {}".format(range_min))
-        if not range[1]:
+        if not dim_range[1]:
             return
-        if (range_max is not None) and (range[1] > range_max):
+        if (range_max is not None) and (dim_range[1] > range_max):
             error_manager_cube.raise_err_specific(
                 "avg_pool3d_grad's " + dim_name,
                 "the upper bound of range should be less than {}".format(range_max))
-        if range[0] > range[1]:
+        if dim_range[0] > dim_range[1]:
             error_manager_cube.raise_err_specific(
                 "avg_pool3d_grad's " + dim_name,
                 "the upper bound of range should be larger than lower bound")
 
-    def __check_attr_range(attr_name, attr_value, attr_min, attr_max):
+    def __check_attr_range(attr_name, attr_value, attr_min, attr_max) -> None:
         if ((attr_min and attr_value < attr_min) or
                 (attr_max and  attr_value > attr_max)):
             error_manager_cube.raise_err_attr_range_invalid(
                 'avg_pool3d_grad', "-1 or [{},{}]".format(attr_min, attr_max),
                 attr_name, str(attr_value))
 
-    def __check_support(ceil_mode, count_include_pad, divisor_override):
+    def __check_support(ceil_mode, count_include_pad, divisor_override) -> None:
         if ceil_mode:
             error_manager_cube.raise_err_specific('avg_pool3d_grad',
                                                   "ceil_mode only support false.")
@@ -145,7 +145,7 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
                                               "ori_input_shape not support -2 current.")
     # check inputs' format
     __check_data_fomat("grads's format", grads.get("ori_format"), _GRADS_FORMAT_WHITE_LIST)
-    __check_data_fomat("filter's format", filter.get("ori_format"), _FILTER_FORMAT_WHITE_LIST)
+    __check_data_fomat("filter's format", weight.get("ori_format"), _FILTER_FORMAT_WHITE_LIST)
     __check_data_fomat("attribute data_format", data_format, _DATA_FORMAT_WHITE_LIST)
     # check inputs' shape and range dims
     __check_params_dims(ksize, strides, pads)
@@ -207,23 +207,26 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
                        output_shape[output_format.index('C')],
                        _LOWER_RANGE, None)
 
+
 def _transform_shape_with_format(src_format, to_format, ori_shape):
     # need not to transform
     if src_format == to_format:
         return list(ori_shape)
-    res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
+    res_shape = [1 for _ in range(_ORI_SHAPE_DIM_SIZE)]
+    for i in range(_ORI_SHAPE_DIM_SIZE):
+        for j in range(_ORI_SHAPE_DIM_SIZE):
             if to_format[i] == src_format[j]:
                 res_shape[i] = ori_shape[j]
                 break
     return res_shape
 
+
 def _get_output(fmap, ksize, padf, padb, stride):
     return (fmap + padf + padb - ksize) // stride + 1
 
-def _range_correction(fmap_range, kernel, pads, strides, out_shape, fmap_ori_format):
-    w_d, w_h, w_w, w_c, w_n = kernel
+
+def _range_correction(fmap_range, kernel, pads, strides, out_shape):
+    w_d, w_h, w_w, _, _ = kernel
     _, strd, strh, strw, _ = strides
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
     if not all(i == 0 for i in pads):
@@ -265,11 +268,12 @@ def _range_correction(fmap_range, kernel, pads, strides, out_shape, fmap_ori_for
 
     return range_dedy, range_input
 
-def _shape_correction(grads_shape, orig_input_shape, padding, ksize, strides, format):
-    for i in range(len(grads_shape)):
+
+def _shape_correction(grads_shape, orig_input_shape, padding, ksize, strides, shape_format):
+    for i, _ in enumerate(grads_shape):
         if grads_shape[i] == -1 and orig_input_shape[i] != -1:
-            dim = format[i]
-            if dim == 'N' or dim == 'C':
+            dim = shape_format[i]
+            if dim in ('N' or 'C'):
                 grads_shape[i] = orig_input_shape[i]
             elif padding == "SAME":
                 grads_shape[i] = ((orig_input_shape[i] + strides[_STRIDES_FORMAT.find(dim)] - 1) /
@@ -278,6 +282,7 @@ def _shape_correction(grads_shape, orig_input_shape, padding, ksize, strides, fo
                 grads_shape[i] = ((orig_input_shape[i] - ksize[_KSIZE_FORMAT.find(dim)]) /
                                   strides[_STRIDES_FORMAT.find(dim)]) + 1
     return grads_shape
+
 
 def _init_dynamic_shape_var(shape_out_backprop, input_sizes, range_dedy, range_input):
     dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel = shape_out_backprop
@@ -309,8 +314,9 @@ def _init_dynamic_shape_var(shape_out_backprop, input_sizes, range_dedy, range_i
 
     return shape_out_backprop, input_sizes
 
+
 def _update_dync_pads(dync_input_size, filter_shape, strides, pads):
-    fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = dync_input_size
+    _, fmap_d, fmap_h, fmap_w, _ = dync_input_size
     filter_d, filter_h, filter_w, _, _ = filter_shape
     _, stride_d, stride_h, stride_w, _ = strides
 
@@ -330,14 +336,15 @@ def _update_dync_pads(dync_input_size, filter_shape, strides, pads):
         pads = [pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right]
     return list(pads)
 
+
 def _trans_range_to_6d(fmap_range, fmap_ori_format):
-    fmap_range_n, fmap_range_d, fmap_range_h, fmap_range_w, fmap_range_c = _transform_shape_with_format(fmap_ori_format,
-                                                                                                        _FMAP_TARGET_FORMAT,
-                                                                                                        fmap_range)
+    fmap_range_n, fmap_range_d, fmap_range_h, fmap_range_w, fmap_range_c = _transform_shape_with_format(
+        fmap_ori_format, _FMAP_TARGET_FORMAT, fmap_range)
     fmap_range_c0 = [_C0_SIZE, _C0_SIZE]
     fmap_range_c1 = [(fmap_range_c[0] + _C0_SIZE - 1) / _C0_SIZE, (fmap_range_c[1] + _C0_SIZE - 1) / _C0_SIZE]
 
     return [fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0]
+
 
 @register_operator("AvgPool3DGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
@@ -370,32 +377,25 @@ def avg_pool3d_grad(orig_input_shape,
 
     Parameters:
     -----------
-    orig_input_shape: dict, shape and dtype of dedx,
-                      only support int32, shape is 1dims, format is ND
+    orig_input_shape: dict, shape and dtype of dedx, only support int32, shape is 1dims, format is ND
 
-    grads : dict, shape and dtype of input_data,
-            only support float16, shape is 5dims, format is NDC1HWC0
+    grads : dict, shape and dtype of input_data, only support float16, shape is 5dims, format is NDC1HWC0
 
     filter : dict, fractal_z_3d layout, float16 dtype
 
     output : dict, shape and dtype of output_data, only support float16
 
-    ksize : list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    ksize : list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
-    strides: list or tuple, the window of avg_pool3d,
-             only support avg_pool3d in D or H or W
+    strides: list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
     pads : list or tuple, count of padding zero or d, h, w axis
 
-    ceil_mode : when True, will use ceil mode instead of floor
-                in the formula to compute the output shape
+    ceil_mode : when True, will use ceil mode instead of floor in the formula to compute the output shape
 
-    count_include_pad : when True, will include the zero-padding
-                        in the averaging calculation
+    count_include_pad : when True, will include the zero-padding in the averaging calculation
 
-    divisor_override : if specified, it will be used as divisor,
-                       otherwise size of the pooling region will be used
+    divisor_override : if specified, it will be used as divisor, otherwise size of the pooling region will be used
 
     data_format : str, default value is "NDHWC"
 
@@ -408,15 +408,12 @@ def avg_pool3d_grad(orig_input_shape,
     grads_ori_format = grads.get("ori_format")
     grads_ori_shape = grads.get("ori_shape")
     grads_dtype = grads.get("dtype").lower()
-    fmap_ori_format = output.get("ori_format")
     fmap_ori_shape = output.get("ori_shape")
     fmap_dtype = output.get("dtype")
-    fmap_shape = output.get("shape")
     filter_ori_shape = filter.get("ori_shape")
     fitler_ori_format = filter.get("ori_format")
     filter_dtype = filter.get("dtype").lower()
     fmap_range = output.get("range")
-    input_shape = list(fmap_ori_shape)
 
     if len(fmap_range) == _ORI_SHAPE_DIM_SIZE:
         fmap_range = _trans_range_to_6d(fmap_range, data_format)
@@ -454,8 +451,7 @@ def avg_pool3d_grad(orig_input_shape,
                                                  _GRADS_TARGET_FORMAT)
     # correct dedy range by fmap range
     range_dedy, range_input = _range_correction(fmap_range, filter_ori_shape_formated,
-                                                pads, strides_formated, fmap_ori_shape_formated,
-                                                data_format)
+                                                pads, strides_formated, fmap_ori_shape_formated)
     # init dynamic shape tbe var
     dync_grads_ori_shape, dync_ori_input_size = _init_dynamic_shape_var(grads_ori_shape_formated,
                                                                         fmap_ori_shape_formated,
@@ -494,12 +490,15 @@ def avg_pool3d_grad(orig_input_shape,
                                     "data_type": "float16"}
                             )
 
-    mean_matrix = tvm.compute(dync_grads_shape, lambda n, d, c1, h, w, c0:
-                    ((tvm.min(d * strd + kd, dync_pads[0] + dync_ori_input_size[1]) - tvm.max(dync_pads[0], d * strd)) *
-                    (tvm.min(h * strh + kh, dync_pads[2] + dync_ori_input_size[2]) - tvm.max(dync_pads[2], h * strh)) *
-                    (tvm.min(w * strw + kw, dync_pads[4] + dync_ori_input_size[3]) - tvm.max(dync_pads[4], w * strw))).astype("int"),
-                    name="mean_matrix_init"
-                    )
+    mean_matrix = tvm.compute(
+        dync_grads_shape,
+        lambda n, d, c1, h, w, c0:(
+            (tvm.min(d * strd + kd, dync_pads[0] + dync_ori_input_size[1]) - tvm.max(dync_pads[0], d * strd)) *
+            (tvm.min(h * strh + kh, dync_pads[2] + dync_ori_input_size[2]) - tvm.max(dync_pads[2], h * strh)) *
+            (tvm.min(w * strw + kw, dync_pads[4] + dync_ori_input_size[3]) - 
+             tvm.max(dync_pads[4], w * strw))).astype("int"),
+        name="mean_matrix_init")
+
     mean_matrix_fp16 = tvm.compute(dync_grads_shape, lambda *index:
                                    mean_matrix(*index).astype("float16"),
                                    name="mean_matrix_fp16")

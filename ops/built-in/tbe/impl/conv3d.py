@@ -62,20 +62,22 @@ _DTYPE_SIZE = {"float16": 2, "float32": 4}
 _ALIGN_BYTE = 32
 _DEFAULT_FP16_SIZE = 2
 
+
 def _transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
     # input format is not expected
     if ((src_format not in format_white_list) or
         (to_format not in format_white_list)):
-        return None
+        return ""
     # need not to transform
     if src_format == to_format:
         return ori_shape
     res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
+    for i in range(_SHAPE_DIMS):
+        for j in range(_SHAPE_DIMS):
             if to_format[i] == src_format[j]:
                 res_shape[i] = ori_shape[j]
     return res_shape
+
 
 def get_op_support_info(fmap,
                         weight,
@@ -96,48 +98,47 @@ def get_op_support_info(fmap,
     Parameters
     ----------
     fmap: A dict with keys(shape and dtype)
-        Input 5d feature map tensor
+    Input 5d feature map tensor
 
     weight: A dict with keys(shape and dtype)
-        Input 5d weight tensor
+    Input 5d weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     output: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers, format sensitive
-        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+    [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
     pads: A tuple/list of 6 integers
-        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d"
+    Kernel name, default value is "conv3d"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _get_slice_info():
         overlap_d = -1 if (filter_d - 1) * dilation_d + 1 <= strides_d else 0
@@ -182,7 +183,7 @@ def get_op_support_info(fmap,
                                                 _FILTER_TARGET_FORMAT,
                                                 weight.get("ori_shape"),
                                                 _FILTER_FORMAT_WHITE_LIST)
-    if filter_shape is None:
+    if not filter_shape:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'weight',
@@ -196,7 +197,7 @@ def get_op_support_info(fmap,
                                                     _FMAP_TARGET_FORMAT,
                                                     strides,
                                                     _FMAP_FORMAT_WHITE_LIST)
-    if strides_formated is None:
+    if not strides_formated:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'strides',
@@ -222,6 +223,7 @@ def get_op_support_info(fmap,
                                                               _L1FUSION_INPUT_CTR,
                                                               0)
     return op_cal_info_in_json
+
 
 def _get_mad_dtype(w_dtype):
     """
@@ -417,7 +419,7 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
                                                  dilations,
                                                  _FMAP_FORMAT_WHITE_LIST)
 
-    if shape_fm is None or stride_full is None or dilation_full is None:
+    if not shape_fm or not stride_full or not dilation_full:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'input',
@@ -431,7 +433,7 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
                                                 _FILTER_TARGET_FORMAT,
                                                 w_shape,
                                                 _FILTER_FORMAT_WHITE_LIST)
-    if shape_filter is None:
+    if not shape_filter:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'weight',
@@ -442,6 +444,7 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
                            error_manager_util.get_error_message(dict_args))
 
     return shape_fm, shape_filter, stride_full[2:], dilation_full[2:]
+
 
 def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
                        fmp_format, w_format, bias, strides, pads, dilations,
@@ -489,7 +492,7 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
         util_conv3d.check_bias(bias, res_dtype)
         bias_dtype = bias.get("dtype").lower()
         para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
-    
+
     if len(strides) != _STRIDE_LENGTH:
         dict_args = {
             'errCode': 'E60006',
@@ -612,23 +615,9 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     block_size_m = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][0]
 
     # calculated by h_i and w_i
-    dilation_d, dilation_h, dilation_w = dilation_dhw
-    filter_dilated_d = (filter_d - 1) * dilation_d + 1
+    _, dilation_h, dilation_w = dilation_dhw
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
-
-    h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_dilated_h) // stride_dhw[1] + 1
-    w_out = (fmap_w + (pad_w[0] + pad_w[1]) - filter_dilated_w) // stride_dhw[2] + 1
-    d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_dilated_d) // stride_dhw[0] + 1
-
-    load2d_pass_flag = ((filter_dilated_d == 1) and (filter_dilated_h == 1) and (filter_dilated_w == 1) and
-                        (list(pads) == [0, 0, 0, 0, 0, 0]) and
-                        (list(stride_dhw) == [1, 1, 1]))
-
-    #  Chip Design demand only h_dimesion constraint
-    only_fhkh_pass_flag = ((1 <= filter_dilated_h <= 11) and
-                           (stride_dhw[1] == 1) and
-                           (h_out == 1))
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
@@ -686,6 +675,7 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
         error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'dilation', 'D',
             '[{}, {}]'.format(_DILATION_MIN, _DILATION_MAX),
             str(dilation_d))
+
 
 def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
@@ -799,10 +789,6 @@ def _cal_input_param(fmap, weight, bias_tensor, output, strides, pads, dilations
     for i in weight.op.attrs['ori_shape']:
         shape_filter.append(i.value)
 
-    pos_d = data_format.find('D')
-    pos_h = data_format.find('H')
-    pos_w = data_format.find('W')
-
     res_dtype = output.get("dtype").lower()
     mad_dtype = _get_mad_dtype(weight.dtype)
 
@@ -853,7 +839,7 @@ def check_supported(fmap,
     The channel dimension of the feature map should = filter's channel dimension * groups. \n
     The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation. \n
     The padding in each dimension should < the filter's corresponding dimension after dilation. \n
-    
+
     If the output H dimension is not 1, the output W dimension should >= 2. \n
     The feature map size in L1 buffer should <= the chip's L1 buffer size
     """
@@ -877,6 +863,8 @@ def check_supported(fmap,
     except Exception as e:
         reason = e.args[1]
         return False, reason
+    finally:
+        pass
 
 
 @para_check.check_op_params(
@@ -904,40 +892,40 @@ def conv3d(fmap,
     Parameters
     ----------
     fmap: A dict with keys(shape and dtype)
-        Input 5d feature map tensor
+    Input 5d feature map tensor
 
     weight: A dict with keys(shape and dtype)
-        Input 5d weight tensor
+    Input 5d weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     output: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers, format sensitive
-        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+    [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
     pads: A tuple/list of 6 integers
-        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d"
+    Kernel name, default value is "conv3d"
 
     Returns
     -------
@@ -962,7 +950,6 @@ def conv3d(fmap,
 
     pads = list(pads)
     stride_dhw = list(stride_dhw)
-    dilations_dhw = list(dilation_dhw)
 
     tensor_list = _conv3d_compute(shape_fm,
                                   shape_filter,
@@ -996,9 +983,9 @@ def conv3d_fusion_compute(data,
                           data_format="NDHWC",
                           offset_x=0,
                           kernel_name="conv3d"):
-    """
-    """
-    para_dict, filter_size = _cal_input_param(data, weight, bias, output, strides, pads, dilations, groups, data_format, kernel_name)
+
+    para_dict, filter_size = _cal_input_param(
+        data, weight, bias, output, strides, pads, dilations, groups, data_format, kernel_name)
 
     res = tbe.conv3d(data, weight, filter_size, para_dict)
 

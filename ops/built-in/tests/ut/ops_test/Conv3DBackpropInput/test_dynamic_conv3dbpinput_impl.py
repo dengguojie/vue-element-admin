@@ -59,7 +59,8 @@ def test_conv3d_backprop_input_fuzz_build_generalization(test_arg):
             'ori_format': 'NDHWC',
             'format': 'NDC1HWC0',
             'dtype': 'float16'
-        }, (1, 1, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 'conv3d_backprop_input_generalization']
+        }, (1, 1, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 'conv3d_backprop_input_generalization',
+        {"mode": "keep_rank"}]
     conv3d_backprop_input_generalization(*input_list)
 
 

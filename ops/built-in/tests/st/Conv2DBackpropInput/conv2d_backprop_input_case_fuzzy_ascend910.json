@@ -2,7 +2,7 @@
   {"compile_flag": 1},
   {
     "op": "Conv2DBackpropInput",
-    "case_name" : "test_conv2d_backprop_input_fuzzy_same_fNCHW_groups_wnew",
+    "case_name" : "test_conv2d_backprop_input_fuzzy_same_fNCHW_groups_wnew_test",
     "calc_expect_func_file" : "test_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc": [
       {

@@ -19,11 +19,9 @@ from impl.dynamic import check_and_config_para
 from impl.util import util_conv3d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
-from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 
 Nonetype = type(None)
@@ -36,7 +34,7 @@ _RES_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
 _L1FUSION_INPUT_CTR = 2
 
 
-def get_op_support_info(input_size, # pylint: disable=R0913,R0914
+def get_op_support_info(input_size,
                         x,
                         filters,
                         bias,
@@ -48,7 +46,7 @@ def get_op_support_info(input_size, # pylint: disable=R0913,R0914
                         dilations=(1, 1, 1, 1, 1),
                         groups=1,
                         data_format="NDHWC",
-                        output_padding=[0, 0, 0, 0, 0],
+                        output_padding=(0, 0, 0, 0, 0),
                         offset_x=0,
                         kernel_name="conv3d_transpose",
                         op_slice_info=""):
@@ -58,54 +56,53 @@ def get_op_support_info(input_size, # pylint: disable=R0913,R0914
     Parameters
     ----------
     input_sizes: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     x: A dict with keys(shape and dtype)
-        The shape of gradients
+    The shape of gradients
 
     filters: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     y: A dict with keys(shape and dtype)
-       Conv3d_transpose output tensor, dtype must be assigned
+    Conv3d_transpose output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     output_padding: The size will be added in the output shape
-        Default value is [0, 0, 0, 0, 0]
+    Default value is [0, 0, 0, 0, 0]
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_transpose"
+    Kernel name, default value is "conv3d_transpose"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _get_slice_info():
         # headoverlap, tailoverlap, 0 means with overlap, -1 means without it
@@ -187,7 +184,6 @@ def get_op_support_info(input_size, # pylint: disable=R0913,R0914
                                                             _RES_FORMAT_WHITE_LIST)
     if ori_shape_res is None:
         error_manager_cube.raise_err_one_para("E62306", "Conv3d_transpose", "y format should be NDHWC or NCDHW")
-    _, y_d, y_h, y_w, y_c = ori_shape_res
     axis_split_info, axis_reduce_info = _get_slice_info()
 
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
@@ -196,6 +192,7 @@ def get_op_support_info(input_size, # pylint: disable=R0913,R0914
                                                               None)
 
     return op_cal_info_in_json
+
 
 def _check_output_padding(output_padding, stride, dilation, data_format):
     def _ncdhw2ndhwc(shape_ncdhw):
@@ -225,13 +222,13 @@ def _check_output_padding(output_padding, stride, dilation, data_format):
 
 
 def _conv3d_transpose_compute(filters, out_backprop, y_input, input_size, strides, pads,
-                              dilations=(1, 1, 1, 1, 1), groups=1, output_padding=(0,0,0,0,0),
+                              dilations=(1, 1, 1, 1, 1), groups=1, output_padding=(0, 0, 0, 0, 0),
                               data_format="NDHWC", kernel_name="conv3d_transpose"):
     _check_output_padding(output_padding, strides, dilations, data_format)
     res = check_and_config_para(
         filters, out_backprop, y_input, input_size, strides, pads, dilations, groups, data_format, kernel_name)
-    (dx_shape, dedy, filter_frac, shape_filter, shape_out_backprop, input_sizes, strides,
-     pads, dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
+    (dx_shape, dedy, filter_frac, shape_filter, input_sizes, strides,
+     pads, dilations, res_dtype, kernel_name, group_dict) = res
 
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     shape_filter_ncdhw = [filter_batch, filter_channel, filter_depth, filter_h, filter_w]
@@ -253,11 +250,12 @@ def _conv3d_transpose_compute(filters, out_backprop, y_input, input_size, stride
 
     return {'op_placeholder': [dx_shape, dedy, filter_frac],  'op_res': [dedx]}
 
+
 @register_operator("Conv3DTranspose")
 @para_check.check_input_type(dict, dict, dict, (Nonetype, dict), (Nonetype, dict),
                              dict, (tuple, list), (tuple, list, str),
                              (tuple, list), int, str, (tuple, list), int, str)
-def conv3d_transpose(input_size, x, filter, # pylint: disable=R0913,R0914
+def conv3d_transpose(input_size, x, filter,
                      bias, offset_w, y, strides,
                      pads, dilations=(1, 1, 1, 1, 1), groups=1,
                      data_format="NDHWC", output_padding=(0, 0, 0, 0, 0),
@@ -268,46 +266,46 @@ def conv3d_transpose(input_size, x, filter, # pylint: disable=R0913,R0914
     Parameters
     ----------
     input_size: dict, will not be used
-            input tensor size.
+    input tensor size.
 
     x: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     filter: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     bias: dict with keys(shape and dtype)
-        The shape of bias.
+    The shape of bias.
 
     offset_w: dict with keys(shape and dtype) or None
-        Input offset_w tensor.
+    Input offset_w tensor.
 
     y: A dict with keys(shape and dtype)
-        conv3d_transpose output tensor, dtype must be assigned
+    conv3d_transpose output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers: [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
-          str: "SAME" or "VALID"
+    str: "SAME" or "VALID"
 
     dilations: A tuple/list of 5 integers
-        filter expand size of dilated conv3d_transpose, default value (1, 1, 1, 1, 1)
+    filter expand size of dilated conv3d_transpose, default value (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value 1
+    Default value 1
 
     data_format: The data format of the input and output data
-        Default format "NDHWC"
+    Default format "NDHWC"
 
     output_padding: tuple/list of 5 integers
-        The size will be added in the output shape. Default to (0, 0, 0, 0, 0)
+    The size will be added in the output shape. Default to (0, 0, 0, 0, 0)
 
     offset_x: int
-        offset of gradients in quant mode. Default to 0
+    offset of gradients in quant mode. Default to 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_transpose"
+    Kernel name, default value is "conv3d_transpose"
 
     Returns
     -------

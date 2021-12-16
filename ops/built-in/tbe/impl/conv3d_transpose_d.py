@@ -58,54 +58,53 @@ def get_op_support_info(out_backprop,
     Parameters
     ----------
     out_backprop: A dict with keys(shape and dtype)
-        The shape of gradients
+    The shape of gradients
 
     filters: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     y_input: A dict with keys(shape and dtype)
-       Conv3d_transpose output tensor, dtype must be assigned
+    Conv3d_transpose output tensor, dtype must be assigned
 
     input_sizes: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     output_padding: The size will be added in the output shape
-        Default value is [0, 0, 0, 0, 0]
+    Default value is [0, 0, 0, 0, 0]
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_transpose"
+    Kernel name, default value is "conv3d_transpose"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _cal_min_l1space():
         block_size = 16
@@ -179,8 +178,7 @@ def get_op_support_info(out_backprop,
             'expected_format_list': ",".join(_OUT_BACKPROP_FORMAT_WHITE_LIST),
             'format': out_backprop.get("ori_format")
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     ori_shape_filters = util_conv3d.transform_shape_with_format(filters.get("ori_format"),
                                                                 _FILTER_TARGET_FORMAT,
@@ -219,6 +217,7 @@ def get_op_support_info(out_backprop,
 
     return op_cal_info_in_json
 
+
 def _check_output_padding(output_padding_val, dilation_val, stride_val):
     if output_padding_val < 0 or (output_padding_val >= dilation_val and output_padding_val >= stride_val):
         dict_args = {
@@ -230,11 +229,12 @@ def _check_output_padding(output_padding_val, dilation_val, stride_val):
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
+
 def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R0914
                              bias, offset_w, y_input, input_sizes,
                              strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
                              data_format="NDHWC",
-                             output_padding=[0, 0, 0, 0, 0],
+                             output_padding=(0, 0, 0, 0, 0),
                              offset_x=0, kernel_name="conv3d_transpose"):
     """
     """
@@ -346,7 +346,7 @@ def check_supported(out_backprop,
                     offset_x=0,
                     kernel_name="conv3d_transpose"):
     """
-    The H and W dimension of input_sizes should be in range [1, 4096]. \n
+    The H and W dimension of input_size should be in range [1, 4096]. \n
     The H and W dimension of dilation should be in range [1, 255]. \n
     The D,H or W dimension of the filter should be in range [1, 255]. \n
     The padding in each dimension should be in range [0, 255]. \n
@@ -388,6 +388,8 @@ def check_supported(out_backprop,
     except Exception as e:
         reason = e.args[1]
         return False, reason
+    finally:
+        pass
 
 
 @para_check.check_op_params(
@@ -411,46 +413,46 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
     Parameters
     ----------
     out_backprop: A dict with keys(shape and dtype)
-        The shape of gradients
+    The shape of gradients
 
     filters: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     y_input: A dict with keys(shape and dtype)
-       Conv3d_transpose output tensor, dtype must be assigned
+    Conv3d_transpose output tensor, dtype must be assigned
 
     input_size: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_transpose, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     output_padding: The size will be added in the output shape
-        Default value is [0, 0, 0, 0, 0]
+    Default value is [0, 0, 0, 0, 0]
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_transpose"
+    Kernel name, default value is "conv3d_transpose"
 
     Returns
     -------
@@ -586,7 +588,6 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
-    cout_ori = group_dict["cout_ori"]
 
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // c0_size, c0_size, c0_size)

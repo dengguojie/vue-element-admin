@@ -16,7 +16,6 @@
 avg_pool3d_grad_d
 """
 from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
-from impl.util import util_common
 from impl.util import util_conv3d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
@@ -41,15 +40,9 @@ _L1FUSION_INPUT_CTR = 2
 _L1_FUSION_DISABLE = 0
 
 
-def get_op_support_info(grads,
-                        filter,
-                        multiplier,
-                        output,
-                        orig_input_shape,
-                        ksize,
-                        strides,
-                        pads,
-                        ceil_mode=False,
+def get_op_support_info(grads, filter, multiplier, output,
+                        orig_input_shape, ksize,
+                        strides, pads, ceil_mode=False,
                         count_include_pad=True,
                         divisor_override=0,
                         data_format="NDHWC",
@@ -60,8 +53,7 @@ def get_op_support_info(grads,
 
     Parameters
     ----------
-    grads : dict, shape and dtype of input_data,
-            only support float16, shape is 5dims, format is NDC1HWC0
+    grads : dict, shape and dtype of input_data, only support float16, shape is 5dims, format is NDC1HWC0
 
     filter : dict, fractal_z_3d layout, float16 dtype
 
@@ -69,34 +61,27 @@ def get_op_support_info(grads,
 
     output : dict, shape and dtype of output_data, only support float16
 
-    ksize : list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    ksize : list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
-    strides:list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    strides:list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
     pads : list or tuple, count of padding zero or d, h, w axis
 
-    ceil_mode : when True, will use ceil mode instead of floor
-                in the formula to compute the output shape
+    ceil_mode : when True, will use ceil mode instead of floor in the formula to compute the output shape
 
-    count_include_pad : when True, will include the zero-padding
-                        in the averaging calculation
+    count_include_pad : when True, will include the zero-padding in the averaging calculation
 
-    divisor_override : if specified, it will be used as divisor,
-                       otherwise size of the pooling region will be used
+    divisor_override : if specified, it will be used as divisor, otherwise size of the pooling region will be used
 
     data_format : str, default value is "NDHWC"
 
     kernel_name : cce kernel name, default value is "avg_pool3d_grad_d"
 
-    op_slice_info: Str
-        Default value is ""
+    op_slice_info: Str, Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _cal_min_l1space():
         block_size = 16
@@ -177,8 +162,7 @@ def get_op_support_info(grads,
             'expected_format_list': ",".join(_GRADS_FORMAT_WHITE_LIST),
             'format': grads.get("ori_format")
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     ori_shape_res = util_conv3d.transform_shape_with_format(data_format,
                                                             _FMAP_TARGET_FORMAT,
@@ -195,8 +179,6 @@ def get_op_support_info(grads,
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     _, kd, kh, kw, _ = ksize_formated
-    cout = ori_shape_res[-1]
-    ori_shape_filters = [kd, kh, kw, 1, cout]
     _, grads_d, grads_h, grads_w, _ = ori_shape_grads
     global_mode = (grads_d == 1 and grads_h == 1 and grads_w == 1)
     axis_split_info, axis_reduce_info = _get_slice_info()
@@ -206,12 +188,12 @@ def get_op_support_info(grads,
     else:
         l1_fusion_tag = _L1FUSION_INPUT_CTR
         min_tbe_l1_space = _cal_min_l1space()
-
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
                                                               axis_reduce_info,
                                                               l1_fusion_tag,
                                                               min_tbe_l1_space)
     return op_cal_info_in_json
+
 
 def _check_window_rule(ksize, strides, pads):
     if len(ksize) != _KSIZE_DIM:
@@ -259,6 +241,7 @@ def _check_ksize_stride_val(ksize, strides):
     if strn != 1 or strc != 1:
         error_manager_cube.raise_err_specific('avg_pool3d_grad_d',
                                               "strides's N dim and C dim only support val equal 1.")
+
 
 def _avg_pool3d_grad_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
     para_check.check_shape(input_shape)
@@ -314,8 +297,7 @@ def avg_pool3d_grad_d(grads,
     Parameters:
     -----------
 
-    grads : dict, shape and dtype of input_data,
-            only support float16, shape is 5dims, format is NDC1HWC0
+    grads : dict, shape and dtype of input_data, only support float16, shape is 5dims, format is NDC1HWC0
 
     filter : dict, fractal_z_3d layout, float16 dtype
 
@@ -323,22 +305,17 @@ def avg_pool3d_grad_d(grads,
 
     output : dict, shape and dtype of output_data, only support float16
 
-    ksize : list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    ksize : list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
-    strides:list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    strides:list or tuple, the window of avg_pool3d, only support avg_pool3d in D or H or W
 
     pads : list or tuple, count of padding zero or d, h, w axis
 
-    ceil_mode : when True, will use ceil mode instead of floor
-                in the formula to compute the output shape
+    ceil_mode : when True, will use ceil mode instead of floor in the formula to compute the output shape
 
-    count_include_pad : when True, will include the zero-padding
-                        in the averaging calculation
+    count_include_pad : when True, will include the zero-padding in the averaging calculation
 
-    divisor_override : if specified, it will be used as divisor,
-                       otherwise size of the pooling region will be used
+    divisor_override : if specified, it will be used as divisor, otherwise size of the pooling region will be used
 
     data_format : str, default value is "NDHWC"
 
@@ -494,4 +471,3 @@ def avg_pool3d_grad_d(grads,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.build(sch, config)
-

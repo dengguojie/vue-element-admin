@@ -94,11 +94,13 @@ _DYNAMIC_DIM_VAL = -1
 _DYNAMIC_RANK_FLAG = [-2]
 _OP_TYPE = "conv3d_backprop_input"
 
+
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     if attr_value < attr_min or attr_value > attr_max:
         error_manager_cube.raise_err_attr_range_invalid(
             'conv3d_backprop_input', "[{},{}]".format(attr_min, attr_max),
             attr_name, str(attr_value))
+
 
 def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
                      ori_format_out_backprop, ori_shape_out_backprop,
@@ -178,31 +180,36 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
 
     return shape_filters, shape_out_backprop, shape_strides, shape_dilations, range_input, shape_res
 
-def _check_range(range, range_min=1, range_max=None):
-    if range[0] < range_min:
+
+def _check_range(dim_range, range_min=1, range_max=None):
+    if dim_range[0] < range_min:
         error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the lower bound of range should be larger than {}".format(range_min))
-    if not range[1]:
+    if not dim_range[1]:
         return
-    if (range_max is not None) and (range[1] > range_max):
+    if (range_max is not None) and (dim_range[1] > range_max):
         error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be less than {}".format(range_max))
-    if range[0] > range[1]:
+    if dim_range[0] > dim_range[1]:
         error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
+
 
 def _check_dynamic_flag(input_size_ndhwc, shape_filters, groups):
     for i in range(4):
         if input_size_ndhwc[i] < -1:
             error_manager_cube.raise_err_specific(
-                'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(
+                'conv3d_backprop_input', "Dynamic flag is -1, but dim {} is {}".format(
                     _DIM_STR[i], input_size_ndhwc[i]))
     input_size_ndhwc[-1] = shape_filters[3] * groups if input_size_ndhwc[-1] < 0 else input_size_ndhwc[-1]
 
+
 def _get_output(x_in, k_size, pads, stride, dilation):
-    if not x_in:
-        return None
-    return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+    x_lower, x_upper = x_in
+    y_upper = None if x_upper is None else (x_upper + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+    y_lower = None if x_lower is None else (x_lower + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+    return y_lower, y_upper
+
 
 def _range_to_fix(shape, range_ori):
     # if N/D/H/W dim is not dynamic, change corresponding upper and lower bound in range
@@ -214,6 +221,7 @@ def _range_to_fix(shape, range_ori):
             range_ori[range_idx] = (shape[shape_idx], shape[shape_idx])
     return range_ori
 
+
 def _modify_dedy(shape, range_ori):
     for i in range(4):
         dim = _DIM_STR[i]
@@ -223,13 +231,14 @@ def _modify_dedy(shape, range_ori):
             shape[shape_idx] = range_ori[range_idx][0]
     return shape
 
+
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
     _check_range(fmap_range_n)
     _check_range(fmap_range_d)
     _check_range(fmap_range_h, _LOWER_RANGE, _UPPER_RANGE)
     _check_range(fmap_range_w, _LOWER_RANGE, _UPPER_RANGE)
-    w_d, w_h, w_w, w_c, w_n = kernel
+    w_d, w_h, w_w, _, _ = kernel
     _check_attr_range("stride's D", stride[1], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's H", stride[2], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's W", stride[3], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
@@ -245,26 +254,23 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         if fmap_range_w[1]:
             out_w_upper = util_common.ceil(fmap_range_w[1], stride[3])
     else:
-        out_d_lower = _get_output(fmap_range_d[0], w_d, (pads[0], pads[1]), stride[1], dilation[1])
+        out_d_lower, out_d_upper = _get_output(fmap_range_d, w_d, (pads[0], pads[1]), stride[1], dilation[1])
         if out_d_lower < 1:
             fmap_range_d_lower = min(w_d, fmap_range_d[1]) if fmap_range_d[1] else w_d
             fmap_range_d = (fmap_range_d_lower, fmap_range_d[1])
-            out_d_lower = _get_output(fmap_range_d[0], w_d, (pads[0], pads[1]), stride[1], dilation[1])
-        out_d_upper = _get_output(fmap_range_d[1], w_d, (pads[0], pads[1]), stride[1], dilation[1])
+            out_d_lower, out_d_upper = _get_output(fmap_range_d, w_d, (pads[0], pads[1]), stride[1], dilation[1])
 
-        out_h_lower = _get_output(fmap_range_h[0], w_h, (pads[2], pads[3]), stride[2], dilation[2])
+        out_h_lower, out_h_upper= _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
         if out_h_lower < 1:
             fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
             fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
-            out_h_lower = _get_output(fmap_range_h[0], w_h, (pads[2], pads[3]), stride[2], dilation[2])
-        out_h_upper = _get_output(fmap_range_h[1], w_h, (pads[2], pads[3]), stride[2], dilation[2])
+            out_h_lower, out_h_upper= _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
 
-        out_w_lower = _get_output(fmap_range_w[0], w_w, (pads[4], pads[5]), stride[3], dilation[3])
+        out_w_lower, out_w_upper = _get_output(fmap_range_w, w_w, (pads[4], pads[5]), stride[3], dilation[3])
         if out_w_lower < 1:
             fmap_range_w_lower = min(w_w, fmap_range_w[1]) if fmap_range_w[1] else w_w
             fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
-            out_w_lower = _get_output(fmap_range_w[0], w_w, (pads[4], pads[5]), stride[3], dilation[3])
-        out_w_upper = _get_output(fmap_range_w[1], w_w, (pads[4], pads[5]), stride[3], dilation[3])
+            out_w_lower, out_w_upper = _get_output(fmap_range_w, w_w, (pads[4], pads[5]), stride[3], dilation[3])
 
     range_dedy = [(fmap_range_n[0], fmap_range_n[1]), (out_d_lower, out_d_upper),
                   (util_common.ceil(out_shape[4], _C0_SIZE), util_common.ceil(out_shape[4], _C0_SIZE)),
@@ -275,15 +281,15 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
 
     return range_dedy, range_input
 
+
 def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
                         out_backprop_dtype, range_dedy, range_input, groups):
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]['mac']
-    _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters_dtype]['mac']
 
     dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     dedx_batch, dedx_depth, dedx_h, dedx_w, dedx_channel = input_sizes
-    filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filters
+    filter_depth, filter_h, filter_w, _, filter_batch = shape_filters
     group_dict = util_common.calculate_group(dedx_channel, filter_batch, groups, _C0_SIZE, _C0_SIZE)
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
@@ -324,29 +330,30 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
 
     return dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict
 
+
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple),
                              (list, tuple), str, str, str, str,
                              (list, tuple), (list, tuple), dict)
-def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
+def check_conv3dbp_input_params(shape_filter,
                                 shape_out_backprop,
                                 input_sizes, strides, pads, dilations,
                                 filter_dtype, out_backprop_dtype,
                                 res_dtype, kernel_name, range_input, range_dedy,
-                                param_dict={}):
+                                param_dict=None):
     """
     The params check function of conv3d backprop input
 
     Parameters
     -------------------------
     shape_filter : The shape of filter
-        5-D with shape (depth, height, weight, batch, channels)
+    5-D with shape (depth, height, weight, batch, channels)
 
     shape_out_backprop : The shape of gradients
-        5-D with shape [batch, depth, height, weight,channels]
+    5-D with shape [batch, depth, height, weight,channels]
 
     input_sizes : The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides : A list/tuple of ints. The stride of the sliding window
 
@@ -379,6 +386,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                error_manager_util.get_error_message(dict_args))
 
     def _check_ub_limitation():
+        fused_num = 0 if param_dict is None else param_dict.get("fused_num", 0)
         if not dedy_w_upper:
             return
         w_value = dedy_w_upper * stride_w
@@ -388,8 +396,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         cub_size_min = _C0_SIZE * _C0_SIZE * _BIT_RATIO_DICT.get(res_dtype)
         ub_size = tbe_platform.get_soc_spec("UB_SIZE")
 
-        if (aub_dedy_size_min * (param_dict.get("fused_num", 0) + 1) +
-                aub_filling_size_min + cub_size_min) > ub_size:
+        if (aub_dedy_size_min * (fused_num + 1) + aub_filling_size_min + cub_size_min) > ub_size:
             dict_args = {
                 'errCode': 'E60119'
             }
@@ -413,7 +420,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
             if filter_h_dilation > fmap_h_padding:
                 error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'H',
-                                               str(filter_h_dilation),str(fmap_h_padding))
+                                               str(filter_h_dilation), str(fmap_h_padding))
             if filter_w_dilation > fmap_w_padding:
                 error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'W',
                                                 str(filter_w_dilation), str(fmap_w_padding))
@@ -421,15 +428,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                 error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'D',
                                                str(filter_d_dilation), str(fmap_d_padding))
             if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
-                dict_args = {'errCode': 'E60024',}
+                dict_args = {'errCode': 'E60024'}
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
             if ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
-                dict_args = {'errCode': 'E60025',}
+                dict_args = {'errCode': 'E60025'}
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
             if ((fmap_deep - filter_d_dilation + pad_head + pad_tail) // stride_d + 1) != dedy_deep:
-                dict_args = {'errCode': 'E62508',}
+                dict_args = {'errCode': 'E62508'}
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
 
@@ -601,17 +608,56 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     return result
 
-def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
-                          dilations, groups, data_format, kernel_name):
 
-    ori_shape_filters = filter.get("ori_shape")
+def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,
+                          dilations, groups, data_format, kernel_name):
+    """
+    algorithm: check_and_config_para
+
+    Parameters
+    ----------
+    weight: A dict with keys(shape and dtype)
+    Input weight tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+    Gradients tensor
+
+    y: A dict with keys(shape and dtype)
+    Conv3d_backprop_input output tensor, dtype must be assigned
+
+    input_size: dict, will not be used
+    input tensor size.
+
+    strides: A tuple/list of 5 integers
+    Filter move stride
+
+    pads: A tuple/list of 6 integers: [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    str, "SAME" or "VALID"
+
+    dilations: A tuple/list of 5 integers
+    filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+    Default value 1
+
+    data_format: The data format of the input and output data
+    Default format "NDHWC"
+
+    kernel_name: Str
+    Kernel name, default value is "conv3d_backprop_input"
+
+    Returns
+    -------
+    Shape
+    """
+    ori_shape_filters = weight.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     # range_input is N,D,C1,H,W,C0
     range_input = y.get("range")
-    filters_dtype = filter.get("dtype")
+    filters_dtype = weight.get("dtype")
     out_backprop_dtype = out_backprop.get("dtype")
     res_dtype = y.get("dtype")
-    ori_format_filters = filter.get("ori_format")
+    ori_format_filters = weight.get("ori_format")
     ori_format_out_backprop = out_backprop.get("ori_format")
     ori_format_res = y.get("ori_format")
     ori_shape_input_size = input_size.get("ori_shape")
@@ -622,9 +668,9 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
             error_manager_cube.raise_err_specific(
                 'conv3d_backprop_input', "prebuild failed, not support input size's shape [-1] and [-2]")
 
-    if not(ori_format_res == ori_format_out_backprop == data_format):
+    if not ori_format_res == ori_format_out_backprop == data_format:
         error_manager_cube.raise_err_specific(
-            'conv3d_backprop_input',"The data format of out_backprop, input_size and data_format should be same")
+            'conv3d_backprop_input', "The data format of out_backprop, input_size and data_format should be same")
 
     ori_shape_strides = strides
     ori_shape_dilations = dilations
@@ -668,10 +714,11 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
                                       res_dtype, kernel_name, range_input, range_dedy)
 
     (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
-     filter_dtype, out_backprop_dtype, res_dtype, kernel_name) = res
+     _, out_backprop_dtype, res_dtype, kernel_name) = res
 
-    return dx_shape, dedy, filter_frac, shape_filter, shape_out_backprop, input_sizes, strides, \
-           pads, dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict
+    return dx_shape, dedy, filter_frac, shape_filter, input_sizes, strides, \
+           pads, dilations, res_dtype, kernel_name, group_dict
+
 
 def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, strides, pads,
                                    dilations=(1, 1, 1, 1, 1), groups=1, data_format="NDHWC",
@@ -679,8 +726,8 @@ def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, s
 
     res = check_and_config_para(filters, out_backprop, y_input, input_size, strides, pads,
                                  dilations, groups, data_format, kernel_name)
-    (dx_shape, dedy, filter_frac, shape_filter, shape_out_backprop, input_sizes, strides,
-     pads, dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
+    (dx_shape, dedy, filter_frac, shape_filter, input_sizes, strides,
+     pads, dilations, res_dtype, kernel_name, group_dict) = res
 
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     shape_filter_ncdhw = [filter_batch, filter_channel, filter_depth, filter_h, filter_w]
@@ -731,7 +778,7 @@ def _get_pad_mode(pads):
     return pad_mode
 
 
-def _get_filter_dilation(weight, dilation, data_format):
+def _get_filter_dilation(weight: dict, dilation: list, data_format: str) -> int:
     filter_d = weight.get("ori_shape")[weight.get("ori_format").find("D")]
     filter_h = weight.get("ori_shape")[weight.get("ori_format").find("H")]
     filter_w = weight.get("ori_shape")[weight.get("ori_format").find("W")]
@@ -744,7 +791,7 @@ def _get_filter_dilation(weight, dilation, data_format):
     return filter_d_dilation, filter_h_dilation, filter_w_dilation
 
 
-def _modify_w_range_max(fmap, weight, dedy, strides, dilation, data_format):
+def _modify_w_range_max(weight: dict, dedy: dict, strides: list, dilation: list, data_format: str) -> bool:
     """
     modify w range max value
     """
@@ -773,68 +820,66 @@ def _modify_w_range_max(fmap, weight, dedy, strides, dilation, data_format):
         dedy.get("ori_range")[w_pos][1] = min(w_max, dedy.get("ori_range")[w_pos][1])
         return False
 
-    error_manager_cube.raise_err_specific_user(_OP_TYPE,
-                                               "w of dedy is too large, only support not larger than {}, "
-                                               "actually is {}".format(str(w_max), str(dedy_w)))
-
 
 @register_param_generalization("Conv3DBackpropInput")
-def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R0913,R0914
+def conv3d_backprop_input_generalization(input_size, filter,
                                          out_backprop, y, strides,
                                          pads, dilations=(1, 1, 1, 1, 1), groups=1,
                                          data_format="NDHWC",
                                          kernel_name="conv3d_backprop_input",
-                                         generalize_config={"mode": "keep_rank"}):
+                                         generalize_config=None):
     """
     algorithm: Conv3d_backprop_input
 
     Parameters
     ----------
     input_size: dict, will not be used
-            input tensor size.
+    input tensor size.
 
     filter: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     y: A dict with keys(shape and dtype)
-        Conv3d_backprop_input output tensor, dtype must be assigned
+    Conv3d_backprop_input output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers: [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
-          str: "SAME" or "VALID"
+    str: "SAME" or "VALID"
 
     dilations: A tuple/list of 5 integers
-        filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+    filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value 1
+    Default value 1
 
     data_format: The data format of the input and output data
-        Default format "NDHWC"
+    Default format "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_input"
+    Kernel name, default value is "conv3d_backprop_input"
 
     generalize_config: dict
-        support keep_rank
+    support keep_rank
 
     Returns
     -------
     None
     """
     result = []
-    if generalize_config["mode"] == "keep_rank":
-        out_backprop = util_cube_dynamic.gen_conv_shape_range(out_backprop, _OP_TYPE)
+    if generalize_config.get("mode") == "keep_rank":
+        if -1 in out_backprop.get("ori_shape"):
+            return [input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads},
+                    {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}]
+        else:
+            out_backprop = util_cube_dynamic.gen_conv_shape_range(out_backprop, _OP_TYPE)
     else:
-        error_manager_cube.raise_err_one_para("E62306",
-                                              _OP_TYPE,
-                                              "Invalid generalize mode, currently only support keep_rank")
-    
+        return None
+
     # get dx_range depends on dy_range
     para_dict = {
         "strides": _get_ndhwc_by_format(out_backprop["ori_format"], strides),
@@ -848,7 +893,7 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
                         "input_size": input_size}
     }
     # if excced L1 size, narrow the w range.
-    w_range_single_point = _modify_w_range_max(y, filter, out_backprop, strides, dilations, data_format)
+    w_range_single_point = _modify_w_range_max(filter, out_backprop, strides, dilations, data_format)
     w_pos = data_format.find("W")
     conv3d_backprop = util_cube_dynamic.Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
     dy_ori_range = out_backprop.get("ori_range")
@@ -861,7 +906,8 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
     util_conv3d.generalize_input_keep_rank(out_backprop)
     util_conv3d.generalize_input_keep_rank(y)
     input_size["const_value"] = None
-    result.append([input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name])
+    result.append([input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads},
+                   {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}])
     return result
 
 
@@ -869,7 +915,7 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
 @para_check.check_input_type(dict, dict, dict, dict,
                              (tuple, list), (tuple, list, str),
                              (tuple, list), int, str, str)
-def conv3d_backprop_input(input_size, filter, # pylint: disable=R0913,R0914
+def conv3d_backprop_input(input_size, filter,
                           out_backprop, y, strides,
                           pads, dilations=(1, 1, 1, 1, 1), groups=1,
                           data_format="NDHWC",
@@ -880,34 +926,34 @@ def conv3d_backprop_input(input_size, filter, # pylint: disable=R0913,R0914
     Parameters
     ----------
     input_size: dict, will not be used
-            input tensor size.
+    input tensor size.
 
     filter: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     y: A dict with keys(shape and dtype)
-        Conv3d_backprop_input output tensor, dtype must be assigned
+    Conv3d_backprop_input output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers: [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
-          str: "SAME" or "VALID"
+    str, "SAME" or "VALID"
 
     dilations: A tuple/list of 5 integers
-        filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+    filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value 1
+    Default value 1
 
     data_format: The data format of the input and output data
-        Default format "NDHWC"
+    Default format "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_input"
+    Kernel name, default value is "conv3d_backprop_input"
 
     Returns
     -------

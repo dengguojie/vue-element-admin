@@ -1,0 +1,79 @@
+[
+	{
+		"case_name": "Test_Conv3DBackpropFilter_VALID",
+		"op": "Conv3DBackpropFilter",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, -1, -1, 56, 256],
+				"ori_shape": [1, -1, -1, 56, 256],
+				"typical_shape": [1, 8, 56, 56, 256],
+				"shape_range": [[1,64],[1,118]],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "x"
+			},
+			{
+				"format": "ND",
+				"ori_format": "ND", 
+				"is_const": true,
+				"type": "int32",
+				"shape": [5],
+				"ori_shape": [5],
+				"value": [1, 1, 1, 256, 64],
+				"name": "filter_size"
+			},
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, -1, -1, 56, 64],
+				"ori_shape": [1, -1, -1, 56, 64],
+				"typical_shape": [1, 8, 56, 56, 64],
+				"shape_range": [[5,317],[1,100]],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "out_backprop"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float32",
+				"shape": [1, 1, 1, 256, 64],
+				"ori_shape": [1, 1, 1, 256, 64],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0, 0]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 1
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
+	}
+]

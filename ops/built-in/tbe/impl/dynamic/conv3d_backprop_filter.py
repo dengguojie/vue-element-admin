@@ -237,7 +237,7 @@ def _get_pads_attr(strides, pads, dilations, fmap_shape, w_ndhwc):
             pad_back = pad_d - pad_front
     else:
         if pad_front >= filter_d_dilation or pad_back >= filter_d_dilation:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E64005"
             dict_args["direction"] = 'H'
             dict_args["pads_dir"] = "pad_front and pad_back"
@@ -253,7 +253,7 @@ def _get_pads_attr(strides, pads, dilations, fmap_shape, w_ndhwc):
             pad_down = pad_h - pad_up
     else:
         if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E64005"
             dict_args["direction"] = 'H'
             dict_args["pads_dir"] = "pad_up and pad_down"
@@ -269,7 +269,7 @@ def _get_pads_attr(strides, pads, dilations, fmap_shape, w_ndhwc):
             pad_right = pad_w - pad_left
     else:
         if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E64005"
             dict_args["direction"] = 'W'
             dict_args["pads_dir"] = "pad_left and pad_right"
@@ -502,8 +502,8 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
     _, upper_dedy_d, upper_dedy_h, upper_dedy_w, _ = upper_bound_dedy
 
     # special cases
-    if (upper_dedy_w and upper_dedy_h and lower_dedy_w <= 1 \
-        and upper_dedy_w >= 1 and upper_dedy_h > 1):
+    upper_dy_flag = upper_dedy_w and upper_dedy_h
+    if (upper_dy_flag and lower_dedy_w <= 1 and upper_dedy_w >= 1 and upper_dedy_h > 1):
         # Chip Design demand dedy_w must >=2 when dedy_h != 1
         dict_args = {
             'errCode': 'E62006',
@@ -707,35 +707,27 @@ def conv3d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
 
     Parameters
     ----------
-    x: dict with keys(shape, dtype and range)
-       input feature map tensor
+    x: dict with keys(shape, dtype and range), input feature map tensor
 
     filter_size: dict, will not be used
 
-    out_backprop: dict with keys(shape and dtype)
-                  out_backprop tensor
+    out_backprop: dict with keys(shape and dtype), out_backprop tensor
 
-    y: dict with keys(shape and dtype)
-       output tensor, dtype must be assigned
+    y: dict with keys(shape and dtype), output tensor, dtype must be assigned
 
-    strides: tuple/list of 5 integers
-             filter move stride
+    strides: tuple/list of 5 integers, filter move stride
 
-    pads: tuple/list of 5 integers
-          [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+    pads: tuple/list of 5 integers, [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 5 integers
-               filter expand size of dilated conv3d_backprop_filter
+    dilations: tuple/list of 5 integers, filter expand size of dilated conv3d_backprop_filter
 
-    groups: int
-            The number of filter's group. Default value is 1.
+    groups: int, The number of filter's group. Default value is 1.
 
     data_format: str
-            An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC".
-            Specify the data format of the input and output data.
+    An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC".
+    Specify the data format of the input and output data.
 
-    kernel_name: str
-                 kernel name, default value is "conv3d_backprop_filter"
+    kernel_name: str, kernel name, default value is "conv3d_backprop_filter"
 
     Returns
     -------

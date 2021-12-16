@@ -104,47 +104,46 @@ def get_op_support_info(x_dict,
     Parameters
     ----------
     x_dict: A dict with keys(shape and dtype)
-        Input feature map tensor
+    Input feature map tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     y_dict: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     filter_size: The shape of filter
-        5-D with shape [batch, depth, channels, height, weight]
+    5-D with shape [batch, depth, channels, height, weight]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
 
     groups: Int
-        Param for group covolution, default value is 1
+    Param for group covolution, default value is 1
 
     data_format: Str
-        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
+    An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_filter"
+    Kernel name, default value is "conv3d_backprop_filter"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _cal_min_l1space():
         filter_h_dilation = (ori_shape_filters[1] - 1) * dilations_formated[2] + 1
-        _, _, stride_h, stride_w, _ = strides_formated
-        _, _, fmap_h, fmap_w, _ = ori_shape_fmap
+        _, _, stride_h, _, _ = strides_formated
+        _, _, _, fmap_w, _ = ori_shape_fmap
         _, _, _, dedy_w, _ = ori_shape_out_backprop
         al1_min_byte = _C0 * _C0 * 2
 
@@ -205,8 +204,7 @@ def get_op_support_info(x_dict,
             'expected_format_list': ",".join(_FILTER_FORMAT_WHITE_LIST),
             'format': y_dict.get("ori_format")
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     ori_shape_fmap = util_conv3d.transform_shape_with_format(x_dict.get("ori_format"),
                                                              _X_TARGET_FORMAT,
                                                              x_dict.get("ori_shape"),
@@ -218,8 +216,7 @@ def get_op_support_info(x_dict,
             'expected_format_list': ",".join(_X_FORMAT_WHITE_LIST),
             'format': x_dict.get("ori_format")
         }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     axis_split_info, axis_reduce_info = _get_slice_info()
 
@@ -276,6 +273,8 @@ def check_supported(x_dict,
     except Exception as e:
         reason = e.args[1]
         return False, reason
+    finally:
+        pass
 
 
 def _process_input(x_dict,
@@ -391,7 +390,7 @@ def _process_input(x_dict,
                             ori_format_out_backprop,
                             input_format_list,
                             'out_backprop')
-    dilations = _normalize_shape_ndchw(dilations,
+    dilations_list = _normalize_shape_ndchw(dilations,
                                        ori_format_out_backprop,
                                        input_format_list,
                                        'dilations')
@@ -402,7 +401,7 @@ def _process_input(x_dict,
                                        res_format_list,
                                        'y')
     return (shape_x, shape_out_backprop, shape_res,
-            strides, pads, groups, dilations, x_dtype,
+            strides, pads, groups, dilations_list, x_dtype,
             out_backprop_dtype, res_dtype, kernel_name)
 
 
@@ -464,34 +463,34 @@ def conv3d_backprop_filter_d(x_dict,
     Parameters
     ----------
     x_dict: A dict with keys(shape and dtype)
-        Input feature map tensor
+    Input feature map tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     y_dict: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     filter_size: The shape of filter
-        5-D with shape [batch, depth, channels, height, weight]
+    5-D with shape [batch, depth, channels, height, weight]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
 
     groups: Int
-        Param for group covolution, default value is 1
+    Param for group covolution, default value is 1
 
     data_format: Str
-        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
+    An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_filter"
+    Kernel name, default value is "conv3d_backprop_filter"
 
     Returns
     -------

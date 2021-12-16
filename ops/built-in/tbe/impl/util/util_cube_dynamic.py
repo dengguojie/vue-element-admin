@@ -131,7 +131,10 @@ def set_default_para():
     return default_para
 
 
-def check_para_fuzz_compile(x, y, dilations, is_gragh_mode, op_type):
+def check_para_fuzz_compile(x: dict, y:dict, dilations:list, is_gragh_mode:bool, op_type:str) -> list:
+    """
+    check fuzz compile parameters
+    """
     # unknow_rank inputs ori_shape is [-2], others' shape length is 4
     unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
     if unknow_rank:
@@ -166,7 +169,8 @@ def check_para_fuzz_compile(x, y, dilations, is_gragh_mode, op_type):
     return []
 
 
-def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type, is_gragh_mode=False):
+def modify_w_range_max(fmap: dict, infilter: dict, dedy: dict, strides: list, data_format: str,
+                       op_type: str, is_gragh_mode: bool = False) -> dict:
     """
     modify w range max value
     """
@@ -193,7 +197,7 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type, is_g
         h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
         l1_size = get_soc_spec("L1_SIZE")
         kw_k0 = filter_w * CUBE_SIZE
-        tiling_BL1_shape_0 = bit_dir[filter_dtype] // kw_k0
+        tiling_BL1_shape_0 = bit_dir.get(filter_dtype) // kw_k0
         filter_l1_size = FP16_SIZE * FP16_N * tiling_BL1_shape_0 * FP16_K * filter_w * filter_h
         a_l1_size = l1_size - filter_l1_size
         w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
@@ -220,11 +224,12 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type, is_g
             dedy_h_max = dedy_h_max - 1
             continue
         dedy_h_max = dedy_h_max - 1
-    warnings.warn("{}, Input shape is too large, the minimum tiling may exceed L1_Buffer")
+    warnings.warn("{}, Input shape is too large, the minimum tiling may exceed L1_Buffer", op_type)
     return {"is_exceed_l1": True}
 
 
-def modify_dy_w_range_max_opti(dedy : dict, infilter : dict, strides : list, data_format : str, op_type : str, is_gragh_mode=False):
+def modify_dy_w_range_max_opti(dedy: dict, infilter: dict, strides: list,
+                               data_format: str, op_type: str, is_gragh_mode: bool = False) -> bool:
     """
     modify dy_w range max opti
     """
@@ -332,7 +337,10 @@ def gen_conv_shape_range(input_d : dict, op_type : str, is_graph_mode=False) -> 
     return input_d
 
 
-def check_graph_mode(tensor):
+def check_graph_mode(tensor: dict) -> bool:
+    """
+    check graph mode
+    """
     # check graph mode or single mode in fuzzy compile
     if (list(tensor.get("ori_shape")) == [-2] or DYNAMIC_FLAG in tensor.get("ori_shape") and
         "ori_range" in tensor.keys()):
@@ -424,7 +432,7 @@ class CubeParaProcess:
                     if valid_upper and in_range[1] > valid_upper:
                         err_man.raise_err_attr_range_invalid(
                             self.op_type, [valid_lower, valid_upper], \
-                                DIM_TO_NAME[dim] + " of " + name +" in_format " + in_format, in_range[1])
+                                DIM_TO_NAME[dim] + " of " + name + " in_format " + in_format, in_range[1])
                     if in_range[0] > in_range[1]:
                         err_man.raise_err_specific_user(self.op_type, "upper bound must be greater than lower bound.")
 
@@ -599,7 +607,7 @@ class CubeParaProcess:
             if DYNAMIC_FLAG in self.pads:
                 err_man.raise_err_specific_user(self.op_type,
                 "not support -1 in pads for deconvolution.")
-            if self.pads[0]!=self.pads[1] or self.pads[2]!=self.pads[3]:
+            if self.pads[0] != self.pads[1] or self.pads[2] != self.pads[3]:
                 err_man.raise_err_specific_user(self.op_type,
                 "value of pads for deconvolution should be [A, A, B, B].")
         elif DYNAMIC_FLAG in dy_shape[1:] and (DYNAMIC_FLAG not in self.pads and sum(self.pads) != 0):
@@ -750,7 +758,7 @@ class Conv2dParaProcess(CubeParaProcess):
 
         in_shape_nc1hwc0 = [in_shape[N_DIM], in_shape[C_DIM] // block_size_k,
                             in_shape[H_DIM], in_shape[W_DIM], block_size_k]
-        if self.is_tensor == False:
+        if not self.is_tensor:
             if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[N_DIM] = operation.var("batch_n", in_range[N_DIM])
                 operation.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
@@ -922,7 +930,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             self.input_size = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
         self.pooling_mode = paras.get("pooling_mode")
 
-    def _calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range, group_para):
+    def __calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range, group_para):
         """
         calculate shape for mmad
         """
@@ -1060,7 +1068,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         (dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw,
          group_para, correct_range_flag) = self.infer_shape_and_range()
 
-        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self._calc_shape(
+        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self.__calc_shape(
             dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw, group_para)
         self.calc_pads(input_size_nchw, filter_shape_nchw)
 

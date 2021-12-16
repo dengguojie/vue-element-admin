@@ -55,7 +55,8 @@ def test_conv3d_fuzzy_build_generalization(test_arg):
             'ori_format': 'NDHWC',
             'format': 'NDC1HWC0',
             'dtype': 'float16'
-        }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
+        }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization',
+        {"mode": "keep_rank"}]
     conv3d_generalization(*input_list)
 
 def test_conv3d_fuzz_build_tilingcase(test_arg):
@@ -116,7 +117,8 @@ def test_conv3d_fuzz_build_tilingcase(test_arg):
                 'ori_format': 'NDHWC',
                 'format': 'NDC1HWC0',
                 'dtype': 'float16'
-            }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
+            }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization',
+            {"mode": "keep_rank"}]
         conv3d(*input_list)
 
 def _test_op_get_op_support_info(test_arg):

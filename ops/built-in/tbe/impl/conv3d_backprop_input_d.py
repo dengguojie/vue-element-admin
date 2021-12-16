@@ -101,49 +101,47 @@ def get_op_support_info(filters, # pylint: disable=R0913,R0914
     Parameters
     ----------
     filters: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        The shape of gradients
+    The shape of gradients
 
     y_input: A dict with keys(shape and dtype)
-       conv3d_backprop_input output tensor, dtype must be assigned
+    conv3d_backprop_input output tensor, dtype must be assigned
 
     input_sizes: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Filter expand size of dilated conv3d_backprop_input, default value is (1, 1, 1, 1, 1)
+    Filter expand size of dilated conv3d_backprop_input, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_input"
+    Kernel name, default value is "conv3d_backprop_input"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _cal_min_l1space():
         block_size = 16
         w_value = ori_shape_out_backprop[3] * strides[3]
         filter_d_dilation = (ori_shape_filters[0] - 1) * dilations_formated[1] + 1
         filter_h_dilation = (ori_shape_filters[1] - 1) * dilations_formated[2] + 1
-        filter_w_dilation = (ori_shape_filters[2] - 1) * dilations_formated[3] + 1
         if ori_shape_res[3] > block_size:
             h_value_max = filter_h_dilation + 1
         elif block_size % ori_shape_res[3] == 0:
@@ -252,6 +250,7 @@ def get_op_support_info(filters, # pylint: disable=R0913,R0914
 
     return op_cal_info_in_json
 
+
 def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
                      ori_format_out_backprop, ori_shape_out_backprop,
                      ori_shape_strides, ori_shape_dialtions,
@@ -325,11 +324,50 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
 
 
 @tbe_platform.fusion_manager.register("conv3d_backprop_input_d")
-def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
+def conv3d_backprop_input_fusion_compute(filters,
                                          out_backprop, y_input, input_sizes, strides,
                                          pads, dilations=(1, 1, 1, 1, 1), groups=1,
                                          data_format="NDHWC",
                                          kernel_name="conv3d_backprop_input"):
+    """
+    algorithm: conv3d_backprop_input_fusion_compute
+
+    Parameters
+    ----------
+    filters: A dict with keys(shape and dtype)
+    Input weight tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+    Gradients tensor
+
+    y_input: A dict with keys(shape and dtype)
+    Conv3d_backprop_input output tensor, dtype must be assigned
+
+    input_size: The shape of feature map
+    5-D with shape [batch, depth, height, weight, channels]
+
+    strides: A tuple/list of 5 integers
+    Filter move stride
+
+    pads: A tuple/list of 6 integers
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+    filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+    Default value 1
+
+    data_format: The data format of the input and output data
+    Default format "NDHWC"
+
+    kernel_name: Str
+    Kernel name, default value is "conv3d_backprop_input"
+
+    Returns
+    -------
+    dedx
+    """
     shape_filter = []
     for i in filters.op.attrs['ori_shape']:
         shape_filter.append(i.value)
@@ -371,25 +409,9 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
     (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
      filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
 
-    dedy_batch, dedy_deep, dedy_h, dedy_w, dedy_channel = shape_out_backprop
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     pads = list(pads)
 
-    shape_dedy = (dedy_batch,
-                  dedy_deep,
-                  util_common.ceil(dedy_channel, _C0_SIZE),
-                  dedy_h,
-                  dedy_w,
-                  _C0_SIZE)
-
-    real_g = group_dict["real_g"]
-    cin1_g = group_dict["cin1_g"]
-    cout_g = group_dict["cout_g"]
-
-    shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
-                         cout_g // _C0_SIZE,
-                         _C0_SIZE,
-                         _C0_SIZE)
     shape_filter_ncdhw = [filter_batch,
                           filter_channel,
                           filter_depth,
@@ -479,6 +501,8 @@ def check_supported(filters,
     except Exception as e:
         reason = e.args[1]
         return False, reason
+    finally:
+        pass
 
 
 @para_check.check_op_params(
@@ -504,34 +528,34 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     Parameters
     ----------
     filters: A dict with keys(shape and dtype)
-        Input weight tensor
+    Input weight tensor
 
     out_backprop: A dict with keys(shape and dtype)
-        Gradients tensor
+    Gradients tensor
 
     y_input: A dict with keys(shape and dtype)
-        Conv3d_backprop_input output tensor, dtype must be assigned
+    Conv3d_backprop_input output tensor, dtype must be assigned
 
     input_size: The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
-        Filter move stride
+    Filter move stride
 
     pads: A tuple/list of 6 integers
-        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+    filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value 1
+    Default value 1
 
     data_format: The data format of the input and output data
-        Default format "NDHWC"
+    Default format "NDHWC"
 
     kernel_name: Str
-        Kernel name, default value is "conv3d_backprop_input"
+    Kernel name, default value is "conv3d_backprop_input"
 
     Returns
     -------
@@ -589,13 +613,13 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     Parameters
     -------------------------
     shape_filter : The shape of filter
-        5-D with shape (depth, height, weight, batch, channels)
+    5-D with shape (depth, height, weight, batch, channels)
 
     shape_out_backprop : The shape of gradients
-        5-D with shape [batch, depth, height, weight,channels]
+    5-D with shape [batch, depth, height, weight,channels]
 
     input_sizes : The shape of feature map
-        5-D with shape [batch, depth, height, weight, channels]
+    5-D with shape [batch, depth, height, weight, channels]
 
     strides : A list/tuple of ints. The stride of the sliding window
 

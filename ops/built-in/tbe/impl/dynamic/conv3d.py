@@ -18,14 +18,12 @@ dynamic conv3d
 from __future__ import absolute_import
 
 import warnings
-import math
 
 from impl.util import util_common
 from impl.util import util_conv3d
 from impl.util import util_cube_dynamic
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
-from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
@@ -85,6 +83,7 @@ _DTYPE_SIZE = {"float16": 2, "float32": 4}
 _ALIGN_BYTE = 32
 _DEFAULT_FP16_SIZE = 2
 
+
 def get_op_support_info(fmap,
                         weight,
                         bias,
@@ -104,48 +103,47 @@ def get_op_support_info(fmap,
     Parameters
     ----------
     fmap: A dict with keys(shape and dtype)
-        Input 5d feature map tensor
+    Input 5d feature map tensor
 
     weight: A dict with keys(shape and dtype)
-        Input 5d weight tensor
+    Input 5d weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     output: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers, format sensitive
-        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+    [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
     pads: A tuple/list of 6 integers
-        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d"
+    Kernel name, default value is "conv3d"
 
     op_slice_info: Str
-        Default value is ""
+    Default value is ""
 
     Returns
     -------
-    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
-                         and min_tbe_l1_space)
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable and min_tbe_l1_space)
     """
     def _get_slice_info():
         overlap_d = -1 if (filter_d == 1 and strides_d == 1) else 0
@@ -200,14 +198,8 @@ def get_op_support_info(fmap,
     if strides_formated is None:
         error_manager_cube.raise_err_one_para("E62306", "Conv3d", "data format should be NDHWC or NCDHW")
 
-    dilations_formated = util_conv3d.transform_shape_with_format(fmap.get("ori_format"),
-                                                                 FMAP_TARGET_FORMAT,
-                                                                 dilations,
-                                                                 FMAP_FORMAT_WHITE_LIST)
-
     _, _, filter_d, filter_h, filter_w = filter_shape
     _, strides_d, strides_h, strides_w, _ = strides_formated
-    _, dilation_d, dilation_h, dilation_w, _ = dilations_formated
 
     axis_split_info, axis_reduce_info = _get_slice_info()
 
@@ -216,6 +208,7 @@ def get_op_support_info(fmap,
                                                               L1FUSION_INPUT_CTR,
                                                               None)
     return op_cal_info_in_json
+
 
 def _check_groups_validation(fmap_cin, filter_cin, groups):
     """
@@ -347,8 +340,8 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     -------
     None
     """
-    fmap_n, fmap_c, fmap_d, fmap_h, fmap_w = shape_fm
-    filter_n, filter_c, filter_d, filter_h, filter_w = shape_filter
+    _, _, fmap_d, fmap_h, fmap_w = shape_fm
+    filter_n, _, filter_d, filter_h, filter_w = shape_filter
 
     pad_d = [pads[0], pads[1]]
     pad_h = [pads[2], pads[3]]
@@ -364,17 +357,10 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     # C dimension should align 16
     block_size_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
     block_size_m = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][0]
-    famp_c = ((fmap_c + block_size_k - 1) //
-              block_size_k) * block_size_k
-    filter_c = fmap_c
+
     block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     filter_n = ((filter_n + block_size_n - 1) //
                 block_size_n) * block_size_n
-
-    # calculated by h_i and w_i
-    h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_h) // stride_dhw[1] + 1
-    w_out = (fmap_w + (pad_w[0] + pad_w[1]) - filter_w) // stride_dhw[2] + 1
-    d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_d) // stride_dhw[0] + 1
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
@@ -468,7 +454,6 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
     shape_fm, shape_filter, stride_dhw, dilation_dhw
     """
 
-    pos_n, pos_c, pos_d, pos_h, pos_w = _pos_from_format(fmp_format)
     shape_filter = _get_shape_ncdhw(w_shape, w_format)
     stride_dhw, dilation_dhw = _get_attrs(strides, dilations, fmp_format)
     if list(fmp_shape) == DYNAMIC_RANK_FLAG:
@@ -523,7 +508,7 @@ def _get_output(x_in, k_size, pads, stride):
 
 def _get_out_range(fmap_range, w_shape, pads, strides):
     fmap_range_n, fmap_range_d, fmap_range_c, fmap_range_h, fmap_range_w = fmap_range
-    w_n, w_c, w_d, w_h, w_w = w_shape
+    w_n, _, w_d, w_h, w_w = w_shape
     correct_range_flag = False
     if -1 in pads:
         # calculate output range for pad is SAME
@@ -595,7 +580,7 @@ def _get_out_range(fmap_range, w_shape, pads, strides):
             y_w_upper = _get_output(fmap_range_w[1], w_w, (pads[4], pads[5]), strides[2])
         else:
             y_w_upper = HW_MAX
-        pad_check_load2d_flag = True if sum(pads) == 0 else False
+        pad_check_load2d_flag = (sum(pads) == 0)
 
     if y_d_lower < 1:
         error_manager_cube.raise_err_one_para('E62006', 'conv3d', 'd_out must >= 1')
@@ -680,6 +665,7 @@ def _check_variable_range(range_i, mini, maxi=MAX_SHAPE_NUM, name=None):
         error_manager_cube.raise_err_attr_range_invalid(
             "conv3d", [mini, maxi], name, range_i[1])
 
+
 def _check_and_config_para(fmap,
                            weight,
                            bias,
@@ -756,7 +742,7 @@ def _check_and_config_para(fmap,
         fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
 
     # check fmap_range
-    batch_range, d_range, _, h_range, w_range = fmap_range
+    _, _, _, h_range, w_range = fmap_range
     _check_variable_range(h_range, HW_MIN, HW_MAX, "fmap_h")
     _check_variable_range(w_range, HW_MIN, HW_MAX, "fmap_w")
     name_lis = ['fmap_batch', 'fmap_d', 'fmap_c']
@@ -835,7 +821,6 @@ def _conv3d_compute(fmap,
                     pads,
                     dilations=(1, 1, 1, 1, 1),
                     groups=1,
-                    data_format="NDHWC",
                     offset_x=0,
                     kernel_name="conv3d"):
 
@@ -886,9 +871,7 @@ def _conv3d_compute(fmap,
     """
 
     # shape_fm/shape_filter format is NCDHW, fmap_range/out_range format is NDCHW
-    config_dict= \
-            _check_and_config_para(fmap, weight, bias, offset_w, output, \
-            strides, pads, dilations, groups)
+    config_dict = _check_and_config_para(fmap, weight, bias, offset_w, output, strides, pads, dilations, groups)
     shape_fm = config_dict.get('shape_fm')
     shape_filter = config_dict.get('shape_filter')
     stride_dhw = config_dict.get('stride_dhw')
@@ -997,76 +980,70 @@ def conv3d_generalization(fmap,
                           data_format="NDHWC",
                           offset_x=0,
                           kernel_name="conv3d",
-                          generalize_config={"mode": "keep_rank"}):
+                          generalize_config=None):
     """
     algorithm: conv3d_generalization
 
     Parameters
     ----------
     fmap: A dict with keys(shape and dtype)
-        Input 5d feature map tensor
+    Input 5d feature map tensor
 
     weight: A dict with keys(shape and dtype)
-        Input 5d weight tensor
+    Input 5d weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     output: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers, format sensitive
-        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+    [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
     pads: A tuple/list of 6 integers
-        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d"
+    Kernel name, default value is "conv3d"
 
     generalize_config: dict
-        support keep_rank
+    support keep_rank
 
     Returns
     -------
     None
     """
     result = []
-    if generalize_config["mode"] == "keep_rank":
-        fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE)
-        util_conv3d.generalize_input_keep_rank(fmap)
-        util_conv3d.generalize_input_keep_rank(output)
+    if generalize_config.get("mode") == "keep_rank":
+        if -1 in fmap.get("ori_shape"):
+            return [fmap, weight, bias, offset_w, output, {"strides": strides},
+                    {"pads": pads}, {"dilations": dilations}, {"groups": groups},
+                    {"data_format": data_format}, {"offset_x": offset_x}]
+        else:
+            fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE)
+            util_conv3d.generalize_input_keep_rank(fmap)
+            util_conv3d.generalize_input_keep_rank(output)
     else:
-        error_manager_cube.raise_err_one_para("E62306",
-                                              _OP_TYPE,
-                                              "Invalid generalize mode, currently only support keep_rank")
-    result.append([fmap,
-                   weight,
-                   bias,
-                   offset_w,
-                   output,
-                   strides,
-                   pads,
-                   dilations,
-                   groups,
-                   data_format,
-                   offset_x,
-                   kernel_name])
+        return
+    result.append([fmap, weight, bias, offset_w, output, {"strides": strides},
+                   {"pads": pads}, {"dilations": dilations}, {"groups": groups},
+                   {"data_format": data_format}, {"offset_x": offset_x}])
     return result
 
 
@@ -1096,40 +1073,40 @@ def conv3d(fmap,
     Parameters
     ----------
     fmap: A dict with keys(shape and dtype)
-        Input 5d feature map tensor
+    Input 5d feature map tensor
 
     weight: A dict with keys(shape and dtype)
-        Input 5d weight tensor
+    Input 5d weight tensor
 
     bias: A dict with keys(shape and dtype) or None
-        Input bias tensor
+    Input bias tensor
 
     offset_w: A dict with keys(shape and dtype) or None
-        Input offset_w tensor
+    Input offset_w tensor
 
     output: A dict with keys(shape and dtype)
-        Output tensor, dtype must be assigned
+    Output tensor, dtype must be assigned
 
     strides: A tuple/list of 5 integers, format sensitive
-        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+    [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
 
     pads: A tuple/list of 6 integers
-        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+    [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: A tuple/list of 5 integers
-        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+    Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
 
     groups: Int of blocked connections from input channels to output channels
-        Default value is 1
+    Default value is 1
 
     data_format: The data format of the input and output data
-        Default format is "NDHWC"
+    Default format is "NDHWC"
 
     offset_x: Int
-        Input offset_x value, default value is 0
+    Input offset_x value, default value is 0
 
     kernel_name: Str
-        Kernel name, default value is "conv3d"
+    Kernel name, default value is "conv3d"
 
     Returns
     -------
@@ -1139,7 +1116,7 @@ def conv3d(fmap,
     with tbe.compute():
         res = _conv3d_compute(
             fmap, weight, bias, offset_w, output, strides, pads, dilations,
-            groups, data_format, offset_x, kernel_name)
+            groups, offset_x, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get("op_res"))
