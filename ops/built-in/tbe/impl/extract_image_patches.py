@@ -126,8 +126,8 @@ def extract_image_patches_compute(fmap,
     stride = (stride_h, stride_w)
     dilate = (dilate_h, dilate_w)
 
-    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride,
-                                                                dilate, pads, out_h, out_w)
+    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride, dilate, pads, out_h,
+                                                                out_w)
 
     return output_res, workspace_res, workspace_shape
 
@@ -214,7 +214,7 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         if fmap_w + padding_w_before + padding_w_after - ((kernel_w - 1) * dilate_w + 1) < stride_w:
             error_manager_vector.raise_err_specific_reson(
                 kernel_name, "Platform cloud and DC DO NOT support these invalid params,"
-                             " it must be fmap_w + pad_l + pad_r - ((kernel_w - 1) * dilate_w + 1) >= stride_w")
+                " it must be fmap_w + pad_l + pad_r - ((kernel_w - 1) * dilate_w + 1) >= stride_w")
 
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
@@ -266,7 +266,8 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
             wkspace_dict = {"workspace": {"num": num, "size": total_size}}
             write_code(wkspace_dict, kernel_name)
 
-    with tbe_platform.build_config:
+    new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
+    with new_config:
         tvm.build(sch, [data_input, output_res, workspace_res], "cce", name=kernel_name)
         if fmap_c % align_block_size != 0:
             _write_workspace_info([workspace_res], kernel_name)
