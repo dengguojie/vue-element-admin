@@ -73,7 +73,7 @@ def modify_input_range(inputs, in_range_nchw, data_type, idx_h, idx_w, attr_para
     strides, hk_dilation, wk_dilation, pads = attr_params
     fmap_w_min = in_range_nchw[idx_w][0]
     fmap_w_max = in_range_nchw[idx_w][1]
-    m_bit_ratio = {"float16": 2, "int8": 1}
+    m_bit_ratio = {"float32": 2, "float16": 2, "int8": 1}
     c0 = tbe_platform.CUBE_MKN[data_type]["mac"][1]
     new_in_range_nchw = list(in_range_nchw)
     w_in = inputs.get("ori_shape")[idx_w]
