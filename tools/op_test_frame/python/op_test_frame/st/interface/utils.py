@@ -583,15 +583,18 @@ class ScanFile:
         self.first_prefix = first_prefix
         self.second_prefix = second_prefix
 
+    def _check_second_prefix_dir(self, each_file_path, files_list):
+        dir_info = os.path.split(each_file_path)
+        if self.first_prefix:
+            if dir_info[1].startswith(self.second_prefix):
+                files_list.append(each_file_path)
+
     def _get_files_list(self, file_path, files_list):
         all_files = os.listdir(file_path)
         for each_file in all_files:
             each_file_path = os.path.join(file_path, each_file)
             if os.path.isdir(each_file_path):
-                dir_info = os.path.split(each_file_path)
-                if self.first_prefix:
-                    if dir_info[1].startswith(self.second_prefix):
-                        files_list.append(each_file_path)
+                self._check_second_prefix_dir(each_file_path, files_list)
         return files_list
 
     def scan_subdirs(self):

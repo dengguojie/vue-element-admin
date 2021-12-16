@@ -43,7 +43,7 @@ class ReportJsonEncoder(json.JSONEncoder):
             return {o.__class__.__name__: True, "real": o.real, "imag": o.imag}
         if isinstance(o, np.ndarray):
             return o.tolist()
-        return super().default(o)
+        return json.JSONEncoder.default(self, o)
 
 
 class OpSTCaseReport:
