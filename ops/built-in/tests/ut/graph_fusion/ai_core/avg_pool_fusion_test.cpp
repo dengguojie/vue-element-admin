@@ -471,7 +471,7 @@ TEST_F(avg_pool_fusion_test, avg_pool_invalid_kernel_test) {
     auto avg_pool_op = op::AvgPool("avgpool_0");
     avg_pool_op.set_input_x(avg_pool_input_data);
     avg_pool_op.set_attr_ksize({1, 1, 1, 1});
-    avg_pool_op.set_attr_strides({1, 2, 2, 1});
+    avg_pool_op.set_attr_strides({1, 1, 1, 1});
     avg_pool_op.set_attr_padding("VALID");
     avg_pool_op.set_attr_data_format("NHWC");
     auto end_op = op::Square("end_op_0");

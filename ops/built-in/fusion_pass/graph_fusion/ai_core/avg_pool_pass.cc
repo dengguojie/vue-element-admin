@@ -701,7 +701,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   window = {ksizeH, ksizeW};
   stride = {stridesH, stridesW};
   // judge invalid kernel
-  if (ksizeH == 1 && ksizeW == 1) {
+  if (ksizeH == 1 && ksizeW == 1 && stridesH == 1 && stridesW == 1) {
     FUSION_PASS_CHECK(SetInvalidKernelAvgpool(graph, avgPoolNode) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Invalid kernel set Avgpool failed."),
                       return FAILED);
