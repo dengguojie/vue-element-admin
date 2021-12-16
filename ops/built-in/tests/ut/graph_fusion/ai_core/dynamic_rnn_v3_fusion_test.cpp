@@ -113,7 +113,7 @@ TEST_F(dynamic_rnn_v3_fusion_test, dynamic_rnn_v3_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNInsertTransposePass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNV3FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool findTranspose = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {

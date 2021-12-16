@@ -8,6 +8,9 @@
 #include "array_ops.h"
 #include "fusion_pass_test_utils.h"
 
+#define private public
+#include "common/util/platform_info.h"
+
 using namespace ge;
 using namespace op;
 
@@ -79,8 +82,18 @@ TEST_F(logsoftmax_fusion_test, logsoftmax_fusion_test_2) {
 
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 2;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("LogSoftmaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 
     bool findSoftmax = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
@@ -112,9 +125,20 @@ TEST_F(logsoftmax_fusion_test, logsoftmax_fusion_test_3) {
     std::vector<Operator> outputs{end_op};
 
     graph.SetInputs(inputs).SetOutputs(outputs);
+
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 32;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("LogSoftmaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 
     bool findSoftmax = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
