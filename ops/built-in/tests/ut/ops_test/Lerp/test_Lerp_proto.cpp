@@ -23,100 +23,113 @@
 #include "elewise_calculation_ops.h"
 
 class LerpTest : public testing::Test {
-protected:
-    static void SetUpTestCase() {
-        std::cout << "Lerp test SetUp" << std::endl;
-}
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "Lerp test SetUp" << std::endl;
+  }
 
-    static void TearDownTestCase() {
-        std::cout << "Lerp test TearDown" << std::endl;
-    }
+  static void TearDownTestCase() {
+    std::cout << "Lerp test TearDown" << std::endl;
+  }
 };
 
 TEST_F(LerpTest, lerp_test_case_1) {
-    ge::op::Lerp lerp_op;
-    ge::TensorDesc tensorDesc;
-    ge::Shape shape({2, 1, 2});
-    tensorDesc.SetDataType(ge::DT_FLOAT16);
-    tensorDesc.SetShape(shape);
-    tensorDesc.SetOriginShape(shape);
+  ge::op::Lerp lerp_op;
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape({2, 1, 2});
+  tensorDesc.SetDataType(ge::DT_FLOAT16);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
-    ge::TensorDesc tensorDesc2;
-    ge::Shape shape2({1, 1, 2});
-    tensorDesc2.SetDataType(ge::DT_FLOAT16);
-    tensorDesc2.SetShape(shape2);
-    tensorDesc2.SetOriginShape(shape2);
+  ge::TensorDesc tensorDesc2;
+  ge::Shape shape2({1, 1, 2});
+  tensorDesc2.SetDataType(ge::DT_FLOAT16);
+  tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
-    ge::TensorDesc tensorDesc3;
-    tensorDesc3.SetDataType(ge::DT_FLOAT16);
-    tensorDesc3.SetShape(shape);
-    tensorDesc3.SetOriginShape(shape);
+  ge::TensorDesc tensorDesc3;
+  tensorDesc3.SetDataType(ge::DT_FLOAT16);
+  tensorDesc3.SetShape(shape);
+  tensorDesc3.SetOriginShape(shape);
 
-    lerp_op.UpdateInputDesc("start", tensorDesc);
-    lerp_op.UpdateInputDesc("end", tensorDesc2);
-    lerp_op.UpdateInputDesc("weight", tensorDesc3);
+  lerp_op.UpdateInputDesc("start", tensorDesc);
+  lerp_op.UpdateInputDesc("end", tensorDesc2);
+  lerp_op.UpdateInputDesc("weight", tensorDesc3);
 
-    auto status = lerp_op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-    auto ret = lerp_op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto status = lerp_op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = lerp_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc = lerp_op.GetOutputDesc("y");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-    std::vector<int64_t> expected_output_shape = {2, 1, 2};
-    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  auto output_desc = lerp_op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {2, 1, 2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(LerpTest, lerp_test_case_2) {
-    ge::op::Lerp lerp_op;
-    ge::TensorDesc tensorDesc;
-    ge::Shape shape({2, 1, 2});
-    tensorDesc.SetDataType(ge::DT_FLOAT);
-    tensorDesc.SetShape(shape);
-    tensorDesc.SetOriginShape(shape);
+  ge::op::Lerp lerp_op;
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape({2, 1, 2});
+  tensorDesc.SetDataType(ge::DT_FLOAT);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
-    ge::TensorDesc tensorDesc2;
-    ge::Shape shape2({1, 1, 2});
-    tensorDesc2.SetDataType(ge::DT_FLOAT16);
-    tensorDesc2.SetShape(shape2);
-    tensorDesc2.SetOriginShape(shape2);
+  ge::TensorDesc tensorDesc2;
+  ge::Shape shape2({1, 1, 2});
+  tensorDesc2.SetDataType(ge::DT_FLOAT16);
+  tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
-    ge::TensorDesc tensorDesc3;
-    tensorDesc3.SetDataType(ge::DT_FLOAT16);
-    tensorDesc3.SetShape(shape);
-    tensorDesc3.SetOriginShape(shape);
+  ge::TensorDesc tensorDesc3;
+  tensorDesc3.SetDataType(ge::DT_FLOAT16);
+  tensorDesc3.SetShape(shape);
+  tensorDesc3.SetOriginShape(shape);
 
-    lerp_op.UpdateInputDesc("start", tensorDesc);
-    lerp_op.UpdateInputDesc("end", tensorDesc2);
-    lerp_op.UpdateInputDesc("weight", tensorDesc3);
+  lerp_op.UpdateInputDesc("start", tensorDesc);
+  lerp_op.UpdateInputDesc("end", tensorDesc2);
+  lerp_op.UpdateInputDesc("weight", tensorDesc3);
 
-    auto status = lerp_op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto status = lerp_op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
 TEST_F(LerpTest, lerp_test_case_3) {
-    ge::op::Lerp lerp_op;
-    ge::TensorDesc tensorDesc;
-    ge::Shape shape({2, 1, 2});
-    tensorDesc.SetDataType(ge::DT_FLOAT16);
-    tensorDesc.SetShape(shape);
-    tensorDesc.SetOriginShape(shape);
+  ge::op::Lerp lerp_op;
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape({2, 1, 2});
+  tensorDesc.SetDataType(ge::DT_FLOAT16);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetOriginShape(shape);
 
-    ge::TensorDesc tensorDesc2;
-    ge::Shape shape2({1, 1, 2});
-    tensorDesc2.SetDataType(ge::DT_FLOAT16);
-    tensorDesc2.SetShape(shape2);
-    tensorDesc2.SetOriginShape(shape2);
+  ge::TensorDesc tensorDesc2;
+  ge::Shape shape2({1, 1, 2});
+  tensorDesc2.SetDataType(ge::DT_FLOAT16);
+  tensorDesc2.SetShape(shape2);
+  tensorDesc2.SetOriginShape(shape2);
 
-    ge::TensorDesc tensorDesc3;
-    tensorDesc3.SetDataType(ge::DT_FLOAT);
-    tensorDesc3.SetShape(shape);
-    tensorDesc3.SetOriginShape(shape);
+  ge::TensorDesc tensorDesc3;
+  tensorDesc3.SetDataType(ge::DT_FLOAT);
+  tensorDesc3.SetShape(shape);
+  tensorDesc3.SetOriginShape(shape);
 
-    lerp_op.UpdateInputDesc("start", tensorDesc);
-    lerp_op.UpdateInputDesc("end", tensorDesc2);
-    lerp_op.UpdateInputDesc("weight", tensorDesc3);
+  lerp_op.UpdateInputDesc("start", tensorDesc);
+  lerp_op.UpdateInputDesc("end", tensorDesc2);
+  lerp_op.UpdateInputDesc("weight", tensorDesc3);
 
-    auto status = lerp_op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto status = lerp_op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(LerpTest, InfershapeLerp_001) {
+  ge::op::Lerp lerp_op;
+  lerp_op.UpdateInputDesc("start",
+                          create_desc_with_ori({6}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 1, 2}, ge::FORMAT_NCHW));
+  lerp_op.UpdateInputDesc("end",
+                          create_desc_with_ori({5, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 1, 2}, ge::FORMAT_NCHW));
+  lerp_op.UpdateInputDesc("weight",
+                          create_desc_with_ori({3, 2, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 1, 2}, ge::FORMAT_NCHW));
+
+  auto ret = lerp_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }

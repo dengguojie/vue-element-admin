@@ -95,7 +95,8 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_006) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
+  float score_threshold  = 1.0;
+  op.SetAttr("score_threshold", score_threshold);
   op.SetAttr("nms_threshold", true);
 
   auto status = op.VerifyAllAttr(true);
@@ -107,7 +108,9 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_007) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  op.SetAttr("score_threshold", score_threshold);
   op.SetAttr("nms_threshold", 8);
 
   auto status = op.VerifyAllAttr(true);
@@ -119,8 +122,10 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_008) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
   op.SetAttr("k", true);
 
   auto status = op.VerifyAllAttr(true);
@@ -132,8 +137,10 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_009) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
   op.SetAttr("k", 1);
   op.SetAttr("min_size", true);
 
@@ -146,10 +153,12 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_010) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
-  op.SetAttr("k", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
   float min_size = -10.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
+  op.SetAttr("k", 1);
   op.SetAttr("min_size", min_size);
 
   auto status = op.VerifyAllAttr(true);
@@ -161,10 +170,12 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_011) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  float min_size = -10.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
   op.SetAttr("k", 1);
-  float min_size = 1.0;
   op.SetAttr("min_size", min_size);
   op.SetAttr("img_size", true);
 
@@ -177,10 +188,12 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_012) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  float min_size = -10.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
   op.SetAttr("k", 1);
-  float min_size = 1.0;
   op.SetAttr("min_size", min_size);
   std::vector<int64_t> img_size = {12, 4, 1};
   op.SetAttr("img_size", img_size);
@@ -194,10 +207,12 @@ TEST_F(RpnProposalsDTest_UT, InferShapeRpnProposalsD_013) {
   auto input_desc = create_desc_with_ori({4, 3}, ge::DT_FLOAT16, ge::FORMAT_ND, {4, 3}, ge::FORMAT_ND);
   op.UpdateInputDesc("cls_bg_prob", input_desc);
   op.UpdateInputDesc("rois", input_desc);
-  op.SetAttr("score_threshold", 0);
-  op.SetAttr("nms_threshold", 1);
+  float score_threshold  = 1.0;
+  float nms_threshold = 8.0;
+  float min_size = -10.0;
+  op.SetAttr("score_threshold", score_threshold);
+  op.SetAttr("nms_threshold", nms_threshold);
   op.SetAttr("k", 1);
-  float min_size = 1.0;
   op.SetAttr("min_size", min_size);
   std::vector<int64_t> img_size = {12, -1};
   op.SetAttr("img_size", img_size);

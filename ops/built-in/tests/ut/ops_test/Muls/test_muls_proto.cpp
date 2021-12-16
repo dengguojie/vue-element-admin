@@ -37,6 +37,8 @@ TEST_F(muls, muls_infershape_same_test){
   float value = 3.0;
   op.SetAttr("value", value);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

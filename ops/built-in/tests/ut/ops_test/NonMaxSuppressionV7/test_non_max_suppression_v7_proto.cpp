@@ -16,21 +16,14 @@ class NonMaxSuppressionV7Test : public testing::Test {
 };
 
 TEST_F(NonMaxSuppressionV7Test, non_max_suppression_v7_test_case_1) {
-//  int64_t batchSize = 1;
-//  int64_t outputNum = 100;
-  ge::op::BatchMultiClassNonMaxSuppression op;
-  op.UpdateInputDesc("boxes", create_desc_with_ori({2, 6, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 6, 4}, ge::FORMAT_ND));
-  op.UpdateInputDesc("scores", create_desc_with_ori({2, 1, 6}, ge::DT_FLOAT16, ge::FORMAT_ND, {2, 1, 6}, ge::FORMAT_ND));
+  ge::op::NonMaxSuppressionV7 op;
+  op.UpdateInputDesc("boxes",
+                     create_desc_with_ori({2, 6, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 6, 4}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc("scores",
+                     create_desc_with_ori({2, 1, 6}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 1, 6}, ge::FORMAT_NCHW));
 
-
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-//  auto out_var_desc = op.GetOutputDesc("selected_indices");
-//  std::vector<int64_t> expected_var_output_shape = {12, 3};
-//  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_INT32);
-//  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
-
-
 }
-

@@ -23,6 +23,8 @@ TEST_F(SortProtoTest, sort_infer_shape_test) {
                     ge::DT_FLOAT16, ge::FORMAT_ND, {10,10,10,32},
                      ge::FORMAT_ND, {{10,10},{10,10},{10,10},{32,32}}));
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 //  get sorted output shape
@@ -48,6 +50,4 @@ TEST_F(SortProtoTest, sort_infer_shape_test) {
   std::vector<std::pair<int64_t, int64_t>> indices_shape_range;
   indices_output_desc.GetShapeRange(indices_shape_range);
   EXPECT_EQ(indices_shape_range, expected_indices_shape_range);
-
-
 }

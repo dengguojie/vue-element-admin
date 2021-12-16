@@ -68,3 +68,31 @@ TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_003) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_004) {
+  ge::op::YoloPreDetection op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 255, 80, 80}, ge::DT_FLOAT, ge::FORMAT_ND, {1, 255, 80, 80}, ge::FORMAT_ND));
+  op.SetAttr("boxes", false);
+  op.SetAttr("coords", false);
+  op.SetAttr("classes", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("coord_data");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {1, 12, 6416};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_005) {
+  ge::op::YoloPreDetection op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 80, 80, 80}, ge::DT_FLOAT, ge::FORMAT_ND, {1, 255, 80, 80}, ge::FORMAT_ND));
+  op.SetAttr("boxes", false);
+  op.SetAttr("coords", false);
+  op.SetAttr("classes", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

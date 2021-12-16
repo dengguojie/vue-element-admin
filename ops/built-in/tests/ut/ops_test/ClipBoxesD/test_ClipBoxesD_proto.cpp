@@ -122,3 +122,12 @@ TEST_F(ClipBoxesDTest_UT, InferShapeClipBoxesD_008) {
   std::vector<int64_t> expected_output_shape = {4000, 4};
   EXPECT_EQ(boxes_output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(ClipBoxesDTest_UT, InferShapeClipBoxesD_009) {
+  ge::op::ClipBoxesD op;
+  auto input_desc = create_desc_with_ori({-1, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {4000, 4}, ge::FORMAT_ND);
+  op.UpdateInputDesc("boxes_input", input_desc);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

@@ -49,7 +49,7 @@ TEST_F(YoloTest_UT, InferShapeYolo_001) {
 
 TEST_F(YoloTest_UT, InferShapeYolo_002) {
   ge::op::Yolo op;
-  op.UpdateInputDesc("x", create_desc({1}, ge::DT_INT8));
+  op.UpdateInputDesc("x", create_desc({1, 13, 13, 13}, ge::DT_INT8));
   op.SetAttr("coords", 3);
 
   auto status = op.VerifyAllAttr(true);
@@ -58,7 +58,7 @@ TEST_F(YoloTest_UT, InferShapeYolo_002) {
 
 TEST_F(YoloTest_UT, InferShapeYolo_003) {
   ge::op::Yolo op;
-  op.UpdateInputDesc("x", create_desc({1}, ge::DT_INT8));
+  op.UpdateInputDesc("x", create_desc({1, 13, 13, 13}, ge::DT_INT8));
   op.SetAttr("classes", 1025);
 
   auto status = op.VerifyAllAttr(true);
@@ -97,4 +97,39 @@ TEST_F(YoloTest_UT, InferShapeYolo_005) {
   EXPECT_EQ(output_desc_classes.GetDataType(), ge::DT_FLOAT16);
   std::vector<int64_t> expected_output_shape_classes = {1, 80, 864};
   EXPECT_EQ(output_desc_classes.GetShape().GetDims(), expected_output_shape_classes);
+}
+
+TEST_F(YoloTest_UT, InferShapeYolo_006) {
+  ge::op::Yolo op;
+  op.UpdateInputDesc("x", create_desc({1, 13, 13, 13}, ge::DT_INT8));
+  op.SetAttr("boxes", -1);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(YoloTest_UT, InferShapeYolo_007) {
+  ge::op::Yolo op;
+  op.UpdateInputDesc("x", create_desc({1, 13, 13, 13}, ge::DT_INT8));
+  op.SetAttr("boxes", false);
+  op.SetAttr("coords", false);
+  op.SetAttr("classes", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(YoloTest_UT, InferShapeYolo_008) {
+  ge::op::Yolo op;
+  op.UpdateInputDesc("x", create_desc({1, 13, 13, 13}, ge::DT_INT8));
+  op.SetAttr("boxes", false);
+  op.SetAttr("coords", false);
+  op.SetAttr("classes", false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc_coord = op.GetOutputDesc("coord_data");
+  EXPECT_EQ(output_desc_coord.GetDataType(), ge::DT_INT8);
+  std::vector<int64_t> expected_output_shape_coord = {1, 12, 192};
+  EXPECT_EQ(output_desc_coord.GetShape().GetDims(), expected_output_shape_coord);
 }

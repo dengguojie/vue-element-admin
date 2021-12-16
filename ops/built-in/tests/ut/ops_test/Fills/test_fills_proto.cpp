@@ -26,6 +26,8 @@ TEST_F(fills, fills_infershape_diff_test){
   float value = 1.0;
   op.SetAttr("value", value);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

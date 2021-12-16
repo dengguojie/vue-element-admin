@@ -104,3 +104,11 @@ TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_005) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_006) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.SetAttr("transpose_box", {});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

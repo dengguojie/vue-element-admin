@@ -49,3 +49,37 @@ TEST_F(datacompare, datacompare_verify_test){
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 
 }
+
+TEST_F(datacompare, VerifyDataCompare_001) {
+  ge::op::DataCompare op;
+  op.SetAttr("atol", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(datacompare, VerifyDataCompare_002) {
+  ge::op::DataCompare op;
+  op.SetAttr("rtol", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(datacompare, VerifyDataCompare_003) {
+  ge::op::DataCompare op;
+  float rtol_data = -1;
+  op.SetAttr("rtol", rtol_data);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(datacompare, VerifyDataCompare_004) {
+  ge::op::DataCompare op;
+  op.UpdateInputDesc("x1", create_desc({4, 3, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x2", create_desc({4, 3, 4}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
