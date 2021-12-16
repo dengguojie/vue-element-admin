@@ -175,16 +175,8 @@ def apply_momentum_d(var,
         error_detail = "type of var and momentum should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var", "momentum", error_detail)
 
-    shape_lr = lr.get("shape")
-    shape_momentum = momentum.get("shape")
-    if shape_lr != shape_momentum:
-        error_detail = "shape of lr and momentum should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "lr", "momentum", error_detail)
-
-    if shape_lr[0] != 1:
-        error_detail = "lr and momentum must be scalar"
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "lr", "momentum", error_detail)
-
+    shape_lr = [1]
+    shape_momentum = [1]
     compute_type = var.get("dtype").lower()
 
     # `shape_size = reduce(lambda x, y: x * y, shape_var[:])`
