@@ -3180,11 +3180,9 @@ IMPLEMT_COMMON_INFERFUNC(InplaceAddInferShape) {
   auto output_desc = op.GetInputDesc("x");
   const std::string indices_name = "indices";
   Tensor indices;
-  if (GRAPH_SUCCESS != op.GetInputConstData(indices_name, indices)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-        ConcatString("get const data from input[", indices_name, "] failed"));
-    return GRAPH_FAILED;
-  }
+  graphStatus ret = op.GetInputConstData(indices_name, indices);
+  OP_LOGI(op.GetName().c_str(), "InplaceAddInferShape get const data from input[%s] ret = %d",
+        indices_name.c_str(), static_cast<int>(ret)); 
 
   auto output_shape_dims = output_desc.GetShape().GetDims();
   Shape output_shape(output_shape_dims);
@@ -3227,11 +3225,10 @@ IMPLEMT_COMMON_INFERFUNC(InplaceSubInferShape) {
   auto output_desc = op.GetInputDesc("x");
   const std::string indices_name = "indices";
   Tensor indices;
-  if (GRAPH_SUCCESS != op.GetInputConstData(indices_name, indices)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-        ConcatString("get const data from input[", indices_name, "] failed"));
-    return GRAPH_FAILED;
-  }
+
+  graphStatus ret = op.GetInputConstData(indices_name, indices);
+  OP_LOGI(op.GetName().c_str(), "InplaceSubInferShape get const data from input[%s] ret = %d",
+        indices_name.c_str(), static_cast<int>(ret)); 
 
   auto output_shape_dims = output_desc.GetShape().GetDims();
   Shape output_shape(output_shape_dims);

@@ -6337,12 +6337,18 @@ IMPLEMT_INFERFUNC(FractionalAvgPool, FractionalAvgPoolInfer) {
   std::vector<int64_t> dims;
   dims.reserve(4);
   for (int i = 0; i < 4; ++i) {
-    auto val = static_cast<int64_t>(x_dims[i] / pooling_ratio[i]);
-    if (val < 0) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    int64_t val = ge::UNKNOWN_DIM;
+    if (x_dims[i] != ge::UNKNOWN_DIM) {
+      val = static_cast<int64_t>(x_dims[i] / pooling_ratio[i]);
+      if (val < 0) {
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
           ConcatString("size computed for ", i, "th dim is ", val, ", should be >= 0"));
-      return GRAPH_PARAM_INVALID;
+        return GRAPH_PARAM_INVALID;
+      }
     }
+
+    OP_LOGI(op.GetName().c_str(), "i = %d, x_dims[i] = %lld, pooling_ratio[i] = %f, val = %lld",
+        i, x_dims[i], pooling_ratio[i], val);
     dims.push_back(val);
   }
   Shape out(dims);
