@@ -54,7 +54,7 @@ struct BroadcastCompileInfo {
   BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
 };
 
-enum Pattern {
+enum class Pattern {
   ORIGINAL = 0,
   COMMON = 100,
   COMMON_BROADCAST = 120,

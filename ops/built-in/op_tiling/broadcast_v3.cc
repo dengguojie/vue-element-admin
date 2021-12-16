@@ -201,8 +201,8 @@ void Broadcast::TrySwitchToPerfPattern() {
   }
   if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
-    if (s_pattern == BROADCAST && is_support_absorbable_broadcast_compile) {
-      s_pattern = fusion_shapes[0][0] == 1 ? SCALAR_BROADCAST : BROADCAST_SCALAR;
+    if (s_pattern == Pattern::BROADCAST && is_support_absorbable_broadcast_compile) {
+      s_pattern = fusion_shapes[0][0] == 1 ? Pattern::SCALAR_BROADCAST : Pattern::BROADCAST_SCALAR;
     }
     dim_len = fusion_shapes[0].size();
     for (size_t i = 0; i < dim_len; i++) {
@@ -617,7 +617,7 @@ bool Broadcast::RefineShapesForBroadcast() {
 }
 
 bool Broadcast::CalcTiling() {
-  int64_t pattern = s_pattern;
+  int64_t pattern = static_cast<int64_t>(s_pattern);
   int64_t key_len = 2;
   char keys[4] = {'0', '0', '0', '\0'};
   while (pattern) {
@@ -1404,13 +1404,12 @@ bool Broadcast::BroadcastTiling() {
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for (size_t i=0; i< input_num; i++) {
-      for (size_t j=0; j<dim_len; j++) {
+    for (size_t i = 0; i < input_num; i++) {
+      for (size_t j = 0; j < dim_len; j++) {
         elewise_input_shapes[i][j] = input_shapes[i][j];
       }
     }
     OpInfo custom_op_info(elewise_input_shapes, in_type);
-
     v3::Elewise elewise(op_type, op_paras, broadcast_compile_info.pure_elewise_compile_info, run_info);
     return ret && elewise.DoTiling(custom_op_info);
   } else {
@@ -1452,13 +1451,12 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for (size_t i=0; i< input_num; i++) {
-      for (size_t j=0; j<dim_len; j++) {
+    for (size_t i = 0; i < input_num; i++) {
+      for (size_t j = 0; j < dim_len; j++) {
         elewise_input_shapes[i][j] = input_shapes[i][j];
       }
     }
     OpInfo custom_op_info(elewise_input_shapes, in_type);
-
     v3::Elewise elewise(op_type, op_paras,  broadcast_compile_info.pure_elewise_compile_info, run_info);
     return ret && elewise.DoTiling(custom_op_info);
   } else {
@@ -1488,5 +1486,4 @@ std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::strin
                                                                 const nlohmann::json& parsed_compile_info) {
   return std::make_shared<BroadcastTilingHandler>(op_type, pattern, parsed_compile_info);
 }
-
 }  // namespace optiling
