@@ -18,35 +18,35 @@
  * \file nn_calculation_ops.cpp
  * \brief
  */
-#define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)           \
-  {                                                  \
-    if (cond) {                                         \
-      AscendString op_name; \
-      CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr);  \
-      CUBE_INNER_ERR_REPORT(op_name.GetString(), msg, ##__VA_ARGS__); \
-      post_action_expr;                                      \
-    }                                                   \
+#define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)                                                          \
+  {                                                                                                              \
+    if (cond) {                                                                                                  \
+      AscendString local_op_name;                                                                                \
+      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
+      CUBE_INNER_ERR_REPORT(local_op_name.GetString(), msg, ##__VA_ARGS__);                                      \
+      post_action_expr;                                                                                          \
+    }                                                                                                            \
   }
 
 #define CHECK_SIZE(cond, post_action_expr, msg)                           \
   {                                                     \
     if (cond) {                                         \
-      AscendString op_name; \
-      CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
+      AscendString local_op_name; \
+      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
       ErrorManager::GetInstance().ATCReportErrMessage("E50058", {"op_name", "description"}, \
-                                                      {op_name.GetString(), msg}); \
+                                                      {local_op_name.GetString(), msg}); \
       post_action_expr;                              \
     }                                                   \
   }
 
-#define CHECK_INFO(cond, post_action_expr, msg, ...)         \
-  {                                                     \
-    if (cond) {                                         \
-      AscendString op_name;                             \
-      CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
-      OP_LOGE(op_name.GetString(), msg, ##__VA_ARGS__);   \
-      post_action_expr;                                      \
-    }                                                   \
+#define CHECK_INFO(cond, post_action_expr, msg, ...)                                                             \
+  {                                                                                                              \
+    if (cond) {                                                                                                  \
+      AscendString local_op_name;                                                                                \
+      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
+      OP_LOGE(local_op_name.GetString(), msg, ##__VA_ARGS__);                                                    \
+      post_action_expr;                                                                                          \
+    }                                                                                                            \
   }
 
 #include "./nn_calculation_ops.h"
@@ -348,7 +348,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
               "no data slice, not need infer input");
   bool have_slice = false;
   vector<int> new_pad_lists = pad_list;
-  for(size_t i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
@@ -2061,7 +2061,7 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
     output_desc->SetShape(GeShape(dim_vec));
     output_desc->SetDataType(input_dtype);
     std::vector<std::pair<int64_t, int64_t>> output_range;
-    output_range.push_back(std::pair<int64_t, int64_t>{-1 , 1});
+    output_range.push_back(std::pair<int64_t, int64_t>{-1, 1});
     output_desc->SetShapeRange(output_range);
     return GRAPH_SUCCESS;
   }
@@ -4497,7 +4497,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     is_dynamic = true;
   }
   if (is_dynamic && (ic == -1)) {
-    ic = kc*groups;
+    ic = kc * groups;
     OP_LOGW(op_name.GetString(),
             "input x channel is unknow, fixed channel = %d, "
             "in_channels should be kc*grous[%d * %d]", (int)ic, (int)kc, (int)groups);
@@ -4829,7 +4829,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   }
   bool have_slice = false;
   vector<int> new_pad_lists = pad_list;
-  for(size_t i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {

@@ -38,13 +38,12 @@ namespace {
   const std::vector<std::string> kConv3DTransposeVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
   const std::vector<std::string> kAvgPool3DGradVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
   const std::map<std::string, std::vector<std::string>> kOpVarNamesMap = {
-    {"Conv3D", kConv3DVarNames},
-    {"Conv3DBackpropFilter", kConv3DVarNames},
-    {"Conv3DBackpropInput", kConv3DBpInputVarNames},
-    {"Conv3DTranspose", kConv3DTransposeVarNames},
-    {"AvgPool3D", kConv3DVarNames},
-    {"AvgPool3DGrad", kAvgPool3DGradVarNames}
-  };
+      {"Conv3D", kConv3DVarNames},
+      {"Conv3DBackpropFilter", kConv3DVarNames},
+      {"Conv3DBackpropInput", kConv3DBpInputVarNames},
+      {"Conv3DTranspose", kConv3DTransposeVarNames},
+      {"AvgPool3D", kConv3DVarNames},
+      {"AvgPool3DGrad", kAvgPool3DGradVarNames}};
 
   void get_var_names(const std::string &op_type, std::vector<std::string> &vars)
   {
@@ -114,8 +113,8 @@ namespace {
     return dist;
   }
 
-  std::string get_conv3D_batch_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                                   const nlohmann::json& compile_info) {
+  std::string get_conv3D_batch_tiling(const std::string &op_type, const std::vector<int64_t> &cur_shape,
+                                      const nlohmann::json &compile_info) {
     std::string tiling_id;
     if (cur_shape.empty()) {
       return tiling_id;
@@ -138,8 +137,8 @@ namespace {
     return tiling_id;
   }
 
-  std::string get_conv3D_ndhw_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                                  const nlohmann::json& compile_info) {
+  std::string get_conv3D_ndhw_tiling(const std::string &op_type, const std::vector<int64_t> &cur_shape,
+                                     const nlohmann::json &compile_info) {
     std::string tiling_id;
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
@@ -201,8 +200,8 @@ namespace {
     }
   }
 
-  string cube_tiling_batch(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                         const std::string& x_format, const nlohmann::json& compile_info, string tiling_id) {
+  string cube_tiling_batch(const std::string &op_type, const std::vector<int64_t> &cur_shape,
+                           const std::string &x_format, const nlohmann::json &compile_info, string tiling_id) {
     if (cur_shape.empty()) {
       return tiling_id;
     }
@@ -221,11 +220,11 @@ namespace {
     return tiling_id;
   }
 
-  string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
-                       const std::string& x_format, const nlohmann::json& compile_info, string tiling_id) {
+  string cube_tiling_nhw(const std::string &op_type, const std::vector<int64_t> &cur_shape, const std::string &x_format,
+                         const nlohmann::json &compile_info, string tiling_id) {
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
-        return tiling_id;
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
+      return tiling_id;
     }
 
     int32_t seedHDim = 1;
@@ -294,63 +293,62 @@ namespace {
 }
 
 namespace optiling {
- /*
-  * @brief: tiling function of conv2d forward and backprop
-  * @param [in] op_type: op_type of ops
-  * @param [in] input_shape: input shape of ops
-  * @param [in] var_map: variable name and value passed in at runtime
-  * @param [in] compile_info: compilation information includes tiling coverage
-  * @param [out] run_info: runtime information
-  * @return bool: success or not
-  */
-  bool cube_tiling1(const std::string& op_type,
-                  const std::vector<int64_t>& input_shape,
-                  const std::string& x_format,
-                  const std::vector<int64_t>& var_value,
-                  const nlohmann::json& compile_info,
-                  utils::OpRunInfo& run_info) {
-    try {
-      OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
-      std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();
-      std::string tiling_id("");
+/*
+ * @brief: tiling function of conv2d forward and backprop
+ * @param [in] op_type: op_type of ops
+ * @param [in] input_shape: input shape of ops
+ * @param [in] var_map: variable name and value passed in at runtime
+ * @param [in] compile_info: compilation information includes tiling coverage
+ * @param [out] run_info: runtime information
+ * @return bool: success or not
+ */
+bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_shape, const std::string &x_format,
+                  const std::vector<int64_t> &var_value, const nlohmann::json &compile_info,
+                  utils::OpRunInfo &run_info) {
+  try {
+    OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
+    std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();
+    std::string tiling_id("");
 
-      if (compile_info["tiling_type"] == "default_tiling") {
-        std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
-        if (is_shape_in_range_cube(input_shape, x_format, default_range)) {
-          tiling_id = compile_info["default_range"].begin().key();
-        }
-      } else if (vars.size() != 1) {
-        tiling_id = cube_tiling_nhw(op_type, input_shape, x_format, compile_info, tiling_id);
-      } else {
-        tiling_id = cube_tiling_batch(op_type, input_shape, x_format, compile_info, tiling_id);
+    if (compile_info["tiling_type"] == "default_tiling") {
+      std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
+      if (is_shape_in_range_cube(input_shape, x_format, default_range)) {
+        tiling_id = compile_info["default_range"].begin().key();
       }
+    } else if (vars.size() != 1) {
+      tiling_id = cube_tiling_nhw(op_type, input_shape, x_format, compile_info, tiling_id);
+    } else {
+      tiling_id = cube_tiling_batch(op_type, input_shape, x_format, compile_info, tiling_id);
+    }
 
-      if (tiling_id.empty()) {
-          if (compile_info.contains("correct_range_flag") && compile_info["correct_range_flag"]) {
-              CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
-                "new range is generated during op compile, but the shape is not covered by new range");
-          }
-          CUBE_INNER_ERR_REPORT(op_type.c_str(), "This shape is not covered by any tiling,"
-                                                 "please modify range and recompile");
-          return false;
+    if (tiling_id.empty()) {
+      if (compile_info.contains("correct_range_flag") && compile_info["correct_range_flag"]) {
+        CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                              "The original range does not meet requirements,"
+                              "new range is generated during op compile, but the shape is not covered by new range");
       }
-
-      if (!compile_info.contains("block_dim")) {
-          CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
-          return false;
-      }
-
-      OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
-      run_info.SetBlockDim(static_cast<uint32_t>(compile_info["block_dim"][tiling_id]));
-      run_info.SetTilingKey(std::stoi(tiling_id));
-
-      update_run_info_cube(var_value, run_info);
-      return true;
-    } catch (...) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                            "This shape is not covered by any tiling,"
+                            "please modify range and recompile");
       return false;
     }
+
+    if (!compile_info.contains("block_dim")) {
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
+      return false;
+    }
+
+    OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
+    run_info.SetBlockDim(static_cast<uint32_t>(compile_info["block_dim"][tiling_id]));
+    run_info.SetTilingKey(std::stoi(tiling_id));
+
+    update_run_info_cube(var_value, run_info);
+    return true;
+  } catch (...) {
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
+    return false;
   }
+}
 
   /*
    * @brief: tiling function of cube operators
@@ -417,8 +415,8 @@ namespace optiling {
           CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
                               "new range is generated during op compile, but the shape is not covered by new range");
         }
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), 
-            "This shape is not covered by any tiling, please modify range and recompile");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                              "This shape is not covered by any tiling, please modify range and recompile");
         return false;
       }
 

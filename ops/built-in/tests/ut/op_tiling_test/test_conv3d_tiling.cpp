@@ -232,3 +232,48 @@ TEST_F(Conv3DTiling, Conv3d_tiling_fuzzy_build)
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 8 4 8 4 8 4 ");
 }
+
+TEST_F(Conv3DTiling, Conv3d_tiling_invalid_compile_info)
+{
+  using namespace optiling;
+  std::string op_name = "Conv3D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\"}";
+
+  ge::Graph graph("Conv3d_tiling_invalid_compile_info");
+
+  auto x_shape = std::vector<int64_t>({32, 16, 1, 56, 56, 16});
+  ge::TensorDesc x_desc(ge::Shape(x_shape), ge::FORMAT_NDC1HWC0, ge::DT_FLOAT16);
+  auto x_size = op::Data("x");
+  x_size.update_input_desc_x(x_desc);
+  x_size.update_output_desc_y(x_desc);
+
+  auto filter_shape = std::vector<int64_t>({27, 2, 16, 16, 1, 49});
+  ge::TensorDesc filter_desc(ge::Shape(filter_shape), ge::FORMAT_FRACTAL_Z_3D, ge::DT_FLOAT16);
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(filter_desc);
+  filter.update_output_desc_y(filter_desc);
+
+  auto conv3d = op::Conv3D(op_name.c_str())
+    .set_input_x(x_size)
+    .set_input_filter(filter);
+
+  auto y_shape = std::vector<int64_t>({32, 15, 1, 56, 56, 16});
+  ge::TensorDesc y_desc(ge::Shape(y_shape), ge::FORMAT_NDC1HWC0, ge::DT_FLOAT16);
+
+  conv3d.update_input_desc_x(x_desc);
+  conv3d.update_input_desc_filter(filter_desc);
+  conv3d.update_output_desc_y(y_desc);
+
+  std::vector<ge::Operator> inputs{x_size, filter};
+  std::vector<ge::Operator> outputs{conv3d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv3d_tiling_invalid_compile_info", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3d, op_compile_info, runInfo));
+}

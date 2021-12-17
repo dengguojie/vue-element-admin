@@ -105,7 +105,7 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
     return GRAPH_FAILED;
   }
 
-  if (use_actual_distance == true){
+  if (use_actual_distance){
     ge::ConstGeTensorDescPtr input_ssx_desc = op_desc->GetInputDescPtr(3);
     if (input_ssx_desc == nullptr) {
       OP_LOGE(op_name.GetString(), "get input sum_square_x failed.");

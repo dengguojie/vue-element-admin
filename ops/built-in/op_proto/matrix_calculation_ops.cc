@@ -230,9 +230,8 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
 
   // check axis
   if (axis_new != 1 && axis_new != 2) {
-    std::string err_msg = OtherErrMsg(
-      ConcatString("Attr axis is wrong, the original value of axis ",axis," is not supported.")
-    );
+    std::string err_msg =
+        OtherErrMsg(ConcatString("Attr axis is wrong, the original value of axis ", axis, " is not supported."));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
@@ -755,8 +754,8 @@ bool InferShapeMatMul::InferBias() const {
       return true;
     }
     CUBE_INNER_ERR_REPORT(
-      op_name.GetString(), "[InferShape] range n [%ld, %ld] and bias [%ld, %ld] must have intersections",
-      range_out.back().first, range_out.back().second, range_bias.back().first, range_bias.back().second);
+        op_name.GetString(), "[InferShape] range n [%ld, %ld] and bias [%ld, %ld] must have intersections",
+        range_out.back().first, range_out.back().second, range_bias.back().first, range_bias.back().second);
     return false;
   }
 
@@ -809,12 +808,12 @@ bool InferShapeMatMul::InferMKN() const {
     auto upper_bound = std::min(infer_range_a[idx_k_a].second, infer_range_b[idx_k_b].second);
     if (lower_bound > upper_bound) {
       CUBE_INNER_ERR_REPORT(op_name.GetString(),
-        "[InferShape] range k_a [%ld, %ld] and k_b [%ld, %ld] must have intersections",
-        infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second,
-        infer_range_b[idx_k_b].first, infer_range_b[idx_k_b].second);
+                            "[InferShape] range k_a [%ld, %ld] and k_b [%ld, %ld] must have intersections",
+                            infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second, infer_range_b[idx_k_b].first,
+                            infer_range_b[idx_k_b].second);
       return false;
     }
-  // ka = -1, kb != -1
+    // ka = -1, kb != -1
   } else if (k_a == UNKNOWN_DIM) {
     if (infer_range_a[idx_k_a].first > k_b || k_b > infer_range_a[idx_k_a].second) {
       CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension of k_b [%ld] must be in range [%ld, %ld]",
@@ -832,8 +831,8 @@ bool InferShapeMatMul::InferMKN() const {
   } else {
     if (k_a != k_b) {
       OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-      OP_LOGE(op_name.GetString(),
-        "[InferShape] The k-axis of x1 [%lld] and x2 [%lld] tensors must be the same", k_a, k_b);
+      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of x1 [%lld] and x2 [%lld] tensors must be the same", k_a,
+              k_b);
       return false;
     }
   }
@@ -4010,37 +4009,33 @@ IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(Einsum, EinsumVerify) {
-    return GRAPH_SUCCESS;
-}
+IMPLEMT_VERIFIER(Einsum, EinsumVerify) { return GRAPH_SUCCESS; }
 COMMON_INFER_FUNC_REG(Einsum, EinsumInferShape);
 VERIFY_FUNC_REG(Einsum, EinsumVerify);
 // ----------------Einsum-------------------
 
 // ---------------Eye----------------------------
-static bool CheckRows(const Operator &op, const string &attr_num_rows)
-{
-    int64_t num_rows;
-    op.GetAttr(attr_num_rows.c_str(), num_rows);
-    if (num_rows <= 0) {
-        return false;
-    }
-    return true;
+static bool CheckRows(const Operator &op, const string &attr_num_rows) {
+  int64_t num_rows;
+  op.GetAttr(attr_num_rows.c_str(), num_rows);
+  if (num_rows <= 0) {
+    return false;
+  }
+  return true;
 }
 
-static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
-{
+static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
-    std::vector<int64_t> batch_shape;
-    op.GetAttr(attr_batch_shape.c_str(), batch_shape);
-    for (size_t i = 0; i < batch_shape.size(); ++i) {
-        if (batch_shape[i] <= 0) {
-            OP_LOGE(opName.GetString(), "the value of batch_shape less than 0.\n");
-            return false;
-        }
+  std::vector<int64_t> batch_shape;
+  op.GetAttr(attr_batch_shape.c_str(), batch_shape);
+  for (size_t i = 0; i < batch_shape.size(); ++i) {
+    if (batch_shape[i] <= 0) {
+      OP_LOGE(opName.GetString(), "the value of batch_shape less than 0.\n");
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
 IMPLEMT_COMMON_INFERFUNC(EyeInferShape)
