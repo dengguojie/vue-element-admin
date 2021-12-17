@@ -19,7 +19,6 @@ import math
 
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
-from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -43,11 +42,11 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
     if len(shape_a) not in (2, 4):
         error_detail = "len(shape_a) not in (2, 4), len(shape_a)=%s" % len(shape_a)
         error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
-    
+
     if len(shape_b) not in (2, 4):
         error_detail = "len(shape_b) not in (2, 4), len(shape_b)=%s" % len(shape_b)
         error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
-    
+
     km_shape = shape_a[0] if trans_a else shape_a[1]
     m_shape = shape_a[1] if trans_a else shape_a[0]
     km_shape, m_shape = (m_shape, km_shape) if input_x1.get("ori_format") == "FRACTAL_NZ" else (km_shape, m_shape)
@@ -71,7 +70,7 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
         error_manager_vector.raise_err_input_value_invalid("gemm", "c shape", str([m_shape, n_shape], bias_shape))
 
 
-def check_supported(  # pylint: disable=I0011, R0913, R0914
+def check_supported(
     input_x1,
     input_x2,
     bias,
@@ -89,13 +88,13 @@ def check_supported(  # pylint: disable=I0011, R0913, R0914
     try:
         _check_param(input_x1, input_x2, bias, trans_a, trans_b)
         return True, ""
-    except Exception as e:
+    except Exception:
         reason = "the input_shape is not supported, input_x1_shape:%s, input_x2_shape:%s, bias_shape:%s, trans_a:%s, trans_b:%s"\
                  % (input_x1.get("ori_shape"), input_x2.get("ori_shape"), bias.get("ori_shape"), trans_a, trans_b)
         return False, reason
 
 
-def op_select_format(  # pylint: disable=too-many-arguments
+def op_select_format(
     input_x1,
     input_x2,
     alpha,
@@ -318,7 +317,7 @@ def _cal_min_l1space(format_b, dtype_b):
     return mini_l1space
 
 
-def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
+def get_op_support_info(input_x1,
                         input_x2,
                         bias,
                         alpha,
@@ -400,7 +399,7 @@ def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
     return op_cal_info_in_json
 
 
-def _shape_check(  # pylint: disable=I0011, R0914, R0912
+def _shape_check(
     shape_a,
     shape_b,
     src_dtype,
@@ -461,17 +460,17 @@ def _shape_check(  # pylint: disable=I0011, R0914, R0912
     if len(shape_a) != 2 and len(shape_a) != 4:
         error_detail = "len(shape_a) not in (2, 4), len(shape_a)=%s" % len(shape_a)
         error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
-    
+
     if len(shape_b) != 2 and len(shape_b) != 4:
         error_detail = "len(shape_b) not in (2, 4), len(shape_b)=%s" % len(shape_b)
         error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
-    
+
     if len(shape_a) == 2 and len(shape_b) == 2:
         km_shape = shape_a[0] if trans_a else shape_a[1]
         kn_shape = shape_b[1] if trans_b else shape_b[0]
         if km_shape != kn_shape:
             error_manager_vector.raise_err_inputs_shape_not_equal("gemm", "a_1d", "b_0d", km_shape, kn_shape, kn_shape)
-    
+
     if bias_dtype != dst_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("gemm", "c", "y", bias_dtype, dst_dtype)
 
@@ -529,7 +528,7 @@ def _format_check(
         error_detail = "for src_dtype = %s and dst_type = %s, format need to be %s or %s" % (src_dtype,
                          dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine[flow_type])
         error_manager_vector.raise_err_specific_reson("gemm", error_detail)
-  
+
 
 def _get_bias_element(shape_bias_element):
     bias_length = shape_bias_element
@@ -548,7 +547,7 @@ def _get_bias(shape_bias):
 def _get_input_shape_a(shape_x, dtype):
     dim_a = shape_x[0]
     dim_b = shape_x[1]
-    res = list()
+    res = []
     block_in = tbe_platform.BLOCK_IN
 
     if dtype == "float16":
@@ -564,7 +563,7 @@ def _get_input_shape_a(shape_x, dtype):
 def _get_input_shape_b(shape_x, dtype):
     dim_a = shape_x[0]
     dim_b = shape_x[1]
-    res = list()
+    res = []
     block_out = tbe_platform.BLOCK_OUT
 
     if dtype == "float16":
@@ -591,7 +590,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
         if shape_bias != [a_m, b_n]:
             error_detail = "c shape not in (a_m, b_n), c shape=%s" % shape_bias
             error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
-    
+
     else:
         shape_a = list(input_x1["shape"])
         shape_b = list(input_x2["shape"])
@@ -612,9 +611,9 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
     if len(bias_shape) != 2 and len(bias_shape) != 4:
         error_detail = "len(bias_shape) not in (2, 4), len(bias_shape)=%s" % len(bias_shape)
         error_manager_vector.raise_err_input_shape_invalid("gemm", "c", error_detail)
-    
 
-@para_check.check_op_params(  # pylint: disable=I0011, R0913, R0914, R0915
+
+@para_check.check_op_params(
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
@@ -625,7 +624,7 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
     para_check.REQUIRED_ATTR_BOOL,
     para_check.KERNEL_NAME,
 )
-def gemm(  # pylint: disable=I0011, R0913, R0914
+def gemm(
     input_x1,
     input_x2,
     bias,
@@ -744,7 +743,7 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
     if bias is None or not bool(bias):
         error_detail = 'unsupport c is None'
         error_manager_vector.raise_err_specific_reson("gemm", error_detail)
-  
+
     if len(shape_a) == 2:
         m_shape = shape_a[0]
         km_shape = shape_a[1]

@@ -76,12 +76,13 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
                             False, transpose, "ND", "FRACTAL_Z",
                             1.0, 1.0, 'float16', tensor_b, None)
 
-    if format_x_ori == "NCHW" or format_x_ori == "NHWC":
+    if format_x_ori in ("NCHW", "NHWC"):
         if format_x == "FRACTAL_NZ":
             format_x = "FRACTAL_Z"
 
     format_list = format_x+","+format_x
     return format_list
+
 
 def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose, axis, offset_x,
                      kernel_name="fully_connection"):
@@ -198,6 +199,7 @@ def op_select_format(x, w, compress_index, b, offset_w, y, num_output, transpose
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
+
 
 def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
                                 num_output, transpose, axis, offset_x,

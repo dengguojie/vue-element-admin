@@ -15,19 +15,14 @@
 """
 dynamic mat_mul
 """
-import math
-
 from impl.util import util_common
-from impl.util import util_gemm
 from impl.util import util_select_op_base
-from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
-from impl.util.util_common import cal_mini_l1_size_matmul
 from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
@@ -46,6 +41,7 @@ NZ_LENGTH = 4
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
 EXPECT_FORMAT = ["FRACTAL_NZ", "ND"]
+
 
 def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
                         trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
@@ -102,7 +98,8 @@ def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
 
     return op_cal_info_in_json
 
-def base_op_select_format(src_fp16_flag):
+
+def base_op_select_format(src_fp16_flag: bool) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
@@ -112,23 +109,30 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = []
     full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), output
-    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
+    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"),
+                           ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
 
-    base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ"))]
+    base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"),
+                                    ("int8", "ND"), ("float", "FRACTAL_NZ"))]
 
-    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ"))]
+    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"),
+                                 ("int32", "FRACTAL_NZ"))]
 
     quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
                            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
                            (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND")),]
+                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))]
 
     # ND input and output scenario
-    nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
-                        (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND"))]
+    nd_case_scenario = [
+            (("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
+            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND"))
+        ]
     nd_case_scenario = []
-    nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
-                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),]
+    nd_fp32out_scenario = [
+            (("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
+            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND"))
+        ]
     nd_fp32out_scenario = []
 
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
@@ -141,14 +145,15 @@ def base_op_select_format(src_fp16_flag):
     return dyn_case_scenario_list, full_case_scenario_list
 
 
-def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
-                     trans_b=False, offset_x=0, kernel_name="matmul"):
+def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: dict = None, 
+                     output_z: dict = None, trans_a: bool = False, trans_b: bool = False, 
+                     offset_x: int = 0, kernel_name: str = "matmul") -> str:
     """
     provide dynamic format to FE
     """
     # BatchMatMulV1 does not support offset_w
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = True if src_dtype == "float16" else False
+    src_fp16_flag = src_dtype == "float16"
     scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
@@ -208,7 +213,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w=None, output_y=Non
     para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
     para_check.REQUIRED_ATTR_BOOL,
     para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
+def mat_mul(input_x1, input_x2, bias, offset_w=None, output_y=None,
             trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     caculating matrix multiplication with bias, C = A * B + bias
@@ -244,9 +249,16 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     res : dict
         None
     """
+    if offset_w is None:
+        offset_w = {}
+    
+    if output_y is None:
+        output_y = {}
+
     with tbe.compute():
         res = batch_matmul_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
-                                   trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name, op_type="MatMulV2")
+                                   trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name,
+                                   op_type="MatMulV2")
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get("op_res"))

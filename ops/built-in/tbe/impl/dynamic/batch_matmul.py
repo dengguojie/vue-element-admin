@@ -15,9 +15,6 @@
 """
 dynamic batch_matmul
 """
-import math
-import copy
-
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import get_op_support_info as get_op_support_info_v2
@@ -42,7 +39,7 @@ SUPPORT_FORMAT = ["FRACTAL_NZ", "ND"]
 FUZZY_SUCC_LEN = 8
 
 
-def base_op_select_format(src_fp16_flag):
+def base_op_select_format(src_fp16_flag: bool) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
@@ -52,20 +49,22 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = []
     full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), output
-    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
-    fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "FRACTAL_NZ"))]
+    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
+                           ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
+    fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
+                          ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
     quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
                            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
                            (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND")),]
+                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND"))]
 
     # ND input and output scenario
     nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
                         (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "ND"))]
     nd_case_scenario = []
     nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("float", "ND")),
-                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "ND")),]
+                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "ND"))]
     nd_fp32out_scenario = []
 
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
@@ -77,13 +76,13 @@ def base_op_select_format(src_fp16_flag):
     return dyn_case_scenario_list, full_case_scenario_list
 
 
-def op_select_format(input_x, input_y, bias=None, output_z=None, trans_a=False,
-                     trans_b=False, kernel_name="matmul"):
+def op_select_format(input_x: dict, input_y: dict, bias: dict = None, output_z: dict = None, trans_a: bool = False,
+                     trans_b: bool = False, kernel_name: str = "matmul") -> str:
     """
     provide dynamic format to FE
     """
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = True if src_dtype == "float16" else False
+    src_fp16_flag = src_dtype == "float16"
     scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=False)

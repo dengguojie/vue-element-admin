@@ -78,6 +78,7 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
     format_list = '%s,%s,%s' % (format_x, format_x, format_x)
     return format_list
 
+
 def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x,
                      kernel_name="fully_connection"):
     """
@@ -178,6 +179,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
+
 
 def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axis, offset_x,
                                 kernel_name="fully_connection"):

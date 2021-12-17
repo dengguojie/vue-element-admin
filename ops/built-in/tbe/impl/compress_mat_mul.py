@@ -20,7 +20,6 @@ from impl.util.util_common import cal_mini_l1_size_matmul
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
@@ -114,6 +113,7 @@ def _get_input_shape_b(shape_y, transpose):
     else:
         res.append(dim_b)
     return res
+
 
 def check_supported(input_x1,
                     input_x2,
@@ -250,6 +250,7 @@ def compress_mat_mul_compute(input_x1,
         }
 
     return tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+
 
 def compress_mat_mul_compute_self(input_x1,
                                   input_x2,

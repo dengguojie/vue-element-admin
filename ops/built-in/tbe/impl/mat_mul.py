@@ -25,9 +25,9 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.matmul_vector import matmul_vector_cce
 from tbe.common.context import op_context
 
-from impl.matmul_vector import matmul_vector_cce
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -38,14 +38,15 @@ L1FUSION_INPUT_CTR = 2
 _C0_16 = 16
 
 
-def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
-                     trans_b=False, offset_x=0, kernel_name="matmul", impl_mode=""):
+def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: dict = None, 
+                     output_z: dict = None, trans_a: bool = False, trans_b: bool = False, 
+                     offset_x: int = 0, kernel_name: str = "matmul", impl_mode: str = "") -> str:
     """
     provide dynamic format to FE
     """
     # BatchMatMulV1 does not support offset_w
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = True if src_dtype == "float16" else False
+    src_fp16_flag = src_dtype == "float16"
     _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
@@ -130,7 +131,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
                     error_manager_vector.raise_err_input_shape_invalid(
                         "mat_mul", "bias", error_detail)
         elif shape_bias_length == shape_len:
-            if [i for i in shape_bias[-2:]] != [m_shape, n_shape]:  # pylint: disable=unnecessary-comprehension
+            if list(shape_bias[-2:]) != [m_shape, n_shape]:
                 error_detail = "non broadcast bias shape must be same as output shape"
                 error_manager_vector.raise_err_input_shape_invalid(
                     "mat_mul", "bias", error_detail)
@@ -180,7 +181,7 @@ def _get_bias(shape_bias, ori_shape_bias):
     return [(bias_length + _C0_16 - 1) // _C0_16 * _C0_16], [ori_bias_length]
 
 
-def _align_shape_a(shape_x, transpose):
+def _align_shape_a(shape_x: list, transpose: bool) -> list:
     dim_a = shape_x[0]
     dim_b = shape_x[1]
     res = []
@@ -196,7 +197,7 @@ def _align_shape_a(shape_x, transpose):
     return res
 
 
-def _align_shape_b(shape_y, transpose):
+def _align_shape_b(shape_y: list, transpose: bool) -> list:
     dim_a = shape_y[0]
     dim_b = shape_y[1]
     res = []
@@ -220,16 +221,16 @@ def _cal_min_l1space(dtype_b):
     return mini_l1space
 
 
-def get_op_support_info(input_x1,  # pylint: R0913,R0914,W0613
-                        input_x2,
-                        bias,
-                        offset_w={},
-                        output_y={},
-                        trans_a=False,
-                        trans_b=False,
-                        offset_x=0,
-                        kernel_name="matmul",
-                        impl_mode=""):
+def get_op_support_info(input_x1: dict,
+                        input_x2: dict,
+                        bias: dict,
+                        offset_w: dict = {},
+                        output_y: dict = {},
+                        trans_a: bool = False,
+                        trans_b: bool = False,
+                        offset_x: int = 0,
+                        kernel_name: str = "matmul",
+                        impl_mode: str = "") -> str:
     """
     get the matmul split, which only split the m and n, cannot cut k with bias
 
@@ -305,16 +306,17 @@ def _is_fuzzily_build():
     context = op_context.get_context()
     return (context and context.get_build_type() == "fuzzily_build")
 
-def check_supported(input_x1,
-                    input_x2,
-                    bias,
-                    offset_w={},
-                    output_y={},
-                    trans_a=False,
-                    trans_b=False,
-                    offset_x=0,
-                    kernel_name="matmul",
-                    impl_mode=""):
+
+def check_supported(input_x1: dict,
+                    input_x2: dict,
+                    bias: dict,
+                    offset_w: dict = {},
+                    output_y: dict = {},
+                    trans_a: bool = False,
+                    trans_b: bool = False,
+                    offset_x: int = 0,
+                    kernel_name: str = "matmul",
+                    impl_mode: str = "") -> tuple:
     """
     check the op support situation
     """
@@ -469,6 +471,7 @@ def mat_mul_compute(input_x1,
                       para_dict=para_dict)
 
     return result
+
 
 def mat_mul_compute_self(input_x1,
                          input_x2,

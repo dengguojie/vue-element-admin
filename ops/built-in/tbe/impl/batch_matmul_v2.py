@@ -47,7 +47,7 @@ def _cal_min_l1space(dtype_b):
     return mini_l1space
 
 
-def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
+def get_op_support_info(input_x,
                         input_y,
                         bias=None,
                         offset_w=None,
@@ -134,6 +134,7 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
 
     return op_cal_info_in_json
 
+
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     Check the given shape for matrix A, B and bias == legal
@@ -166,10 +167,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     else:
         shape_len = shape_len_b
     inp_src_dtype = src_dtype.lower()
-    if inp_src_dtype == "float16":
-        k_block_size = tbe_platform.BLOCK_REDUCE
-    elif inp_src_dtype == "int8":
-        k_block_size = tbe_platform.BLOCK_REDUCE_INT8
 
     check_list = ("float16", "int8")
     if inp_src_dtype not in check_list:
@@ -219,8 +216,8 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
                     error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                                        "broadcast bias shape must be equal to shape n")
         elif shape_bias_length == shape_len:
-            out_shape = [i for i in shape_a[:-2]] + [m_shape, n_shape]
-            if [i for i in shape_bias] != out_shape:
+            out_shape = list(shape_a[:-2]) + [m_shape, n_shape]
+            if list(shape_bias) != out_shape:
                 error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                                    "non broadcast bias shape "
                                                                    "must be same as output shape")
@@ -262,15 +259,12 @@ def _get_input_shape(shape_x, transpose, src_dtype):
         factor_2 = factor_base
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
-        res.append(dim_a)
-    else:
-        res.append(dim_a)
+    res.append(dim_a)
 
     if dim_b % factor_2 != 0:
         dim_b = (dim_b // factor_2) * factor_2 + factor_2
-        res.append(dim_b)
-    else:
-        res.append(dim_b)
+    res.append(dim_b)
+
     return res
 
 
@@ -293,16 +287,14 @@ def _get_input_shape_b(shape_y, transpose, src_dtype):
         factor_2 = 16
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
-        res.append(dim_a)
-    else:
-        res.append(dim_a)
+    res.append(dim_a)
 
     if dim_b % factor_2 != 0:
         dim_b = (dim_b // factor_2) * factor_2 + factor_2
-        res.append(dim_b)
-    else:
-        res.append(dim_b)
+    res.append(dim_b)
+
     return res
+
 
 def _check_batch_range(input_x, input_y):
     """
@@ -355,7 +347,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     provide static format to FE
     """
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = True if src_dtype == "float16" else False
+    src_fp16_flag = src_dtype == "float16"
     _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
@@ -469,31 +461,31 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
     Parameters
     ---------
     input_x: dict
-        A dict object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A dict object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     input_y: dict
-        A dict object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A dict object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     bias: dict
-        A dict object, contanis a 1-dimensional tensor's info:
-        the shape and type and format, the type can be float16,
-        float32, int32, the shape must be 1-dimensional,
-        the format can be [ND, NHWC]
+    A dict object, contanis a 1-dimensional tensor's info:
+    the shape and type and format, the type can be float16,
+    float32, int32, the shape must be 1-dimensional,
+    the format can be [ND, NHWC]
     output_z: dict
-        A dict object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A dict object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     trans_a: bool
-        If True, shape_a == transposed before multiplication
+    If True, shape_a == transposed before multiplication
     trans_b: str
-        If true, the shape in input_x2 must be transposed before multiplication
+    If true, the shape in input_x2 must be transposed before multiplication
     kernel_name: str
-        cce kernel name, default value is "matmul"
+    cce kernel name, default value is "matmul"
 
     Return
     ------
@@ -515,9 +507,9 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
     ori_shape_x = input_x.op.attrs["ori_shape"]
     ori_shape_y = input_y.op.attrs["ori_shape"]
     ori_shape_out = output_z.get("ori_shape")
-    batch_shape_a = ori_shape_x[:-2] if len(ori_shape_x) > 2 else list()
-    batch_shape_b = ori_shape_y[:-2] if len(ori_shape_y) > 2 else list()
-    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else list()
+    batch_shape_a = ori_shape_x[:-2] if len(ori_shape_x) > 2 else []
+    batch_shape_b = ori_shape_y[:-2] if len(ori_shape_y) > 2 else []
+    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else []
 
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("batch_matmul",
@@ -539,6 +531,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
     return result
+
 
 def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_z={}, trans_a=False,
                               trans_b=False, offset_x=0, kernel_name="matmul"):
@@ -596,7 +589,7 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     batch_shape_a = input_x.op.attrs["ori_batch_shape"]
     batch_shape_b = input_y.op.attrs["ori_batch_shape"]
     ori_shape_out = output_z.get("ori_shape")
-    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else list()
+    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else []
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("batch_matmul_v2",
                                                       "For BatchMatMulV2, tensor offset_w must be None!")
@@ -686,8 +679,6 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
             shape_bias = _get_bias(shape_bias)
 
     src_dtype = input_x.get("dtype").lower()
-    dst_dtype = output_z.get("dtype").lower()
-    is_fractal = False
 
     shape_a = list(shape_a)
     shape_b = list(shape_b)
@@ -776,13 +767,13 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
         format_b = "ND"
 
     batch_shape_a = None
-    ori_batch_shape_a = list()
+    ori_batch_shape_a = []
     if len(shape_a) > 2:
         batch_shape_a = functools.reduce(lambda x, y: x * y, shape_a[:-2])
         ori_batch_shape_a = list(shape_a[:-2])
 
     batch_shape_b = None
-    ori_batch_shape_b = list()
+    ori_batch_shape_b = []
     if len(shape_b) > 2:
         batch_shape_b = functools.reduce(lambda x, y: x * y, shape_b[:-2])
         ori_batch_shape_b = list(shape_b[:-2])

@@ -101,7 +101,7 @@ class KMeansCentroids:
         return factor_list
 
     @staticmethod
-    def _check_tiling_key(tiling_dict, keys):
+    def _check_tiling_key(tiling_dict: dict, keys: list) -> None:
         """
         check tiling key
 
@@ -150,7 +150,7 @@ class KMeansCentroids:
             tiling_para = self._formula_tiling(m_dim, k_dim, n_dim)
         self._fillin_tiling(tiling_para)
 
-    def _default_tiling(self, k_dim, tiling_para):
+    def _default_tiling(self, k_dim: int, tiling_para: dict) -> dict:
         """
         default tiling
 
@@ -219,7 +219,7 @@ class KMeansCentroids:
         }
         return tiling_para
 
-    def _fillin_tiling(self, tiling_para):
+    def _fillin_tiling(self, tiling_para: dict) -> None:
         """
         filling tiling parameters in a dict
 
@@ -296,7 +296,7 @@ class KMeansCentroids:
                     target_mn = [l0_m, l0_n]
         return target_mn
 
-    def _calc_cost(self, l0_m, l0_n, m_loop, mkn_single_core):
+    def _calc_cost(self, l0_m: int, l0_n: int, m_loop: int, mkn_single_core: tuple) -> int:
         """
         calculate cost of tiling optimization function
 
@@ -361,7 +361,7 @@ class KMeansCentroids:
 
         return aub_m, bub_n, cub_n
 
-    def _calc_cub_n(self, l0_n_factor_lis, l0_m, global_ub, ub_buffer_size):
+    def _calc_cub_n(self, l0_n_factor_lis: list, l0_m: int, global_ub: int, ub_buffer_size: int) -> int:
         """
         calculate axis n in cub_buffer
 
@@ -1065,7 +1065,7 @@ class KMeansCentroids:
 
         self.nz_to_zn(self.data_input_l0b, self.data_input_l1_2, self.shape_y_l0b)
 
-    def _mmad(self, n_gm_idx, param_dict):
+    def _mmad(self, n_gm_idx: int, param_dict: dict) -> None:
         """
         mmad: A x B = C
 
@@ -1143,7 +1143,7 @@ class KMeansCentroids:
         self._nz_to_nd(self.matmul_output_ub_nd[:, :nc_factor * n0],
                        self.matmul_output_ub[:nc_factor, :, :], shape_z_ub, is_n_tail=is_n_tail)
 
-    def _argmin(self, n_gm_idx, m_l0c_idx, param_dict):
+    def _argmin(self, n_gm_idx: int, m_l0c_idx: int, param_dict: dict) -> None:
         """
         compute argmin in ub buffer
 
@@ -1520,7 +1520,7 @@ class KMeansCentroids:
                                    self.global_min_distance_ub[m_l0c_idx + vmin_loop * FP32_MASK],
                                    1, 1, 1, 1, 8, 8, 8)
 
-    def _vcmin(self, dst_tensor, src_tensor, param_dict):
+    def _vcmin(self, dst_tensor, src_tensor, param_dict: dict) -> None:
         """
         Use vcmin to get the minimum value of each row in m_tiling rows
 

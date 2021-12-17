@@ -21,7 +21,6 @@ from enum import Enum
 from impl.util import util_gemm
 from impl.util import fusion_util
 from impl.util import util_select_op_base
-from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
@@ -49,6 +48,9 @@ LOWER_LIMIT_STR = "LOWER_LIMIT"
 
 
 class Format(str, Enum):
+    """
+    class of format
+    """
     FRACTAL_NZ = 'FRACTAL_NZ'
     ND = 'ND'
 
@@ -125,7 +127,8 @@ def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=N
 
     return op_cal_info_in_json
 
-def base_op_select_format(src_fp16_flag):
+
+def base_op_select_format(src_fp16_flag: bool) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
@@ -135,26 +138,36 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = []
     full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), input4(offset_w), output
-    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
+    base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"),
+                           ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
 
-    base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
-                                (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
+    base_quant_case_scenario = [
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))
+    ]
     # Vector Logic
-    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
-                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
-                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND")),]
+    quant_case_scenario = [
+            (("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
+            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
+            (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
+            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))
+        ]
 
-    fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ")),]
-    rnn_fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float", "ND"), ("int8", "ND"),
-                              ("float", "FRACTAL_NZ")), ]
+    fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
+                          ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ"))]
+    rnn_fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float", "ND"),
+                             ("int8", "ND"), ("float", "FRACTAL_NZ"))]
 
     # ND input and output scenario
-    nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
-                        (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),]
+    nd_case_scenario = [
+            (("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
+            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND"))
+        ]
     nd_case_scenario = []
-    nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
-                           (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),]
+    nd_fp32out_scenario = [
+            (("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
+            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND"))
+        ]
     nd_fp32out_scenario = []
 
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
@@ -167,8 +180,9 @@ def base_op_select_format(src_fp16_flag):
     return dyn_case_scenario_list, full_case_scenario_list
 
 
-def gen_op_select_format_params(scenario_combinations, support_offset_w=False):
+def gen_op_select_format_params(scenario_combinations: list, support_offset_w: bool = False) -> list:
     """
+    generate format
     """
     input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                                             datatype=','.join(
@@ -208,7 +222,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     provide dynamic format to FE
     """
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = True if src_dtype == "float16" else False
+    src_fp16_flag = src_dtype == "float16"
     scenario_combinations, _ = base_op_select_format(src_fp16_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
@@ -219,7 +233,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
 
 
 @register_operator_compute("BatchMatMulV2", op_mode="dynamic", support_fusion=False)
-def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, output_z={},
+def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
                                  trans_a=False, trans_b=False, offset_x=0,
                                  kernel_name="matmul"):
     """
@@ -247,6 +261,9 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, o
     res : dict
         A dict object, dict with input tensor and output tensor
     """
+    if output_z is None:
+        output_z = {}
+
     fusion_util.check_fusion_input([input_x1])
     fusion_util.check_fusion_input([input_x2])
     if bias:
@@ -279,7 +296,7 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, o
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
 
 
-def _check_args(args, expect_args, msg):
+def _check_args(args: tuple, expect_args: list, msg: str) -> None:
     """
     check args
     """
@@ -288,7 +305,7 @@ def _check_args(args, expect_args, msg):
             "mat_mul", msg, expect_args, args)
 
 
-def _check_dynamic_mode_of_batch_matmul(shape_x1, shape_x2):
+def _check_dynamic_mode_of_batch_matmul(shape_x1: tuple, shape_x2: tuple) -> None:
     """
     check dynamic mode
     """
@@ -302,13 +319,13 @@ def _check_dynamic_mode_of_batch_matmul(shape_x1, shape_x2):
             "batch_matmul", "x2", "ori_shape dim must more than 1"
         )
 
-    if all([i != DYNAMIC_FLAG for i in shape_x1]) and all([i != DYNAMIC_FLAG for i in shape_x2]):
+    if all(i != DYNAMIC_FLAG for i in shape_x1) and all(i != DYNAMIC_FLAG for i in shape_x2):
         error_manager_vector.raise_err_specific_reson(
             "batch_matmul", "dynamic must at least one of batch, m, k, n"
         )
 
 
-def _check_dynamic_mode_of_matmul(shape_x1, shape_x2):
+def _check_dynamic_mode_of_matmul(shape_x1: tuple, shape_x2: tuple) -> None:
     """
     check dynamic mode
     """
@@ -322,12 +339,13 @@ def _check_dynamic_mode_of_matmul(shape_x1, shape_x2):
             "mat_mul", "x2", "ori_shape dim must be 2"
         )
 
-    if all([i != DYNAMIC_FLAG for i in shape_x1]) and all([i != DYNAMIC_FLAG for i in shape_x2]):
+    if all(i != DYNAMIC_FLAG for i in shape_x1) and all(i != DYNAMIC_FLAG for i in shape_x2):
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "dynamic must at least one in m,k,n"
         )
 
-def _get_matmul_unrank_shape_and_range(input_x1, input_x2):
+
+def _get_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
     range_x1 = input_x1.get("range")
@@ -343,11 +361,12 @@ def _get_matmul_unrank_shape_and_range(input_x1, input_x2):
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1)
         range_x2 = range_nd if format_x2 == "ND" else range_nz
-    range_x1 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1])
-    range_x2 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2])
+    range_x1 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1)
+    range_x2 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2)
     return [shape_x1, range_x1, shape_x2, range_x2]
 
-def _get_batch_matmul_unrank_shape_and_range(input_x1, input_x2):
+
+def _get_batch_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
     range_x1 = input_x1.get("range")
@@ -363,11 +382,12 @@ def _get_batch_matmul_unrank_shape_and_range(input_x1, input_x2):
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1, -1)
         range_x2 = range_nd if format_x2 == "ND" else range_nz
-    range_x1 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1])
-    range_x2 = tuple([dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2])
+    range_x1 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1)
+    range_x2 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2)
     return [shape_x1, range_x1, shape_x2, range_x2]
 
-def _get_dynamic_shape_and_range(input_x1, input_x2, bias, op_type):
+
+def _get_dynamic_shape_and_range(input_x1: dict, input_x2: dict, bias: dict, op_type: str) -> tuple:
     """
     get the shape and range of matmul
     """
@@ -389,7 +409,7 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias, op_type):
     return [shape_x1, shape_x2], [range_x1, range_x2, bias_range]
 
 
-def _get_range_intersection(range1, range2, param_name, is_graph_mode=False):
+def _get_range_intersection(range1: list, range2: list, param_name: str, is_graph_mode: bool = False) -> list:
     """
     get range intersection of two range
     """
@@ -409,7 +429,7 @@ def _get_range_intersection(range1, range2, param_name, is_graph_mode=False):
     return range_ins
 
 
-def _get_batch_range(range_x1, range_x2):
+def _get_batch_range(range_x1: tuple, range_x2: tuple) -> list:
     """
     get range of batch
     """
@@ -436,7 +456,8 @@ def _get_batch_range(range_x1, range_x2):
 
     return batch_range
 
-def _get_input_x1_range(range_x1, format_x1, trans_a, op_type):
+
+def _get_input_x1_range(range_x1: tuple, format_x1: str, trans_a: bool, op_type: str) -> list:
     range_len = BATCH_ND_LENGTH if format_x1 == 'ND' else BATCH_NZ_LENGTH
     if len(range_x1) >= range_len - 1:
         if format_x1 == 'FRACTAL_NZ':
@@ -457,7 +478,8 @@ def _get_input_x1_range(range_x1, format_x1, trans_a, op_type):
         m_range, k_range_x1 = k_range_x1, m_range
     return [m_range, k_range_x1, batch_range_x1]
 
-def _get_input_x2_range(range_x2, format_x2, trans_b, op_type):
+
+def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type: str) -> list:
     range_len = BATCH_ND_LENGTH if format_x2 == 'ND' else BATCH_NZ_LENGTH
     if len(range_x2) >= range_len - 1:
         if format_x2 == 'FRACTAL_NZ':
@@ -478,8 +500,9 @@ def _get_input_x2_range(range_x2, format_x2, trans_b, op_type):
         k_range_x2, n_range = n_range, k_range_x2
     return [k_range_x2, n_range, batch_range_x2]
 
-def _get_input_range(range_x1, format_x1, range_x2, format_x2,
-                     range_bias, trans_a, trans_b, op_type, is_graph_mode=False):
+
+def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2: str, range_bias: tuple, 
+                     trans_a: bool, trans_b: bool, op_type: str, is_graph_mode: bool = False) -> list:
     """
     get range in batch, m, k, n and check range
     """
@@ -504,7 +527,7 @@ def _get_input_range(range_x1, format_x1, range_x2, format_x2,
         n_range = _get_range_intersection(n_range, range_bias_n, "n_range", is_graph_mode)
 
     # in fuzzy compile, if n/k's range has no intersection return LOWER_LIMIT
-    wrong_range_flag = (n_range == LOWER_LIMIT_STR or k_range == LOWER_LIMIT_STR)
+    wrong_range_flag = LOWER_LIMIT_STR in (n_range, k_range)
     if wrong_range_flag:
         return LOWER_LIMIT_STR
 
@@ -518,8 +541,8 @@ def _get_input_range(range_x1, format_x1, range_x2, format_x2,
     return [batch_range, m_range, k_range, n_range]
 
 
-def check_and_config_para(input_x1, input_x2, bias, output_z,
-                          trans_a, trans_b, kernel_name, op_type):
+def check_and_config_para(input_x1: dict, input_x2: dict, bias: dict, output_z: dict,
+                          trans_a: bool, trans_b: bool, kernel_name: str, op_type: str) -> tuple:
     """
     check and config dynamic mode
     """
@@ -569,7 +592,7 @@ def check_and_config_para(input_x1, input_x2, bias, output_z,
     return dtype_a, dtype_out, input_range
 
 
-def fuzzy_range_check(input_x1, input_x2, bias, trans_a, trans_b):
+def fuzzy_range_check(input_x1: dict, input_x2: dict, bias: dict, trans_a: bool, trans_b: bool) -> bool:
     """
     check range for fuzzy compile
     """
@@ -598,7 +621,7 @@ def fuzzy_range_check(input_x1, input_x2, bias, trans_a, trans_b):
     return True
 
 
-def _get_var_name(format_a, format_b):
+def _get_var_name(format_a: str, format_b: str) -> list:
     """
     Get the name of the variables
     """
@@ -615,7 +638,8 @@ def _get_var_name(format_a, format_b):
         n_var_name = "n_ori"
     return [m_var_name, k_var_name, n_var_name]
 
-def _get_m_k_index(format_a, trans_a):
+
+def _get_m_k_index(format_a: str, trans_a: bool) -> list:
     """
     get the correct m, k position for shape_x1.
     """
@@ -627,7 +651,8 @@ def _get_m_k_index(format_a, trans_a):
         k_index = -1 if format_a == "ND" else -2
     return [m_index, k_index]
 
-def _get_k_n_index(format_b, trans_b):
+
+def _get_k_n_index(format_b: str, trans_b: bool) -> list:
     """
     get the correct k, n position for shape_x2.
     """
@@ -639,7 +664,8 @@ def _get_k_n_index(format_b, trans_b):
         k_index = -2 if format_b == "ND" else -1
     return [k_index, n_index]
 
-def _get_bias_tensor(bias, format_b, n_var):
+
+def _get_bias_tensor(bias: dict, format_b: str, n_var):
     """
     Get Bias Tensor
     """
@@ -655,7 +681,8 @@ def _get_bias_tensor(bias, format_b, n_var):
         tensor_bias = None
     return tensor_bias
 
-def _get_real_trans(format_a, format_b, trans_a, trans_b):
+
+def _get_real_trans(format_a: str, format_b: str, trans_a: bool, trans_b: bool) -> list:
     """
     Get the correct trans values used in compute
     """
@@ -665,7 +692,8 @@ def _get_real_trans(format_a, format_b, trans_a, trans_b):
         trans_b = not trans_b
     return [trans_a, trans_b]
 
-def _get_none_range_flag(input_x1, input_x2):
+
+def _get_none_range_flag(input_x1: dict, input_x2: dict) -> bool:
     """
     config if none in range
     """
@@ -680,55 +708,58 @@ def _get_none_range_flag(input_x1, input_x2):
         return True
     return False
 
-def _define_cache_tiling_var(input_x1, input_x2):
-    if _get_none_range_flag(input_x1, input_x2):
-        batch_single_core = operation.var("batch_single_core")
-        m_single_core = operation.var("m_single_core")
-        n_single_core = operation.var("n_single_core")
-        batch_dim_var = operation.var("batch_dim")
-        n_dim_var = operation.var("n_dim")
-        m_dim_var = operation.var("m_dim")
-        m_al1_var = operation.var("m_al1")
-        n_bl1_var = operation.var("n_bl1")
-        cub_n1_var = operation.var("cub_n1")
-        m_l0_var = operation.var("m_l0")
-        k_l0_var = operation.var("k_l0")
-        n_ub_l0_time_var = operation.var("n_ub_l0_time")
-        kal0_factor_var = operation.var("kal0_factor")
-        kbl0_factor_var = operation.var("kbl0_factor")
-        kal1_factor_var = operation.var("kal1_factor")
-        kbl1_factor_var = operation.var("kbl1_factor")
-        kal1_16_var = operation.var("kal1_16")
-        kbl1_16_var = operation.var("kbl1_16")
-        kl1_times_var = operation.var("kl1_times")
 
-def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, trans_b, offset_x, kernel_name, op_type="BatchMatMulV2"):
+def _define_cache_tiling_var(input_x1: dict, input_x2: dict) -> None:
+    if _get_none_range_flag(input_x1, input_x2):
+        operation.var("batch_single_core")
+        operation.var("m_single_core")
+        operation.var("n_single_core")
+        operation.var("batch_dim")
+        operation.var("n_dim")
+        operation.var("m_dim")
+        operation.var("m_al1")
+        operation.var("n_bl1")
+        operation.var("cub_n1")
+        operation.var("m_l0")
+        operation.var("k_l0")
+        operation.var("n_ub_l0_time")
+        operation.var("kal0_factor")
+        operation.var("kbl0_factor")
+        operation.var("kal1_factor")
+        operation.var("kbl1_factor")
+        operation.var("kal1_16")
+        operation.var("kbl1_16")
+        operation.var("kl1_times")
+
+
+def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: dict, output_z: dict, trans_a: bool,
+                         trans_b: bool, offset_x: int, kernel_name: str, op_type: str = "BatchMatMulV2"):
     """
     batch_matmul computer
 
     Parameters:
     input_x1: dict
-        A dict object, dict with keys(shape, dtype and range)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
+    A dict object, dict with keys(shape, dtype and range)
+    the dtype must be fp16
+    the format must be FRACTAL_NZ
     input_x2: dict
-        A dict object, dict with keys(shape, dtype and range)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
+    A dict object, dict with keys(shape, dtype and range)
+    the dtype must be fp16
+    the format must be FRACTAL_NZ
     bias: dict
-        A dict object, dict with keys(shape and format) or None
-        the dtype must be fp16
-        the format must be ND
+    A dict object, dict with keys(shape and format) or None
+    the dtype must be fp16
+    the format must be ND
     output_z: dict
-        A dict object, dict with keys(shape and dtype)
-        the dtype must be fp16
-        the format must be FRACTAL_NZ
+    A dict object, dict with keys(shape and dtype)
+    the dtype must be fp16
+    the format must be FRACTAL_NZ
     trans_a: bool
-        If true, shape_a == transposed before multiplication
+    If true, shape_a == transposed before multiplication
     trans_b: bool
-        If true, shape_a == transposed before multiplication
+    If true, shape_a == transposed before multiplication
     kernel_name: str
-        cce kernel_name
+    cce kernel_name
     Returns
     -------
     res : dict
@@ -811,7 +842,27 @@ def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, 
 @tbe_register.register_param_generalization("BatchMatMulV2")
 def batch_matmul_v2_generalization(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
                                    trans_a=False, trans_b=False, offset_x=0, kernel_name="batch_matmul",
-                                   generalize_config=None):
+                                   generalize_config: dict = None) -> list:
+    """
+    batch_matmul_v2_generalization
+
+    Parameters:
+    input_x1: A dict object, dict with keys(shape, dtype and range). 
+    the dtype must be fp16, the format must be FRACTAL_NZ
+    input_x2: A dict object, dict with keys(shape, dtype and range)
+    the dtype must be fp16, the format must be FRACTAL_NZ
+    bias: A dict object, dict with keys(shape and format) or None
+    the dtype must be fp16, the format must be ND
+    output_z: A dict object, dict with keys(shape and dtype)
+    the dtype must be fp16, the format must be FRACTAL_NZ
+    trans_a: If true, shape_a == transposed before multiplication
+    trans_b: If true, shape_a == transposed before multiplication
+    kernel_name: cce kernel_name
+    generalize_config: generalize config
+    Returns
+    -------
+    res : A list object
+    """
     # fuzzy compile
     if generalize_config.get("mode") == "keep_rank":
         result = []
@@ -859,7 +910,7 @@ def batch_matmul_v2_generalization(input_x1, input_x2, bias=None, offset_w=None,
 @register_operator("BatchMatMulV2")
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-    para_check.OPTION_INPUT,para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+    para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
     para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
                     trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
@@ -915,8 +966,8 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
     if _get_none_range_flag(input_x1, input_x2):
-        config["build_args"]["predicate_realize_bound"] = False
-        config["build_args"]["sync_mode"] = 8
-        config["build_args"]["enable_branch_eliminator_else_case"] = False
+        config.get("build_args")["predicate_realize_bound"] = False
+        config.get("build_args")["sync_mode"] = 8
+        config.get("build_args")["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")
