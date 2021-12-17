@@ -186,6 +186,7 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
     """
 
     dtype = src.dtype.lower()
+    dtype_factor = 1
     if dtype in ("float16", "int16", "uint16"):
         dtype_factor = 2
     elif dtype in ("float32", "int32", "uint32"):
