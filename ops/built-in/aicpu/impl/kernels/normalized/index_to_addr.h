@@ -26,7 +26,7 @@ class IndexToAddrCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t Check(CpuKernelContext &ctx);
+  uint32_t Check(CpuKernelContext &ctx) const;
 };
 }  // namespace aicpu
 #endif

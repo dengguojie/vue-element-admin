@@ -65,12 +65,9 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   auto output_1 = ctx.Output(1);
-  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get input x data failed.")
-  KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output sign data failed.")
-  KERNEL_CHECK_NULLPTR(output_1->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output y data failed.")
+  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,  "Get input x data failed.")
+  KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output sign data failed.")
+  KERNEL_CHECK_NULLPTR(output_1->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output y data failed.")
 
   KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input x tensor shape failed.")
@@ -87,8 +84,7 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
   KERNEL_CHECK_FALSE((shape_size_x > 1), KERNEL_STATUS_PARAM_INVALID,
                      "Input x must be at least rank 2, got [%zu].",
                      shape_size_x)
-  KERNEL_CHECK_FALSE((shape_x[shape_size_x - 1] > 0),
-                     KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_FALSE((shape_x[shape_size_x - 1] > 0), KERNEL_STATUS_PARAM_INVALID,
                      "Input x last dimension must be at least 1.")
   KERNEL_CHECK_FALSE(
       (shape_x[shape_size_x - kIndexTwo] == shape_x[shape_size_x - 1]),
@@ -96,24 +92,18 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
       "Input x dimensions must be equal, but are [%lld] and [%lld].",
       shape_x[shape_size_x - kIndexTwo], shape_x[shape_size_x - 1])
 
-  KERNEL_CHECK_FALSE((shape_size_sign == shape_size_x - kIndexTwo),
-                     KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_FALSE((shape_size_sign == shape_size_x - kIndexTwo), KERNEL_STATUS_PARAM_INVALID,
                      "Output sign must be rank [%zu], got [%zu].",
                      shape_size_x - kIndexTwo, shape_size_sign)
-  KERNEL_CHECK_FALSE((shape_size_y == shape_size_x - kIndexTwo),
-                     KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_FALSE((shape_size_y == shape_size_x - kIndexTwo), KERNEL_STATUS_PARAM_INVALID,
                      "Output y must be rank [%zu], got [%zu].",
                      shape_size_x - kIndexTwo, shape_size_y)
   for (size_t i = 0; i < shape_size_x - kIndexTwo; i++) {
-    KERNEL_CHECK_FALSE((shape_sign[i] == shape_x[i]),
-                       KERNEL_STATUS_PARAM_INVALID,
-                       "Output sign and Input x dimension [%zu] must be "
-                       "equal, got [%lld] and [%lld].",
+    KERNEL_CHECK_FALSE((shape_sign[i] == shape_x[i]), KERNEL_STATUS_PARAM_INVALID,
+                       "Output sign and Input x dimension [%zu] must be equal, got [%lld] and [%lld].",
                        i, shape_sign[i], shape_x[i])
-    KERNEL_CHECK_FALSE((shape_y[i] == shape_x[i]),
-                       KERNEL_STATUS_PARAM_INVALID,
-                       "Output y and Input x dimension [%zu] must be equal, "
-                       "got [%lld] and [%lld].",
+    KERNEL_CHECK_FALSE((shape_y[i] == shape_x[i]), KERNEL_STATUS_PARAM_INVALID,
+                       "Output y and Input x dimension [%zu] must be equal, got [%lld] and [%lld].",
                        i, shape_y[i], shape_x[i])
   }
   return KERNEL_STATUS_OK;
@@ -161,7 +151,7 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
     } else {
       uint32_t min_core_num = 1;
       int64_t max_core_num = std::max(
-        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+          min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
       if (max_core_num > martix_num) {
         max_core_num = martix_num;
       }

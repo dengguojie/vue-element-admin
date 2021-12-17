@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "index_to_addr.h"
 
 #include "cpu_kernel_utils.h"
@@ -59,9 +60,9 @@ uint32_t IndexToAddr(aicpu::CpuKernelContext &ctx) {
       static_cast<int64_t>(row), static_cast<int64_t>(col), ori_shape[0],
       ori_shape[1], ori_storage_mode.c_str(), block_size[0], block_size[1],
       block_mode.c_str(), rank_id, DTypeStr(dtype).c_str());
-  int64_t bias = 0;
+
   for (int64_t r = 0; r < block_size[0]; ++r, ++i) {
-    bias = ori_shape[1] * i + j;
+    int64_t bias = ori_shape[1] * i + j;
     int64_t bias_addr = bias * aicpu::GetSizeByDataType(dtype);
     addr_table[r * 4] = rank_id;
     addr_table[r * 4 + 1] = base_addr[0] + bias_addr;
@@ -73,7 +74,7 @@ uint32_t IndexToAddr(aicpu::CpuKernelContext &ctx) {
 }  // namespace
 
 namespace aicpu {
-uint32_t IndexToAddrCpuKernel::Check(CpuKernelContext &ctx) {
+uint32_t IndexToAddrCpuKernel::Check(CpuKernelContext &ctx) const{
   Tensor *base_addr = ctx.Input(0);
   Tensor *x = ctx.Input(1);
   Tensor *output = ctx.Output(0);

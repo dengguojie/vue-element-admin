@@ -28,17 +28,17 @@ class InvGradCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t InvGradParamCheck(CpuKernelContext &ctx);
+  uint32_t InvGradParamCheck(CpuKernelContext &ctx) const;
 
   template <typename T>
   void SpecialCompute(int64_t start, int64_t end,
-                     T *input1, T *input2, T *output);
+                      T *input1, T *input2, T *output) const;
 
   template <typename T>
-  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+  uint32_t NoBcastCompute(CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t InvGradCompute(CpuKernelContext &ctx);
+  uint32_t InvGradCompute(CpuKernelContext &ctx) const;
 };
 }  // namespace aicpu
 #endif

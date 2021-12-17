@@ -34,17 +34,7 @@ const int64_t kParallelDataNum = 2 * 1024;
 const int64_t kParallelDataNumMid = 16 * 1024;
 const int64_t kParallelDataNumSameShape = 7 * 1024;
 const int64_t kParallelDataNumSameShapeMid = 35 * 1024;
-
-#define INVGRAD_COMPUTE_CASE(DTYPE, TYPE, CTX)             \
-  case (DTYPE): {                                          \
-    uint32_t result = InvGradCompute<TYPE>(CTX);           \
-    if (result != KERNEL_STATUS_OK) {                      \
-      KERNEL_LOG_ERROR("InvGrad kernel compute failed.");  \
-      return result;                                       \
-    }                                                      \
-    break;                                                 \
-  }
-}
+}  // namespace
 
 namespace aicpu {
 uint32_t InvGradCpuKernel::Compute(CpuKernelContext &ctx) {
@@ -53,40 +43,53 @@ uint32_t InvGradCpuKernel::Compute(CpuKernelContext &ctx) {
                       "InvGrad check input and output number failed.");
   KERNEL_HANDLE_ERROR(InvGradParamCheck(ctx), "InvGrad check params failed.");
   auto data_type = ctx.Input(0)->GetDataType();
+  uint32_t result;
   switch (data_type) {
-    INVGRAD_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    INVGRAD_COMPUTE_CASE(DT_FLOAT, float, ctx)
-    INVGRAD_COMPUTE_CASE(DT_DOUBLE, double, ctx)
-    INVGRAD_COMPUTE_CASE(DT_COMPLEX64, std::complex<float>, ctx)
-    INVGRAD_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx)
+    case (DT_FLOAT16):
+      result = InvGradCompute<Eigen::half>(ctx);
+      break;
+    case (DT_FLOAT):
+      result = InvGradCompute<float>(ctx);
+      break;
+    case (DT_DOUBLE):
+      result = InvGradCompute<double>(ctx);
+      break;
+    case (DT_COMPLEX64):
+      result = InvGradCompute<std::complex<float>>(ctx);
+      break;
+    case (DT_COMPLEX128):
+      result = InvGradCompute<std::complex<double>>(ctx);
+      break;
     default:
       KERNEL_LOG_ERROR("InvGrad kernel data type [%s] not support.",
                        DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  return KERNEL_STATUS_OK;
+  if (result != KERNEL_STATUS_OK) {
+    KERNEL_LOG_ERROR("InvGrad kernel compute failed.");
+  }
+  return result;
 }
 
-uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) {
-    // the non null of input_0, input_1, output has been verified in NormalCheck
-    Tensor *input_0 = ctx.Input(0);
-    Tensor *input_1 = ctx.Input(1);
-    Tensor *output = ctx.Output(0);
-  
-    DataType input0_type = input_0->GetDataType();
-    DataType input1_type = input_1->GetDataType();
-    KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
-                       "The data type of input0 [%s] need be same with "
-                       "input1 [%s].",
-                       DTypeStr(input0_type).c_str(),
-                       DTypeStr(input1_type).c_str())
-    KERNEL_LOG_DEBUG(
-        "InvGradCpuKernel[%s], input0: size[%llu];"
-        "input1: size[%llu], output: size[%llu].",
-        ctx.GetOpType().c_str(), input_0->GetDataSize(),
-        input_1->GetDataSize(), output->GetDataSize());
-  
-    return KERNEL_STATUS_OK;
+uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) const {
+  // the non null of input_0, input_1, output has been verified in NormalCheck
+  Tensor *input_0 = ctx.Input(0);
+  Tensor *input_1 = ctx.Input(1);
+  Tensor *output = ctx.Output(0);
+  DataType input0_type = input_0->GetDataType();
+  DataType input1_type = input_1->GetDataType();
+  KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
+                     "The data type of input0 [%s] need be same with "
+                     "input1 [%s].",
+                     DTypeStr(input0_type).c_str(),
+                     DTypeStr(input1_type).c_str())
+  KERNEL_LOG_DEBUG(
+      "InvGradCpuKernel[%s], input0: size[%llu];"
+      "input1: size[%llu], output: size[%llu].",
+      ctx.GetOpType().c_str(), input_0->GetDataSize(), input_1->GetDataSize(),
+      output->GetDataSize());
+
+  return KERNEL_STATUS_OK;
 }
 
 // special compute is used in the following situations.
@@ -95,41 +98,39 @@ uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) {
 // 3. input2 is a 1D tensor with only one element or input2 is scalar
 // 4. the shapes of input1 and input2 are different
 template <typename T>
-void InvGradCpuKernel::SpecialCompute(int64_t start,
-                                   int64_t end, T *input1,
-                                   T *input2, T *output) {
-
-    for (int64_t i = start; i < end; ++i) {
-      *(output + i) = *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
-    }
-
+void InvGradCpuKernel::SpecialCompute(int64_t start, int64_t end, T *input1,
+                                      T *input2, T *output) const {
+  for (int64_t i = start; i < end; ++i) {
+    *(output + i) =
+        *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
+  }
 }
 
 template <typename T>
-uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
-  auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
-  auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
-  auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
+uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) const {
+  auto in0 = static_cast<T *>(ctx.Input(0)->GetData());
+  auto in1 = static_cast<T *>(ctx.Input(1)->GetData());
+  auto out = static_cast<T *>(ctx.Output(0)->GetData());
   int64_t in0_elements_nums = ctx.Input(0)->NumElements();
   int64_t data_num = in0_elements_nums;
-      
+
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-        
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+
     if (data_num <= kParallelDataNumSameShapeMid) {
-      max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
+      max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
     }
-    
+
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
-    
+
     auto sharder_invgrad = [&](size_t start, size_t end) {
       SpecialCompute<T>(start, end, in0, in1, out);
     };
-    
+
     KERNEL_HANDLE_ERROR(
         CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
                                     sharder_invgrad),
@@ -137,12 +138,12 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   } else {
     SpecialCompute<T>(0, data_num, in0, in1, out);
   }
-  
+
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) {
+uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) const {
   Tensor *input0_tensor = ctx.Input(0);
   auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();
@@ -150,7 +151,6 @@ uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) {
   Tensor *input1_tensor = ctx.Input(1);
   auto input1_shape = input1_tensor->GetTensorShape()->GetDimSizes();
   int64_t input1_elements_nums = input1_tensor->NumElements();
-
   // elements numbers check
   if (input0_elements_nums != input1_elements_nums) {
     KERNEL_LOG_WARN("Invalid element numbers, got[%d] and [%d]",
