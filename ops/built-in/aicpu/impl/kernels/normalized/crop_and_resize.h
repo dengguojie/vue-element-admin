@@ -59,10 +59,10 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
   auto CropAndResizePerBox = [&](int start_box, int limit_box) {               \
     for (int b = start_box; b < limit_box; ++b) {                              \
       if (method_name == "bilinear_v2") {                                      \
-        int y1 = static_cast<int>(boxes(b, 0) * image_height);                 \
-        int x1 = static_cast<int>(boxes(b, 1) * image_width);                  \
-        int y2 = static_cast<int>(boxes(b, 2) * image_height);                 \
-        int x2 = static_cast<int>(boxes(b, 3) * image_width);                  \
+        int y1 = static_cast<int>(boxes(b, 0) * imageHeight);                 \
+        int x1 = static_cast<int>(boxes(b, 1) * imageWidth);                  \
+        int y2 = static_cast<int>(boxes(b, 2) * imageHeight);                 \
+        int x2 = static_cast<int>(boxes(b, 3) * imageWidth);                  \
         int w = 1;                                                             \
         int h = 1;                                                             \
         if ((x2 - x1 + 1) > 1) {                                               \
@@ -74,9 +74,9 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                                                                                \
         const int32_t b_in = box_index(b);                                     \
                                                                                \
-        for (int y = 0; y < crop_height; ++y) {                                \
+        for (int y = 0; y < cropHeight; ++y) {                                \
           float y_point =                                                      \
-              (y + 0.5) * (h / static_cast<float>(crop_height)) - 0.5;         \
+              (y + 0.5) * (h / static_cast<float>(cropHeight)) - 0.5;         \
           int y_base = std::floor(y_point);                                    \
           y_base = std::max(0, y_base);                                        \
           y_base = std::min(y_base, h - 1);                                    \
@@ -84,9 +84,9 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
           y_top = std::max(0, y_top);                                          \
           y_top = std::min(y_top, h - 1);                                      \
           float y_shift = y_point - y_base;                                    \
-          for (int x = 0; x < crop_width; ++x) {                               \
+          for (int x = 0; x < cropWidth; ++x) {                               \
             float x_point =                                                    \
-                (x + 0.5) * (w / static_cast<float>(crop_width)) - 0.5;        \
+                (x + 0.5) * (w / static_cast<float>(cropWidth)) - 0.5;        \
             int x_base = std::floor(x_point);                                  \
             x_base = std::max(0, x_base);                                      \
             x_base = std::min(x_base, w - 1);                                  \
@@ -120,20 +120,20 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
         const int32_t b_in = box_index(b);                                     \
                                                                                \
         const float height_scale =                                             \
-            (crop_height > 1)                                                  \
-                ? (y2 - y1) * (image_height - 1) / (crop_height - 1)           \
+            (cropHeight > 1)                                                  \
+                ? (y2 - y1) * (imageHeight - 1) / (cropHeight - 1)           \
                 : 0;                                                           \
         const float width_scale =                                              \
-            (crop_width > 1)                                                   \
-                ? (x2 - x1) * (image_width - 1) / (crop_width - 1)             \
+            (cropWidth > 1)                                                   \
+                ? (x2 - x1) * (imageWidth - 1) / (cropWidth - 1)             \
                 : 0;                                                           \
                                                                                \
-        for (int y = 0; y < crop_height; ++y) {                                \
-          const float in_y = (crop_height > 1)                                 \
-                                 ? y1 * (image_height - 1) + y * height_scale  \
-                                 : 0.5 * (y1 + y2) * (image_height - 1);       \
-          if (in_y < 0 || in_y > image_height - 1) {                           \
-            for (int x = 0; x < crop_width; ++x) {                             \
+        for (int y = 0; y < cropHeight; ++y) {                                \
+          const float in_y = (cropHeight > 1)                                 \
+                                 ? y1 * (imageHeight - 1) + y * height_scale  \
+                                 : 0.5 * (y1 + y2) * (imageHeight - 1);       \
+          if (in_y < 0 || in_y > imageHeight - 1) {                           \
+            for (int x = 0; x < cropWidth; ++x) {                             \
               for (int d = 0; d < depth; ++d) {                                \
                 crops(b, y, x, d) = extrapolation_value;                       \
               }                                                                \
@@ -145,11 +145,11 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
             const int bottom_y_index = ceilf(in_y);                            \
             const float y_lerp = in_y - top_y_index;                           \
                                                                                \
-            for (int x = 0; x < crop_width; ++x) {                             \
+            for (int x = 0; x < cropWidth; ++x) {                             \
               const float in_x =                                               \
-                  (crop_width > 1) ? x1 * (image_width - 1) + x * width_scale  \
-                                   : 0.5 * (x1 + x2) * (image_width - 1);      \
-              if (in_x < 0 || in_x > image_width - 1) {                        \
+                  (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale  \
+                                   : 0.5 * (x1 + x2) * (imageWidth - 1);      \
+              if (in_x < 0 || in_x > imageWidth - 1) {                        \
                 for (int d = 0; d < depth; ++d) {                              \
                   crops(b, y, x, d) = extrapolation_value;                     \
                 }                                                              \
@@ -175,11 +175,11 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
               }                                                                \
             }                                                                  \
           } else {                                                             \
-            for (int x = 0; x < crop_width; ++x) {                             \
+            for (int x = 0; x < cropWidth; ++x) {                             \
               const float in_x =                                               \
-                  (crop_width > 1) ? x1 * (image_width - 1) + x * width_scale  \
-                                   : 0.5 * (x1 + x2) * (image_width - 1);      \
-              if (in_x < 0 || in_x > image_width - 1) {                        \
+                  (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale  \
+                                   : 0.5 * (x1 + x2) * (imageWidth - 1);      \
+              if (in_x < 0 || in_x > imageWidth - 1) {                        \
                 for (int d = 0; d < depth; ++d) {                              \
                   crops(b, y, x, d) = extrapolation_value;                     \
                 }                                                              \
@@ -205,17 +205,17 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                     const std::string &method_name, float extrapolation_value,
                     typename TTypes<float, 4>::Tensor crops,
                     const CpuKernelContext &ctx) {
-      const int image_height = image.dimension(1);
-      const int image_width = image.dimension(2);
+      const int imageHeight = image.dimension(1);
+      const int imageWidth = image.dimension(2);
 
-      const int num_boxes = crops.dimension(0);
-      const int crop_height = crops.dimension(1);
-      const int crop_width = crops.dimension(2);
+      const int numBoxes = crops.dimension(0);
+      const int cropHeight = crops.dimension(1);
+      const int cropWidth = crops.dimension(2);
       const int depth = crops.dimension(3);
 
       // Sharding across boxes.
       CropAndResizePerBoxDefine CpuKernelUtils::ParallelFor(
-          ctx, num_boxes, 1, CropAndResizePerBox);
+          ctx, numBoxes, 1, CropAndResizePerBox);
       return true;
     }
   };
@@ -239,14 +239,14 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
     auto batch_size = x_shape[0];
     // need in old kernel: auto depth = x_shape[3];
 
-    auto num_boxes = boxes_shape[0];
+    auto numBoxes = boxes_shape[0];
     auto crop_size_vec = crop_size.vec<int32_t>();
-    int64_t crop_height = crop_size_vec(0);
-    int64_t crop_width = crop_size_vec(1);
-    if (!(crop_height > 0 && crop_width > 0)) {
+    int64_t cropHeight = crop_size_vec(0);
+    int64_t cropWidth = crop_size_vec(1);
+    if (!(cropHeight > 0 && cropWidth > 0)) {
       KERNEL_LOG_ERROR(
-          "The value of crop_height: [%lld] and crop_width: [%lld] should > 0",
-          crop_height, crop_width);
+          "The value of cropHeight: [%lld] and cropWidth: [%lld] should > 0",
+          cropHeight, cropWidth);
       return KERNEL_STATUS_PARAM_INVALID;
     }
 
@@ -256,7 +256,7 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
 
     typename TTypes<int32_t, 1>::Tensor box_index_t =
         box_index.tensor<int32_t, 1>();
-    for (int64_t b = 0; b < num_boxes; ++b) {
+    for (int64_t b = 0; b < numBoxes; ++b) {
       if (!(box_index_t(b) >= 0 &&
             box_index_t(b) < static_cast<int>(batch_size))) {
         KERNEL_LOG_ERROR("Invalid box_index[%lld] value: [%d],"

@@ -50,7 +50,7 @@ uint32_t ConjCpuKernel::Compute(CpuKernelContext &ctx) {
     CONJ_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx)
     default:
       KERNEL_LOG_ERROR("Conj kernel data type [%s] not support.",
-        DTypeStr(dataType).c_str());
+                       DTypeStr(dataType).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -60,9 +60,9 @@ uint32_t ConjCpuKernel::ConjCheck(CpuKernelContext &ctx) const {
   auto input = ctx.Input(0);
   auto output = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input->GetData(), KERNEL_STATUS_PARAM_INVALID,
-    "Get input data failed.")
+                       "Get input data failed.")
   KERNEL_CHECK_NULLPTR(output->GetData(), KERNEL_STATUS_PARAM_INVALID,
-    "Get output data failed")
+                       "Get output data failed")
   return KERNEL_STATUS_OK;
 }
 
@@ -79,7 +79,7 @@ uint32_t ConjCpuKernel::ConjCompute(CpuKernelContext &ctx) const {
   } else {
     uint32_t minCoreNum = 1;
     int64_t maxCoreNum = std::max(
-      minCoreNum, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        minCoreNum, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (maxCoreNum > dataNum) {
       maxCoreNum = dataNum;
     }
@@ -89,7 +89,7 @@ uint32_t ConjCpuKernel::ConjCompute(CpuKernelContext &ctx) const {
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, dataNum, dataNum / maxCoreNum, shardConj),
-      "Conj Compute failed.")
+                        "Conj Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }

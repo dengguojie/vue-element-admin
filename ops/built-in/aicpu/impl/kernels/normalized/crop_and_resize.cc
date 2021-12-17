@@ -37,45 +37,45 @@ uint32_t CropAndResizeMsCpuKernel::GetMethodAndAttr(CpuKernelContext &ctx) {
   method_ = method->GetString();
   KERNEL_LOG_INFO("CropAndResize method: [%s]", method_.c_str());
   KERNEL_CHECK_FALSE(((method_ == kMethodBiliner) || (method_ == kMethodBilinerV2) || (method_ == kMethodNearest)),
-    KERNEL_STATUS_PARAM_INVALID, "Invalid attr[method]: [%s], must be in [%s, %s, %s]",
-    method_.c_str(), kMethodBiliner.c_str(), kMethodBilinerV2.c_str(), kMethodNearest.c_str());
+                     KERNEL_STATUS_PARAM_INVALID, "Invalid attr[method]: [%s], must be in [%s, %s, %s]",
+                     method_.c_str(), kMethodBiliner.c_str(), kMethodBilinerV2.c_str(), kMethodNearest.c_str());
 
-  AttrValue *extrapolation_value = ctx.GetAttr("extrapolation_value");
-  KERNEL_CHECK_NULLPTR(extrapolation_value, KERNEL_STATUS_PARAM_INVALID,
+  AttrValue *extrapolationValue = ctx.GetAttr("extrapolation_value");
+  KERNEL_CHECK_NULLPTR(extrapolationValue, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[extrapolation_value] failed.");
-  extrapolation_value_ = extrapolation_value->GetFloat();
+  extrapolation_value_ = extrapolationValue->GetFloat();
   return KERNEL_STATUS_OK;
 }
 
 uint32_t CropAndResizeMsCpuKernel::GetInputIndexX(CpuKernelContext &ctx) {
   // input_0: x
-  Tensor *x_tensor = ctx.Input(kInputIndexX);
-  KERNEL_CHECK_NULLPTR(x_tensor, KERNEL_STATUS_PARAM_INVALID,
+  Tensor *xTensor = ctx.Input(kInputIndexX);
+  KERNEL_CHECK_NULLPTR(xTensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[0] failed");
-  x_dtype_ = static_cast<DataType>(x_tensor->GetDataType());
-  std::shared_ptr<TensorShape> x_shape = x_tensor->GetTensorShape();
+  x_dtype_ = static_cast<DataType>(xTensor->GetDataType());
+  std::shared_ptr<TensorShape> x_shape = xTensor->GetTensorShape();
   x_shape_ = x_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((x_shape_.size() == 4), KERNEL_STATUS_PARAM_INVALID,
-    "The shape size of input[0]:[%zu], should be [4]", x_shape_.size());
+                     "The shape size of input[0]:[%zu], should be [4]", x_shape_.size());
 
   auto image_height = x_shape_[1];
   auto image_width = x_shape_[2];
   KERNEL_CHECK_FALSE((image_height > 0 && image_width > 0), KERNEL_STATUS_PARAM_INVALID,
-    "The value of image_height(shape[1] of input[0]): [%lld] and "
-    "image_width(shape[2] of input[0]): [%lld] should > 0",
-    image_height, image_width);
+                     "The value of image_height(shape[1] of input[0]): [%lld] and "
+                     "image_width(shape[2] of input[0]): [%lld] should > 0",
+                     image_height, image_width);
 
-  inputs_.push_back(x_tensor);
+  inputs_.push_back(xTensor);
   return KERNEL_STATUS_OK;
 }
 
 uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
 
   // input_1: boxes
-  Tensor *boxes_tensor = ctx.Input(kInputIndexBoxes);
-  KERNEL_CHECK_NULLPTR(boxes_tensor, KERNEL_STATUS_PARAM_INVALID,
+  Tensor *boxesTensor = ctx.Input(kInputIndexBoxes);
+  KERNEL_CHECK_NULLPTR(boxesTensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[1] failed");
-  std::shared_ptr<TensorShape> boxes_shape = boxes_tensor->GetTensorShape();
+  std::shared_ptr<TensorShape> boxes_shape = boxesTensor->GetTensorShape();
   boxes_shape_ = boxes_shape->GetDimSizes();
   KERNEL_CHECK_FALSE(boxes_shape_.size() == 2, KERNEL_STATUS_PARAM_INVALID,
                      "Invalid boxes shape size: [%zu], should be [2]",
@@ -85,11 +85,11 @@ uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
                      boxes_shape_[1]);
 
   // input_2: box_index
-  Tensor *box_index_tensor = ctx.Input(kInputIndexBoxIndex);
-  KERNEL_CHECK_NULLPTR(box_index_tensor, KERNEL_STATUS_PARAM_INVALID,
+  Tensor *boxIndexTensor = ctx.Input(kInputIndexBoxIndex);
+  KERNEL_CHECK_NULLPTR(boxIndexTensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[2] failed");
   std::shared_ptr<TensorShape> box_index_shape =
-      box_index_tensor->GetTensorShape();
+      boxIndexTensor->GetTensorShape();
   box_index_shape_ = box_index_shape->GetDimSizes();
   KERNEL_CHECK_FALSE(boxes_shape_[0] == box_index_shape_[0],
                      KERNEL_STATUS_PARAM_INVALID,
@@ -97,18 +97,18 @@ uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
                      "[%lld], box_index_shape_[0] (shape[0] of input[2]): [%lld]",
                      boxes_shape_[0], box_index_shape_[0]);
 
-  inputs_.push_back(boxes_tensor);
-  inputs_.push_back(box_index_tensor);
+  inputs_.push_back(boxesTensor);
+  inputs_.push_back(boxIndexTensor);
   return KERNEL_STATUS_OK;
 }
 
 uint32_t CropAndResizeMsCpuKernel::GetInputCropSize(CpuKernelContext &ctx) {
   // input_3: crop_size
-  Tensor *crop_size_tensor = ctx.Input(kInputIndexCropSize);
-  KERNEL_CHECK_NULLPTR(crop_size_tensor, KERNEL_STATUS_PARAM_INVALID,
+  Tensor *cropSizeTensor = ctx.Input(kInputIndexCropSize);
+  KERNEL_CHECK_NULLPTR(cropSizeTensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[3] failed");
   std::shared_ptr<TensorShape> crop_size_shape =
-      crop_size_tensor->GetTensorShape();
+      cropSizeTensor->GetTensorShape();
   crop_size_shape_ = crop_size_shape->GetDimSizes();
 
   KERNEL_CHECK_FALSE(crop_size_shape_.size() == 1, KERNEL_STATUS_PARAM_INVALID,
@@ -118,7 +118,7 @@ uint32_t CropAndResizeMsCpuKernel::GetInputCropSize(CpuKernelContext &ctx) {
                      "Invalid crop_size_shape[0] (shape[0] of input[3]): [%lld]",
                      crop_size_shape_[0]);
 
-  inputs_.push_back(crop_size_tensor);
+  inputs_.push_back(cropSizeTensor);
   return KERNEL_STATUS_OK;
 }
 

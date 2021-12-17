@@ -117,13 +117,13 @@ uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
 void CumsumCpuKernel::CumsumGetAttr(CpuKernelContext &ctx, bool &exclusive, bool &reverse) {
   exclusive = false;
   AttrValue *exclusive_attr = ctx.GetAttr("exclusive");
-  if(exclusive_attr != nullptr) {
+  if (exclusive_attr != nullptr) {
     exclusive = exclusive_attr->GetBool();
   }
 
   reverse = false;
   AttrValue *reverse_attr = ctx.GetAttr("reverse");
-  if(reverse_attr != nullptr) {
+  if (reverse_attr != nullptr) {
     reverse = reverse_attr->GetBool();
   }
 }
@@ -242,7 +242,8 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
       max_core_num = outer;
     }
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-      ctx, outer, outer / max_core_num, shard_cumsum), "CumSum Compute failed.")
+                        ctx, outer, outer / max_core_num, shard_cumsum),
+                        "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
@@ -376,8 +377,8 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
       max_core_num = outer;
     }
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-      ctx, outer, outer / max_core_num, shard_cumsum),
-      "CumSum Compute failed.")
+        ctx, outer, outer / max_core_num, shard_cumsum),
+        "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
