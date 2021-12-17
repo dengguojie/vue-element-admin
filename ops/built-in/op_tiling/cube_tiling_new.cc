@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +26,7 @@
 namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;
   constexpr int32_t kConv3dVarDimSizeLimit = 4;
+  static const int kRangeDimLen = 2;
   const std::vector<int32_t> kConv3DDynamicShapeDims = {0, 1, 3, 4}; // format: NDC1HWC0
   const std::vector<int32_t> kConv3DDynamicRangeDims = {0, 1, 2, 3}; // foramt: NDHW
 
@@ -49,11 +49,12 @@ namespace {
     const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
     if (range.size() == range_dim.size()) {
       for (size_t i = 0; i < shape_dim.size(); ++i) {
-        if (shape[shape_dim[i]] < range[range_dim[i * 2]] || shape[shape_dim[i]] > range[range_dim[i * 2 + 1]]) {
+        if (shape[shape_dim[i]] < range[range_dim[i * kRangeDimLen]] ||
+            shape[shape_dim[i]] > range[range_dim[i * kRangeDimLen + 1]]) {
           return false;
         }
       }
-    } else if (range.size() == 2) {
+    } else if (range.size() == kRangeDimLen) {
       if (shape[shape_dim[0]] < range[0] || shape[shape_dim[0]] > range[1]) {
         return false;
       }
@@ -103,7 +104,7 @@ namespace {
     int32_t hDim = 2;
     int32_t wDim = 3;
 
-    auto& repo_range = compile_info.at("repo_range");
+    const auto& repo_range = compile_info.at("repo_range");
     auto& tiling_seeds = compile_info.at("repo_seeds");
     int64_t min_dist = std::numeric_limits<int64_t>::max();
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {

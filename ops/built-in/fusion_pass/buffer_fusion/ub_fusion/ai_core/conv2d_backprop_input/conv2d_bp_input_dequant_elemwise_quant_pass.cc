@@ -30,7 +30,6 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const char PATTERN_DX[] = "conv2dbackpropinput";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_DEQUANT[] = "dequant";

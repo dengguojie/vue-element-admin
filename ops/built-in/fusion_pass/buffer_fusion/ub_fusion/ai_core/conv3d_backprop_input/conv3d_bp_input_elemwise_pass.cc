@@ -1,5 +1,4 @@
-/**
- * Copyright 2021 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +28,6 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const string PATTERN_DX = "conv3dbackpropinput";
 static const string PATTERN_ELEM = "elemwise";
 static const string PATTERN_ELEM1 = "elemwise1";

@@ -128,12 +128,13 @@ static Status GetShapeByFormat(const ge::Format& format,
   }
   return SUCCESS;
 }
-//Dimensions complement
+
+// Dimensions complement
 void DeconvWeightTransFusionPass::GetShapeUsedByIntermediateProcessInDeconvWeightTrans(
-  const ge::Format& filter_format, const vector<int64_t>& shape_GNCHW,
-  vector<int64_t>& complement_dimension, vector<int64_t>& reshape_in,
-  vector<int64_t>& permute_shape, vector<int64_t>& reverse_axis,
-  vector<int64_t>& reshape_out) {
+    const ge::Format& filter_format, const vector<int64_t>& shape_GNCHW,
+    vector<int64_t>& complement_dimension, vector<int64_t>& reshape_in,
+    vector<int64_t>& permute_shape, vector<int64_t>& reverse_axis,
+    vector<int64_t>& reshape_out) {
   if (shape_GNCHW.size() != CONST_VECTOR_LEN) {
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "size of shape_GNCHW not equal 5");
     return;

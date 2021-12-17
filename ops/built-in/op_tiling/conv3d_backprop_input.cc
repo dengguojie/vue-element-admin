@@ -30,6 +30,7 @@
 namespace {
   constexpr int32_t kConv3dBpInputDimSizeLimit = 6;
   constexpr int32_t kConv3dBpInputDedyInputIndex = 2;
+  static const int kDimIndex = 2;
 }
 
 namespace optiling {
@@ -59,7 +60,7 @@ bool Conv3DBackpropInputTiling(const std::string& op_type,
 
   // the dim index of input dedy channel is 2
   if (compile_info.contains("dedy_c1") &&
-      op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
+      op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(kDimIndex) != compile_info["dedy_c1"]) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }

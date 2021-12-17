@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +46,9 @@ static const string CONV3D_DW_DYNAMIC = "Conv3DBackpropFilter";
 static const string PATTERN_CONV3D_DW_GROUP = "Conv3DBpFilterGroup";
 static constexpr int CHANNEL_MIN  = 16;
 static constexpr int CONV3D_ORI_DIMS = 5;
+static const int kIndex2 = 2;
+static const int kIndex3 = 3;
+static const int kIndex4 = 4;
 
 vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter Conv3DBpFilterGroupFusionPass::DefinePatterns.");
@@ -73,14 +75,13 @@ Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_de
   GeTensorDesc in_desc = dw_desc->GetInputDesc(name);
   auto format = in_desc.GetOriginFormat();
   auto dims = in_desc.GetOriginShape().GetDims();
-
   if (dims.size() != CONV3D_ORI_DIMS) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "The original dimension of the input is not equal to 5.");
     return FAILED;
   }
 
   if (format == ge::FORMAT_NDHWC) {
-    channel = dims[4];
+    channel = dims[kIndex4];
   } else if (format == ge::FORMAT_NCDHW) {
     channel = dims[1];
   } else {
@@ -152,14 +153,14 @@ Status Conv3DBpFilterGroupFusionPass::TransOutDims2dhwcn(const ge::OpDescPtr& dw
 
   if (out_format == ge::FORMAT_NDHWC) {
     dims.push_back(out_dims[1]);
-    dims.push_back(out_dims[2]);
-    dims.push_back(out_dims[3]);
-    dims.push_back(out_dims[4]);
+    dims.push_back(out_dims[kIndex2]);
+    dims.push_back(out_dims[kIndex3]);
+    dims.push_back(out_dims[kIndex4]);
     dims.push_back(out_dims[0]);
   } else if (out_format == ge::FORMAT_NCDHW) {
-    dims.push_back(out_dims[2]);
-    dims.push_back(out_dims[3]);
-    dims.push_back(out_dims[4]);
+    dims.push_back(out_dims[kIndex2]);
+    dims.push_back(out_dims[kIndex3]);
+    dims.push_back(out_dims[kIndex4]);
     dims.push_back(out_dims[1]);
     dims.push_back(out_dims[0]);
   } else if (out_format == ge::FORMAT_DHWCN) {
@@ -177,7 +178,7 @@ void Conv3DBpFilterGroupFusionPass::SetMultiplierValue(float* data, const std::v
                                                        const std::map<std::string, int64_t>& group_map) {
   int64_t kernel_depth =  dims[0];
   int64_t kernel_height =  dims[1];
-  int64_t kernel_width =  dims[2];
+  int64_t kernel_width =  dims[kIndex2];
 
   int64_t real_g = group_map.at("real_g");
   int64_t cin1_g = group_map.at("cin1_g");
@@ -224,7 +225,7 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
                                                   ge::NodePtr& const_node) {
   int64_t kernel_depth = dims[0];
   int64_t kernel_height = dims[1];
-  int64_t kernel_width = dims[2];
+  int64_t kernel_width = dims[kIndex2];
 
   int64_t real_g = group_map.at("real_g");
   int64_t cin1_g = group_map.at("cin1_g");

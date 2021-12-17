@@ -27,7 +27,7 @@
 
 namespace domi {
 static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::AscendString& op_name, ge::Operator& op) {
-  const int MAX_PAD_SIZE = 2;
+  const int kMaxPadSize = 2;
   std::vector<int64_t> vec;
   const int pSize = convParam.pad_size();
   const int kDefaultPad = 0;
@@ -42,11 +42,11 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
     pad[1] = convParam.pad_w();
   } else {
     if (pSize == 1 || pSize == 2) {
-      for (size_t i = 0; i < 2; i++) {
+      for (size_t i = 0; i < kMaxPadSize; i++) {
         pad[i] = convParam.pad((pSize == 1) ? 0 : i);
       }
     } else if (pSize != 0) {
-      ge::OpsConvAttrValueErrReport(op_name.GetString(), "pad_size", "[0,1," + to_string(MAX_PAD_SIZE) + "]",
+      ge::OpsConvAttrValueErrReport(op_name.GetString(), "pad_size", "[0,1," + to_string(kMaxPadSize) + "]",
                                     to_string(pSize));
       OP_LOGE(op_name.GetString(), "pad size is invalid, actual is: %d.", pSize);
       return false;

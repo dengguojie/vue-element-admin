@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +14,7 @@
  */
 
 /*!
- *convTranspose_plugin.cc
+ * convTranspose_plugin.cc
  *
  */
 #include "onnx_common.h"
@@ -32,6 +31,9 @@ static const int INPUT_4D = 4;
 static const int INPUT_5D = 5;
 static const int INPUT_NUM_2 = 2;
 static const int INPUT_NUM_3 = 3;
+static const int kIndex = 2;
+static const int kLen2 = 2;
+static const int kLen3 = 3;
 bool is_set_output_shape = false;
 bool is_set_auto_pad = false;
 struct ConvTransposeAttr {
@@ -122,7 +124,7 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
       int len = attr.ints_size();
       is_have_kenel_shape = true;
       is_trans_2d = len == 1 ? true : false;
-      dim_size = len >= 3 ? INPUT_5D : INPUT_4D;
+      dim_size = len >= kLen3 ? INPUT_5D : INPUT_4D;
     }
   }
 
@@ -131,10 +133,10 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
     return FAILED;
   }
 
-  int out_len = dim_size == INPUT_5D ? 3 : 2;
+  int out_len = dim_size == INPUT_5D ? kLen3 : kLen2;
   if (!out_pads_list.empty()) {
-    std::vector<int32_t> out_pads_list_new(out_len + 2, 0);
-    if (AttrUpdate(out_pads_list_new, out_pads_list, 2, out_len, op_name) != SUCCESS) {
+    std::vector<int32_t> out_pads_list_new(out_len + kLen2, 0);
+    if (AttrUpdate(out_pads_list_new, out_pads_list, kIndex, out_len, op_name) != SUCCESS) {
       ONNX_PLUGIN_LOGE(op_name.GetString(), "attr out_pads update fail");
       return FAILED;
     }
@@ -151,7 +153,7 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
   }
 
   if (!pad_list.empty()) {
-    for (int i = pad_list.size(); i < 2 * out_len; ++i) {
+    for (int i = pad_list.size(); i < kLen2 * out_len; ++i) {
       auto it = pad_list.begin();
       pad_list.insert(it, 0);
     }
@@ -209,7 +211,7 @@ Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
       return FAILED;
     }
     // The filter should be NCHW
-    auto ret_w = ChangeFormatFromOnnx(op, 2, ge::FORMAT_NCHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, kIndex, ge::FORMAT_NCHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
       return FAILED;
@@ -228,7 +230,7 @@ Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
       return FAILED;
     }
     // The filter should be NCDHW
-    auto ret_w = ChangeFormatFromOnnx(op, 2, ge::FORMAT_NCDHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, kIndex, ge::FORMAT_NCDHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
       return FAILED;

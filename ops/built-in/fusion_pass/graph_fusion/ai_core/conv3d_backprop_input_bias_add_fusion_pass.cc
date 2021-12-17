@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -249,13 +248,15 @@ Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(const ge::NodePtr &conv_node
                     return FAILED);
   FUSION_PASS_CHECK(
     ge::GraphUtils::AddEdge(outDataPtr1, conv3d_transpose_d->GetInDataAnchor(0)) != SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[1] to fusion node: %s's index[0] is failed.",
-            conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "Adding edge from fused node: %s's index[1] to fusion node: %s's index[0] is failed.",
+                          conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
     return FAILED);
   FUSION_PASS_CHECK(
     ge::GraphUtils::AddEdge(bias_const_node->GetOutDataAnchor(0), conv3d_transpose_d->GetInDataAnchor(2)) != SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[2] is failed.",
-            bias_const_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "Adding edge from fused node: %s's index[0] to fusion node: %s's index[2] is failed.",
+                          bias_const_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
     return FAILED);
   ge::OutDataAnchorPtr biasNodePtr = bias_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(biasNodePtr == nullptr,
@@ -266,8 +267,9 @@ Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(const ge::NodePtr &conv_node
     in_anchor->UnlinkAll();
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(conv3d_transpose_d->GetOutDataAnchor(0), in_anchor) != SUCCESS,
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fusion node: %s's index[0] to fused node: %s's indexes is failed.",
-              conv3d_transpose_d->GetName().c_str(), bias_node->GetName().c_str()),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "Adding edge from fusion node: %s's index[0] to fused node: %s's indexes is failed.",
+                            conv3d_transpose_d->GetName().c_str(), bias_node->GetName().c_str()),
       return FAILED);
   }
 

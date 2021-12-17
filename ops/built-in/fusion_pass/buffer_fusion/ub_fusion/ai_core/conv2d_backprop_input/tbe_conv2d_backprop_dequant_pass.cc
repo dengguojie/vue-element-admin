@@ -52,10 +52,14 @@ vector<BufferFusionPattern *> TbeConv2DBackpropDequantFusionPass::DefinePatterns
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules Convolution-->AcendDeQuant
-  pattern->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+  pattern->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                     TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .SetHead({kPatternConv})
       .SetOutputs(kPatternConv, {kPatternDequant})
       .SetOutputs(kPatternDequant, {kPatternLeakyRelu})
@@ -73,7 +77,8 @@ vector<BufferFusionPattern *> TbeConv2DBackpropDequantFusionPass::DefinePatterns
  * @param [out] mapping: nodes matched by pattern
  * @return bool: fusion status ok or not.
  */
-Status TbeConv2DBackpropDequantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
+Status TbeConv2DBackpropDequantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
+                                                          vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeConv2DBackpropDequantFusionPass!");
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
@@ -97,7 +102,8 @@ Status TbeConv2DBackpropDequantFusionPass::GetFusionNodes(const BufferFusionMapp
       }
       if (node->GetType() == kPatternPRelu) {
         fusion_nodes.clear();
-        OP_LOGD(kFusedOpType.c_str(), "Eltwise is op %s, type %s, skip fusion.", node->GetName().c_str(), node->GetType().c_str());
+        OP_LOGD(kFusedOpType.c_str(), "Eltwise is op %s, type %s, skip fusion.", node->GetName().c_str(),
+                node->GetType().c_str());
         break;
       }
     }

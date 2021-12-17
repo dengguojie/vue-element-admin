@@ -50,6 +50,9 @@ static const float FLOAT_NUM_ONE = 1;
 static const std::string PATTERN_CONV2DBPFILTER = "Conv2DBackpropFilterD";
 static const std::string CONSTANTOP = "Const";
 static const std::string CONV2DBPFILTER = "Conv2DBackpropFilterD";
+static const int kDimSize = 4;
+static const int kIndex2 = 2;
+static const int kIndex3 = 3;
 
 /*!
  * @brief: parse nodes matched in mapping and call graph DoFusion
@@ -260,22 +263,22 @@ Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   if (groups <= 1) {
     return NOT_CHANGED;
   }
-  if (outputDimInfo.size() == 4) {
+  if (outputDimInfo.size() == kDimSize) {
     if (dwOutputOriginFormat == FORMAT_NHWC){
       filterN = outputDimInfo[0];
       filterH = outputDimInfo[1];
-      filterW = outputDimInfo[2];
-      filterC = outputDimInfo[3];
+      filterW = outputDimInfo[kIndex2];
+      filterC = outputDimInfo[kIndex3];
     } else if (dwOutputOriginFormat == FORMAT_NCHW){
       filterN = outputDimInfo[0];
       filterC = outputDimInfo[1];
-      filterH = outputDimInfo[2];
-      filterW = outputDimInfo[3];
+      filterH = outputDimInfo[kIndex2];
+      filterW = outputDimInfo[kIndex3];
     } else if (dwOutputOriginFormat == FORMAT_HWCN){
       filterH = outputDimInfo[0];
       filterW = outputDimInfo[1];
-      filterC = outputDimInfo[2];
-      filterN = outputDimInfo[3];
+      filterC = outputDimInfo[kIndex2];
+      filterN = outputDimInfo[kIndex3];
     } else {
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputOriginFormat only support NHWC and NCHW and HWCN");
       return NOT_CHANGED;

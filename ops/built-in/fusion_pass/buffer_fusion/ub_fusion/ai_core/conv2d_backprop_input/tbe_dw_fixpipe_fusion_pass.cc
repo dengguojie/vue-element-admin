@@ -1,5 +1,4 @@
-/**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +23,6 @@
 #include "common/util/platform_info.h"
 
 namespace fe {
-
 static const char kTypeTransData1[] = "transdata1";
 static const char kPatternCube[] = "cube";
 static const char kPatternQuant[] = "quant";
@@ -33,6 +31,7 @@ static const char kTypeTransData2[] = "transdata2";
 static const string kOpTypeTransData = "TransData";
 static const int kFusionOpNumMax = 10;
 static const string kFusedOpType = "FusedOp";
+static const int kInputNum = 2;
 
 // white list of OP_PATTERN_ELEMWISE
 static const std::unordered_set<string> kWhiteListOfElemwiseNode = { "LeakyRelu", "Relu", "PRelu" };
@@ -56,16 +55,16 @@ vector<BufferFusionPattern *> TbeDwFixpipeFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules
-  pattern->AddOpDesc(kTypeTransData1, {kOpTypeTransData},
-                     TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
+  pattern->AddOpDesc(kTypeTransData1, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                     TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
           .AddOpDesc(kPatternCube, {OP_PATTERN_CONV_BACKPROP_FILTER},
                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .AddOpDesc(kPatternQuant, {OP_PATTERN_DEQUANT, OP_PATTERN_QUANT, OP_PATTERN_REQUANT},
                      TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .AddOpDesc(kPatternElemwise, {OP_PATTERN_ELEMWISE},
                      TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-          .AddOpDesc(kTypeTransData2, {kOpTypeTransData},
-                     TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
+          .AddOpDesc(kTypeTransData2, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                     TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
           .SetHead({kTypeTransData1, kPatternCube})
           .SetOutputs(kTypeTransData1, {kPatternCube})
           .SetOutputs(kPatternCube, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
@@ -136,7 +135,7 @@ void TbeDwFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr
           fusion_nodes.erase(iter);
         }
       }
-      if (no_group && cube_node->GetInDataNodes().size() >= 2) {
+      if (no_group && cube_node->GetInDataNodes().size() >= kInputNum) {
         ge::NodePtr weight_trans_node = cube_node->GetInDataNodes().at(1);
         if (weight_trans_node->GetType() == kOpTypeTransData && Conv2DInOutSupportTrans(weight_trans_node, true)) {
           fusion_nodes.push_back(weight_trans_node);

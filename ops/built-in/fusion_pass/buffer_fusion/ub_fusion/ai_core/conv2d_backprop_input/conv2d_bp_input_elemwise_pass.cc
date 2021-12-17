@@ -30,7 +30,6 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const char PATTERN_DX[] = "conv2dbackpropinput";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_OTHER_INPUT[] = "InputData";
@@ -181,8 +180,7 @@ Status TbeDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping, vec
     // judge LeakyRelu/Relu/Prelu node
     if (item.first->desc_name == PATTERN_ELEM) {
       for (auto& node : item.second) {
-        vector<string>::iterator ret;
-        ret = find(typelist.begin(), typelist.end(), node->GetType());
+        vector<string>::iterator ret = find(typelist.begin(), typelist.end(), node->GetType());
         if (ret != typelist.end()) {
           OP_LOGD(FUSED_OP_TYPE.c_str(),
                   "relu or leakly_relu or prelu is vaild, "

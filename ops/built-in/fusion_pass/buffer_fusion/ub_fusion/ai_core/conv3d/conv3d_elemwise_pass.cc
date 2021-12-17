@@ -1,5 +1,4 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,11 +28,14 @@
 #include "anchor_util.h"
 
 namespace fe {
-
 static const char PATTERN_CONV3D[] = "conv3d";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char kPatternOtherInput[] = "otherInput";
 static const int DIMS_SIZE = 6;
+static const int kIndex2 = 2;
+static const int kIndex3 = 3;
+static const int kIndex4 = 4;
+static const int kIndex5 = 5;
 
 /*
  * @brief:  define conv3d op fusion pattern
@@ -146,8 +148,10 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
                             "the dim sizes is not 6!"),
                     return SUCCESS);
 
-  auto fusionShape0 = std::vector<int64_t>{dims0[0] * dims0[1], dims0[2], dims0[3] * dims0[4], dims0[5]};
-  auto fusionShape1 = std::vector<int64_t>{dims1[0] * dims1[1], dims1[2], dims1[3] * dims1[4], dims1[5]};
+  auto fusionShape0 = std::vector<int64_t>{dims0[0] * dims0[1], dims0[kIndex2],
+                                           dims0[kIndex3] * dims0[kIndex4], dims0[kIndex5]};
+  auto fusionShape1 = std::vector<int64_t>{dims1[0] * dims1[1], dims1[kIndex2],
+                                           dims1[kIndex3] * dims1[kIndex4], dims1[kIndex5]};
   for (size_t i = 0; i < fusionShape0.size(); ++i) {
     FUSION_PASS_CHECK(fusionShape0[i] != fusionShape1[i] &&
                       fusionShape0[i] != 1 && fusionShape1[i] != 1,
