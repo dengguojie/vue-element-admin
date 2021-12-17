@@ -56,6 +56,7 @@ set(local_kernels_src_files
     kernels/normalized/mul.cc
     kernels/normalized/neg.cc
     kernels/normalized/non_max_suppression_v3_kernels.cc
+    kernels/normalized/non_zero_with_value_shape.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
     kernels/normalized/random_uniform.cc

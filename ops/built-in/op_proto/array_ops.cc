@@ -2958,6 +2958,35 @@ IMPLEMT_INFERFUNC(NonZeroWithValue, NonZeroWithValueInfer) {
 INFER_FUNC_REG(NonZeroWithValue, NonZeroWithValueInfer);
 // ----------------NonZeroWithValue End-------------------
 
+// ----------------NonZeroWithValueShape Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(NonZeroWithValueShapeInfer){
+    std::vector<int64_t> y_dims = { -1 };
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    auto value_desc = op_desc->MutableInputDesc("value");
+    auto out0 = op_desc->MutableOutputDesc("out_value");
+    auto value_type = value_desc->GetDataType();
+    std::vector<std::pair<int64_t, int64_t>> out_range0;
+    int64_t range_max0 = value_desc->GetShape().GetDim(0);
+    std::pair<int64_t, int64_t> pair0({1, range_max0});
+    out_range0.emplace_back(pair0);
+    out0->SetShape(GeShape(y_dims));
+    out0->SetShapeRange(out_range0);
+    out0->SetDataType(value_type);
+
+    auto index_desc = op_desc->MutableInputDesc("index");
+    auto out1 = op_desc->MutableOutputDesc("out_index");
+    auto index_type = index_desc->GetDataType();
+    std::vector<std::pair<int64_t, int64_t>> out_range1;
+    int64_t range_max1 = index_desc->GetShape().GetDim(0);
+    std::pair<int64_t, int64_t> pair1({1, range_max1});
+    out_range1.emplace_back(pair1);
+    out1->SetShape(GeShape(y_dims));
+    out1->SetShapeRange(out_range1);
+    out1->SetDataType(index_type);
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(NonZeroWithValueShape, NonZeroWithValueShapeInfer);
+// ----------------NonZeroWithValueShape End-------------------
 
 // ----------------ExpandD Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {

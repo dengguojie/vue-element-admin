@@ -131,6 +131,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/neg.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/nms_with_mask.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/non_max_suppression_v3_kernels.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/non_zero_with_value_shape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ones_like.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
@@ -300,6 +301,7 @@ set(_cpu_kernels_ut_files
   testcase/no_op/src/no_op_utest.cpp
   testcase/nms_with_mask/src/nms_with_mask_utest.cpp
   testcase/non_max_suppression_v3/src/non_max_suppression_v3_utest.cpp
+  testcase/non_zero_with_value_shape/src/non_zero_with_value_shape_utest.cpp
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/ones_like/src/ones_like_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp

@@ -1,0 +1,62 @@
+[
+    {
+        "case_name": "Test_NonZeroWithValueShape_001",
+        "op": "NonZeroWithValueShape",
+        "input_desc": [
+            {
+                "format": ["ND"], 
+                "type": ["int32"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2, 2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        2,
+                        2
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2, 2]
+            }
+        ]
+    }
+]

@@ -287,6 +287,7 @@ set(_tf_plugins
   non_max_suppressionv3_plugin.cc
   non_max_suppressionv4_plugin.cc
   non_max_suppression_with_overlaps_plugin.cc
+  non_zero_with_value_shape_plugin.cc
   normalize_bbox_plugin.cc
   not_equal_plugin.cc
   npu_alloc_floatstatus_plugin.cc

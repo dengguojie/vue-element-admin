@@ -604,6 +604,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
+      - ops/built-in/framework/tf_plugin/non_zero_with_value_shape_plugin.cc
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
@@ -1641,6 +1642,8 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_grad_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_non_zero_with_value_shape_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_non_zero_with_value_shape_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
