@@ -58,3 +58,12 @@ ut_case.add_precision_case("Ascend310", {"params": [{"shape": (16, 2, 32), "dtyp
                                               {"shape": (16, 2, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 2, 32),"ori_format": "ND", "param_type": "output"},],
                                    "calc_expect_func": calc_expect_func
                                    })
+
+case_error = {"params": [{"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                         {"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                         1.0, 0, 1.0],
+                         "case_name": "case_error",
+             "expect": RuntimeError,
+             "format_expect": [],
+             "support_expect": True}
+ut_case.add_case(["Ascend910A"], case_error)

@@ -21,11 +21,9 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
-SHAPE_SIZE_LIMIT = 2147483648
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select
@@ -166,6 +164,7 @@ def clip_by_norm_no_div_sum_compute(data_input_x,
     res = maximum_compute(select1_result, data_maximum_ones, {}, kernel_name)
 
     return res
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

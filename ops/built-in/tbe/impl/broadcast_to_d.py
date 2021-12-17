@@ -14,23 +14,6 @@
 # ============================================================================
 """
 broadcast_to_d
-
-  Op_description :
-    Broadcast an array for a compatible shape.
-
-    # broadcast_to_d(
-    #   x,
-    #   y,
-    #   shape,
-    #   kernel_name='broadcast_to_d')
-
-  Supportive_dtype_format :
-    ['float32', 'float16', 'int8', 'uint8', 'int32']
-    ['ND', 'NCHW', 'NHWC']
-
-  Constraint :
-    [1] All : `shape` must be an 1-D 'int' tensor.
-    [2] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform

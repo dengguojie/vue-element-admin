@@ -374,7 +374,7 @@ class BoundingBoxDecode(object):
         repeat_times: the vector calculation repeat times
         """
         block_number_fp16 = 32
-        block_number_fp32= 64
+        block_number_fp32 = 64
         each_repeat_block_number = block_number_fp16
         if self.rois_dtype == "float32":
             each_repeat_block_number = block_number_fp32
@@ -498,7 +498,7 @@ class BoundingBoxDecode(object):
                                BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
                                BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
                                BoundingBoxDecode.STRIDE_EIGHT)
-        self.tik_instance.vmuls( constant.MASK128, max_ratio_fp16_ub, max_ratio_fp16_ub, -1.0,
+        self.tik_instance.vmuls(constant.MASK128, max_ratio_fp16_ub, max_ratio_fp16_ub, -1.0,
                                repeat_times, BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_ONE,
                                BoundingBoxDecode.STRIDE_EIGHT, BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vmax(constant.MASK128, denorm_detal_dst_ub_32,

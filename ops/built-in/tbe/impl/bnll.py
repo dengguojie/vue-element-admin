@@ -14,14 +14,6 @@
 # ============================================================================
 """
 bnll
-  Oo_description :
-  do element-wise bnll operation
-
-  bnll(x, y, kernel_name = "bnll")
-
-  Supportive_dtype_format :
-   ["float16", "float32"]
-   ["ND"]
 """
 # 'pylint: disable=E0401
 # 'pylint: disable=C0412

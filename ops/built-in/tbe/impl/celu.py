@@ -103,7 +103,7 @@ def celu(x, y, alpha1=1.0, alpha2=1.0, alpha3=1.0, kernel_name="celu"):
     para_check.check_dtype(dtype_input, check_list, param_name="x")
 
     if alpha2 == 0:
-        error_manager_vector.raise_err_input_value_invalid("celu", "alpha2", "non-zero","zero")
+        error_manager_vector.raise_err_input_value_invalid("celu", "alpha2", "non-zero", "zero")
 
     data_input = tvm.placeholder(shape_input, name="data_input", dtype=input_dtype)
 

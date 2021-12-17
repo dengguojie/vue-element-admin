@@ -233,4 +233,3 @@ def get_vlrelu(x, attr_value, attr_name, attr_dtype):
     else:
         res_vlrelu = tbe.vlrelu(x, attr_value)
     return res_vlrelu, attr_value
-

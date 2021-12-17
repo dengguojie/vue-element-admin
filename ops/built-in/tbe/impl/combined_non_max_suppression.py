@@ -217,6 +217,9 @@ class CombinedNonMaxSuppression:
     # 'pylint: disable=unused-argument
     @staticmethod
     def get_l1_core_idx(core_idx):
+        """
+        get l1 core idx
+        """
         return 0
 
     def build_tik_instance(self, kernel_name_value):
@@ -373,7 +376,7 @@ class CombinedNonMaxSuppression:
 
 def total_num(shape):
     """
-    return total_num
+    the return object is total num
     """
     shape_total_num = functools.reduce(lambda a, b: a * b, shape)
     return shape_total_num
@@ -731,8 +734,8 @@ def check_supported(boxes, scores, max_output_size_per_class,
     """
     valid_detections_shape = valid_detections.get("ori_shape")
 
-    if (len(valid_detections_shape) == 2):
-      return True, ""
+    if len(valid_detections_shape) == 2:
+        return True, ""
     reason = "if the valid_detections_shape shape len != 2, not supported by aicore"
     return False, reason
 
@@ -818,7 +821,6 @@ def combined_non_max_suppression(boxes, scores, max_output_size_per_class,
 
     def _run_one_core(_real_batch_idx, _real_core_idx):
         with tik_instance.for_range(0, class_num) as _class_idx:
-            # for each class, init selected_proposals_cnt = 0
             nms.selected_proposals_cnt.set_as(0)
             with tik_instance.new_stmt_scope():
                 nms_for_single_class(_real_batch_idx, _class_idx, nms, _real_core_idx)

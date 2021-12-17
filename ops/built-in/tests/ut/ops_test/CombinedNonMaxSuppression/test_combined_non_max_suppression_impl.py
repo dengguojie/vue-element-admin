@@ -123,6 +123,23 @@ ut_case.add_case(["Ascend310"], case6)
 ut_case.add_case(["Ascend310"], case7)
 ut_case.add_case(["Ascend310"], case8)
 
+from impl.combined_non_max_suppression import check_supported
+
+# 'pylint: disable=unused-argument,unused-variable
+def test_check_support(test_arg):
+    res = check_supported({'shape': [1, 1, 4, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 4, 29782], 'ori_format': 'ND'},
+          {'shape': [1, 1, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 29782], 'ori_format': 'ND'},
+          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (100,)},
+          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (100,)},
+          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (0.5,)},
+          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (0.5,)},
+          {'shape': [1, 4, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 4, 100], 'ori_format': 'ND'},
+          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100], 'ori_format': 'ND'},
+          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100], 'ori_format': 'ND'},
+          {'shape': [1, 8], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1, 8], 'ori_format': 'ND'},
+          True, False)
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 if __name__ == '__main__':
     ut_case.run("Ascend310")
     exit(0)
