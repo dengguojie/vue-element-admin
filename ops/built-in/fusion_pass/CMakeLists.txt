@@ -369,6 +369,8 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/reduce_mean_variance_fusion_pass.cc
   graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
   graph_fusion/ai_core/mul_fusion_optimizer_pass.cc
+  graph_fusion/ai_core/prod_force_se_a_fusion_pass.cc
+  graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

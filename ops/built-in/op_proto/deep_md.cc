@@ -65,8 +65,8 @@ IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
   CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
   int64_t natomsSize = natomsShape[0];
-  CHECK(natomsSize < 3,
-        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
+  CHECK(natomsSize < 4,
+        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 4"), return GRAPH_FAILED);
 
   CHECK(netDerivDesc->GetDataType() != inDerivDesc->GetDataType(),
         OP_LOGE(opName.GetString(), "Data type of net_deriv and in_deriv are not match"), return GRAPH_FAILED);
@@ -74,30 +74,68 @@ IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   return GRAPH_SUCCESS;
 }
 
+static const int64_t MAX_NALL = 30000;
 IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+    OP_LOGE(opName.GetString(), "Failed to get op name of ProdForceSeA."), return GRAPH_FAILED);
+  const vector<string> depend_names = {"natoms"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr netDerivDesc = opDesc->MutableInputDesc("net_deriv");
   std::vector<int64_t> netDerivShape = netDerivDesc->MutableShape().GetDims();
-  std::vector<std::pair<int64_t, int64_t>> netDerivShapeRange;
-  opDesc->MutableInputDesc("net_deriv")->GetShapeRange(netDerivShapeRange);
-  MakeUpShapeRange(netDerivShape, netDerivShapeRange);
   int64_t nframes = netDerivShape[0];
-
-  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
-  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
-  std::vector<std::pair<int64_t, int64_t>> natomsShapeRange;
-  opDesc->MutableInputDesc("natoms")->GetShapeRange(natomsShapeRange);
-  MakeUpShapeRange(natomsShape, natomsShapeRange);
-
-  int64_t nall = 28328;
-  int64_t dim = nall * 3;
-  std::vector<int64_t> atomForceShape = {nframes, dim};
-  std::vector<std::pair<int64_t, int64_t>> atomForceShapeRange = {netDerivShapeRange[0],
-                                                                  std::pair<int64_t, int64_t>(dim, dim)};
-
-  GeTensorDescPtr atomForceDesc = opDesc->MutableOutputDesc("atom_force");
+  GeTensorDescPtr atomForceDesc = opDesc->MutableOutputDesc(0);
+  if (atomForceDesc == nullptr) {
+    OP_LOGE(opName.GetString(), "Failed to get force node.");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> atomForceShape = {nframes};
+  Tensor natoms;
+  std::vector<std::pair<int64_t, int64_t>> atomForceShapeRange;
+  if (op.GetInputConstData("natoms", natoms) != GRAPH_SUCCESS) {
+    OP_LOGI(opName.GetString(), "Failed to get natoms node.");
+    atomForceShape.push_back(-1);
+    atomForceShape.push_back(3);
+    MakeUpShapeRange(atomForceShape, atomForceShapeRange);
+    atomForceDesc->SetShapeRange(atomForceShapeRange);
+  } else {
+    OP_LOGI(opName.GetString(), "Success to get natoms node.");
+    DataType natomsDType = opDesc->MutableInputDesc("natoms")->GetDataType();
+    std::vector<int64_t> constVec;
+    if (!GetConstValue(op, natoms, natomsDType, constVec)) {
+      OP_LOGE(opName.GetString(), "Get Const Value failed.");
+      return GRAPH_FAILED;
+    };
+    CHECK(constVec.size() != 4, OP_LOGE(opName.GetString(), "natoms length should be 4"), return GRAPH_FAILED);
+    int64_t nall = constVec[1];
+    CHECK(nall > MAX_NALL,
+          OP_LOGE(opName.GetString(), "nall value %d is more than 30000.", nall), return GRAPH_FAILED);
+    bool secondInfer = false;
+    op.GetAttr("second_infer", secondInfer);
+    if (secondInfer) {
+      atomForceShape.push_back(3);
+      atomForceShape.push_back(nall);
+      MakeUpShapeRange(atomForceShape, atomForceShapeRange);
+      atomForceDesc->SetShapeRange(atomForceShapeRange);
+      OP_LOGD(opName.GetString(), "atomForceShapeRange2 %d %d %d %d %d %d.",
+              atomForceShapeRange[0].first, atomForceShapeRange[0].second,
+              atomForceShapeRange[1].first, atomForceShapeRange[1].second,
+              atomForceShapeRange[2].first, atomForceShapeRange[2].second);
+    } else {
+      atomForceShape.push_back(nall);
+      atomForceShape.push_back(3);
+      MakeUpShapeRange(atomForceShape, atomForceShapeRange);
+      atomForceDesc->SetShapeRange(atomForceShapeRange);
+      OP_LOGD(opName.GetString(), "atomForceShapeRange %d %d %d %d %d %d.",
+              atomForceShapeRange[0].first, atomForceShapeRange[0].second,
+              atomForceShapeRange[1].first, atomForceShapeRange[1].second,
+              atomForceShapeRange[2].first, atomForceShapeRange[2].second);
+    }
+  }
   atomForceDesc->SetShape(ge::GeShape(atomForceShape));
-  atomForceDesc->SetShapeRange(atomForceShapeRange);
+  atomForceDesc->SetOriginShape(ge::GeShape(atomForceShape));
   atomForceDesc->SetDataType(netDerivDesc->GetDataType());
 
   return GRAPH_SUCCESS;

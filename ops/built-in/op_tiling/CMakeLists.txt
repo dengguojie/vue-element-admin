@@ -192,6 +192,7 @@ set(_optiling_files
   lru_cache_v2.cc
   cache_tiling.cc
   tiling_handler.h
+  prod_force_se_a.cc
 )
 
 set(_op_tiling_include

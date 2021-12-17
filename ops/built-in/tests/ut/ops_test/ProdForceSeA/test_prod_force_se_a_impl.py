@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 ProdForceSeA ut case
 """
 from op_test_frame.ut import OpUT
-from impl.prod_force_se_a import prod_force_se_a
+from impl.dynamic.prod_force_se_a import prod_force_se_a
 from tbe.common.platform.platform_info import set_current_compile_soc_info
 import tbe
 
@@ -36,16 +36,34 @@ def test_prod_force_se_a_case001(test_args):
                 "ori_shape": (1, 20348928), "ori_format": "ND", "range": ((1, 1), (20348928, 20348928))},
                 {"shape": (1, 1695744), "dtype": "int32", "format": "ND",
                 "ori_shape": (1, 1695744), "ori_format": "ND", "range": ((1, 1), (1695744, 1695744))},
-                {"shape": (3,), "dtype": "int32", "format": "ND",
-                "ori_shape": (3,), "ori_format": "ND", "range": ((3, 3))},
-                {"shape": (1, 84984), "dtype": "float32", "format": "ND",
-                "ori_shape": (1, 84984), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
-                138, 0)
+                {"shape": (4,), "dtype": "int32", "format": "ND",
+                "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
+                {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
+                "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
+                138, 0, 1, 0)
     set_current_compile_soc_info(test_args)
 
+def test_prod_force_se_a_case002(test_args):
+    """
+    Compute prod_force_se_a.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        prod_force_se_a({"shape": (1, 1656), "dtype": "float32", "format": "ND",
+                "ori_shape": (1, 1656), "ori_format": "ND", "range": ((1, 1), (6782976, 6782976))},
+                {"shape": (1, 4968), "dtype": "float32", "format": "ND",
+                "ori_shape": (1, 4968), "ori_format": "ND", "range": ((1, 1), (20348928, 20348928))},
+                {"shape": (1, 414), "dtype": "int32", "format": "ND",
+                "ori_shape": (1, 414), "ori_format": "ND", "range": ((1, 1), (1695744, 1695744))},
+                {"shape": (4,), "dtype": "int32", "format": "ND",
+                "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
+                {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
+                "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
+                138, 0, 1, 0)
+    set_current_compile_soc_info(test_args)
 
 ut_case.add_cust_test_func(test_func=test_prod_force_se_a_case001)
-
+ut_case.add_cust_test_func(test_func=test_prod_force_se_a_case002)
 
 if __name__ == '__main__':
     ut_case.run("Ascend710")

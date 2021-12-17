@@ -387,3 +387,4 @@ from .max_pool_with_argmaxv2 import max_pool_with_argmax_v2
 from .sync_bn_training_update import sync_bn_training_update
 from .sync_batch_norm_gather_stats_with_counts import sync_batch_norm_gather_stats_with_counts
 from .reduce_mean_with_count import reduce_mean_with_count
+from .prod_force_se_a import prod_force_se_a

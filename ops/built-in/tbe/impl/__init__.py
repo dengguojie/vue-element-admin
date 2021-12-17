@@ -453,4 +453,3 @@ from .ifmr import ifmr
 
 from .update_tensor_desc import update_tensor_desc
 from .reduce_mean_variance import reduce_mean_variance
-from .prod_force_se_a import prod_force_se_a

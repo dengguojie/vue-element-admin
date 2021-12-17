@@ -53,6 +53,8 @@ REG_OP(ProdForceSeA)
     .OUTPUT(atom_force, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(n_a_sel, Int)
     .REQUIRED_ATTR(n_r_sel, Int)
+    .ATTR(split_count, Int, 1)
+    .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(ProdForceSeA)
 
 /**
