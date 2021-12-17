@@ -30,6 +30,10 @@ MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 MAX_REPEAT = 255
 # block_size
 MINI_UNIT = 32
+# stride number
+STRIDE_NUM = 8
+# max burst length
+MAX_BURST_LEN = 65535
 
 
 # 'pylint: disable=self-assigning-variable,inconsistent-return-statements,attribute-defined-outside-init
@@ -403,7 +407,7 @@ class PadCompute:
                 # bottom
                 if in_num_bottom > 0:
                     dst_gm_bottom = dst_gm + self.in_shape[axis] * \
-                                    _prod(self.ou_shape[axis+1:]) + in_num_top
+                                    _prod(self.ou_shape[axis + 1:]) + in_num_top
                     self.copy_ubuf_2_gm_case01(tik_instance, in_num_bottom, in_num, self.ubuf, 0, dst_gm_bottom)
                 # update
                 dst_gm += in_num_top
@@ -429,17 +433,19 @@ class PadCompute:
         dst_rep_stride = 8
 
         with tik_instance.for_range(0, dup_repeat_merchant) as i:
-            tik_instance.vector_dup(self.mask, dst[0 + i * dup_psm], number, MAX_REPEAT, dst_blk_stride, dst_rep_stride)
+            tik_instance.vector_dup(self.mask, dst[0 + i * dup_psm], number,
+                                    MAX_REPEAT, dst_blk_stride, dst_rep_stride)
 
         if dup_repeat_remainder != 0:
             repeats = dup_repeat_remainder // self.mask
             dup_remainder = dup_repeat_remainder % self.mask
             if repeats != 0:
-                tik_instance.vector_dup(self.mask, dst[dup_repeat_merchant * dup_psm], number, repeats, dst_blk_stride,
-                                        dst_rep_stride)
+                tik_instance.vector_dup(self.mask, dst[dup_repeat_merchant * dup_psm],
+                                        number, repeats, dst_blk_stride, dst_rep_stride)
             if dup_remainder != 0:
-                tik_instance.vector_dup(dup_remainder, dst[dup_repeat_merchant * dup_psm + repeats * self.mask], number,
-                                        1, dst_blk_stride, dst_rep_stride)
+                tik_instance.vector_dup(dup_remainder,
+                                        dst[dup_repeat_merchant * dup_psm + repeats * self.mask],
+                                        number, 1, dst_blk_stride, dst_rep_stride)
 
     def copy_gm_2_ubuf_case0(self, tik_instance, in_num, ubuf, src_ub, src_gm):
         """
@@ -488,6 +494,143 @@ class PadCompute:
         # ub must can be save all_data
         tik_instance.data_move(ubuf[dst_ub], ubuf[src_ub], 0, nburst, burstlen, src_stride, dst_stride)
 
+    def _is_special_case(self):
+        if len(self.in_shape) == 2:
+            padding_size = self.in_shape[-1]
+            top_num = self.in_paddings[0][0]
+            btm_num = self.in_paddings[0][1]
+            if self.in_paddings[-1] == [0, 0] and padding_size * self.num_bit % MINI_UNIT == 0:
+                if top_num * padding_size < self.ub_maxsize and btm_num * padding_size < self.ub_maxsize:
+                    return True
+
+        return False
+
+    def _set_vector_case2(self, tik_instance, psm, dst, number, offset=0):
+        """
+        set_vector_dup
+        """
+        if psm > self.ub_maxsize - offset:
+            psm = self.ub_maxsize - offset
+        dup_psm = MAX_REPEAT * self.mask
+        dup_merchant = psm // dup_psm
+        dup_remainder = psm % dup_psm
+        dup_repeat_merchant = tik_instance.Scalar(dtype="int64", name="dup_repeat_merchant")
+        dup_repeat_remainder = tik_instance.Scalar(dtype="int64", name="dup_repeat_remainder")
+        dup_repeat_merchant.set_as(dup_merchant)
+        dup_repeat_remainder.set_as(dup_remainder)
+        dst_blk_stride = 1
+        dst_rep_stride = STRIDE_NUM
+
+        with tik_instance.for_range(0, dup_repeat_merchant) as i:
+            tik_instance.vector_dup(self.mask, dst[offset + i * dup_psm], number,
+                                    MAX_REPEAT, dst_blk_stride, dst_rep_stride)
+
+        with tik_instance.if_scope(dup_repeat_remainder != 0):
+            repeats = dup_repeat_remainder // self.mask
+            dup_remainder = dup_repeat_remainder % self.mask
+            with tik_instance.if_scope(repeats != 0):
+                tik_instance.vector_dup(self.mask, dst[offset + dup_repeat_merchant * dup_psm],
+                                        number, repeats, dst_blk_stride, dst_rep_stride)
+            with tik_instance.if_scope(dup_remainder != 0):
+                tik_instance.vector_dup(dup_remainder,
+                                        dst[offset + dup_repeat_merchant * dup_psm + repeats * self.mask],
+                                        number, 1, dst_blk_stride, dst_rep_stride)
+
+    def _mte_vec_case2(self, tik_instance, blk_idx_begin, blk_idx_end):
+        padding_size = self.in_shape[-1]
+        top_num = self.in_paddings[0][0]
+        btm_num = self.ou_shape[0] - self.in_paddings[0][1]
+        padding_num_per_core = blk_idx_end - blk_idx_begin + 1
+        with tik_instance.if_scope(blk_idx_end < top_num):
+            vector_dup_num = padding_num_per_core * padding_size
+            self._set_vector_case2(tik_instance, vector_dup_num, self.ubuf, 0)
+        with tik_instance.elif_scope(blk_idx_begin >= btm_num):
+            vector_dup_num = padding_num_per_core * padding_size
+            self._set_vector_case2(tik_instance, vector_dup_num, self.ubuf, 0)
+        with tik_instance.elif_scope(tik.all(blk_idx_begin >= top_num, blk_idx_end < btm_num)):
+            mte2_num = padding_num_per_core * padding_size
+            burst_len = mte2_num * self.num_bit // MINI_UNIT
+            src_ub_offset = 0
+            src_gm_offset = (blk_idx_begin - top_num) * padding_size
+            tik_instance.data_move(self.ubuf[src_ub_offset], self.input_x_gm[src_gm_offset],
+                                   0, 1, burst_len, 0, 0)
+        with tik_instance.else_scope():
+            with tik_instance.if_scope(tik.all(blk_idx_begin < top_num,
+                                               tik.all(blk_idx_end >= top_num, blk_idx_end < btm_num))):
+                vector_dup_num_before = (top_num - blk_idx_begin) * padding_size
+                mte2_num = padding_num_per_core * padding_size - vector_dup_num_before
+                burst_len = mte2_num * self.num_bit // MINI_UNIT
+                src_ub_offset = vector_dup_num_before
+                src_gm_offset = 0
+                self._set_vector_case2(tik_instance, vector_dup_num_before, self.ubuf, 0)
+                tik_instance.data_move(self.ubuf[src_ub_offset], self.input_x_gm[src_gm_offset],
+                                       0, 1, burst_len, 0, 0)
+            with tik_instance.elif_scope(tik.all(tik.all(blk_idx_begin >= top_num, blk_idx_begin < btm_num),
+                                                 blk_idx_end >= btm_num)):
+                mte2_num = (btm_num - blk_idx_begin) * padding_size
+                burst_len = mte2_num * self.num_bit // MINI_UNIT
+                vector_dup_num_after = padding_num_per_core * padding_size - mte2_num
+                src_ub_offset = 0
+                src_gm_offset = (blk_idx_begin - top_num) * padding_size
+                tik_instance.data_move(self.ubuf[src_ub_offset], self.input_x_gm[src_gm_offset],
+                                       0, 1, burst_len, 0, 0)
+                self._set_vector_case2(tik_instance, vector_dup_num_after, self.ubuf, 0,
+                                       mte2_num)
+            with tik_instance.elif_scope(tik.all(blk_idx_begin < top_num, blk_idx_end >= btm_num)):
+                vector_dup_num_before = (top_num - blk_idx_begin) * padding_size
+                mte2_num = (btm_num - top_num) * padding_size
+                burst_len = mte2_num * self.num_bit // MINI_UNIT
+                if burst_len < MAX_BURST_LEN:
+                    vector_dup_num_after = padding_num_per_core * padding_size - mte2_num - vector_dup_num_before
+                    src_ub_offset = vector_dup_num_before
+                    src_gm_offset = 0
+                    self._set_vector_case2(tik_instance, vector_dup_num_before, self.ubuf, 0)
+                    tik_instance.data_move(self.ubuf[src_ub_offset], self.input_x_gm[src_gm_offset],
+                                           0, 1, burst_len, 0, 0)
+                    self._set_vector_case2(tik_instance, vector_dup_num_after, self.ubuf, 0,
+                                           vector_dup_num_before + mte2_num)
+
+        mte3_num = padding_num_per_core * padding_size
+        src_ub_offset = 0
+        src_gm_offset = blk_idx_begin * padding_size
+        tik_instance.data_move(self.output_y_gm[src_gm_offset], self.ubuf[src_ub_offset],
+                               0, 1, mte3_num * self.num_bit // MINI_UNIT, 0, 0)
+
+    def _pad_case2_main(self, tik_instance, blk_idx, padding_num_per_core, block_offset):
+        padding_size = self.in_shape[-1]
+        max_ub_padding_num = self.ub_maxsize // padding_size
+        loop_num = padding_num_per_core // max_ub_padding_num
+        if loop_num != 0:
+            loop_pre = max_ub_padding_num
+            loop_tail = padding_num_per_core % max_ub_padding_num
+        else:
+            loop_pre = 0
+            loop_tail = padding_num_per_core
+        with tik_instance.for_range(0, loop_num) as loop_idx:
+            blk_idx_begin = blk_idx * padding_num_per_core + block_offset + loop_idx * loop_pre
+            blk_idx_end = blk_idx_begin + loop_pre - 1
+            self._mte_vec_case2(tik_instance, blk_idx_begin, blk_idx_end)
+        with tik_instance.if_scope(loop_tail > 0):
+            blk_idx_begin = blk_idx * padding_num_per_core + block_offset + loop_num * loop_pre
+            blk_idx_end = blk_idx_begin + loop_tail - 1
+            self._mte_vec_case2(tik_instance, blk_idx_begin, blk_idx_end)
+
+    def pad_case2(self, tik_instance):
+        """
+        pad_case2 for special cases
+        """
+        self.core = self.ou_shape[0] if self.ou_shape[0] < MAX_CORE else MAX_CORE
+        padding_num_pre = self.ou_shape[0] // self.core
+        padding_num_tail = self.ou_shape[0] % self.core
+
+        with tik_instance.for_range(0, self.core, block_num=self.core) as blk_idx:
+            with tik_instance.if_scope(blk_idx < padding_num_tail):
+                padding_num_per_core = padding_num_pre + 1
+                self._pad_case2_main(tik_instance, blk_idx, padding_num_per_core, 0)
+            with tik_instance.if_scope(blk_idx >= padding_num_tail):
+                padding_num_per_core = padding_num_pre
+                self._pad_case2_main(tik_instance, blk_idx, padding_num_per_core, padding_num_tail)
+
     def pad_compute(self):
         """
         the overall data move process
@@ -497,11 +640,14 @@ class PadCompute:
                     [self.ub_maxsize, ], name="in_ubuf", scope=tik.scope_ubuf)
 
         if self.ou_shape != self.in_shape:
-            split_core_idx, core_loop_list, model_list = \
-                _params_model(self.in_shape, self.ou_shape,
-                              self.core, self.ub_maxsize)
+            if self._is_special_case():
+                self.pad_case2(tik_instance)
+            else:
+                split_core_idx, core_loop_list, model_list = \
+                    _params_model(self.in_shape, self.ou_shape,
+                                  self.core, self.ub_maxsize)
 
-            self.pad_case0(tik_instance, split_core_idx, core_loop_list, model_list)
+                self.pad_case0(tik_instance, split_core_idx, core_loop_list, model_list)
         else:
             self.pad_case1(tik_instance)
 

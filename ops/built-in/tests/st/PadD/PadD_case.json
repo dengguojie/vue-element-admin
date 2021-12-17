@@ -1,6 +1,7 @@
 [
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -47,6 +48,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -109,6 +111,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -171,6 +174,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -217,6 +221,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -287,6 +292,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -357,6 +363,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -411,6 +418,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -455,6 +463,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -507,6 +516,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -577,6 +587,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -623,6 +634,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -685,6 +697,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -747,6 +760,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -793,6 +807,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -863,6 +878,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -933,6 +949,7 @@
   },
   {
     "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -984,5 +1001,131 @@
       }
     ],
     "case_name": "test_PadD_021"
+  },
+  {
+    "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3200,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3200,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3202,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3202,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_022"
+  },
+    {
+    "op": "PadD",
+    "calc_expect_fun_file": "test_pad_d_st.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          5,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          5,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          595,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          595,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "paddings",
+        "type": "list_list_int",
+        "value": [
+          [
+            0,
+            0
+          ],
+          [
+            290,
+            300
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "case_name": "test_PadD_023"
   }
 ]

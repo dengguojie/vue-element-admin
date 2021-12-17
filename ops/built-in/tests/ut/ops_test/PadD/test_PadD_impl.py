@@ -71,6 +71,20 @@ case9 = {"params": [{"shape": (1, 1, 304, 64, 16), "dtype": "float16", "format":
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case10 = {"params": [{"shape": (1, 3200, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 3200, 256),"ori_format": "NCHW"},
+                    {"shape": (1, 3202, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 3202, 256),"ori_format": "NCHW"},
+                    [[0, 0],[1, 1],[0, 0]]],
+         "case_name": "pad_d_10",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case11 = {"params": [{"shape": (1, 5, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 5, 256),"ori_format": "NCHW"},
+                    {"shape": (1, 595, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 595, 256),"ori_format": "NCHW"},
+                    [[0, 0],[290, 300],[0, 0]]],
+         "case_name": "pad_d_11",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -81,6 +95,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
 
 
 def test_op_select_format(test_arg):
