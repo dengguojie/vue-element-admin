@@ -134,159 +134,159 @@ def op_select_format(input_x,
             input0 = util_select_op_base.gen_param(classify="input0",
                                                    name="x",
                                                    datatype="float16,float16,float16,float16,"
-                                                   "float,float,float,float",
+                                                            "float,float,float,float",
                                                    format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
             input1 = util_select_op_base.gen_param(classify="input1",
                                                    name="gamma",
                                                    datatype="float16,float16,float16,float16,float,"
-                                                   "float,float,float",
+                                                            "float,float,float",
                                                    format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
             input2 = util_select_op_base.gen_param(classify="input2",
                                                    name="beta",
                                                    datatype="float16,float16,float16,float16,float,"
-                                                   "float,float,float",
+                                                            "float,float,float",
                                                    format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
             output0 = util_select_op_base.gen_param(classify="output0",
                                                     name="y",
                                                     datatype="float16,float16,float16,float16,float,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
             output1 = util_select_op_base.gen_param(classify="output1",
                                                     name="mean",
                                                     datatype="float16,float16,float16,float16,float,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
 
             output2 = util_select_op_base.gen_param(classify="output2",
                                                     name="variance",
                                                     datatype="float16,float16,float16,float16,float,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
         else:
             input0 = util_select_op_base.gen_param(classify="input0",
                                                    name="x",
                                                    datatype="float16,float,float16,float16,float16,"
-                                                   "float16,float,float,float,float",
+                                                            "float16,float,float,float,float",
                                                    format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
-                                                   "ND,NCHW,NC1HWC0,NHWC,ND")
+                                                          "ND,NCHW,NC1HWC0,NHWC,ND")
 
             input1 = util_select_op_base.gen_param(classify="input1",
                                                    name="gamma",
                                                    datatype="float16,float,float16,float16,float16,"
-                                                   "float16,float,float,float,float",
+                                                            "float16,float,float,float,float",
                                                    format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
-                                                   "NHWC,ND")
+                                                          "NHWC,ND")
 
             input2 = util_select_op_base.gen_param(classify="input2",
                                                    name="beta",
                                                    datatype="float16,float,float16,float16,float16,"
-                                                   "float16,float,float,float,float",
+                                                            "float16,float,float,float,float",
                                                    format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
-                                                   "NHWC,ND")
+                                                          "NHWC,ND")
 
             output0 = util_select_op_base.gen_param(classify="output0",
                                                     name="y",
                                                     datatype="float16,float,float16,float16,float16,"
-                                                    "float16,float,float,float,float",
+                                                             "float16,float,float,float,float",
                                                     format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
-                                                    "NCHW,NC1HWC0,NHWC,ND")
+                                                           "NCHW,NC1HWC0,NHWC,ND")
 
             output1 = util_select_op_base.gen_param(classify="output1",
                                                     name="mean",
                                                     datatype="float16,float,float16,float16,float16,"
-                                                    "float16,float,float,float,float",
+                                                             "float16,float,float,float,float",
                                                     format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
-                                                    "NHWC,ND")
+                                                           "NHWC,ND")
 
             output2 = util_select_op_base.gen_param(classify="output2",
                                                     name="variance",
                                                     datatype="float16,float,float16,float16,float16,"
-                                                    "float16,float,float,float,float",
+                                                             "float16,float,float,float,float",
                                                     format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
-                                                    "NHWC,ND")
+                                                           "NHWC,ND")
     else:
         if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
             input0 = util_select_op_base.gen_param(classify="input0",
                                                    name="x",
                                                    datatype="float16,float16,float16,"
-                                                   "float,float,float",
+                                                            "float,float,float",
                                                    format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
             input1 = util_select_op_base.gen_param(classify="input1",
                                                    name="gamma",
                                                    datatype="float16,float16,float16,"
-                                                   "float,float,float",
+                                                            "float,float,float",
                                                    format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
             input2 = util_select_op_base.gen_param(classify="input2",
                                                    name="beta",
                                                    datatype="float16,float16,float16,"
-                                                   "float,float,float",
+                                                            "float,float,float",
                                                    format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
             output0 = util_select_op_base.gen_param(classify="output0",
                                                     name="y",
                                                     datatype="float16,float16,float16,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
             output1 = util_select_op_base.gen_param(classify="output1",
                                                     name="mean",
                                                     datatype="float16,float16,float16,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NHWC,ND,NCHW,NHWC,ND")
 
             output2 = util_select_op_base.gen_param(classify="output2",
                                                     name="variance",
                                                     datatype="float16,float16,float16,"
-                                                    "float,float,float",
+                                                             "float,float,float",
                                                     format="NCHW,NHWC,ND,NCHW,NHWC,ND")
         else:
             input0 = util_select_op_base.gen_param(classify="input0",
                                                    name="x",
                                                    datatype="float16,float,float16,float16,"
-                                                   "float16,float,float,float",
+                                                            "float16,float,float,float",
                                                    format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
-                                                   "ND,NCHW,NHWC,ND")
+                                                          "ND,NCHW,NHWC,ND")
 
             input1 = util_select_op_base.gen_param(classify="input1",
                                                    name="gamma",
                                                    datatype="float16,float,float16,float16,"
-                                                   "float16,float,float,float",
+                                                            "float16,float,float,float",
                                                    format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                   "NHWC,ND")
+                                                          "NHWC,ND")
 
             input2 = util_select_op_base.gen_param(classify="input2",
                                                    name="beta",
                                                    datatype="float16,float,float16,float16,"
-                                                   "float16,float,float,float",
+                                                            "float16,float,float,float",
                                                    format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                   "NHWC,ND")
+                                                          "NHWC,ND")
 
             output0 = util_select_op_base.gen_param(classify="output0",
                                                     name="y",
                                                     datatype="float16,float,float16,float16,"
-                                                    "float16,float,float,float",
+                                                             "float16,float,float,float",
                                                     format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,ND,"
-                                                    "NCHW,NHWC,ND")
+                                                           "NCHW,NHWC,ND")
 
             output1 = util_select_op_base.gen_param(classify="output1",
                                                     name="mean",
                                                     datatype="float16,float,float16,float16,"
-                                                    "float16,float,float,float",
+                                                             "float16,float,float,float",
                                                     format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                    "NHWC,ND")
+                                                           "NHWC,ND")
 
             output2 = util_select_op_base.gen_param(classify="output2",
                                                     name="variance",
                                                     datatype="float16,float,float16,float16,"
-                                                    "float16,float,float,float",
+                                                             "float16,float,float,float",
                                                     format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                    "NHWC,ND")
+                                                           "NHWC,ND")
 
     param_list = [input0, input1, input2, output0, output1, output2]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -588,7 +588,17 @@ def layer_norm_compute(input_x,
     return mean, variance, res
 
 
-@register_operator("LayerNorm", pattern="LayerNorm")
+# 'pylint: disable=unused-argument
+def _get_pattern(outs):
+    cur_context = tbe_context.get_context()
+    if cur_context:
+        if cur_context.get_addition("is_static"):
+            return "Norm"
+
+    return "LayerNorm"
+
+
+@register_operator("LayerNorm", pattern=_get_pattern)
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_FLOAT,

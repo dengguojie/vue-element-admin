@@ -28,9 +28,11 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import tbe_context
 from impl.common_util import constant
 from impl.layer_norm_tik import if_tik_support
 from impl.layer_norm_tik import layer_normalize
+import impl.layer_norm_unify as layer_norm_unify
 
 
 # 'pylint: disable = unused-argument
@@ -313,6 +315,7 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
     only supported follow case in Ascend910 and Ascend710:
         ori_shape: ((batch), m, 1024(768)), "shape": ((batch), 64(48), m//16, 16, 16), "dtype": fp16
     """
+
     def _check_shape_and_dtype():
         if dtype != "float16":
             return False
@@ -844,7 +847,7 @@ def layer_norm(input_x, input_gamma, input_beta,
         if input_format == "FRACTAL_NZ":
             if flag_vector2cube:
                 layer_norm_cube = LayerNormCube({"ori_shape": ori_shape_x,
-                                               "epsilon": epsilon})
+                                                 "epsilon": epsilon})
                 mean, variance, res = \
                     layer_norm_cube.layer_norm_cube_compute(data_x, data_gamma, data_beta)
             elif is_support_nz_non_aligned(ori_shape_x, begin_params_axis, impl_mode):
@@ -856,16 +859,35 @@ def layer_norm(input_x, input_gamma, input_beta,
             else:
                 mean, variance, res = \
                     layer_norm_compute_nz(data_x, data_gamma, data_beta,
-                                        output_y, output_mean, output_variance,
-                                        begin_norm_axis, begin_params_axis,
-                                        ori_shape_x, epsilon, kernel_name, impl_mode)
+                                          output_y, output_mean, output_variance,
+                                          begin_norm_axis, begin_params_axis,
+                                          ori_shape_x, epsilon, kernel_name, impl_mode)
         else:
-            mean, variance, res = \
-                layer_norm_compute(data_x, data_gamma, data_beta,
-                                   output_y, output_mean,
-                                   output_variance,
-                                   begin_norm_axis, begin_params_axis,
-                                   epsilon, kernel_name, impl_mode)
+            if layer_norm_unify.is_special_cases(shape_x, input_gamma_shape, input_beta_shape):
+                input_x, input_gamma, input_beta = layer_norm_unify.set_range(input_x, input_gamma, input_beta)
+                context = tbe_context.op_context.get_context()
+                if context is not None:
+                    context.set_op_mode("static")
+                    context.add_addition("is_static", True)
+                    layer_norm_unify.layer_norm(input_x, input_gamma, input_beta,
+                                                output_y, output_mean, output_variance,
+                                                begin_norm_axis, begin_params_axis,
+                                                epsilon, kernel_name, impl_mode)
+                else:
+                    with tbe_context.op_context.OpContext("static"):
+                        tbe_context.op_context.get_context().add_addition("is_static", True)
+                        layer_norm_unify.layer_norm(input_x, input_gamma, input_beta,
+                                                    output_y, output_mean, output_variance,
+                                                    begin_norm_axis, begin_params_axis,
+                                                    epsilon, kernel_name, impl_mode)
+                return
+            else:
+                mean, variance, res = \
+                    layer_norm_compute(data_x, data_gamma, data_beta,
+                                       output_y, output_mean,
+                                       output_variance,
+                                       begin_norm_axis, begin_params_axis,
+                                       epsilon, kernel_name, impl_mode)
 
         with tvm.target.cce():
             sch = tbe.auto_schedule([res, mean, variance])
