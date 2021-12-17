@@ -93,7 +93,6 @@ void MatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &m
   OpL1FusionType fusion_type = L1FUSION_DISABLE;
   int64_t min_tbe_l1space = 0;
   if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
-
     return;
   }
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);

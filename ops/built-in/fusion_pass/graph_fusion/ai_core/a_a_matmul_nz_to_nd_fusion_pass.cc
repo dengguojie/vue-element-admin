@@ -47,7 +47,6 @@
 #include "tbe_ops_pass_util.h"
 
 namespace fe {
-
 static const string kDescMatMul = "MatMul";
 static const string kDescTransdata0 = "Transdata0";
 static const string kDescTransdata1 = "Transdata1";
@@ -148,14 +147,12 @@ bool AAMatMulNzToNdFusionPass::IsAligned() {
 
   auto len_shape_data_0 = shape_data_0.GetDimNum();
   auto len_shape_data_1 = shape_data_1.GetDimNum();
-
   if (shape_data_0.GetDim(len_shape_data_0 + kRIdxLast) % kNumAlignHalf == 0 &&
       shape_data_0.GetDim(len_shape_data_0 + kRIdxLastSecond) % kNumAlignHalf == 0 &&
       shape_data_1.GetDim(len_shape_data_1 + kRIdxLast) % kNumAlignHalf == 0 &&
       shape_data_1.GetDim(len_shape_data_1 + kRIdxLastSecond) % kNumAlignHalf == 0) {
     return true;
   }
-
   return false;
 }
 

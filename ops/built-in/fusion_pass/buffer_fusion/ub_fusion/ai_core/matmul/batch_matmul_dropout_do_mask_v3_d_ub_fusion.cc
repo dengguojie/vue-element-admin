@@ -102,8 +102,8 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::CheckDropoutOutNode(const ge::Node
   return SUCCESS;
 }
 
-
-void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                         std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_DROPOUTDOMASKV3D, mapping);
   vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(PATTERN_ADD, mapping);

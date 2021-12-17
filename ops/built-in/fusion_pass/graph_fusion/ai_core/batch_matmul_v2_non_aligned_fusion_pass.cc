@@ -274,12 +274,9 @@ Status BatchMatMulNonAlignedFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(CheckTransposeDPerm() != SUCCESS,
                   OP_LOGW(kNameFusionPass.c_str(), "Check failed."), return NOT_CHANGED);
-  int64_t bmm_1_n_dim, bmm_2_n_dim, bmm_3_k_dim, bmm_1_n_dim_align, bmm_2_n_dim_align, bmm_3_k_dim_align;
   map<std::string, int64_t> batch_matmul_shape_info = {
-    {"bmm_1_n_dim", bmm_1_n_dim}, {"bmm_2_n_dim", bmm_2_n_dim}, {"bmm_3_k_dim", bmm_3_k_dim},
-    {"bmm_1_n_dim_align", bmm_1_n_dim_align}, {"bmm_2_n_dim_align", bmm_2_n_dim_align},
-    {"bmm_3_k_dim_align", bmm_3_k_dim_align}
-  };
+                            {"bmm_1_n_dim", 0}, {"bmm_2_n_dim", 0}, {"bmm_3_k_dim", 0}, {"bmm_1_n_dim_align", 0},
+                            {"bmm_2_n_dim_align", 0}, {"bmm_3_k_dim_align", 0}};
   Status ret = GetBatchMatMulShape(batch_matmul_shape_info);
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kNameFusionPass.c_str(), "get bacthmatmul shape failed."),
                     return ret);

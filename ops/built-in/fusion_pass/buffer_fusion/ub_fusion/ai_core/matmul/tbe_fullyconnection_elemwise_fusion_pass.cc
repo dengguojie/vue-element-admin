@@ -227,7 +227,7 @@ Status FusionReturn(bool &cond, vector<ge::NodePtr> &fusionNodes) {
  * @return bool: fusion status ok or not.
  */
 Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                vector<ge::NodePtr> &fusionNodes) {
+                                                            vector<ge::NodePtr> &fusionNodes) {
   OP_LOGD("Begin to do TbeFullyconnectionElemwiseFusionPass!");
   fusionNodes = GetMatchedNodes(mapping);
 
@@ -291,7 +291,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
         bool is_relu = out_anchor->GetPeerInDataAnchors().at(0)->GetOwnerNode()->GetType() != "Relu6";
         FUSION_PASS_CHECK(FusionReturn(is_relu, fusionNodes) == SUCCESS,
                           OP_LOGD(FUSED_OP_TYPE.c_str(),
-                                  "Eltwise2 type is not relu6, it is not supported for this ub fusion pass, skip fusion."),
+                                  "Eltwise2 type not relu6, graph not support this ub fusion pass, skip fusion."),
                           return SUCCESS);
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise2 type is relu6, this ub fusion success.");
       }

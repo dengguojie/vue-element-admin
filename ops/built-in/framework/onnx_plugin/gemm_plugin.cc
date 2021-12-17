@@ -23,7 +23,6 @@
 #include "../../op_proto/util/axis_util.h"
 
 namespace domi {
-
 Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest)
 {
   ge::AscendString op_name;
