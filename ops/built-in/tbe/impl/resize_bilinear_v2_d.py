@@ -106,7 +106,7 @@ def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
     # dynamic_white_list format:
     # [batch, ceil(channel, shape_c0) * shape_c0, in_height, in_width, out_height, out_width]
     dynamic_white_list = [[4, 16, 480, 640, 800, 1067], [400, 2048, 7, 7, 33, 33], [1, 16, 240, 240, 960, 960],
-                          [1, 16, 480, 480, 1920, 1920]]
+                          [1, 16, 480, 480, 1920, 1920], [32, 64, 1, 1, 3, 3]]
 
     shape_c0 = 16
     dict_zip_shape = dict(zip(list(ori_format), ori_input_shape))
