@@ -74,7 +74,7 @@ uint32_t IndexToAddr(aicpu::CpuKernelContext &ctx) {
 }  // namespace
 
 namespace aicpu {
-uint32_t IndexToAddrCpuKernel::Check(CpuKernelContext &ctx) const{
+uint32_t IndexToAddrCpuKernel::Check(CpuKernelContext &ctx) const {
   Tensor *base_addr = ctx.Input(0);
   Tensor *x = ctx.Input(1);
   Tensor *output = ctx.Output(0);
