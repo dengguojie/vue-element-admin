@@ -78,6 +78,8 @@ class CubeTilingOp:
                 return core_num, batch_max
             if core_num == TilingUtils.N_BASE:
                 return 1, batch_max
+            if batch == 0:
+                return batch, batch
             batch_log = int(math.log(batch, TilingUtils.N_BASE))
             return TilingUtils.N_BASE ** batch_log, TilingUtils.N_BASE ** (int(batch_log + 1))
         return batch, batch
