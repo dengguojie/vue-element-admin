@@ -285,12 +285,6 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
   OP_TILING_CHECK(stride_w == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "stride_w = 0 is not support"),
                   return);
-  if (stride_h > hi) {
-    stride_h = hi;
-  }
-  if (stride_w > wi) {
-    stride_w = wi;
-  }
 
   // calc output height and width, pad infos
   tiling_params.pad_top = pad_top;
