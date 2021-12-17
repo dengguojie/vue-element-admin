@@ -123,7 +123,7 @@ class TransdataClassify {
   ~TransdataClassify() {
   }
   void GetInputOutput(Shape& input, Shape& output, Shape& reshape);
-  int64_t ChooseStrategy(Shape& input, Shape& output) const;
+  int64_t ChooseStrategy(const Shape& input, const Shape& output) const;
 
  private:
   const ge::Operator& op_paras;

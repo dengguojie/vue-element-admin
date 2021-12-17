@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file transdata_dsl_general.cpp
+ * \file transdata_dsl_general.cc
  * \brief
  */
 #include "transdata_dsl_general.h"
@@ -653,7 +653,7 @@ bool TransdataGeneral::WriteTilingData() {
   run_info.SetBlockDim(static_cast<uint32_t>(tilingInfo.blk_dim));
   run_info.SetTilingKey(static_cast<uint32_t>(CalcTilingKey()));
   // convert dim which is input after fused
-  Shape* res_shape = compileInfo.is_forward ? &input : &output;
+  const Shape* res_shape = compileInfo.is_forward ? &input : &output;
   for (size_t i = 0; i < compileInfo.unknown_dims.size(); i++) {
     run_info.AddTilingData(static_cast<int32_t>(res_shape->shape[compileInfo.unknown_dims[i]]));
     OP_LOGD(op_type.c_str(), "input shape : %d", res_shape->shape[i]);

@@ -103,7 +103,7 @@ struct GeneralSplit {
 class TransdataGeneral {
  public:
   explicit TransdataGeneral(const std::string& _op_type, const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info,
-                            Shape& _input, Shape& _output, Shape& _reshape)
+                            const Shape& _input, const Shape& _output, const Shape& _reshape)
       : op_type(_op_type),
         compileInfo(_compileInfo),
         run_info(_run_info),
@@ -119,9 +119,9 @@ class TransdataGeneral {
   const std::string& op_type;
   const CompileInfoTransdataDSL& compileInfo;
   utils::OpRunInfo& run_info;
-  Shape& input;
-  Shape& output;
-  Shape& reshape;
+  const Shape& input;
+  const Shape& output;
+  const Shape& reshape;
   GeneralTilingInfo tilingInfo;
 
   bool is_last_transpose{false};

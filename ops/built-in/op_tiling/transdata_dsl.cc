@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_dsl.cpp
+ * \file trans_data_dsl.cc
  * \brief
  */
 #include "transdata_dsl_general.h"
@@ -133,7 +133,7 @@ void TransdataClassify::DoFusing(Shape& input, Shape& output, Shape& reshape) {
   }
 }
 
-int64_t TransdataClassify::ChooseStrategy(Shape& input, Shape& output) const {
+int64_t TransdataClassify::ChooseStrategy(const Shape& input, const Shape& output) const {
   // only choose computeType
   return BaseSch;
 }
