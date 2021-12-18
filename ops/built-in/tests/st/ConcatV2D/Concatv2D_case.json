@@ -71,5 +71,67 @@
         }
       ],
       "case_name": "test_dynamic_Concatv2d_000"
+    },
+    {
+      "op": "ConcatV2D",
+      "input_desc": [
+        {
+          "shape": [
+            32,
+            1
+          ],
+          "ori_shape": [
+            32,
+            1
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "type": "float16",
+          "name": "x0"
+        },
+        {
+          "shape": [
+              32,
+              29999
+            ],
+            "ori_shape": [
+              32,
+              29999
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "type": "float16",
+            "name": "x1"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              32,
+              30000
+          ],
+          "ori_shape": [
+              32,
+              30000
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "concat_dim",
+          "type": "int",
+          "value": 1
+        },
+        {
+            "name": "N",
+            "type": "int",
+            "value": 2
+        }
+      ],
+      "case_name": "test_Concatv2d_001"
     }
 ]

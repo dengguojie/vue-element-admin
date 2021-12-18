@@ -49,6 +49,16 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
+from impl.concat_v2_d import _do_with_dynamic_concat_v2_d
+
+# 'pylint: disable=unused-argument,unused-variable
+def test_do_with_dynamic_concatv2d(test_arg):
+    _do_with_dynamic_concat_v2_d(
+        [{"shape": (256, 1, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (256, 2, 1, 1),"ori_format": "NCHW"},
+         {"shape":  (256, 1, 1, 1, 16,), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (256, 2, 1, 1),"ori_format": "NCHW"}],
+        1, "dynamic_concatv2d")
+ut_case.add_cust_test_func(test_func=test_do_with_dynamic_concatv2d)
+
 if __name__ == "__main__":
     # ut_case.run()
     ut_case.run("Ascend910")

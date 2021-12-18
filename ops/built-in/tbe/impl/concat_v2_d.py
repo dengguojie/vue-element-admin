@@ -303,27 +303,30 @@ def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
         dtype = tiling_inst.dtype
         head_count = 8
         for i, _ in enumerate(tiling_inst.input_values):
-            tiling_inst._dims.append(inst.Scalar(dtype=dtype, name="inner_dim" + str(i)))
-            tiling_inst._dims.append(inst.Scalar(dtype=dtype, name="output_index" + str(i)))
+            inst_dims = tiling_inst.get_inst_dims()
+            inst_dims.append(inst.Scalar(dtype=dtype, name="inner_dim" + str(i)))
+            inst_dims.append(inst.Scalar(dtype=dtype, name="output_index" + str(i)))
         with inst.new_stmt_scope():
-            tiling_inst._tiling_ub = cal_tiling(input_values, axis)
-            tiling_inst.axis.set_as(tiling_inst._tiling_ub[0])
-            tiling_inst.out_dim.set_as(tiling_inst._tiling_ub[1])
-            tiling_inst.max_inner_dim.set_as(tiling_inst._tiling_ub[2])
-            tiling_inst.min_inner_dim.set_as(tiling_inst._tiling_ub[3])
-            tiling_inst.output_inner_length.set_as(tiling_inst._tiling_ub[4])
+            inst_tiling_ub = cal_tiling(input_values, axis)
+            tiling_inst.set_tiling_ub(inst_tiling_ub)
+            tiling_inst.axis.set_as(inst_tiling_ub[0])
+            tiling_inst.out_dim.set_as(inst_tiling_ub[1])
+            tiling_inst.max_inner_dim.set_as(inst_tiling_ub[2])
+            tiling_inst.min_inner_dim.set_as(inst_tiling_ub[3])
+            tiling_inst.output_inner_length.set_as(inst_tiling_ub[4])
 
             tiling_inst.all_align.set_as(1)
             for i, _ in enumerate(tiling_inst.input_values):
                 index = head_count + i * 2
-                tiling_inst._dims[i * 2].set_as(tiling_inst._tiling_ub[index])
-                tiling_inst._dims[i * 2 + 1].set_as(tiling_inst._tiling_ub[index + 1])
+                inst_dims = tiling_inst.get_inst_dims()
+                inst_dims[i * 2].set_as(inst_tiling_ub[index])
+                inst_dims[i * 2 + 1].set_as(inst_tiling_ub[index + 1])
                 if i == len(tiling_inst.input_values) - 1:
                     tiling_inst.only_last_input_not_align.set_as(tiling_inst.all_align)
-                    with inst.if_scope(tiling_inst._dims[i * 2] % tiling_inst.block_element == 0):
+                    with inst.if_scope(inst_dims[i * 2] % tiling_inst.block_element == 0):
                         tiling_inst.only_last_input_not_align.set_as(0)
                 tiling_inst.all_align.set_as(tiling_inst.all_align +
-                                             tiling_inst._dims[i * 2] % tiling_inst.block_element)
+                                             inst_dims[i * 2] % tiling_inst.block_element)
 
     concat_instance = DynamicConcatV2(input_values, axis, kernel_name)
     concat_instance.tiling_param.init = MethodType(init_tiling, concat_instance.tiling_param)
@@ -435,7 +438,8 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
 
     dynamic_shape_support_count = 48
     if len(input_values) <= dynamic_shape_support_count:
-        return _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name)
+        _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name)
+        return
 
     check_list = ("float32", "int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16")

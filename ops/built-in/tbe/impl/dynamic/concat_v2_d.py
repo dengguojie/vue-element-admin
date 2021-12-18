@@ -359,6 +359,12 @@ class ConcatV2:
                             inner_dim, _ = self.get_dims(index)
                             self._mask_cycle_inner_burst[index].set_as(inner_dim * lines // block_element)
 
+        def get_inst_dims(self):
+            """
+            for public call
+            """
+            return self._dims
+
         def get_dims(self, input_index):
             """
             :param input_index: index of input tensors
@@ -372,6 +378,12 @@ class ConcatV2:
             get mask cycle burst of input
             """
             return self._mask_cycle_inner_burst[input_index]
+
+        def set_tiling_ub(self, tiling_ub):
+            """
+            for public call
+            """
+            self._tiling_ub = tiling_ub
 
         def update_tiling(self, src_dtype, dst_dtype):
             """
