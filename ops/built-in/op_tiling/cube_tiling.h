@@ -21,13 +21,14 @@
 #ifndef OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_
 #define OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_
 
+#include "op_tiling.h"
+
 #include <vector>
 #include <string>
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
 #include "external/graph/operator.h"
-#include "op_tiling.h"
 
 namespace optiling {
 /*
@@ -37,12 +38,9 @@ namespace optiling {
  * @param [out] runInfo: result data
  * @return int: tiling id
  */
-bool cube_tiling1(const std::string& op_type,
-                const std::vector<int64_t>& input_shape,
-                const std::string& x_format,
-                const std::vector<int64_t>& var_value,
-                const nlohmann::json& compile_info,
-                utils::OpRunInfo& run_info);
+bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_shape, const std::string &x_format,
+                  const std::vector<int64_t> &var_value, const nlohmann::json &compile_info,
+                  utils::OpRunInfo &run_info);
 
 /*
  * @brief: tiling function of cube operators

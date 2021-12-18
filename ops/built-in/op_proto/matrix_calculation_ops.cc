@@ -607,7 +607,7 @@ class InferShapeMatMul {
   static graphStatus VerifyInputs(const Operator &op);
   static bool IsRangeValid(const GeShape &shape,
                           const std::vector<std::pair<int64_t, int64_t>> &range);
-  static void SimplifyShapeAndRange(GeShape& shape_out,
+  static void SimplifyShapeAndRange(GeShape& local_shape_out,
                                     vector<std::pair<int64_t, int64_t>>& range_out);
 
   bool InferShape();
@@ -700,11 +700,11 @@ graphStatus InferShapeMatMul::VerifyInputs(const Operator &op) {
   return GRAPH_SUCCESS;
 }
 
-void InferShapeMatMul::SimplifyShapeAndRange(GeShape& shape_out, vector<std::pair<int64_t, int64_t>>& range_out) {
-  CHECK(!shape_out.IsUnknownShape(), range_out.clear(), return);
+void InferShapeMatMul::SimplifyShapeAndRange(GeShape& local_shape_out, vector<std::pair<int64_t, int64_t>>& range_out) {
+  CHECK(!local_shape_out.IsUnknownShape(), range_out.clear(), return);
   for (size_t i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
-      shape_out.SetDim(i, range_out[i].first);
+      local_shape_out.SetDim(i, range_out[i].first);
     }
     // reverse normalize
     if (range_out[i].second == NORMALIZE_INFINITE_RANGE) {

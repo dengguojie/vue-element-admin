@@ -389,7 +389,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   op.SetAttr("pads", new_pad_lists);
   OP_LOGD(op_name.GetString(), "DepthwiseConv2D new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
-  if (have_slice == false) {
+  if (!have_slice) {
     return GRAPH_FAILED;
   }
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
@@ -604,7 +604,7 @@ bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
   return true;
 }
 
-static bool reset_range(ge::Operator& op, const std::string& tensor_name) {
+static bool reset_range(const ge::Operator& op, const std::string& tensor_name) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
 
@@ -1436,7 +1436,7 @@ static bool check_conv2d_backprop_input_pads(ge::Operator& op,
   return true;
 }
 
-static void reset_conv2d_backprop_input_out_shape(ge::Operator& op, const std::vector<int64_t>&dy_sizes,
+static void reset_conv2d_backprop_input_out_shape(const ge::Operator& op, const std::vector<int64_t>&dy_sizes,
                                                   Format dy_format, std::vector<int64_t>& input_sizes,
                                                   Format input_format) {
   AscendString op_name;
@@ -2223,7 +2223,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
   int32_t stride_w = 0;
   int32_t dilation_h = 0;
   int32_t dilation_w = 0;
-  if (false == getStrideDilationHW(op, stride_h, stride_w, dilation_h, dilation_w)) {
+  if (!getStrideDilationHW(op, stride_h, stride_w, dilation_h, dilation_w)) {
     OP_LOGE(op_name.GetString(), "op get strides failed.");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
@@ -4869,7 +4869,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   OP_LOGD(op_name.GetString(), "conv2d new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
 
-  if (have_slice == false) {
+  if (!have_slice) {
     return GRAPH_FAILED;
   }
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
@@ -5198,7 +5198,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
   OP_LOGD(op_name.GetString(), "Conv2DCompress new pad lists is [%d, %d, %d, %d]", new_pad_lists[0],
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
 
-  if (have_slice == false) {
+  if (!have_slice) {
     return GRAPH_FAILED;
   }
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
@@ -10184,7 +10184,7 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (modulated != true) {
+  if (!modulated) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "Currently modulated must be true.");
     return GRAPH_FAILED;
   }

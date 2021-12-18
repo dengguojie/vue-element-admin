@@ -18,9 +18,9 @@
  * \file cube_tiling.cpp
  * \brief
  */
-#include <stdlib.h>
-#include <string>
 #include "cube_tiling.h"
+#include <cstdlib>
+#include <string>
 #include "../op_proto/util/error_util.h"
 
 namespace {
