@@ -26,7 +26,7 @@ from impl.util import util_frac_z as fz
 
 
 # 'pylint: disable=locally-disabled,unused-argument
-# 'pylint: disable=unused-variable,disable=too-many-lines
+# 'pylint: disable=unused-variable,disable=too-many-lines,disable=too-many-locals
 @register_operator("SoftmaxGrad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                          kernel_name="softmax_grad"):
@@ -60,26 +60,29 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
     dtype = softmax.dtype
     shape = shape_util.shape_to_list(grad_softmax.shape)
     list_axis = list(axis)
-    has_improve_precision = False
 
     attributes = softmax.op.attrs
     disable_fuse_axes = attributes["disable_fuse_axes"]
     ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
     ori_format = attributes["ori_format"].value
     input_format = attributes["format"].value
-
+    has_improve_precision = False
     is_use_value = False
+
     if len(list_axis) == 2:
         if input_format in ("NC1HWC0", "NDC1HWC0"):
             is_use_value = True
-            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+            idc_list = shape_util.shape_to_list(disable_fuse_axes)
+            idx_c0 = idc_list[1]
             ori_format = ori_format.upper()
             c = ori_shape[ori_format.find('C')]
             c = tbe.var('c') if c == -1 else c
             pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
         if input_format in ("FRACTAL_NZ",):
             is_use_value = True
-            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+            idc_list = shape_util.shape_to_list(disable_fuse_axes)
+            idx_c1 = idc_list[0]
+            idx_c0 = idc_list[1]
             c = -1
             if (idx_c0 - idx_c1) == 2:
                 c = ori_shape[-1]
@@ -166,9 +169,9 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape = softmax.get("shape")
     grad_shape = grad_softmax.get("shape")
     dtype = softmax.get("dtype").lower()
+    input_format = softmax.get("format")
     ori_format = softmax.get("ori_format")
     ori_shape = softmax.get("ori_shape")
-    input_format = softmax.get("format")
 
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
@@ -188,8 +191,8 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
         extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
 
-    schedules = []
     tensors = []
+    schedules = []
     ins = classify([softmax, grad_softmax, list_axis], "norm", extra_params)
 
     for idx, (x, grad, reduce_axis) in enumerate(ins):

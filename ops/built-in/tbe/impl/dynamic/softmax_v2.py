@@ -65,6 +65,28 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return param_dynamic_in_json
 
 
+def update_5hd_axis(origin_format, list_axis, input_format):
+    """
+    update the axis of 5hd format
+    data using for compute and schedule
+    """
+    if hasattr(list_axis, 'index'):
+        list_axis = list_axis[0]
+
+    axis_str = origin_format[list_axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": [0, ],
+        "C": [1 + offset_6hd, 4 + offset_6hd],
+        "H": [2 + offset_6hd, ],
+        "W": [3 + offset_6hd, ],
+        "D": [1, ]
+    }
+
+    return dict_format_axis.get(axis_str)
+
+
 # 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
@@ -94,14 +116,14 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     dtype = input_x.dtype
     list_axis = list(axis)
     last_dim = len(input_x.shape) - 1
-    vcmax_flag = False
 
     attributes = input_x.op.attrs
     disable_fuse_axes = attributes["disable_fuse_axes"]
-    ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
-    ori_format = attributes["ori_format"].value
     input_format = attributes["format"].value
+    ori_format = attributes["ori_format"].value
+    ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
     max_const = Constant.FP32_MAX if dtype == "float32" else Constant.FP16_MAX
+    vcmax_flag = False
 
     check_axis_list = [-1, last_dim]
     for i in list_axis:
@@ -112,14 +134,17 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if len(list_axis) == 2:
         if input_format in ("NC1HWC0", "NDC1HWC0"):
             is_use_value = True
-            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+            idc_list = shape_util.shape_to_list(disable_fuse_axes)
+            idx_c0 = idc_list[1]
             ori_format = ori_format.upper()
             c = ori_shape[ori_format.find('C')]
             c = tbe.var('c') if c == -1 else c
             pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
         if input_format in ("FRACTAL_NZ",):
             is_use_value = True
-            idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+            idc_list = shape_util.shape_to_list(disable_fuse_axes)
+            idx_c1 = idc_list[0]
+            idx_c0 = idc_list[1]
             c = -1
             if (idx_c0 - idx_c1) == 2:
                 c = ori_shape[-1]
@@ -184,28 +209,6 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return output
 
 
-def update_5hd_axis(origin_format, list_axis, input_format):
-    """
-    update the axis of 5hd format
-    data using for compute and schedule
-    """
-    if hasattr(list_axis, 'index'):
-        list_axis = list_axis[0]
-
-    axis_str = origin_format[list_axis]
-    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
-
-    dict_format_axis = {
-        "N": [0, ],
-        "C": [1 + offset_6hd, 4 + offset_6hd],
-        "H": [2 + offset_6hd, ],
-        "W": [3 + offset_6hd, ],
-        "D": [1, ]
-    }
-
-    return dict_format_axis.get(axis_str)
-
-
 # 'pylint:disable=invalid-name,too-many-locals
 @register_operator("SoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -241,12 +244,13 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
+    input_format = input_x.get("format")
     ori_format = input_x.get("ori_format")
     ori_shape = input_x.get("ori_shape")
-    input_format = input_x.get("format")
 
-    para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
+    para_check.check_shape(shape, param_name="x")
+
     if not isinstance(axis, int):
         list_axis = list(axis)
     else:
@@ -262,8 +266,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
         extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
 
-    schedules = []
     tensors = []
+    schedules = []
     ins = classify([input_x, list_axis], "norm", extra_params)
 
     for idx, (x, reduce_axis) in enumerate(ins):

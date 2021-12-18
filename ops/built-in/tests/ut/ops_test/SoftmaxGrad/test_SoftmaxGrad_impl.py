@@ -61,6 +61,14 @@ case8 = {"params": [{"shape": (1,4,7,7,16), "dtype": "float16", "format": "NC1HW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case9 = {"params": [{"shape": (1,16,2,2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1,16,32,32),"ori_format": "NCHW"},
+                    {"shape": (1,16,2,2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1,16,32,32),"ori_format": "NCHW"},
+                    {"shape": (1,16,2,2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1,16,32,32),"ori_format": "NCHW"},
+                    [-1]],
+         "case_name": "softmax_grad_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -70,6 +78,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 
 if __name__ == '__main__':
     ut_case.run()
