@@ -36,7 +36,6 @@ const char *kInputStr = "input";
 const char *kOutputStr = "output";
 constexpr int64_t kPointsNum = 4;
 constexpr int64_t kImageChannels = 3;
-
 }  // namespace
 
 namespace aicpu {

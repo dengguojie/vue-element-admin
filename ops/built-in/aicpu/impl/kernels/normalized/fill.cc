@@ -15,8 +15,6 @@
  */
 
 #include "fill.h"
-#include <set>
-#include "cpu_kernel_utils.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 

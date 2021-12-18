@@ -115,12 +115,10 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   Tensor *truth_values = inputs[4];
   std::vector<int64_t> hypothesis_st_shape(
       (int64_t *)inputs[2]->GetData(),
-      (int64_t *)inputs[2]->GetData() +
-          inputs[2]->GetTensorShape()->GetDimSize(0));
+      (int64_t *)inputs[2]->GetData() + inputs[2]->GetTensorShape()->GetDimSize(0));
   std::vector<int64_t> truth_st_shape(
       (int64_t *)inputs[5]->GetData(),
-      (int64_t *)inputs[5]->GetData() +
-          inputs[5]->GetTensorShape()->GetDimSize(0));
+      (int64_t *)inputs[5]->GetData() + inputs[5]->GetTensorShape()->GetDimSize(0));
   // Assume indices are sorted in row-major order.
   std::vector<int64_t> sorted_order(truth_st_shape.size());
   std::iota(sorted_order.begin(), sorted_order.end(), 0);
@@ -128,8 +126,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   SparseTensor hypothesis;
   SparseTensor truth;
   if (hypothesis.CreateSparseTensor(hypothesis_indices, hypothesis_values,
-                                    hypothesis_st_shape,
-                                    sorted_order) != KERNEL_STATUS_OK ||
+                                    hypothesis_st_shape, sorted_order) != KERNEL_STATUS_OK ||
       truth.CreateSparseTensor(truth_indices, truth_values, truth_st_shape,
                                sorted_order) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Create sparse tensor failed.");
@@ -147,8 +144,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   }
   std::vector<int64_t> output_shape =
       outputs[0]->GetTensorShape()->GetDimSizes();
-  Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> output_t(
-      outptr, outputs[0]->NumElements());
+  Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> output_t(outptr, outputs[0]->NumElements());
   output_t.setZero();
   std::vector<int64_t> output_strides(output_shape.size());
   output_strides[output_shape.size() - 1] = 1;

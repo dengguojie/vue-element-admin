@@ -222,8 +222,8 @@ uint32_t FloorDivCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  int64_t data_num = ctx.Output(0)->NumElements();
 
+  int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num >= kParallelDataNum) {
     return BcastParallelCompute<T>(ctx, bcast);
   } else {

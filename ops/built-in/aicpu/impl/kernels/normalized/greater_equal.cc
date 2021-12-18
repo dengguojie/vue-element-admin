@@ -160,8 +160,8 @@ uint32_t GreaterEqualCpuKernel::BcastCompute(CpuKernelContext &ctx,
   auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
-  const int64_t data_num = ctx.Output(0)->NumElements();
 
+  const int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num >= kParallelDataNum) {
     const int64_t min_core_num = 4;
     const int64_t max_core_num = std::max(
