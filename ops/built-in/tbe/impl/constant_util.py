@@ -104,7 +104,7 @@ BLOCK_SIZE = 32
 # the vector size is 256B
 VECTOR_BYTE_SIZE = 256
 
-# scalar shape size=1
+# scalar shape size is 1
 SCALAR_SIZE = 1
 
 # max block number
