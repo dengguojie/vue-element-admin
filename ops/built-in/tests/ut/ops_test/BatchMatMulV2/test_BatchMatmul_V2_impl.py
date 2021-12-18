@@ -226,7 +226,7 @@ case19 = {"params": [{"shape": (128, 1, 16, 16), "dtype": "float16", "format": "
                     {"shape": (36, 128, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_RNN", "ori_shape": (576, 2048),"ori_format": "ND"},
                     None,
                     None,
-                    {"shape": (1, 36, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 36, 16, 16),"ori_format": "FRACTAL_NZ"},
+                    {"shape": (1, 36, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 36, 16, 16),"ori_format": "FRACTAL_NZ"},
                     False,True
                     ],
          "case_name": "BatchMatmulv2_19",

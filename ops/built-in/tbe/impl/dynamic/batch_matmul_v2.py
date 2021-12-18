@@ -34,6 +34,7 @@ from impl.util.util_common import cal_mini_l1_size_matmul
 from tbe.common.platform.platform_info import get_align_factor
 
 
+
 # General limitation of the size for input shape: 2**31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
 DYNAMIC_FLAG = -1
@@ -155,8 +156,11 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
 
     fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
                           ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ"))]
-    rnn_fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float", "ND"),
-                             ("int8", "ND"), ("float", "FRACTAL_NZ"))]
+    rnn_scenatio = [
+        (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float", "ND"), ("int8", "ND"),
+         ("float", "FRACTAL_NZ")),
+        (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float16", "ND"), ("int8", "ND"),
+         ("float16", "FRACTAL_NZ"))]
 
     # ND input and output scenario
     nd_case_scenario = [
@@ -174,7 +178,7 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     # Construct scenario list for static
     if src_fp16_flag:
         full_case_scenario_list = base_case_scenario + fp32_out_scenatio + nd_case_scenario \
-                                  + nd_fp32out_scenario + rnn_fp32_out_scenatio
+                                  + nd_fp32out_scenario + rnn_scenatio
     else:
         full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
     return dyn_case_scenario_list, full_case_scenario_list
