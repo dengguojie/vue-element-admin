@@ -530,5 +530,941 @@
                 "type": "int"
             }
         ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_001",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 13, 13, 3, 4],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "is_const":true,
+                "value": [1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [13, 13, 3, 4],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 1,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_002",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 26, 26, 3, 4],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [2],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "is_const":true,
+                "value": [1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [26, 26, 3, 4],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 1,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_003",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 4],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [2],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "is_const":true,
+                "value": [1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3, 4],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 1,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_004",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 13, 13, 3, 1],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [0, 0, 0],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [13, 13, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_005",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 26, 26, 3, 1],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [0, 0, 0],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [26, 26, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_006",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 1],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [0, 0, 0],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_007",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 13, 13, 3, 4],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [2, 2, 2],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [3, 3, 3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [13, 13, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_008",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 26, 26, 3, 4],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [3, 3, 3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [26, 26, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_009",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 5],
+                "type": "float32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [2, 2, 2],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3],
+                "type": "float32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_010",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 5],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [2, 2, 2],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_011",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 5],
+                "type": "int32",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [2, 2, 2],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3],
+                "type": "int32",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_012",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 52, 52, 3, 5],
+                "type": "int8",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [1, 1, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "value": [2, 2, 2],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [52, 52, 3],
+                "type": "int8",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 2,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 5,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_known_013",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [6, 13, 13, 3, 4],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "value": [3],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "int32",
+                "is_const":true,
+                "value": [1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [13, 13, 3, 4],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 1,
+                "type": "int"
+            }
+        ]
     }
 ]
