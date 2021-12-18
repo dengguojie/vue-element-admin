@@ -187,6 +187,7 @@ set(_optiling_files
   scan_pq_codes.cc
   prod_virial_se_a.cc
   strided_slice_v3.cc
+  tabulate_fusion.cc
   kl_div.cc
   vector_tiling.cc
   lru_cache_v2.cc

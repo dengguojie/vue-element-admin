@@ -439,6 +439,7 @@ set(_tf_plugins
   xlogy_plugin.cc
   zeros_like_plugin.cc
   nonzero_plugin.cc
+  tabulatefusion_plugin.cc
   nonzero_with_value_plugin.cc
   k_means_centroids_plugin.cc
   k_means_centroids_v2_plugin.cc

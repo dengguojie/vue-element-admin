@@ -36,6 +36,100 @@
 #include "util/vector_proto_profiling.h"
 
 namespace ge {
+
+// --------------------------TabulateFusion Begin-----------------
+IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusion"), return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeTensorDescPtr tableDesc = opDesc->MutableInputDesc("table");
+  std::vector<int64_t> tableShape = tableDesc->MutableShape().GetDims();
+  CHECK(tableShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of table Shape should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr tableInfoDesc = opDesc->MutableInputDesc("table_info");
+  std::vector<int64_t> tableInfoShape = tableInfoDesc->MutableShape().GetDims();
+  CHECK(tableInfoShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of table_info Shape should be 1"),
+        return GRAPH_FAILED);
+  int64_t tableInfoSize = tableInfoShape[0];
+  CHECK(tableInfoSize < 5, OP_LOGE(opName.GetString(), "size of table_info should be >= 5."),
+        return GRAPH_FAILED);
+
+  GeTensorDescPtr emXDesc = opDesc->MutableInputDesc("em_x");
+  std::vector<int64_t> emXShape = emXDesc->MutableShape().GetDims();
+  CHECK(emXShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of  em_x should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
+  std::vector<int64_t> emShape = emDesc->MutableShape().GetDims();
+  CHECK(emShape.size() != 3, OP_LOGE(opName.GetString(), "Dim of em should be 3"), return GRAPH_FAILED);
+  int64_t lastLayerSize = 0;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("last_layer_size", lastLayerSize)) {
+    std::string errMsg = GetInputInvalidErrMsg("last_layer_size");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
+  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape begin");
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
+  std::vector<int64_t> emShapeVec = emDesc->MutableShape().GetDims();
+  int64_t nlocValue = emShapeVec[0];
+  int64_t lastLayerSize = 0;
+  op.GetAttr("last_layer_size", lastLayerSize);
+  std::vector<int64_t> outputShape = {nlocValue, 4, lastLayerSize};
+  GeTensorDescPtr outputDesc = opDesc->MutableOutputDesc("descriptor");
+
+  if (IsUnknownVec(emShapeVec)) {
+    std::vector<std::pair<int64_t, int64_t>> inputEmShapeRange;
+    emDesc->GetShapeRange(inputEmShapeRange);
+    MakeUpShapeRange(emShapeVec, inputEmShapeRange);
+    std::vector<std::pair<int64_t, int64_t>> outputShapeRange = {inputEmShapeRange[0],
+      std::pair<int64_t, int64_t>(4, 4), std::pair<int64_t, int64_t>(lastLayerSize, lastLayerSize)};
+    outputDesc->SetShape(ge::GeShape(outputShape));
+    outputDesc->SetOriginShape(ge::GeShape(outputShape));
+    outputDesc->SetShapeRange(outputShapeRange);
+    outputDesc->SetDataType(emDesc->GetDataType());
+    return GRAPH_SUCCESS;
+  }
+
+  // below is second infershape or static shape scene.
+  int32_t splitCount = 1;
+  int32_t splitIndex = 0;
+  op.GetAttr("split_count", splitCount);
+  op.GetAttr("split_index", splitIndex);
+  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitCount=%d, splitIndex=%d", splitCount, splitIndex);
+  if (splitCount == 1) {
+    outputDesc->SetShape(ge::GeShape(outputShape));
+  } else if (splitCount == 2) {
+    int64_t ceilValue = (nlocValue + splitCount - 1) / splitCount;
+    if (splitIndex == 0) {
+      OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
+      outputShape = {ceilValue, 4, lastLayerSize};
+    } else {
+      OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitIndex is 1, dim0=%ld", nlocValue - ceilValue);
+      outputShape = {nlocValue - ceilValue, 4, lastLayerSize};
+    }
+    outputDesc->SetShape(ge::GeShape(outputShape));
+  } else {
+    std::string errMsg = GetInputInvalidErrMsg("not support splitCount > 2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
+    return GRAPH_FAILED;
+  }
+  outputDesc->SetDataType(emDesc->GetDataType());
+
+  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape run success");
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TabulateFusion, TabulateFusionInferShape);
+VERIFY_FUNC_REG(TabulateFusion, TabulateFusionVerify);
+// --------------------------TabulateFusion END---------------------
+
 // --------------------------ProdForceSeA Begin---------------------
 IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   AscendString opName;

@@ -24,6 +24,40 @@
 #include "graph/operator_reg.h"
 
 namespace ge {
+
+/**
+* @brief Calculate TabulateFusion. \n
+*
+* @par Inputs:
+* Five inputs, including:
+* @li table: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li table_info: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li em_x: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li em: A Tensor. Must be one of the following types: float16, float32, float64. \n
+*
+* @par Outputs:
+* descriptor: A Tensor. Must be one of the following types: float16, float32, float64. \n
+*
+* @par Attributes:
+* Three attributes, including:
+* @li last_layer_size: int value.
+* @li split_count: int value.
+* @li split_index: int value. \n
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(TabulateFusion)
+    .INPUT(table, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(table_info, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(em_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(em, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(descriptor, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .REQUIRED_ATTR(last_layer_size, Int)
+    .ATTR(split_count, Int, 1)
+    .ATTR(split_index, Int, 0)
+    .OP_END_FACTORY_REG(TabulateFusion)
+
 /**
 * @brief Calculate ProdForceSeA. \n
 *

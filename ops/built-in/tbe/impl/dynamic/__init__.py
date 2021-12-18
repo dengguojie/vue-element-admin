@@ -376,6 +376,7 @@ from .prod_virial_se_a import prod_virial_se_a
 from .swish import swish
 from .hard_swish import hard_swish
 from .strided_slice_v3 import strided_slice_v3
+from .tabulate_fusion import tabulate_fusion
 from .swish_grad import swish_grad
 from .hard_swish_grad import hard_swish_grad
 from .dynamic_gru_v2 import dynamic_gru_v2
