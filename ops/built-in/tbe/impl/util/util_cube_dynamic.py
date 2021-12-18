@@ -361,7 +361,7 @@ class CubeParaProcess:
         self.dilations = paras.get("dilations")
         self.op_type = None
         self.valid_paras = {
-            "nhw_min": 0,
+            "nhw_min": 1,
             "hw_max": 4096,
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
@@ -424,7 +424,7 @@ class CubeParaProcess:
                 valid_lower, valid_upper = dim_valid_dict.get(dim)
                 if not (isinstance(in_range[0], int) and isinstance(in_range[1], int)):
                     err_man.raise_err_specific_user(self.op_type, "each dimension of range must be int.")
-                if in_range[0] < valid_lower:
+                if not in_range[0] or in_range[0] < valid_lower:
                     err_man.raise_err_attr_range_invalid(
                         self.op_type, [valid_lower, valid_upper], \
                             DIM_TO_NAME[dim] + " of " + name + " in_format " + in_format, in_range[0])
