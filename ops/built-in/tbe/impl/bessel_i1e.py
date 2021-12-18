@@ -158,7 +158,8 @@ def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     before_res = _before_res_compute(abs_data, broad_const_limit)
     after_res = _after_res_compute(abs_data, broad_const_limit)
 
-    if abs_data.dtype == before_res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", abs_data.dtype):
+    if abs_data.dtype == before_res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel",
+                                                                                      abs_data.dtype):
         res = tbe.vcmpsel(abs_data, broad_const_limit, 'lt', before_res, after_res)
     else:
         select_index = tbe.vcmp(abs_data, broad_const_limit, 'lt')

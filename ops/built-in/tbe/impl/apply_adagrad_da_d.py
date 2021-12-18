@@ -35,7 +35,6 @@ class Const:
     NUM_M_ONE = -1.0
 
 
-
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-locals
 # 'pylint: disable=too-many-statements,wrong-import-order,ungrouped-imports

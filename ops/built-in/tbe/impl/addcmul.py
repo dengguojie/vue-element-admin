@@ -30,7 +30,7 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(input_data, x1, x2, value, y, kernel_name="addcmul"):
     """
     op_select_format

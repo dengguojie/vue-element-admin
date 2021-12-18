@@ -192,6 +192,7 @@ class BatchMultiClassNonMaxSuppression:
 
     @staticmethod
     def get_l1_core_idx(core_idx):
+        """ Get l1 core idx """
         if is_vector_core():
             return core_idx
         return 0
@@ -892,7 +893,8 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
                                         16],
                             name="temp_join_ub", scope=tik.scope_ubuf)
     temp_sup_matrix_ub = \
-        tik_instance.Tensor("uint16", [ceil_div(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128],
+        tik_instance.Tensor("uint16", [ceil_div(total_output_proposal_num,
+                                                Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128],
                             name="temp_sup_matrix_ub", scope=tik.scope_ubuf)
     temp_sup_vec_ub = tik_instance.Tensor("uint16", [Constant.BURST_PROPOSAL_NUM],
                                           name="temp_sup_vec_ub", scope=tik.scope_ubuf)
@@ -911,7 +913,8 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
         selected_ceil = tik_instance.Scalar(dtype="uint16")
         selected_ceil.set_as(ceil_div(selected_proposals_cnt, 16))
         # clear temp_sup_vec_ub
-        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
+        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1,
+                                temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
         temp_proposals_ub = ub_max_topk[burst_index * Constant.BURST_PROPOSAL_NUM * 8:]
         # calculate the area of reduced-proposal
         tik_instance.vrpac(temp_area_ub[0], temp_proposals_ub[0], handling_ceil)

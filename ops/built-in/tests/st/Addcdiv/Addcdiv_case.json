@@ -11,9 +11,9 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          16,
-          16,
+          -1,
+          -1,
+          -1,
           1
         ],
         "ori_format": "ND",
@@ -46,7 +46,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "x1",
@@ -67,7 +67,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "x2",
@@ -88,7 +88,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "value",
@@ -114,10 +114,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          16,
-          16,
-          16
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "y",
@@ -163,9 +163,9 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          16,
-          16,
+          -1,
+          -1,
+          -1,
           1
         ],
         "ori_format": "ND",
@@ -198,7 +198,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "x1",
@@ -219,7 +219,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "x2",
@@ -240,7 +240,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          16
+          -1
         ],
         "ori_format": "ND",
         "name": "value",
@@ -266,10 +266,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          16,
-          16,
-          16
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "y",

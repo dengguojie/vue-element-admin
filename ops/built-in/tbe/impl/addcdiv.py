@@ -28,11 +28,10 @@ from te.utils.para_check import KERNEL_NAME
 from te.utils.para_check import check_op_params
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
-SHAPE_SIZE_LIMIT = 2147483648
 
-
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
     """
     op_select_format

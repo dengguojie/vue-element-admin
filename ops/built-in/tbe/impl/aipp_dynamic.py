@@ -638,8 +638,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', 
-                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r', offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     spr[1] = (tmp[0] & 0x1) << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
                 # RGB888_U8

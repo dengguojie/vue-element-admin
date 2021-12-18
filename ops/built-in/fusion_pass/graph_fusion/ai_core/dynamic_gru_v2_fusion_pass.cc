@@ -230,7 +230,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   // create node
   ge::NodePtr split_node = graph.AddNode(gru_split_desc);
   FUSION_PASS_CHECK(split_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splitted node failed, %s.", split_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add split node failed."),
                     return nullptr);
   new_nodes.push_back(split_node);
 
@@ -303,7 +303,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
       // create cast node
       cast_node = graph.AddNode(cast_desc);
       FUSION_PASS_CHECK(cast_node == nullptr,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add cast failed, %s.", cast_node->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add cast node failed."),
                         return nullptr);
       new_nodes.push_back(cast_node);
     }
@@ -336,7 +336,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   // create matmul node
   ge::NodePtr matmul_node = graph.AddNode(matmul_desc);
   FUSION_PASS_CHECK(matmul_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add matmul failed, %s.", matmul_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add matmul node failed."),
                     return nullptr);
   new_nodes.push_back(matmul_node);
 

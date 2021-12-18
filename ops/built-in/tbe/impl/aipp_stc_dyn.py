@@ -473,7 +473,8 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                 dtype="uint64",
             ) as n1:
                 batch_id = batch_factor * block_index + n1
-                param_offset = aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + aipp_comm.Const.DYNC_PARAM_BATCH_STRUCT_SIZE * batch_id
+                param_offset = aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                               aipp_comm.Const.DYNC_PARAM_BATCH_STRUCT_SIZE * batch_id
 
                 # load_start_pos_h
                 load_image_info[0] = tvm.const(0, dtype="uint64")
@@ -590,7 +591,7 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                             + n1 * c1 * out_h * out_w * c0
                             + (out_h - padding_info[1]) * out_w * c0
                         )
-                        _padding_top_bottom(spr, src_image_size, load_image_info, padding_info, top_offset, 
+                        _padding_top_bottom(spr, src_image_size, load_image_info, padding_info, top_offset,
                                             bottom_offset)
 
                         aipp_xt = tbe_platform.get_const(

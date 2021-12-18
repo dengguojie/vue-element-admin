@@ -1818,6 +1818,9 @@ def check_mean(aipp_config, mean_name, mean_value):
 
 
 def check_aipp_dtype(aipp_config, input_dtype, output_dtype):
+    """
+    check aipp dtype
+    """
     if aipp_config.get("input_format") == "NC1HWC0DI_S8":
         if input_dtype != "int8":
             cause_desc = "when input_format is NC1HWC0DI_S8, the input dtype must be int8, " \
@@ -2447,7 +2450,8 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403'):
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get(
+                'Hi3796CV300ES-Hi3796CV300CS-SD3403'):
             cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " + \
                          ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403')) + \
                          ", current input format is %s" % aipp_config.get('input_format')

@@ -31,9 +31,16 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_compute import check_fc_fuse
 
-GENERAL_INPUT_LENGTH = 5
-FC_LENGTH_MIN = 2
-FC_LENGTH_MAX = 4
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    GENERAL_INPUT_LENGTH = 5
+    FC_LENGTH_MIN = 2
+    FC_LENGTH_MAX = 4
+
 
 # 'pylint: disable=too-many-nested-blocks
 def _can_division_sixteen(shape):
@@ -410,7 +417,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input1 = format_list0
         format_list_output = format_list0
         unknownshape_format_list = ["ND"] * len(dtype_total)
-    elif x_flag["5d"] and len(shape_y) == 1 and x_cdim == shape_y[0]:
+    elif x_flag.get("5d") and len(shape_y) == 1 and x_cdim == shape_y[0]:
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * 1
         format_list0 = ["NDC1HWC0"] * len(format_list) + format_nd * len_format_list
@@ -636,21 +643,21 @@ def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=Tr
     else:
         shape_x = shape_util.shape_to_list(input_x.shape)
         shape_y = shape_util.shape_to_list(input_y.shape)
-        fc_fusion_right_flag = len(shape_x) == GENERAL_INPUT_LENGTH and check_fc_fuse(input_y)
-        fc_fusion_left_flag = len(shape_y) == GENERAL_INPUT_LENGTH and check_fc_fuse(input_x)
+        fc_fusion_right_flag = len(shape_x) == Constant.GENERAL_INPUT_LENGTH and check_fc_fuse(input_y)
+        fc_fusion_left_flag = len(shape_y) == Constant.GENERAL_INPUT_LENGTH and check_fc_fuse(input_x)
         if fc_fusion_left_flag or fc_fusion_right_flag:
-            if (len(shape_x) == FC_LENGTH_MIN):
+            if len(shape_x) == Constant.FC_LENGTH_MIN:
                 input_y = tvm.compute(shape_x, lambda x, y:input_y(x % shape_y[0], \
                     (y % (shape_y[1] * shape_y[-1])) // shape_y[-1], 0, 0, \
                     (y % (shape_y[1] * shape_y[-1])) % shape_y[-1]))
-            elif (len(shape_x) == FC_LENGTH_MAX):
+            elif len(shape_x) == Constant.FC_LENGTH_MAX:
                 input_y = tvm.compute(shape_x, lambda x1, y1, y0, x0:input_y(0, x1 % shape_y[1], 0, 0, \
                     x0 % shape_y[-1]))
-            if (len(shape_y) == FC_LENGTH_MIN):
+            if len(shape_y) == Constant.FC_LENGTH_MIN:
                 input_x = tvm.compute(shape_y, lambda x, y:input_x(x % shape_x[0], \
                     (y % (shape_x[1] * shape_x[-1])) // shape_x[-1], 0, 0, \
                     (y % (shape_x[1] * shape_x[-1])) % shape_x[-1]))
-            elif (len(shape_y) == FC_LENGTH_MAX):
+            elif len(shape_y) == Constant.FC_LENGTH_MAX:
                 input_x = tvm.compute(shape_y, lambda x1, y1, y0, x0:input_x(0, x1 % shape_x[1], 0, 0, \
                     x0 % shape_x[-1]))
         else:
@@ -663,7 +670,7 @@ def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=Tr
             shape_x = shape_util.shape_to_list(input_x.shape)
             shape_y = shape_util.shape_to_list(input_y.shape)
             shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                                                    param_name_input2="input_y")
+                                                                      param_name_input2="input_y")
             input_x = tbe.broadcast(input_x, shape_max)
             input_y = tbe.broadcast(input_y, shape_max)
 
@@ -729,8 +736,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
         para_check.check_shape(shape_x, param_name="input_x")
         para_check.check_shape(shape_y, param_name="input_y")
 
-        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                  shape_y,
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                                   param_name_input1="input_x",
                                                                   param_name_input2="input_y")
         if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:

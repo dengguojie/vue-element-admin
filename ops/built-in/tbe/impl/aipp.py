@@ -530,10 +530,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                     output_cb_buf, output_ub_buf = \
                                         aipp_comm.new_alloc(
                                             ib, dtype, half_l1_image_buf_max*c0)
-                                    # ib.scope_attr(output_cb_buf.data,
-                                    # "double_buffer_scope", 1)
-                                    # ib.scope_attr(output_ub_buf.data,
-                                    # "double_buffer_scope", 1)
+                                    # `ib.scope_attr(output_cb_buf.data, "double_buffer_scope", 1)`
+                                    # `ib.scope_attr(output_ub_buf.data, "double_buffer_scope", 1)`
 
                                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0
@@ -638,16 +636,14 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                                     offset=h2*tiling_w*c0),
                                                 0, n_burst, len_burst, 0, 0))
 
-                            #process w tail
+                            # process w tail
                             if w % tiling_w != 0:
                                 with ib.new_scope():
                                     output_cb_buf, output_ub_buf = \
                                         aipp_comm.new_alloc(
                                             ib, dtype, half_l1_image_buf_max*c0)
-                                    # ib.scope_attr(output_cb_buf.data,
-                                    # "double_buffer_scope", 1)
-                                    # ib.scope_attr(output_ub_buf.data,
-                                    # "double_buffer_scope", 1)
+                                    # `ib.scope_attr(output_cb_buf.data, "double_buffer_scope", 1)`
+                                    # `ib.scope_attr(output_ub_buf.data, "double_buffer_scope", 1)`
 
                                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0
@@ -743,10 +739,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
                                     output_cb_buf, output_ub_buf = \
                                         aipp_comm.new_alloc(
                                             ib, dtype, half_l1_image_buf_max*c0)
-                                    # ib.scope_attr(output_cb_buf.data,
-                                    # "double_buffer_scope", 1)
-                                    # ib.scope_attr(output_ub_buf.data,
-                                    # "double_buffer_scope", 1)
+                                    # `ib.scope_attr(output_cb_buf.data, "double_buffer_scope", 1)`
+                                    # `ib.scope_attr(output_ub_buf.data, "double_buffer_scope", 1)`
 
                                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                         spr12 = 0

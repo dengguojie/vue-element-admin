@@ -12,33 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-apply_ada_max
 
-  Op_description :
-    Update '*var' according to the AdaMax algorithm.
-
-    # apply_ada_max_d(var,
-    #   m,
-    #   v,
-    #   beta1_power,
-    #   lr,
-    #   beta1,
-    #   beta2,
-    #   epsilon,
-    #   grad,
-    #   m_out,
-    #   v_out,
-    #   kernel_name='apply_ada_max_d')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
-"""
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -165,8 +139,7 @@ def apply_ada_max_d_compute(var,
         res3 = tbe.cast_to(res3, inp_dtype)
 
     def _compute(*index):
-        return m(*index), v(*index), var(*index),\
-               res1(*index), res2(*index), res3(*index)
+        return m(*index), v(*index), var(*index), res1(*index), res2(*index), res3(*index)
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

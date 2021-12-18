@@ -12,32 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""
-this file achieved the apply_adagrad_d which is a optimizer operator
-to update weight, this file contains compute and schedule.
-
-apply_adagrad_d
-
-  Op_description :
-    Update '*var' according to the Adagrad algorithm.
-
-    # apply_adagrad_d(var,
-    #   accum,
-    #   lr,
-    #   grad,
-    #   var_out,
-    #   accum_out,
-    #   update_slots,
-    #   kernel_name='apply_adagrad_d')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
-"""
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -54,6 +28,7 @@ class Const:
     NUM_ZERO = 0.0
 
 
+# 'pylint: disable=too-many-locals, too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
@@ -130,6 +105,7 @@ def apply_adagrad_d(var,
               "tensor_list": list(inputlist) + list(res)}
 
     tbe.cce_build_code(sch, config)
+
 
 # 'pylint: disable=locally-disabled, too-many-arguments, unused-argument
 # 'pylint: disable=too-many-locals, invalid-name
