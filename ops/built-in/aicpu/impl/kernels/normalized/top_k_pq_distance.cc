@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx,
       order_.c_str(), is_min_heap_, data_batch_);
   k_ = ctx.GetAttr("k")->GetInt();
   KERNEL_CHECK_FALSE((k_ != 0), KERNEL_STATUS_PARAM_INVALID,
-    "k_[%d] should not be equal to zero.", k_);
+      "k_[%d] should not be equal to zero.", k_);
 
   group_size_ = ctx.GetAttr("group_size")->GetInt();
   for (uint32_t i = 0; i < data_batch_; i++) {
@@ -125,7 +125,7 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx,
   }
 
   KERNEL_CHECK_FALSE((input_data.actual_count >= k_), KERNEL_STATUS_PARAM_INVALID,
-    "k_[%d] should not be greater than actual_count[%d].", k_, input_data.actual_count);
+      "k_[%d] should not be greater than actual_count[%d].", k_, input_data.actual_count);
   return KERNEL_STATUS_OK;
 }
 

@@ -37,7 +37,6 @@ uint32_t CpuKernelAllocatorUtils::ParamCheck(
                        "outputResultTensor nullptr");
   KERNEL_CHECK_NULLPTR(data_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "data_ptr nullptr");
-  
   return KERNEL_STATUS_OK;
 }
 

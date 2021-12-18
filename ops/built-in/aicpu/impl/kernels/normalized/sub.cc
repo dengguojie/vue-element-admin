@@ -138,7 +138,7 @@ uint32_t SubCpuKernel::Compute(CpuKernelContext &ctx) {
       break;
     default:
      KERNEL_LOG_ERROR("Unsupported input[x1] data type[%s]",
-                       DTypeStr(input0_data_type).c_str());
+                      DTypeStr(input0_data_type).c_str());
       ret = KERNEL_STATUS_PARAM_INVALID;
   }
   return ret;

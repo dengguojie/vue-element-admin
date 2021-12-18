@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ const char *kTan{"Tan"};
 
 namespace aicpu {
 namespace detail {
-
 template <typename T>
 inline std::uint32_t ComputeTanKernel(const CpuKernelContext &ctx) {
   using i64 = std::int64_t;
@@ -110,7 +109,7 @@ inline std::uint32_t TanExtraCheck(const CpuKernelContext &ctx) {
 
 std::uint32_t TanCheck(CpuKernelContext &ctx, uint32_t inputs_num,
                        uint32_t outputs_num) {
-  return NormalCheck(ctx, kTanInputNum, kTanOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : TanExtraCheck(ctx);
 }

@@ -43,7 +43,7 @@ uint32_t ZerosLikeCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "[%s] check input and output failed.", kZerosLike);
   KERNEL_HANDLE_ERROR(ZerosLikeCheck(ctx), "[%s] check params failed.",
-                        kZerosLike);
+                      kZerosLike);
   auto data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
     ZEROSLIKE_COMPUTE_CASE(DT_BOOL, bool, ctx)
@@ -62,7 +62,7 @@ uint32_t ZerosLikeCpuKernel::Compute(CpuKernelContext &ctx) {
     ZEROSLIKE_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx)
   default:
     KERNEL_LOG_ERROR("ZerosLike kernel data type [%s] not support.",
-                       DTypeStr(data_type).c_str());
+        DTypeStr(data_type).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;

@@ -56,8 +56,8 @@ uint32_t SquaredDifferenceCpuKernel::Compute(CpuKernelContext &ctx) {
     SQUAREDDIFFERENCE_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx)
     default:
       KERNEL_LOG_ERROR(
-                    "SquaredDifference kernel data type [%s] not support.",
-                    DTypeStr(data_type).c_str());
+          "SquaredDifference kernel data type [%s] not support.",
+          DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -96,12 +96,12 @@ uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCheck(CpuKernelContext &ct
 // 4. the shapes of input1 and input2 are different
 template <typename T>
 void SquaredDifferenceCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
-                                   int64_t end, T *input1,
-                                   T *input2, T *output) {
-  switch(type) {
+                                                int64_t end, T *input1,
+                                                T *input2, T *output) {
+  switch (type) {
     case BcastShapeType::SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
-        auto diff =*(input1 + i) - *(input2 + i);
+        auto diff = *(input1 + i) - *(input2 + i);
         *(output + i) = diff * diff;
       }
       break;
@@ -141,7 +141,7 @@ uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
       max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
