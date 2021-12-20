@@ -2691,7 +2691,6 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     None
     """
     # get input_x format
-    axic_is_c = False
     input_format = input_x.get("format")
     ori_shape = input_x.get("ori_shape")
     if input_format == "NC1HWC0":
@@ -2743,6 +2742,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
         return
 
+    axic_is_c = False
     if input_format in ("NC1HWC0", "NDC1HWC0"):
         if not hasattr(axis, 'index'):
             axic_is_c = softmax_axis_check(input_x.get("ori_format"), axis)

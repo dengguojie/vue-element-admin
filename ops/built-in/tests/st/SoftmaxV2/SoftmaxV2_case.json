@@ -474,5 +474,78 @@
       }
     ],
     "case_name": "test_SoftmaxV2_009"
+  },
+  {
+    "op": "SoftmaxV2",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          16,
+          36
+        ],
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          16,
+          16
+        ],
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          -1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_010"
   }
 ]

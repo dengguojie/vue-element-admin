@@ -31,7 +31,7 @@ class Constant:
     """
     The class for constant
     """
-    FP16_MAX = tvm.const(6.5e04, dtype="float16")
+    FP16_MAX = tvm.const(6.0e04, dtype="float16")
     FP32_MAX = tvm.const(3.4e38, dtype="float32")
 
 
@@ -63,28 +63,6 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
-
-
-def update_5hd_axis(origin_format, list_axis, input_format):
-    """
-    update the axis of 5hd format
-    data using for compute and schedule
-    """
-    if hasattr(list_axis, 'index'):
-        list_axis = list_axis[0]
-
-    axis_str = origin_format[list_axis]
-    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
-
-    dict_format_axis = {
-        "N": [0, ],
-        "C": [1 + offset_6hd, 4 + offset_6hd],
-        "H": [2 + offset_6hd, ],
-        "W": [3 + offset_6hd, ],
-        "D": [1, ]
-    }
-
-    return dict_format_axis.get(axis_str)
 
 
 # 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
@@ -207,6 +185,28 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         output = tbe.cast_to(output, "float16")
 
     return output
+
+
+def update_5hd_axis(origin_format, list_axis, input_format):
+    """
+    update the axis of 5hd format
+    data using for compute and schedule
+    """
+    if hasattr(list_axis, 'index'):
+        list_axis = list_axis[0]
+
+    axis_str = origin_format[list_axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": [0, ],
+        "C": [1 + offset_6hd, 4 + offset_6hd],
+        "H": [2 + offset_6hd, ],
+        "W": [3 + offset_6hd, ],
+        "D": [1, ]
+    }
+
+    return dict_format_axis.get(axis_str)
 
 
 # 'pylint:disable=invalid-name,too-many-locals
