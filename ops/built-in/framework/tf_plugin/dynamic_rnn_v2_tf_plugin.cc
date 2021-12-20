@@ -40,25 +40,8 @@ constexpr int32_t index_three = 3;
 constexpr int32_t index_four = 4;
 
 Status ParseParamsDynamicRNN(const Message *op_src, ge::Operator &op_dest) {
-  // Set original_type
-  op_dest.SetAttr("original_type", "DynamicRnnV2");
-  return SUCCESS;
-}
-
-static Status ParseOpToGraphDynamicRNN(const ge::Operator &op, ge::Graph &graph) {
-  ge::Operator data_0 = op::Data("x").set_attr_index(index_zero);
-  ge::Operator data_1 = op::Data("w").set_attr_index(index_one);
-  ge::Operator data_2 = op::Data("b").set_attr_index(index_two);
-  ge::Operator data_3 = op::Data("init_h").set_attr_index(index_three);
-  ge::Operator data_4 = op::Data("init_c").set_attr_index(index_four);
-
-  auto rnn = op::DynamicRNN().set_input_x(data_0).set_input_w(data_1).set_input_b(data_2)
-                 .set_input_init_h(data_3).set_input_init_c(data_4);
-
-  std::vector<ge::Operator> inputs{data_0, data_1, data_2, data_3, data_4};
-  std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
-  output_indexs.emplace_back(rnn, vector<std::size_t>{0, 1, 2, 3, 4, 5, 6, 7});
-  graph.SetInputs(inputs).SetOutputs(output_indexs);
+  AutoMappingFn(op_src, op_dest);
+  op_dest.SetAttr("is_misplaced", true);
   return SUCCESS;
 }
 
@@ -66,6 +49,5 @@ REGISTER_CUSTOM_OP("DynamicRNN")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("DynamicRnnV2")
     .ParseParamsFn(ParseParamsDynamicRNN)
-    .ParseOpToGraphFn(ParseOpToGraphDynamicRNN)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

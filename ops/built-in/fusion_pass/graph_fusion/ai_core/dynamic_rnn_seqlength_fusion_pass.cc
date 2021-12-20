@@ -40,6 +40,8 @@ namespace fe {
 static const char *FUSED_NODE = "DynamicRNN";
 static const std::string PATTERN_FUSEDNODE = "DynamicRNN";
 static const int SEQ_LEN_INDEX = 3;
+static const int INIT_H_LEN_INDEX = 4;
+static const int INIT_C_LEN_INDEX = 5;
 
 vector<FusionPattern *> DynamicRNNSeqFusionPass::DefinePatterns()
 {
@@ -169,6 +171,52 @@ Status DynamicRNNSeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
 
   // get the OpDescPtr of LSTM
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+
+  bool is_misplaced = false;
+  ge::AttrUtils::GetBool(fusedDesc, "is_misplaced", is_misplaced);
+
+  if (is_misplaced) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "dynamic_rnn init_h and init_c is misplaced to seq and init_h.");
+
+    // Get input desc. Input init_h and init_c is misplaced. The real init_h is seq_len, init_c is init_h.
+    ge::GeTensorDesc init_h_desc = *fusedDesc->MutableInputDesc("seq_length");
+    ge::GeTensorDesc init_c_desc = *fusedDesc->MutableInputDesc("init_h");
+
+    // Clear seq_length and init_h desc, set real desc to init_h and init_c.
+    FUSION_PASS_CHECK(!ge::OpDescUtils::ClearInputDesc(fusedDesc, INIT_H_LEN_INDEX),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's clear init_h input failed.",
+              fusedDesc->GetName().c_str()),
+      return PARAM_INVALID);
+    FUSION_PASS_CHECK(!ge::OpDescUtils::ClearInputDesc(fusedDesc, SEQ_LEN_INDEX),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's clear seq_length input failed.",
+              fusedDesc->GetName().c_str()),
+      return PARAM_INVALID);
+    fusedDesc->AddInputDesc("init_h", init_h_desc);
+    fusedDesc->AddInputDesc("init_c", init_c_desc);
+
+    // Delete init_h edge and add edge to init_c
+    auto InithOutAnchor = fusedNode->GetInDataAnchor(INIT_H_LEN_INDEX)->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::RemoveEdge(InithOutAnchor,
+                                            fusedNode->GetInDataAnchor(INIT_H_LEN_INDEX)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and data failed"), return FAILED);
+    FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(InithOutAnchor,
+                                         fusedNode->GetInDataAnchor(INIT_C_LEN_INDEX)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
+
+    // Delete seq_length edge and add edge to init_h
+    auto SeqOutAnchor = fusedNode->GetInDataAnchor(SEQ_LEN_INDEX)->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::RemoveEdge(SeqOutAnchor,
+                                            fusedNode->GetInDataAnchor(SEQ_LEN_INDEX)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and data failed"), return FAILED);
+    FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(SeqOutAnchor,
+                                         fusedNode->GetInDataAnchor(INIT_H_LEN_INDEX)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
+  }
+
   FUSION_PASS_CHECK(fusedNode == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
