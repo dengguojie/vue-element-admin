@@ -46,10 +46,17 @@ def abs_compute(x, y, kernel_name="abs"):
     """
     inp_dtype = x.dtype
     if not tbe_platform.api_check_support("tbe.dsl.vabs", inp_dtype):
-        x = tbe.cast_to(x, "float16")
+        if not tbe_platform.api_check_support("tbe.dsl.cast_to", "s322f32"):
+            x = tbe.cast_to(x, "float16")
+        else:
+            x = tbe.cast_to(x, "float32")
     res = tbe.vabs(x)
     if inp_dtype == "int32":
-        res = tbe.round(res)
+        if not tbe_platform.api_check_support("tbe.dsl.round", "float32"):
+            res = tbe.cast_to(res, "float16")
+            res = tbe.round(res)
+        else:
+            res = tbe.round(res)
     if not tbe_platform.api_check_support("tbe.dsl.vabs", inp_dtype):
         res = tbe.cast_to(res, inp_dtype)
     return res

@@ -256,5 +256,45 @@
     ],
     "attr": [],
     "case_name": "test_Abs_005"
+  },
+  {
+    "op": "Abs",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "shape_range": [[1,3]],
+        "data_distribute": "uniform",
+        "typical_shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "value_range": [[0, 1]],
+        "name": "x",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Abs_006"
   }
 ]
