@@ -28,54 +28,19 @@ from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
-# 'pylint: disable=unnecessary-comprehension
-def get_op_support_info(input_x,
-                        input_y,
-                        input_z,
-                        output_x,
-                        output_y,
-                        kernel_name="fused_mul_addn_l2loss"):
-    """
-    get fusedMulAddnL2loss slice info
-    """
-    format_x = input_x.get("format")
-    shape_x = input_x.get("shape")
-    support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
-    reduce_add = 1  # enumerated value
-    if format_x in support_format:
-        axis_reduce_list = []
-        axis_split_list = []
-        for idx, _ in enumerate(shape_x):
-            split_info = [SplitInput([0, [idx], [-1], [-1]], [1, [idx], [-1], [-1]]),
-                          SplitOutput([0, [idx]])]
-            reduce_info = [ReduceInput([0, [idx]]),
-                           ReduceOutput([1, reduce_add, True])]
-            axis_split_list.append(split_info)
-            axis_reduce_list.append(reduce_info)
-    else:
-        axis_split_list = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
-
-    return op_cal_info_in_json
-
-
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_addn_l2loss")
-def fused_mul_addn_l2loss_compute(weight, const_input, weight_grad):
+def fused_mul_addn_l2loss_compute(weight, weight_grad, const_input):
     """
     calculating data
 
     Parameters
     ----------
     weight : TVM tensor
-        the placeholder of input_x
-    const_input : TVM tensor
-        the placeholder of input_x
+        the placeholder of weight
     weight_grad : TVM tensor
-        the placeholder of input_y
-    kernel_name : str
-        kernel name, default value is "fused_mul_addn_l2loss"
+        the placeholder of weight_grad
+    const_input : TVM tensor
+        the placeholder of const_input
 
     Returns
     -------
@@ -172,7 +137,7 @@ def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_
     weight_grad = tvm.placeholder(fused_y_shape, name="weight_grad", dtype=dtype_y)
     const_input = tvm.placeholder(fused_z_shape, name="const_input", dtype=dtype_z)
 
-    res1, res2 = fused_mul_addn_l2loss_compute(weight, const_input, weight_grad)
+    res1, res2 = fused_mul_addn_l2loss_compute(weight, weight_grad, const_input)
     res_list = [res1, res2]
     with tvm.target.cce():
         sch = tbe.auto_schedule(res_list)

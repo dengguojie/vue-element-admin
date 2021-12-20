@@ -44,18 +44,9 @@ case3 = {"params": [{"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRA
          "format_expect": [],
          "support_expect": True}
 
-def test_get_op_support_info(test_arg):
-    from impl.fused_mul_addn_l2_loss import get_op_support_info
-    get_op_support_info({"shape": (20, 28, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
-                        {"shape": (20, 28, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
-                        {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
-                        {"shape": (20, 28, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
-                        {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"})
-    
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 precision_case1 = {"params": [{"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4), "param_type":"input"},
                               {"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4),"param_type":"input"},
