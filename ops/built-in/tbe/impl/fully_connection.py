@@ -307,6 +307,7 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
             "dst_dtype": out_type,
             "tensor_c": b,
             "format_out": out_format,
+            "fc_flag": True,
             "offset_a": offset_x,
             "offset_b": offset_w,
             "kernel_name": kernel_name

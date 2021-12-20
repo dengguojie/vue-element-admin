@@ -229,6 +229,7 @@ class GEMMCompute(FormatCompute):
         self.mmad_mode = "gemm"
         self.quantize_params = para_dict.get("quantize_params")
         self.format_out = para_dict.get("format_out")
+        self.fc_flag = para_dict.get("fc_flag", False)
         self.need_reformat_to_nd = False
         self.compress_index = para_dict.get("compress_index")
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -649,6 +650,7 @@ class GEMMCompute(FormatCompute):
         attrs_dict = {
             "shape": res.shape,
             "format": self.format_out,
+            "fc_flag": self.fc_flag,
             "is_gemm_new": True
         }
         batch_dims = self._get_batch_dims(self.para_dict)

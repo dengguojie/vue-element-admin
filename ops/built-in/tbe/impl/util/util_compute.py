@@ -67,7 +67,7 @@ def check_fc_fuse(input_tensor):
     queue = [input_tensor]
     while queue:
         item = queue.pop(0)
-        if "matmul" not in item.op.tag:
+        if "matmul" not in item.op.tag or ("fc_flag" in item.op.attrs and item.op.attrs["fc_flag"].value == 0):
             continue
         # the min dim size of fc is 2
         fc_fuse_min_dim_flag = len(item.shape) == 2 and item.op.attrs["format"] == "ND"
