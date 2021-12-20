@@ -232,8 +232,11 @@ class OpFileAiCore(OPFile):
             param_type = parsed_info[name][ConstManager.INFO_PARAM_TYPE_KEY]
             # format, the default format is 'ND'
             if ConstManager.INFO_PARAM_FORMAT_KEY in parsed_info[name]:
-                op_format = ",".join(
-                    parsed_info[name][ConstManager.INFO_PARAM_FORMAT_KEY])
+                if len(parsed_info[name].get(ConstManager.INFO_PARAM_FORMAT_KEY)) == 1:
+                    completion_format = parsed_info[name].get(ConstManager.INFO_PARAM_FORMAT_KEY)[0]
+                    op_format = ",".join(completion_format for _ in ini_types.split(','))
+                else:
+                    op_format = ",".join(parsed_info[name][ConstManager.INFO_PARAM_FORMAT_KEY])
             else:
                 op_format = ",".join("ND" for _ in ini_types.split(','))
             new_str += template_string.format(index=index,
