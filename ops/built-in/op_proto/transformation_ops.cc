@@ -632,7 +632,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   if (!block_done) {
     if (input_dims[0] != -1) {
       block_done = true;
-      block_shape.push_back(1);
+      block_shape.resize(block_size_max, 1);
       block_shape_min.clear();
       block_shape_max.clear();
       for (auto i = 0; i < block_size_max; i++) {
@@ -641,7 +641,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
       }
     } else if (input_dims[0] == -1 && input_range[0].second != -1) {
       block_done = true;
-      block_shape.push_back(1);
+      block_shape.resize(block_size_max, 1);
       block_shape_min.clear();
       block_shape_max.clear();
       for (auto i = 0; i < block_size_max; i++) {
