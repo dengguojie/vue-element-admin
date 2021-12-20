@@ -193,7 +193,7 @@ def test_deconvolution_fuzz_build_generalization_general(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
-        'deconvolution_fuzz_build_generalization_general']
+        'deconvolution_fuzz_build_generalization_general', {"mode": "keep_rank"}]
     deconvolution_generalization(*input_list)
 
 
@@ -218,7 +218,7 @@ def test_deconvolution_fuzz_build_generalization_range_max_fixed(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
-        'deconvolution_fuzz_build_generalization_range_max_fixed']
+        'deconvolution_fuzz_build_generalization_range_max_fixed', {"mode": "keep_rank"}]
     deconvolution_generalization(*input_list)
 
 

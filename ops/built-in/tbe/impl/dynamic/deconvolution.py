@@ -14,8 +14,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.util_cube_dynamic import DeconvolutionParaProcess
+from impl.util.util_cube_dynamic import check_graph_mode
 from impl.util.util_cube_dynamic import set_default_para
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import error_manager_cube
@@ -118,6 +118,21 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
     ----------
     same to deconvolution
 
+    groups: int
+            param for group deconvolution
+
+    data_format: str
+            An optional string from: "NCHW". Defaults to "NCHW".
+            Specify the data format of the input and output data.
+
+    offset_x: int
+        offset of gradients in quant mode. Default to 0.
+
+    kernel_name: str
+            kernel name, default value is "deconvolution"
+
+    generalize_config: generalization mode, string.
+
     Returns
     -------
     list of params list:
@@ -129,29 +144,32 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
                                                    "invalid generalize mode {}, only support {}".format(
                                                        str(generalize_config["mode"]), str(support_mode)))
     result = []
+    is_graph_mode = check_graph_mode(x)
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank x ori_shape is [-2], others' shape length is 4
         unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
         if unknow_rank:
             error_manager_cube.raise_err_specific_user(OP_TYPE, "not support unknow_rank under mode {}".format(
                 generalize_config["mode"]))
-        have_range = {"x": x, "y": y}
+        have_range_infor = {"x": x, "y": y}
         support_format = ["NCHW", "NHWC"]
-        for name, tensor in have_range.items():
-            if tensor.get("ori_format") not in support_format:
+        for name, tensor_infor in have_range_infor.items():
+            if tensor_infor.get("ori_format") not in support_format:
                 error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                            "invalid {} ori_format {}, only support {}".format(
-                                                               name, str(tensor.get("ori_format")),
+                                                               name, str(tensor_infor.get("ori_format")),
                                                                str(support_format)))
             # only change shape NHW dim to -1, range is already set at infershape
-            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+            valid = isinstance(tensor_infor.get("ori_shape"), (list, tuple)) and \
+            len(tensor_infor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
                 error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                            "invalid {} ori_shape {}, only support {}d".format(
-                                                               name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+                                                               name, str(tensor_infor.get("ori_shape")),
+                                                               str(ORI_SHAPE_LEN)))
         # if over l1 size then modify w range
         strides_4d = [1, 1, strides[0], strides[1]]
-        x = gen_conv_shape_range(x, OP_TYPE)
+        x = gen_conv_shape_range(x, OP_TYPE, is_graph_mode)
         is_pass_check, dedy_modify = modify_dy_w_range_max_opti(x, filter, strides_4d, data_format, OP_TYPE)
         if not is_pass_check:
             return dedy_modify
@@ -176,25 +194,25 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
             "strides": strides_4d, "pads": pads, "dilations": dilations, "data_format": data_format,
             "offset_x": 0, "kernel_name": kernel_name
         }
-        deconvolution = DeconvolutionParaProcess(ori_paras)
-        dy_shape_nchw = deconvolution.get_input_nchw(x.get("ori_shape"), x.get("ori_format"))
-        filter_shape_nchw = deconvolution.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
-        _, dy_range_nchw = deconvolution.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
+        deconvolution_para = DeconvolutionParaProcess(ori_paras)
+        dy_shape_nchw = deconvolution_para.get_input_nchw(x.get("ori_shape"), x.get("ori_format"))
+        filter_shape_nchw = deconvolution_para.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
+        _, dy_range_nchw = deconvolution_para.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
         dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
         if is_single_point:
             dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
         else:
             dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if x["ori_shape"][x.get("ori_format").find("W")] > dy_range_nchw[3][1]:
-            err_man.raise_err_specific_user(OP_TYPE,
+            error_manager_cube.raise_err_specific_user(OP_TYPE,
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
                                                 str(x.get("ori_shape")), dy_range_nchw[3][1]))
-        _, _, new_dy_range = deconvolution.get_input_range(filter_shape_nchw, dy_range_nchw)
+        _, _, new_dy_range = deconvolution_para.get_input_range(filter_shape_nchw, dy_range_nchw)
         x["ori_range"] = list(x["ori_range"])
         x["ori_range"][x.get("ori_format").find("H")] = new_dy_range[2]
         x["ori_range"][x.get("ori_format").find("W")] = new_dy_range[3]
 
-        for name, tensor in have_range.items():
+        for name, tensor in have_range_infor.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]

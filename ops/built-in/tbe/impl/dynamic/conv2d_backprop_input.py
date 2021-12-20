@@ -12,9 +12,7 @@ from impl.util import fusion_util
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from impl.util.util_conv2d import transform_shape_with_format
-from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
@@ -42,6 +40,7 @@ MAX_N_FUZZ_BUILD = 2**31 - 1
 MAX_HW_FUZZ_BUILD = 4096
 LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
 UPPER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
+
 
 def get_op_support_info(input_size, filter, out_backprop, y, strides,
                         pads, dilations=(1, 1, 1, 1), groups=1,
@@ -123,13 +122,16 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
     ----------
     same to conv2d_backprop_input
 
+    generalize_config: generalization mode, string.
+
     Returns
     -------
     list of params list:
         single item under "keep_rank" mode and multiple under "all_shape"
     """
     support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
         return
     result = []
     is_graph_mode = check_graph_mode(out_backprop)
@@ -143,38 +145,32 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         return dedy_modify
     out_backprop = dedy_modify
     # if over l1 size then modify w range
-    upper_range_result = modify_w_range_max(y,
-                                            filter,
-                                            out_backprop,
-                                            strides,
-                                            data_format,
-                                            OP_TYPE,
-                                            is_graph_mode)
+    upper_range_result = modify_w_range_max(y, filter, out_backprop, strides, data_format, OP_TYPE, is_graph_mode)
     dy_h_range_max = upper_range_result.get("dedy_h_max")
     dy_w_range_max = upper_range_result.get("w_max")
     is_single_point = upper_range_result.get("is_single_point")
     graph_l1_invalid = is_graph_mode and upper_range_result.get("is_exceed_l1")
     single_l1_invalid = not is_graph_mode and upper_range_result.get("is_exceed_l1")
+    a = ''
     if graph_l1_invalid:
-        return UPPER_STR
-    elif single_l1_invalid:
-        return LOWER_STR
+        a = UPPER_STR
+    if single_l1_invalid:
+        a = LOWER_STR
+    if a:
+        return a
     if not is_graph_mode:
         # get dx_range depends on dy_range
-        dy_range = out_backprop.get("ori_range")
         ori_data_format = out_backprop.get("ori_format")
         out_backprop_shape = out_backprop.get("ori_shape")
         y_data_format = y.get("ori_format")
         y_shape = y.get("ori_shape")
-        stride_h = strides[data_format.find("H")]
-        stride_w = strides[data_format.find("W")]
         y_shape_h = y_shape[y_data_format.find("H")]
         y_shape_w = y_shape[y_data_format.find("W")]
         out_backprop_shape_h = out_backprop_shape[ori_data_format.find("H")]
         out_backprop_shape_w = out_backprop_shape[ori_data_format.find("W")]
         pads_new = pads
-        set_pads = out_backprop_shape_h == ceil_div(y_shape_h, stride_h) and \
-                out_backprop_shape_w == ceil_div(y_shape_w, stride_w)
+        set_pads = out_backprop_shape_h == ceil_div(y_shape_h, strides[data_format.find("H")]) and \
+                   out_backprop_shape_w == ceil_div(y_shape_w, strides[data_format.find("W")])
         if set_pads:
             pads_new = [-1, -1, -1, -1]
         ori_paras = {
@@ -186,7 +182,7 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         conv2d_tranpose.get_attr_nchw(data_format)
         dy_shape_nchw = conv2d_tranpose.get_input_nchw(out_backprop.get("ori_shape"), out_backprop.get("ori_format"))
         filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
-        _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
+        _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, out_backprop.get("ori_range"))
         dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
         dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if is_single_point:
@@ -201,7 +197,7 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
         have_range = {"inputs": out_backprop, "outputs": y}
-        for name, tensor in have_range.items():
+        for _, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]
@@ -209,7 +205,7 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         input_size["const_value"] = None
         input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
                                                                       dx_range_nchw, DATA_FORMAT_WHITE_LIST)
-    result.append([input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads },
+    result.append([input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads},
                    {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}])
     return result
 

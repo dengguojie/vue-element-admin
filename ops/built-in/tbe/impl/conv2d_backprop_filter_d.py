@@ -16,7 +16,6 @@
 conv2d_backprop_filter_d
 """
 from impl.util import util_select_op_base
-from impl.util import util_deconv_comm
 from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
@@ -113,6 +112,7 @@ def _cal_min_l1space(
     strides: tuple/list of 2 integers
     dilations: tuple/list of 4 integers
     pads: tuple/list of 4 integers or string
+    dtype: str.
 
     Returns
     -------
@@ -372,40 +372,35 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
     """
 
     def _check_inputs_rules():
+        dict_args = dict()
         if (not isinstance(ori_shape_out_backprop, (tuple, list))) or len(
             ori_shape_out_backprop
         ) != 4:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "out_backprop"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
         if (not isinstance(ori_shape_x, (tuple, list))) or len(ori_shape_x) != 4:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "x"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
         if (not isinstance(ori_shape_res, (tuple, list))) or len(ori_shape_res) != 4:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "y"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
         if len(strides) != 2:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "strides"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
         if len(filter_size) != 4:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "filter_size"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
         if len(dilations) != 4:
-            dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "dilations"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
@@ -854,35 +849,31 @@ def check_conv2dbp_filter_params(
         pads = pad_up, pad_down, pad_left, pad_right
 
     def _check_axis_hw():
+        dict_args = dict()
         if fmap_batch != dedy_batch:
-            dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "x's N"
             dict_args["param2"] = "out_backprop's N"
             dict_args["actual_value"] = "{}, {}".format(fmap_batch, dedy_batch)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if dedy_channel != filter_batch:
-            dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "out_backprop's C"
             dict_args["param2"] = "Filter's N"
             dict_args["actual_value"] = "{}, {}".format(dedy_channel, filter_batch)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if fmap_channel != filter_channel * groups:
-            dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "x's C"
             dict_args["param2"] = "y's C"
             dict_args["actual_value"] = "{}, {}".format(fmap_channel, filter_channel)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if filter_w_dilation > fmap_w_padding:
-            dict_args = dict()
             dict_args["errCode"] = "E60015"
             dict_args["w_of_x"] = str(fmap_w_padding)
             dict_args["w_of_filter"] = str(filter_w_dilation)
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if filter_h_dilation > fmap_h_padding:
-            dict_args = dict()
             dict_args["errCode"] = "E60014"
             dict_args["h_of_x"] = str(fmap_h_padding)
             dict_args["h_of_filter"] = str(filter_h_dilation)
@@ -892,11 +883,9 @@ def check_conv2dbp_filter_params(
         if (
             (fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1
         ) != dedy_w:
-            dict_args = {}
             dict_args["errCode"] = "E60025"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
         if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
-            dict_args = {}
             dict_args["errCode"] = "E60024"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 
@@ -1087,16 +1076,74 @@ def conv2d_backprop_filter_compute(
     data_format="NHWC",
     kernel_name="conv2d_backprop_filter"
 ):
+    """
+    used for fusion
+    Parameters
+    ----------
+    x: Tensor
+        input tensor.
+
+    out_backprop: Tensor
+        conv2d output gradients tenosr.
+
+    y: dict with keys(shape and dtype)
+        conv2d_backprop_filter output tensor, dtype must be assigned.
+
+    filter_size: tuple/list of 4 integers
+        The shape of feature map. 4-D with shape [batch, height, width, channels]
+        or [batch, channels, height, filter].
+
+    strides: tuple/list of 4 integers
+        filter move stride.
+
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right].
+
+    dilations: tuple/list of 4 integers
+        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
+
+    groups: int
+        param for group conv2d_backprop_filter. Default to 1.
+
+    data_format: str
+        input data format. Specify the data format of the input and output data.
+        Default to "NHWC".
+
+    kernel_name: str
+        kernel name. Default to "conv2d_backprop_filter".
+
+    Returns
+    -------
+    Tensor of conv2d_backprop_filter
+    """
     def _calc_input_and_out_shape(origin_format_x,
                                   origin_shape_x,
                                   origin_format_res,
                                   origin_shape_res):
+        """
+        calculate the range of input and output
+
+        Parameters
+        
+        -----------
+        origin_format_x: string, the format of x.
+
+        origin_shape_x: tuple/list of 4 integers.
+
+        origin_format_res: string, the format of res.
+
+        origin_shape_res: tuple/list of 4 integers.
+
+        Returns
+        -------
+        the shape of x and res.
+        """
         if origin_format_x == "NHWC":
             x_shape = (origin_shape_x[0], origin_shape_x[3], origin_shape_x[1], origin_shape_x[2])
         elif origin_format_x == "NCHW":
             x_shape = origin_shape_x
         else:
-            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "x", 
+            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "x",
                                                               "[NCHW, NHWC]", origin_format_x)
         if origin_format_res == "NCHW":
             shape_res = origin_shape_res
@@ -1115,7 +1162,7 @@ def conv2d_backprop_filter_compute(
                 origin_shape_res[1]
             )
         else:
-            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "y", 
+            error_manager_cube.raise_err_input_format_invalid("Conv2dBackpropFilterD", "y",
                                                             "[NCHW, NHWC, HWCN]", origin_format_res)
         return x_shape, shape_res
 
@@ -1133,8 +1180,6 @@ def conv2d_backprop_filter_compute(
         h_index = data_format.find("H")
         w_index = data_format.find("W")
         strides = [strides[h_index], strides[w_index]]
-    if data_format == "NCHW":
-        dilations = dilations
     elif data_format == "NHWC":
         dilations = (dilations[0], dilations[3], dilations[1], dilations[2])
 

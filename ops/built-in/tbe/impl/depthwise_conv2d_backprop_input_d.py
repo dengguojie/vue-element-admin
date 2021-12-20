@@ -16,16 +16,11 @@
 Depthwise conv2D backprop input for the computation of
 gradients of depthwise convolution with respect to the input.
 """
-from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe_build
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
-from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
 import te.lang.cce as tbe
-from te import tvm
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -110,7 +105,7 @@ def _check_data_format(data_format, expect_format_list):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
+def _check_stride(strides, dim_s_n, dim_s_c):
     """
     check stride type and dim
     """
@@ -124,7 +119,7 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
 
 
 # 'pylint: disable=locally-disabled, too-many-arguments
-def _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c, dim_w_c, dim_w_k):
+def _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c):
     """
     check input and filter shape is valid
     """
@@ -290,8 +285,6 @@ def depthwise_conv2d_backprop_input_d(filter,
     dim_d_n, dim_d_c, dim_d_h, dim_d_w = 0, 1, 2, 3
     # index of the out_backprop dimension
     dim_n, dim_c, _, _ = 0, 1, 2, 3
-    # index of the filter dimension
-    _, _, dim_w_c, dim_w_k = 0, 1, 2, 3
 
     if input_ori_format == 'NHWC':
         dim_s_n, dim_s_h, dim_s_w, dim_s_c = 0, 1, 2, 3
@@ -313,9 +306,9 @@ def depthwise_conv2d_backprop_input_d(filter,
     para_check.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM, param_name="strides")
     para_check.check_shape(dilations, min_rank=DILATIONS_DIM, max_rank=DILATIONS_DIM, param_name="dilations")
 
-    _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c)
+    _check_stride(strides, dim_s_n, dim_s_c)
     _check_dilations(dilations, dim_d_n, dim_d_c)
-    _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c, dim_w_c, dim_w_k)
+    _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c)
     # check pad parameter
     _check_pad(pads)
 

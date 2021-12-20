@@ -342,6 +342,9 @@ class Dbn2Conv2dBackpropFilter:
         self.tik_instance.vmuls(mask, batch_mean_ub, batch_mean_ub, -1, repeat_times,
                                 1, 1, dma_stride, dma_stride)
 
+    def _align(self, a, b):
+        return (a + b -1) // b * b
+
     def _cal_dbn_fm_fun(self, loop_m, loop_k, mn_context, split_dict, block_idx):
         sn_loop = split_dict.get("cal_M") // self.block
         cal_hw = split_dict.get("cal_hw")
@@ -355,9 +358,9 @@ class Dbn2Conv2dBackpropFilter:
         one_repeat = 64
         mask = 64
         block_fp32 = 8
-        dbn_dy_shape1 = (1, sn_loop, (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32,
-                         self.block)
-        src_stride = (split_dict.get("cal_hw") + block_fp32 - 1) // block_fp32 * block_fp32 - cal_hw
+        cal_hw_align = self._align(split_dict.get("cal_hw"), block_fp32)
+        dbn_dy_shape1 = (1, sn_loop, cal_hw_align, self.block)
+        src_stride = cal_hw_align - cal_hw
         pub_dy_temp1 = self.tik_instance.Tensor("float16", dbn_dy_shape1, name="pub_dy_temp1", scope=tik.scope_ubuf)
         with self.tik_instance.for_range(0, sn_loop, thread_num=min(2, sn_loop)) as loop_sn:
             diff_scale_ub = mn_context.get("diff_scale_ub")
@@ -464,7 +467,22 @@ class Dbn2Conv2dBackpropFilter:
             self.tik_instance.mmad(dw_l0c_addr, dedy_l0a0, fmap_l0b0, cal_m, cal_hw, cal_n, 1)
 
     def _ub_mpp_fun(self, loop_n, loop_m, split_dict, mn_context, n_loop):
-        """copy data from cc to gm"""
+        """
+        copy data from cc to gm
+
+        Parameters
+        ------------
+
+        loop_n: value of loop_N.
+
+        loop_m: value of loop_M.
+
+        split_dict: dict, split information.
+
+        mn_context: dict.
+
+        n_loop: value of CUB_N.
+        """
         cal_m = split_dict.get("cal_M")
         dw_l0c = mn_context.get("dw_l0C")
         dw_cub = mn_context.get("dw_cub")
@@ -550,7 +568,6 @@ class Dbn2Conv2dBackpropFilter:
         cal_n = split_dict.get("cal_N")
         cal_hw = split_dict.get("cal_hw")
         cal_m = split_dict.get("cal_M")
-        k_loop = split_dict.get("loop_K")
         fmap_l0b0 = mn_context.get("fmap_l0B0")
         dw_l0c = mn_context.get("dw_l0C")
         dedy_l0a0 = mn_context.get("dedy_l0A0")
@@ -578,7 +595,7 @@ class Dbn2Conv2dBackpropFilter:
                 fmap_h.set_as(fmap_l1_h - padu)
                 left_top_h.set_as(-padu)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(loop_k == k_loop - 1):
+                with self.tik_instance.if_scope(loop_k == split_dict.get("loop_K") - 1):
                     pad_u.set_as(0)
                     pad_d.set_as(padd)
                     fmap_h.set_as(fmap_l1_h - padd)
@@ -789,7 +806,7 @@ class Dbn2Conv2dBackpropFilter:
         with self.tik_instance.for_range(0, cub_n) as loop_n:
             self._ub_mpp_fun(loop_n, 0, split_dict, mn_context, cub_n)
 
-    def _mov_fmap2L1(self, loop_k, mn_context, split_dict, batch_dim):
+    def _mov_fmap2l1(self, loop_k, mn_context, split_dict, batch_dim):
         cal_hw = split_dict.get("cal_hw")
         k_loop = split_dict.get("loop_K")
         dedy_w = self.shape_4d_dedy[3]
@@ -821,7 +838,24 @@ class Dbn2Conv2dBackpropFilter:
                                             src_stride_hdim * fmap_w, 0)
         mn_context["fmap_l1"] = fmap_l1
 
+
     def _outer_loop_mpp_fun_big_xy(self, mn_context, split_dict, block_idx):
+        """
+        outer_loop_mpp_fun_big_xy.
+
+        Parameters
+
+        --------------
+        mn_context: dict.
+
+        split_dict: dict, infor of split.
+
+        block_idx: block informatioin.
+
+        Returns
+        -------
+        split result.
+        """
         cal_hw = split_dict.get("cal_hw")
         m_loop = split_dict.get("loop_M")
         n_loop = split_dict.get("loop_N")
@@ -857,7 +891,7 @@ class Dbn2Conv2dBackpropFilter:
                     mn_context["dedy_l0A0"] = dedy_l0a0
                     self._cal_dbn_fm_fun(loop_m, loop_k, mn_context, split_dict, batch_dim)
                     if k_loop != 1:
-                        self._mov_fmap2L1(loop_k, mn_context, split_dict, batch_dim)
+                        self._mov_fmap2l1(loop_k, mn_context, split_dict, batch_dim)
                     else:
                         mn_context["fmap_l1"] = l1_fmap[loop_batch, 0, 0, 0]
                     with self.tik_instance.for_range(0, n_loop, thread_num=min(n_loop, 2)) as loop_n:
@@ -867,6 +901,7 @@ class Dbn2Conv2dBackpropFilter:
                         self._loopk_mpp_big_x(loop_k, loop_n, mn_context, split_dict, loop_batch)
             with self.tik_instance.for_range(0, cub_n) as loop_n:
                 self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_n)
+
 
     def dbn2_dw_compute(self):
         """

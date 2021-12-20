@@ -176,8 +176,8 @@ def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
     if format_out_backprop == "NC1HWC0":
         axis_split_matrix = [
             # cut N
-            [ util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
-              util_select_op_base.SplitOutput([0, [0]])],
+            [util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [0]])],
             # cut H
             [util_select_op_base.SplitInput([1, [2], [head_overlap_h], [tail_overlap_h]]),
              util_select_op_base.SplitOutput([0, [2]])],
@@ -360,7 +360,6 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
     filter_h_dilation = (filter_h - 1) * dilations[2] + 1
     filter_w_dilation = (filter_w - 1) * dilations[3] + 1
     fmap_h_padding = fmap_h + pad_up + pad_down
-    fmap_w_padding = fmap_w + pad_left + pad_right
     inout_w_max = INOUT_W_MAX
     if fmap_h_padding == 1 and filter_h_dilation == 1 and strides[0] == 1:
         inout_w_max = CONV1D_W_MAX
@@ -780,7 +779,7 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     group_dict: The params of group_dict.
 
-    impl_mode: calculate mode
+    impl_mode: calculate mode.
 
     Returns: None
     ----------
@@ -814,7 +813,7 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     ) = res
 
     dedy_batch, dedy_channel, dedy_h, dedy_w = shape_out_backprop
-    filter_batch, filter_channel, filter_h, filter_w = shape_filter
+    _, _, filter_h, filter_w = shape_filter
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]["mac"]
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
@@ -829,7 +828,6 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     g_extend = group_dict.get(util_deconv_comm.GroupDictKeys.g_extend)
     dx_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dx_c1_extend)
     dy_c1_extend = group_dict.get(util_deconv_comm.GroupDictKeys.dy_c1_extend)
-    groups = group_dict.get(util_deconv_comm.GroupDictKeys.groups)
 
     if filter_dtype == "int8" and out_backprop_dtype == "int8":
         shape_filter_frac = (

@@ -29,7 +29,7 @@ from impl.util.platform_adapter import tbe
 
 # 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
 # 'pylint: disable=simplifiable-if-statement,no-else-return
-CORE_NUM_THRITY_TWO = 32
+
 
 def _prod(input_shape):
     """
@@ -554,7 +554,8 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
         if not transpose_first:
             seq_length = [128, 128, 224, 256]
             batch_size = [1, 60, 30, 30]
-            if tbe_platform_info.get_soc_spec("CORE_NUM") == CORE_NUM_THRITY_TWO:
+            support_core_num = [32,]
+            if tbe_platform_info.get_soc_spec("CORE_NUM") == support_core_num:
                 seq_length = seq_length + [160, 192, 224, 256]
                 batch_size = batch_size + [1] * 4
             supported_shape = [[batch, seq] for batch, seq in zip(batch_size, seq_length)]

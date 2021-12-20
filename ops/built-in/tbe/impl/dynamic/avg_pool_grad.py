@@ -17,7 +17,6 @@ avg_pool_grad
 """
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
@@ -26,7 +25,6 @@ from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
 from impl.util.util_cube_dynamic import modify_w_range_max
-from tbe.common.register import register_param_generalization
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -59,7 +57,7 @@ def _check_range(range_str, range_in):
                                                    "the range of " + range_str + " should >= 1")
     if range_in[1] is not None and range_in[1] < range_in[0]:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
-                                                   "in the range of " + range_str + 
+                                                   "in the range of " + range_str +
                                                    ", the upper limit is not less than the lower limit")
 
 
@@ -72,11 +70,11 @@ def _check_shape(check_shape, expect_shape, shape_str):
 
 def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                             padding, data_format, kernel_name):
-    if data_format not in("NCHW", "NHWC"):
+    if data_format not in ("NCHW", "NHWC"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
         "data_format", "NCHW/NHWC", data_format)
     shape_k = list(kernel_matrix.get('ori_shape'))
-    if kernel_matrix.get('ori_format') not in("NCHW", "NHWC", "HWCN"):
+    if kernel_matrix.get('ori_format') not in ("NCHW", "NHWC", "HWCN"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "kernel_matrix's ori_format",
                                                                "NCHW/NHWC/HWCN", kernel_matrix.get('ori_format'))
     dim_k_n = kernel_matrix.get('ori_format').index("N")
@@ -115,16 +113,16 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
         input_grad_range = input_grad.get('range')
         input_grad_shape = input_grad.get('shape')
         if data_format == "NCHW":
-            input_grad['ori_shape'] = [input_grad_ori_shape[0], channel_out, 
+            input_grad['ori_shape'] = [input_grad_ori_shape[0], channel_out,
                                            input_grad_ori_shape[2], input_grad_ori_shape[3]]
-            input_grad['range'] = [input_grad_range[0], (channel_out, channel_out), 
+            input_grad['range'] = [input_grad_range[0], (channel_out, channel_out),
                                        input_grad_range[2], input_grad_range[3]]
         else:
-            input_grad['ori_shape'] = [input_grad_ori_shape[0], input_grad_ori_shape[1], 
+            input_grad['ori_shape'] = [input_grad_ori_shape[0], input_grad_ori_shape[1],
                                            input_grad_ori_shape[2], channel_out]
-            input_grad['range'] = [input_grad_range[0], input_grad_range[1], 
+            input_grad['range'] = [input_grad_range[0], input_grad_range[1],
                                        input_grad_range[2], (channel_out, channel_out)]
-        input_grad['shape'] = [input_grad_shape[0], (channel_out + BLOCK_SIZE - 1) // BLOCK_SIZE, 
+        input_grad['shape'] = [input_grad_shape[0], (channel_out + BLOCK_SIZE - 1) // BLOCK_SIZE,
                                input_grad_shape[2], input_grad_shape[3], BLOCK_SIZE]
         out_grad_ori_shape = out_grad.get('ori_shape')
         out_grad_range = out_grad.get('range')
@@ -135,9 +133,9 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
             out_grad['range'] = [out_grad_range[x_n_idx], (channel_out, channel_out),
                                     out_grad_range[x_h_idx], out_grad_range[x_w_idx]]
         else:
-            out_grad['ori_shape'] = [out_grad_ori_shape[x_n_idx], out_grad_ori_shape[x_h_idx], 
+            out_grad['ori_shape'] = [out_grad_ori_shape[x_n_idx], out_grad_ori_shape[x_h_idx],
                                         out_grad_ori_shape[x_w_idx], channel_out]
-            out_grad['range'] = [out_grad_range[x_n_idx], out_grad_range[x_h_idx], 
+            out_grad['range'] = [out_grad_range[x_n_idx], out_grad_range[x_h_idx],
                                  out_grad_range[x_w_idx], (channel_out, channel_out)]
         out_grad['shape'] = [out_grad_shape[0], (channel_out + BLOCK_SIZE - 1) // BLOCK_SIZE,
                              out_grad_shape[2], out_grad_shape[3], BLOCK_SIZE]
@@ -168,30 +166,30 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
         ksize_h = ksize[2]
         ksize_w = ksize[3]
     else:
-        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", 
+        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
                                                                "input_grad", "NCHW/NHWC", input_grad_ori_format)
-    
+
     if input_grad_ori_format != data_format:
-        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "the ori_format of input_grad must be equal with data_format")
-    
+
     if padding not in ("SAME", "VALID"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
         "padding", "SAME/VALID", padding)
-    
+
     if stride_h < 1 or stride_w < 1:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "the H and W dimensions of strides should >= 1")
     if stride_n != 1 or stride_c != 1:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "the N and C dimensions of strides should == 1")
-                           
+
     shape_dx = list(out_grad.get('ori_shape'))
     shape_dy = list(input_grad.get('ori_shape'))
     _check_shape(shape_dx, SHAPE_SIZE, "out_grad's ori_shape")
     _check_shape(shape_dy, SHAPE_SIZE, "input_grad's ori_shape")
     _check_shape(shape_k, SHAPE_SIZE, "kernel_matrix's ori_shape")
-    if out_grad.get('ori_format') not in("NCHW", "NHWC"):
+    if out_grad.get('ori_format') not in ("NCHW", "NHWC"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "out_grad's ori_format",
                                                                "NCHW/NHWC", out_grad.get('ori_format'))
     # dynamic_mode h, w = range_max h, w
@@ -199,7 +197,7 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     k_w = shape_k[dim_k_w]
     y_w = shape_dy[y_w_idx]
     if shape_dy[y_n_idx] != -1 and shape_dy[y_h_idx] != -1 and shape_dy[y_w_idx] != -1:
-        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "no dynamic shape found in input")
     if shape_dx[x_h_idx] == -1:
         _check_range("out_grad_h", out_grad.get('range')[x_h_idx])
@@ -222,13 +220,13 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     if shape_dx[x_n_idx] == -1:
         _check_range("out_grad_n", out_grad.get('range')[x_n_idx])
     if shape_dx[x_n_idx] != shape_dy[y_n_idx] or shape_dx[x_c_idx] != shape_dy[y_c_idx]:
-        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "input must be equal with out on N-dim and C-dim")
     if shape_dx[x_c_idx] != shape_k[dim_k_n]:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "N-dim of kernel must be equal with dx on C-dim")
     if shape_k[dim_k_c] != 1:
-        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "the c_shape of kernel should be 1")
     if k_h > 255 or k_w > 255:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
@@ -242,8 +240,8 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     aub_filling_size_min = w_value * BLOCK_SIZE * 2
     cub_size_min = BLOCK_SIZE * BLOCK_SIZE * 2
     ub_size = tbe_platform.get_soc_spec("UB_SIZE")
-    if ((stride_h == 1 and stride_w == 1 and (aub_size_min * UB_FUSED_OP_NUM + cub_size_min) > ub_size) or 
-        ((stride_h > 1 or stride_w > 1) and 
+    if ((stride_h == 1 and stride_w == 1 and (aub_size_min * UB_FUSED_OP_NUM + cub_size_min) > ub_size) or
+        ((stride_h > 1 or stride_w > 1) and
          (aub_size_min * UB_FUSED_OP_NUM + aub_filling_size_min + cub_size_min) > ub_size)):
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
                                                    "UB's memory space must be enough to support minimum block")
@@ -251,6 +249,20 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
 
 
 def _check_dynamic_range(grad_range):
+    """
+    check dynamic range
+
+    Parameters
+
+    ---------
+    grad_range: dict, range information.
+
+    Return
+
+    --------
+    grad_res: range of grad_range.
+    """
+
     grad_range_new = []
     if grad_range.get('range') is not None:
         for i in range(len(grad_range.get('range'))):
@@ -288,12 +300,12 @@ def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
     }
 
     default_para = set_default_para()
-    
+
     if not input_size.get("ori_shape"):
         ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
-        
+
     conv2dbp_para = Conv2dBackpropParaProcess(ori_paras)
-    
+
     paras = conv2dbp_para.config_paras()
 
     dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
@@ -326,7 +338,7 @@ def correct_fuzzy_build_range(input_grad, strides, data_format):
     ------
     the proper range are not smaller than shape value
     """
-    if (data_format != "NHWC") and (data_format != "NCHW"):
+    if data_format not in ('NHWC', 'NCHW'):
         error_manager_cube.raise_err_input_params_not_expected("avg_pool_grad",
                                                                "data_format",
                                                                "NHWC/NCHW",
@@ -381,7 +393,7 @@ def avg_pool_grad_generalization(orig_input_shape,
                                  padding,
                                  data_format='NHWC',
                                  kernel_name="cce_avg_pool_grad_dilation",
-                                 generalize_config={"mode": "keep_rank"}):
+                                 generalize_config=None):
     """
     computes average pooling backwards gradients.
 
@@ -421,6 +433,10 @@ def avg_pool_grad_generalization(orig_input_shape,
     params list
     """
     result = []
+    support_mode = ["keep_rank"]
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
+        return
     # unknow_rank inputs ori_shape is [-2], normal shape length is 4
     unknow_rank = len(input_grad["ori_shape"]) == 1 and input_grad["ori_shape"][0] == -2
     if unknow_rank:
@@ -428,12 +444,15 @@ def avg_pool_grad_generalization(orig_input_shape,
             generalize_config["mode"]))
     correct_fuzzy_build_range(input_grad, strides, data_format)
     # if over l1 size then modify dy h/w range
-    dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(out_grad,
-                                                                         kernel_matrix,
-                                                                         input_grad,
-                                                                         strides,
-                                                                         data_format,
-                                                                         "AvgPoolGrad")
+    upper_range_result = modify_w_range_max(out_grad,
+                                            kernel_matrix,
+                                            input_grad,
+                                            strides,
+                                            data_format,
+                                            "AvgPoolGrad")
+    dy_h_range_max = upper_range_result.get("dedy_h_max")
+    dy_w_range_max = upper_range_result.get("w_max")
+    is_single_point = upper_range_result.get("is_single_point")
 
     # get dx_range depends on dy_range
     dy_range = input_grad["range"]
@@ -442,21 +461,9 @@ def avg_pool_grad_generalization(orig_input_shape,
     groups = input_grad["ori_shape"][pos_c]
     pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
     ori_paras = {
-        "input_size": orig_input_shape,
-        "x": input_grad,
-        "filters": kernel_matrix,
-        "bias": None,
-        "offset_w": None,
-        "y": out_grad,
-        "strides": strides,
-        "pads": pads,
-        "dilations": (1, 1, 1, 1),
-        "groups": groups,
-        "data_format": data_format,
-        "output_padding": (0, 0, 0, 0),
-        "offset_x": 0,
-        "kernel_name": kernel_name
-    }
+        "input_size": orig_input_shape, "x": input_grad, "filters": kernel_matrix, "bias": None, "offset_w": None,
+        "y": out_grad, "strides": strides, "pads": pads, "dilations": (1, 1, 1, 1), "groups": groups,
+        "data_format": data_format, "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name}
     conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
     conv2d_tranpose.get_attr_nchw(data_format)
     filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
@@ -473,11 +480,8 @@ def avg_pool_grad_generalization(orig_input_shape,
                                                    .format(str(input_grad.get("shape")), dy_range_nchw[3][1]))
 
     dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-    out_grad["range"] = [dx_range_nchw[0],
-                         [out_grad["shape"][1], out_grad["shape"][1]],
-                         dx_range_nchw[2],
-                         dx_range_nchw[3],
-                         [out_grad["shape"][4], out_grad["shape"][4]]]
+    out_grad["range"] = [dx_range_nchw[0], [out_grad["shape"][1], out_grad["shape"][1]], dx_range_nchw[2],
+                         dx_range_nchw[3], [out_grad["shape"][4], out_grad["shape"][4]]]
 
     input_grad["range"] = list(input_grad["range"])
     input_grad["ori_range"] = list(input_grad["ori_range"])
@@ -487,26 +491,19 @@ def avg_pool_grad_generalization(orig_input_shape,
     input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[3]
 
     have_range = {"input_grad": input_grad, "out_grad": out_grad}
-    for name, tensor in have_range.items():
+    for _, tensor in have_range.items():
         tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
             else [-1, -1, -1, tensor["ori_shape"][3]]
         tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
 
-    result.append([orig_input_shape,
-                   input_grad,
-                   kernel_matrix,
-                   out_grad,
-                   ksize,
-                   strides,
-                   padding,
-                   data_format,
-                   kernel_name])
+    result.append([orig_input_shape, input_grad, kernel_matrix, out_grad, ksize, strides,
+                   padding, data_format, kernel_name])
     return result
 
 
 @tbe_register.register_operator("AvgPoolGrad")
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
-                             (tuple, list), (tuple, list, str), str, str)    
+                             (tuple, list), (tuple, list, str), str, str)   
 def avg_pool_grad(orig_input_shape,
                   input_grad,
                   kernel_matrix,
@@ -556,7 +553,7 @@ def avg_pool_grad(orig_input_shape,
 
     stride_h, stride_w, input_c = _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                                                           padding, data_format, kernel_name)
-    
+
     if kernel_matrix is not None:
         dilations = (1, 1, 1, 1)
         if data_format == "NCHW":
@@ -580,4 +577,3 @@ def avg_pool_grad(orig_input_shape,
         tbe.build(sch, config)
     else:
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "filter", "dict", "None")
-    

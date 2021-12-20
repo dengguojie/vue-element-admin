@@ -17,6 +17,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
+from impl.util.util_cube_dynamic import check_graph_mode
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
 from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
@@ -121,7 +122,50 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
 
     Parameters
     ----------
-    same to conv2d_transpose
+    input_size: dict, will not be used
+            input tensor size.
+
+    x: dict with keys(ori_shape, ori_format, dtype)
+        The shape of gradients.
+
+    filter: dict with keys(ori_shape, ori_format, dtype)
+            convolution kernel
+
+    bias: dict with keys(shape and dtype)
+        The shape of bias.
+
+    offset_w: dict with keys(shape and dtype) or None
+        Input offset_w tensor.
+
+    y: dict with keys(ori_shape, ori_format, dtype and range)
+       conv2d_transpose output tensor
+
+    strides: tuple/list of 4 integers
+             filter move stride
+
+    pads: tuple/list of 4 integers
+          str: "SAME" or "VALID"
+          tuple/list of 4 integers: [pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: tuple/list of 4 integers
+               filter expand size of dilated conv2d_transpose
+    groups: int
+            param for group conv2d_transpose
+
+    data_format: str
+            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+            Specify the data format of the input and output data.
+
+    output_padding: tuple/list of 4 integers
+        The size will be added in the output shape. Default to (0, 0, 0, 0).
+
+    offset_x: int
+        offset of gradients in quant mode. Default to 0.
+
+    kernel_name: str
+            kernel name, default value is "conv2d_transpose"
+
+    generalize_config: dict, generaliazation mode.
 
     Returns
     -------
@@ -129,10 +173,12 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
         single item under "keep_rank" mode and multiple under "all_shape"
     """
     support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
         err_man.raise_err_specific_user(OP_TYPE, "invalid generalize mode {}, only support {}".format(
             str(generalize_config["mode"]), str(support_mode)))
     result = []
+    is_graph_mode = check_graph_mode(x)
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
@@ -152,7 +198,7 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                 err_man.raise_err_specific_user(OP_TYPE,
                                                 "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-        x = gen_conv_shape_range(x, OP_TYPE)
+        x = gen_conv_shape_range(x, OP_TYPE, is_graph_mode)
         is_pass_check, dedy_modify = modify_dy_w_range_max_opti(x, filter, strides, data_format, OP_TYPE)
         if not is_pass_check:
             return dedy_modify

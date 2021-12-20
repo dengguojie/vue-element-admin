@@ -165,7 +165,7 @@ def check_supported(x,
     the h and w of filter or dilations must be in [1, 255]
     the h and w of strides must be in [1, 63]
     the n and c of dilations must be 1
-    the h and w must meet: 
+    the h and w must meet:
        hi - (hk - 1)*dk + 1 + padh // strideh = ho
        wi - (wk - 1)*wk + 1 + padw // stridew = wo
     """
@@ -743,7 +743,7 @@ def _conv2d_transpose_cce(
     ) = res
 
     dedy_batch, dedy_channel, dedy_h, dedy_w = shape_x
-    filter_batch, filter_channel, filter_h, filter_w = shape_filter
+    _, _, filter_h, filter_w = shape_filter
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[x_dtype]["mac"]
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filter_dtype]["mac"]

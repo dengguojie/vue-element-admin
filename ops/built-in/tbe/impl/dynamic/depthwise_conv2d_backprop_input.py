@@ -10,13 +10,13 @@ from __future__ import absolute_import
 
 from impl.util.util_conv2d import transform_shape_with_format
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import DepthwiseConv2dBackpropParaProcess
+from impl.util.util_cube_dynamic import check_graph_mode
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
@@ -39,7 +39,7 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
                                                    filter, out_backprop, input_grad, strides,
                                                    dilations=(1, 1, 1, 1), pads=(0, 0, 0, 0), data_format="NHWC",
                                                    kernel_name="depthwise_conv2d_backprop_input",
-                                                   generalize_config={"mode": "keep_rank"}):
+                                                   generalize_config=None):
     """
     depthwise conv2d backprop input generalization
 
@@ -62,6 +62,11 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
         single item under "keep_rank" mode and multiple under "all_shape"
     """
     result = []
+    support_mode = ["keep_rank"]
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
+        return
+    is_graph_mode = check_graph_mode(out_backprop)
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(out_backprop["ori_shape"]) == 1 and out_backprop["ori_shape"][0] == -2
@@ -79,9 +84,7 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
             if not valid:
                 err_man.raise_err_specific_user(OP_TYPE, "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-        if "const_value" not in input_size:
-            err_man.raise_err_specific_user(OP_TYPE, "invalid input_size tensor, need keyword:const_value.")
-        out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE)
+        out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE, is_graph_mode)
         is_pass_check, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format, OP_TYPE)
         if not is_pass_check:
             return dedy_modify
@@ -122,16 +125,15 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
                                                 str(out_backprop.get("shape")), dy_range_nchw[3][1]))
         dx_range_nchw, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-        input_size_nchw = transform_shape_with_format(input_size['ori_format'], TAR_FORMAT, input_size["const_value"],
-                                                      DATA_FORMAT_WHITE_LIST)
-        dx_range_nchw[1] = [input_size_nchw[1], input_size_nchw[1]]
+        dx_c = input_grad.get("ori_shape")[input_grad.get("ori_format").find("C")]
+        dx_range_nchw[1] = [dx_c, dx_c]
         out_backprop["ori_range"] = list(out_backprop["ori_range"])
         out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
         input_size["const_value"] = None
         input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
                                                                       dx_range_nchw, DATA_FORMAT_WHITE_LIST)
-        for name, tensor in have_range.items():
+        for _, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]

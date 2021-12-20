@@ -23,7 +23,6 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_build
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.dsl.compute.cube_util import shape_to_list
 
 
 # the dim of shape in conv_backprop must be 4
@@ -761,7 +760,7 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
     ) = res
 
     dedy_batch, dedy_channel, dedy_h, dedy_w = shape_x
-    filter_batch, filter_channel, filter_h, filter_w = shape_filter
+    _, _, filter_h, filter_w = shape_filter
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[x_dtype]["mac"]
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filter_dtype]["mac"]

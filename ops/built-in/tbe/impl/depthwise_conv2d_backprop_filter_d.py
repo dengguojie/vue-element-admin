@@ -18,13 +18,9 @@ depthwise_conv2d_backprop_filter_d
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe_build
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
-from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_filter_d_schedule
 import te.lang.cce as tbe
-from te import tvm
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -59,9 +55,8 @@ def _ceil(x_size):
 
 def _check_shape(fmap_shape, dout_shape, filter_shape):
     """Check input shape."""
-    fmap_n, fmap_c, _, _ = fmap_shape
-    dout_n, dout_c, _, _ = dout_shape
-    _, _, filter_c, filter_n = filter_shape
+    fmap_n, _, _, _ = fmap_shape
+    dout_n, _, _, _ = dout_shape
 
     if fmap_n != dout_n:
         dict_args = {

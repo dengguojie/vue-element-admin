@@ -185,7 +185,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_general(test_
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_input_fuzz_build_generalization_general']
+        'depthwise_conv2d_backprop_input_fuzz_build_generalization_general', {"mode": "keep_rank"}]
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
@@ -220,7 +220,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed']
+        'depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed', {"mode": "keep_rank"}]
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
@@ -255,7 +255,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_f
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 4, 1), (1, 1, 1, 1), (6, 7, 4, 5), 'NCHW',
-        'depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed']
+        'depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed', {"mode": "keep_rank"}]
     depthwise_conv2d_backprop_input_generalization(*input_list)
 
 
@@ -325,7 +325,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two(test_arg)
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two']
+        'test_depthwise_conv2d_backprop_input_fuzz_build_no_support_neg_two', {"mode": "keep_rank"}]
     try:
         depthwise_conv2d_backprop_input_generalization(*input_list)
     except RuntimeError:
@@ -360,7 +360,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error']
+        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_format_error', {"mode": "keep_rank"}]
     try:
         depthwise_conv2d_backprop_input_generalization(*input_list)
     except RuntimeError:
@@ -395,7 +395,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error']
+        'test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error', {"mode": "keep_rank"}]
     try:
         depthwise_conv2d_backprop_input_generalization(*input_list)
     except RuntimeError:
@@ -430,7 +430,7 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_shape_error(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_input_fuzz_build_shape_error']
+        'test_depthwise_conv2d_backprop_input_fuzz_build_shape_error', {"mode": "keep_rank"}]
     try:
         depthwise_conv2d_backprop_input_generalization(*input_list)
     except RuntimeError:

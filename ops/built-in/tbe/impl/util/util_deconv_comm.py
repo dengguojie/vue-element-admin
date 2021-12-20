@@ -169,7 +169,7 @@ def exchange_filter_nc_axis(ori_format_filters, ori_shape_filters, groups):
             "reason": "batch of weight % groups must be 0",
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-    shape_filters[0], shape_filters[1] = ( shape_filters[0] * groups, shape_filters[1] // groups)
+    shape_filters[0], shape_filters[1] = (shape_filters[0] * groups, shape_filters[1] // groups)
     return shape_filters
 
 
@@ -808,10 +808,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
 
     # Third : value check, Mainly required by the convolution rule
-    if DYNAMIC_FLAG not in shape_out_backprop and ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
-        err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_h not match dedy_h")
-    if DYNAMIC_FLAG not in shape_out_backprop and ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
-        err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_w not match dedy_w")
+    if DYNAMIC_FLAG not in shape_out_backprop and \
+       ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
+        err_man_cube.raise_err_specific_user("conv2d_backprop_input", 
+                                             "fmap_h not match dedy_h")
+    if DYNAMIC_FLAG not in shape_out_backprop and \
+       ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
+        err_man_cube.raise_err_specific_user("conv2d_backprop_input", 
+                                             "fmap_w not match dedy_w")
 
     # Forth : L1 limitation, Mainly required by chip
     _check_l1_size_limit()
