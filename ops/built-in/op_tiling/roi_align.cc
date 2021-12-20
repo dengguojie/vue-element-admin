@@ -140,7 +140,6 @@ bool ROIAlignTiling(const std::string& opType, const ge::Operator& opParas, cons
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse op_info failed."), return false);
   int64_t core_num = op_info[0];
-  int64_t ub_size = op_info[1];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   bool flag = true;
