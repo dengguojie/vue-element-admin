@@ -53,7 +53,7 @@ std::string to_string(const ge::Format& format) {
   return ge::TypeUtils::FormatToSerialString(format);
 }
 
-int64_t GetTensorNum(const GeShape& shape) {
+int64_t GetTensorSize(const GeShape& shape) {
   int64_t shapeNum = 1;
   if (!shape.IsScalar()) {
     shapeNum = shape.GetShapeSize();

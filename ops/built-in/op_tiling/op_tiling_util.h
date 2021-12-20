@@ -131,7 +131,7 @@ inline void ScalarToShape(std::vector<int64_t>& shape) {
  * @param [in] shape: tensor shape
  * @return : int64
  */
-int64_t GetTensorNum(const GeShape& shape);
+int64_t GetTensorSize(const GeShape& shape);
 
 template <typename T>
 string to_string(const ByteBuffer& tiling_data) {
