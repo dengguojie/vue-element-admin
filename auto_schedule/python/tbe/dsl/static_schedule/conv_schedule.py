@@ -25,6 +25,7 @@ from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
 from tbe.dsl.compute.conv_compute import is_support_v220
 from tbe.dsl.compute.conv_compute import remove_suffix_num_for_name
+from tbe.dsl.compute.conv_compute import shape_to_list
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_schedule_v2 import conv_v220_schedule
@@ -36,6 +37,7 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.common.utils import log
 from tbe.tvm.buffer_manager import get_buffer_manager
 
 # tiling check
@@ -743,6 +745,7 @@ class CceConvOp:
         self._l0a_dma_flag = False
         self._dynamic_flag = False
         self._flag_dict = {}
+        self._channel_wise_optim_list = []
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
                                           'deq_vector': False,
@@ -3425,8 +3428,12 @@ class CceConvOp:
                 if _checkout_input_ops_compute_at(lop):
                     continue
                 if "cache_buffer" in lop:
-                    self._schedule[lop["cache_buffer"]].compute_at(
-                        self._schedule[self._compute_at_buffer[0]], self._compute_at_axis[0])
+                    if ("dst_buffer" in lop) and (lop["dst_buffer"].op.name in self._channel_wise_optim_list):
+                        self._schedule[lop["cache_buffer"]].compute_at(
+                            self._schedule[self._compute_at_buffer[0]], bido)
+                    else:
+                        self._schedule[lop["cache_buffer"]].compute_at(
+                            self._schedule[self._compute_at_buffer[0]], self._compute_at_axis[0])
 
         def _conv_pooling_optm():
             """
@@ -3975,6 +3982,82 @@ class CceConvOp:
                         biasrelu_optim_flag = True
 
             return biasrelu_optim_flag
+
+        def _cal_channel_wise_input_optim_list(tiling):
+            """
+            calculate channel wise input full load list.
+            """
+            def is_channel_wise(shape):
+                """
+                check whether input is channel wise.
+                """
+                if len(shape) == 4 and [shape[0], shape[2]] == [1, 1] and \
+                    shape[1]*shape[3] == ConvParam.dim_map["weight_align_nchw_shape"][0]:
+                    return True
+                return False
+
+            def get_elewise_mul_node(lop):
+                """
+                get channel wise mul op and shape.
+                """
+
+                if "dst_buffer" in lop and "next_op" in lop and len(lop["next_op"]) and \
+                    "next_op" in lop["next_op"][0] and len(lop["next_op"][0]["next_op"]):
+                    mul_shape = shape_to_list(lop["dst_buffer"].shape)
+                    input_next_op = lop["next_op"][0]["next_op"][0]
+                    if (input_next_op["op"] == "elewise_binary_mul") and is_channel_wise(mul_shape):
+                        return input_next_op, mul_shape
+                return [], []
+
+            def is_mul_in_prelu(mul_op):
+                """
+                check whether mul op is from prelu.
+                prelu:
+                            vmins
+                            /
+                    vmaxs  vmul
+                      |   /
+                      vadd
+                """
+                if not ("next_op" in mul_op) or not len(mul_op["next_op"]) or \
+                    not ("prev_op" in mul_op) or not len(mul_op["prev_op"]) or \
+                    not ("prev_op" in mul_op["next_op"][0]) or (len(mul_op["next_op"][0]["prev_op"]) != 2):
+                    return False
+
+                if mul_op["next_op"][0]["op"] != "elewise_binary_add" or \
+                    mul_op["prev_op"][0]["op"] != "elewise_single_VS_min":
+                    log.debug("mul next op is:%s mul pre op is:%s",
+                              mul_op["next_op"][0]["op"], mul_op["prev_op"][0]["op"])
+                    return False
+
+                if mul_op["next_op"][0]["prev_op"][0]["op"] != "elewise_single_VS_max" and \
+                    mul_op["next_op"][0]["prev_op"][1]["op"] != "elewise_single_VS_max":
+                    log.debug("add compute has no input from maxs")
+                    return False
+
+                return True
+
+            def check_channel_wise_full_load(tiling, channel_wise_shape):
+                """
+                check whether mul op input can full load.
+                """
+                cl0_matrix = tiling["CL0_matrix"]
+                cl0_size = 1
+                for cl0_val in cl0_matrix:
+                    cl0_size *= cl0_val
+                channel_wise_size = channel_wise_shape[1]*channel_wise_shape[3]
+                if cl0_size > channel_wise_size:
+                    return True
+                log.debug("[%s]check full load failed cl0_size:%s channel_wise_size:%s",
+                          ConvParam.kernel_name, cl0_size, channel_wise_size)
+                return False
+
+            for lop in self._op_graph.input_ops:
+                mul_op, mul_shape = get_elewise_mul_node(lop)
+                if len(mul_shape):
+                    log.debug("[%s]get mul success mul_shape:%s", ConvParam.kernel_name, mul_shape)
+                    if is_mul_in_prelu(mul_op) and check_channel_wise_full_load(tiling, mul_shape):
+                        self._channel_wise_optim_list.append(lop["dst_buffer"].op.name)
 
         def handle_res_c_reorder():
             """
@@ -4737,6 +4820,7 @@ class CceConvOp:
             cube_m, al1_facter_pooling = _tiling_of_pooling()
 
         _handle_inner_batch_flag()
+        _cal_channel_wise_input_optim_list(tiling)
 
         filter_matrix = list(dim_map["filter_matrix_dim"])
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
