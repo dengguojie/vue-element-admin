@@ -250,7 +250,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
             c0_optim_flg = False
 
-        if get_soc_spec("SOC_VERSION") == "Ascend920":
+        if util_conv2d.is_support_v220():
             return util_conv2d.v220_gen_param(inputs, weights, shape_fm, c0_optim_flg)
 
         if c0_optim_flg:
@@ -572,9 +572,9 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
         tensor_list.append(weight)
         bias_tensor = None
-        if get_soc_spec("SOC_VERSION") == "Ascend920":
+        if util_conv2d.is_support_v220():
             ori_co1 = weight_ori_shape_nchw[1]
-            bias_shape = (1, ori_co1 // 16, 1, 1, 16)
+            bias_shape = (1, (ori_co1 + 15) // 16, 1, 1, 16)
             bias_dtype = "int32" if in_dtype in ("int4", "int8") else "float32"
         else:
             bias_shape = (cout_ori * groups,)

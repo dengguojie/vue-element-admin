@@ -15,7 +15,6 @@
 """
 fixpipe process for conv2d fusion
 """
-
 from tbe import tvm
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
 from impl.fixpipe_op.fixpipe_util import *
@@ -41,7 +40,7 @@ class FixpipeConv2d(FixpipeBase):
         if self.x1.op.name == "res_fp32_conv2d":
             # skip tensor res_fp32_conv2d, always get tensor res_conv2d as input tensor
             self.x1 = self.x1.op.input_tensors[0]
-        
+
     def _get_input_dtype(self):
         """
         get fixpipe op input dtype (result type of mad1)
@@ -72,26 +71,28 @@ class FixpipeConv2d(FixpipeBase):
             res_reform = tvm.compute(self.output_shape,
                                      lambda n, hw, c: res(n, c // self.input_shape[-1],
                                                           hw, c % self.input_shape[-1]),
-                                     name=FIXPIPE_REFORM_TAG,
+                                     name="fixpipe_nz2nd",
                                      tag=FIXPIPE_REFORM_TAG,
                                      attrs=self.attrs)
-            
             return res_reform
-        
+
         if self._is_channel_merge() or self._is_channel_split():
+            name = "fixpipe_channel_merge"
+            if self._is_channel_split():
+                name = "fixpipe_channel_split"
             res_reform = tvm.compute(self.output_shape,
                                      lambda n, c1, hw, c0:
                                      res(n, (c1 * self.output_shape[-1] + c0) // self.input_shape[-1],
                                          hw,
                                          (c1 * self.output_shape[-1] + c0) % self.input_shape[-1]),
-                                     name=FIXPIPE_REFORM_TAG,
+                                     name=name,
                                      tag=FIXPIPE_REFORM_TAG,
                                      attrs=self.attrs)
             return res_reform
-        
+
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
-                                 name=FIXPIPE_REFORM_TAG,
+                                 name="fixpipe_reform_default",
                                  tag=FIXPIPE_REFORM_TAG,
                                  attrs=self.attrs)
         return res_reform

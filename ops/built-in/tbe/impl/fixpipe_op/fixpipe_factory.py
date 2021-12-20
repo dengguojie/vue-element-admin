@@ -25,10 +25,9 @@ FIXPIPE_OP_SUPPORT_MAP = {
     "matmul": FixpipeMatmul,
 }
 
-
 class FixpipeFactory:
     """
-    
+    FixpipeFactory
     """
     @staticmethod
     def get_fixpipe(op_type: str, x: Tensor, x1: (Tensor, None), quant_scale_0: (Tensor, None),
@@ -43,8 +42,8 @@ class FixpipeFactory:
             raise RuntimeError("[{}] not support fixpipe fusion".format(op_type))
         else:
             fixpipe_cube = FIXPIPE_OP_SUPPORT_MAP[op_type]
+
         fixpipe = fixpipe_cube(op_type, x, x1, quant_scale_0, relu_weight_0, clip_value_0,
                                quant_scale_1, relu_weight_1, clip_value_1, anti_quant_scale,
                                anti_quant_offset, output, fusion_op_list, unit_list, eltwise_mode)
-
         return fixpipe

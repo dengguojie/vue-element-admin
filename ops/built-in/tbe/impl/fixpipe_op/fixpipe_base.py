@@ -15,7 +15,6 @@
 """
 fixpipe base functions
 """
-
 from typing import List
 from tbe import tvm
 from tbe.tvm.tensor import Tensor
@@ -171,7 +170,7 @@ class FixpipeBase(object):
         get post_eltwise for op_dict
         """
         if self.x2 is None:
-            if self.eltwise_mode != "None":
+            if self.eltwise_mode != "":
                 raise RuntimeError("eltwise_mode should be SUB or ADD when x1 is not None")
 
             return ""

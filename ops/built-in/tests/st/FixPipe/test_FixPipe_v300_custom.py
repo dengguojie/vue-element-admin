@@ -54,7 +54,6 @@ vals = {("CORE_NUM", ): 1,
 def side_effects(*args):
     return vals[args]
 
-
 v300_case = [
     # generate .o
     # dataflow,
@@ -127,7 +126,7 @@ def create_quant_scale_1(dataflow, shape, quant_scale, quant_offset):
                                         name='quant_scale_1',
                                         dtype='uint64',
                                         attrs={'ori_shape': [1],
-                                               "const_value": quant_scale_1_value})
+                                               "const_value": [quant_scale_1_value]})
         return quant_scale_1
     return None
 
@@ -144,7 +143,7 @@ def create_relu_weight_0(dataflow, shape, relu_param):
             relu_weight_0 = tvm.placeholder([1],  # [1]
                                             name='relu_weight_0',
                                             dtype='float32',
-                                            attrs={"const_value": relu_param,
+                                            attrs={"const_value": [relu_param],
                                                    "ori_shape": [1]})
     return relu_weight_0
 
@@ -163,7 +162,7 @@ def create_clip_value_0(dataflow, shape, qscale, qoffset):
         clip_value_0 = tvm.placeholder([1],  # [n, c1, hw, c0]
                                        name='clip_value_0',
                                        dtype="float16",
-                                       attrs={"const_value": clip_value,
+                                       attrs={"const_value": [clip_value],
                                               "ori_shape": [1]})
         return clip_value_0
 
@@ -199,7 +198,7 @@ def get_eltwise_mode(dataflow):
         return "ADD"
     if dataflow.find("sub") != -1:
         return "SUB"
-    return "None"
+    return ""
 
 
 def get_unit_list(dataflow):
@@ -641,7 +640,7 @@ def check_fix_pipe():
         "format": "NC1HWC0",
         "dtype": "float16",
         "ori_shape": [1],
-        "const_value": 0,
+        "const_value": [0],
     }
     value = get_input_scalar_value(scalar_dict)
 
@@ -664,7 +663,7 @@ def check_fix_pipe():
             "shape": [1],
             "format": "NC1HWC0",
             "dtype": "float16",
-            "const_value": 0,
+            "const_value": [0],
         }
         tensor = _create_placeholder(scalar_dict, "TEST")
     except:
@@ -739,9 +738,11 @@ def run_v300_cases(test_arg):
             check_fix_pipe()
             run_v300_batch_cases(v300_case)
 
-print("====> conv2d v300 ut start")
-ut_case.add_cust_test_func(test_func=run_v300_cases)
-print("====> end v300 ut start")
+if __name__ == "__main__":
+    print("====> conv2d v300 ut start")
+    run_v300_cases("")
+    print("====> end v300 ut start")
+    exit(0)
 
 
 

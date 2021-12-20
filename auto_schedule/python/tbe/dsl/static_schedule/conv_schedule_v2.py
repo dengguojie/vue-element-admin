@@ -41,8 +41,8 @@ INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
 UNIT_POST_ELTWISE = "post_eltwise"
 FIXPIPE_SCOPE_MAP = {
     QUANT_SCALE_0_STR: scope_fb0,
-    QUANT_SCALE_1_STR: scope_fb1,
-    RELU_WEIGHT_0_STR: scope_fb3,
+    QUANT_SCALE_1_STR: scope_fb3,
+    RELU_WEIGHT_0_STR: scope_fb1,
     RELU_WEIGHT_1_STR: scope_fb2,
     ELTWISE_SRC_STR: scope_cbuf
 }
@@ -89,6 +89,7 @@ def is_placeholder(tensor):
     if tensor.op.input_tensors:
         return False
     return True
+
 
 def is_support_fixpipe_op():
     if tbe.common.platform.platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):

@@ -10,6 +10,7 @@ provide common function used by conv2d
 import math
 from impl.util import util_select_op_base
 import json
+import tbe
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
@@ -103,17 +104,9 @@ def is_support_v200():
 
 def is_support_v220():
     """
-    Check if Ascend920A version.
-
-    Returns
-    -------
-    True: Ascend920A version.
-    False: other version.
+    Check if support fixpipe.
     """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version == "Ascend920":
-        return True
-    return False
+    return tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list")
 
 
 def calc_para_from_tensor(inputs,

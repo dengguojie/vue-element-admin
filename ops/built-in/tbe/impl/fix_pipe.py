@@ -22,8 +22,17 @@ from tbe.dsl import auto_schedule
 from tbe.common.utils import log
 from tbe.common.utils import para_check
 from tbe.common.register import register_op_compute
+from tbe.common.register import set_fusion_buildcfg
 from impl.fixpipe_op.fixpipe_factory import FixpipeFactory
 from impl.fixpipe_op.fixpipe_util import *
+
+
+def set_build_cfg():
+    build_cfg = {
+            "dummy_placeholder": True
+    }
+
+    set_fusion_buildcfg("FixPipe", build_cfg)
 
 
 @register_op_compute("fix_pipe", op_mode="static", support_fusion=True)
@@ -80,6 +89,8 @@ def fixpipe_compute(x1: Tensor, x2: (Tensor, None), quant_scale_0: (Tensor, None
                                          fusion_op_list, unit_list, eltwise_mode)
 
     res = fixpipe.fixpipe_compute()
+
+    set_build_cfg()
 
     return res
 

@@ -20,7 +20,11 @@ import functools
 import tbe
 from tbe.tvm.tensor import Tensor
 from tbe.common.utils import shape_to_list
-from te.platform.cce_params import scope_fb0, scope_fb1, scope_fb2, scope_fb3, scope_cbuf
+from te.platform.cce_params import scope_fb0
+from te.platform.cce_params import scope_fb1
+from te.platform.cce_params import scope_fb2
+from te.platform.cce_params import scope_fb3
+from te.platform.cce_params import scope_cbuf
 
 DTYPE_TRANS_MAP = {
     "int4": "S4",
@@ -71,8 +75,8 @@ POST_ACT_UNIT_STR = "post_act"
 
 FIXPIPE_SCOPE_MAP = {
     QUANT_SCALE_0_STR: scope_fb0,
-    QUANT_SCALE_1_STR: scope_fb1,
-    RELU_WEIGHT_0_STR: scope_fb3,
+    QUANT_SCALE_1_STR: scope_fb3,
+    RELU_WEIGHT_0_STR: scope_fb1,
     RELU_WEIGHT_1_STR: scope_fb2,
     ELTWISE_SRC_STR: scope_cbuf
 }
@@ -81,7 +85,6 @@ FIXPIPE_SCOPE_MAP = {
 def get_op_type(x: Tensor):
     if x.op.tag == "gemm":
         return "matmul"
-    
     if len(x.op.input_tensors) == 1 and \
             x.op.input_tensors[0].name in ["mad1", "res_conv2d"]:
         return "conv2d"
@@ -95,6 +98,8 @@ def get_op_info_from_attrs(key: str, tensor: Tensor):
 
 
 def calc_shape_total_dim(shape: List):
+    if len(shape) == 0:
+        raise RuntimeError("shape cannot be []")
     dim = functools.reduce(lambda x, y: x * y, shape[:])
     return dim
 
@@ -102,41 +107,48 @@ def calc_shape_total_dim(shape: List):
 def is_scaler_input(input: (Tensor, dict, None)) -> bool:
     if input is None:
         return False
-    
+
     if isinstance(input, Tensor):
-        input_shape = shape_to_list(get_op_info_from_attrs("ori_shape", input))
+        input_shape = shape_to_list(input.shape)
     else:
-        input_shape = input.get("ori_shape")
-    
+        input_shape = input.get("shape")
+
     dim = calc_shape_total_dim(input_shape)
     if dim == 1:
         return True
+
     return False
 
 
 def is_vector_input(input:(Tensor, dict, None)) -> bool:
     if input is None:
         return False
-    
+
     if isinstance(input, Tensor):
-        input_shape = shape_to_list(get_op_info_from_attrs("ori_shape", input))
+        input_shape = shape_to_list(input.shape)
     else:
-        input_shape = input.get("ori_shape")
-    
+        input_shape = input.get("shape")
+
     dim = calc_shape_total_dim(input_shape)
     if dim > 1:
         return True
+
     return False
 
 
 def get_input_scalar_value(input: (Tensor, dict, None)):
     if input is None:
         return None
-    
+
     if isinstance(input, Tensor):
-        return get_op_info_from_attrs("const_value", input)
-    
-    return input.get("const_value")
+        const_value = get_op_info_from_attrs("const_value", input)
+    else:
+        const_value = input.get("const_value")
+
+    if len(const_value) != 1:
+        raise RuntimeError("scalar's const_value len should be 1")
+
+    return const_value[0]
 
 
 def check_fixpipe_support():
@@ -147,4 +159,3 @@ def check_fixpipe_support():
         "Intrinsic_fix_pipe_unit_list")
     if not is_support_fixpipe:
         raise RuntimeError("fixpipe is not supported for current soc")
-
