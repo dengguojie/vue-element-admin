@@ -582,7 +582,6 @@ class _NMSHelper():
         self.data_type = 'float32'
         self.bytes_each_elem = 4
         self.vector_mask_max = 64
-        self.Constant.RPN_PROPOSAL_NUM = 8
         self.all_inp_proposals_gm_1980 = all_inp_proposals_gm_1980
 
         self.N, _ = input_shape
@@ -1240,8 +1239,8 @@ class _NMSHelper():
         # step2: repeat num
         repeat = size % (mask_max * Constant.REPEAT_TIMES_MAX) // mask_max
         if repeat > 0:
-            self.tik_instance.vec_conv(mask=mask_max,
-                                       mode=mode,
+            self.tik_instance.vec_conv(mask_max,
+                                       mode,
                                        dst=dst_ub[offset],
                                        src=src_ub[offset],
                                        repeat_times=repeat,
@@ -1253,8 +1252,8 @@ class _NMSHelper():
         last_num = size % mask_max
         if last_num > 0:
             offset += repeat * mask_max
-            self.tik_instance.vec_conv(mask=last_num,
-                                       mode=mode,
+            self.tik_instance.vec_conv(last_num,
+                                       mode,
                                        dst=dst_ub[offset],
                                        src=src_ub[offset],
                                        repeat_times=1,
