@@ -2328,7 +2328,8 @@ IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DiagPart", GetInputInvalidErrMsg("x")),
         return GRAPH_FAILED);
   const GeShape &input_shape = input_x_desc->GetShape();
-  int64_t output_shape_len = input_shape.GetDimNum() / 2;
+  const int64_t input_to_output_dims_times = 2;
+  int64_t output_shape_len = input_shape.GetDimNum() / input_to_output_dims_times;
   ge::GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
   GeShape &output_shape = output_desc->MutableShape();
   DataType input_dtype = input_x_desc->GetDataType();
