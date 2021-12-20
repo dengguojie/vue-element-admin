@@ -26,7 +26,8 @@ Status ParseParamsCelu(const Message* op_src, ge::Operator& op_dest) {
     if (attr.name() == "alpha" &&
         attr.type() == ge::onnx::AttributeProto::FLOAT) {
       alpha_value = attr.f();
-      op_dest.SetAttr("alpha", alpha_value);
+      op_dest.SetAttr("alpha1", alpha_value);
+      op_dest.SetAttr("alpha2", alpha_value);
     }
   }
   return SUCCESS;

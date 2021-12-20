@@ -36,7 +36,8 @@ Status ParseParamsDepthToSpace(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
   
-  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS) {
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS ||
+      ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
     return FAILED;
   }
   
