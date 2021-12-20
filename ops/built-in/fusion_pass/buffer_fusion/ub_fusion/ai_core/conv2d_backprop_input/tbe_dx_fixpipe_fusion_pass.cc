@@ -96,8 +96,8 @@ bool TbeDxFixpipeFusionPass::IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr>
   return true;
 }
 
-bool TbeDxFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input) {
-  if(is_input) {
+bool TbeDxFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input) const {
+  if (is_input) {
     return node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC &&
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NC1HWC0;
   } else {
@@ -105,8 +105,8 @@ bool TbeDxFixpipeFusionPass::Conv2DInOutSupportTrans(const ge::NodePtr &node, co
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NHWC;
   }
 }
-bool TbeDxFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input) {
-  if(is_input) {
+bool TbeDxFixpipeFusionPass::Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input) const {
+  if (is_input) {
     return node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC &&
            node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_FRACTAL_Z;
   } else {

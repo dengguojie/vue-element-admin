@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
@@ -53,8 +53,8 @@ class TbeDxFixpipeFusionPass : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector <ge::NodePtr> &fusion_nodes) override;
 
  private:
-  bool Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input);
-  bool Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input);
+  bool Conv2DInOutSupportTrans(const ge::NodePtr &node, const bool &is_input) const;
+  bool Conv2DWeightSupportTrans(const ge::NodePtr &node, const bool &is_input) const;
   bool IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr> &elemwise_nodes);
   void CheckCubeSupportTransNodes(const vector<ge::NodePtr> &cube_nodes, const vector<ge::NodePtr> &transdata1_nodes,
                                   const vector<ge::NodePtr> &transdata2_nodes, vector<ge::NodePtr> &fusion_nodes);
@@ -62,4 +62,4 @@ class TbeDxFixpipeFusionPass : public BufferFusionPassBase {
 }
 
 
-#endif //OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H_
+#endif //OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2DBACKPROPINPUT_TBE_DX_FIXPIPE_FUSION_PASS_H

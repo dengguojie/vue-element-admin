@@ -192,7 +192,7 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     if out_grad.get('ori_format') not in ("NCHW", "NHWC"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "out_grad's ori_format",
                                                                "NCHW/NHWC", out_grad.get('ori_format'))
-    # dynamic_mode h, w = range_max h, w
+    # dynamic_mode h, w is range_max h, w
     k_h = shape_k[dim_k_h]
     k_w = shape_k[dim_k_w]
     y_w = shape_dy[y_w_idx]

@@ -78,7 +78,7 @@ Status GenerateConstFP16Dynamic(const vector<int64_t>& shape, float area_factor,
 }
 
 NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& depthwise_dw_node,
-                                         ge::Format& input_origin_format, bool& is_dynamic) {
+                                         ge::Format& input_origin_format, const bool& is_dynamic) {
   OP_LOGI("Enter DepthwiseDwMulFusionPass::AddMul");
   ge::OutDataAnchorPtr depthwise_dw_anchor_ptr1 = depthwise_dw_node->GetOutDataAnchor(0);
   ge::NodePtr post_node = nullptr;
@@ -134,13 +134,13 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
     vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, multiplier, COUT, COUT};
     ge::GeShape mulInputShape(mul_dim_info);
     input_desc.SetShape(mulInputShape);
-    input_desc.SetOriginShape(ge::GeShape({mul_h, mul_w, 1, mul_n*mul_c}));
+    input_desc.SetOriginShape(ge::GeShape({mul_h, mul_w, 1, mul_n * mul_c}));
     input_desc.SetOriginFormat(input_origin_format);
     input_desc.SetDataType(ge::DT_FLOAT);
     input_desc.SetOriginDataType(ge::DT_FLOAT);
     ge::GeShape mulOutputShape(mul_dim_info);
     output_desc.SetShape(mul_shape);
-    output_desc.SetOriginShape(ge::GeShape({mul_h, mul_w, 1, mul_n*mul_c}));
+    output_desc.SetOriginShape(ge::GeShape({mul_h, mul_w, 1, mul_n * mul_c}));
     output_desc.SetOriginFormat(input_origin_format);
     output_desc.SetDataType(ge::DT_FLOAT);
     FUSION_PASS_CHECK(mul_desc->AddInputDesc(input_desc) != SUCCESS,
@@ -221,7 +221,7 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
 }
 
 Status DepthwiseDwMulFusionPass::AddCoffe(ge::NodePtr& mul_node, const int64_t matrix_size,
-                                          vector<int64_t>& dim_info, bool& is_dynamic) {
+                                          vector<int64_t>& dim_info, const bool& is_dynamic) {
   OP_LOGI("Enter DepthwiseDwMulFusionPass::AddCoffe");
   int64_t output_n = 0;
   int64_t output_h = 0;
@@ -422,7 +422,7 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   output_c1 = (groups + COUT - 1) / COUT;
   int64_t matrix_size = output_n * output_h * output_w * output_c;
   if (is_dynamic) {
-    matrix_size = output_c1 * output_h * output_w * COUT*multiplier * COUT;
+    matrix_size = output_c1 * output_h * output_w * COUT * multiplier * COUT;
   }
   FUSION_PASS_CHECK(matrix_size <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrix_size is Invalid"), return PARAM_INVALID);
   vector<int64_t> assit_dim_info_origin = {output_c1 * output_h * output_w, 1, COUT*multiplier, COUT};
