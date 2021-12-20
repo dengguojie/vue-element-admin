@@ -201,7 +201,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     ori_input_format = input_x.get("ori_format")
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if length_x_ori == 2:
-        if shape_x_ori[0] < 4:
+        if shape_x_ori[0] == 1:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                         datatype="float16,float16",
