@@ -226,6 +226,18 @@ case19 = {"params": [
     "expect": "success",
     "support_expect": True}
 
+case20 = {"params": [
+    {"shape": (10, 160), "dtype": "float16", "format": "ND", "ori_shape": (10, 160),
+     "ori_format": "ND"},
+    # x
+    {"shape": (10, 150), "dtype": "float16", "format": "ND", "ori_shape": (10, 150),
+     "ori_format": "ND"},
+    (0, 1), (10, 150),
+],
+    "case_name": "SliceD_20",
+    "expect": "success",
+    "support_expect": True}
+
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
@@ -245,6 +257,7 @@ ut_case.add_case("Ascend910A", case16)
 ut_case.add_case("Ascend910A", case17)
 ut_case.add_case("Ascend910A", case18)
 ut_case.add_case("Ascend910A", case19)
+ut_case.add_case("Ascend910A", case20)
 
 case_fz = {"params": [
     {"shape": (1 * 16 * 16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),

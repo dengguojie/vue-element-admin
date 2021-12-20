@@ -70,7 +70,8 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
     allowed_repeat_cnt = input_ub_size // \
         (output_last_dim_part_size_1 * block_data_cnt)
 
-    if input_ub_size == 0 or allowed_repeat_cnt == 0:
+    if input_ub_size == 0 or (allowed_repeat_cnt == 0 and input_core_dim_num // block_data_cnt != 0) \
+        or (allowed_repeat_cnt == 0 and input_core_dim_num_left // block_data_cnt != 0):
         return False
     if input_ub_size > ub_max_size // byte_cnt:
         input_ub_size = \
