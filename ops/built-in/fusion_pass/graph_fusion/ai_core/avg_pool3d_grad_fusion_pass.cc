@@ -299,7 +299,8 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   string grads_ori_format_str = grads_tensor_desc.GetOriginFormat() == FORMAT_NCDHW ? "NCDHW" : "NDHWC";
   vector<int64_t> grads_ori_shape_vec = grads_tensor_desc.GetShape().GetDims();
   vector<int64_t> grads_ori_shape_vec_formated(kOriShapeDim);
-  if (!is_dynamic && (HasVal(grads_ori_shape_vec, kDynamicShapeFlag) || HasVal(grads_ori_shape_vec, kDynamicRankFlag))) {
+  if (!is_dynamic &&
+      (HasVal(grads_ori_shape_vec, kDynamicShapeFlag) || HasVal(grads_ori_shape_vec, kDynamicRankFlag))) {
     // fix grads shape by orig_input_shape
     for (size_t i = 0; i < orig_input_shape_formated.size(); ++i) {
       if (kTargetOriFormat[i] == 'N' || kTargetOriFormat[i] == 'C') {
@@ -308,8 +309,10 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
         size_t pads_idx = kPadsFormat.find(kTargetOriFormat[i]);
         size_t ksize_idx = format_str.find(kTargetOriFormat[i]);
         size_t strides_idx = format_str.find(kTargetOriFormat[i]);
-        grads_ori_shape_vec_formated[i] = (orig_input_shape_formated[i] + pads[pads_idx * kNum2 + 1] +
-                                          pads[pads_idx * kNum2] - ksize[ksize_idx]) / strides[strides_idx] + 1;
+        grads_ori_shape_vec_formated[i] =
+            (orig_input_shape_formated[i] + pads[pads_idx * kNum2 + 1] + pads[pads_idx * kNum2] - ksize[ksize_idx]) /
+                strides[strides_idx] +
+            1;
       }
     }
   } else {

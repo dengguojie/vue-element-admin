@@ -238,10 +238,11 @@ Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(const ge::NodePtr &conv_node
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outDataPtr0 is null."),
                     return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(outDataPtr0, conv3d_transpose_d->GetInDataAnchor(1)) != SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[1] is failed.",
-            conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
-    return FAILED);
+      ge::GraphUtils::AddEdge(outDataPtr0, conv3d_transpose_d->GetInDataAnchor(1)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "Adding edge from fused node: %s's index[0] to fusion node: %s's index[1] is failed.",
+                            conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
+      return FAILED);
   ge::OutDataAnchorPtr outDataPtr1 = GetPeerOutAnchorWithInDataAnchor(conv_node, 1);
   FUSION_PASS_CHECK(outDataPtr1 == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outDataPtr1 is null."),

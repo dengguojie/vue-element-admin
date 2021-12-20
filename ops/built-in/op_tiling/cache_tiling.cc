@@ -199,9 +199,9 @@ void Tiling::SetAttachFlag()
 
 void Tiling::GetTilingId()
 {
-  string tilingKeywords[kAttachLabelLength] = {"AL1_pbuffer", "BL1_pbuffer", "CL0_pbuffer",
-                                                "abkl1_attach_flag", "al1_attach_flag", "bl1_attach_flag",
-                                                "min_kl1_cmp_kl0"};
+  string tilingKeywords[kAttachLabelLength] = {"AL1_pbuffer",       "BL1_pbuffer",     "CL0_pbuffer",
+                                               "abkl1_attach_flag", "al1_attach_flag", "bl1_attach_flag",
+                                               "min_kl1_cmp_kl0"};
   int64_t tilingIDLongLong = 0;
   for (const auto &tilingKeyword: tilingKeywords) {
     tilingIDLongLong = tilingIDLongLong * kDecimal + this->mPingpongBuff["manual_pingpong_buffer"][tilingKeyword];
