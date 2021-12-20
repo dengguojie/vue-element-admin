@@ -554,7 +554,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
         if not transpose_first:
             seq_length = [128, 128, 224, 256]
             batch_size = [1, 60, 30, 30]
-            support_core_num = [32,]
+            support_core_num = [32, ]
             if tbe_platform_info.get_soc_spec("CORE_NUM") == support_core_num:
                 seq_length = seq_length + [160, 192, 224, 256]
                 batch_size = batch_size + [1] * 4

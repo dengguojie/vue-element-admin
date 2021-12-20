@@ -76,6 +76,7 @@ def test_matmul_confusion_transpose_30_224_910():
         }
         cce_build_code(sch, config)
 
+
 def test_matmul_confusion_transpose_30_224_310():
     te_set_version("Ascend310")
     try:
