@@ -601,7 +601,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if case_info.expect == op_status.SUCCESS and call_op_success:
             if check_exist and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
                 call_op_success = False
-                err_msg = "Call op func success, but no .o and .json generated."
+                err_msg = "Call op func success, but \"{0}.o\" or \"{0}.json\" not found.".format(kernel_name)
 
         return call_op_success, err_msg
 
@@ -716,11 +716,13 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                 if op_param:
                     if isinstance(op_param, dict) and op_param.get("param_type") == "input":
                         param_desc_list.append("REQUIRED_INPUT")
-                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "input":
+                    if isinstance(op_param, (tuple, list)) and len(op_param) > 0 and isinstance(op_param[0], dict) and \
+                            op_param[0].get("param_type") == "input":
                         param_desc_list.append("DYNAMIC_INPUT")
                     if isinstance(op_param, dict) and op_param.get("param_type") == "output":
                         param_desc_list.append("REQUIRED_OUTPUT")
-                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "output":
+                    if isinstance(op_param, (tuple, list)) and len(op_param) > 0 and isinstance(op_param[0], dict) and \
+                            op_param[0].get("param_type") == "output":
                         param_desc_list.append("DYNAMIC_OUTPUT")
                 else:
                     if idx == 0:
