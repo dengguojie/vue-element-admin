@@ -263,7 +263,6 @@ bool ScatterMaxOrMinTiling(const std::string& opType, const ge::Operator& opPara
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& varShape = input_desc->MutableShape();
-  const ge::DataType input_dtype = input_desc->GetDataType();
   // get input indices Desc
   input_desc = operator_info->MutableInputDesc(1);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
