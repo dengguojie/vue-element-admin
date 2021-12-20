@@ -1378,5 +1378,65 @@ IMPLEMT_VERIFIER(EmbeddingBag, EmbeddingBagVerify) {
 COMMON_INFER_FUNC_REG(EmbeddingBag, EmbeddingBagInferShape);
 VERIFY_FUNC_REG(EmbeddingBag, EmbeddingBagVerify);
 // ----------------EmbeddingBag-------------------
+
+// ----------------LSTMP-------------------
+IMPLEMT_VERIFIER(LSTMP, LSTMPVerify) {
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
+  auto inputx = op.GetInputDesc("x");
+  auto inputwx = op.GetInputDesc("wx");
+  auto inputwr = op.GetInputDesc("wr");
+  auto shapex = inputx.GetShape();
+  auto shapewx = inputwx.GetShape();
+  auto shapewr = inputwr.GetShape();
+  if (shapewx.GetDimNum() != 2 && shapewr.GetDimNum() != 2) {
+    OpsOneInputShapeErrReport(op.GetName(), "wx/wr Shape Dim", "The input shape  not equal 2!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of wx/wr not equal 2, please check!");
+    return GRAPH_FAILED;
+  }
+
+  int64_t dim_num = shapex.GetDimNum();
+  int64_t batch_size = 0;
+  int64_t hidden_size = 0;
+  int64_t num_step = 0;
+  int64_t state = 0;
+  if (dim_num == 3) {
+    num_step = shapex.GetDims().at(0);
+    batch_size = shapex.GetDims().at(1);
+    hidden_size = shapewx.GetDims().at(0) / 4;
+    state = shapewr.GetDims().at(1);
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+  
+  auto x_dtype = inputx.GetDataType();
+  auto output_y = op.GetOutputDesc("y");
+  std::vector<int64_t> dims_y = {num_step, batch_size, state};
+  output_y.SetShape(ge::Shape(dims_y));
+  output_y.SetDataType(x_dtype);
+
+  auto output_rt = op.GetOutputDesc("output_h");
+  std::vector<int64_t> dims_rt = {batch_size, state};
+  output_rt.SetShape(ge::Shape(dims_rt));
+  output_rt.SetDataType(x_dtype);
+
+  auto output_ct = op.GetOutputDesc("output_c");
+  std::vector<int64_t> dims_ct = {batch_size, hidden_size};
+  output_ct.SetShape(ge::Shape(dims_ct));
+  output_ct.SetDataType(x_dtype);
+
+  op.UpdateOutputDesc("y", output_y);
+  op.UpdateOutputDesc("output_h", output_rt);
+  op.UpdateOutputDesc("output_c", output_ct);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(LSTMP, LSTMPInferShape);
+VERIFY_FUNC_REG(LSTMP, LSTMPVerify);
+// ----------------LSTMP-------------------
+
 }  // namespace ge
 

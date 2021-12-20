@@ -85,7 +85,6 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Mul, Mul, MulV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Tan, Tan, TanV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::IsNaN, IsNan, IsNaNV11);
-REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::LSTMP, LSTMP, LSTMPV11); //讯飞LSTMP自定义算子，后续可能需要调整。
 
 //onnx::8
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Acos, Acos, AcosV8);

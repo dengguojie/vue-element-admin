@@ -142,6 +142,7 @@ set(_onnx_plugins
   custom/col2im_plugin.cc
   custom/psroi_poolingV2_plugin.cc
   custom/group_normal_relu_plugin.cc
+  custom/lstmp_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
