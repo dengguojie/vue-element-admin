@@ -29,6 +29,7 @@
 namespace {
   constexpr int32_t TILING_FACTOR_2 = 2;
   constexpr int32_t TILING_DIVIDE_6 = 6;
+  constexpr int32_t TILING_MODE_1 = 1;
   constexpr int32_t TILING_MODE_2 = 2;
   constexpr int32_t TILING_MODE_3 = 3;
   constexpr int32_t TILING_MODE_5 = 5;
@@ -141,6 +142,48 @@ static int32_t DivRtn(int32_t x, int32_t y) {
   return q;
 }
 
+static int32_t GetRequireMemory(TilingParam& param, int32_t mode, int32_t input_memory, int32_t k_h, int32_t k_w) {
+  int32_t align_output_w = 0;
+  int32_t mask_memory = 0;
+  int32_t require_memory = 0;
+  if (param.output_w % ALLIGN_NUM != 0) {
+    align_output_w = (param.output_w / ALLIGN_NUM + 1) * ALLIGN_NUM;
+  } else {
+    align_output_w = param.output_w;
+  }
+  if (mode == TILING_MODE_1) {
+    mask_memory = align_output_w * param.output_h * k_h * k_w;
+  } else if (mode == TILING_MODE_2) {
+    mask_memory = align_output_w * k_h * k_w;
+  }
+  if (input_memory > mask_memory) {
+    require_memory = input_memory;
+  } else {
+    require_memory = mask_memory;
+  }
+  return require_memory;
+}
+
+static int32_t GetFactor(TilingParam& param, int32_t one_sixth_ub_ele, int32_t c0,
+                         int32_t k_h, int32_t k_w, int32_t stride_h) {
+  int32_t align_output_w = 0;
+  int32_t h_factor = 0;
+  if (param.output_w % ALLIGN_NUM != 0) {
+    align_output_w = (param.output_w / ALLIGN_NUM + 1) * ALLIGN_NUM;
+  } else {
+    align_output_w = param.output_w;
+  }
+  int32_t mask_memory = align_output_w * k_h * k_w;
+  int32_t mask_factor = one_sixth_ub_ele / mask_memory;
+  int32_t input_factor = (one_sixth_ub_ele / (param.pad_w * c0) - k_h) / stride_h + 1;
+  if (input_factor < mask_factor) {
+    h_factor = input_factor;
+  } else {
+    h_factor = mask_factor;
+  }
+  return h_factor;
+}
+
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
   if (core_num == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgMaxV2", "core_num value cannot be zero");
@@ -210,17 +253,24 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   } else {
     int32_t one_sixth_ub_ele = ub_ele / TILING_DIVIDE_6;
     param.n_c1 = input_shape[0] * input_shape[1];
-    if (param.pad_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
-      param.tiling_mode = 1;
+    int32_t require_memory_1 = GetRequireMemory(param, TILING_MODE_1,
+                                                param.pad_h * param.pad_w * input_shape[4],
+                                                ksize_h, ksize_w);
+    int32_t require_memory_2 = GetRequireMemory(param, TILING_MODE_2,
+                                                ksize_h * param.pad_w * input_shape[4],
+                                                ksize_h, ksize_w);
+    if (require_memory_1 <= one_sixth_ub_ele) {
+      param.tiling_mode = TILING_MODE_1;
       CalCoreNum(param, param.n_c1, core_num);
-      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape[4]);
+      param.c_factor = one_sixth_ub_ele / require_memory_1;
       param.one_core_loop_num = param.one_core_ele / param.c_factor;
       param.one_core_loop_left = param.one_core_ele % param.c_factor;
       param.last_core_loop_num = param.last_core_ele / param.c_factor;
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
-    } else if (ksize_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
-      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
+    } else if (require_memory_2 <= one_sixth_ub_ele) {
       param.tiling_mode = TILING_MODE_2;
+      param.h_factor = GetFactor(param, one_sixth_ub_ele, input_shape[4],
+                                 ksize_h, ksize_w, strides_h);
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;
       param.one_core_loop_left = param.output_h % param.h_factor;
