@@ -465,6 +465,12 @@ class Iou:
         self.tik_instance.vector_dup(self.eliments_per_block,
                                      self.zero_ub, 0.0,
                                      1, 1, 8)
+    
+    def _get_scalar_list(self, dtype, count):
+        result = []
+        for _ in range(count):
+            result.append(self.tik_instance.Scalar(dtype=self.dtype))
+        return result
 
     def _run_segment(self, run_bb_point_segment, gm_offset, gtbox_num, gm_out_offset=0):
         """
@@ -493,8 +499,7 @@ class Iou:
         # calcu area
         self.calcu_area(run_bb_point, self.bboxes_area_ub)
 
-        scalar_addr = \
-            [self.tik_instance.Scalar(dtype=self.dtype)] * 4
+        scalar_addr = self._get_scalar_list(self.dtype, 4)
         scalar_area = self.tik_instance.Scalar(dtype=self.dtype)
         with self.tik_instance.for_range(
                 0, gtbox_num) as gt_global_index:
@@ -670,7 +675,7 @@ class Iou:
         None
         """
         for_range = _get_ceil_int(run_point, 2)
-        index_reg = [self.tik_instance.Scalar(dtype=self.dtype)] * 8
+        index_reg = self._get_scalar_list(self.dtype, 8)
         with self.tik_instance.for_range(0, for_range) as conv_index:
             for i in range(8):
                 index_reg[i].set_as(point_ub[conv_index * 8 + i])
