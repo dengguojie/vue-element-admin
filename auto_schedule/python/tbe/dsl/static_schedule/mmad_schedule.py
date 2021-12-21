@@ -2053,15 +2053,9 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
             emit_insn_str = "vector_conv"
         else:
             if round_mode == "Round":
-                emit_insn_str = "vector_conv_round"
-            elif round_mode == "Ceil":
-                emit_insn_str = "vector_conv_ceil"
-            elif round_mode == "Floor":
-                emit_insn_str = "vector_conv_floor"
-            elif round_mode == "Trunc":
-                emit_insn_str = "vector_conv_trunc"
-            else:
                 emit_insn_str = "vector_conv"
+            else:
+                raise RuntimeError("Round mode should be Round only, %s is not supported" % round_mode)
         return emit_insn_str
 
     def split_c_ub_tensor(c_ub_tensor, block_value, factor_value, tile_value):
