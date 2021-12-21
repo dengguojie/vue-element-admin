@@ -12,6 +12,7 @@ COLOR_CYAN = "\033[96m"
 COLOR_END = "\033[0m"
 COLOR_GREEN = "\033[91m"
 COLOR_RED = "\033[91m"
+CUSTOM_PREF = "custom"
 
 
 class IniParser(object):
@@ -69,7 +70,6 @@ class IniParser(object):
             print("op: " + op_name + " opInfo missing: " + ",".join(missing_keys))
             raise KeyError("bad key value")
         self.aicpu_ops_info[op_name]["opInfo"]["userDefined"] = True
-        self.custom_ops_info[op_name] = self.aicpu_ops_info[op_name]
 
     def check_op_info(self, op_name, op_info):
         """
@@ -86,9 +86,9 @@ class IniParser(object):
         if op_info["opKernelLib"] == "CUSTAICPUKernel":
             self.check_custom_op_info(op_name, op_info)
 
-        if "userDefined" in op_info:
-            custom_set = op_info.get("userDefined")
-            "NOTE: do not use bool(xxx) here, bool('False') returns True"
+        if CUSTOM_PREF in op_info:
+            custom_set = op_info.get(CUSTOM_PREF)
+            # NOTE: do not use bool(xxx) here, bool('False') returns True
             if bool(util.strtobool(custom_set)):
                 self.custom_ops_info[op_name] = self.aicpu_ops_info[op_name]
 
