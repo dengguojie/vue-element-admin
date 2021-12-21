@@ -208,7 +208,7 @@ def test_matmul_fixpipe_0():
             output_y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
             matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
             y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), "format": "ND", "ori_format": "ND"}
-            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
             tensor_list = [x1, x2, bias, res]
             sch = auto_schedule(res)
 
@@ -222,7 +222,7 @@ def test_matmul_fixpipe_1():
             output_y = {"shape": (4, 2, 16, 8), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
             matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
             y = {"shape": (4, 2, 16, 8), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
-            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
             tensor_list = [x1, x2, bias, res]
             sch = auto_schedule(res)
 
@@ -237,6 +237,6 @@ def test_matmul_fixpipe_2():
             matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
             deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
             y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
-            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
             tensor_list = [x1, x2, bias, deq, res]
             sch = auto_schedule(res)
