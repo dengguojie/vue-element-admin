@@ -364,40 +364,6 @@ bool CheckAxisAndBatchdims(const std::string& op_type, const GatherShapeInfo& sh
   return true;
 }
 
-bool CheckTensorShape(const std::string& op_type, const GatherShapeInfo& shape_info, int64_t axis, int64_t batch_dims) {
-  int64_t paramsDims = shape_info.params_shape.size();
-  int64_t indices_dims = shape_info.indices_shape.size();
-  int64_t indicesOriDims = shape_info.indices_ori_shape.size();
-
-  std::vector<int64_t> outputShape;
-
-  if (axis < 0) {
-    axis += paramsDims;
-  }
-
-  if (axis > 0) {
-    for (int64_t i = 0; i < axis; i++) {
-      outputShape.push_back(shape_info.params_shape[i]);
-    }
-  }
-  if (indicesOriDims > 0) {
-    for (int64_t i = batch_dims; i < indices_dims; i++) {
-      outputShape.push_back(shape_info.indices_shape[i]);
-    }
-  }
-  if (axis + 1 < paramsDims) {
-    for (int64_t i = axis + 1; i < paramsDims; i++) {
-      outputShape.push_back(shape_info.params_shape[i]);
-    }
-  }
-
-  if (outputShape != shape_info.y_shape) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : output shape is invalid.");
-  }
-
-  return true;
-}
-
 bool GetV2GatherCompileParams(const std::string& op_type, const std::vector<int64_t>& compile_info_vec,
                               GatherCompileParams& params) {
   OP_TILING_CHECK(
@@ -1162,11 +1128,6 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
 
   if (!CheckAxisAndBatchdims(op_type, shape_info, axis, compile_params)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [CheckAxisAndBatchdims] failed.");
-    return false;
-  }
-
-  if (!CheckTensorShape(op_type, shape_info, axis, compile_params.batch_dims)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [CheckTensorShape] failed.");
     return false;
   }
 
