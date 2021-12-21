@@ -27,6 +27,12 @@ from impl.util.util_cube_dynamic import Conv2dParaProcess
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.util_conv2d_dynamic import check_input_range
+from impl.util.util_conv2d_dynamic import check_range_l1_size
+from impl.util.platform_adapter import tbe_register
+from impl.util.util_conv2d_dynamic import check_range_value
+from typing import Union
 
 
 # 'pylint: disable=too-few-public-methods
@@ -285,6 +291,95 @@ def check_hw_is_dynamic(input_shape):
 
     return False
 
+def check_avg_pool_v2_range(x, ksize, strides, padding, pads):
+    """
+    check if dynamic input range is supported
+    """
+    op_type = "avg_pool_v2"
+    x_format = x.get("ori_format")
+    input_range = x.get("ori_range")
+
+    if x_format == "NCHW":
+        idx_h = 2
+        idx_w = 3
+    elif  x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+    else:
+        error_manager_cube.raise_err_specific_user("avg_pool_v2", "input fmap format only support NCHW or NHWC.")
+
+    check_range_value(op_type, input_range, idx_h, idx_w)
+
+    kh = ksize[idx_h]
+    kw = ksize[idx_w]
+
+    if padding == "SAME":
+        correct_pads = [-1, -1, -1, -1]
+    elif padding == "CALCULATED":
+        correct_pads = pads
+    else:  # VALID
+        correct_pads = [0, 0, 0, 0]
+    low_check = check_input_range(input_range, idx_h, idx_w, kh, kw, correct_pads)
+    up_check = check_range_l1_size(x, kh, kw, strides, correct_pads)
+    if not up_check and not low_check:
+        return []
+    
+    type_info = []
+    if up_check:
+        type_info.append(up_check)
+    if low_check:
+        type_info.append(low_check)
+    
+    check_result = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": type_info}}]
+    return check_result
+
+@tbe_register.register_param_generalization("AvgPoolV2")
+def avg_pool_v2_generalization(x: dict, weight: dict, y: dict, ksize: Union[tuple, list], strides: Union[tuple, list],
+                               padding: str = "CALCULATED", pads: tuple = (0, 0, 0, 0), data_format: str = "NCHW",
+                               global_pooling: bool = False, ceil_mode: bool = False, exclusive: bool = True,
+                               kernel_name: str = "avg_pool_v2", generalize_config: dict = None) -> list:
+    """
+    avg_pool_v2 generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only check if dynamic input range is supported
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynanmic shape process
+
+    Parameters
+    ----------
+    same to avg_pool_v2
+
+    Returns
+    -------
+    list of params list if supported
+    list of unsupported param index if unsupported
+    """
+    # check generalize_config
+    if generalize_config is None:
+        generalize_config = {"mode": "keep_rank"}
+    support_mode = ["keep_rank"]
+    if generalize_config.get("mode") not in support_mode:
+        error_manager_cube.raise_err_specific_user("avg_pool_v2", "invalid generalize mode {}, only support {}".format(
+            str(generalize_config.get("mode")), str(support_mode)))
+    
+    # unknow_rank inputs ori_shape is [-2], others' shape length is 4
+    unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+    if unknow_rank:
+        error_manager_cube.raise_err_specific_user("avg_pool_v2", "not support unknow_rank under mode {}".format(
+            generalize_config["mode"]))
+    
+    # check if range of inputs is supported or not
+    check_result = check_avg_pool_v2_range(x, ksize, strides, padding, pads)
+    if check_result:
+        return check_result
+    else:
+        return [x, weight, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
+            kernel_name]
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements

@@ -148,6 +148,768 @@ def gen_avgpoolv2_params(case):
 #     ut_case.add_case(["Ascend710"], gen_avgpoolv2_params(testcase))
 #     ut_case.add_case(["Ascend310"], gen_avgpoolv2_params(testcase))
 
+from impl.dynamic.avg_pool_v2 import avg_pool_v2_generalization
+
+# output_h lower than 1
+# format NCHW, valid mode, kh is 17, larger than ori_range h lowest 16
+def test_avg_pool_v2_graph_mode_output_h_format_NCHW(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (16, 31), (64, 127)),
+            'ori_range': ((1, 1), (16, 31), (16, 31), (64, 127))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 17, 17),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [(16, 16), (1, 1), (17, 17), (17, 17)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 1, 17, 17), (1, 1, 1, 1), "VALID", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_output_h_format_NCHW']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["lower_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_output_h_format_NCHW failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_output_h_format_NCHW testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_output_h_format_NCHW)
+
+# output_w lower than 1
+# format NCHW, valid mode, kw is 17, larger than ori_range w lowest 16
+def test_avg_pool_v2_graph_mode_output_w_format_NCHW(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (16, 31)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 17, 17),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [(16, 16), (1, 1), (17, 17), (17, 17)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 1, 17, 17), (1, 1, 1, 1), "VALID", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_output_w_format_NCHW']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["lower_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_output_w_format_NCHW failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_output_w_format_NCHW testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_output_w_format_NCHW)
+
+# output_h lower than 1
+# format NHWC, valid mode, kh is 17, larger than ori_range h lowest 16
+def test_avg_pool_v2_graph_mode_output_h_format_NHWC(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (16, 31)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 17, 17),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [(16, 16), (1, 1), (17, 17), (17, 17)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 17, 17, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_output_h_format_NHWC']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["lower_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_output_h_format_NHWC failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_output_h_format_NHWC testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_output_h_format_NHWC)
+
+# output_w lower than 1
+# format NHWC, valid mode, kw is 17, larger than ori_range w lowest 16
+def test_avg_pool_v2_graph_mode_output_w_format_NHWC(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 17, 17),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            "range": [(16, 16), (1, 1), (17, 17), (17, 17)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 17, 17, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_output_w_format_NHWC']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["lower_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_output_w_format_NHWC failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_output_w_format_NHWC testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_output_w_format_NHWC)
+
+# limit_size larger than l1_size
+# format NCHW, valid mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NCHW_valid(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (1024, 2047)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (1024, 2047))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 1, 16, 1), (1, 1, 1, 1), "VALID", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NCHW_valid']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NCHW_valid failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NCHW_valid testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NCHW_valid)
+
+# limit_size larger than l1_size
+# format NHWC, valid mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NHWC_valid(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (1024, 2047), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (1024, 2047), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 16, 1, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NHWC_valid']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NHWC_valid failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NHWC_valid testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NHWC_valid)
+
+# limit_size larger than l1_size
+# format NCHW, same mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NCHW_same(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (1024, 2047)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (1024, 2047))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 1, 16, 1), (1, 1, 1, 1), "SAME", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NCHW_same']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NCHW_same failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NCHW_same testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NCHW_same)
+
+# limit_size larger than l1_size
+# format NHWC, same mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NHWC_same(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (1024, 2047), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (1024, 2047), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 16, 1, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NHWC_same']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NHWC_same failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NHWC_same testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NHWC_same)
+
+# limit_size larger than l1_size
+# format NCHW, same mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NCHW_calculated(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (1024, 2047)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (1024, 2047))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 1, 16, 5), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NCHW_calculated']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NCHW_calculated failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NCHW_calculated testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NCHW_calculated)
+
+# limit_size larger than l1_size
+# format NHWC, calculated mode, kw is 1, kh is 16, ori_range w largest is 2047
+def test_avg_pool_v2_graph_mode_l1_size_NHWC_calculated(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (1024, 2047), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (1024, 2047), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 16, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (16, 16), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name
+        (1, 16, 5, 1), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_l1_size_NHWC_calculated']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != [{"result" : "UNSUPPORTED", "reason" : {"param_index" : [0], "type" : ["upper_limit"]}}]:
+        raise Exception("test_avg_pool_v2_graph_mode_l1_size_NHWC_calculated failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_l1_size_NHWC_calculated testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_l1_size_NHWC_calculated)
+
+# generalize_config unsupported
+# raise error
+def test_avg_pool_v2_generalize_config_unsupported(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (1, 1), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 1, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_generalize_config_unsupported', {"mode": "keep"}]
+    try:
+        avg_pool_v2_generalization(*input_list)
+    except RuntimeError:
+        print("expected")
+        pass
+print("adding avg_pool_v2 test_avg_pool_v2_generalize_config_unsupported testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_generalize_config_unsupported)
+
+# ori_shape is unknown rank
+# raise error
+def test_avg_pool_v2_unknown_rank(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': [-2],
+            'ori_shape': [-2],
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (1, 1), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 1, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_unknown_rank']
+    try:
+        avg_pool_v2_generalization(*input_list)
+    except RuntimeError:
+        print("expected")
+        pass
+print("adding avg_pool_v2 test_avg_pool_v2_unknown_rank testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_unknown_rank)
+
+# unsupported format
+# raise error
+def test_avg_pool_v2_unsupported_format(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'HWCN',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (1, 1), (1, 1)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 1, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_unsupported_format']
+    try:
+        avg_pool_v2_generalization(*input_list)
+    except RuntimeError:
+        print("expected")
+        pass
+print("adding avg_pool_v2 test_avg_pool_v2_unsupported_format testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_unsupported_format)
+
+# supported range
+# NCHW, valid
+def test_avg_pool_v2_graph_mode_supported_range_NCHW_valid(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (16, 31)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 3, 3), (1, 1, 1, 1), "VALID", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NCHW_valid']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_valid failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NCHW_valid testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NCHW_valid)
+
+# supported range
+# NCHW, same
+def test_avg_pool_v2_graph_mode_supported_range_NCHW_same(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (16, 31)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 3, 3), (1, 1, 1, 1), "SAME", None, 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NCHW_same']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_same failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NCHW_same testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NCHW_same)
+
+# supported range
+# NCHW, calculated
+def test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (16, 31), (64, 127), (16, 31)),
+            'ori_range': ((1, 1), (16, 31), (64, 127), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 16, 1, 1),
+            'ori_shape': (-1, 16, 1, 1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 1, 3, 3), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NCHW', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NCHW_calculated']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated)
+
+# supported range
+# NHWC, valid
+def test_avg_pool_v2_graph_mode_supported_range_NHWC_valid(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 3, 3, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NHWC_valid']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_same failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NHWC_valid testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NHWC_valid)
+
+# supported range
+# NHWC, same
+def test_avg_pool_v2_graph_mode_supported_range_NHWC_same(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NHWC_same']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NHWC_same failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NHWC_same testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NHWC_same)
+
+# supported range
+# NHWC, calculated
+def test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, 127), (16, 31), (16, 31)),
+            'ori_range': ((1, 1), (64, 127), (16, 31), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 3, 3, 1), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_NHWC_calculated']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated)
+
+# supported range
+# range includes "None"
+def test_avg_pool_v2_graph_mode_supported_range_none(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 1), (64, None), (16, None), (16, 31)),
+            'ori_range': ((1, 1), (64, None), (16, None), (16, 31))
+        }, {
+            # weight
+            'ori_shape': (16, 1, 3, 3),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16',
+            'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
+        }, {
+            'shape': (-1, 1, 1, 16),
+            'ori_shape': (-1, 1, 1, 16),
+            'ori_format': 'NHWC',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
+        (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None,
+        'avg_pool_v2_graph_mode_supported_range_none']
+    ret = avg_pool_v2_generalization(*input_list)
+    if ret != input_list:
+        raise Exception("test_avg_pool_v2_graph_mode_supported_range_none failed")
+    else:
+        print("expected")
+print("adding avg_pool_v2 test_avg_pool_v2_graph_mode_supported_range_none testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_graph_mode_supported_range_none)
+
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

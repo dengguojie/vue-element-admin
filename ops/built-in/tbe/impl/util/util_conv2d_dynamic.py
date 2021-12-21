@@ -198,7 +198,7 @@ def check_range_l1_size(inputs, kh_dilate, kw_dilate, strides, pads):
     hw_size = ((limit_h_out - 1) * strides[idx_h] + kh_dilate) * w_in
     limit_size = hw_size * tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][1] * type_byte
     if limit_size > l1_size:
-        log.debug("input range is too large, the mininum tiling may exceed L1buffer")
+        log.debug("input range is too large, the minimum tiling may exceed L1buffer")
         return "upper_limit"
     return ""
 
