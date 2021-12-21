@@ -395,10 +395,7 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
         shape_list = [1, 1, 1, 1]
         shape_list[1] = shape_x[1]
         shape_diff_scale = shape_list
-        shape_diff_offset = shape_list
         shape_scale = shape_list
-        shape_batch_mean = shape_list
-        shape_batch_variance = shape_list
     if data_format == "NDC1HWC0":
         shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
         shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]

@@ -344,7 +344,7 @@ class BasicRNNCell:
             sch[tensors[key]].set_scope(scope_list[key])
 
         for key in emit_cmd_list:
-            tensor = tensors[key]
+            tensor = tensors.get(key)
             op_name = emit_cmd_list[key]
 
             if key == "ub_whh_ht_cont":
@@ -357,38 +357,38 @@ class BasicRNNCell:
 
         tilling_info1 = get_tilling(batch_dim, input_dim, hidden_dim)
         mad_tensors_1 = {
-            "l0c": tensors["l0c_wht_xt"],
-            "l1_left": tensors["l1_x"],
-            "l1_right": tensors["l1_w_xh"],
-            "l0a": tensors["l0a_x"],
-            "l0b": tensors["l0b_w_xh"],
+            "l0c": tensors.get("l0c_wht_xt"),
+            "l1_left": tensors.get("l1_x"),
+            "l1_right": tensors.get("l1_w_xh"),
+            "l0a": tensors.get("l0a_x"),
+            "l0b": tensors.get("l0b_w_xh"),
         }
         matmul_schedule(sch, mad_tensors_1, tilling_info1, True)
 
         # matmul schedule for l0c_wht_xt
-        sch[tensors["l0c_bias_h"]].reused_by(
-            tensors["l0c_wht_xt"], tensors["l0c_wht_xt_bias_h"])
+        sch[tensors.get("l0c_bias_h")].reused_by(
+            tensors.get("l0c_wht_xt"), tensors.get("l0c_wht_xt_bias_h"))
 
         tilling_info2 = get_tilling(batch_dim, hidden_dim, hidden_dim)
         if self.expose_hidden:
             mad_tensors_2 = {
-                "l0c": tensors["l0c_whh_ht"],
-                "l1_left": tensors["l1_h_0"],
-                "l1_right": tensors["l1_w_hh"],
-                "l0a": tensors["l0a_h_0"],
-                "l0b": tensors["l0b_w_hh"],
+                "l0c": tensors.get("l0c_whh_ht"),
+                "l1_left": tensors.get("l1_h_0"),
+                "l1_right": tensors.get("l1_w_hh"),
+                "l0a": tensors.get("l0a_h_0"),
+                "l0b": tensors.get("l0b_w_hh"),
             }
             compute_at_axis = matmul_schedule(
                 sch, mad_tensors_2, tilling_info2, False)
 
             if self.dtypes["h_0"] == "float32":
-                sch[tensors["ub_h_0"]].compute_at(
+                sch[tensors.get("ub_h_0")].compute_at(
                     sch[mad_tensors_2["l0c"]], compute_at_axis)
-                sch[tensors["h_0_fp16"]].compute_at(
+                sch[tensors.get("h_0_fp16")].compute_at(
                     sch[mad_tensors_2["l0c"]], compute_at_axis)
 
         # split ht
-        gm_ht = tensors["gm_ht"]
+        gm_ht = tensors.get("gm_ht")
         m_o, m_i = sch[gm_ht].split(
             gm_ht.op.axis[1], factor=tilling_info2["m_l0"])
         m_o_o, m_o_i = sch[gm_ht].split(
@@ -411,28 +411,28 @@ class BasicRNNCell:
 
         tilling_info2 = get_tilling(batch_dim, hidden_dim, hidden_dim)
         mad_tensors_3 = {
-            "l0c": tensors["l0c_who_ht"],
-            "l1_left": tensors["l1_ht"],
-            "l1_right": tensors["l1_w_ho"],
-            "l0a": tensors["l0a_ht"],
-            "l0b": tensors["l0b_w_ho"],
+            "l0c": tensors.get("l0c_who_ht"),
+            "l1_left": tensors.get("l1_ht"),
+            "l1_right": tensors.get("l1_w_ho"),
+            "l0a": tensors.get("l0a_ht"),
+            "l0b": tensors.get("l0b_w_ho"),
         }
         compute_at_axis = matmul_schedule(
             sch, mad_tensors_3, tilling_info2, True)
 
         if self.dtypes["h_t"] == "float32":
-            sch[tensors["ub_ht_new"]].compute_at(
+            sch[tensors.get("ub_ht_new")].compute_at(
                 sch[mad_tensors_3["l0c"]], compute_at_axis)
-            sch[tensors["ub_ht_fp16"]].compute_at(
+            sch[tensors.get("ub_ht_fp16")].compute_at(
                 sch[mad_tensors_3["l0c"]], compute_at_axis)
         sch[gm_ht].compute_at(sch[mad_tensors_3["l0c"]], compute_at_axis)
 
-        sch[tensors["l0c_bias_o"]].reused_by(
-            tensors["l0c_who_ht"], tensors["l0c_who_ht_bias_o"])
+        sch[tensors.get("l0c_bias_o")].reused_by(
+            tensors.get("l0c_who_ht"), tensors.get("l0c_who_ht_bias_o"))
 
         tilling_info2 = get_tilling(batch_dim, hidden_dim, hidden_dim)
         # split ot
-        gm_ot = tensors["gm_ot"]
+        gm_ot = tensors.get("gm_ot")
         m_o, m_i = sch[gm_ot].split(
             gm_ot.op.axis[1], factor=tilling_info2["m_l0"])
         m_o_o, m_o_i = sch[gm_ot].split(
@@ -453,7 +453,7 @@ class BasicRNNCell:
 
         sch[gm_ot].emit_insn(sch[gm_ot].op.axis[2], "dma_copy")
 
-        res_empty = tensors["res_empty"]
+        res_empty = tensors.get("res_empty")
         m_o, m_i = sch[res_empty].split(
             res_empty.op.axis[1], factor=tilling_info2["m_l0"])
         m_o_o, m_o_i = sch[res_empty].split(
@@ -1066,11 +1066,11 @@ def matmul_schedule(sch, tensors, tilling_info, init_bias):
     """
     mad_pattern = tbe_platform.GEMM_MODE
     # matmul schedule for l0c_whh_ht
-    l0c = tensors["l0c"]
-    l1_left = tensors["l1_left"]
-    l1_right = tensors["l1_right"]
-    l0a = tensors["l0a"]
-    l0b = tensors["l0b"]
+    l0c = tensors.get("l0c")
+    l1_left = tensors.get("l1_left")
+    l1_right = tensors.get("l1_right")
+    l0a = tensors.get("l0a")
+    l0b = tensors.get("l0b")
 
     m_o, m_i = sch[l0c].split(
         l0c.op.axis[1], factor=tilling_info["m_l0"])

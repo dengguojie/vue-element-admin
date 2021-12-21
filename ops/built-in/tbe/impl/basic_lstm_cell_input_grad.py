@@ -21,14 +21,14 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class LstmCellGradInput():
     """
     Class: use to store LstmCellGradInput input parameters
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, dgate, input_weight, dropout_mask, dxt, dht, keep_prob,
                  kernel_name):
         """
@@ -156,7 +156,7 @@ class LstmCellGrad(LstmCellGradInput):
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, dgate, input_weight, dropout_mask, dxt, dht, keep_prob,
                  kernel_name):
         """
@@ -298,7 +298,7 @@ class LstmCellGrad(LstmCellGradInput):
             self.tik_instance.data_move(self.ub_res, l0c_res, 0, 1,
                                         self.m_each_core, 0, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def matmul_compute_each_k_loop(self, is_trans_l, is_trans_r, ele_num,
                                    is_bias, l0c_res, l_k_offset, r_k_offset,
                                    core_idx):
@@ -522,7 +522,7 @@ class LstmCellGrad(LstmCellGradInput):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument,too-many-arguments,invalid-name
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_input_grad(dgate,
                                w,
                                dropout_mask,

@@ -77,9 +77,10 @@ ut_case.add_precision_case(["Ascend910", "Ascend310"],
                                                          "float16", 96, 72, "fractal_rnn_2_nd_precision_002",
                                                          "failed"))
 ut_case.add_case("Ascend310", gen_trans_data_case((250, 500, 16, 16), (4000,8000), "float16", 4000, 4000, "fractal_rnn2nd_1", "success"))
-ut_case.add_case("Ascend310", gen_trans_data_case((1, 500, 16, 16), (2,8000), "float16", 2, 2000, "fractal_rnn2nd_1", "success"))
-ut_case.add_case("Ascend310", gen_trans_data_case((1, 5, 16, 16), (2,80), "float16", 2, 2000, "fractal_rnn2nd_1", "success"))
-ut_case.add_case("Ascend310", gen_trans_data_case((2, 500, 16, 16), (17,80), "float16", 17, 2000, "fractal_rnn2nd_1", "success"))
+ut_case.add_case("Ascend310", gen_trans_data_case((1, 500, 16, 16), (2,8000), "float16", 2, 2000, "fractal_rnn2nd_2", "success"))
+ut_case.add_case("Ascend310", gen_trans_data_case((1, 5, 16, 16), (2,80), "float16", 2, 2000, "fractal_rnn2nd_3", "success"))
+ut_case.add_case("Ascend310", gen_trans_data_case((2, 500, 16, 16), (17,80), "float16", 17, 2000, "fractal_rnn2nd_4", "success"))
+ut_case.add_case("Ascend310", gen_trans_data_case((500, 250, 16, 16), (8000, 4000), "float16", 4000, 4000, "fractal_rnn2nd_5", "success"))
 
 if __name__ == '__main__':
     simulator_lib_path ="/home/shenmin/Ascend/toolkit/tools/simulator"

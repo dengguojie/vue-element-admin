@@ -60,6 +60,7 @@ static const std::map<Format, std::string> kFormatToStringMap = {
     {FORMAT_NC, "NC"},
     {FORMAT_FRACTAL_ZN_LSTM, "FRACTAL_ZN_LSTM"},
     {FORMAT_FRACTAL_Z_G, "FRACTAL_Z_G"},
+    {FORMAT_FRACTAL_ZN_RNN, "FRACTAL_ZN_RNN"},
     {FORMAT_RESERVED, "FORMAT_RESERVED"},
     {FORMAT_ALL, "ALL"}};
 
@@ -80,6 +81,7 @@ static const std::map<domiTensorFormat_t, Format> kDomiFormatToGeFormat = {
   {domi::DOMI_TENSOR_NCDHW, FORMAT_NCDHW},
   {domi::DOMI_TENSOR_DHWCN, FORMAT_DHWCN},
   {domi::DOMI_TENSOR_DHWNC, FORMAT_DHWNC},
+  {domi::DOMI_TENSOR_FRACTAL_ZN_RNN, FORMAT_FRACTAL_ZN_RNN},
   {domi::DOMI_TENSOR_RESERVED, FORMAT_RESERVED}
 };
 
@@ -103,7 +105,8 @@ static const std::unordered_set<std::string> kInternalFormat = {
   "FORMAT_FRACTAL_Z_3D",
   "FORMAT_FRACTAL_Z_3D_TRANSPOSE",
   "FORMAT_FRACTAL_ZN_LSTM",
-  "FORMAT_FRACTAL_Z_G"
+  "FORMAT_FRACTAL_Z_G",
+  "FRACTAL_ZN_RNN"
 };
 
 static const std::map<std::string, Format> kDataFormatMap = {
@@ -153,7 +156,8 @@ static const std::map<std::string, Format> kStringToFormatMap = {
     {"NC", FORMAT_NC},
     {"FRACTAL_ZN_LSTM", FORMAT_FRACTAL_ZN_LSTM},
     {"FRACTAL_Z_G", FORMAT_FRACTAL_Z_G},
-    {"FORMAT_RESERVED", FORMAT_RESERVED},
+    {"FRACTAL_ZN_RNN", FRACTAL_ZN_RNN},
+    {"FORMAT_RESERVED", FORMAT_RESERVED},    
     {"ALL", FORMAT_ALL},
     {"NULL", FORMAT_NULL}};
 

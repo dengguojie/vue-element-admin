@@ -15,20 +15,20 @@
 """
 bessel_i1e
 
-  Op_description :
-    Computes the Bessel i0e function of `x` element-wise
+Op_description :
+Computes the Bessel i0e function of `x` element-wise
 
-    # bessel_i1e(
-    #   x,
-    #   y,
-    #   kernel_name="bessel_i1e")
+# bessel_i1e(
+#   x,
+#   y,
+#   kernel_name="bessel_i1e")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
