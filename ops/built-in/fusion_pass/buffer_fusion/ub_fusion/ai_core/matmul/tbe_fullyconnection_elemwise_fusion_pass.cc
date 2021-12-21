@@ -61,6 +61,27 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   patterns.push_back(pattern0);
 
+  string fcAddPassName = "TbeFullyconnectionAddRelu6FusionPass";
+  BufferFusionPattern *fcAddPattern = new (std::nothrow) BufferFusionPattern(fcAddPassName, TBE_FUSION_OP_NUM_MAX);
+  FUSION_PASS_CHECK(fcAddPattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass fcAddPattern.", fcAddPassName.c_str());
+  // define pattern rules
+  fcAddPattern
+      ->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
+                  TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({PATTERN_FC_MATMUL})
+      .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_ELTWISE1})
+      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_ELTWISE1})
+      .SetOutputs(PATTERN_ELTWISE1, {PATTERN_ELTWISE2})
+      .SetOutputs(PATTERN_ELTWISE2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
+
+  patterns.push_back(fcAddPattern);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass fcAddPattern.", fcAddPassName.c_str());
+  
   string passName = "TbeFullyconnectionElemwiseDequantFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName, TBE_FUSION_OP_NUM_MAX);
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
@@ -82,27 +103,6 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
-
-  string fcAddPassName = "TbeFullyconnectionAddRelu6FusionPass";
-  BufferFusionPattern *fcAddPattern = new (std::nothrow) BufferFusionPattern(fcAddPassName, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(fcAddPattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass fcAddPattern.", fcAddPassName.c_str());
-  // define pattern rules
-  fcAddPattern
-      ->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
-                  TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .SetHead({PATTERN_FC_MATMUL})
-      .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_ELTWISE1})
-      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_ELTWISE1})
-      .SetOutputs(PATTERN_ELTWISE1, {PATTERN_ELTWISE2})
-      .SetOutputs(PATTERN_ELTWISE2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
-
-  patterns.push_back(fcAddPattern);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass fcAddPattern.", fcAddPassName.c_str());
   return patterns;
 }
 
