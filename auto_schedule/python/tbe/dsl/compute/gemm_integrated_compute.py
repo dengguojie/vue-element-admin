@@ -821,7 +821,8 @@ class GEMMCompute(FormatCompute):
         aligned_shape_a = [m_shape * self.block_in, km_shape * self.block_reduce]
         align_flag_a = (ori_m_shape == aligned_shape_a[-2]) and (ori_km_shape == aligned_shape_a[-1])
         aligned_shape_a = aligned_shape_a[::-1] if self.trans_a else aligned_shape_a
-
+        if in_dynamic():
+            align_flag_a = False
         return align_flag_a, aligned_shape_a
 
     def _check_align_b(self):
@@ -852,6 +853,8 @@ class GEMMCompute(FormatCompute):
         aligned_shape_b = [kn_shape * self.block_reduce, n_shape * self.block_out]
         align_flag_b = (ori_n_shape == aligned_shape_b[-1]) and (ori_kn_shape == aligned_shape_b[-2])
         aligned_shape_b = aligned_shape_b[::-1] if self.trans_b else aligned_shape_b
+        if in_dynamic():
+            align_flag_b = False
         return align_flag_b, aligned_shape_b
 
     def _do_align_nd_shape(self, tensor_need_align, tensor_name, in_dtype, need_check_align=False):
@@ -859,23 +862,13 @@ class GEMMCompute(FormatCompute):
         do align for a_matrix or b_matrix, pad zero along the way
         input:
             tensor_need_align: tensor, the tensor need align
-            tensor_name: str, a or b or bias
+            tensor_name: str, a or b
             in_dtype: str, input data type
         return:
             aligned tensor
         """
 
-        if tensor_name == "bias":
-            if len(tensor_need_align.shape) in (4, 5):
-                is_align = True
-            else:
-                ori_m_shape = self._get_value(tensor_need_align.shape[-2])
-                ori_n_shape = self._get_value(tensor_need_align.shape[-1])
-                m_shape = int_ceil_div(ori_m_shape, self.block_in) * self.block_in
-                n_shape = int_ceil_div(ori_n_shape, self.block_out) * self.block_out
-                is_align = (ori_m_shape == m_shape) and (ori_n_shape == n_shape)
-                aligned_shape = [m_shape, n_shape]
-        elif tensor_name == "a":
+        if tensor_name == "a":
             is_align, aligned_shape = self._check_align_a()
             self.align_a = is_align
         else:
@@ -883,7 +876,52 @@ class GEMMCompute(FormatCompute):
             self.align_b = is_align
         not_need_align = is_align or (self.mmad_mode in ("gemv", "gevm"))
         not_need_align = False if in_dynamic() else not_need_align
-        if not_need_align or (not need_check_align):
+        use_aligned_pattern = not_need_align or (not need_check_align)
+        if in_dynamic():
+            tensor_normalize_ub = self._do_aligned_shape_for_dynamic(
+                tensor_need_align, aligned_shape, tensor_name, in_dtype, use_aligned_pattern=use_aligned_pattern)
+        else:
+            tensor_normalize_ub = self._do_aligned_shape_for_static(
+                tensor_need_align, aligned_shape, tensor_name, in_dtype, use_aligned_pattern=use_aligned_pattern)
+        return tensor_normalize_ub
+
+    def _do_align_nd_shape_for_bias(self, tensor_need_align, in_dtype):
+        """
+        do align for tensor_c, pad zero along the way
+        input:
+            tensor_need_align: tensor, the tensor need align
+            in_dtype: str, input data type
+        return:
+            aligned tensor
+        """
+        if len(tensor_need_align.shape) in (4, 5):
+            is_align = True
+        else:
+            ori_m_shape = self._get_value(tensor_need_align.shape[-2])
+            ori_n_shape = self._get_value(tensor_need_align.shape[-1])
+            m_shape = int_ceil_div(ori_m_shape, self.block_in) * self.block_in
+            n_shape = int_ceil_div(ori_n_shape, self.block_out) * self.block_out
+            is_align = (ori_m_shape == m_shape) and (ori_n_shape == n_shape)
+            aligned_shape = [m_shape, n_shape]
+
+        not_need_align = is_align or (self.mmad_mode in ("gemv", "gevm"))
+        use_aligned_pattern = False if in_dynamic() else not_need_align
+        tensor_normalize_ub = self._do_aligned_shape_for_static(
+            tensor_need_align, aligned_shape, "bias", in_dtype, use_aligned_pattern=use_aligned_pattern)
+        return tensor_normalize_ub
+
+    def _do_aligned_shape_for_static(self, tensor_need_align, aligned_shape, tensor_name, in_dtype, use_aligned_pattern=False):
+        """
+        do align for a_matrix , b_matrix and tensor_c
+        input:
+            tensor_need_align: tensor, the tensor need align
+            tensor_name: str, a , b or bias
+            in_dtype: str, input data type
+            use_aligned_pattern: bool, is this tensor aligned
+        return:
+            aligned tensor
+        """
+        if use_aligned_pattern:
             tensor_normalize_ub = tvm.compute(
                 tensor_need_align.shape,
                 lambda *indices: tensor_need_align(*indices),
@@ -921,6 +959,78 @@ class GEMMCompute(FormatCompute):
                     tvm.convert(0).astype(in_dtype)
                 ),
                 name="tensor_{}_normalize_ub".format(tensor_name)
+            )
+
+        return tensor_normalize_ub
+
+    def _do_aligned_shape_for_dynamic(self, tensor_need_align, aligned_shape, tensor_name, in_dtype, use_aligned_pattern=False):
+        """
+        do align for a_matrix or b_matrix, pad zero along the way in dynamic mode
+        input:
+            tensor_need_align: tensor, the tensor need align
+            tensor_name: str, a or b
+            in_dtype: str, input data type
+            use_aligned_pattern: bool is this tensor aligned
+        return:
+            aligned tensor
+        """
+        ori_shape = [self._get_value(i) for i in tensor_need_align.shape]
+        # Use a virtual Node [tensor_normalize_ub] which will be mapped as "phony_insn".
+        # At schedule stage, either aligned or general pattern will be selected for execution,
+        # and the remaining one will be mapped as "phony_insn".
+        if len(ori_shape) == 2:
+            tensor_normalize_ub_aligned = tvm.compute(
+                aligned_shape,
+                lambda i, j: tensor_need_align[i, j],
+                name="tensor_{}_normalize_ub_aligned".format(tensor_name)
+            )
+            tensor_normalize_ub_general = tvm.compute(
+                aligned_shape,
+                lambda i, j: tvm.select(
+                    i < ori_shape[0],
+                    tvm.select(
+                        j < ori_shape[1],
+                        tensor_need_align[i, j],
+                        tvm.convert(0).astype(in_dtype)
+                    ),
+                    tvm.convert(0).astype(in_dtype)
+                ),
+                name="tensor_{}_normalize_ub_general".format(tensor_name)
+            )
+            tensor_normalize_ub = tvm.compute(
+                aligned_shape,
+                lambda i, j: tensor_normalize_ub_aligned[i, j]
+                    + tensor_normalize_ub_general[i, j],
+                name="tensor_{}_normalize_ub".format(tensor_name),
+                attrs={"use_aligned_pattern": use_aligned_pattern}
+            )
+        else:
+            aligned_shape.insert(0, ori_shape[0])
+
+            tensor_normalize_ub_aligned = tvm.compute(
+                aligned_shape,
+                lambda batch, i, j: tensor_need_align[batch, i, j],
+                name="tensor_{}_normalize_ub_aligned".format(tensor_name)
+            )
+            tensor_normalize_ub_general = tvm.compute(
+                aligned_shape,
+                lambda batch, i, j: tvm.select(
+                    i < ori_shape[-2],
+                    tvm.select(
+                        j < ori_shape[-1],
+                        tensor_need_align[batch, i, j],
+                        tvm.convert(0).astype(in_dtype)
+                    ),
+                    tvm.convert(0).astype(in_dtype)
+                ),
+                name="tensor_{}_normalize_ub_general".format(tensor_name)
+            )
+            tensor_normalize_ub = tvm.compute(
+                aligned_shape,
+                lambda batch, i, j: tensor_normalize_ub_aligned[batch, i, j]
+                    + tensor_normalize_ub_general[batch, i, j],
+                name="tensor_{}_normalize_ub".format(tensor_name),
+                attrs={"use_aligned_pattern": use_aligned_pattern}
             )
 
         return tensor_normalize_ub
@@ -1242,7 +1352,7 @@ class GEMMCompute(FormatCompute):
             tensor = tvm.compute(shape_src, lambda i, j, k, l:tvm.unzip(
                 comp_index((j // tile_n_value * block_k_num + i // tile_k_value) * comp_size),
                 tensor_src(i, j, k, l)),
-                name=op_name, 
+                name=op_name,
                 attrs={"tile_L1_k": tile_k_value,
                         "tile_L1_n": tile_n_value}
             )
@@ -1253,7 +1363,7 @@ class GEMMCompute(FormatCompute):
                 comp_index(((j // tile_n_value * block_k_num + i // tile_k_value)
                             + batch * batch_block_num) * comp_size),
                 tensor_src(batch, i, j, k, l)),
-                name=op_name, 
+                name=op_name,
                 attrs={"tile_L1_k": tile_k_value,
                         "tile_L1_n": tile_n_value}
             )
@@ -1273,7 +1383,7 @@ class GEMMCompute(FormatCompute):
                 name="tensor_beta_fp162fp32"
             )
 
-        tensor_c_normalize = self._do_align_nd_shape(tensor_c, "bias", self.dst_dtype, True)
+        tensor_c_normalize = self._do_align_nd_shape_for_bias(tensor_c, self.dst_dtype)
 
         tensor_c_normalize_shape = tensor_c_normalize.shape
         if self.mmad_mode == "gemv":

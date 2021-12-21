@@ -47,6 +47,7 @@ struct BatchmatmulParas {
   int64_t ori_shape_N = 1;
   std::string format_a;
   std::string format_b;
+  bool used_aligned_pattern = false;
 };
 
 struct L2Status {

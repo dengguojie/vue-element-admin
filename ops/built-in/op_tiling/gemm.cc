@@ -63,8 +63,14 @@ const int64_t kNumTwo = 2;
 const int64_t BLOCK_SIZE = 16;
 const int64_t CACHE_TILING_ID_LEN = 7;
 const int64_t DIM_NUM = 3;
+/*
+TilingID from 20000 to 30000 means this tilingkey is used for aligned shape only. The range
+is ensured by gemm_tilingcase.py.
+The general tilingkeys' pattern is '1xxxx' and the aligned tilingkeys' pattern is '2xxxx'.
+The first char of the general tilingkey is modified to '2' so as to use aligned pattern.
+*/
+const char ALIGNED_FLAG = '2';
 }
-
 namespace optiling {
 struct OpRunInfoParas {
   BatchmatmulParas params;
@@ -165,6 +171,15 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
   }
   if (params.format_b == "ND") {
     params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
+  }
+  if (params.format_a == "ND" && params.format_b == "ND") {
+    // Aligned schedule pattern selection is only enabled in ND input format
+    bool aligned_m = params.ori_shape_M % block_in == 0;
+    bool aligned_k = params.ori_shape_K % block_reduce == 0;
+    bool aligned_n = params.ori_shape_N % block_out == 0;
+    if (aligned_m && aligned_k && aligned_n) {
+      params.used_aligned_pattern = true;
+    }
   }
   return GetGEMMBatch(op_type, ori_shape_a, ori_shape_b, params);
 }
@@ -334,10 +349,15 @@ void FillRunInfoParas(OpRunInfoParas& runinfoparas, Tiling& tiling)
                                    int64_t(1));
 }
 
-void SetRunInfo(const bool& isBatchMatmulMode, const string& tiling_id, const json& compile_info,
+void SetRunInfo(const bool& isBatchMatmulMode, string& tiling_id, const json& compile_info,
                 const OpRunInfoParas& runinfoparas, utils::OpRunInfo& run_info)
 {
   run_info.SetBlockDim(static_cast<uint32_t>(compile_info["block_dim"][tiling_id]));
+  bool is_cache_tiling = tiling_id.length() == CACHE_TILING_ID_LEN;
+  // Used Aligned Pattern if the input shape is aligned. Only enabled in ND input format.
+  if (runinfoparas.params.used_aligned_pattern && !is_cache_tiling) {
+    tiling_id[0] = ALIGNED_FLAG;
+  }
   run_info.SetTilingKey(stoi(tiling_id));
   if (runinfoparas.params.format_a == "ND") {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_M));
@@ -354,7 +374,7 @@ void SetRunInfo(const bool& isBatchMatmulMode, const string& tiling_id, const js
   if (isBatchMatmulMode) {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.batch));
   }
-  if (tiling_id.length() == CACHE_TILING_ID_LEN) {
+  if (is_cache_tiling) {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.batch_single_core));
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_single_core));
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_single_core));
@@ -385,12 +405,8 @@ string GEMMTilingSelect(const string& op_type, const ge::Operator& op_paras, con
   const auto& dynamic_mode = compile_info["dynamic_mode"];
   bool isBatchMatmulMode = dynamic_mode == "dynamic_mknb";
   // Update ori_shape info
-  string format_a("FRACTAL_NZ");
-  string format_b("FRACTAL_NZ");
-  if (compile_info.contains("format_a") && compile_info.contains("format_b")) {
-    format_a = compile_info["format_a"];
-    format_b = compile_info["format_b"];
-  }
+  string format_a = compile_info["format_a"];
+  string format_b = compile_info["format_b"];
 
   CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),

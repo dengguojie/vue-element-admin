@@ -64,6 +64,9 @@ class GemmSchedule(object):
     """
     DEBUG_PARAM = False
     DEBUG_IR = False
+    DYN_ALIGNED_MODE = "Aligned_mode"
+    GENERAL_MODE = "General_mode"
+    PRE_UB_MULTIPLIER = 10.0
     DTYPE_WIDTH_MAP = {"uint64": 4, "float16": 1, "float32": 2, "int32": 2,
                        "int16": 1, "uint16": 1, "int8": 0.5, "uint8": 0.5,
                        "int4": 0.25, "bool": 0.5}
@@ -259,6 +262,7 @@ class GemmSchedule(object):
         self.cube_vector_split = False
         self.mmad_mode = "gemm"
         self.align_a, self.align_b = True, True
+        self.a_use_aligned_pattern, self.b_use_aligned_pattern = False, False
         self.get_a_matrix_mode, self.get_b_matrix_mode = "none", "none"
         self.compress_flag = False
         self.int8_not_double_m = False
@@ -274,6 +278,7 @@ class GemmSchedule(object):
         self.cache_tiling = None
         self.split_mode = {"ceil_mode": True}
         self.attach_at_flag = None
+        self.schedule_mode = self.GENERAL_MODE
         self.status_ori_dict = {
             0: Compare.EQUAL,
             1: Compare.LESS_EQ,
@@ -444,6 +449,9 @@ class GemmSchedule(object):
     def _get_global_para_phase_0(self, ori_tensors):
         if in_dynamic():
             self.is_dynamic = True
+            schedule_pattern = self.dynamic_para.get("tiling_strategy").get("schedule_pattern")
+            if schedule_pattern == "Aligned":
+                self.schedule_mode = self.DYN_ALIGNED_MODE
         self.root_tensor = self.res
         tensor_l0c = ori_tensors.get("tensor_c_matrix")
         self.ops_format = tensor_l0c.op.attrs["ops_format"].value
@@ -453,6 +461,15 @@ class GemmSchedule(object):
         self.format_b = tensor_l0c.op.attrs["format_b"].value
         self.align_a = False if self.is_dynamic else tensor_l0c.op.attrs["align_a"].value
         self.align_b = False if self.is_dynamic else tensor_l0c.op.attrs["align_b"].value
+        if self.format_a == "ND" and self.is_dynamic:
+            tensor_virtual_aub_node = ori_tensors.get("tensor_a_normalize_ub")
+            self.a_use_aligned_pattern = tensor_virtual_aub_node.op.attrs["use_aligned_pattern"].value
+        if self.format_b == "ND" and self.is_dynamic:
+            tensor_virtual_bub_node = ori_tensors.get("tensor_b_normalize_ub")
+            self.b_use_aligned_pattern = tensor_virtual_bub_node.op.attrs["use_aligned_pattern"].value
+        if self.schedule_mode == self.DYN_ALIGNED_MODE:
+            self.a_use_aligned_pattern = True
+            self.b_use_aligned_pattern = True
         self.ops_data_flow_mode = tensor_l0c.op.attrs["ops_data_flow_mode"].value
         self.only_use_gevm_gemv_flow = tensor_l0c.op.attrs["only_use_gevm_gemv_flow"].value
         self.int8_not_double_m = tensor_l0c.op.attrs["int8_not_double_m"].value
@@ -684,8 +701,13 @@ class GemmSchedule(object):
         placeholder_tensors = self.placeholder_tensors
         compute_tensors = self.compute_tensors
         tensors_in_aub = self.tensors_in_aub
-
+        if self.is_dynamic:
+            self._get_tensor_and_set_scope("tensor_a_normalize_ub_aligned", tbe_platform_info.scope_ubuf, "a_ub_aligned")
+            self._get_tensor_and_set_scope("tensor_a_normalize_ub_general", tbe_platform_info.scope_ubuf, "a_ub_general")
+            self._add_tensor_to_list(TENSOR_MAP.get("a_ub_aligned"), [tensors_in_aub])
+            self._add_tensor_to_list(TENSOR_MAP.get("a_ub_general"), [tensors_in_aub])
         self._get_tensor_and_set_scope("tensor_a_normalize_ub", tbe_platform_info.scope_ubuf, "a_ub")
+
         if self.get_a_matrix_mode == "none":
             TENSOR_MAP["a_l1"] = sch.cache_write(TENSOR_MAP["a_l0a"], tbe_platform_info.scope_cbuf)
         elif self.get_a_matrix_mode == "nd2Zz_vnchwconv":
@@ -732,6 +754,11 @@ class GemmSchedule(object):
         compute_tensors = self.compute_tensors
         tensors_in_bub = self.tensors_in_bub
 
+        if self.is_dynamic:
+            self._get_tensor_and_set_scope("tensor_b_normalize_ub_aligned", tbe_platform_info.scope_ubuf, "b_ub_aligned")
+            self._get_tensor_and_set_scope("tensor_b_normalize_ub_general", tbe_platform_info.scope_ubuf, "b_ub_general")
+            self._add_tensor_to_list(TENSOR_MAP.get("b_ub_aligned"), [tensors_in_bub])
+            self._add_tensor_to_list(TENSOR_MAP.get("b_ub_general"), [tensors_in_bub])
         self._get_tensor_and_set_scope("tensor_b_normalize_ub", tbe_platform_info.scope_ubuf, "b_ub")
 
         if self.get_b_matrix_mode == "nd_gemv":
@@ -3462,12 +3489,24 @@ class GemmSchedule(object):
             sch_agent[self.TENSOR_MAP.get("c_gm")].reorder(gm_m_outer, gm_n_outer, gm_m_inner, gm_n_inner)
             sch_agent[self.TENSOR_MAP.get("c_gm")].emit_insn(gm_m_inner, "dma_copy")
 
+    def _do_emit_insn_for_tensor_aub(self):
+        if self.is_dynamic:
+            # only in |batch_matmul/ matmul|nd|
+            if self.a_use_aligned_pattern:
+                self._emit_insn_func(self.TENSOR_MAP.get("a_ub_aligned"), 0, "dma_copy", mode=1)
+                self._emit_insn_func(self.TENSOR_MAP.get("a_ub_general"), 0, "phony_insn", mode=1)
+            else:
+                self._emit_insn_func(self.TENSOR_MAP.get("a_ub_aligned"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.TENSOR_MAP.get("a_ub_general"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.TENSOR_MAP.get("a_ub"), 0, "phony_insn", mode=1)
+        else:
+            # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
+            self._emit_insn_func(self.TENSOR_MAP.get("a_ub"), 0, "dma_copy", mode=1)
+
     def _do_emit_insn_aub(self):
         sch_agent = self.sch_agent
         offset_a = 1 if self.have_batch_a else 0
-
-        # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
-        self._emit_insn_func(self.TENSOR_MAP.get("a_ub"), 0, "dma_copy", mode=1)
+        self._do_emit_insn_for_tensor_aub()
 
         a_cast_and_reshape = (self.ops_data_flow_mode == "int82fp32") and (self.format_a == "FRACTAL_NZ")
         a_only_reshape = (self.mmad_mode in ("gevm", "gemv")) or (self.get_a_matrix_mode == "nd2Zz_int8")
@@ -3497,11 +3536,24 @@ class GemmSchedule(object):
             sch_agent[a_transpose].reorder(m_outer, a_transpose.op.axis[offset_a], m_inner)
             sch_agent[a_transpose].emit_insn(sch_agent[a_transpose].op.axis[offset_a], "vnchwconv")
 
+    def _do_emit_insn_for_tensor_bub(self):
+        if self.is_dynamic:
+            # only in |batch_matmul/matmul|nd|
+            if self.b_use_aligned_pattern:
+                self._emit_insn_func(self.TENSOR_MAP.get("b_ub_aligned"), 0, "dma_copy", mode=1)
+                self._emit_insn_func(self.TENSOR_MAP.get("b_ub_general"), 0, "phony_insn", mode=1)
+            else:
+                self._emit_insn_func(self.TENSOR_MAP.get("b_ub_aligned"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.TENSOR_MAP.get("b_ub_general"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.TENSOR_MAP.get("b_ub"), 0, "phony_insn", mode=1)
+        else:
+            # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
+            self._emit_insn_func(self.TENSOR_MAP.get("b_ub"), 0, "dma_copy", mode=1)
+
     def _do_emit_insn_bub(self):
         sch_agent = self.sch_agent
         offset_b = 1 if self.have_batch_b else 0
-        # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
-        self._emit_insn_func(self.TENSOR_MAP.get("b_ub"), 0, "dma_copy", mode=1)
+        self._do_emit_insn_for_tensor_bub()
 
         b_cast_and_reshape = (self.ops_data_flow_mode == "int82fp32") and (self.format_b == "FRACTAL_Z")
         b_only_reshape = (self.mmad_mode == "gemv") or (self.get_b_matrix_mode == "nd2Zn_int8")
@@ -3612,6 +3664,13 @@ class GemmSchedule(object):
 
         if self.need_init_bias:
             self._add_key_value(TENSOR_MAP.get("virtual_add_bias"), [TENSOR_MAP.get("bias_ub"), TENSOR_MAP.get("init_value_of_bias_ub")])
+        # Enable aub/bub to select schedule pattern
+        a_ub = TENSOR_MAP.get("a_ub")
+        b_ub = TENSOR_MAP.get("b_ub")
+        if a_ub is not None and self.is_dynamic:
+            self._add_key_value(TENSOR_MAP.get("a_ub_aligned"), [a_ub, TENSOR_MAP.get("a_ub_general")])
+        if b_ub is not None and self.is_dynamic:
+            self._add_key_value(TENSOR_MAP.get("b_ub_aligned"), [b_ub, TENSOR_MAP.get("b_ub_general")])
 
     def _do_buffer_reuse(self):
         for bereused_tensor, tensor in self.buffer_reuse_dict.items():
@@ -3824,6 +3883,11 @@ class GemmSchedule(object):
             sch[a_int82fp16].storage_align(a_int82fp16.op.axis[-2], a_align_value, 0)
         elif (src_dtype == "float16") or (a_transpose is not None):
             sch[a_normalize_ub].storage_align(a_normalize_ub.op.axis[-2], a_align_value, 0)
+            if self.is_dynamic:
+                a_ub_aligned = TENSOR_MAP.get("a_ub_aligned")
+                a_ub_general = TENSOR_MAP.get("a_ub_general")
+                sch[a_ub_aligned].storage_align(a_ub_aligned.op.axis[-2], a_align_value, 0)
+                sch[a_ub_general].storage_align(a_ub_general.op.axis[-2], a_align_value, 0)
 
     def do_bub_storage_align(self):
         # the data gap in ub
@@ -3855,6 +3919,11 @@ class GemmSchedule(object):
             sch[b_int82fp16].storage_align(b_int82fp16.op.axis[-2], b_align_value, 0)
         elif (src_dtype == "float16") or (b_transpose is not None):
             sch[b_normalize_ub].storage_align(b_normalize_ub.op.axis[-2], b_align_value, 0)
+            if self.is_dynamic:
+                b_ub_aligned = TENSOR_MAP.get("b_ub_aligned")
+                b_ub_general = TENSOR_MAP.get("b_ub_general")
+                sch[b_ub_aligned].storage_align(b_ub_aligned.op.axis[-2], b_align_value, 0)
+                sch[b_ub_general].storage_align(b_ub_general.op.axis[-2], b_align_value, 0)
 
     def _solve_bank_conflict(self):
         """
@@ -3942,8 +4011,8 @@ class GemmSchedule(object):
 
         # get fused num for compute use UB size
         a_fused_num, b_fused_num, c_fused_num = self.fuse_num_group
-        a_fused_num = a_fused_num / 10.0 + 1
-        b_fused_num = b_fused_num / 10.0 + 1
+        a_fused_num = a_fused_num / self.PRE_UB_MULTIPLIER + 1
+        b_fused_num = b_fused_num / self.PRE_UB_MULTIPLIER + 1
         c_fused_num += 1
         # compute before storage_align used UB size
         base_buffer_size = 0
@@ -4221,8 +4290,10 @@ class GemmSchedule(object):
             emit_insn_cmd = "dma_copy"
 
         out_insn_dict = None
-        if (not self.align_a) or (not self.align_b):
+        if self.schedule_mode == self.GENERAL_MODE and ((not self.align_a) or (not self.align_b)):
             out_insn_dict = {"no_overlap": 1}
+        elif self.schedule_mode == self.DYN_ALIGNED_MODE:
+            out_insn_dict = {"no_overlap": 0}
         self._emit_insn_func(res, 0, emit_insn_cmd, insn_dict=out_insn_dict, mode=1)
         # temp
         overload_flag = True
@@ -4290,44 +4361,51 @@ class GemmSchedule(object):
         Calculates the number of times the space used. The value is based on fp16.
         """
         buffer_reuse_dict = self.buffer_reuse_dict
-        def enter(tensor_list, fix_dtype):
+        def enter(tensor_list, fix_dtype, not_count_list=None):
             """
             the enter to calculate buffer used multi
+            not_count_list: tensors in this list do not use memory space.
             """
-            conuted_tensor_list = list()
-            not_need_conuted_tensor_list = list()
+            counted_tensor_list = list()
+            not_need_counted_tensor_list = list()
             fused_num = 0
             for tensor in tensor_list:
-                if tensor in self.elewise_compute_inline_list + self.compute_inline_list:
+                if not_count_list is not None:
+                    full_not_count_list = self.elewise_compute_inline_list + self.compute_inline_list + not_count_list
+                else:
+                    full_not_count_list = self.elewise_compute_inline_list + self.compute_inline_list
+                if tensor in full_not_count_list:
                     continue
                 if tensor in buffer_reuse_dict:
-                    anthor_tensor = buffer_reuse_dict.get(tensor)
-                    if anthor_tensor in conuted_tensor_list:
+                    anothor_tensor = buffer_reuse_dict.get(tensor)
+                    if anothor_tensor in counted_tensor_list:
                         continue
                     a_dtype_width = self.DTYPE_WIDTH_MAP.get(tensor.dtype)
-                    b_dtype_width = self.DTYPE_WIDTH_MAP.get(anthor_tensor.dtype)
+                    b_dtype_width = self.DTYPE_WIDTH_MAP.get(anothor_tensor.dtype)
                     cur_dtype_num = a_dtype_width if a_dtype_width > b_dtype_width else b_dtype_width
-                    cur_tensor = tensor if a_dtype_width > b_dtype_width else anthor_tensor
-                    small_one_tensor = anthor_tensor if a_dtype_width > b_dtype_width else tensor
+                    cur_tensor = tensor if a_dtype_width > b_dtype_width else anothor_tensor
+                    small_one_tensor = anothor_tensor if a_dtype_width > b_dtype_width else tensor
                     # small_one is conuted too
-                    conuted_tensor_list.append(small_one_tensor)
+                    counted_tensor_list.append(small_one_tensor)
                 else:
                     cur_dtype_num = self.DTYPE_WIDTH_MAP.get(tensor.dtype)
                     cur_tensor = tensor
-                if cur_tensor in conuted_tensor_list:
+                if cur_tensor in counted_tensor_list:
                     continue
-                conuted_tensor_list.append(cur_tensor)
+                counted_tensor_list.append(cur_tensor)
                 fused_num += cur_dtype_num
 
             fused_num = fused_num / self.DTYPE_WIDTH_MAP.get(fix_dtype) - 1
             return fused_num
 
         if self.TENSOR_MAP.get("a_ub") is not None:
-            a_fused_num = int(enter(self.tensors_in_aub, self.TENSOR_MAP.get("a_ub").dtype)*10)
+            a_not_count_list = [self.TENSOR_MAP.get("a_ub_aligned"), self.TENSOR_MAP.get("a_ub_general")] if self.is_dynamic else None
+            a_fused_num = int(enter(self.tensors_in_aub, self.TENSOR_MAP.get("a_ub").dtype, a_not_count_list) * self.PRE_UB_MULTIPLIER)
         else:
             a_fused_num = 0
         if self.TENSOR_MAP.get("b_ub") is not None:
-            b_fused_num = int(enter(self.tensors_in_bub, self.TENSOR_MAP.get("b_ub").dtype)*10)
+            b_not_count_list = [self.TENSOR_MAP.get("b_ub_aligned"), self.TENSOR_MAP.get("b_ub_general")] if self.is_dynamic else None
+            b_fused_num = int(enter(self.tensors_in_bub, self.TENSOR_MAP.get("b_ub").dtype, b_not_count_list) * self.PRE_UB_MULTIPLIER)
         else:
             b_fused_num = 0
 
@@ -4479,9 +4557,13 @@ class GemmSchedule(object):
             if self.format_a == "ND":
                 # a_ub is normalized so the storage used for (M,K) is the same as (M1, K1 , M0, K0)
                 sch[TENSOR_MAP.get("a_ub")].set_buffer_size(aub_storage_bound)
+                sch[TENSOR_MAP.get("a_ub_aligned")].set_buffer_size(aub_storage_bound)
+                sch[TENSOR_MAP.get("a_ub_general")].set_buffer_size(aub_storage_bound)
                 sch[TENSOR_MAP.get("a_ub_fract")].set_buffer_size(aub_fract_storage_bound)
             if self.format_b == "ND":
                 sch[TENSOR_MAP.get("b_ub")].set_buffer_size(bub_storage_bound)
+                sch[TENSOR_MAP.get("b_ub_aligned")].set_buffer_size(bub_storage_bound)
+                sch[TENSOR_MAP.get("b_ub_general")].set_buffer_size(bub_storage_bound)
                 sch[TENSOR_MAP.get("b_ub_fract")].set_buffer_size(bub_fract_storage_bound)
             sch[TENSOR_MAP.get("a_l1")].set_buffer_size(self._get_al1_bound())
             sch[TENSOR_MAP.get("b_l1")].set_buffer_size(self._get_bl1_bound())
@@ -4630,9 +4712,18 @@ class GemmSchedule(object):
             k_shape_range = var_range_dict.get(k_name)
             n_shape_range = var_range_dict.get(n_name)
 
-            self.sch.set_var_range(self.dyn_shape_in[m_name], *m_shape_range)
-            self.sch.set_var_range(self.dyn_shape_in[k_name], *k_shape_range)
-            self.sch.set_var_range(self.dyn_shape_in[n_name], *n_shape_range)
+            m_var = self.dyn_shape_in[m_name]
+            k_var = self.dyn_shape_in[k_name]
+            n_var = self.dyn_shape_in[n_name]
+
+            self.sch.set_var_range(m_var, *m_shape_range)
+            self.sch.set_var_range(k_var, *k_shape_range)
+            self.sch.set_var_range(n_var, *n_shape_range)
+
+            if self.schedule_mode == self.DYN_ALIGNED_MODE:
+                self.sch.set_constraint((m_var % self.block_in == 0).asnode())
+                self.sch.set_constraint((k_var % self.block_reduce == 0).asnode())
+                self.sch.set_constraint((n_var % self.block_out == 0).asnode())
 
             batch_range = var_range_dict.get("batch")
             if self.have_batch and (batch_range is not None):

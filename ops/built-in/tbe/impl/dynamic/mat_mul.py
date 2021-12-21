@@ -217,7 +217,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w=None, output_y=None,
             trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     caculating matrix multiplication with bias, C = A * B + bias
-    only support input with nz format and fp16 in dynamic mode
+    only support input with NZ or ND format and fp16 in dynamic mode
 
     Parameters:
     input_x1: dict
@@ -251,7 +251,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w=None, output_y=None,
     """
     if offset_w is None:
         offset_w = {}
-    
+
     if output_y is None:
         output_y = {}
 

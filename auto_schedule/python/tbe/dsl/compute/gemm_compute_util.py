@@ -681,15 +681,15 @@ class FormatCompute(object):
         if len(ori_tensor_shape) == 2:
             if trans:
                 tensor_matrix_shape = (
-                    (ori_tensor_shape[1] + block_in - 1) // block_in,
-                    (ori_tensor_shape[0] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[1], block_in),
+                    int_ceil_div(ori_tensor_shape[0], block_reduce),
                     block_in,
                     block_reduce
                 )
 
                 tensor_L1_shape = (
-                    (ori_tensor_shape[1] + block_in - 1) // block_in,
-                    (ori_tensor_shape[0] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[1], block_in),
+                    int_ceil_div(ori_tensor_shape[0], block_reduce),
                     block_reduce,
                     block_in
                 )
@@ -699,8 +699,8 @@ class FormatCompute(object):
                 lambda_expression = lambda m1, k1, m0, k0: L1_tensor[m1, k1, k0, m0]
             else:
                 tensor_matrix_shape = (
-                    (ori_tensor_shape[0] + block_in - 1) // block_in,
-                    (ori_tensor_shape[1] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[0], block_in),
+                    int_ceil_div(ori_tensor_shape[1], block_reduce),
                     block_in,
                     block_reduce
                 )
@@ -709,15 +709,15 @@ class FormatCompute(object):
             if trans:
                 tensor_matrix_shape = (
                     ori_tensor_shape[0],
-                    (ori_tensor_shape[2] + block_in - 1) // block_in,
-                    (ori_tensor_shape[1] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[2], block_in),
+                    int_ceil_div(ori_tensor_shape[1], block_reduce),
                     block_in,
                     block_reduce
                 )
                 tensor_L1_shape = (
                     ori_tensor_shape[0],
-                    (ori_tensor_shape[2] + block_in - 1) // block_in,
-                    (ori_tensor_shape[1] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[2], block_in),
+                    int_ceil_div(ori_tensor_shape[1], block_reduce),
                     block_reduce,
                     block_in
                 )
@@ -728,8 +728,8 @@ class FormatCompute(object):
             else:
                 tensor_matrix_shape = (
                     ori_tensor_shape[0],
-                    (ori_tensor_shape[1] + block_in - 1) // block_in,
-                    (ori_tensor_shape[2] + block_reduce - 1) // block_reduce,
+                    int_ceil_div(ori_tensor_shape[1], block_in),
+                    int_ceil_div(ori_tensor_shape[2], block_reduce),
                     block_in,
                     block_reduce
                 )

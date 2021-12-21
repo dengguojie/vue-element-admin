@@ -57,7 +57,10 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
 UNKNOWN_DIM = -1
+# Gerneral schedule pattern: 10000~20000; Aligned schedule pattern: 20000~30000.
+# There is a related flag in file: gemm.cc which also uses this offset.
 INITIAL_TILING_ID = 10000
+ALIGNED_TILING_ID_OFFSET = 10000
 SHAPE_BMKN_LEN = 4
 BANK_THRESHOLD = 64
 BANK_GAP = 16
@@ -102,7 +105,7 @@ def set_default_compile_info(tiling_op, tiling_case, target_area_list):
     add_compile_info("repo_seeds", {})
 
     cost_range = {}
-    cost_range[0] = target_area_list
+    cost_range[INITIAL_TILING_ID] = target_area_list
     add_compile_info("cost_range", cost_range)
 
     if "trans_a" in tiling_op.tiling_info and "trans_b" in tiling_op.tiling_info:
@@ -140,10 +143,9 @@ def set_default_tiling_case(target_area, tiling_op):
     default_seed_shape = [target_area[0][1], target_area[1][1], target_area[2][1]]
     if len(target_area) == 4:
         default_seed_shape.append(target_area[3][1])
-    tiling_case = [tiling_op.assembly_case(default_seed_shape, default_tiling, target_area_list, 0)]
+    tiling_case = [tiling_op.assembly_case(default_seed_shape, default_tiling, target_area_list, INITIAL_TILING_ID)]
 
     set_default_compile_info(tiling_op, tiling_case, target_area_list)
-
     return tiling_case
 
 
@@ -515,9 +517,31 @@ def calc_matmul(outs, option=None):
                                                               context)
         _set_build_json_info(tiling_case, mode)
         return tiling_case
+    tiling_cases = _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
+    # Generate Aligned schedule for ND input
+    if GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND":
+        tiling_cases = _generate_aligned_tilingcase(tiling_cases)
+    return tiling_cases
 
-    return _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
 
+def _generate_aligned_tilingcase(tiling_cases):
+        # For aligned schedule pattern in MatMul/BatchMatMul
+        case_length = len(tiling_cases)
+        aligned_tiling_cases = list()
+        if case_length >= ALIGNED_TILING_ID_OFFSET:
+            error_manager_cube.raise_err_one_para(
+                "E62306",
+                "MatMul/BatchMatMul",
+                "The compiled kernel number exceeds 10000."
+            )
+        for tiling in tiling_cases:
+            aligned_tiling = copy.deepcopy(tiling)
+            # The general tilingkey is '1xxxx' and adding this offset makes it '2xxxx'
+            aligned_tiling["key"] = aligned_tiling["key"] + ALIGNED_TILING_ID_OFFSET
+            aligned_tiling["tiling_strategy"]["schedule_pattern"] = "Aligned"
+            aligned_tiling_cases.append(aligned_tiling)
+        tiling_cases += aligned_tiling_cases
+        return tiling_cases
 
 class MatmulTiling(CubeTilingOp):
     DEFAULT_COMPILE_TIME = 4096
