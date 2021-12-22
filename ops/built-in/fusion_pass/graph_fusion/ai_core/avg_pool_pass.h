@@ -41,7 +41,14 @@ class AvgPoolFusionPass : public PatternFusionBasePass {
                                 const std::vector<int64_t>& filterDims, std::unique_ptr<int32_t[]>& weightInt8OutParam);
   Status UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePtr& const_node, float& area_factor);
   Status SetInvalidKernelAvgpool(ge::ComputeGraph& graph, ge::NodePtr fusedNode);
+  uint64_t GetHostCpuAtomicId();
+  Status CreateNewRequantHostCpuOp(const string &op_type, const ge::NodePtr &dequant_node, const ge::NodePtr &host_node,
+                                   ge::ComputeGraph &graph, vector<ge::NodePtr> &new_nodes);
   const string FUSED_OP_TYPE = "AvgPool";
+  const string AVGQUANT_HOST_CPU_OP_INPUT = "avgquant_input";
+  const string AVGQUANT_HOST_CPU_OP_OUTPUT = "avgquant_output";
+  const size_t AVGQUANT_INDEX_OF_DEQUANT_OP = 1;
+  const size_t AVGQUANT_INDEX_OF_REQUANT_OP = 0;
 };
 }  // namespace fe
 

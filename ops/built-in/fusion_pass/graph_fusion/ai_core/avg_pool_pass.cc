@@ -627,8 +627,8 @@ vector<FusionPattern*> AvgPoolFusionPass::DefinePatterns() {
 
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AvgPoolFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_AVGPOOL, {AVGPOOL}).SetOutput(PATTERN_AVGPOOL);
@@ -636,6 +636,61 @@ vector<FusionPattern*> AvgPoolFusionPass::DefinePatterns() {
   patterns.push_back(pattern);
 
   return patterns;
+}
+
+uint64_t AvgPoolFusionPass::GetHostCpuAtomicId() {
+  static std::atomic<uint64_t> global_trans_atomic_id(0);
+  return global_trans_atomic_id.fetch_add(1, std::memory_order_relaxed);
+}
+
+Status AvgPoolFusionPass::CreateNewRequantHostCpuOp(const string &op_type, const ge::NodePtr &dequant_node,
+                                                    const ge::NodePtr &host_node, ge::ComputeGraph &graph,
+                                                    vector<ge::NodePtr> &new_nodes) {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Create new avg requant host op for dequant node [%s]",
+          dequant_node->GetName().c_str());
+  std::stringstream op_name_temp;
+  // The atomic id of trans nodes must be unique. (start from 0)
+  op_name_temp << op_type << "_" << GetHostCpuAtomicId();
+  ge::OpDescPtr requant_host_cpu_op = nullptr;
+  FUSION_PASS_MAKE_SHARED((requant_host_cpu_op = std::make_shared<ge::OpDesc>(op_name_temp.str(), op_type)),
+                          requant_host_cpu_op = nullptr;
+                          return PARAM_INVALID);
+  // 1. Add input and output desc of new host op
+  ge::OpDescPtr host_desc = host_node->GetOpDesc();
+  requant_host_cpu_op->AddInputDesc(AVGQUANT_HOST_CPU_OP_INPUT, host_desc->GetOutputDesc(0));
+  requant_host_cpu_op->AddOutputDesc(AVGQUANT_HOST_CPU_OP_OUTPUT, host_desc->GetOutputDesc(0));
+  auto requant_node = graph.AddNode(requant_host_cpu_op);
+  FUSION_PASS_CHECK(requant_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Avg quant node is nullptr."),
+                    return PARAM_INVALID);
+  new_nodes.emplace_back(requant_node);
+  //2. Add edges between dequant_node and new_host_cpu_op
+  ge::InDataAnchorPtr dequant_input_anchor = dequant_node->GetInDataAnchor(AVGQUANT_INDEX_OF_DEQUANT_OP);
+  ge::OutDataAnchorPtr dequant_scale_peer_out_anchor = dequant_input_anchor->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(dequant_scale_peer_out_anchor == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "dequant_scale_peer_out_anchorn is nullptrs."),
+                    return PARAM_INVALID);
+  if (ge::GraphUtils::RemoveEdge(dequant_scale_peer_out_anchor, dequant_input_anchor) != ge::GRAPH_SUCCESS) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(),
+            "Remove edge between avg dequant scale %s and requant input cpu op failed.",
+            dequant_node->GetName().c_str());
+    return FAILED;
+  }
+  auto requant_host_cpu_input_author = requant_node->GetInDataAnchor(AVGQUANT_INDEX_OF_REQUANT_OP);
+  if (ge::GraphUtils::AddEdge(dequant_scale_peer_out_anchor, requant_host_cpu_input_author) != ge::GRAPH_SUCCESS) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(),
+            "Add edge between new host cpu op %s and avg dequant scale %s failed.",
+            dequant_node->GetName().c_str(), requant_node->GetName().c_str());
+    return FAILED;
+  }
+  auto requant_host_cpu_output_author = requant_node->GetOutDataAnchor(AVGQUANT_INDEX_OF_REQUANT_OP);
+  if (ge::GraphUtils::AddEdge(requant_host_cpu_output_author, dequant_input_anchor) != ge::GRAPH_SUCCESS) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(),
+            "Add edge between new host cpu op %s and avg dequant scale %s failed.",
+            dequant_node->GetName().c_str(), requant_node->GetName().c_str());
+    return FAILED;
+  }
+  return SUCCESS;
 }
 
 Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
@@ -814,14 +869,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     if (outDataAnchorPtr == nullptr) {
       return PARAM_INVALID;
     }
-
-    NodePtr HostcpuNode = outDataAnchorPtr->GetOwnerNode();
-    std::string type = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(HostcpuNode);
-    if ((HostcpuNode->GetType() != "RequantHostCpuOp") && (type != "Const") &&
-    (HostcpuNode->GetType() != "RequantHostCpuOpV2")) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "dont find op RequantHostCpuOp or not find const");
-      return NOT_CHANGED;
-    }
+    NodePtr hostCpuNode = outDataAnchorPtr->GetOwnerNode();
 
     int64_t matrixSize = inputC * 1 * ksizeH * ksizeW;
     FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGW(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return NOT_CHANGED);
@@ -872,19 +920,20 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else if (padding == "VALID") {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "padding is VALID");
-      if (HostcpuNode->GetType() == "RequantHostCpuOp" || HostcpuNode->GetType() == "RequantHostCpuOpV2") {
-        FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(HostcpuNode->GetOpDesc(), "padding", padding),
-                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
-        float areaFactor = 1.0 / (ksizeH * ksizeW);
-        FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(HostcpuNode->GetOpDesc(), "area_factor", areaFactor),
-                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Set area_factor attr failed."), return FAILED);
-      } else {
-        float areaFactor = 1.0 / (ksizeH * ksizeW);
-        FUSION_PASS_CHECK(UpdateDequantConst(graph, HostcpuNode, areaFactor) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                          "update dequant const failed."), return FAILED);
-      }
-
+      /*Create host cpu op*/
+      FUSION_PASS_CHECK(
+        CreateNewRequantHostCpuOp("RequantAvgPoolHostCpuOp", dequantNode, hostCpuNode, graph, fusionNodes) != SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add RequantAvgPoolHostCpuOp failed."), return ret);
+      int64_t isaArchVer = 0;
+      ge::AttrUtils::GetInt(avgPoolNode->GetOpDesc(), "isaArchVer", isaArchVer);
+      FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(fusionNodes[0]->GetOpDesc(), "isaArchVer", isaArchVer),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Set isaArchVer attr failed."),
+                        return PARAM_INVALID);
+      float areaFactor = 1.0 / (ksizeH * ksizeW);
+      ge::AttrUtils::GetFloat(avgPoolNode->GetOpDesc(), "area_factor", areaFactor);
+      FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(fusionNodes[0]->GetOpDesc(), "area_factor", areaFactor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Set area_Factor attr failed."),
+                        return PARAM_INVALID);
     } else {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
       return NOT_CHANGED;
