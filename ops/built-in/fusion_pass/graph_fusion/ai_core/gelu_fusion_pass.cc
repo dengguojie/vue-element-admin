@@ -55,7 +55,8 @@ static const std::string GELU = "Gelu";
 vector<FusionPattern*> GeluFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("GeluFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_POW0, {POW})
@@ -92,21 +93,29 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   ge::NodePtr add1_node = GetNodeFromMapping(PATTERN_ADD1, mapping);
   ge::NodePtr mul2_node = GetNodeFromMapping(PATTERN_MUL2, mapping);
   ge::NodePtr mul3_node = GetNodeFromMapping(PATTERN_MUL3, mapping);
-  FUSION_PASS_CHECK(pow0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pow0_node is null, fusion failed."),
+  FUSION_PASS_CHECK(pow0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "pow0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul0_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add0_node is null, fusion failed."),
+  FUSION_PASS_CHECK(add0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul1_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul1_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(tanh0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tanh0_node is null, fusion failed."),
+  FUSION_PASS_CHECK(tanh0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "tanh0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add1_node is null, fusion failed."),
+  FUSION_PASS_CHECK(add1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add1_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul2_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul2_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul3_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul3_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul3_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul3_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // check input and output link relation
@@ -180,12 +189,15 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   FUSION_PASS_MAKE_SHARED(
       (gelu_desc = std::make_shared<ge::OpDesc>(pow0_node->GetName() + "/" + GELU, GELU)),
       return FAILED);
-  FUSION_PASS_CHECK(gelu_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "gelu_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(gelu_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "gelu_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // add input
   ge::GeTensorDesc input_desc = pow0_node->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(gelu_desc->AddInputDesc(input_desc) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."),
+  FUSION_PASS_CHECK(gelu_desc->AddInputDesc(input_desc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add input failed."),
                     return FAILED);
 
   // add output
@@ -200,7 +212,8 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   // connect input edge
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pow0_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             gelu_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Add edge between node %s. and node %s failed.",
                             pow0_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             gelu_node->GetName().c_str()),
                     return FAILED);
@@ -208,9 +221,11 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   // connect output edge
   for (auto &inDataAnchor : mul3_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(mul3_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(gelu_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                                                     return FAILED);
   }
 
   // set node type
@@ -222,21 +237,28 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   gelu_node->GetOpDesc()->UpdateOutputName(output_name_id);
 
   // delete fused nodes
-  FUSION_PASS_CHECK(graph.RemoveNode(pow0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow0_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(pow0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove pow0_node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul0_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul0_node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(add0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove add0_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(add0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove add0_node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul1_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul1_node failed."),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(tanh0_node) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove tanh0_node failed."), return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(add1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove add1_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(add1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove add1_node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul2_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul2_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul2_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul2_node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul3_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul3_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul3_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul3_node failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "GeluFusionPass graph fusion success!");

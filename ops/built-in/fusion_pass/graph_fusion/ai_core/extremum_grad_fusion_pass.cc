@@ -641,7 +641,8 @@ Status ExtremumGradFusionPass::DoFusion(ge::ComputeGraph& graph, const map<strin
   // input1, input2,
   Status adjustAnchorRes = AdjustAnchor(dzInputAnchor, nodeEqual, extreGradNode, outputDxNode, outputDyNode);
   FUSION_PASS_CHECK(adjustAnchorRes != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace ExtremumGrad node to ComputeGraph failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Replace ExtremumGrad node to ComputeGraph failed."),
                     return adjustAnchorRes);
 
   vector<bool> isInputConst;
@@ -709,7 +710,8 @@ Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::Nod
     }
 
     if (ge::GraphUtils::RemoveEdge(srcAnchor, anchor) != ge::GRAPH_SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s input data anchor failed.", node->GetName().c_str());
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s input data anchor failed.",
+                                     node->GetName().c_str());
       return FAILED;
     }
 
@@ -731,7 +733,8 @@ Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::Nod
   if (inCtrlAnchor != nullptr) {
     for (ge::OutControlAnchorPtr &srcAnchor : inCtrlAnchor->GetPeerOutControlAnchors()) {
       if (ge::GraphUtils::RemoveEdge(srcAnchor, inCtrlAnchor) != ge::GRAPH_SUCCESS) {
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s input control anchor failed.", node->GetName().c_str());
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s input control anchor failed.",
+                                       node->GetName().c_str());
         return FAILED;
       }
     }
@@ -752,7 +755,8 @@ Status ExtremumGradFusionPass::RemoveOutputEdges(ge::NodePtr node) {
     }
     for (ge::InDataAnchorPtr &dstAnchor : anchor->GetPeerInDataAnchors()) {
       if (ge::GraphUtils::RemoveEdge(anchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s output data anchor failed.", node->GetName().c_str());
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s output data anchor failed.",
+                                       node->GetName().c_str());
         return FAILED;
       }
     }
@@ -762,7 +766,8 @@ Status ExtremumGradFusionPass::RemoveOutputEdges(ge::NodePtr node) {
   if (outControlAnchor != nullptr) {
     for (ge::InControlAnchorPtr &dstAnchor : outControlAnchor->GetPeerInControlAnchors()) {
       if (ge::GraphUtils::RemoveEdge(outControlAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s output control anchor failed.", node->GetName().c_str());
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Disconnect %s output control anchor failed.",
+                                       node->GetName().c_str());
         return FAILED;
       }
     }
@@ -783,14 +788,16 @@ Status ExtremumGradFusionPass::RemoveNode(ge::ComputeGraph& graph, const map<str
   // Step1: Disconnect all input anchor
   Status removeInputEdges = RemoveInputEdges(graph, node);
   if (removeInputEdges != SUCCESS) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:%s input edges failed.", node->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:%s input edges failed.",
+                                   node->GetName().c_str());
     return removeInputEdges;
   }
 
   // Step2: Disconnect all output anchor
   Status removeOutputEdges = RemoveOutputEdges(node);
   if (removeOutputEdges != SUCCESS) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:%s output edges failed.", node->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:%s output edges failed.",
+                                   node->GetName().c_str());
     return removeOutputEdges;
   }
 
@@ -970,7 +977,8 @@ Status ExtremumGradFusionPass::SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, 
       return FAILED;
     }
   } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Cannot find attr:T in node:%s", selectOpDesc->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Cannot find attr:T in node:%s",
+                                   selectOpDesc->GetName().c_str());
     return FAILED;
   }
   // Init "grad_x", "grad_y" attr to ExtremumGrad OP
@@ -1017,7 +1025,8 @@ Status ExtremumGradFusionPass::AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, 
     auto dstAnchor = extreGradNode->GetInDataAnchor(inAnchorIndex);
     Status replaceEdgeDstRes = ReplaceEdgeDst(srcAnchor, inputAnchor, dstAnchor);
     if (replaceEdgeDstRes != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace equal_inputAnchors[%d] to extreGradNode_inputAnchors[%d] failed",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "Replace equal_inputAnchors[%d] to extreGradNode_inputAnchors[%d] failed",
               inAnchorIndex - EQUAL_TO_EXTREMUM_START, inAnchorIndex);
       return replaceEdgeDstRes;
     }

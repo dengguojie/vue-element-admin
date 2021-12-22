@@ -49,7 +49,8 @@ vector<FusionPattern*> FlattenV2Pass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("FlattenV2Pass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_FLATTEN_V2, {FLATTEN_V2}).SetOutput(PATTERN_FLATTEN_V2);
@@ -63,7 +64,8 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into FlattenV2Pass");
   // diag node
   ge::NodePtr flattenV2Node = GetNodeFromMapping(PATTERN_FLATTEN_V2, mapping);
-  FUSION_PASS_CHECK(flattenV2Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "flattenV2Node is null, fusion failed."),
+  FUSION_PASS_CHECK(flattenV2Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "flattenV2Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::InDataAnchorPtr oriInAnchorPtr0 = flattenV2Node->GetInDataAnchor(0);
@@ -139,13 +141,15 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, oriTopPeerAnchorPtri),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "add edge from src node[%s] to dst node[%s] failed.",
                               inputNode->GetName().c_str(), outputNode->GetName().c_str()),
                       return FAILED);
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(flattenV2Node),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"),
+                                                   return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "FlattenV2Pass success!!!!");
 

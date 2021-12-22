@@ -1329,7 +1329,8 @@ Status EinsumPass::HandleDynamicABCxABDE2DEC(ComputeGraph &graph, NodePtr &node)
     reshape_3_desc->AddInputDesc("x", *(reshape_2_desc->MutableOutputDesc(0)));
     reshape_3_desc->AddOutputDesc("y", x1_desc);
     reshape_3_node = CreateReshapeNode(tmp_dims, graph, reshape_3_desc, 1, 2);
-    FUSION_PASS_CHECK(reshape_3_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_3_node is null"), return FAILED);
+    FUSION_PASS_CHECK(reshape_3_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_3_node is null"),
+                      return FAILED);
     matmul_desc->AddInputDesc("x1", *(reshape_3_desc->MutableOutputDesc(0)));
   } else {
     matmul_desc->AddInputDesc("x1", *(reshape_2_desc->MutableOutputDesc(0)));
