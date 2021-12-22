@@ -25,29 +25,29 @@ from impl.util.platform_adapter import tbe_context
 
 # 'pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
 # 'pylint: disable=too-many-instance-attributes,unused-argument,too-few-public-methods
-def ceil_value(value, factor):
+def ceiling_value(value, factor):
     """
     if not divide exactly then plus 1
 
     Parameters
     ----------
-    value:  input number
+    value: input value
     factor: factor
 
     Returns
     -------
-    ceil value
+    the ceiling value
     """
     return (value + factor - 1) // factor
 
 
-def align_value(value, factor):
+def aligned_value(value, factor):
     """
-    Alignment based on factor.
+    Alignment value based on factor.
 
     Parameters
     ----------
-    value: input number
+    value: input value
     factor: alignment base
 
     Returns
@@ -104,19 +104,19 @@ class TabulateFusion():
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - self.RESERVED_UB_SIZE
         self.block_elems = self.BLOCK_BYTES // self.dsize
         self.vector_elems = self.VECTOR_BYTES // self.dsize
-        self.last_size_align = align_value(self.last_layer_size, self.vector_elems)
+        self.last_size_align = aligned_value(self.last_layer_size, self.vector_elems)
 
         self.ub_elems = self.ub_size // self.dsize
         self.one_portion_ub_elems = ((self.ub_elems // self.NUM_4) // self.vector_elems) * self.vector_elems
-        self.mask_elems_max = align_value(self.one_portion_ub_elems // self.vector_elems, self.vector_elems)
+        self.mask_elems_max = aligned_value(self.one_portion_ub_elems // self.vector_elems, self.vector_elems)
 
         self.mask_dtype = "uint64"
         self.dtype_int16 = "int16"
         self.tiling_dtype = "int64"
-        self.tiling_align = align_value(self.TILING_ARG_NUM, self.NUM_4)
+        self.tiling_align = aligned_value(self.TILING_ARG_NUM, self.NUM_4)
         self.tiling_gm = self.tik_inst.Tensor(self.tiling_dtype, (self.tiling_align,), name="tiling_gm",
                                               scope=tik.scope_gm)
-        self.table_info_size_align = align_value(self.TABLE_INFO_NUM, self.block_elems)
+        self.table_info_size_align = aligned_value(self.TABLE_INFO_NUM, self.block_elems)
         self.table_gm, self.table_info_gm, self.em_x_gm, self.em_gm, self.descriptor_gm = self._init_gm_tensor()
 
         self.lower = None
@@ -219,7 +219,7 @@ class TabulateFusion():
             mask_tensor2_not = self.tik_inst.Tensor(self.dtype_int16, (self.mask_elems_max * self.NUM_4,),
                                                     name="mask_tensor2_not", scope=tik.scope_ubuf)
 
-            repeats_int16 = ceil_value(repeats * self.NUM_4, self.NUM_128)
+            repeats_int16 = ceiling_value(repeats * self.NUM_4, self.NUM_128)
             # `xx >= lower`
             self.tik_inst.vcmpvs_ge(mask_tensor1_not, em_x_ub, self.lower, repeats, 1, 8)
             mask_tensor1_not_int16 = mask_tensor1_not.reinterpret_cast_to(self.dtype_int16)
@@ -392,7 +392,7 @@ class TabulateFusion():
             table_idx.set_as(table_idx_ub[offset])
 
             self.tik_inst.data_move(table_ub, self.table_gm[table_idx * (self.last_layer_size * self.NUM_6)], 0, 1,
-                                    ceil_value(self.last_layer_size * self.NUM_6, self.block_elems), 0, 0)
+                                    ceiling_value(self.last_layer_size * self.NUM_6, self.block_elems), 0, 0)
             self.tik_inst.v4dtrans(False, a_i_ub, table_ub, self.last_size_align, self.NUM_6)
 
             # `var = a0 + (a1 + (a2 + (a3 + (a4 + a5 * xx) * xx) * xx) * xx) * xx`
@@ -430,14 +430,14 @@ class TabulateFusion():
     def _cal_output(self, nloc_i_res, res_size, var_ub, ll_values, ago, xx, out_i_offset, nnei_j, for_end_s):
         """
         calculate result of nloc_i, last_layer_size is 32 bytes align.
-        res_size is align_value(self.last_layer_size * self.NUM_4, self.vector_elems) + self.vector_elems.
+        res_size is aligned_value(self.last_layer_size * self.NUM_4, self.vector_elems) + self.vector_elems.
         ll_values is (ll_0, ll_1, ll_2, ll_3).
         """
         with self.tik_inst.new_stmt_scope():
             # `var * ll[0], var * ll[1], var * ll[2], var * ll[3]`
             ll_0, ll_1, ll_2, ll_3 = ll_values
             out_i = self.tik_inst.Tensor(self.dtype, (res_size,), name="out_i_align", scope=tik.scope_ubuf)
-            ll_repeats = ceil_value(self.last_layer_size, self.vector_elems)
+            ll_repeats = ceiling_value(self.last_layer_size, self.vector_elems)
             self.tik_inst.vmuls(self.NUM_64, out_i[0], var_ub, ll_0, ll_repeats, 1, 1, 8, 8)
             self.tik_inst.vmuls(self.NUM_64, out_i[self.last_layer_size], var_ub, ll_1, ll_repeats, 1, 1, 8, 8)
             self.tik_inst.vmuls(self.NUM_64, out_i[self.last_layer_size * self.NUM_2], var_ub, ll_2,
@@ -445,7 +445,7 @@ class TabulateFusion():
             self.tik_inst.vmuls(self.NUM_64, out_i[self.last_layer_size * self.NUM_3], var_ub, ll_3,
                                 ll_repeats, 1, 1, 8, 8)
 
-            out_repeats = ceil_value(self.last_layer_size * self.NUM_4, self.vector_elems)
+            out_repeats = ceiling_value(self.last_layer_size * self.NUM_4, self.vector_elems)
             with self.tik_inst.if_scope(ago != xx):
                 self.tik_inst.vadd(self.NUM_64, nloc_i_res, nloc_i_res, out_i, out_repeats, 1, 1, 1, 8, 8, 8)
             with self.tik_inst.else_scope():
@@ -467,7 +467,7 @@ class TabulateFusion():
         """
         ll_0, ll_1, ll_2, ll_3 = ll_values
         out_i = self.tik_inst.Tensor(self.dtype, (res_size,), name="out_i", scope=tik.scope_ubuf)
-        ll_repeats = ceil_value(self.last_size_align, self.vector_elems)
+        ll_repeats = ceiling_value(self.last_size_align, self.vector_elems)
         self.tik_inst.vmuls(self.NUM_64, out_i[0], var_ub, ll_0, ll_repeats, 1, 1, 8, 8)
         self.tik_inst.vmuls(self.NUM_64, out_i[self.last_size_align], var_ub, ll_1, ll_repeats, 1, 1, 8, 8)
         self.tik_inst.vmuls(self.NUM_64, out_i[self.last_size_align * self.NUM_2], var_ub, ll_2,
@@ -475,7 +475,7 @@ class TabulateFusion():
         self.tik_inst.vmuls(self.NUM_64, out_i[self.last_size_align * self.NUM_3], var_ub, ll_3,
                             ll_repeats, 1, 1, 8, 8)
 
-        out_repeats = ceil_value(self.last_size_align * self.NUM_4, self.vector_elems)
+        out_repeats = ceiling_value(self.last_size_align * self.NUM_4, self.vector_elems)
         with self.tik_inst.if_scope(ago != xx):
             self.tik_inst.vadd(self.NUM_64, nloc_i_res, nloc_i_res, out_i, out_repeats, 1, 1, 1, 8, 8, 8)
         with self.tik_inst.else_scope():
@@ -534,7 +534,7 @@ class TabulateFusion():
 
             # last_layer_size is 32 bytes align
             if self.last_layer_size % self.block_elems == 0:
-                res_size = align_value(self.NUM_4 * self.last_layer_size, self.vector_elems) + self.vector_elems
+                res_size = aligned_value(self.NUM_4 * self.last_layer_size, self.vector_elems) + self.vector_elems
                 dup_size = res_size
             else:
                 res_size = self.NUM_8 * self.last_size_align
@@ -549,7 +549,7 @@ class TabulateFusion():
             nloc_i_offset = core_id * self.nloc_one_core + loop_i * self.nloc_per_loop + nloc_i
             em_offset = (nloc_offset + nloc_i) * (self.nnei * self.NUM_4)
             self.tik_inst.data_move(em_ub, self.em_gm[em_offset], 0, 1,
-                                    ceil_value(self.nnei * self.NUM_4, self.block_elems), 0, 0)
+                                    ceiling_value(self.nnei * self.NUM_4, self.block_elems), 0, 0)
 
             out_i_offset = nloc_i_offset * (self.NUM_4 * self.last_layer_size)
             for_end_s = self.tik_inst.Scalar(dtype=self.dtype_int32, name="for_end_s")
@@ -583,7 +583,7 @@ class TabulateFusion():
         """
         compute for one pre core
         """
-        elems_align = align_value(self.nloc_per_loop * self.nnei, self.vector_elems)
+        elems_align = aligned_value(self.nloc_per_loop * self.nnei, self.vector_elems)
         with self.tik_inst.for_range(0, self.pre_core_loops) as loop_i:
             with self.tik_inst.new_stmt_scope():
                 # process self.nloc_per_loop per loop
@@ -593,7 +593,7 @@ class TabulateFusion():
         with self.tik_inst.if_scope(self.pre_core_nloc_tail > 0):
             with self.tik_inst.new_stmt_scope():
                 # process self.pre_core_nloc_tail
-                elems_tail_align = align_value(self.pre_core_nloc_tail * self.nnei, self.vector_elems)
+                elems_tail_align = aligned_value(self.pre_core_nloc_tail * self.nnei, self.vector_elems)
                 nloc_offset = self.nloc_engine_offset + (core_id * self.nloc_one_core +
                                                          self.pre_core_loops * self.nloc_per_loop)
                 self._one_loop_compute(core_id, self.pre_core_loops, self.pre_core_nloc_tail, elems_tail_align,
@@ -603,7 +603,7 @@ class TabulateFusion():
         """
         compute for last core
         """
-        elems_align = align_value(self.nloc_per_loop * self.nnei, self.vector_elems)
+        elems_align = aligned_value(self.nloc_per_loop * self.nnei, self.vector_elems)
         with self.tik_inst.for_range(0, self.last_core_loops) as loop_i:
             with self.tik_inst.new_stmt_scope():
                 # process self.nloc_per_loop per loop for last core
@@ -613,7 +613,7 @@ class TabulateFusion():
         with self.tik_inst.if_scope(self.last_core_nloc_tail > 0):
             with self.tik_inst.new_stmt_scope():
                 # process self.last_core_nloc_tail for last core
-                elems_tail_align = align_value(self.last_core_nloc_tail * self.nnei, self.vector_elems)
+                elems_tail_align = aligned_value(self.last_core_nloc_tail * self.nnei, self.vector_elems)
                 nloc_offset = self.nloc_engine_offset + (core_id * self.nloc_one_core +
                                                          self.last_core_loops * self.nloc_per_loop)
                 self._one_loop_compute(core_id, self.last_core_loops, self.last_core_nloc_tail, elems_tail_align,
@@ -645,10 +645,10 @@ def _check_input_params(table, table_info, em_x, em, descriptor, last_layer_size
     """
     if last_layer_size < 0:
         rule = "last_layer_size should be greater than 0"
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule)
+        error_manager_vector.raise_err_specific_reson(kernel_name, rule)
     if any((split_count < 1, split_count > TabulateFusion.NUM_2, split_index < 0, split_count <= split_index)):
         rule = "Failed to check split info"
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule)
+        error_manager_vector.raise_err_specific_reson(kernel_name, rule)
 
     table_dtype = table.get("dtype").lower()
     table_info_dtype = table_info.get("dtype").lower()
