@@ -896,6 +896,7 @@ class GEMMCompute(FormatCompute):
         """
         if len(tensor_need_align.shape) in (4, 5):
             is_align = True
+            aligned_shape = tensor_need_align.shape
         else:
             ori_m_shape = self._get_value(tensor_need_align.shape[-2])
             ori_n_shape = self._get_value(tensor_need_align.shape[-1])

@@ -48,4 +48,6 @@ gemm_op_testcase = [
   ((16, 2), (1024, 16), 'int8', 'float32', False, (2, 1024),'ND', True, True),
 
   ((1, 6259), (6259, 5552), 'float16', 'float16', False, (1, 5552),'ND', False, False),
+  # Add gemm Bias Case
+  ((4429, 1844), (1844, 1), 'float16', 'float16', False, (4429, 1),'FRACTAL_NZ', False, False),
 ]

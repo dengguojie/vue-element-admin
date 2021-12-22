@@ -212,5 +212,140 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "GEMM",
+    "case_name": "test_gemm_with_bias",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "shape": [
+          116,
+          277,
+          16,
+          16
+        ],
+        "ori_shape": [
+          4429,
+          1844
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "shape": [
+          1,
+          116,
+          16,
+          16
+        ],
+        "ori_shape": [
+          1844,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      },
+      {
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "shape": [
+          1,
+          277,
+          16,
+          16
+        ],
+        "ori_shape": [
+          4429,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "alpha"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "ori_format": "ND",
+        "shape": [
+          1,
+          277,
+          16,
+          16
+        ],
+        "ori_shape": [
+          4429,
+          1
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_a",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_b",
+        "value": false,
+        "type": "bool"
+      }
+    ]
   }
 ]

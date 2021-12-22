@@ -13,36 +13,45 @@ def get_kernel_name(shape_a, shape_b, shape_bias, src_dtype, dst_dtype, fractal)
                 '_' + src_dtype + '_' + dst_dtype + '_' + fractal
     return kernel_name
 
-def gen_trans_data_case(shape_a, shape_b, src_dtype,dst_dtype,trans_a,trans_b,data_format, expect):
-    output_m = shape_a[0]
-    output_n = shape_b[1]
+def gen_trans_data_case(shape_a_ori, shape_b_ori, src_dtype,dst_dtype,trans_a,trans_b,data_format, expect):
+    block_reduce = 16
+    block_in_out = 16
+    output_m = shape_a_ori[0]
+    output_n = shape_b_ori[1]
     if trans_a == True:
-        output_m =  shape_a[1]
+        output_m =  shape_a_ori[1]
     if trans_b == True:
-        output_n =  shape_b[0]
-    output_shape = [output_m,output_n]
-    kernel_name = get_kernel_name(shape_a, shape_b, output_shape,src_dtype, dst_dtype, data_format)
+        output_n =  shape_b_ori[0]
+    output_shape_ori = [output_m,output_n]
+    kernel_name = get_kernel_name(shape_a_ori, shape_b_ori, output_shape_ori,src_dtype, dst_dtype, data_format)
     alpha_beta_dtype = dst_dtype
     alpha = {"ori_shape":[1], "shape":[1], "format":"ND", "ori_format":"ND", "dtype":alpha_beta_dtype}
     beta = {"ori_shape":[1], "shape":[1], "format":"ND", "ori_format":"ND", "dtype":alpha_beta_dtype}
+    shape_a = shape_a_ori
+    shape_b = shape_b_ori
+    output_shape = output_shape_ori
     if data_format == "FRACTAL_NZ":
         format_a = 'FRACTAL_NZ'
         if src_dtype == "int8":
+            block_reduce = 32
             format_b = 'FRACTAL_Z'
         else:
             format_b = 'FRACTAL_NZ'
+        shape_a = [shape_a_ori[1] // block_reduce, shape_a_ori[0] // block_in_out, block_in_out, block_reduce]
+        shape_b = [shape_b_ori[1] // block_in_out, shape_b_ori[0] // block_reduce, block_reduce, block_in_out]
+        output_shape = [output_shape_ori[1] // block_in_out, output_shape_ori[0] // block_in_out, block_in_out, block_in_out]
     else:
         format_a = "ND"
         format_b = "ND"
-    input_x = {"ori_shape":shape_a, "shape": shape_a, "dtype":src_dtype, "format":format_a, "ori_format":"ND"}
-    input_y = {"ori_shape":shape_b, "shape": shape_b, "dtype":src_dtype, "format":format_b, "ori_format":"ND"}
-    input_bias = {"ori_shape":output_shape, "shape":output_shape, "dtype":dst_dtype, "format": format_a, "ori_format":"ND"}
+    input_x = {"shape":shape_a, "ori_shape": shape_a_ori, "dtype":src_dtype, "format":format_a, "ori_format":"ND"}
+    input_y = {"shape":shape_b, "ori_shape": shape_b_ori, "dtype":src_dtype, "format":format_b, "ori_format":"ND"}
+    input_bias = {"shape":output_shape, "ori_shape":output_shape_ori, "dtype":dst_dtype, "format": format_a, "ori_format":"ND"}
     if data_format == "FRACTAL_NZ":
         if dst_dtype == "int32":
             input_bias["format"] = "ND"
     else:
         input_bias["format"] = "ND"
-    output = {"ori_shape":output_shape, "shape":output_shape, "ori_format": format_a, "format":format_a, "dtype":dst_dtype}
+    output = {"ori_shape":output_shape, "shape":output_shape_ori, "ori_format": format_a, "format":format_a, "dtype":dst_dtype}
     return {"params": [input_x,input_y,input_bias,alpha,beta,output,trans_a,trans_b],
             "case_name": kernel_name,
             "expect": expect,
