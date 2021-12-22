@@ -1826,13 +1826,14 @@ class GemmSchedule(object):
         a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
 
         new_fused_num = fused_num
+        scalar_size = 0
         if not self.is_dynamic:
             not_count_list = []
             for tensor_item in self.compute_inline_list:
                 if tensor_item not in self.placeholder_tensors:
                     not_count_list.append(tensor_item)
             multi_ub = CalculateMultiUB(self.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
-            ub_res = multi_ub.calculate_start()
+            ub_res, scalar_size = multi_ub.calculate_start()
             new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP[c_type] * 2) - 1
 
         self.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
@@ -1865,7 +1866,8 @@ class GemmSchedule(object):
             "fused_double_operand_num": fused_num,
             "shape_a_align": self.align_a,
             "shape_b_align": self.align_b,
-            "kernel_name": self.kernel_name
+            "kernel_name": self.kernel_name,
+            "scalar_size": scalar_size
         }
         self._print_debug(info_dict, "info_dict")
         over_head_flag = False
@@ -4822,6 +4824,8 @@ class CalculateMultiUB(object):
     BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
                     "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
                     "int4": 0.5}
+    ALIGN_BYTE = 32
+    MASK_SIZE_RATIO = 100
 
     def __init__(self, start_tensor, end_tensor, not_count_list):
         self.start_tensor = start_tensor
@@ -4829,10 +4833,16 @@ class CalculateMultiUB(object):
         self.not_count_list = not_count_list
         self.tensor_occur_times = dict()
         self.ub_res = 0
+        self.scalar_size = 0
 
     def calculate_start(self):
         self._calculate_multi_ub_auto()
-        return self.ub_res
+        end_tensor_shape = self._get_shape_value(self.end_tensor.shape)
+        self.scalar_size = (self.scalar_size + self.ALIGN_BYTE - 1) // self.ALIGN_BYTE * self.ALIGN_BYTE * \
+                           self.MASK_SIZE_RATIO
+        self.scalar_size = math.ceil(self.scalar_size / \
+                                     (end_tensor_shape * self.BYTES_DTYPE.get(self.end_tensor.dtype, 2)))
+        return self.ub_res, self.scalar_size
 
     def _calculate_multi_ub_auto(self):
         tensor_q = Queue()
@@ -4903,6 +4913,7 @@ class CalculateMultiUB(object):
             return True
         shape_size = self._get_shape_value(tensor.shape)
         if shape_size == 1:
+            self.scalar_size += self.BYTES_DTYPE.get(tensor.dtype, 2)
             return True
         return False
 
