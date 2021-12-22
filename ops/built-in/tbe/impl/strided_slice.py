@@ -539,8 +539,11 @@ def strided_slice(input_x,
             else:
                 tiling_mode = 2
 
+            reduce_shape = 1
+            if shape_len > Constant.SHAPE_LEN:
+                reduce_shape = reduce(lambda x,y:x * y, out_shape[0:-2])
             if out_shape[-1] * dtype_size < byte_block and shape_len >= Constant.SHAPE_LEN and \
-                dtype == constant.DATA_TYPE_FP16 and reduce(lambda x,y:x * y, out_shape[0:-2]) % core_num == 0 and \
+                dtype == constant.DATA_TYPE_FP16 and reduce_shape % core_num == 0 and \
                     out_shape[-2] >= constant.SIZE_SIXTEEN and \
                         input_shape[-1] * Constant.TILING_FACTOR_256 <= _cal_vnchw_ub_size():
                 tiling_mode = 3

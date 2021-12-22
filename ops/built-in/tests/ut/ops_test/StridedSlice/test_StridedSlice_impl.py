@@ -101,11 +101,28 @@ case5 = {"params": [{"shape": (1, 5, 5, 5, 424, 35), "dtype": "float16", "format
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (64, 256), "dtype": "float16", "format": "ND",
+                     "ori_shape": (64, 256), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND", "const_value": [1, 1]},
+                    {"shape": (64, 128), "dtype": "float16", "format": "ND",
+                     "ori_shape": (64, 128), "ori_format": "ND"},
+                     3, 1, 0, 0, 0
+                    ],
+         "case_name": "StridedSlice_6",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["all"], case1)
 ut_case.add_case(["all"], case2)
 ut_case.add_case(["all"], case3)
 ut_case.add_case(["all"], case4)
 ut_case.add_case(["all"], case5)
+ut_case.add_case(["all"], case6)
 
 def test_op_check_supported_1(test_arg):
     from impl.strided_slice import check_supported
