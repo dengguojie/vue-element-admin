@@ -16,6 +16,9 @@ CUSTOM_PREF = "custom"
 
 
 class IniParser(object):
+    """
+    initial parser class
+    """
     required_op_info_keys = ["computeCost", "engine", "flagAsync", "flagPartial", "opKernelLib"]
     required_custom_op_info_keys = ["kernelSo", "functionName", "workspaceSize"]
     input_output_info_keys = {'format', 'type', 'name'}  # set for difference
@@ -40,8 +43,8 @@ class IniParser(object):
         """
         cfg = configparser.ConfigParser()
         cfg.optionxform = str
-        with open(ini_file, "r") as ini_file:
-            cfg.read_file(ini_file)
+        with open(ini_file, "r") as inif:
+            cfg.read_file(inif)
 
         # config file section is op name, eg. "Add", "Cast"
         for op in cfg.sections():
@@ -51,15 +54,12 @@ class IniParser(object):
                 if len(opt.split(".")) != 2:
                     print("## Parse op [%s] setting: \"%s\", not recognized!" % (op, opt))
                     continue
-                # split option with ., so opInfo.engine will be:
-                #     opt_sec = opInfo
-                #     opt_subsec = engine
-                # and one opt_sec will include serval info, eg. opInfo: {"engine": xxx, "flagAsync": xxx, ...}
+                # one opt_sec will include serval info, eg. opInfo: {"engine": xxx, "flagAsync": xxx, ...}
                 opt_sec, opt_subsec = opt.split(".")
-                if opt_sec not in self.aicpu_ops_info[op]:
-                    self.aicpu_ops_info[op][opt_sec] = {opt_subsec: cfg[op][opt]}
+                if opt_sec not in self.aicpu_ops_info.get(op):
+                    self.aicpu_ops_info.get(op)[opt_sec] = {opt_subsec: cfg[op][opt]}
                 else:
-                    self.aicpu_ops_info[op][opt_sec].update({opt_subsec: cfg[op][opt]})
+                    self.aicpu_ops_info.get(op)[opt_sec].update({opt_subsec: cfg[op][opt]})
 
     def check_custom_op_info(self, op_name, op_info):
         """
@@ -97,7 +97,7 @@ class IniParser(object):
         Check input/output section for op, if defined other than ('format', 'type', 'name') maybe
         """
         subset = set(io_sec_info.keys()).difference(self.input_output_info_keys)
-        return False if len(subset) > 0 else True
+        return not subset
 
     def check_op_info_setting(self):
         """
@@ -186,6 +186,8 @@ class IniParser(object):
                     print("\tNo \"%s\" ops set: %s" % (warn_type, warn_ops))
         except KeyError as e:
             print("bad format key value, failed to generate json file, detail info: \n%s" % e)
+        finally:
+            print("parse try except normal")
 
 
 def main():

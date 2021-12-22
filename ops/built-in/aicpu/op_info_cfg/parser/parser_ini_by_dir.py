@@ -3,15 +3,19 @@ import os
 import stat
 import sys
 
+
 def parse_ini_files(ini_files):
+    """parse ini files"""
     aicpu_ops_info = {}
     print(ini_files)
     parse_ini_to_obj(ini_files, aicpu_ops_info)
     return aicpu_ops_info
 
+
 def parse_ini_to_obj(ini_file, aicpu_ops_info):
-    with open(ini_file) as ini_file:
-        lines = ini_file.readlines()
+    """parse ini file to object"""
+    with open(ini_file) as inif:
+        lines = inif.readlines()
         op = {}
         for line in lines:
             line = line.rstrip()
@@ -27,9 +31,10 @@ def parse_ini_to_obj(ini_file, aicpu_ops_info):
                     op[key1_0] = {}
                 op[key1_0][key1_1] = key2
 
+
 def check_op_info(aicpu_ops):
+    """check op info"""
     print("\n==============check valid for ops info start==============")
-    not_valid_op=[]
     required_op_info_keys = ["computeCost", "engine", "flagAsync", "flagPartial", "opKernelLib"]
 
     for op_key in aicpu_ops:
@@ -37,56 +42,62 @@ def check_op_info(aicpu_ops):
         for key in op:
             if key == "opInfo":
                 op_info = op["opInfo"]
-                missing_keys=[]
+                missing_keys = []
                 for  required_op_info_key in required_op_info_keys:
                     if not required_op_info_key in op_info:
-                                missing_keys.append(required_op_info_key)
+                        missing_keys.append(required_op_info_key)
                 if len(missing_keys) > 0:
                     print("op: " + op_key + " opInfo missing: " + ",".join(missing_keys))
             elif (key[:5] == "input") and (key[5:].isdigit()):
                 for op_sets in op[key]:
-                    if (op_sets not in ('format', 'type', 'name')):
+                    if op_sets not in ('format', 'type', 'name'):
                         print("input should has format type or name as the key, "
-                              "but getting %s" %(op_sets))
+                              "but getting %s" % op_sets)
                         raise KeyError("bad op_sets key")
             elif (key[:6] == "output") and (key[6:].isdigit()):
                 for op_sets in op[key]:
-                    if (op_sets not in ('format', 'type', 'name')):
+                    if op_sets not in ('format', 'type', 'name'):
                         print("output should has format type or name as the key, "
-                              "but getting %s" %(op_sets))
+                              "but getting %s" % op_sets)
                         raise KeyError("bad op_sets key")
             elif (key[:13] == "dynamic_input") and (key[13:].isdigit()):
                 for op_sets in op[key]:
-                    if (op_sets not in ('format', 'type', 'name')):
+                    if op_sets not in ('format', 'type', 'name'):
                         print("output should has format type or name as the key, "
-                              "but getting %s" %(op_sets))
+                              "but getting %s" % op_sets)
                         raise KeyError("bad op_sets key")
             elif (key[:14] == "dynamic_output") and (key[14:].isdigit()):
                 for op_sets in op[key]:
-                    if (op_sets not in ('format', 'type', 'name')):
+                    if op_sets not in ('format', 'type', 'name'):
                         print("output should has format type or name as the key, "
-                              "but getting %s" %(op_sets))
+                              "but getting %s" % op_sets)
                         raise KeyError("bad op_sets key")
             else:
                 print("Only opInfo, input[0-9], output[0-9] can be used as a key, "
-                      "but op %s has the key %s" %(op_key, key))
+                      "but op %s has the key %s" % (op_key, key))
                 raise KeyError("bad key value")
     print("==============check valid for ops info end================\n")
 
+
 def write_json_file(aicpu_ops_info, json_file_path):
+    """write json file"""
     json_file_real_path = os.path.realpath(json_file_path)
     with open(json_file_real_path, "w") as f:
         # Only the owner and group have rights
         os.chmod(json_file_real_path, stat.S_IWGRP + stat.S_IWUSR + stat.S_IRGRP + stat.S_IRUSR)
         json.dump(aicpu_ops_info, f, sort_keys=True, indent=4, separators=(',', ':'))
 
-def parse_ini_to_json(ini_file_paths, outfile_path):
-    aicpu_ops_info = parse_ini_files(ini_file_paths)
+
+def parse_ini_to_json(inf_paths, ouf_path):
+    """parse ini file to json"""
+    aicpu_ops_info = parse_ini_files(inf_paths)
     try:
         check_op_info(aicpu_ops_info)
-        write_json_file(aicpu_ops_info, outfile_path)
+        write_json_file(aicpu_ops_info, ouf_path)
     except KeyError:
         print("bad format key value, failed to generate json file")
+    finally:
+        print("parse_ini_to_json try except normal")
 
 if __name__ == '__main__':
     args = sys.argv
@@ -100,12 +111,12 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     folder_path = args[1]
-    print("Parse ini file in %s"%folder_path)
+    print("Parse ini file in %s" % folder_path)
     if not os.path.exists(folder_path):
-        print("The folder %s is not exists"%folder_path)
+        print("The folder %s is not exists" % folder_path)
         sys.exit(-1)
 
-    parse_file_list = dict()
+    parse_file_list = {}
     for root, dirs, files in os.walk(folder_path, topdown=False):
         for name in files:
             if name.endswith("ini"):
@@ -113,10 +124,10 @@ if __name__ == '__main__':
                 parse_file_list[name.replace('ini', 'json')] = file_path.replace('\\', '/').replace('\\\\', '/')
 
     if parse_file_list is None:
-        print("Fail: cannot find ini file in %s"%folder_path)
+        print("Fail: cannot find ini file in %s" % folder_path)
         sys.exit(0)
 
-    for outfile_path, ini_file_paths in parse_file_list.items():
-        parse_ini_to_json(ini_file_paths, outfile_path)
+    for outf_path, inif_paths in parse_file_list.items():
+        parse_ini_to_json(inif_paths, outf_path)
 
     sys.exit(0)
