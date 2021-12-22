@@ -2142,3 +2142,4 @@ Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr>
 
 REGISTER_PASS("EinsumPass", BUILT_IN_GRAPH_PASS, EinsumPass);
 }  // namespace fe
+
