@@ -489,7 +489,8 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     }
     vector<int64_t> kernelTableassitDimInfo;
     ret = KernelGenV2(ksize[1], ksize[2], origInputShapeV[3], kernelTableassitDimInfo, kernelTableinputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTable matrix AssitHelp failed."),
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                     "kernelTable matrix AssitHelp failed."),
                       return ret);
     kernelTableassitDimInfo.push_back((int64_t)ksize[1]);
     kernelTableassitDimInfo.push_back((int64_t)ksize[2]);

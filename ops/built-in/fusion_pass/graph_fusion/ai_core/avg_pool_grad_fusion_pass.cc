@@ -423,13 +423,16 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         avg_pool_dim_info[3] = orig_input_shape_const_tensor_ptr[3];
       }
     }
-    int64_t value_table_size = avg_pool_dim_info[0] * avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3];
+    int64_t value_table_size = avg_pool_dim_info[0] * avg_pool_dim_info[1] *
+            avg_pool_dim_info[2] * avg_pool_dim_info[3];
 
     FUSION_PASS_CHECK(
-        (((avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3]) == 0) || (value_table_size <= 0)),
+        (((avg_pool_dim_info[1] * avg_pool_dim_info[2] *
+        avg_pool_dim_info[3]) == 0) || (value_table_size <= 0)),
         OP_LOGW(kFusedOpType.c_str(), "The value_table_size have 0 element"), return NOT_CHANGED);
     FUSION_PASS_CHECK(
-        (avg_pool_dim_info[0] != value_table_size / (avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3])),
+        (avg_pool_dim_info[0] != value_table_size / (avg_pool_dim_info[1] *
+        avg_pool_dim_info[2] * avg_pool_dim_info[3])),
         OP_LOGW(kFusedOpType.c_str(), "The value_table_size overlap , over int64"), return NOT_CHANGED);
 
     unique_ptr<uint16_t[]> input_assit(new (std::nothrow) uint16_t[value_table_size]());

@@ -61,7 +61,8 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, v
 vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceSumFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -71,7 +72,8 @@ vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
 Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion begin.");
   ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "sumNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   FUSION_PASS_CHECK(sumNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -130,13 +132,15 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and sum. connect beforeNode and afterNode");
     for (auto inDataAnchor : sumNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mean and outnode edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mean and outnode edge failed."),
+                        return FAILED);
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(sumNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
     }
     OP_LOGI(FUSED_OP_TYPE.c_str(), "delete sumNode edge.");
-    FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove meanNode failed."),
+    FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Remove meanNode failed."),
                       return FAILED);
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "replace reducesum by reshape node.");
@@ -157,8 +161,10 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     FUSION_PASS_CHECK(ret != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."),
                       return ret);
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetInDataAnchor(1)->GetPeerOutAnchor(), sumNode->GetInDataAnchor(1)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sumNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                      sumNode->GetInDataAnchor(1)) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum and outnode edge failed."),
+                      return FAILED);
 
     ge::InDataAnchorPtr sum_anchor_ptr = sumNode->GetInDataAnchor(1);
     ge::NodeUtils::ClearInDataAnchor(sumNode, sum_anchor_ptr);

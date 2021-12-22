@@ -73,7 +73,8 @@ vector<FusionPattern*> YoloV3DetectionOutputPass::DefinePatterns() {
   // yolo_v3_detection_output->yolo_v3_detection_output_d
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("YoloV3DetectionOutputPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+  "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_YOLOV3, {YOLOV3}).SetOutput(PATTERN_YOLOV3);
@@ -87,13 +88,15 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloV3DetectionOutputPass");
   // diag node
   ge::NodePtr yolov3VNode = GetNodeFromMapping(PATTERN_YOLOV3, mapping);
-  FUSION_PASS_CHECK(yolov3VNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "yolov3VNode is null, fusion failed."),
+  FUSION_PASS_CHECK(yolov3VNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "yolov3VNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of diag
   ge::OpDescPtr yolov3Desc = yolov3VNode->GetOpDesc();
   FUSION_PASS_CHECK(yolov3Desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "yolov3VNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "yolov3VNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // find the parent node of yolov3
@@ -138,7 +141,8 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   if (PatternFusionUtil::IsUnknownShape(dimInfo1[2]) || PatternFusionUtil::IsUnknownShape(dimInfo1[3]) ||
       PatternFusionUtil::IsUnknownShape(dimInfo2[2]) || PatternFusionUtil::IsUnknownShape(dimInfo2[3]) ||
       PatternFusionUtil::IsUnknownShape(dimInfo3[2]) || PatternFusionUtil::IsUnknownShape(dimInfo3[3])) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "YoloV3DetectionOutputPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+    "YoloV3DetectionOutputPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
@@ -150,24 +154,30 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::GeTensorPtr assitPtrH3 = nullptr;
 
   unique_ptr<uint16_t[]> inputAssitW1(new (std::nothrow) uint16_t[dimInfo1[2] * dimInfo1[3]]());
-  FUSION_PASS_CHECK(inputAssitW1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW1 is NULL"),
+  FUSION_PASS_CHECK(inputAssitW1.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW1 is NULL"),
                     return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssitH1(new (std::nothrow) uint16_t[dimInfo1[2] * dimInfo1[3]]());
-  FUSION_PASS_CHECK(inputAssitH1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
+  FUSION_PASS_CHECK(inputAssitH1.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
                     return PARAM_INVALID);
 
   unique_ptr<uint16_t[]> inputAssitW2(new (std::nothrow) uint16_t[dimInfo2[2] * dimInfo2[3]]());
-  FUSION_PASS_CHECK(inputAssitW2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW2 is NULL"),
+  FUSION_PASS_CHECK(inputAssitW2.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW2 is NULL"),
                     return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssitH2(new (std::nothrow) uint16_t[dimInfo2[2] * dimInfo2[3]]());
-  FUSION_PASS_CHECK(inputAssitH2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH2 is NULL"),
+  FUSION_PASS_CHECK(inputAssitH2.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH2 is NULL"),
                     return PARAM_INVALID);
 
   unique_ptr<uint16_t[]> inputAssitW3(new (std::nothrow) uint16_t[dimInfo3[2] * dimInfo3[3]]());
-  FUSION_PASS_CHECK(inputAssitW3.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW3 is NULL"),
+  FUSION_PASS_CHECK(inputAssitW3.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW3 is NULL"),
                     return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssitH3(new (std::nothrow) uint16_t[dimInfo3[2] * dimInfo3[3]]());
-  FUSION_PASS_CHECK(inputAssitH3.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH3 is NULL"),
+  FUSION_PASS_CHECK(inputAssitH3.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH3 is NULL"),
                     return PARAM_INVALID);
 
   Status ret = GenerateWIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitW1.get());

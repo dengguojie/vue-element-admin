@@ -190,7 +190,8 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
   output_desc.SetOriginFormat(inputOriginFormat);
   output_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."),
+                    return nullptr);
 
   // add node
   mulNode = graph.AddNode(mulDesc);
@@ -212,13 +213,15 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
 
     // add edge between mul and next_node
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Add edge between node %s. and node %s failed.",
                               mulNode->GetName().c_str(), postNode->GetName().c_str()),
                       return nullptr);
   }
   // add edge between avgpool and mul
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(avgPoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Add edge between node %s. and node %s failed.",
                             avgPoolNode->GetName().c_str(), mulNode->GetName().c_str()),
                     return nullptr);
 
@@ -283,9 +286,11 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
 
   ge::GeTensorPtr coffePtr = nullptr;
   int64_t coffeSize = 1 * outputC1 * outputH * outputW * outputC0;
-  FUSION_PASS_CHECK(coffeSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(coffeSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+  "coffeSize is Invalid"), return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[coffeSize]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret = NnSet(coffeSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
@@ -293,7 +298,8 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
 
   vector<int64_t> coffeDimInfo = {1, outputC1, outputH, outputW, outputC0};
   ret = GenerateCoffeFP16(coffeDimInfo, ksize, stride, pad, dimH, dimW, *inputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "CoffeFP16 is failed."), return ret);
 
   vector<int64_t> coffeDimInfoOrigin;
   if (inputDesc0OriginFormat == FORMAT_NHWC) {
@@ -320,7 +326,8 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
                           coffePtr = nullptr;
                           return PARAM_INVALID);
   ge::OpDescPtr mulDesc = mulNode->GetOpDesc();
-  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   vector<ge::GeTensorPtr> weights = {coffePtr};
@@ -342,7 +349,8 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
 Status AvgPoolFusionPass::Calc4DWeightAvgPool(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                                               const int8_t* filterInt8Data,
                                               std::unique_ptr<int32_t[]>& weightInt8Temp) {
-  FUSION_PASS_CHECK(filterDims4D.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
+  FUSION_PASS_CHECK(filterDims4D.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "filterDims4D is empty!"), return FAILED);
 
   if (INDEX_CO_avg > filterDims4D.size()) {
     return FAILED;
@@ -356,7 +364,8 @@ Status AvgPoolFusionPass::Calc4DWeightAvgPool(const std::vector<int64_t>& filter
                       (i * filterDims4D[INDEX_FILTER_H] * filterDims4D[INDEX_FILTER_W]) +
                       (h * filterDims4D[INDEX_FILTER_W]) + w;
           FUSION_PASS_CHECK(k >= kernelDataCount,
-                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The index %ld is out of weightInt8Data's range", k),
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "The index %ld is out of weightInt8Data's range", k),
                             return FAILED);
           sum_temp += filterInt8Data[k];
         }
@@ -392,24 +401,31 @@ Status AvgPoolFusionPass::GetWeightOfConvAvgpool(const std::string& opName, cons
   // get conv core kerneldata count
   int64_t kernelDataCount = 1;
   FUSION_PASS_CHECK(GetkernelDataCountForPass(filterDims, kernelDataCount) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetkernelDataCount faild."), return PARAM_INVALID);
-
-  FUSION_PASS_CHECK(filterInt8Data == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weightInt8Data is nullptr"),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetkernelDataCount faild."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(kernelDataCount <= min, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelDataCount is not a positive number."),
+
+  FUSION_PASS_CHECK(filterInt8Data == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "weightInt8Data is nullptr"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(kernelDataCount <= min, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "kernelDataCount is not a positive number."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(kernelDataCount == min || kernelDataCount >= UINT_MAX / div,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelDataCount is out of range."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelDataCount is out of range."),
+                    return PARAM_INVALID);
 
   // calc weight: accumulate weights
   std::unique_ptr<int32_t[]> weightInt8Temp(new (std::nothrow) int32_t[filterDims4D[INDEX_CO_avg]]());
-  FUSION_PASS_CHECK(weightInt8Temp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weightInt8Temp is nullptr"),
+  FUSION_PASS_CHECK(weightInt8Temp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "weightInt8Temp is nullptr"),
                     return PARAM_INVALID);
   Status ret;
-  FUSION_PASS_CHECK(filterDims4D.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
+  FUSION_PASS_CHECK(filterDims4D.empty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
 
   ret = Calc4DWeightAvgPool(filterDims4D, kernelDataCount, filterInt8Data, weightInt8Temp);
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight failed."),
+  return ret);
 
   weightInt8OutParam = std::move(weightInt8Temp);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Successfully get weight for node %s.", opName.c_str());
@@ -419,12 +435,14 @@ Status AvgPoolFusionPass::GetWeightOfConvAvgpool(const std::string& opName, cons
 Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::NodePtr poolingNode,
                                                 vector<ge::NodePtr>& fusionNodes, int64_t&ksizeH,
                                                 int64_t& ksizeW, int64_t& inputC) {
-  FUSION_PASS_CHECK(poolingNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
+  FUSION_PASS_CHECK(poolingNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr poolingOp = poolingNode->GetOpDesc();
 
-  FUSION_PASS_CHECK(poolingOp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingOp is null, fusion failed."),
+  FUSION_PASS_CHECK(poolingOp == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingOp is null, fusion failed."),
                     return PARAM_INVALID);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "quant bias optimize op %s, begin to bias optimize.", poolingOp->GetName().c_str());
@@ -437,17 +455,20 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
 
   /* Get pooling Weight filter */
   vector<ge::GeTensorPtr> weights_pooling = ge::OpDescUtils::MutableWeights(poolingNode);
-  FUSION_PASS_CHECK(weights_pooling.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weights_pooling is null ptr!"),
+  FUSION_PASS_CHECK(weights_pooling.empty(),
+                   VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weights_pooling is null ptr!"),
                     return PARAM_INVALID);
   ge::GeTensorPtr filter = weights_pooling[0];
-  FUSION_PASS_CHECK(filter == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filter is null ptr!"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(filter == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filter is null ptr!"), return PARAM_INVALID);
   int8_t* filterInt8Data = (int8_t*)(filter->GetData().data());
   vector<int64_t> filterDims = {1, inputC, ksizeH, ksizeW};
 
   /* Store the filter data after optimization */
   std::unique_ptr<int32_t[]> weightInt8OutParam;
   Status ret = GetWeightOfConvAvgpool(poolingNode->GetName(), filterInt8Data, filterDims, weightInt8OutParam);
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight of conv failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight of conv failed."),
+                    return ret);
   int64_t co = filterDims.at(INDEX_CO_avg);
 
   // do not have bias, create bias node and init bias
@@ -491,7 +512,8 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "set bias data failed!"), return ret);
 
   FUSION_PASS_CHECK(PatternFusionUtil::SetWeightByIndex(poolingNode, biasPtr, 2, graph) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(poolingNode->GetName().c_str(), "Fail to add bias const node for pooling node."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(poolingNode->GetName().c_str(),
+                    "Fail to add bias const node for pooling node."),
                     return FAILED);
 
   // update the bias outputDesc of biasOpDesc
@@ -515,7 +537,8 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   biasOutputDesc.SetDataType(ge::DT_INT32);
   FUSION_PASS_CHECK(
       biasOpDesc->UpdateOutputDesc(0, biasOutputDesc) != ge::GRAPH_SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output desc of BiasNode[%s] not success.", biasOpDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output desc of BiasNode[%s] not success.",
+      biasOpDesc->GetName().c_str()),
       return FAILED);
 
   // update the bias inputDesc of the convOpDesc
@@ -526,7 +549,8 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   biasDesc.SetOriginDataType(ge::DT_INT32);
   biasDesc.SetDataType(ge::DT_INT32);
   FUSION_PASS_CHECK(poolingOp->UpdateInputDesc(2, biasDesc) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "update bias input desc of ConvNode[%s] not success.",
                             poolingNode->GetName().c_str()),
                     return FAILED);
 
@@ -535,13 +559,16 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
 
 Status AvgPoolFusionPass::UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePtr& const_node, float& area_factor) {
   vector<ge::GeTensorPtr> const_dequant = ge::OpDescUtils::MutableWeights(const_node);
-  FUSION_PASS_CHECK(const_dequant.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_dequant is null ptr!"),
+  FUSION_PASS_CHECK(const_dequant.empty(),
+                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_dequant is null ptr!"),
                     return PARAM_INVALID);
   ge::GeTensorPtr const_ptr = const_dequant[0];
-  FUSION_PASS_CHECK(const_ptr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_ptr is null ptr!"),
+  FUSION_PASS_CHECK(const_ptr == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_ptr is null ptr!"),
                     return PARAM_INVALID);
   float* const_data = (float*)(const_ptr->GetData().GetData());
-  FUSION_PASS_CHECK(const_data == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data is null ptr!"),
+  FUSION_PASS_CHECK(const_data == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data is null ptr!"),
                     return PARAM_INVALID);
   const_data[0] = area_factor * const_data[0];
   OP_LOGD(FUSED_OP_TYPE.c_str(), "const_data is %f", const_data[0]);
@@ -600,7 +627,8 @@ vector<FusionPattern*> AvgPoolFusionPass::DefinePatterns() {
 
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AvgPoolFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_AVGPOOL, {AVGPOOL}).SetOutput(PATTERN_AVGPOOL);
@@ -613,13 +641,15 @@ vector<FusionPattern*> AvgPoolFusionPass::DefinePatterns() {
 Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // avgpool node
   ge::NodePtr avgPoolNode = GetNodeFromMapping(PATTERN_AVGPOOL, mapping);
-  FUSION_PASS_CHECK(avgPoolNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolNode is null, fusion failed."),
+  FUSION_PASS_CHECK(avgPoolNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of AvgPool
   ge::OpDescPtr avgPoolDesc = avgPoolNode->GetOpDesc();
   FUSION_PASS_CHECK(avgPoolDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "avgPoolNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(!CheckOpSupported(avgPoolDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                       return NOT_CHANGED);
@@ -729,7 +759,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   // get pre node of pooling
   ge::InDataAnchorPtr poolingAnchorPtr0 = avgPoolNode->GetInDataAnchor(0);
   FUSION_PASS_CHECK(poolingAnchorPtr0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingAnchorPtr0's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "poolingAnchorPtr0's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr preAnchorPtr0 = poolingAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr preNode = preAnchorPtr0->GetOwnerNode();
@@ -795,11 +826,13 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     int64_t matrixSize = inputC * 1 * ksizeH * ksizeW;
     FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGW(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return NOT_CHANGED);
     unique_ptr<int8_t[]> inputAssitInt8(new (std::nothrow) int8_t[matrixSize]());
-    FUSION_PASS_CHECK(inputAssitInt8.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitInt8 is NULL"),
+    FUSION_PASS_CHECK(inputAssitInt8.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitInt8 is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(matrixSize, INT8_NUM_ONE, *reinterpret_cast<int8_t*>(inputAssitInt8.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
     vector<int64_t> assitDimInfoOrigin = {inputC, 1, ksizeH, ksizeW};
 
@@ -821,7 +854,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         }
       }
       ge::NodePtr mulNode = AddMul(graph, dequantNode, inputOriginFormat);
-      FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+      FUSION_PASS_CHECK(mulNode == nullptr,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                         return PARAM_INVALID);
       // judge input dims for unknown shape
       ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
@@ -847,7 +881,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       } else {
         float areaFactor = 1.0 / (ksizeH * ksizeW);
         FUSION_PASS_CHECK(UpdateDequantConst(graph, HostcpuNode, areaFactor) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update dequant const failed."), return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "update dequant const failed."), return FAILED);
       }
 
     } else {
@@ -883,7 +918,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     constInput->GetOpDesc()->SetType(CONSTANTOP);
     // add bias for pooling node
     ret = DoBiasOptimizeAvgpool(graph, avgPoolNode, fusionNodes, ksizeH, ksizeW, inputC);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
 
   } else {  // fp16
     ge::GeTensorPtr assitPtr = nullptr;
@@ -892,13 +928,16 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     if (isDynamic) {
       matrixSize = inputC1 * ksizeH * ksizeW * CIN * COUT;
     }
-    FUSION_PASS_CHECK(matrixSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(matrixSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                                      "matrixSize is Invalid"), return PARAM_INVALID);
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."),
+                      return ret);
     vector<int64_t> assitDimInfoOrigin = {inputC, 1, ksizeH, ksizeW};
     vector<int64_t> assitDimInfoDynamic = {inputC1 * ksizeH * ksizeW, 1, CIN, COUT};
     vector<int64_t> assitDimInfoOriginDynamic = {inputC, 1, ksizeH, ksizeW};
@@ -933,12 +972,14 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
             mulC = dimMul[1];
           }
           if (PatternFusionUtil::IsUnknownShape(mulC)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+            "AvgPoolFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
         ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
-        FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+        FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "mulNode is null, AddMul failed."),
                           return PARAM_INVALID);
         // judge input dims for unknown shape
         ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
@@ -947,7 +988,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         for (size_t i = 1; i <= 3; i++) {
           auto dim = dimOut[i];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+            "AvgPoolFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
@@ -959,7 +1001,8 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       return NOT_CHANGED;
     }
 
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "GenerateFilterFP16 failed."), return ret);
 
     ge::GeTensorDesc tensorDesc;
     ge::GeShape assitShape(assitDimInfoOrigin);

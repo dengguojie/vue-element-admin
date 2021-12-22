@@ -370,7 +370,8 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddRightMatmulNode(ge::NodePtr avgpoo
 
     // create matmul node
     ge::NodePtr matmul_node = this->AddNewNode(graph, matmul_op_desc, new_nodes);
-    FUSION_PASS_CHECK(matmul_node == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add right matmul node failed."),
+    FUSION_PASS_CHECK(matmul_node == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                     "add right matmul node failed."),
                       return nullptr);
     vector<int64_t> weight_dim = {this->input_dims[INDEX_N], this->input_dims[INDEX_W], this->output_dims[INDEX_W]};
     this->CreateBatchMatMulWeightNode(matmul_node, weight_dim, false);

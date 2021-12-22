@@ -114,7 +114,8 @@ Status ArgmaxOneHotFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   OP_LOGD(PASS_NAME, "%s's dimension is %ld.", argmax_node->GetName().c_str(), dimension[0]);
   if (dimension[0] > argmax_first_input_shape.GetDimNum() || dimension[0] < 0) {
-    OP_LOGD(PASS_NAME, "%s dimension[%ld] is invalid, fusion not change.", argmax_node->GetName().c_str(), dimension[0]);
+    OP_LOGD(PASS_NAME, "%s dimension[%ld] is invalid, fusion not change.",
+    argmax_node->GetName().c_str(), dimension[0]);
     return NOT_CHANGED;
   }
 

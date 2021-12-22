@@ -387,7 +387,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       int32_t realDimCnt2 = add_mulnewShape.GetDimNum();
       ge::TensorUtils::SetRealDimCnt(tensorDescadd_mul, realDimCnt2);
       FUSION_PASS_CHECK(Adds_mul->AddInputDesc("x", tensorDescadd_mul) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Adds_mul after valid num is null, fusion failed."),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      "add input x for Adds_mul after valid num is null, fusion failed."),
                       return FAILED);
       Adds_mul->AddOutputDesc("y", tensorDescadd_mul);
       ge::AttrUtils::SetFloat(Adds_mul, "value", 65535.0/65534.0);

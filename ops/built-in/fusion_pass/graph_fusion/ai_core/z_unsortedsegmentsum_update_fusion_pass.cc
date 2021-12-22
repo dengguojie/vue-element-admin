@@ -33,7 +33,8 @@ namespace fe {
 vector<FusionPattern*> ZUnsortedSegmentSumUpdateFusionPass::DefinePatterns() {
     vector<FusionPattern*> patterns;
     FusionPattern* pattern = new (std::nothrow) FusionPattern("UnsortedSegmentSumUpdatePattern");
-    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "new a pattern object failed."),
                       return patterns);
     pattern->AddOpDesc("UnsortedSegmentSumD", {"UnsortedSegmentSumD"}).SetOutput("UnsortedSegmentSumD");
     patterns.push_back(pattern);

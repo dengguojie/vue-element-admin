@@ -45,7 +45,8 @@ Status AddOutputFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 }
 
 Status AddOutputFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr opsKernelInfoStorePtr) {
-  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("ApplyAddOutput", "opsKernelInfoStorePtr is nullptr"),
+  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT("ApplyAddOutput", "opsKernelInfoStorePtr is nullptr"),
                     return FAILED);
 
   int32_t matchTimes = 0;

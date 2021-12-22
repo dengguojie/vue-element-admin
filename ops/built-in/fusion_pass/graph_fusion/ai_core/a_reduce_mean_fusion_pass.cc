@@ -54,7 +54,8 @@ Status AReduceMeanFusionPass::CheckMeanFussionOrNot(vector<int64_t> tensor_info,
 vector<FusionPattern*> AReduceMeanFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceMeanFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -64,7 +65,8 @@ vector<FusionPattern*> AReduceMeanFusionPass::DefinePatterns() {
 Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceMeanFusionPass fusion begin.");
   ge::NodePtr meanNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(meanNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "meanNode is null, fusion failed."),
+  FUSION_PASS_CHECK(meanNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "meanNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   FUSION_PASS_CHECK(meanNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -118,14 +120,16 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and mean. connect beforeNode and afterNode");
   for (auto inDataAnchor : meanNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(meanNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mean and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mean and outnode edge failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(meanNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reducemean edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(meanNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove meanNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(meanNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                   "Remove meanNode failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceMeanFusionPass fusion end");
