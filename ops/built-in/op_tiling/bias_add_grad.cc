@@ -20,8 +20,12 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                       utils::OpRunInfo& run_info) {
+struct BiasAddGradCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+};
+
+bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
+                       const BiasAddGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
@@ -77,12 +81,23 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   std::vector<std::vector<int64_t>> shapes = {new_shape};
   ge::DataType type = input_desc->GetDataType();
   OpInfo eletwise_info(shapes, type);
-
-  bool ret = ReduceTiling(op_type, op_paras, op_info, run_info, eletwise_info);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(BiasAddGrad, BiasAddGradTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 BiasAddGradCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(BiasAddGrad, BiasAddGradTiling, ParseJsonCompileInfo, BiasAddGradCompileInfo);
 }  // namespace optiling

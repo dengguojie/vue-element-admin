@@ -28,10 +28,13 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+struct TileDCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  std::vector<int64_t> tiling_info;
+};
+
+bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const TileDCompileInfo& parsed_info,
                  utils::OpRunInfo& run_info) {
-  V_OP_TILING_CHECK((op_info.find("tiling_info") != op_info.end()),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [tiling_info]"), return false);
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
@@ -39,7 +42,7 @@ bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const
   auto input_desc = operator_info->MutableInputDesc(0);
   OP_TILING_CHECK(input_desc == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 0 opdesc failed"), return false);
-  const std::vector<int64_t>& tiling_info = op_info["tiling_info"];
+  const std::vector<int64_t>& tiling_info = parsed_info.tiling_info;
 
   std::vector<int64_t> runtime_shape = input_desc->MutableShape().GetDims();
   ScalarToShape(runtime_shape);
@@ -70,11 +73,25 @@ bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const
   OpInfo eletwise_info(inputshapes, type);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
 }
 
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 TileDCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  // get core_num value
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "tiling_info", parsed_info.tiling_info),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get tiling_info error"),
+                  return false);
+  return true;
+}
+
 // register tiling interface of the TileD op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(TileD, TileDTiling);
+REGISTER_OP_TILING_V3_CUSTOM(TileD, TileDTiling, ParseJsonCompileInfo, TileDCompileInfo);
 }  // namespace optiling

@@ -18,13 +18,23 @@
 #include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "error_log.h"
+#include "op_tiling_util.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
+struct SigmoidCrossEntropyWithLogitsGradV2CompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  ge::DataType reduce_mean_cof_dtype;
+  bool has_reduce_mean_cof_dtype;
+};
+
 bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const ge::Operator& op_paras,
-                                               const nlohmann::json& op_info, utils::OpRunInfo& run_info) {
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+                                               const SigmoidCrossEntropyWithLogitsGradV2CompileInfo& parsed_info,
+                                               utils::OpRunInfo& run_info) {
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
@@ -38,9 +48,8 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
     return ret;
   }
 
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
-    if (reduce_mean_cof_dtype == "float32") {
+  if (parsed_info.has_reduce_mean_cof_dtype) {
+    if (parsed_info.reduce_mean_cof_dtype == ge::DT_FLOAT) {
       float reduce_mean_cof = 1.0;
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (input_shape[i] != 0) {
@@ -52,7 +61,7 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
       }
       run_info.AddTilingData(reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
+    } else if (parsed_info.reduce_mean_cof_dtype == ge::DT_FLOAT16) {
       float reduce_mean_cof = 1.0;
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (input_shape[i] != 0) {
@@ -76,5 +85,21 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(SigmoidCrossEntropyWithLogitsGradV2, SigmoidCrossEntropyWithLogitsGradV2Tiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 SigmoidCrossEntropyWithLogitsGradV2CompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  std::string dtype;
+  parsed_info.has_reduce_mean_cof_dtype = false;
+  // get core_num value
+  if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+    parsed_info.has_reduce_mean_cof_dtype = true;
+    parsed_info.reduce_mean_cof_dtype = (dtype == "float16") ? ge::DT_FLOAT16 : ge::DT_FLOAT;
+  }
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(SigmoidCrossEntropyWithLogitsGradV2, SigmoidCrossEntropyWithLogitsGradV2Tiling,
+                             ParseJsonCompileInfo, SigmoidCrossEntropyWithLogitsGradV2CompileInfo);
 }  // namespace optiling

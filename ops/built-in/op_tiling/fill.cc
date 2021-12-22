@@ -23,7 +23,11 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-bool FillTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+struct FillCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+};
+
+bool FillTiling(const std::string& op_type, const ge::Operator& op_paras, const FillCompileInfo& parsed_info,
                 utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
@@ -48,10 +52,20 @@ bool FillTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   ge::DataType type = input_desc->GetDataType();
   OpInfo eletwise_info(tilingshapes, type);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Fill, FillTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 FillCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(Fill, FillTiling, ParseJsonCompileInfo, FillCompileInfo);
 }  // namespace optiling
