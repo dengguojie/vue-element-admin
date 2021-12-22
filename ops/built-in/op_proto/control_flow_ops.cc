@@ -310,7 +310,7 @@ graphStatus SwitchInferImpl(Operator& op) {
   data_desc->GetShapeRange(data_range);
   // check "pred" scalar type be bool
   auto pred_dims = pred_desc->GetShape().GetDims();
-  if (pred_dims.size() != 0) {
+  if ((pred_dims != ge::UNKNOWN_RANK) && (pred_dims.size() != 0)) {
     string reason = "input pred should be a scalar, actually rank=" + std::to_string(pred_dims.size());
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", reason);
     REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
@@ -405,7 +405,7 @@ graphStatus PassThroughInferImpl(Operator& op, const std::string& in_name, const
 
 graphStatus LoopCondInferImpl(Operator& op) {
   auto input_dims = op.GetInputDesc("x").GetShape().GetDims();
-  if (input_dims.size() != 0) {
+  if ((input_dims != ge::UNKNOWN_RANK) && (input_dims.size() != 0)) {
     string reason = "input x should be a scalar, actually rank=" + std::to_string(input_dims.size());
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", reason);
     REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
