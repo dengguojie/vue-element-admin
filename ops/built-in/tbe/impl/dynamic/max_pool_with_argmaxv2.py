@@ -329,11 +329,19 @@ class MaxPoolWithargmaxPytorch:
             align_loop_left.set_as(loop_left)
 
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
-            self.copy_only_process(core_idx, loop_idx, self.max_ele, align_max_ele)
-        with self.tik_instance.if_scope(loop_left > 0):
-            self.copy_only_process(core_idx, loop_num, loop_left, align_loop_left)
+            with self.tik_instance.if_scope(tik.all(core_idx == self.act_core_num - 1,
+                                            loop_left == 0, loop_idx == loop_num - 1)):
+                self.copy_only_process(core_idx, loop_idx, self.max_ele, align_max_ele, 1)
+            with self.tik_instance.else_scope():
+                self.copy_only_process(core_idx, loop_idx, self.max_ele, align_max_ele, 0)
 
-    def copy_only_process(self, core_idx, loop_idx, ele, align_ele):
+        with self.tik_instance.if_scope(loop_left > 0):
+            with self.tik_instance.if_scope(core_idx == self.act_core_num - 1):
+                self.copy_only_process(core_idx, loop_num, loop_left, align_loop_left, 1)
+            with self.tik_instance.else_scope():
+                self.copy_only_process(core_idx, loop_num, loop_left, align_loop_left, 0)
+
+    def copy_only_process(self, core_idx, loop_idx, ele, align_ele, last_flag):
         """Only execute move in and move out
         """
         offset = (core_idx * self.one_core_ele + loop_idx * self.max_ele) * self.c_zero
@@ -361,6 +369,17 @@ class MaxPoolWithargmaxPytorch:
             self.tik_instance.vec_dup(repeat_left, ub_tensor[offset], Constant.MAX_INT16, 1, 8)
 
         self.tik_instance.data_move(self.mask_output_gm[mask_offset], ub_tensor, 0, 1, align_ele // self.c_zero, 0, 0)
+        with self.tik_instance.if_scope(last_flag == 1):
+            mask_left = self.align_output_hw * self.n_c1 - (mask_offset + align_ele)
+            last_offset = mask_offset + align_ele
+            with self.tik_instance.if_scope(mask_left < align_ele):
+                self.tik_instance.data_move(self.mask_output_gm[last_offset], ub_tensor,
+                                            0, 1, mask_left // self.c_zero, 0, 0)
+            with self.tik_instance.else_scope():
+                with self.tik_instance.for_range(0, mask_left // self.c_zero) as n_idx:
+                    last_offset = last_offset + n_idx * self.c_zero
+                    self.tik_instance.data_move(self.mask_output_gm[last_offset], ub_tensor,
+                                                0, 1, 1, 0, 0)
 
     def vector_dup_continuous(self, src, size):
         """vector_dup continuous function, set ubuf to -65504.0

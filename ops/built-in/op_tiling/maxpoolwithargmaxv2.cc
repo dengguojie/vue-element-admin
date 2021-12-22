@@ -243,6 +243,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   // calc core_num, core_ele, loop_num and loop_left
   if ((ksize_h == 1) && (ksize_w == 1) && (strides_h == 1) && (strides_w == 1)) {
     param.tiling_mode = 0;
+    param.n_c1 = input_shape[0] * input_shape[1];
     int32_t max_ele = ub_ele / input_shape[4];
     int32_t total_ele = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
     CalCoreNum(param, total_ele, core_num);

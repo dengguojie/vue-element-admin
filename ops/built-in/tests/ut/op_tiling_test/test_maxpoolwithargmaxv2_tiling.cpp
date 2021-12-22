@@ -77,7 +77,7 @@ TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_0) {
     op_compile_info.key = "maxpool_with_argmax_v2_tiling_0";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 766 754 35 35 35 35 35 35 0 0 0 0 1 1 1 0 766 0 754 0 16 768 48 1248 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 766 754 35 35 35 35 35 35 0 0 0 0 1 1 1 0 766 0 754 20 16 768 48 1248 ");
 }
 
 TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_1) {
