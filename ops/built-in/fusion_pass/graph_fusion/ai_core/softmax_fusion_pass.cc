@@ -76,7 +76,8 @@ vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -119,7 +120,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass.");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
-  FUSION_PASS_CHECK(softmaxNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax node is null."),
+  FUSION_PASS_CHECK(softmaxNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "softmax node is null."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(UpdateFormat(softmaxNode) != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "update format fail."),
                     return NOT_CHANGED);
@@ -163,7 +165,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     softmaxOutputOpDesc.SetOriginShape(assitShapeOrigin);
     Status ret = softmaxOpDesc->UpdateInputDesc(0, softmaxInputOpDesc);
     ret = softmaxOpDesc->UpdateOutputDesc(0, softmaxOutputOpDesc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateInputDesc failed."), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateInputDesc failed."),
+                      return FAILED);
 
     vector<int64_t> axes = {1};
     FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(softmaxNode->GetOpDesc(), "axes", axes),
@@ -203,13 +206,15 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     // add edge between quant and antiquant
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preAnchorPtr0, transposeDNode->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               preNode->GetName().c_str(), transposeDNode->GetName().c_str()),
                       return FAILED);
 
     // add edge between antiquant and pooling
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode->GetOutDataAnchor(0), softmaxAnchorPtr0) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               softmaxNode->GetName().c_str(), transposeDNode->GetName().c_str()),
                       return FAILED);
 
@@ -243,7 +248,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     transposeD1OutputOpDesc.SetShape(assitShape1);
     transposeD1OutputOpDesc.SetOriginShape(assitShapeOrigin1);
     ret = transposeDDesc1->UpdateOutputDesc(0, transposeD1OutputOpDesc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateInputDesc failed."), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateInputDesc failed."),
+                      return FAILED);
 
     // add node
     ge::NodePtr transposeDNode1 = graph.AddNode(transposeDDesc1);
@@ -252,7 +258,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     // add edge between softmax and transdateD
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(softmaxAnchorPtr1, transposeDNode1->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               softmaxNode->GetName().c_str(), transposeDNode1->GetName().c_str()),
                       return FAILED);
 
@@ -266,7 +273,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
         // add edge between transdateD and post
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode1->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                         "Add edge between node %s and node %s failed.",
                                   transposeDDesc1->GetName().c_str(), softmaxNode->GetName().c_str()),
                           return FAILED);
       }
@@ -297,7 +305,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     std::shared_ptr<ge::OpDesc> transposeDDesc = nullptr;
     transposeDDesc = std::make_shared<ge::OpDesc>(softmaxNode->GetName() + "_transposeD_layer", "TransposeD");
     FUSION_PASS_CHECK(transposeDDesc == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeDDesc is null, TransposeD failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "transposeDDesc is null, TransposeD failed."),
                       return PARAM_INVALID);
 
     // add input
@@ -324,13 +333,15 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     // add edge between quant and antiquant
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preAnchorPtr0, transposeDNode->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               preNode->GetName().c_str(), transposeDNode->GetName().c_str()),
                       return FAILED);
 
     // add edge between antiquant and pooling
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode->GetOutDataAnchor(0), softmaxAnchorPtr0) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               softmaxNode->GetName().c_str(), transposeDNode->GetName().c_str()),
                       return FAILED);
 
@@ -374,7 +385,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     // add edge between softmax and transdateD
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(softmaxAnchorPtr1, transposeDNode1->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               softmaxNode->GetName().c_str(), transposeDNode1->GetName().c_str()),
                       return FAILED);
 
@@ -388,7 +400,8 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
         // add edge between transdateD and post
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode1->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                         "Add edge between node %s and node %s failed.",
                                   transposeDDesc1->GetName().c_str(), softmaxNode->GetName().c_str()),
                           return FAILED);
       }

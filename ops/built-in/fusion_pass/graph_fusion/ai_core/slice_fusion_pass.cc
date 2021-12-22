@@ -50,7 +50,8 @@ vector<FusionPattern*> ConstToAttrSlicePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConstToAttrSliceFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -63,10 +64,12 @@ vector<FusionPattern*> ConstToAttrSlicePass::DefinePatterns() {
 Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's Node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "fused_node's Node is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(fuseDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fuseDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (HasUnKnowShape(fused_node)) {
@@ -82,7 +85,8 @@ Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
   }
 
-  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "fused_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);

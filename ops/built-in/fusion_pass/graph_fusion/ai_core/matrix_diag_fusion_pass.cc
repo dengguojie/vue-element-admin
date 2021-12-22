@@ -80,7 +80,8 @@ vector<FusionPattern*> MatrixDiagFusionPass::DefinePatterns() {
   // matrix_diag->matrix_diag_d
   // define MatrixDiagFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatrixDiagFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -152,7 +153,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::GeTensorDesc tensorDesc(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
   if (dataType == ge::DT_FLOAT) {
     unique_ptr<float[]> inputAssit(new (std::nothrow) float[dimNums * dimNums1 * dimNums1]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -175,7 +177,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         return PARAM_INVALID);
   } else if (dataType == ge::DT_INT32) {
     unique_ptr<int32_t[]> inputAssit(new (std::nothrow) int32_t[dimNums * dimNums1 * dimNums1]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, INT_NUM_ZERO, *reinterpret_cast<int32_t*>(inputAssit.get()));
@@ -199,7 +202,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         return PARAM_INVALID);
   } else if (dataType == ge::DT_FLOAT16) {
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums * dimNums1 * dimNums1]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -222,7 +226,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         return PARAM_INVALID);
   } else if (dataType == ge::DT_INT8) {
     unique_ptr<int8_t[]> inputAssit(new (std::nothrow) int8_t[dimNums * dimNums1 * dimNums1]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, INT8_NUM_ZERO, *reinterpret_cast<int8_t*>(inputAssit.get()));
@@ -246,7 +251,8 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         return PARAM_INVALID);
   } else if (dataType == ge::DT_UINT8 || dataType == ge::DT_BOOL) {
     unique_ptr<uint8_t[]> inputAssit(new (std::nothrow) uint8_t[dimNums * dimNums1 * dimNums1]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums1 * dimNums1, UINT8_NUM_ZERO, *reinterpret_cast<uint8_t*>(inputAssit.get()));

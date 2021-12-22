@@ -92,7 +92,8 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   ge::NodePtr castNode = GetNodeFromMapping(CAST_NODE, mapping);
 
   FUSION_PASS_CHECK(resizeNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ResizeBilinearV2 Node is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "ResizeBilinearV2 Node is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(castNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Cast Node is null, fusion failed."),
@@ -120,7 +121,8 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   // check Cast node
   ge::OpDescPtr resizeDesc = resizeNode->GetOpDesc();
   FUSION_PASS_CHECK(resizeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "resizeNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "resizeNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr castDesc = castNode->GetOpDesc();
   FUSION_PASS_CHECK(castDesc == nullptr,
@@ -145,15 +147,18 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   // set ResizeBilinearV2's output dtype to float16
   outputResizeDesc.SetDataType(outputCastDataType);
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != resizeDesc->UpdateOutputDesc("y", outputResizeDesc),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", resizeDesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed",
+                                                   resizeDesc->GetName().c_str()),
                     return FAILED);
 
   // delete Cast node
   for (auto &inDataAnchor : castNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(castNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(resizeNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                                                     return FAILED);
   }
 
   FUSION_PASS_CHECK(graph.RemoveNode(castNode) != SUCCESS,
@@ -164,9 +169,12 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     for (auto in_control_anchor : castNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(resizeNode->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add ResizeBilinearV2 node out control edge failed."), return FAILED);
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add ResizeBilinearV2 node out control edge failed."),
+                                         return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(castNode->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Cast node out control edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                       "Remove Cast node out control edge failed."),
+                                                       return FAILED);
     }
   }
 

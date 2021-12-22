@@ -51,7 +51,8 @@ vector<FusionPattern*> ReluFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("ReluFusion1");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern1->AddOpDesc(PATTERN_RELU, {ACTIVATION})
@@ -62,7 +63,8 @@ vector<FusionPattern*> ReluFusionPass::DefinePatterns() {
   patterns.push_back(pattern1);
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReluFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_RELU, {ACTIVATION})
@@ -78,9 +80,11 @@ Status ReluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   ge::NodePtr src_node = GetNodeFromMapping(PATTERN_SRC, mapping);
   ge::NodePtr relu_node = GetNodeFromMapping(PATTERN_RELU, mapping);
 
-  FUSION_PASS_CHECK(src_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "src_node is null, fusion failed."),
+  FUSION_PASS_CHECK(src_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "src_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(relu_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu_node is null, fusion failed."),
+  FUSION_PASS_CHECK(relu_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "relu_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   int64_t mode = 0;
@@ -110,27 +114,34 @@ Status ReluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
   // connect switch node to src node
   int32_t in_edges_size = src_node->GetInDataNodes().size();
-  FUSION_PASS_CHECK(in_edges_size < 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inEdges size is invalid"), return FAILED);
+  FUSION_PASS_CHECK(in_edges_size < 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inEdges size is invalid"),
+                    return FAILED);
   Status ret2 = PatternFusionUtil::LinkControlEdge(relu_node, src_node);
-  FUSION_PASS_CHECK(ret2 != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LinkControlEdge failed."), return ret2);
+  FUSION_PASS_CHECK(ret2 != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LinkControlEdge failed."),
+                    return ret2);
   // delete relu
   Status ret3 = graph.RemoveNode(relu_node);
-  FUSION_PASS_CHECK(ret3 != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Isolate relu node failed"), return ret3);
+  FUSION_PASS_CHECK(ret3 != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Isolate relu node failed"),
+                    return ret3);
   fusionNodes.push_back(src_node);
   return SUCCESS;
 }
 
 Status ReluFusionPass::DoFusion(ge::NodePtr src_node, ge::NodePtr relu_node) {
-  FUSION_PASS_CHECK(src_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "src_node is null, fusion failed."),
+  FUSION_PASS_CHECK(src_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "src_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(relu_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu_node is null, fusion failed."),
+  FUSION_PASS_CHECK(relu_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "relu_node is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr src_op = src_node->GetOpDesc();
   ge::OpDescPtr relu_op = relu_node->GetOpDesc();
 
-  FUSION_PASS_CHECK(src_op == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "src_op is null, fusion failed."),
+  FUSION_PASS_CHECK(src_op == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "src_op is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(relu_op == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu_op is null, fusion failed."),
+  FUSION_PASS_CHECK(relu_op == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "relu_op is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (CONV2D == src_op->GetType()) {
@@ -147,7 +158,8 @@ Status ReluFusionPass::DoFusion(ge::NodePtr src_node, ge::NodePtr relu_node) {
                       OP_LOGD(FUSED_OP_TYPE.c_str(), "set ELTWISE_ATTR_RELU_FLAG fail."), return NOT_CHANGED);
   } else if (ADD == src_op->GetType()) {
     for (auto &in_anchor : src_node->GetAllInDataAnchors()) {
-      FUSION_PASS_CHECK(in_anchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchor is null, fusion failed."),
+      FUSION_PASS_CHECK(in_anchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "in_anchor is null, fusion failed."),
                         return PARAM_INVALID);
       if (in_anchor->GetPeerOutAnchor() == nullptr || in_anchor->GetPeerOutAnchor()->GetOwnerNode() == nullptr ||
           in_anchor->GetPeerOutAnchor()->GetOwnerNode()->GetOpDesc() == nullptr) {

@@ -34,7 +34,8 @@ vector<FusionPattern*> SigmoidCrossEntropyWithLogitsV2FusionPass::DefinePatterns
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SigmoidCrossEntropyWithLogitsV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -80,7 +81,8 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
 
   FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusionNode:%s is null, fusion failed.", sigmoidNoneNode->GetName().c_str()), failStatus = true);
+                    "fusionNode:%s is null, fusion failed.",
+                    sigmoidNoneNode->GetName().c_str()), failStatus=true);
 
   newNodes.push_back(sigmoidNoneNode);
 
@@ -132,7 +134,8 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
   // create reduce node
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
   FUSION_PASS_CHECK(reduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusionNode:%s is null, fusion failed.", reduceNode->GetName().c_str()), failStatus = true);
+                    "fusionNode:%s is null, fusion failed.",
+                    reduceNode->GetName().c_str()), failStatus=true);
   newNodes.push_back(reduceNode);
 
   // Edge
@@ -158,7 +161,8 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
 
   // get sigmoidNode
   ge::NodePtr sigmoidNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(sigmoidNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sigmoidNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sigmoidNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "sigmoidNode is null, fusion failed."),
                     return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(sigmoidNode);
 
@@ -191,11 +195,13 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
     }
   }
   // remove sigmoidNode from graph
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sigmoidNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sigmoidNode),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "remove fusedNode node[%s] failed", sigmoidNode->GetName().c_str()), return FAILED);
 
   return SUCCESS;
 }
 
-REGISTER_PASS("SigmoidCrossEntropyWithLogitsV2FusionPass", BUILT_IN_GRAPH_PASS, SigmoidCrossEntropyWithLogitsV2FusionPass);
+REGISTER_PASS("SigmoidCrossEntropyWithLogitsV2FusionPass", BUILT_IN_GRAPH_PASS,
+              SigmoidCrossEntropyWithLogitsV2FusionPass);
 }

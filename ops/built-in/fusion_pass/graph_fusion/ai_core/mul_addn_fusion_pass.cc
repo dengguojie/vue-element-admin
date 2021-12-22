@@ -45,7 +45,9 @@ vector<FusionPattern*> MulAddNPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MulAddNPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "New a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                    "New a pattern object failed."),
+                    return patterns);
 
   pattern->AddOpDesc(kFusionNodePatternIdAddn, {"AddN"})
       .AddOpDesc(kFusionNodePatternIdMul, {"Mul"})
@@ -61,9 +63,11 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   ge::NodePtr addn_node = GetNodeFromMapping(kFusionNodePatternIdAddn, mapping);
   ge::NodePtr mul_node = GetNodeFromMapping(kFusionNodePatternIdMul, mapping);
 
-  FUSION_PASS_CHECK(addn_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The addn_node is null, fusion failed."),
+  FUSION_PASS_CHECK(addn_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                    "The addn_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The mul_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                    "The mul_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   string addn_stream_label;
@@ -102,11 +106,13 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   for (uint32_t index = 0; index < mul_node->GetAllInDataAnchors().size(); index++) {
     auto mul_node_in_data_auchor = mul_node->GetInDataAnchor(index);
     FUSION_PASS_CHECK(mul_node_in_data_auchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The mul_node_in_data_auchor is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                     "The mul_node_in_data_auchor is null, fusion failed."),
                       return PARAM_INVALID);
     auto mul_node_peer_out_anchor = mul_node_in_data_auchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(mul_node_peer_out_anchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The mul_node_peer_out_anchor is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                     "The mul_node_peer_out_anchor is null, fusion failed."),
                       return PARAM_INVALID);
     ge::NodePtr input_node_mul = mul_node_peer_out_anchor->GetOwnerNode();
     if (ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(input_node_mul) == "Constant") {
@@ -132,11 +138,13 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   auto out_dataanchor_list = mul_node->GetAllOutDataAnchors();
   for (auto out_data_anchor : out_dataanchor_list) {
     FUSION_PASS_CHECK(out_data_anchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The out_data_anchor is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                     "The out_data_anchor is null, fusion failed."),
                       return PARAM_INVALID);
     for (auto peer_indata_anchor : out_data_anchor->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(peer_indata_anchor == nullptr,
-                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The peer_indata_anchor is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                       "The peer_indata_anchor is null, fusion failed."),
                         return PARAM_INVALID);
       if (peer_indata_anchor->GetOwnerNode()->GetType() == "AddN") {
         mul_index = peer_indata_anchor->GetIdx();
@@ -157,11 +165,13 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   for (auto input_node_mul : mul_node->GetInAllNodes()) {
     for (auto mul_out_control_node : mul_node->GetOutControlNodes()) {
       FUSION_PASS_CHECK(input_node_mul == nullptr || mul_out_control_node == nullptr,
-                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The input_node_mul or mul_out_control_node is null."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                       "The input_node_mul or mul_out_control_node is null."),
                         return PARAM_INVALID);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(input_node_mul->GetOutControlAnchor(),
                                                 mul_out_control_node->GetInControlAnchor()) != GRAPH_SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s. and node %s failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                       "Add edge between node %s. and node %s failed.",
                                 input_node_mul->GetName().c_str(), mul_out_control_node->GetName().c_str()),
                         return FAILED);
     }
@@ -174,7 +184,8 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   }
   auto mul_node_in_data_anchor = mul_node->GetInDataAnchor(lossscale_input_index);
   FUSION_PASS_CHECK(mul_node_in_data_anchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The mul_node_in_data_anchor is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                   "The mul_node_in_data_anchor is null, fusion failed."),
                     return PARAM_INVALID);
   if (mul_node_in_data_anchor->GetPeerOutAnchor() != nullptr) {
     ge::NodePtr input_node_mul = mul_node_in_data_anchor->GetPeerOutAnchor()->GetOwnerNode();
@@ -184,7 +195,8 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
                                                  mul_node_in_data_anchor) != GRAPH_SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
     FUSION_PASS_CHECK(addn_node->AddLinkFrom(input_node_mul) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add link between node %s. and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                     "Add link between node %s. and node %s failed.",
                               input_node_mul->GetName().c_str(), addn_node->GetName().c_str()),
                       return FAILED);
   }
@@ -195,18 +207,21 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
   addn_node->GetOpDesc()->UpdateInputName(addn_new_input_names);
   mul_node_in_data_anchor = mul_node->GetInDataAnchor(1 - lossscale_input_index);
   FUSION_PASS_CHECK(mul_node_in_data_anchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The mul_node_in_data_anchor is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                   "The mul_node_in_data_anchor is null, fusion failed."),
                     return PARAM_INVALID);
   if (mul_node_in_data_anchor->GetPeerOutAnchor() != nullptr) {
     ge::NodePtr input_node_mul = mul_node_in_data_anchor->GetPeerOutAnchor()->GetOwnerNode();
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node_in_data_anchor->GetPeerOutAnchor(),
                                               addn_node->GetInDataAnchor(mul_index)) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                                     "Add edge between node %s and node %s failed.",
                               input_node_mul->GetName().c_str(), addn_node->GetName().c_str()),
                       return FAILED);
   }
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove node %s failed.", mul_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove node %s failed.",
+                                                   mul_node->GetName().c_str()),
                     return FAILED);
 
   addn_node->GetOpDesc()->SetType("FusedMulAddN");

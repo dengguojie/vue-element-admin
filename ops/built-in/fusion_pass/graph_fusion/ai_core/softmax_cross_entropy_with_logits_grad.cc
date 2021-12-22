@@ -52,7 +52,9 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::RemoveNode(ge::NodePtr node, ge::C
   for (size_t i = 0; i < node->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = node->GetInDataAnchor(i);
     FUSION_PASS_CHECK(inDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "inDataAnchor is null, remove node failed."),
+                                                     return FAILED);
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     if (preOutDataAnchor == nullptr) {
       continue;
@@ -62,7 +64,8 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::RemoveNode(ge::NodePtr node, ge::C
   }
 
   // delete node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "remove node failed"),
                     return FAILED);
   return SUCCESS;
 }
@@ -71,7 +74,8 @@ vector<FusionPattern*> SoftmaxCrossEntropyWithLogitsGradPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxCrossEntropyWithLogitsGradPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxCrossEntropyWithLogitsGradFussion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_RESHAPE_GRAD_2, {"Reshape"})
       .AddOpDesc(PATTERN_EXPANDDIMS, {"ExpandDims"})
@@ -97,12 +101,17 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::Fusion(ge::ComputeGraph& graph, Ma
   ge::NodePtr mul = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr reshape_grad = GetNodeFromMapping(PATTERN_RESHAPE_GRAD, mapping);
 
-  FUSION_PASS_CHECK(reshape_grad_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_grad_2 is null"),
+  FUSION_PASS_CHECK(reshape_grad_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "reshape_grad_2 is null"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(expandDim == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "expandDim is null"), return PARAM_INVALID);
-  FUSION_PASS_CHECK(xentropy == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "xentropy is null"), return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul is null"), return PARAM_INVALID);
-  FUSION_PASS_CHECK(reshape_grad == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_grad is null"),
+  FUSION_PASS_CHECK(expandDim == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "expandDim is null"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(xentropy == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "xentropy is null"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul is null"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshape_grad == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "reshape_grad is null"),
                     return PARAM_INVALID);
 
   // get the first input of Reshape_2_grad, if is 4D do fusion; else return
@@ -145,36 +154,45 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::Fusion(ge::ComputeGraph& graph, Ma
 
   auto reshapeGrad2InDataAnchor = reshape_grad_2->GetInDataAnchor(0);
   FUSION_PASS_CHECK(reshapeGrad2InDataAnchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeGrad2InDataAnchor is null"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeGrad2InDataAnchor is null"),
+                                                   return FAILED);
   auto reshapeGrad2PeerOutDataAnchor = reshapeGrad2InDataAnchor->GetPeerOutAnchor();
 
   auto mulInDataAnchor = mul->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(mulInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulInDataAnchor is null"),
+  FUSION_PASS_CHECK(mulInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulInDataAnchor is null"),
                     return FAILED);
 
   auto mulPeerOutDataAnchor = mulInDataAnchor->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(mulPeerOutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulPeerOutDataAnchor is null"),
+  FUSION_PASS_CHECK(mulPeerOutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulPeerOutDataAnchor is null"),
                     return FAILED);
 
   auto mulOutDataAnchor = mul->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(mulOutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulOutDataAnchor is null"),
+  FUSION_PASS_CHECK(mulOutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulOutDataAnchor is null"),
                     return FAILED);
 
   auto reshapeGradOutDataAnchor = reshape_grad->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(reshapeGradOutDataAnchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeGradOutDataAnchor is null"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeGradOutDataAnchor is null"),
+                                                   return FAILED);
 
   auto reshapeGradPeerInDataAnchors = reshapeGradOutDataAnchor->GetPeerInDataAnchors();
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(mulPeerOutDataAnchor, mulInDataAnchor) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"),
+                                                   return FAILED);
 
   // delete reshape node
   FUSION_PASS_CHECK(RemoveNode(reshape_grad_2, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape_grad_2 node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape_grad_2 node failed"),
+                                                   return FAILED);
   FUSION_PASS_CHECK(RemoveNode(expandDim, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove expandDims node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove expandDims node failed"),
+                                                   return FAILED);
   FUSION_PASS_CHECK(RemoveNode(reshape_grad, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape_grad node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape_grad node failed"),
+                                                   return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshapeGrad2PeerOutDataAnchor, mulInDataAnchor) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input edge 0 error"), return FAILED);
@@ -182,7 +200,8 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::Fusion(ge::ComputeGraph& graph, Ma
   for (unsigned int i = 0; i < reshapeGradPeerInDataAnchors.size(); ++i) {
     ge::InDataAnchorPtr dstAnchor = reshapeGradPeerInDataAnchors.at(i);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulOutDataAnchor, dstAnchor) != ge::GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output anchor Failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output anchor Failed."),
+                                                     return FAILED);
   }
   fusionNodes.push_back(xentropy);
   fusionNodes.push_back(mul);

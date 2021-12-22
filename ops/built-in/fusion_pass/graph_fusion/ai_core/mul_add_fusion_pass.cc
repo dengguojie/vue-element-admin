@@ -48,7 +48,8 @@ static const std::string STREAM_LABEL = "_stream_label";
 vector<FusionPattern*> MulAddFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MulAddFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(FUSION_NODE_PATTERN_ID_ADD, {ADD})
@@ -57,7 +58,8 @@ vector<FusionPattern*> MulAddFusionPass::DefinePatterns() {
       .SetOutput(FUSION_NODE_PATTERN_ID_ADD);
 
   FusionPattern* pattern_ext = new (std::nothrow) FusionPattern("MulAddFusionPass");
-  FUSION_PASS_CHECK(pattern_ext == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern_ext == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern_ext->AddOpDesc(FUSION_NODE_PATTERN_ID_ADD, {ADD})
@@ -75,9 +77,11 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   ge::NodePtr add_node = GetNodeFromMapping(FUSION_NODE_PATTERN_ID_ADD, mapping);
   ge::NodePtr mul_node = GetNodeFromMapping(FUSION_NODE_PATTERN_ID_MUL, mapping);
 
-  FUSION_PASS_CHECK(add_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_node is null, fusion failed."),
+  FUSION_PASS_CHECK(add_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // exclude lamb and adam
@@ -90,9 +94,11 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
   ge::OpDescPtr mul_desc = mul_node->GetOpDesc();
   ge::OpDescPtr add_desc = add_node->GetOpDesc();
-  FUSION_PASS_CHECK(mul_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul_desc is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(add_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // check input output and link relation
@@ -153,7 +159,8 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add pre-node has only 1 output, will fused it");
   FUSION_PASS_CHECK(mul_node->AddLinkFrom(input_node_add),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add add's input to mul failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add add's input to mul failed."),
+                                                   return FAILED);
 
   // set name and output desc
   mul_desc->SetName(mul_desc->GetName() + "/FusedMulAdd");
@@ -165,7 +172,8 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(mul_node->GetOutDataAnchor(0), inAnchorPtr),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                         "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
                   add_node->GetName().c_str(), add_node->GetName().c_str()),
           return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
@@ -174,7 +182,8 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   }
   add_node->GetOutDataAnchor(0)->UnlinkAll();
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.", add_desc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed.",
+                                                   add_desc->GetName().c_str()),
                     return FAILED);
 
   std::map<string, uint32_t> input_name_id = {{"x1", 0}, {"x2", 1}, {"x3", 2}};

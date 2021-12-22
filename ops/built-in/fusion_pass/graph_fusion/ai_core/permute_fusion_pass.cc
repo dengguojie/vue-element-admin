@@ -43,7 +43,8 @@ static const int NUM_4 = 4;
 vector<FusionPattern*> PermuteFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PermuteFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -55,10 +56,12 @@ Status PermuteFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::NodePtr permuteNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   ge::NodePtr permuteNodeNew = nullptr;
 
-  FUSION_PASS_CHECK(permuteNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "permute node is null"),
+  FUSION_PASS_CHECK(permuteNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "permute node is null"),
                     return PARAM_INVALID);
   ge::OpDescPtr permuteOpDesc = permuteNode->GetOpDesc();
-  FUSION_PASS_CHECK(permuteOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "permuteOpDesc is null"),
+  FUSION_PASS_CHECK(permuteOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "permuteOpDesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc permuteInputOpDesc = permuteOpDesc->GetInputDesc(0);
   ge::GeTensorDesc permuteOutputOpDesc = permuteOpDesc->GetOutputDesc(0);
@@ -153,7 +156,8 @@ Status PermuteFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         }
         for (auto inControlAnchor : permuteNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
           FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(permuteNode->GetOutControlAnchor(), inControlAnchor),
-                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's output control failed.",
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                           "Remove edge from fused node:%s's output control failed.",
                                     permuteNode->GetName().c_str()),
                             return FAILED);
           OP_LOGD(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's output control index.",

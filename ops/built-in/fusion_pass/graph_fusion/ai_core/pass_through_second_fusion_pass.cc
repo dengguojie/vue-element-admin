@@ -41,7 +41,9 @@ Status PassThroughSecondFusionPass::SetNodeAttrAndOpDesc(ge::OpDescPtr& curOpDes
 
   int64_t stride = 0;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(oriOpDesc, "stride", stride),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Can not get passthrough stride attr failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Can not get passthrough stride attr failed."),
+                                                   return FAILED);
   ge::AttrUtils::SetInt(curOpDesc, "block_size", stride);
 
   ge::GeTensorDesc oriInputDesc = oriOpDesc->GetInputDesc(0);
@@ -96,7 +98,8 @@ Status PassThroughSecondFusionPass::InsertCurNode(ge::ComputeGraph& graph, ge::N
 
   ge::OpDescPtr oriOpDesc = oriNode->GetOpDesc();
 
-  FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(oriNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unlink OriNode Edge failed."),
+  FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(oriNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Unlink OriNode Edge failed."),
                     return FAILED);
 
   ge::NodePtr curNode;
@@ -108,18 +111,21 @@ Status PassThroughSecondFusionPass::InsertCurNode(ge::ComputeGraph& graph, ge::N
                           return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != SetNodeAttrAndOpDesc(curOpDesc, oriOpDesc),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set Node[%s] Attr and OpDesc failed.", curNodeName.c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set Node[%s] Attr and OpDesc failed.",
+                                                   curNodeName.c_str()),
                     return FAILED);
 
   curNode = graph.AddNode(curOpDesc);
 
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, curNode->GetInDataAnchor(0)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] anchor 0 failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "add edge from src node[%s] to dst node[%s] anchor 0 failed.",
                             inputNode->GetName().c_str(), curNodeName.c_str()),
                     return FAILED);
 
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr1, curNode->GetInDataAnchor(1)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] anchor 1 failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "add edge from src node[%s] to dst node[%s] anchor 1 failed.",
                             inputNode1->GetName().c_str(), curNodeName.c_str()),
                     return FAILED);
 
@@ -127,7 +133,8 @@ Status PassThroughSecondFusionPass::InsertCurNode(ge::ComputeGraph& graph, ge::N
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(curNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "add edge from src node[%s] to dst node[%s] failed.",
                               curNodeName.c_str(), outputNode->GetName().c_str()),
                       return FAILED);
   }
@@ -140,7 +147,8 @@ Status PassThroughSecondFusionPass::RemoveThisNode(ge::ComputeGraph& graph, ge::
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter PassThrough Second FusionPass remove ori node");
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(thisNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove origin node[%s] node failed", thisNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove origin node[%s] node failed",
+                                                   thisNode->GetName().c_str()),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "PassThrough Second FusionPass remove ori node success");
@@ -157,13 +165,16 @@ Status PassThroughSecondFusionPass::RemoveWeightNode(ge::ComputeGraph& graph, ge
     ge::InDataAnchorPtr nodeInAnchorPtr = curNode->GetInDataAnchor(0);
     ge::OutDataAnchorPtr nodePeerAnchorPtr = nodeInAnchorPtr->GetPeerOutAnchor();
     ge::NodePtr bottomNode = nodePeerAnchorPtr->GetOwnerNode();
-    FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(curNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unlink bottomNode Edge failed."),
+    FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(curNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Unlink bottomNode Edge failed."),
                       return FAILED);
     FUSION_PASS_CHECK(SUCCESS != RemoveThisNode(graph, curNode),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove bottomNode failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove bottomNode failed."),
+                                                     return FAILED);
     curNode = bottomNode;
   }
-  FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(curNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unlink Weight Node Edge failed."),
+  FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(curNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Unlink Weight Node Edge failed."),
                     return FAILED);
   FUSION_PASS_CHECK(SUCCESS != RemoveThisNode(graph, curNode),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Weight Node failed."), return FAILED);
@@ -178,7 +189,8 @@ vector<FusionPattern*> PassThroughSecondFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PassThroughSecondPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_PASSTHROUGH, {PASS_THROUGH_NODE}).SetOutput(PATTERN_PASSTHROUGH);
@@ -193,10 +205,12 @@ Status PassThroughSecondFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   // diag node
   ge::NodePtr passThroughNode = GetNodeFromMapping(PATTERN_PASSTHROUGH, mapping);
   FUSION_PASS_CHECK(passThroughNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughNode is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughNode is null, fusion failed."),
+                                                   return PARAM_INVALID);
   ge::OpDescPtr passThroughDesc = passThroughNode->GetOpDesc();
   FUSION_PASS_CHECK(passThroughDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughDesc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughDesc is null, fusion failed."),
+                                                   return PARAM_INVALID);
 
   FUSION_PASS_CHECK(passThroughDesc->GetInputsSize() == 1,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Passthrough ops not changed, dot not fusion."), return NOT_CHANGED);

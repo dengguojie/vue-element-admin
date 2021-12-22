@@ -80,7 +80,8 @@ vector<FusionPattern*> PadV2FusionPass::DefinePatterns() {
 
   // pad fusion to pad_d
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PadV2Fusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_PADV2, {PADV2}).SetOutput(PATTERN_PADV2);
@@ -117,7 +118,8 @@ Status PadV2FusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr&
   }
 
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "pad_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::AttrUtils::SetListListInt(pad_desc, attr_name, paddings);
@@ -133,7 +135,8 @@ Status PadV2FusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr&
   ge::OpDescUtils::ClearInputDesc(pad_desc, index);
   if (PatternFusionUtil::GetOutEdgeSize(constNode1) == 0) {
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode1),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode1->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed",
+                                                     constNode1->GetName().c_str()),
                       return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode1->GetName().c_str());
   } else {
@@ -145,11 +148,13 @@ Status PadV2FusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr&
 Status PadV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get pad node and node-desc
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADV2, mapping);
-  FUSION_PASS_CHECK(pad_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "pad_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "pad_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node})
 
@@ -211,15 +216,18 @@ Status PadV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   if (pad_node->GetOutControlAnchor()) {
     for (auto inControlAnchor : pad_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(pad_node->GetOutControlAnchor(), inControlAnchor),
-                        VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass", "Remove OutputControl Edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass", "Remove OutputControl Edge failed."),
+                                                       return FAILED);
 
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusion_node->GetOutControlAnchor(), inControlAnchor),
-                        VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass", "Add OutputControl Edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass", "Add OutputControl Edge failed."),
+                                                       return FAILED);
     }
   }
 
   // remove org_node
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(pad_node), VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass", "Remove OrgNode failed."),
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(pad_node), VECTOR_FUSION_INNER_ERR_REPORT("PadV2FusionPass",
+                    "Remove OrgNode failed."),
                     return FAILED);
 
   // push new_node

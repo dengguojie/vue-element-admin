@@ -53,7 +53,8 @@ static const string LAYERNORM = "LayerNorm";
 vector<FusionPattern*> LayerNormTrainingFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("LayerNormTrainingFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."),
+                    return patterns);
   pattern->AddOpDesc(REDUCEMEAND_PATTERN_1, {MEAN})
       .AddOpDesc(SQUAREDDIFFERENCE_PATTERN, {SQUAREDDIFFERENCE})
       .AddOpDesc(REDUCEMEAND_PATTERN_2, {MEAN})
@@ -86,35 +87,44 @@ Status LayerNormTrainingFusionPass::RemoveSmalleNodes(ge::ComputeGraph& graph, c
                                                       const ge::NodePtr& mul_node3, const ge::NodePtr& sub_node,
                                                       const ge::NodePtr& add_node2) {
   FUSION_PASS_CHECK(graph.RemoveNode(mean_node1) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", mean_node1->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   mean_node1->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(square_difference_node) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
                     square_difference_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(mean_node2) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", mean_node2->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   mean_node2->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(add_node1) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", add_node1->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   add_node1->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(rsqrt_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node1) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node2) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node3) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(sub_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(add_node2) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", rsqrt_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.",
+                                                   rsqrt_node->GetName().c_str()),
                     return FAILED);
   return SUCCESS;
 }
@@ -161,25 +171,34 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   ge::NodePtr add_node2 = GetNodeFromMapping(ADD_PATTERN_2, mapping);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Check node null or not");
-  FUSION_PASS_CHECK(mean_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mean_node1 is null, fusion failed."),
+  FUSION_PASS_CHECK(mean_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mean_node1 is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(square_difference_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "square_difference_node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(mean_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mean_node2 is null, fusion failed."),
+  FUSION_PASS_CHECK(mean_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mean_node2 is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_node1 is null, fusion failed."),
+  FUSION_PASS_CHECK(add_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add_node1 is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(rsqrt_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "rsqrt_node is null, fusion failed."),
+  FUSION_PASS_CHECK(rsqrt_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "rsqrt_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_node1 is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul_node1 is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_node2 is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul_node2 is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul_node3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_node3 is null, fusion failed."),
+  FUSION_PASS_CHECK(mul_node3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul_node3 is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(sub_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sub_node is null, fusion failed."),
+  FUSION_PASS_CHECK(sub_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "sub_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(add_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_node2 is null, fusion failed."),
+  FUSION_PASS_CHECK(add_node2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add_node2 is null, fusion failed."),
                     return PARAM_INVALID);
   // check and set attr
   ge::Operator op_mean0 = ge::OpDescUtils::CreateOperatorFromNode(mean_node1);
@@ -227,7 +246,8 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   /* 1. check nodes and get input tensor x, gamma, beta */
   /* check node squareddifference get input tensor (x) */
   FUSION_PASS_CHECK(square_difference_node->GetOpDesc()->GetInputsSize() < 2,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2", square_difference_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2",
+                                                   square_difference_node->GetName().c_str()),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr out_anchorof_x = nullptr;
   ge::GeTensorDesc x_tensor;
@@ -237,76 +257,91 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     out_anchorof_x = square_difference_node->GetInDataAnchor(0)->GetPeerOutAnchor();
     // output1
     mean_out_tensor = square_difference_node->GetOpDesc()->GetInputDesc(1);
-    FUSION_PASS_CHECK(out_anchorof_x == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchorof_x must not be null"),
+    FUSION_PASS_CHECK(out_anchorof_x == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "out_anchorof_x must not be null"),
                       return PARAM_INVALID);
   } else {
     x_tensor = square_difference_node->GetOpDesc()->GetInputDesc(1);
     out_anchorof_x = square_difference_node->GetInDataAnchor(1)->GetPeerOutAnchor();
     // output1
     mean_out_tensor = square_difference_node->GetOpDesc()->GetInputDesc(0);
-    FUSION_PASS_CHECK(out_anchorof_x == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchorof_x must not be null"),
+    FUSION_PASS_CHECK(out_anchorof_x == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "out_anchorof_x must not be null"),
                       return PARAM_INVALID);
   }
   /* check add node */
   FUSION_PASS_CHECK(add_node1->GetOpDesc()->GetInputsSize() < 2,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2", add_node1->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2",
+                                                   add_node1->GetName().c_str()),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr in_anchor0 = add_node1->GetInDataAnchor(0)->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(in_anchor0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchor0 must not be null"),
+  FUSION_PASS_CHECK(in_anchor0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "in_anchor0 must not be null"),
                     return PARAM_INVALID);
   ge::NodePtr input_node0 = in_anchor0->GetOwnerNode();
-  FUSION_PASS_CHECK(input_node0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_node0 must not be null"),
+  FUSION_PASS_CHECK(input_node0 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "input_node0 must not be null"),
                     return PARAM_INVALID);
   /* output 2 */
   ge::GeTensorDesc varience_out_tensor = mean_node2->GetOpDesc()->GetOutputDesc(0);
   /* check mul_node1 and get gamma tensor */
   FUSION_PASS_CHECK(mul_node1->GetOpDesc()->GetInputsSize() < 2,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2", mul_node1->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2",
+                                                   mul_node1->GetName().c_str()),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr in_anchorof_mul = nullptr;
   ge::GeTensorDesc gamma_tensor;
   if (mul_node1->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() != rsqrt_node) {
     gamma_tensor = mul_node1->GetOpDesc()->GetInputDesc(1);
     in_anchorof_mul = mul_node1->GetInDataAnchor(1)->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(in_anchorof_mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchorof_mul must not be null"),
+    FUSION_PASS_CHECK(in_anchorof_mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "in_anchorof_mul must not be null"),
                       return PARAM_INVALID);
   } else {
     gamma_tensor = mul_node1->GetOpDesc()->GetInputDesc(0);
     in_anchorof_mul = mul_node1->GetInDataAnchor(0)->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(in_anchorof_mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchorof_mul must not be null"),
+    FUSION_PASS_CHECK(in_anchorof_mul == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "in_anchorof_mul must not be null"),
                       return PARAM_INVALID);
   }
 
   /* check sub node and get beta tensor */
   FUSION_PASS_CHECK(sub_node->GetOpDesc()->GetInputsSize() < 2,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2", mul_node1->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s input size is < 2",
+                                                   mul_node1->GetName().c_str()),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr in_anchorof_sub = sub_node->GetInDataAnchor(0)->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(in_anchorof_sub == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchorof_sub must not be null"),
+  FUSION_PASS_CHECK(in_anchorof_sub == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "in_anchorof_sub must not be null"),
                     return PARAM_INVALID);
   ge::NodePtr beta_node = in_anchorof_sub->GetOwnerNode();
-  FUSION_PASS_CHECK(beta_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "beta_node must not be null"),
+  FUSION_PASS_CHECK(beta_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "beta_node must not be null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc beta_tensor = sub_node->GetOpDesc()->GetInputDesc(0);
 
   /* 2. Get output node and edge */
   ge::OutDataAnchorPtr out_anchor_ln = add_node2->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor_ln == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor_ln must not be null"),
+  FUSION_PASS_CHECK(out_anchor_ln == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "out_anchor_ln must not be null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(out_anchor_ln->GetPeerInDataAnchors().empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "size of peer in anchor of ln is 0"), return FAILED);
   ge::OutDataAnchorPtr out_anchor_mean = mean_node1->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor_mean == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor_mean must not be null"),
+  FUSION_PASS_CHECK(out_anchor_mean == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "out_anchor_mean must not be null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(out_anchor_mean->GetPeerInDataAnchors().empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "size of peer in anchor of mean is 0"), return FAILED);
   ge::OutDataAnchorPtr out_anchor_rsqrt = rsqrt_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor_rsqrt == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor_rsqrt must not be null"),
+  FUSION_PASS_CHECK(out_anchor_rsqrt == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "out_anchor_rsqrt must not be null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(out_anchor_rsqrt->GetPeerInDataAnchors().empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "size of peer in anchor of out_anchor_rsqrt is 0"), return FAILED);
   ge::OutDataAnchorPtr out_anchor_mul1 = mul_node1->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor_mul1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor_mul1 must not be null"),
+  FUSION_PASS_CHECK(out_anchor_mul1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "out_anchor_mul1 must not be null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(out_anchor_mul1->GetPeerInDataAnchors().empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "size of peer in anchor of out_anchor_mul1 is 0"), return FAILED);
@@ -318,7 +353,8 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   std::string ln_node_name = add_node2->GetName() + "_" + "layernorm";
   ln_opdesc = std::make_shared<ge::OpDesc>(ln_node_name, LAYERNORM);
 
-  FUSION_PASS_CHECK(ln_opdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ln_opdesc is null, fusion failed."),
+  FUSION_PASS_CHECK(ln_opdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "ln_opdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   /* 4. Add TensorDesc into new node. Ln must have three inputs and three
@@ -332,56 +368,72 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   /* 6. remove old edges and add new edges */
   if (square_difference_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() != mean_node1) {
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(out_anchorof_x, ln_node->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchorof_x,
                       square_difference_node->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                                                     return FAILED);
   } else {
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(out_anchorof_x, ln_node->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchorof_x,
                       square_difference_node->GetInDataAnchor(1)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                                                     return FAILED);
   }
   /* remove scale (gamma) from mul node 1 and Add it to layernorm */
   if (mul_node1->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() != rsqrt_node) {
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(in_anchorof_mul, ln_node->GetInDataAnchor(1)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add scale(gamma) edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add scale(gamma) edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(in_anchorof_mul, mul_node1->GetInDataAnchor(1)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove scale(gamma) edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove scale(gamma) edge failed."),
+                                                     return FAILED);
   } else {
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(in_anchorof_mul, ln_node->GetInDataAnchor(1)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add scale(gamma) edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add scale(gamma) edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(in_anchorof_mul, mul_node1->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove scale(gamma) edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove scale(gamma) edge failed."),
+                                                     return FAILED);
   }
   /* remove offset (beta) from sub and Add it to layernorm */
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(in_anchorof_sub, ln_node->GetInDataAnchor(2)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add offset(beta) edge failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add offset(beta) edge failed."),
+                                                   return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(in_anchorof_sub, sub_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove offset(beta) edge failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove offset(beta) edge failed."),
+                                                   return FAILED);
 
   /* remove add_node2 output and add it to layernorm */
   size_t index = 0;
   for (auto& peerInAnchor : out_anchor_ln->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peerInAnchor must not be null"),
+    FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "peerInAnchor must not be null"),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchor_ln, peerInAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(ln_node->GetOutDataAnchor(0), peerInAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index),
+                                                     return FAILED);
     index++;
   }
   // remove mean's output and add it to layernorm
   size_t index_1 = 0;
   for (auto& peerInAnchor : out_anchor_mean->GetPeerInDataAnchors()) {
     if (peerInAnchor->GetOwnerNode()->GetName() != square_difference_node->GetName()) {
-      FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peerInAnchor must not be null"),
+      FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "peerInAnchor must not be null"),
                         return PARAM_INVALID);
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchor_mean, peerInAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index_1), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index_1),
+                                                       return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(ln_node->GetOutDataAnchor(1), peerInAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index_1), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index_1),
+                                                       return FAILED);
     }
     index_1++;
   }
@@ -389,12 +441,15 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   size_t index_2 = 0;
   for (auto& peerInAnchor : out_anchor_rsqrt->GetPeerInDataAnchors()) {
     if (peerInAnchor->GetOwnerNode()->GetName() != mul_node1->GetName()) {
-      FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peerInAnchor must not be null"),
+      FUSION_PASS_CHECK(peerInAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "peerInAnchor must not be null"),
                         return PARAM_INVALID);
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchor_rsqrt, peerInAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index_2), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge %lu failed.", index_2),
+                                                       return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(ln_node->GetOutDataAnchor(2), peerInAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index_2), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge %lu failed.", index_2),
+                                                       return FAILED);
     }
     index_2++;
   }
@@ -406,10 +461,12 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(ln_opdesc, "begin_norm_axis", axes0[0]),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node %s set begin_norm_axis attr not success.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "node %s set begin_norm_axis attr not success.",
                     ln_opdesc->GetName().c_str()), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(ln_opdesc, "begin_params_axis", -1),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node %s set begin_params_axis attr not success.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "node %s set begin_params_axis attr not success.",
                     ln_opdesc->GetName().c_str()), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(ln_opdesc, "epsilon", 1e-7),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node %s set epsilon attr not success.",

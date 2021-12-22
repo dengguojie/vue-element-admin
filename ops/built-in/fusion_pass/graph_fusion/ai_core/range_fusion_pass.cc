@@ -79,7 +79,8 @@ static void AssistIntHelp(const int32_t n, int32_t* output) {
 vector<FusionPattern*> RangeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (nothrow) FusionPattern("RangeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSED_NODE, {FUSED_NODE}).SetOutput(PATTERN_FUSED_NODE);
@@ -93,11 +94,13 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
 
   // get node
   NodePtr range_node = GetNodeFromMapping(PATTERN_FUSED_NODE, mapping);
-  FUSION_PASS_CHECK(range_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "range_node is null, fusion failed."),
+  FUSION_PASS_CHECK(range_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "range_node is null, fusion failed."),
                     return PARAM_INVALID);
   // get desc
   OpDescPtr range_desc = range_node->GetOpDesc();
-  FUSION_PASS_CHECK(range_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "range_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(range_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "range_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get op
@@ -166,7 +169,8 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   OutDataAnchorPtr limit_anchor_out = limit_anchor_in->GetPeerOutAnchor();
   OutDataAnchorPtr delta_anchor_out = delta_anchor_in->GetPeerOutAnchor();
   Format const_format = range_op.GetInputDesc("start").GetFormat();
-  FUSION_PASS_CHECK((fabs(delta_fp) < EPSILON), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Devide by 0 exception."),
+  FUSION_PASS_CHECK((fabs(delta_fp) < EPSILON), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Devide by 0 exception."),
                     return PARAM_INVALID);
   int dim_num = int(ceil(abs(limit_fp - start_fp) / abs(delta_fp)));
 
@@ -179,7 +183,8 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   GeTensorPtr assist_ptr = nullptr;
   if (start_type == DT_INT32) {
     unique_ptr<int32_t[]> input_assist(new (nothrow) int32_t[dim_num]());
-    FUSION_PASS_CHECK(input_assist.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
+    FUSION_PASS_CHECK(input_assist.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "input_assist is NULL"),
                       return PARAM_INVALID);
     AssistIntHelp(dim_num, input_assist.get());
     FUSION_PASS_MAKE_SHARED(
@@ -189,7 +194,8 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
         return PARAM_INVALID);
   } else {
     unique_ptr<float[]> input_assist(new (nothrow) float[dim_num]());
-    FUSION_PASS_CHECK(input_assist.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
+    FUSION_PASS_CHECK(input_assist.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "input_assist is NULL"),
                       return PARAM_INVALID);
     AssistFloatHelp(dim_num, input_assist.get());
     FUSION_PASS_MAKE_SHARED((assist_ptr = make_shared<GeTensor>(

@@ -60,7 +60,8 @@ vector<FusionPattern*> MulMaximumFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MulMaximumFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_MUL, {MUL})
@@ -77,7 +78,8 @@ vector<FusionPattern*> MulMaximumFusionPass::DefinePatterns() {
 
 Status MulMaximumFusionPass::CheckPeerMulInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor,
                                                        const size_t& expectedNum) {
-  FUSION_PASS_CHECK(outputAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAnchor must not be null"),
+  FUSION_PASS_CHECK(outputAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "outputAnchor must not be null"),
                     return PARAM_INVALID);
   if (outputAnchor->GetPeerInDataAnchors().size() == expectedNum) {
     return SUCCESS;
@@ -86,9 +88,11 @@ Status MulMaximumFusionPass::CheckPeerMulInDataAnchors(const ge::OutDataAnchorPt
 }
 
 Status MulMaximumFusionPass::IsMatch(ge::NodePtr& mulNode, ge::NodePtr& maximumNode) {
-  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maximumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "maximumNode is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(CheckPeerMulInDataAnchors(mulNode->GetOutDataAnchor(0), 1) != SUCCESS,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", mulNode->GetName().c_str()),
@@ -132,7 +136,8 @@ Status MulMaximumFusionPass::IsMatch(ge::NodePtr& mulNode, ge::NodePtr& maximumN
     }
   }
   ge::NodePtr mulInputNode = mulNode->GetInDataNodes().at(const_input_index);
-  FUSION_PASS_CHECK(mulInputNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulInputNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulInputNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mulInputNode is null, fusion failed."),
                     return PARAM_INVALID);
   for (auto maximumInputNode : maximumNode->GetInDataNodes()) {
     int64_t mulInputNodeId = mulInputNode->GetOpDesc()->GetId();
@@ -152,9 +157,11 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MulMaximumFusionPass fusion begin");
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr maximumNode = GetNodeFromMapping(PATTERN_MAXIMUM, mapping);
-  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "MulNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MaximumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "MaximumNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (IsMatch(mulNode, maximumNode) != SUCCESS) {
@@ -184,7 +191,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   ge::GeTensorPtr alpha = mulWeights[0];
-  FUSION_PASS_CHECK(alpha == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "alpha is null, fusion failed."),
+  FUSION_PASS_CHECK(alpha == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "alpha is null, fusion failed."),
                     return PARAM_INVALID);
   if (alpha->GetTensorDesc().GetShape().GetDimNum() != 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "mul op weight should be scalar.but now is %d-D.",
@@ -198,7 +206,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   ge::DataType alphaType = alpha->GetTensorDesc().GetDataType();
-  FUSION_PASS_CHECK(alpha->GetData().data() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "alpha->GetData().data() is null, fusion failed."),
+  FUSION_PASS_CHECK(alpha->GetData().data() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "alpha->GetData().data() is null, fusion failed."),
                     return FAILED);
   if (alphaType == ge::DT_FLOAT) {
     float negative_slope = (*((float*)alpha->GetData().data()));
@@ -208,7 +217,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
     FUSION_PASS_CHECK(
         !ge::AttrUtils::SetFloat(mulNode->GetOpDesc(), ge::ATTR_NAME_NEGATIVE_SLOPE, negative_slope),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set negative slope failed, exit MulMaximumFusionPass with status: failed."),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                       "Set negative slope failed, exit MulMaximumFusionPass with status: failed."),
         return FAILED);
   } else if (alphaType == ge::DT_FLOAT16) {
     float negative_slope = (*((fp16_t*)alpha->GetData().data())).toFloat();
@@ -218,7 +228,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
     FUSION_PASS_CHECK(
         !ge::AttrUtils::SetFloat(mulNode->GetOpDesc(), ge::ATTR_NAME_NEGATIVE_SLOPE, negative_slope),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set negative slope failed, exit MulMaximumFusionPass with status: failed."),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                       "Set negative slope failed, exit MulMaximumFusionPass with status: failed."),
         return FAILED);
   }
 
@@ -245,7 +256,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::OpDescUtils::ClearInputDesc(mulNode->GetOpDesc(), const_input_index);
   if (PatternFusionUtil::GetOutEdgeSize(constNode1) == 0) {
     FUSION_PASS_CHECK(graph.RemoveNode(constNode1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode1->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed",
+                                                     constNode1->GetName().c_str()),
                       return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode1->GetName().c_str());
   }
@@ -260,7 +272,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), inAnchorPtr),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                         "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
                   mulNode->GetName().c_str(), maximumNode->GetName().c_str()),
           return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
@@ -270,7 +283,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
   maximumNode->GetOutDataAnchor(0)->UnlinkAll();
   FUSION_PASS_CHECK(graph.RemoveNode(maximumNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maximum node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maximum node failed."),
+                                                   return FAILED);
   std::map<string, uint32_t> input_name_id;
   input_name_id["x"] = 0;
   mulNode->GetOpDesc()->UpdateInputName(input_name_id);

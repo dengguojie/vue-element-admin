@@ -46,7 +46,8 @@ vector<FusionPattern*> UnsortedSegmentSumdFusionPass::DefinePatterns() {
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("UnsortedSegmentSumd1to8Fusion");
 
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_UNSORTED_SEGMENT_SUM, {PATTERNUNSORTEDSEGMENT_SUM})
@@ -61,7 +62,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                                              vector<ge::NodePtr>& fusion_nodes) {
   ge::NodePtr unsorted_segment_sum_d_node = GetNodeFromMapping(PATTERN_UNSORTED_SEGMENT_SUM, mapping);
   FUSION_PASS_CHECK(unsorted_segment_sum_d_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumD node is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "UnsortedSegmentSumD node is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(unsorted_segment_sum_d_node->GetInDataNodes().size() != 2,
                     OP_LOGI(FUSED_OP_TYPE.c_str(),
@@ -76,7 +78,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   ge::OpDescPtr unsorted_segment_sum_d_desc = unsorted_segment_sum_d_node->GetOpDesc();
   FUSION_PASS_CHECK(unsorted_segment_sum_d_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumD's op_desc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "UnsortedSegmentSumD's op_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get shape, if not[xxx,1] return
@@ -118,7 +121,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   ge::OpDescPtr concat_d_desc = std::make_shared<ge::OpDesc>(unsorted_segment_sum_d_node->GetName() + "/" + "ConcatD",
                                                              "ConcatD");
   FUSION_PASS_CHECK(concat_d_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConcatD create op_desc fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConcatD create op_desc fusion failed."),
+                                                   return PARAM_INVALID);
   for (int32_t i = 0; i < pad_dim_size; i++) {
     FUSION_PASS_CHECK(concat_d_desc->AddInputDesc("x" + std::to_string(i), input_desc) != GRAPH_SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
@@ -126,7 +130,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   FUSION_PASS_CHECK(concat_d_desc->AddOutputDesc("y", concat_output_desc) != GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output failed."), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(concat_d_desc, "concat_dim", x_dims.size() - 1),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr concat_dim failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr concat_dim failed."),
+                                                   return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(concat_d_desc, "N", pad_dim_size),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr N failed."), return FAILED);
   ge::NodePtr concat_d_node = graph.AddNode(concat_d_desc);
@@ -140,7 +145,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
       std::make_shared<ge::OpDesc>(unsorted_segment_sum_d_node->GetName() + "/" + "UnsortedSegmentSumDPad",
                                    "UnsortedSegmentSumD");
   FUSION_PASS_CHECK(unsorted_segment_sum_d_pad_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumDPad create op_desc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "UnsortedSegmentSumDPad create op_desc failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(unsorted_segment_sum_d_pad_desc->AddInputDesc(concat_output_desc) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
@@ -183,7 +189,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   // connect edge
   const auto &peer_out_anchor0 = unsorted_segment_sum_d_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(peer_out_anchor0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Peer out anchor is null, node:%s, in_anchor_idx=0.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Peer out anchor is null, node:%s, in_anchor_idx=0.",
                             unsorted_segment_sum_d_node->GetName().c_str()),
                     return PARAM_INVALID);
   for (int32_t i = 0; i < pad_dim_size; i++) {
@@ -200,7 +207,8 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                     return FAILED);
   const auto &peer_out_anchor1 = unsorted_segment_sum_d_node->GetInDataAnchor(1)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(peer_out_anchor1 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Peer out anchor is null, node:%s, in_anchor_idx=1.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Peer out anchor is null, node:%s, in_anchor_idx=1.",
                             unsorted_segment_sum_d_node->GetName().c_str()),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_out_anchor1,
@@ -212,20 +220,23 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(unsorted_segment_sum_d_pad_node->GetOutDataAnchor(0),
                                             slice_d_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Add edge between node %s. and node %s failed.",
                             unsorted_segment_sum_d_pad_node->GetName().c_str(), slice_d_node->GetName().c_str()),
                     return FAILED);
   for (const auto &in_data_anchor : unsorted_segment_sum_d_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(unsorted_segment_sum_d_node->GetOutDataAnchor(0),
                                                  in_data_anchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(slice_d_node->GetOutDataAnchor(0), in_data_anchor) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add data edge failed."), return FAILED);
   }
 
   // delete fused nodes
   FUSION_PASS_CHECK(graph.RemoveNode(unsorted_segment_sum_d_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove unsorted_segment_sum_d_node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove unsorted_segment_sum_d_node failed."),
+                                                   return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumdFusionPass graph fusion success!");
   return SUCCESS;

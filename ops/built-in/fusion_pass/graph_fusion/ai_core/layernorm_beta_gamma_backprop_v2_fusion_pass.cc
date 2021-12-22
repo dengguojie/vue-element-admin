@@ -167,7 +167,8 @@ Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2
 Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGraph& graph,
                                                                  LayerNormMatchResult& matchResult) {
   NodePtr lnNodePtr = matchResult.layerNormBetaGammaBackpropPtr;
-  FUSION_PASS_CHECK(lnNodePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "lnNodePtr is null, fusion failed."),
+  FUSION_PASS_CHECK(lnNodePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "lnNodePtr is null, fusion failed."),
                     return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Begin to fusion pass, the name of LayerNormBetaGammaBackpropV2 is [%s].",
           lnNodePtr->GetName().c_str());
@@ -176,7 +177,8 @@ Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGr
   int index = 0;
   for (NodePtr castNode : matchResult.castNodeVec) {
     FUSION_PASS_CHECK(graph.RemoveNode(castNode) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast node[%s] failed.", castNode->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast node[%s] failed.",
+                                                     castNode->GetName().c_str()),
                       return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove cast node[%s].", castNode->GetName().c_str());
     ge::GeTensorDesc tensorDesc = layerNormBetaGammaDesc->GetOutputDesc(index);

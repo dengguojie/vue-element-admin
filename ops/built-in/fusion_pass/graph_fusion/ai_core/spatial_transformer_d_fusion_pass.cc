@@ -473,7 +473,9 @@ Status SpatialTransformerDPass::AicpuFusion(ge::ComputeGraph& graph, Mapping& ma
   // create new aicpu op
   ge::OpDescPtr stnDesc;
   ge::NodePtr stnNode;
-  FUSION_PASS_MAKE_SHARED((stnDesc = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_aicpu", "SpatialTransformer")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((stnDesc = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_aicpu",
+                          "SpatialTransformer")),
+                          return INTERNAL_ERROR);
 
   vector<int32_t> output_size;
   vector<float> default_theta;

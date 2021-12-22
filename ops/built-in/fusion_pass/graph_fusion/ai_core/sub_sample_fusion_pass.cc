@@ -119,7 +119,8 @@ Status SubSamplePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   ge::GeTensorDesc assist_const_desc;
   this->set_node_tensor_desc(assist_const_desc, label_shape, ge::DT_INT32, ge::FORMAT_ND);
   ge::GeTensorPtr weight_ptr =
-      std::make_shared<ge::GeTensor>(assist_const_desc, reinterpret_cast<uint8_t *>(data.get()), size * sizeof(int32_t));
+      std::make_shared<ge::GeTensor>(assist_const_desc, reinterpret_cast<uint8_t *>(data.get()),
+                                     size * sizeof(int32_t));
   if (!weight_ptr) {
       OP_LOGE("SubSamplePass", "create shuffle matrix weight failed.");
       return FAILED;

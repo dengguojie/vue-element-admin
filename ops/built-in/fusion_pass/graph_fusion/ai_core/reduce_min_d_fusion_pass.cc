@@ -47,7 +47,8 @@ static const std::string AXIS = "axes";
 vector<FusionPattern*> ReduceMinDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReduceMinDFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_MIND, {MIND}).SetOutput(PATTERN_MIND);
   patterns.push_back(pattern);
@@ -57,7 +58,8 @@ vector<FusionPattern*> ReduceMinDFusionPass::DefinePatterns() {
 Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ReduceMinDFusionPass fusion begin");
   ge::NodePtr minDNode = GetNodeFromMapping(PATTERN_MIND, mapping);
-  FUSION_PASS_CHECK(minDNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minDNode is null, fusion failed."),
+  FUSION_PASS_CHECK(minDNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "minDNode is null, fusion failed."),
                     return PARAM_INVALID);
   // validation
   ge::GeTensorDesc tensor_input = minDNode->GetOpDesc()->GetInputDesc(0);
@@ -210,20 +212,24 @@ Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   // copy attr
   // float keepdims;
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minNewNode->GetOpDesc(), KEEPDIMS, keepdims),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[name=%s]: Set attr %s failed", minNewNode->GetName().c_str(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[name=%s]: Set attr %s failed",
+                                                   minNewNode->GetName().c_str(),
                             KEEPDIMS),
                     return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minLastNode->GetOpDesc(), KEEPDIMS, keepdims),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[name=%s]: Set attr %s failed", minLastNode->GetName().c_str(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[name=%s]: Set attr %s failed",
+                                                   minLastNode->GetName().c_str(),
                             KEEPDIMS),
                     return FAILED);
 
   // set axis
   // Give a list of -1 to mindnew
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(minNewNode->GetOpDesc(), AXIS, axis_xin),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNew Set axis attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNew Set axis attr failed"),
+                                                   return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(minLastNode->GetOpDesc(), AXIS, axis_last),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLast Set axis attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLast Set axis attr failed"),
+                                                   return FAILED);
   // connect output edge for minnew
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(minNewNode->GetOutDataAnchor(0), minLastNode->GetInDataAnchor(0)) != SUCCESS,
@@ -232,24 +238,31 @@ Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   // copy output edge for minlast
   for (auto inDataAnchor : minDNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(minDNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minDNode Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minDNode Remove out data edge failed."),
+                                                     return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(minLastNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLastNode Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLastNode Add out data edge failed."),
+                                                     return FAILED);
   }
 
   if (minDNode->GetOutControlAnchor()) {
     for (auto inControlAnchor : minDNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(minDNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minDNode Remove out control edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                       "minDNode Remove out control edge failed."),
+                                                       return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(minLastNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLastNode Add out control edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                       "minLastNode Add out control edge failed."),
+                                                       return FAILED);
     }
   }
 
   // connect input for minnew
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(minDNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             minNewNode->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNewNode Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "minNewNode Add edge between node %s. and node %s failed.",
                             minDNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             minNewNode->GetName().c_str()),
                     return FAILED);
@@ -259,7 +272,8 @@ Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   minLastNode->GetOpDesc()->SetType(MINDLAST);
 
   FUSION_PASS_CHECK(graph.RemoveNode(minDNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove minDNode node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove minDNode node failed."),
+                                                   return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ReduceMinDFusionPass fusion end");
 

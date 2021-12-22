@@ -63,7 +63,8 @@ vector<FusionPattern*> KerasMomentumLossscaleFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("KerasMomentumLossscaleFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kkFusedOpType.c_str(), "New a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kkFusedOpType.c_str(), "New a pattern object failed."),
+                    return patterns);
 
   pattern->AddOpDesc(kkerasMomentumLossscalePatternIdMomentum, {"ApplyKerasMomentum"})
       .AddOpDesc(kkMomentumLossscalePatternIdMul, {"Mul"})
@@ -315,7 +316,8 @@ Status KerasMomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
                       return FAILED);
     ge::OpDescPtr new_desc = ge::AttrUtils::CopyOpDesc(old_desc);
     FUSION_PASS_CHECK(new_desc == nullptr,
-                      OP_LOGE(kkFusedOpType.c_str(), "New moment node's opDesc is null, fusion failed."), return FAILED);
+                      OP_LOGE(kkFusedOpType.c_str(), "New moment node's opDesc is null, fusion failed."),
+                              return FAILED);
     new_desc->SetType("FusedMulApplyMomentumExtern");
     FUSION_PASS_CHECK(new_desc->AddOutputDesc("var_copy", redy_desc) != GRAPH_SUCCESS,
                       OP_LOGE(kkFusedOpType.c_str(), "AddOutputDesc failed."), return FAILED);
