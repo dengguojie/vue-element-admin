@@ -155,8 +155,11 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
     tensorDesc.SetShape(assitShape);
+    tensorDesc.SetOriginShape(assitShape);
     tensorDesc.SetFormat(assitMatrixFormat);
+    tensorDesc.SetOriginFormat(assitMatrixFormat);
     tensorDesc.SetDataType(ge::DT_FLOAT);
+    tensorDesc.SetOriginDataType(ge::DT_FLOAT);
     FUSION_PASS_MAKE_SHARED(
         (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                    dimNums * dimNums * sizeof(float))),
@@ -176,8 +179,11 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
     tensorDesc.SetShape(assitShape);
+    tensorDesc.SetOriginShape(assitShape);
     tensorDesc.SetFormat(assitMatrixFormat);
+    tensorDesc.SetOriginFormat(assitMatrixFormat);
     tensorDesc.SetDataType(ge::DT_INT32);
+    tensorDesc.SetOriginDataType(ge::DT_INT32);
     FUSION_PASS_MAKE_SHARED(
         (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                    dimNums * dimNums * sizeof(int32_t))),
@@ -197,8 +203,11 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
     tensorDesc.SetShape(assitShape);
+    tensorDesc.SetOriginShape(assitShape);
     tensorDesc.SetFormat(assitMatrixFormat);
+    tensorDesc.SetOriginFormat(assitMatrixFormat);
     tensorDesc.SetDataType(ge::DT_FLOAT16);
+    tensorDesc.SetOriginDataType(ge::DT_FLOAT16);
     FUSION_PASS_MAKE_SHARED(
         (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                    dimNums * dimNums * sizeof(uint16_t))),
