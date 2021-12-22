@@ -1145,6 +1145,7 @@ def layer_norm_grad_schedule(res, input_tensors):
 
     data_x_tensor = input_tensors[-1]
     shape_x = shape_to_list(data_x_tensor.shape)
+    shape_res = shape_to_list(res[-1].shape)
 
     dtype = data_x_tensor.dtype.lower()
 
@@ -1162,6 +1163,9 @@ def layer_norm_grad_schedule(res, input_tensors):
     if 'op_type' in input_tensors[0].op.attrs:
         op_type = input_tensors[0].op.attrs['op_type'].value
     if op_type not in ["layer_norm_beta_gamma_backprop", "layer_norm_beta_gamma_backprop_v2"]:
+        return None
+    dichotomy_add_unsupported_list = [[[5120, 4, 16], [1, 1, 16]], [[5120, 16, 4], [1, 1, 4]]]
+    if [shape_x, shape_res] in dichotomy_add_unsupported_list:
         return None
 
     for tensor in res[1:]:
