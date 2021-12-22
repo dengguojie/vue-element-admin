@@ -789,11 +789,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             if not self.var_map:
                 """
                 Load 3D Data Flow:
-                    fmap(DDR) >> fmap_matrix(L1) >> fmap_fractal(nZ, L0B)
+                    fmap(DDR) to fmap_matrix(L1) to fmap_fractal(nZ, L0B)
 
                 Dma Mode Data Flow:
-                    fmap(DDR) >> fmap_ub(pad, UB) >> fmap_matrix(L1) >>
-                        fmap_fractal_before(zZ, L1) >> fmap_fractal(nZ, L0B)
+                    fmap(DDR) to fmap_ub(pad, UB) to fmap_matrix(L1) to
+                        fmap_fractal_before(zZ, L1) to fmap_fractal(nZ, L0B)
                 """
                 fmap_ub = None
                 if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
@@ -1282,7 +1282,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 # matrix: fmap_c0 aligned to 8
                 # fractal: hw_mad aligned to 8, while fmap_c0 aligned to 16
                 # eg: fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
-                # --> matrix is (1, 49, 2, 3, 3, c0(8)) -> fractal is (group(1), batch(1), 8, 9, c0(16), mad_0(8))
+                # matrix is (1, 49, 2, 3, 3, c0(8)) to fractal is (group(1), batch(1), 8, 9, c0(16), mad_0(8))
                 hw_vm_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
                 c1_index = fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
                 kh_vm_index = fkk_indices // kernel_width % kernel_height
