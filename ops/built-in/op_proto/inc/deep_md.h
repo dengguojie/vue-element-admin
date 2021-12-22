@@ -59,6 +59,53 @@ REG_OP(TabulateFusion)
     .OP_END_FACTORY_REG(TabulateFusion)
 
 /**
+* @brief Calculate ProdEnvMatA. \n
+*
+* @par Inputs:
+* @li coord: A Tensor. Must be one of the following types: float32, float64.
+* @li type: A Tensor. Must be one of the following types: int32.
+* @li natoms: A Tensor. Must be one of the following types: int32.
+* @li box: A Tensor. Must be one of the following types: float32, float64.
+* @li mesh: A Tensor. Must be one of the following types: int32.
+* @li davg: A Tensor. Must be one of the following types: float32, float64.
+* @li dstd: A Tensor. Must be one of the following types: float32, float64.
+*
+* @par Outputs:
+* descrpt: A Tensor. Must be one of the following types: float32, float64.
+* descrpt_deriv: A Tensor. Must be one of the following types: float32, float64.
+* rij: A Tensor. Must be one of the following types: float32, float64.
+* nlist: A Tensor. Must be one of the following types: int32. \n
+*
+* @par Attributes:
+* @li rcut_a: A Float.
+* @li rcut_r: A Float.
+* @li rcut_r_smth: A Float.
+* @li sel_a: A ListInt.
+* @li split_count: A Int.
+* @li split_index: A Int.\n
+*
+*/
+REG_OP(ProdEnvMatA)
+    .INPUT(coord, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(type, TensorType({DT_INT32}))
+    .INPUT(natoms, TensorType({DT_INT32}))
+    .INPUT(box, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(mesh, TensorType({DT_INT32}))
+    .INPUT(davg, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(dstd, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(descrpt, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(descrpt_deriv, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(rij, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(nlist, TensorType({DT_INT32}))
+    .ATTR(rcut_a, Float, 1.0)
+    .ATTR(rcut_r, Float, 1.0)
+    .ATTR(rcut_r_smth, Float, 1.0)
+    .ATTR(sel_a, ListInt, {})
+    .ATTR(sel_r, ListInt, {})
+    .ATTR(split_count, Int, 1)
+    .ATTR(split_index, Int, 0)
+    .OP_END_FACTORY_REG(ProdEnvMatA)
+/**
 * @brief Calculate ProdForceSeA. \n
 *
 * @par Inputs:

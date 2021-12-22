@@ -186,6 +186,7 @@ set(_optiling_files
   non_zero.cc
   scan_pq_codes.cc
   prod_virial_se_a.cc
+  prod_env_mat_a.cc
   strided_slice_v3.cc
   tabulate_fusion.cc
   kl_div.cc

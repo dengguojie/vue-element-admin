@@ -384,6 +384,7 @@ from .sync_batch_norm_backward_reduce import sync_batch_norm_backward_reduce
 from .sync_batch_norm_backward_elemt import sync_batch_norm_backward_elemt
 from .fake_quant_with_min_max_vars import fake_quant_with_min_max_vars
 from .get_shape import get_shape
+from .prod_env_mat_a import prod_env_mat_a
 from .max_pool_with_argmaxv2 import max_pool_with_argmax_v2
 from .sync_bn_training_update import sync_bn_training_update
 from .sync_batch_norm_gather_stats_with_counts import sync_batch_norm_gather_stats_with_counts

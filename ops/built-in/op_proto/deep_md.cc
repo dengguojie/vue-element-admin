@@ -23,6 +23,8 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <numeric>
 
 #include "util/util.h"
 #include "util/error_util.h"
@@ -336,5 +338,154 @@ IMPLEMT_COMMON_INFERFUNC(ProdVirialSeAInferShape) {
 COMMON_INFER_FUNC_REG(ProdVirialSeA, ProdVirialSeAInferShape);
 VERIFY_FUNC_REG(ProdVirialSeA, ProdVirialSeAVerify);
 // --------------------------ProdVirialSeA END---------------------
+// --------------------------ProdEnvMatA Begin---------------------
+IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdVirialSeA"), return GRAPH_FAILED);
 
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeTensorDescPtr coordDesc = opDesc->MutableInputDesc(0);
+  std::vector<int64_t> coordShape = coordDesc->MutableShape().GetDims();
+  CHECK(coordShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of coordShape should be 2"), return GRAPH_FAILED);
+  int64_t nframes = coordShape[0];
+
+  GeTensorDescPtr typeDesc = opDesc->MutableInputDesc(1);
+  std::vector<int64_t> typeShape = typeDesc->MutableShape().GetDims();
+  CHECK(typeShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of typeShape should be 2"), return GRAPH_FAILED);
+  CHECK(typeShape[0] != nframes,
+        OP_LOGE(opName.GetString(), "Number of typeShape samples should match with coords"), return GRAPH_FAILED);
+
+  GeTensorDescPtr dstdDesc = opDesc->MutableInputDesc(5);
+  std::vector<int64_t> dstdShape = dstdDesc->MutableShape().GetDims();
+  CHECK(dstdShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of dstdShape should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr davgDesc = opDesc->MutableInputDesc(6);
+  std::vector<int64_t> davgShape = davgDesc->MutableShape().GetDims();
+  CHECK(davgShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of davgShape should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
+  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
+  CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
+  CHECK(natomsShape[0] < 3,
+        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
+
+  CHECK(coordDesc->GetDataType() != dstdDesc->GetDataType(),
+        OP_LOGE(opName.GetString(), "Data type of coords and std are not match"), return GRAPH_FAILED);
+  CHECK(davgDesc->GetDataType() != dstdDesc->GetDataType(),
+        OP_LOGE(opName.GetString(), "Data type of avg and std are not match"), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdEnvMatA"), return GRAPH_FAILED);
+
+  const vector<string> depend_names = {"natoms"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  auto coordDesc = opDesc->MutableInputDesc(0);
+  CHECK(coordDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get coord desc"), return GRAPH_FAILED);
+  auto avgDesc = opDesc->MutableInputDesc(5);
+  CHECK(avgDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get avg desc"), return GRAPH_FAILED);
+
+  std::vector<int64_t> dimsCoords = coordDesc->MutableShape().GetDims();
+  std::vector<int64_t> dimsAvg = avgDesc->MutableShape().GetDims();
+  CHECK(dimsCoords.size() != 2, OP_LOGE(opName.GetString(), "Dim of coords should be 2"), return GRAPH_FAILED);
+  CHECK(dimsAvg.size() != 2, OP_LOGE(opName.GetString(), "Dim of avg should be 2"), return GRAPH_FAILED);
+
+  DataType type = coordDesc->GetDataType();
+
+  vector<int64_t> sel_a;
+
+  int64_t nnei = 0;
+  if (op.GetAttr("sel_a", sel_a) == GRAPH_SUCCESS) {
+    nnei = std::accumulate(sel_a.begin(), sel_a.end(), 1, std::multiplies<int>());
+  }
+  int64_t splitCount = 0;
+  int64_t splitIndex = 0;
+
+  op.GetAttr("split_count", splitCount);
+
+  if (op.GetAttr("split_index", splitIndex) != GRAPH_SUCCESS) {
+    OP_LOGD(opName.GetString(), "Get split_index name failed.");
+  }
+
+  int64_t nsample = dimsCoords[0];
+  int64_t nalls = dimsCoords[1];
+  int64_t ndescrpt = dimsAvg[1];
+  int64_t nloc = UNKNOWN_DIM;
+  int64_t descrptDimOne = UNKNOWN_DIM;
+  int64_t descrptDerivDimOne = UNKNOWN_DIM;
+  int64_t rijDimOne = UNKNOWN_DIM;
+  int64_t nlistDimOne = UNKNOWN_DIM;
+
+  if (nalls != UNKNOWN_DIM) {
+    Tensor natoms;
+    if (op.GetInputConstData("natoms", natoms) == GRAPH_SUCCESS) {
+      DataType natomsDType = opDesc->MutableInputDesc("natoms")->GetDataType();
+      std::vector<int64_t> constVec;
+      GetConstValue(op, natoms, natomsDType, constVec);
+      CHECK(constVec.size() < 3, OP_LOGE(opName.GetString(), "Failed to get natoms value"),
+            return GRAPH_FAILED);
+      nloc = constVec[0];
+    }
+    if (splitCount > 1) {
+      if (splitIndex == 0) {
+        nloc = (nloc / 2) + (nloc % 2);
+      } else {
+        nloc = nloc / 2;
+      }
+    }
+    descrptDimOne = nloc * nnei * 4;
+    descrptDerivDimOne = nloc * nnei * 12;
+    rijDimOne = nloc * nnei * 3;
+    nlistDimOne = nloc * nnei;
+  }
+
+  std::vector<int64_t> dimsDescrptOutput = {nsample, descrptDimOne};
+  std::vector<int64_t> dimsDescrptDerivOutput = {nsample, descrptDerivDimOne};
+  std::vector<int64_t> dimsRijOutput = {nsample, rijDimOne};
+  std::vector<int64_t> dimsNlistOutput = {nsample, nlistDimOne};
+
+  auto descrpt_desc = opDesc->MutableOutputDesc(0);
+  CHECK(descrpt_desc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descrpt_desc desc"),
+        return GRAPH_FAILED);
+
+  auto descrpt_deriv_desc = opDesc->MutableOutputDesc(1);
+  CHECK(descrpt_deriv_desc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descrpt_deriv_desc desc"),
+        return GRAPH_FAILED);
+
+  auto rij_desc = opDesc->MutableOutputDesc(2);
+  CHECK(rij_desc == nullptr, OP_LOGE(opName.GetString(), "Failed to get rij_desc desc"),
+        return GRAPH_FAILED);
+
+  auto nlist_desc = opDesc->MutableOutputDesc(3);
+  CHECK(nlist_desc == nullptr, OP_LOGE(opName.GetString(), "Failed to get nlist_desc desc"),
+        return GRAPH_FAILED);
+
+  descrpt_desc->SetShape(GeShape(dimsDescrptOutput));
+  descrpt_desc->SetOriginShape(GeShape(dimsDescrptOutput));
+  descrpt_desc->SetDataType(type);
+
+  descrpt_deriv_desc->SetShape(GeShape(dimsDescrptDerivOutput));
+  descrpt_deriv_desc->SetOriginShape(GeShape(dimsDescrptDerivOutput));
+  descrpt_deriv_desc->SetDataType(type);
+
+  rij_desc->SetShape(GeShape(dimsRijOutput));
+  rij_desc->SetOriginShape(GeShape(dimsRijOutput));
+  rij_desc->SetDataType(type);
+
+  nlist_desc->SetShape(GeShape(dimsNlistOutput));
+  nlist_desc->SetOriginShape(GeShape(dimsNlistOutput));
+  nlist_desc->SetDataType(DT_INT32);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ProdEnvMatA, ProdEnvMatAInferShape);
+VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
+// --------------------------ProdEnvMatA END---------------------
 }  // namespace ge
