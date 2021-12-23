@@ -283,5 +283,15 @@ TEST_F(Slice, slice_infer_dynamic_unknow_rank_shape5) {
   EXPECT_EQ(output_range, expected_shape_range);
 }
 
+TEST_F(Slice, slice_infer_dynamic_unknow_shape9) {
+  vector<int64_t> output_shape;
+  vector<std::pair<int64_t, int64_t>> output_range;
+  test<int32_t>({4,-1,-1,9}, {}, {-1,8,8,-1}, {4,-1,-1,9}, {{4, 4}, {1,10}, {1,10}, {9,9}},
+  output_shape, output_range);
 
-
+  std::vector<int64_t> expected_output_shape = {4,8,8,9};
+  EXPECT_EQ(output_shape, expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+  };
+  EXPECT_EQ(output_range, expected_shape_range);
+}
