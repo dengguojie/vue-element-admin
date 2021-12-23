@@ -19,9 +19,9 @@
  * \brief layer norm onnx fusion pass
  */
 
+#include "layer_norm_onnx_fusion_pass.h"
 #include <numeric>
 #include <sstream>
-#include "layer_norm_onnx_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -186,7 +186,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
 }
 
 Status LayerNormONNXFusionPass::AddEdge(const ge::NodePtr& pre_node, int pre_idx, const ge::NodePtr& cur_node,
-                                        int cur_idx) {
+                                        int cur_idx) const {
   auto pre_anchor = pre_node->GetOutDataAnchor(pre_idx);
   auto cur_anchor = cur_node->GetInDataAnchor(cur_idx);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pre_anchor, cur_anchor) != SUCCESS,
@@ -249,7 +249,7 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   return SUCCESS;
 }
 
-bool LayerNormONNXFusionPass::CheckDynamic(const ge::NodePtr node, int32_t index) {
+bool LayerNormONNXFusionPass::CheckDynamic(const ge::NodePtr node, int32_t index) const {
   auto dims = node->GetOpDesc()->GetInputDesc(index).GetShape().GetDims();
   size_t dim_size = dims.size();
   for (size_t i = 0; i < dim_size; ++i) {

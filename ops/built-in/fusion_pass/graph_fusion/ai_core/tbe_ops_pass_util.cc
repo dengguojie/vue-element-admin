@@ -134,7 +134,7 @@ void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index) {
   ge::OpDescUtils::ClearInputDesc(op_desc, index);
 }
 
-bool GetIntConstValueFromTensor(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+bool GetIntConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_tensor, const ge::DataType& dtype,
                                 std::vector<int64_t>& const_data) {
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
@@ -164,14 +164,14 @@ bool GetIntConstValueFromTensor(const Operator& op, const Tensor& const_tensor, 
 
 bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
                       std::vector<int64_t>&  const_value) {
-  Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
+  ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
   OP_LOGD(op.GetName().c_str(), "begin to get const value for input name(%s)", const_name.c_str());
-  Tensor const_tensor;
+  ge::Tensor const_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name, const_tensor)) {
     OP_LOGW(op.GetName().c_str(), "get const tensor of name(%s) from op failed", const_name.c_str());
     return false;
   }
-  DataType dtype = op.GetInputDesc(const_name).GetDataType();
+  ge::DataType dtype = op.GetInputDesc(const_name).GetDataType();
 
   if (!GetIntConstValueFromTensor(op, const_tensor, dtype, const_value)) {
     OP_LOGW(op.GetName().c_str(), "get const Value of name(%s) from tensor failed", const_name.c_str());

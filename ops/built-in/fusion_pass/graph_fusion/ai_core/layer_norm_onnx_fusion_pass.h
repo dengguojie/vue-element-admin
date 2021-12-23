@@ -49,10 +49,10 @@ class LayerNormONNXFusionPass : public PatternFusionBasePass {
                    std::string optype, T value, vector<ge::NodePtr>& fusionNodes);
   Status CreateMulAndAddNode(ge::ComputeGraph& graph, const ge::NodePtr div0_node, ge::NodePtr& mul0_node,
                              ge::NodePtr& add1_node, vector<ge::NodePtr>& fusionNodes);
-  Status AddEdge(const ge::NodePtr& pre_node, int pre_idx, const ge::NodePtr& cur_node, int cur_idx);
+  Status AddEdge(const ge::NodePtr& pre_node, int pre_idx, const ge::NodePtr& cur_node, int cur_idx) const;
   bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
                      std::vector<int64_t>& const_data);
-  bool CheckDynamic(const ge::NodePtr node, int32_t index);
+  bool CheckDynamic(const ge::NodePtr node, int32_t index) const;
 };
 }  // namespace fe
 

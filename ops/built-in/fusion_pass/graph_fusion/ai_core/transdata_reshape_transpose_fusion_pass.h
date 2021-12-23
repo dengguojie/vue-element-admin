@@ -32,8 +32,8 @@ class TransdataReshapeTransposeFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  bool VerifyFusedNode(const ge::NodePtr &transdata1_node, const ge::NodePtr &reshape_node,
-                       const ge::NodePtr &transdata2_node);
+  bool VerifyFusedNode(const ge::NodePtr &transdata_node1, const ge::NodePtr &reshape_node,
+                       const ge::NodePtr &transdata_node2) const;
 
   ge::NodePtr CreateTransposeNode(const ge::NodePtr &transdata1_node, const ge::NodePtr &transdata2_node,
                                   ge::ComputeGraph &graph);
@@ -42,11 +42,11 @@ class TransdataReshapeTransposeFusionPass : public PatternFusionBasePass {
                    ge::NodePtr &reformat_node2, ge::NodePtr &transdata_node2, ge::NodePtr &transpose_node,
                    ge::ComputeGraph &graph);
 
-  bool UnLinkDataEdges(ge::NodePtr &transdata_node1, ge::NodePtr &reformat_node1,
-                       ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
-                       ge::NodePtr &transdata_node2, ge::ComputeGraph &graph);
+  bool UnLinkDataEdges(const ge::NodePtr &transdata_node1, ge::NodePtr &reformat_node1,
+                       const ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
+                       const ge::NodePtr &transdata_node2, ge::ComputeGraph &graph);
 
-  bool RelinkControlEdges(ge::NodePtr &src_node, ge::NodePtr &dst_node);
+  bool RelinkControlEdges(ge::NodePtr &src_node, ge::NodePtr &dst_node) const;
 
   const string FUSED_OP_TYPE = "TransdataReshapeTransposeFusionPass";
 };

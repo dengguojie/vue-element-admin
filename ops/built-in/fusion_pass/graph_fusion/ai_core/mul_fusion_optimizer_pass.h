@@ -30,7 +30,7 @@ class MulFusionOptimizeFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
 
  private:
-  Status CheckParameterAndSet(ge::NodePtr& in_node_ptr);
+  Status CheckParameterAndSet(ge::NodePtr& in_node_ptr) const;
 };
 }  // namespace fe
 

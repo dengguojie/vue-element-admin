@@ -156,7 +156,7 @@ Status TransdataReshapeTransposeFusionPass::Fusion(ge::ComputeGraph &graph, Mapp
 
 bool TransdataReshapeTransposeFusionPass::VerifyFusedNode(const ge::NodePtr &transdata_node1,
                                                           const ge::NodePtr &reshape_node,
-                                                          const ge::NodePtr &transdata_node2) {
+                                                          const ge::NodePtr &transdata_node2) const {
   if (transdata_node1->GetOutDataNodesSize() > 1) {
     OP_LOGD(transdata_node1->GetName().c_str(), "This transdata node must have one output nodes.");
     return false;
@@ -248,9 +248,11 @@ ge::NodePtr TransdataReshapeTransposeFusionPass::CreateTransposeNode(const ge::N
   return transpose_node;
 }
 
-bool TransdataReshapeTransposeFusionPass::UnLinkDataEdges(ge::NodePtr &transdata_node1, ge::NodePtr &reformat_node1,
-                                                          ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
-                                                          ge::NodePtr &transdata_node2, ge::ComputeGraph &graph) {
+bool TransdataReshapeTransposeFusionPass::UnLinkDataEdges(const ge::NodePtr &transdata_node1,
+                                                          ge::NodePtr &reformat_node1,
+                                                          const ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
+                                                          const ge::NodePtr &transdata_node2,
+                                                          ge::ComputeGraph &graph) {
   if (transdata_node1->GetOutDataAnchor(0) != nullptr) {
     transdata_node1->GetOutDataAnchor(0)->UnlinkAll();
   }
@@ -332,7 +334,7 @@ bool TransdataReshapeTransposeFusionPass::RelinkEdges(ge::NodePtr &transdata_nod
   return true;
 }
 
-bool TransdataReshapeTransposeFusionPass::RelinkControlEdges(ge::NodePtr &src_node, ge::NodePtr &dst_node) {
+bool TransdataReshapeTransposeFusionPass::RelinkControlEdges(ge::NodePtr &src_node, ge::NodePtr &dst_node) const {
   ge::InControlAnchorPtr src_in_ctrl_anchor = src_node->GetInControlAnchor();
   ge::InControlAnchorPtr dts_in_ctrl_anchor = dst_node->GetInControlAnchor();
   if (src_in_ctrl_anchor != nullptr && dts_in_ctrl_anchor != nullptr) {

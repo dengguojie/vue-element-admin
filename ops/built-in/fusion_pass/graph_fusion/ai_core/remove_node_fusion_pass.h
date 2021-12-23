@@ -21,9 +21,9 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_REMOVE_NODE_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_REMOVE_NODE_FUSION_PASS_H_
 
-#include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 #include <map>
 #include <vector>
+#include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 #include "fusion_removenode_registry.h"
 
 namespace fe {
@@ -109,7 +109,7 @@ class RemoveNodeFusionPass : public PatternFusionBasePass {
    * @param node node pointer
    * @return SUCCESS, FAILED
    */
-  Status ReLinkControlAnchor(NodePtr node);
+  Status ReLinkControlAnchor(NodePtr node) const;
 
   /**
    * Add control edge
@@ -117,7 +117,7 @@ class RemoveNodeFusionPass : public PatternFusionBasePass {
    * @param inCtrlAnchorPtr input control anchor pointer
    * @return SUCCESS, FAILED
    */
-  Status AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr, InControlAnchorPtr inCtrlAnchorPtr);
+  Status AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr, InControlAnchorPtr inCtrlAnchorPtr) const;
 
   /**
    * Re-link data anchors of the removing node

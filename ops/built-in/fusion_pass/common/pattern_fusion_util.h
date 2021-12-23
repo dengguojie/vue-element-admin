@@ -31,8 +31,9 @@
 #include "error_util.h"
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 
-using namespace ge;
 namespace fe {
+using namespace ge;
+
 struct PassAttrInfo {
   int attrIndex;
   std::string attrName;

@@ -130,7 +130,7 @@ Status JudgeFormatOK(const ge::GeTensorDescPtr &tensor0, const ge::GeTensorDescP
                |
             outout0
  */
-Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_ptr) {
+Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_ptr) const {
   auto input_nodes = in_node_ptr->GetInDataNodes();
   auto output_nodes = in_node_ptr->GetOutDataNodes();
   auto input_num = input_nodes.size();

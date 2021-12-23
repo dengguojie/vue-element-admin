@@ -326,7 +326,8 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
   return SUCCESS;
 }
 
-bool RemoveNodeFusionPass::VerifyRemoveInAnchor(InDataAnchorPtr inDataAnchorPtr, InAnchorRelatedInfo& relatedInfo) {
+bool RemoveNodeFusionPass::VerifyRemoveInAnchor(InDataAnchorPtr inDataAnchorPtr,
+                                                InAnchorRelatedInfo& relatedInfo) {
   if (inDataAnchorPtr == nullptr || inDataAnchorPtr->GetPeerOutAnchor() == nullptr) {
     return true;
   }
@@ -384,7 +385,7 @@ bool RemoveNodeFusionPass::VerifyRemoveInAnchor(InDataAnchorPtr inDataAnchorPtr,
   return true;
 }
 
-Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) {
+Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) const {
   // in control anchor link to all output nodes
   InControlAnchorPtr inControlAnchorPtr = node->GetInControlAnchor();
   if (inControlAnchorPtr != nullptr) {
@@ -423,7 +424,8 @@ Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) {
   return SUCCESS;
 }
 
-Status RemoveNodeFusionPass::AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr, InControlAnchorPtr inCtrlAnchorPtr) {
+Status RemoveNodeFusionPass::AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr,
+                                         InControlAnchorPtr inCtrlAnchorPtr) const {
   // check whether this control anchor has been linked.
   NodePtr otherEndNode = inCtrlAnchorPtr->GetOwnerNode();
   bool isLinked = false;
