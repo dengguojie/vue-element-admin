@@ -335,7 +335,6 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
     """
     get the op supported situation
     """
-
     shape_a = input_x.get("ori_shape")
     shape_b = input_y.get("ori_shape")
     src_dtype = input_x.get("dtype")
@@ -468,7 +467,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         trans_a_local = trans_a
 
     if format_b == 'FRACTAL_NZ':
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
@@ -507,31 +506,31 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     Parameters
     ---------
     input_x: tensor
-        A tensor object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A tensor object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     input_y: tensor
-        A tensor object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A tensor object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     bias: dict
-        A dict object, contanis a 1-dimensional tensor's info:
-        the shape and type and format, the type can be float16,
-        float32, int32, the shape must be 1-dimensional,
-        the format can be [ND, NHWC]
+    A dict object, contanis a 1-dimensional tensor's info:
+    the shape and type and format, the type can be float16,
+    float32, int32, the shape must be 1-dimensional,
+    the format can be [ND, NHWC]
     output_z: dict
-        A dict object, contains a matrix's type and
-        shape and format, the type can be float16,
-        float32, int32, the length of shape must be
-        greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
+    A dict object, contains a matrix's type and
+    shape and format, the type can be float16,
+    float32, int32, the length of shape must be
+    greater than 2, the format can be [ND, NHWC, FRACTAL_NZ]
     trans_a: bool
-        If True, shape_a == transposed before multiplication
+    If True, shape_a == transposed before multiplication
     trans_b: str
-        If true, the shape in input_x2 must be transposed before multiplication
+    If true, the shape in input_x2 must be transposed before multiplication
     kernel_name: str
-        cce kernel name, default value is "matmul"
+    cce kernel name, default value is "matmul"
 
     Return
     ------
@@ -540,12 +539,12 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     format_a = input_x.op.attrs["format"].value
     format_b = input_y.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ':
-        trans_a_local = False if trans_a else True
+        trans_a_local = not trans_a
     else:
         trans_a_local = trans_a
 
     if format_b == 'FRACTAL_NZ':
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
@@ -615,10 +614,10 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     ------
     None
     """
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    shape_a_length = len(shape_a)
-    shape_b_length = len(shape_b)
+    shape_a = input_x.get("ori_shape") 
+    shape_b = input_y.get("ori_shape") 
+    shape_a_length = len(shape_a) 
+    shape_b_length = len(shape_b) 
     if shape_a is not None:
         if shape_a_length < 2:
             shape_a = list(shape_a)
@@ -629,26 +628,26 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
             shape_b = list(shape_b)
             shape_b.append(1)
 
-    shape_bias = ()
+    shape_bias = () 
     if bias is not None and bool(bias):
         shape_bias = bias.get("shape")
         shape_bias = list(shape_bias)
         if input_x.get("format") == "FRACTAL_NZ":
             shape_bias = _get_bias(shape_bias)
 
-    src_dtype = input_x.get("dtype").lower()
+    src_dtype = input_x.get("dtype").lower() 
 
-    shape_a = list(shape_a)
-    shape_b = list(shape_b)
+    shape_a = list(shape_a) 
+    shape_b = list(shape_b) 
     if input_x.get("format") == "FRACTAL_NZ":
         shape_a = _get_input_shape(shape_a)
         shape_b = _get_input_shape(shape_b)
 
-    para_check.check_shape(shape_a, param_name="input_x")
-    para_check.check_shape(shape_b, param_name="input_y")
+    para_check.check_shape(shape_a, param_name="input_x") 
+    para_check.check_shape(shape_b, param_name="input_y") 
 
-    trans_a_local = trans_a
-    trans_b_local = trans_b
+    trans_a_local = trans_a 
+    trans_b_local = trans_b 
 
     if input_x.get("format") == "FRACTAL_NZ":
         batch_axis = shape_a[:(len(shape_a) - 2)]
@@ -669,10 +668,10 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a_local, trans_b_local)
     inp_src_dtype = src_dtype.lower()
 
-    m_shape = shape_a[len(shape_a) - 2]
-    km_shape = shape_a[len(shape_a) - 1]
-    kn_shape = shape_b[len(shape_b) - 2]
-    n_shape = shape_b[len(shape_b) - 1]
+    m_shape = shape_a[len(shape_a) - 2] 
+    km_shape = shape_a[len(shape_a) - 1] 
+    kn_shape = shape_b[len(shape_b) - 2] 
+    n_shape = shape_b[len(shape_b) - 1] 
 
     block_reduce = tbe_platform.CUBE_MKN[inp_src_dtype]["mac"][1]
 

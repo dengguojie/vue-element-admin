@@ -31,8 +31,6 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
 from impl.util.util_common import cal_mini_l1_size_matmul
-from tbe.common.platform.platform_info import get_align_factor
-
 
 
 # General limitation of the size for input shape: 2**31 - 1
@@ -514,7 +512,7 @@ def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type:
     return [k_range_x2, n_range, batch_range_x2]
 
 
-def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2: str, range_bias: tuple, 
+def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2: str, range_bias: tuple,
                      trans_a: bool, trans_b: bool, op_type: str, is_graph_mode: bool = False) -> list:
     """
     get range in batch, m, k, n and check range
@@ -776,7 +774,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     Returns
     -------
     res : dict
-        A dict object, dict with input tensor and output tensor
+    A dict object, dict with input tensor and output tensor
     """
 
     # check soc_version
@@ -861,7 +859,7 @@ def batch_matmul_v2_generalization(input_x1, input_x2, bias=None, offset_w=None,
     batch_matmul_v2_generalization
 
     Parameters:
-    input_x1: A dict object, dict with keys(shape, dtype and range). 
+    input_x1: A dict object, dict with keys(shape, dtype and range).
     the dtype must be fp16, the format must be FRACTAL_NZ
     input_x2: A dict object, dict with keys(shape, dtype and range)
     the dtype must be fp16, the format must be FRACTAL_NZ

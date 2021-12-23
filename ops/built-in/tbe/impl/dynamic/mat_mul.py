@@ -145,8 +145,8 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     return dyn_case_scenario_list, full_case_scenario_list
 
 
-def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: dict = None, 
-                     output_z: dict = None, trans_a: bool = False, trans_b: bool = False, 
+def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: dict = None,
+                     output_z: dict = None, trans_a: bool = False, trans_b: bool = False,
                      offset_x: int = 0, kernel_name: str = "matmul") -> str:
     """
     provide dynamic format to FE
@@ -213,7 +213,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w=None, output_y=Non
     para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
     para_check.REQUIRED_ATTR_BOOL,
     para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def mat_mul(input_x1, input_x2, bias, offset_w=None, output_y=None,
+def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
             trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     caculating matrix multiplication with bias, C = A * B + bias
@@ -249,12 +249,6 @@ def mat_mul(input_x1, input_x2, bias, offset_w=None, output_y=None,
     res : dict
         None
     """
-    if offset_w is None:
-        offset_w = {}
-
-    if output_y is None:
-        output_y = {}
-
     with tbe.compute():
         res = batch_matmul_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
                                    trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name,

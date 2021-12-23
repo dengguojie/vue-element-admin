@@ -495,7 +495,7 @@ def avg_pool3d_grad(orig_input_shape,
         lambda n, d, c1, h, w, c0:(
             (tvm.min(d * strd + kd, dync_pads[0] + dync_ori_input_size[1]) - tvm.max(dync_pads[0], d * strd)) *
             (tvm.min(h * strh + kh, dync_pads[2] + dync_ori_input_size[2]) - tvm.max(dync_pads[2], h * strh)) *
-            (tvm.min(w * strw + kw, dync_pads[4] + dync_ori_input_size[3]) - 
+            (tvm.min(w * strw + kw, dync_pads[4] + dync_ori_input_size[3]) -
              tvm.max(dync_pads[4], w * strw))).astype("int"),
         name="mean_matrix_init")
 

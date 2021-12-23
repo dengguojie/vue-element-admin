@@ -343,7 +343,7 @@ class Dbn2Conv2dBackpropFilter:
                                 1, 1, dma_stride, dma_stride)
 
     def _align(self, a, b):
-        return (a + b -1) // b * b
+        return (a + b - 1) // b * b
 
     def _cal_dbn_fm_fun(self, loop_m, loop_k, mn_context, split_dict, block_idx):
         sn_loop = split_dict.get("cal_M") // self.block
@@ -571,7 +571,7 @@ class Dbn2Conv2dBackpropFilter:
         fmap_l0b0 = mn_context.get("fmap_l0B0")
         dw_l0c = mn_context.get("dw_l0C")
         dedy_l0a0 = mn_context.get("dedy_l0A0")
-        stride_h, stride_w = self.strides
+        stride_h, _ = self.strides
         _, dedy_w = self.shape_4d_dedy[2:]
         c_index = loop_n * cal_n // self.block
         k_dim = (cal_hw + self.block - 1) // self.block
@@ -712,7 +712,6 @@ class Dbn2Conv2dBackpropFilter:
         fmap_w = self.shape_x_5hd[3]
         filter_h, filter_w = self.shape_4d_filters[2:]
         cal_n = split_dict.get("cal_N")
-        cal_hw = split_dict.get("cal_hw")
         cal_m = split_dict.get("cal_M")
         k_loop = split_dict.get("loop_K")
         loop_k_bl1 = split_dict.get("loop_K_BL1")
@@ -813,7 +812,7 @@ class Dbn2Conv2dBackpropFilter:
         fmap_h, fmap_w = self.shape_4d_x[2:]
         kernel_h = self.shape_4d_filters[2]
         padu, padd = self.padding[0:2]
-        stride_h, stride_w = self.strides
+        stride_h, _ = self.strides
         fmap_l1_h = cal_hw // dedy_w * stride_h + kernel_h - 1
         fmap_l1_shape = [1, self.shape_x_5hd[1], fmap_l1_h * self.shape_x_5hd[3], self.shape_x_5hd[4]]
         fmap_l1 = self.tik_instance.Tensor("float16", fmap_l1_shape, name="fmap_l1", scope=tik.scope_cbuf)
@@ -856,14 +855,10 @@ class Dbn2Conv2dBackpropFilter:
         -------
         split result.
         """
-        cal_hw = split_dict.get("cal_hw")
         m_loop = split_dict.get("loop_M")
         n_loop = split_dict.get("loop_N")
         k_loop = split_dict.get("loop_K")
-        stride_h, stride_w = self.strides
-        _, dedy_w = self.shape_4d_dedy[2:]
         fmap_h, fmap_w = self.shape_4d_x[2:]
-        kernel_h = self.shape_4d_filters[2]
         cal_n = split_dict.get("cal_N")
         cub_n = split_dict.get("cub_N")
         if k_loop == 1:

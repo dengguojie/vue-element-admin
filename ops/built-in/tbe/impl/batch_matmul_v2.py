@@ -364,7 +364,6 @@ def check_supported(input_x,
     """
     get the op supported situation
     """
-
     shape_a = input_x.get("ori_shape")
     shape_b = input_y.get("ori_shape")
     src_dtype = input_x.get("dtype")
@@ -495,7 +494,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
         trans_a_local = trans_a
 
     if format_b == 'FRACTAL_NZ':
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
@@ -573,12 +572,12 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     format_a = input_x.op.attrs["format"].value
     format_b = input_y.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ':
-        trans_a_local = False if trans_a else True
+        trans_a_local = not trans_a
     else:
         trans_a_local = trans_a
 
     if format_b == 'FRACTAL_NZ':
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()

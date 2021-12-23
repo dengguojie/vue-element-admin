@@ -67,7 +67,7 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
         error_manager_vector.raise_err_inputs_shape_not_equal("gemm", "km_shape", "kn_shape",
                                                                  km_shape, kn_shape, kn_shape)
     if list(bias_shape) != [m_shape, n_shape]:
-        error_manager_vector.raise_err_input_value_invalid("gemm", "c shape", str([m_shape, n_shape], bias_shape))
+        error_manager_vector.raise_err_input_value_invalid("gemm", "c shape", str([m_shape, n_shape]), str(bias_shape))
 
 
 def check_supported(
@@ -218,7 +218,7 @@ def op_select_format(
         format_b = input_x2.get("format")
         format_c = bias.get("format")
         need_transdata = False
-        if set([format_a, format_b, format_c]) & set(["FRACTAL_NZ", "FRACTAL_Z"]):
+        if {format_a, format_b, format_c} & {"FRACTAL_NZ", "FRACTAL_Z"}:
             need_transdata = True
         else:
             if trans_b:

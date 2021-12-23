@@ -103,15 +103,12 @@ def _get_input_shape_b(shape_y, transpose):
 
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
-        res.append(dim_a)
-    else:
-        res.append(dim_a)
+    res.append(dim_a)
 
     if dim_b % factor_2 != 0:
         dim_b = (dim_b // factor_2) * factor_2 + factor_2
-        res.append(dim_b)
-    else:
-        res.append(dim_b)
+    res.append(dim_b)
+
     return res
 
 
@@ -220,12 +217,12 @@ def compress_mat_mul_compute(input_x1,
     None
     """
     if input_x1.op.attrs["format"].value == 'FRACTAL_NZ':
-        trans_a_local = False if trans_a else True
+        trans_a_local = not trans_a
     else:
         trans_a_local = trans_a
 
     if input_x2.op.attrs["format"].value == 'FRACTAL_NZ':
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
 
@@ -299,12 +296,12 @@ def compress_mat_mul_compute_self(input_x1,
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ' and not cube_vector_split:
-        trans_a_local = False if trans_a else True
+        trans_a_local = not trans_a
     else:
         trans_a_local = trans_a
 
     if format_b == 'FRACTAL_NZ' and not cube_vector_split:
-        trans_b_local = False if trans_b else True
+        trans_b_local = not trans_b
     else:
         trans_b_local = trans_b
 

@@ -63,7 +63,6 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
     tensor_w = tvm.placeholder(shape_w, dtype=dtype_w, name='tensor_b')
 
     if b is not None:
-        shape_b_ori = b.get('ori_shape')
         dtype_b = b.get('dtype')
         if dtype_b  == 'float32':
             dtype_b = 'float16'
@@ -362,7 +361,6 @@ def get_op_support_info(x, w, compress_index, b, offset_w, y, num_output, transp
     get the compress_fully_connection split
 
     """
-    shape_x = x.get('shape')
     dtype_w = w.get('dtype')
     format_x = x.get('format')
     format_y = y.get('format')

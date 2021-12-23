@@ -15,7 +15,6 @@
 """
 dilation
 """
-from os import lstat
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe

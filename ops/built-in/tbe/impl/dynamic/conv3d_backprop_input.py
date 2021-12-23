@@ -260,11 +260,11 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
             fmap_range_d = (fmap_range_d_lower, fmap_range_d[1])
             out_d_lower, out_d_upper = _get_output(fmap_range_d, w_d, (pads[0], pads[1]), stride[1], dilation[1])
 
-        out_h_lower, out_h_upper= _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
+        out_h_lower, out_h_upper = _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
         if out_h_lower < 1:
             fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
             fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
-            out_h_lower, out_h_upper= _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
+            out_h_lower, out_h_upper = _get_output(fmap_range_h, w_h, (pads[2], pads[3]), stride[2], dilation[2])
 
         out_w_lower, out_w_upper = _get_output(fmap_range_w, w_w, (pads[4], pads[5]), stride[3], dilation[3])
         if out_w_lower < 1:

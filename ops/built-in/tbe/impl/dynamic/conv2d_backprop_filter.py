@@ -499,7 +499,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     groups: int
             The number of filter's group. Default value is 1.
-    
+
     fmap_dtype: string.
 
     dedy_dtype: string.
@@ -508,7 +508,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     kernel_name: str
             kernel name, default value is "conv2d_backprop_filter"
-    
+
     fmap_range: the range of fmap.
 
     dedy_range_n: the range of dedy_n.
@@ -604,7 +604,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
-    _, _, lower_fmap_h, lower_fmap_w = lower_bound
+    _, _, lower_fmap_h, _ = lower_bound
     upper_fmap_n, upper_fmap_c, upper_fmap_h, upper_fmap_w = upper_bound
     dedy_n_range, dedy_c_range, dedy_h_range, dedy_w_range = dedy_range
     dedy_n_range = (max(dedy_n_range[0], 1), dedy_n_range[1])
@@ -627,7 +627,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
 
     _, lower_pad, _ = _get_attrs(strides, pads, dilations, "NCHW")
-    lower_pad_up, lower_pad_down, lower_pad_left, lower_pad_right = lower_pad
+    lower_pad_up, lower_pad_down, _, _ = lower_pad
     lower_fmap_h_padding = lower_fmap_h + lower_pad_up + lower_pad_down
 
     # special cases
@@ -1112,6 +1112,7 @@ def tensor_range_infor(name, tensor, x, out_backprop, y, strides, dilations, pad
 
     return status, res
 
+
 @tbe_register.register_param_generalization("Conv2DBackpropFilter")
 def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pads, dilations,
                                     groups=1, data_format='NHWC', kernel_name="conv2d_backprop_filter",
@@ -1153,7 +1154,7 @@ def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pa
                 return LOWER_STR
             try:
                 tensor = gen_conv_shape_range(tensor, OP_TYPE, graph_flag)
-            except RuntimeError as exc:
+            except RuntimeError:
                 return LOWER_STR
             finally:
                 pass

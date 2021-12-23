@@ -520,7 +520,7 @@ def avg_pool_grad(orig_input_shape,
     ----------
 
     orig_input_shape: a dict, forward input shape
-                     
+
     input_grad: a dict, global model support 'NHWC' or 'NCHW'
                 and padding valid, common model support 'NHWC'
                 and float16

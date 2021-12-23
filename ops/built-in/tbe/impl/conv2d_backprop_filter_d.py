@@ -372,7 +372,7 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
     """
 
     def _check_inputs_rules():
-        dict_args = dict()
+        dict_args = {}
         if (not isinstance(ori_shape_out_backprop, (tuple, list))) or len(
             ori_shape_out_backprop
         ) != 4:
@@ -749,7 +749,7 @@ def check_conv2dbp_filter_params(
     def _check_attr_pads():
         # pads check
         if isinstance(pads, (tuple, list)) and len(pads) != CONV_BACKPROP_SHAPE_DIM:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "pads"
             raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
@@ -849,7 +849,7 @@ def check_conv2dbp_filter_params(
         pads = pad_up, pad_down, pad_left, pad_right
 
     def _check_axis_hw():
-        dict_args = dict()
+        dict_args = {}
         if fmap_batch != dedy_batch:
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "x's N"
@@ -1124,7 +1124,7 @@ def conv2d_backprop_filter_compute(
         calculate the range of input and output
 
         Parameters
-        
+
         -----------
         origin_format_x: string, the format of x.
 

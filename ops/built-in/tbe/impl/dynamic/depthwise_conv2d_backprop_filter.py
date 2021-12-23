@@ -658,7 +658,7 @@ def depthwise_conv2d_backprop_filter(input_fm,
     -------
     None
     """
-    
+
     with tbe.compute():
         res = _depthwise_conv2dbp_filter_compute(
             input_fm, filter_size, out_backprop, filter_grad, strides, dilations,
