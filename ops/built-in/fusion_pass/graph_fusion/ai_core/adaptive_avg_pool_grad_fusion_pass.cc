@@ -69,19 +69,21 @@ void AdaptiveAvgPoolGradFusionPass::GetNodeInfo(ge::NodePtr node) {
     ge::GeTensorDesc input_tensor_desc = node_desc->GetInputDesc(0);
     vector<int64_t> grid_input_dims = input_tensor_desc.GetShape().GetDims();
     int dims_size = grid_input_dims.size();
+    constexpr int HW_DIMS = 2;
+    constexpr int W_DIMS = 1;
     int shape_n = 1;
-    for (int i = 0; i < dims_size - 2; i++) {
+    for (int i = 0; i < dims_size - HW_DIMS; i++) {
         shape_n *= grid_input_dims[i];
     }
     this->input_dims.push_back(shape_n);
-    this->input_dims.push_back(grid_input_dims[dims_size - 2]);
-    this->input_dims.push_back(grid_input_dims[dims_size - 1]);
+    this->input_dims.push_back(grid_input_dims[dims_size - HW_DIMS]);
+    this->input_dims.push_back(grid_input_dims[dims_size - W_DIMS]);
 
     vector<int64_t> grid_output_dims;
     ge::AttrUtils::GetListInt(node_desc, "orig_input_shape", grid_output_dims);
     this->output_dims.push_back(shape_n);
-    this->output_dims.push_back(grid_output_dims[dims_size - 2]);
-    this->output_dims.push_back(grid_output_dims[dims_size - 1]);
+    this->output_dims.push_back(grid_output_dims[dims_size - HW_DIMS]);
+    this->output_dims.push_back(grid_output_dims[dims_size - W_DIMS]);
 
     this->GenKernelIndex(this->h_kernel_index, this->input_dims[INDEX_H], this->output_dims[INDEX_H]);
     this->GenKernelIndex(this->w_kernel_index, this->input_dims[INDEX_W], this->output_dims[INDEX_W]);
@@ -256,7 +258,7 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddNewNode(ge::ComputeGraph &graph, g
                                                       vector<ge::NodePtr> &new_nodes) const {
     ge::NodePtr node = graph.AddNode(op_desc);
     if (!node) {
-        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", node->GetName().c_str());
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add new node failed.");
         return nullptr;
     }
     new_nodes.push_back(node);
@@ -391,6 +393,9 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddRightMatmulNode(ge::NodePtr avgpoo
 Status AdaptiveAvgPoolGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &new_node) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPoolGradFusionPass fusion begin.");
     ge::NodePtr grad_node = this->GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+    FUSION_PASS_CHECK(grad_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "AdaptiveAvgPoolGrad Node is null, fusion failed."),
+                    return FAILED);
     this->GetNodeInfo(grad_node);
 
     // add vector_mul
