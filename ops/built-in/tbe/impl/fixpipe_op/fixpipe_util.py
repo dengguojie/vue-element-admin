@@ -109,9 +109,19 @@ def is_scaler_input(input: (Tensor, dict, None)) -> bool:
         return False
 
     if isinstance(input, Tensor):
-        input_shape = shape_to_list(input.shape)
+        input_shape = shape_to_list(get_op_info_from_attrs("ori_shape", input))
     else:
-        input_shape = input.get("shape")
+        input_shape = input.get("ori_shape")
+
+    # scalar: ori_shape:(), check shape:[1]
+    if len(input_shape) == 0:
+        if isinstance(input, Tensor):
+            input_shape = shape_to_list(input.shape)
+        else:
+            input_shape = input.get("shape")
+
+        if len(input_shape) != 1 or input_shape[0] != 1:
+            raise RuntimeError("shape should be 1 when ori_shape is empty")
 
     dim = calc_shape_total_dim(input_shape)
     if dim == 1:
@@ -125,9 +135,12 @@ def is_vector_input(input:(Tensor, dict, None)) -> bool:
         return False
 
     if isinstance(input, Tensor):
-        input_shape = shape_to_list(input.shape)
+        input_shape = shape_to_list(get_op_info_from_attrs("ori_shape", input))
     else:
-        input_shape = input.get("shape")
+        input_shape = input.get("ori_shape")
+
+    if len(input_shape) == 0:
+        return False
 
     dim = calc_shape_total_dim(input_shape)
     if dim > 1:
@@ -145,8 +158,8 @@ def get_input_scalar_value(input: (Tensor, dict, None)):
     else:
         const_value = input.get("const_value")
 
-    if len(const_value) != 1:
-        raise RuntimeError("scalar's const_value len should be 1")
+    if len(const_value) == 0:
+        raise RuntimeError("scalar's const_value is empty")
 
     return const_value[0]
 

@@ -62,7 +62,7 @@ def fixpipe_compute(x1: Tensor, x2: (Tensor, None), quant_scale_0: (Tensor, None
     :return:
     """
 
-    log.debug("input param for fixpipe: \n x: {}, \n x1: {}, \n quant_scale_0: {}, \n"
+    log.debug("input param for fixpipe: \n x1: {}, \n x2: {}, \n quant_scale_0: {}, \n"
               "relu_weight_0: {},\n clip_value_0: {},\n quant_scale_1: {},\n relu_weight_1: {},\n"
               "clip_value_1: {},\n anti_quant_scale: {},\n anti_quant_offset: {},\n output: {},\n"
               "fusion_op_list: {},\n unit_list: {},\n eltwise_mode: {}\n".format(x1, x2,
@@ -151,7 +151,7 @@ def fix_pipe(x1: dict, x2: (dict, None), quant_scale_0: (dict, None), relu_weigh
     _ = eltwise_mode
 
     check_fixpipe_support()
-    input_x = tvm.placeholder(x1.get("shape"), x1.get("dtype"))
+    input_x = _create_placeholder(x1, "x1")
 
     # fake compute for pre_build
     res = tvm.compute(x1.get("shape"),

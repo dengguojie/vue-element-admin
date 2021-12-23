@@ -171,7 +171,7 @@ class FixpipeBase(object):
         """
         if self.x2 is None:
             if self.eltwise_mode != "":
-                raise RuntimeError("eltwise_mode should be SUB or ADD when x1 is not None")
+                raise RuntimeError("eltwise_mode should be SUB or ADD when x2 is not None")
 
             return ""
 

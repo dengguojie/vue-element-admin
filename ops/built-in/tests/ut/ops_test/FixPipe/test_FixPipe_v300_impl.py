@@ -622,6 +622,7 @@ def check_FixpipeBase():
 def check_fix_pipe():
     from impl.fix_pipe import fix_pipe
     from impl.fixpipe_op.fixpipe_util import is_scaler_input
+    from impl.fixpipe_op.fixpipe_util import is_vector_input
     from impl.fixpipe_op.fixpipe_util import get_input_scalar_value
     from impl.fixpipe_op.fixpipe_util import get_op_type
     from impl.fix_pipe import _create_placeholder
@@ -668,6 +669,36 @@ def check_fix_pipe():
         tensor = _create_placeholder(scalar_dict, "TEST")
     except:
         print("=======>check _create_placeholder no ori_shape")
+
+    scalar_input = {
+        "shape": [1],
+        "format": "NC1HWC0",
+        "dtype": "float16",
+        "ori_shape": (),
+        "const_value": [0],
+    }
+
+    flag = is_scaler_input(scalar_input)
+    assert flag == True
+
+    tensor = _create_placeholder(scalar_input, "TEST")
+    flag = is_scaler_input(tensor)
+    assert flag == True
+
+    flag = is_vector_input(tensor)
+    assert flag == False
+
+    scalar_input = {
+        "shape": [1,1,1,16],
+        "format": "NC1HWC0",
+        "dtype": "float16",
+        "ori_shape": (),
+        "const_value": [0],
+    }
+    try:
+        flag = is_scaler_input(scalar_input)
+    except:
+        print("catch error! [shape should be 1 when ori_shape is empty]")
 
 
 def check_fixpipe_func_name():
