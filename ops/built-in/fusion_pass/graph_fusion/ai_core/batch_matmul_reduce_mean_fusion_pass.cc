@@ -236,7 +236,9 @@ Status BatchMatMulReduceMeanFusionPass::InsertBatchMatMulPadD(ge::ComputeGraph &
   OP_LOGD(kNameFusionPass.c_str(), "Create PadD operator for BatchMatMul.");
   ge::NodePtr pad_node = nullptr;
   vector<int64_t> pad_output_shape = bmm_input_1_shape.GetDims();
-  pad_output_shape[pad_output_shape.size() - 1] = n_dim_aligned;
+  // 2 means axis n when trans_b is true
+  size_t n_dim_index = (trans_b) ? pad_output_shape.size() - 2 : pad_output_shape.size() - 1;
+  pad_output_shape[n_dim_index] = n_dim_aligned;
   PadParams pad_params;
   pad_params.op_pre_peer_idx = 1;
   pad_params.shape = pad_output_shape;
