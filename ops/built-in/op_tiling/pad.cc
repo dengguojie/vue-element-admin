@@ -269,24 +269,19 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
     }
   }
 
-  // Print Org_Tensor'values
-  PrintTensorValue(compile_params, slice_params_output.input, "shape");
-  PrintTensorValue(compile_params, slice_params_output.begin_list, "begin");
-  PrintTensorValue(compile_params, slice_params_output.end_list, "end");
-  PrintTensorValue(compile_params, slice_params_output.stride_list, "strides");
+  OP_LOGI(compile_params.op_type, "original information shape:%s begin:%s end:%s stride:%s",
+          ops::to_string(slice_params_output.input).c_str(),
+          ops::to_string(slice_params_output.begin_list).c_str(),
+          ops::to_string(slice_params_output.end_list).c_str(),
+          ops::to_string(slice_params_output.stride_list).c_str());
 
-  // Calc Paddings
-  bool cond0 = slice_params_output.input.size() > slice_params_output.begin_list.size();
-  bool cond1 = slice_params_output.begin_list.size() == 2;
-  bool cond2 = slicemasks_output.ellipsismask == 1;
-  bool cond3 = slicemasks_output.shrinkaxismask == 2;
-  uint64_t length = slice_params_output.input.size();
+
   // input_shape is not change, it will be used in calc padding.
   std::vector<int64_t> input_shape = slice_params_output.input;
   vector<int64_t> ori_begin = slice_params_output.begin_list;
 
   StridedSliceParams input_params = {
-      input_shape,
+      slice_params_output.input,
       slice_params_output.begin_list,
       slice_params_output.end_list,
       slice_params_output.stride_list,
@@ -300,13 +295,9 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
       true,
       true,
   };
-  OP_LOGI(compile_params.op_type, "original begin end and stride is %s, %s, and %s.",
-          ops::to_string(input_params.begin).c_str(), ops::to_string(input_params.end).c_str(),
-          ops::to_string(input_params.strides).c_str());
 
   vector<int64_t> output_shape;
   vector<pair<int64_t, int64_t>> output_ranges;
-
   if (!StridedSliceCommonInferShape(compile_params.op_type, input_params, output_shape, output_ranges)) {
     VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "StridedSliceCommonInferShape failed.");
     return false;
@@ -319,35 +310,28 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
   slice_params_output.begin_list = input_params.begin;
   slice_params_output.end_list = input_params.end;
   slice_params_output.stride_list = input_params.strides;
+  slice_params_output.input = input_params.input_shape;
 
-  PrintTensorValue(compile_params, slice_params_output.input, "shape");
-  PrintTensorValue(compile_params, slice_params_output.begin_list, "begin");
-  PrintTensorValue(compile_params, slice_params_output.end_list, "end");
-  PrintTensorValue(compile_params, slice_params_output.stride_list, "strides");
+  OP_LOGI(compile_params.op_type, "after infershape shape:%s begin:%s end:%s stride:%s",
+          ops::to_string(slice_params_output.input).c_str(),
+          ops::to_string(slice_params_output.begin_list).c_str(),
+          ops::to_string(slice_params_output.end_list).c_str(),
+          ops::to_string(slice_params_output.stride_list).c_str());
 
   vector<int64_t> grad_input_dy_shape;
-  if (cond0 && cond1 && cond2 && cond3) {
-    for (uint64_t i = 0; i < length; i++) {
-      paddings_const_values.push_back(0);
-      paddings_const_values.push_back(0);
-      grad_input_dy_shape.push_back(input_shape[i]);
-    }
-    paddings_const_values[(length - 1) * 2] = ori_begin[1];
-    paddings_const_values[(length - 1) * 2 + 1] = input_shape[length - 1] - ori_begin[1] - 1;
-    grad_input_dy_shape[length - 1] = 1;
-  } else {
-    for (uint64_t i = 0; i < length; i++) {
-      int64_t begin_i = slice_params_output.begin_list[i];
-      int64_t end_i = slice_params_output.end_list[i];
-      int64_t shape_i = input_shape[i];
+  uint64_t length = static_cast<uint64_t>(slice_params_output.input.size());
+  for (uint64_t i = 0; i < length; i++) {
+    // StridedSliceCommonInferShape make sure that input, begin_list and end_list are same length
+    int64_t begin_i = slice_params_output.begin_list[i];
+    int64_t end_i = slice_params_output.end_list[i];
+    int64_t shape_i = slice_params_output.input[i];
 
-      begin_i = (begin_i < 0) ? begin_i + shape_i : begin_i;
-      end_i = (end_i < 0) ? end_i + shape_i : end_i;
+    begin_i = (begin_i < 0) ? begin_i + shape_i : begin_i;
+    end_i = (end_i < 0) ? end_i + shape_i : end_i;
 
-      paddings_const_values.push_back(begin_i);
-      paddings_const_values.push_back(shape_i - end_i);
-      grad_input_dy_shape.push_back(end_i - begin_i);
-    }
+    paddings_const_values.push_back(begin_i);
+    paddings_const_values.push_back(shape_i - end_i);
+    grad_input_dy_shape.push_back(end_i - begin_i);
   }
   paddings_input_shape = grad_input_dy_shape;
   return true;

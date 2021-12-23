@@ -30,14 +30,14 @@
 
 using namespace std;
 
-class stried_slice_grad_tiling : public testing::Test {
+class strided_slice_grad_tiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "stried_slice_grad_tiling SetUp" << std::endl;
+    std::cout << "strided_slice_grad_tiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "stried_slice_grad_tiling TearDown" << std::endl;
+    std::cout << "strided_slice_grad_tiling TearDown" << std::endl;
   }
 };
 
@@ -69,7 +69,7 @@ static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, s
   }
 }
 
-TEST_F(stried_slice_grad_tiling, stried_slice_grad_tiling_no_mask) {
+TEST_F(strided_slice_grad_tiling, strided_slice_grad_tiling_no_mask) {
   vector<vector<int64_t>> input_shapes = {
       {4}, {4}, {4}, {4}, {4, 4, 4, 4},
   };
@@ -85,6 +85,47 @@ TEST_F(stried_slice_grad_tiling, stried_slice_grad_tiling_no_mask) {
       "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2, \"begin_mask\": 0, \"end_mask\": 0, "
       "\"ellipsis_mask\": 0, \"new_axis_mask\": 0, \"shrink_axis_mask\": 0}}";
   std::string expect_tiling = "2 1 1 1 1 2 2 2 4 0 0 0 0 0 0 0 0 1 0 1 0 1 0 2 0 2 ";
+  run_case(input_shapes[4], dtypes[4], shape_value, begin, end, strides, compileInfo, expect_tiling,
+           this->test_info_->name());
+}
+
+TEST_F(strided_slice_grad_tiling, strided_slice_grad_tiling_new_axis_mask) {
+  vector<vector<int64_t>> input_shapes = {
+      {3}, {4}, {4}, {4}, {1, 1, 4096, 128},
+  };
+
+  vector<string> dtypes = {"int32", "int32", "int32", "int32", "float16"};
+
+  vector<int32_t> shape_value = {1, 4096, 128};
+  vector<int32_t> begin = {0, 0, 0, 0};
+  vector<int32_t> end = {0, 0, 0, 0};
+  vector<int32_t> strides = {1, 1, 1, 1};
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 1, \"begin_mask\": 13, \"end_mask\": 13, "
+      "\"ellipsis_mask\": 0, \"new_axis_mask\": 2, \"shrink_axis_mask\": 0}}";
+  std::string expect_tiling = "0 1 1 1 1 1 1 1 524288 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
+  run_case(input_shapes[4], dtypes[4], shape_value, begin, end, strides, compileInfo, expect_tiling,
+           this->test_info_->name());
+}
+
+
+TEST_F(strided_slice_grad_tiling, strided_slice_grad_tiling_shrink_axis_mask) {
+  vector<vector<int64_t>> input_shapes = {
+      {4}, {4}, {4}, {4}, {1, 1, 4096, 128},
+  };
+
+  vector<string> dtypes = {"int32", "int32", "int32", "int32", "float16"};
+
+  vector<int32_t> shape_value = {1, 1, 4096, 128};
+  vector<int32_t> begin = {0, 0, 1024, 0};
+  vector<int32_t> end = {1, 1, 2048, 128};
+  vector<int32_t> strides = {1, 1, 1, 1};
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 1, \"begin_mask\": 0, \"end_mask\": 0, "
+      "\"ellipsis_mask\": 0, \"new_axis_mask\": 0, \"shrink_axis_mask\": 2}}";
+  std::string expect_tiling = "0 1 1 1 1 1 1 1 131072 0 0 0 0 0 0 0 0 0 0 0 0 0 0 131072 262144 0 ";
   run_case(input_shapes[4], dtypes[4], shape_value, begin, end, strides, compileInfo, expect_tiling,
            this->test_info_->name());
 }
