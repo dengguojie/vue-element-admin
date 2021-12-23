@@ -152,22 +152,22 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
             )
 
     def _check_fractal():
-        if format_a not in ("ND", "fractal"):
+        if format_a not in ("ND", "FRACTAL_NZ", "FRACTAL_Z"):
             args_dict = {
                 "errCode": "E60004",
                 "param_name": "a",
-                "expected_format_list": "[ND, fractal]",
+                "expected_format_list": "[ND, FRACTAL_NZ, FRACTAL_Z]",
                 "format": "{}".format(format_a)
             }
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
 
-        if format_b not in ("ND", "fractal"):
+        if format_b not in ("ND", "FRACTAL_NZ", "FRACTAL_Z"):
             args_dict = {
                 "errCode": "E60004",
                 "param_name": "b",
-                "expected_format_list": "[ND, fractal]",
+                "expected_format_list": "[ND, FRACTAL_NZ, FRACTAL_Z]",
                 "format": "{}".format(format_b)
             }
             raise RuntimeError(
@@ -1252,7 +1252,7 @@ class GEMMCompute:
 
         compress_index: index for compressed wights, None means not compress wights, now only for matmul
         
-        impl_mode: calculate mode
+        op_type: op type
 
     Returns None
     """
@@ -1273,7 +1273,7 @@ class GEMMCompute:
         self.compress_index = para_dict.get("compress_index")
         self.attrs = self._get_matmul_attrs(para_dict)
         self.kernel_name = para_dict.get("kernel_name", "gemm")
-        self.impl_mode = para_dict.get("impl_mode", "")
+        self.op_type = para_dict.get("op_type", "")
         self._get_matmul_flag()
 
     def _get_matmul_attrs(self, para_dict):
@@ -2641,12 +2641,10 @@ class GEMMCompute:
         self.nz_a = False
         if self.format_a == "FRACTAL_NZ":
             self.nz_a = True
-            self.format_a = "fractal"
 
         self.nz_b = False
         if self.format_b == "FRACTAL_NZ":
             self.nz_b = True
-            self.format_b = "fractal"
 
         self.tensor_a_length = len(self.tensor_a.shape)
         self.tensor_b_length = len(self.tensor_b.shape)
@@ -2730,7 +2728,7 @@ class GEMMCompute:
                               compress_index=self.compress_index,
                               attrs=self.attrs,
                               kernel_name=self.kernel_name,
-                              impl_mode=self.impl_mode)
+                              op_type=self.op_type)
         else:
             self._get_tensor_alpha_beta()
             tensor_y = self._gemm_compute()

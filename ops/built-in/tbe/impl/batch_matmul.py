@@ -166,10 +166,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     else:
         shape_len = shape_len_b
     inp_src_dtype = src_dtype.lower()
-    check_list = ("float16")
-
-    if inp_src_dtype not in check_list:
-        error_manager_vector.raise_err_dtype_invalid('batch_matmul', 'input_x', check_list, inp_src_dtype)
+    k_block_size = tbe_platform.BLOCK_REDUCE
 
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
@@ -493,8 +490,9 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         "kernel_name": kernel_name,
         "batch_shape_a": batch_shape_a,
         "batch_shape_b": batch_shape_b,
-        "batch_shape_out": batch_shape_out
-        }
+        "batch_shape_out": batch_shape_out,
+        "op_type": "BatchMatMul"
+    }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
     return result
 
@@ -567,7 +565,8 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
         "kernel_name": kernel_name,
         "batch_shape_out": batch_shape_out,
         "batch_shape_a": batch_shape_a,
-        "batch_shape_b": batch_shape_b
+        "batch_shape_b": batch_shape_b,
+        "op_type": "BatchMatMul"
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
@@ -661,7 +660,9 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         shape_b = batch_axis + [shape_b[len(shape_b) - 1], shape_b[len(shape_b) - 2]]
         trans_b_local = bool(1 - trans_b)
 
-    if src_dtype.lower() == "float32" or src_dtype.lower() == "int32":
+    target_dtype_list = ["float32", "int32"]
+    support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    if src_dtype.lower() in target_dtype_list and not support_l0c2out:
         batch_matmul_vector.matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b, shape_bias, kernel_name)
         return
 
@@ -673,8 +674,7 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     kn_shape = shape_b[len(shape_b) - 2]
     n_shape = shape_b[len(shape_b) - 1]
 
-    if inp_src_dtype == "float16":
-        block_reduce = tbe_platform.BLOCK_REDUCE
+    block_reduce = tbe_platform.CUBE_MKN[inp_src_dtype]["mac"][1]
 
     block_in = tbe_platform.BLOCK_IN
     block_out = tbe_platform.BLOCK_OUT
@@ -703,7 +703,7 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     if input_x.get("format") == "FORMAT_FRACTAL_Z":
         shape_a_dup = (shape_a_dup[0], shape_a_dup[1], shape_a_dup[2], shape_a_dup[3])
-        format_a = "fractal"
+        format_a = "FRACTAL_Z"
     elif input_x.get("format") == "FRACTAL_NZ":
         shape_a_dup = (shape_a_dup[0], shape_a_dup[1], shape_a_dup[2], shape_a_dup[3])
         format_a = "FRACTAL_NZ"
@@ -713,14 +713,18 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     if input_y.get("format") == "FORMAT_FRACTAL_Z":
         shape_b_dup = (shape_b_dup[0], shape_b_dup[1], shape_b_dup[2], shape_b_dup[3])
-        format_b = "fractal"
+        format_b = "FRACTAL_Z"
     elif input_y.get("format") == "FRACTAL_NZ":
         shape_b_dup = (shape_b_dup[0], shape_b_dup[1], shape_b_dup[2], shape_b_dup[3])
         format_b = "FRACTAL_NZ"
     else:
         shape_b_dup = (shape_b[len(shape_b) - 2], shape_b[len(shape_b) - 1])
         format_b = "ND"
-
+    if support_l0c2out:
+        shape_a_dup = input_x.get("shape")[-4:]
+        shape_b_dup = input_y.get("shape")[-4:]
+        format_a = input_x.get("format")
+        format_b = input_y.get("format")
     batch_shape_a = None
     ori_batch_shape_a = []
     if len(shape_a) > 2:

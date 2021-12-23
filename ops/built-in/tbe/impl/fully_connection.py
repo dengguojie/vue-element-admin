@@ -16,12 +16,13 @@
 fully_connection
 """
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te import tvm
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_platform
 from impl.util.util_common import cal_mini_l1_size_matmul
 from impl.util import util_select_op_base
+
 
 L1FUSION_INPUT_CTR = 2
 
@@ -119,63 +120,81 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
 
     if axis == 1:
         if shape_x_ori[0] == 1:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8, int4",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8, int4",
-                                                   format="FRACTAL_Z, FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16, int32, int32",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8, int8, int4",
-                                                   format="ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16, int32, int32",
-                                                    format="NC1HWC0, NC1HWC0, NC1HWC0")
+            input0_param = {"classify": "input0", "name": "x",
+                            "datatype": ["float16", "int8", "int4"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input1_param = {"classify": "input1", "name": "w",
+                            "datatype": ["float16", "int8", "int4"], "format": ["FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"]}
+            input2_param = {"classify": "input2", "name": "b",
+                            "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input3_param = {"classify": "input3", "name": "offset_w",
+                            "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
+            output0_param = {"classify": "output0", "name": "y",
+                             "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
         elif length_y_ori == 4:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8, int4",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8, int4",
-                                                   format="FRACTAL_Z, FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16, int32, int32",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8,int8,int4",
-                                                   format="ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16, int32, int32",
-                                                    format="NC1HWC0, NC1HWC0, NC1HWC0")
+            input0_param = {"classify": "input0", "name": "x",
+                            "datatype": ["float16", "int8", "int4"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input1_param = {"classify": "input1", "name": "w",
+                            "datatype": ["float16", "int8", "int4"], "format": ["FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"]}
+            input2_param = {"classify": "input2", "name": "b",
+                            "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input3_param = {"classify": "input3", "name": "offset_w",
+                            "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
+            output0_param = {"classify": "output0", "name": "y",
+                             "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
         elif length_x_ori == 2:
-            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8, int4",
-                                                   format="FRACTAL_NZ, FRACTAL_NZ, FRACTAL_NZ")
-            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8, int4",
-                                                   format="FRACTAL_Z, FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16, int32, int32",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8, int8, int4",
-                                                   format="ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16, int32, int32",
-                                                    format="FRACTAL_NZ, FRACTAL_NZ, FRACTAL_NZ")
+            input0_param = {"classify": "input0", "name": "x",
+                            "datatype": ["float16", "int8", "int4"],
+                            "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
+            input1_param = {"classify": "input1", "name": "w",
+                            "datatype": ["float16", "int8", "int4"],
+                            "format": ["FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"]}
+            input2_param = {"classify": "input2", "name": "b",
+                            "datatype": ["float16", "int32", "int32"],
+                            "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input3_param = {"classify": "input3", "name": "offset_w",
+                            "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
+            output0_param = {"classify": "output0", "name": "y",
+                            "datatype":["float16", "int32", "int32"],
+                            "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
         else:
             format_x = get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, format_x_ori)
-            input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8, int4",
-                                                   format=format_x)
-            input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8, int4",
-                                                   format="FRACTAL_Z, FRACTAL_Z, FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16, int32, int32",
-                                                   format="NC1HWC0, NC1HWC0, NC1HWC0")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8, int8, int4",
-                                                   format="ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16, int32, int32",
-                                                    format="FRACTAL_NZ, FRACTAL_NZ, FRACTAL_NZ")
+            input0_param = {"classify": "input0", "name": "x",
+                            "datatype": ["float16", "int8", "int4"], "format":format_x.split(",")}
+            input1_param = {"classify": "input1", "name": "w",
+                            "datatype": ["float16", "int8", "int4"], "format": ["FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"]}
+            input2_param = {"classify": "input2", "name": "b",
+                            "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+            input3_param = {"classify": "input3", "name": "offset_w",
+                            "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
+            output0_param = {"classify": "output0", "name": "y",
+                             "datatype": ["float16", "int32", "int32"], 
+                             "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype="float16, int8, int4",
-                                               format="FRACTAL_NZ, FRACTAL_NZ, FRACTAL_NZ")
-        input1 = util_select_op_base.gen_param(classify="input1", name="w", datatype="float16, int8, int4",
-                                               format="FRACTAL_Z, FRACTAL_Z, FRACTAL_Z")
-        input2 = util_select_op_base.gen_param(classify="input2", name="b", datatype="float16, int32, int32",
-                                               format="NC1HWC0, NC1HWC0, NC1HWC0")
-        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w", datatype="int8, int8, int4",
-                                               format="ND, ND, ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype="float16, int32, int32",
-                                                format="FRACTAL_NZ, FRACTAL_NZ, FRACTAL_NZ")
-
-    param_list = [input0, input1, input2, input3, output0]
+        input0_param = {"classify": "input0", "name": "x",
+                        "datatype": ["float16", "int8", "int4"], "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
+        input1_param = {"classify": "input1", "name": "w",
+                        "datatype": ["float16", "int8", "int4"], "format": ["FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z"]}
+        input2_param = {"classify": "input2", "name": "b",
+                        "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
+        input3_param = {"classify": "input3", "name": "offset_w",
+                        "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
+        output0_param = {"classify": "output0", "name": "y",
+                          "datatype": ["float16", "int32", "int32"],
+                          "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
+    support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    input_param_list = [input0_param, input1_param, input2_param, input3_param, output0_param]
+    if support_l0c2out:
+        for param in input_param_list:
+            if param["classify"] == "input3":
+                param["datatype"] = param["datatype"] + ["int8", "int8"]
+            else:
+                param["datatype"] = param["datatype"] + ["float32", "bfloat16"]
+            param["format"] += [param["format"][0], param["format"][0]]
+    param_list = []
+    for param in input_param_list:
+        param["datatype"] = ",".join(param["datatype"])
+        param["format"] = ",".join(param["format"])
+        param_list.append(util_select_op_base.gen_param(**param))
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
@@ -210,8 +229,6 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
     shape_w = w.get('shape')
     dtype_w = w.get('dtype')
     format_w = w.get('format')
-
-    para_check.check_dtype(dtype_w, ['float16', 'int8', 'int4'], param_name="w")
 
     para_check.check_format(format_w, ["FRACTAL_Z"], param_name="w")
     # format shape info
@@ -248,7 +265,7 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
                                                       "axis only support 1, 2 when reduce from channel!")
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("fully_connection")
+@tbe_platform.fusion_manager.register("fully_connection")
 def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, offset_x=0,
                              kernel_name="fully_connection"):
     """
@@ -276,18 +293,18 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
     format_out = None
     if axis == 2:
         format_a = 'FRACTAL_NZ'
-        format_b = 'fractal'
+        format_b = 'FRACTAL_Z'
         trans_a = True
     else:
         if format_x == 'NC1HWC0':
             format_a = 'ND'
-            format_b = 'fractal'
+            format_b = 'FRACTAL_Z'
             trans_a = False
             if x.shape[0].value == 1:
                 format_out = 'FRACTAL_NZ'
         else:
             format_a = 'FRACTAL_NZ'
-            format_b = 'fractal'
+            format_b = 'FRACTAL_Z'
             trans_a = True
 
     out_type = y.get('dtype')
@@ -310,7 +327,8 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
             "fc_flag": True,
             "offset_a": offset_x,
             "offset_b": offset_w,
-            "kernel_name": kernel_name
+            "kernel_name": kernel_name,
+            "op_type": "FullyConnection"
         }
     result = tbe.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)
     return result
@@ -443,7 +461,8 @@ def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
             "L1_addr_offset": L1_addr_offset,
             "L1_valid_size": L1_valid_size,
             "L1_fusion_type": l1_fusion_type,
-            "format": format_x}
+            "format": format_x,
+            "ori_shape": x.get("ori_shape")}
 
     tensor_x = tvm.placeholder(shape_x_final, dtype=dtype_x,
                                name='tensor_a', attrs=attr)
@@ -451,7 +470,8 @@ def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
     # w info
     shape_w = w.get('shape')
     dtype_w = w.get('dtype')
-    tensor_w = tvm.placeholder(shape_w, dtype=dtype_w, name='tensor_b')
+    tensor_w = tvm.placeholder(shape_w, dtype=dtype_w, name='tensor_b', attrs={"ori_shape": w.get("ori_shape"),
+                                                                               "ori_format": w.get("ori_format")})
 
     # b info
     if b is not None:

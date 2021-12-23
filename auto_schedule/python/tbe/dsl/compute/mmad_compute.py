@@ -86,20 +86,20 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     shape_len_a = len(shape_a)
     shape_len_b = len(shape_b)
 
-    if format_a not in ("ND", "fractal", "FRACTAL_Z"):
+    if format_a not in ("ND", "FRACTAL_NZ", "FRACTAL_Z"):
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'tensor_a',
-            'expected_format_list': ("ND", "fractal", "FRACTAL_Z"),
+            'expected_format_list': ("ND", "FRACTAL_NZ", "FRACTAL_Z"),
             'format': format_a
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    if format_b not in ("ND", "fractal", "FRACTAL_Z"):
+    if format_b not in ("ND", "FRACTAL_NZ", "FRACTAL_Z"):
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'tensor_b',
-            'expected_format_list': ("ND", "fractal", "FRACTAL_Z"),
+            'expected_format_list': ("ND", "FRACTAL_NZ", "FRACTAL_Z"),
             'format': format_b
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
@@ -905,7 +905,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None,
            quantize_params=None, format_out=None, compress_index=None,
-           attrs={}, kernel_name="MatMul", impl_mode=""):
+           attrs={}, kernel_name="MatMul", op_type=""):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -983,7 +983,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                   tensor_bias=tensor_bias,
                                   format_out=format_out,
                                   kernel_name=kernel_name,
-                                  impl_mode=impl_mode)
+                                  op_type=op_type)
     else:
         result = _matmul_compute(tensor_a=tensor_a,
                                 tensor_b=tensor_b,
@@ -1090,12 +1090,10 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     nz_a = False
     if format_a == "FRACTAL_NZ":
         nz_a = True
-        format_a = "fractal"
 
     nz_b = False
     if format_b == "FRACTAL_NZ":
         nz_b = True
-        format_b = "fractal"
 
     _shape_check(tensor_a, tensor_b, tensor_bias, trans_a, trans_b, format_a,
                 format_b, dst_dtype, nz_a, batch_dims)
@@ -3904,7 +3902,7 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
 
 def _matmul_cv_split(tensor_a,
     tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
-    dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", impl_mode=""):
+    dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", op_type=""):
     """
     algorithm: mmad
     calculating matrix multiplication, C=A*B+bias
@@ -3952,7 +3950,7 @@ def _matmul_cv_split(tensor_a,
         tensor_bias,
         format_out,
         kernel_name,
-        impl_mode
+        op_type
     )
 
     matmul_object._compute_matmul()
@@ -4015,13 +4013,13 @@ class MatMulCompute:
 
     kernel_name: kernel name, default is "MatMul"
 
-    impl_mode: calculate mode
+    op_type: op_type
 
     Returns None
     """
     def __init__(self, tensor_a,
         tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
-        dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", impl_mode=""):
+        dst_dtype="float32", tensor_bias=None, format_out=None, kernel_name="MatMul", op_type=""):
         self.tensor_a = tensor_a
         self.tensor_b = tensor_b
         self.trans_a = trans_a
@@ -4039,10 +4037,11 @@ class MatMulCompute:
         self.matrix_type = "int32" if self.src_dtype == "int8" else "float32"
         self.origin_m_shape = 0
         self.origin_n_shape = 0
-        self.impl_mode = impl_mode
+        self.op_type = op_type
         self.m_shape = 0
         self.km_shape = 0
         self.n_shape = 0
+        self.format_out = format_out
 
     @staticmethod
     def _ceil_div(dividend, divisor):
@@ -4084,8 +4083,6 @@ class MatMulCompute:
         """
         set MatmulComputeParam to support for tilingcase
         """
-
-
         if in_dynamic():
             if MatMulComputeParam.batch_a:
                 MatMulComputeParam.dynamic_mode = "dynamic_mknb"
@@ -4156,7 +4153,34 @@ class MatMulCompute:
         else:
             return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
 
-
+    def _al1_trans_nd2nz(self):
+        """
+        for fully_connection ND input, trans ND to FRACTAL_NZ
+        """
+        nd_shape = tuple(i.value for i in self.tensor_a.shape)
+        nz_shape = (
+            self._ceil_div(nd_shape[-1], self.block_reduce),
+            self._ceil_div(nd_shape[-2], self.block_in),
+            self.block_in,
+            self.block_reduce
+        )
+        nz_shape = nd_shape[:-2] + nz_shape
+        d_axis_origin_length = nd_shape[-1]
+        nz_tensor = tvm.compute(
+            nz_shape,
+            lambda *indices: tvm.select(
+                tvm.all((indices[-4] * self.block_reduce + indices[-1]) < d_axis_origin_length),
+                self.tensor_a(*indices[:-4],
+                              indices[-3] * self.block_in + indices[-2],
+                              indices[-4] * self.block_reduce + indices[-1])
+            ),
+            name=self.tensor_a.name + "_fractal",
+            attrs={"ori_format": "ND", "ori_shape": nd_shape, "format": "FRACTAL_NZ"},
+            tag="ND_trans_NZ"
+        )
+        self.tensor_a = nz_tensor
+        self.m_shape = _get_value(self.tensor_a.shape[-3]) if self.trans_a else _get_value(self.tensor_a.shape[-4])
+        self.km_shape = _get_value(self.tensor_a.shape[-4]) if self.trans_a else _get_value(self.tensor_a.shape[-3])
 
     def _get_a_matrix_fp32(self, temp_tensor_a):
         """get a_matrix for float32 input
@@ -4215,6 +4239,8 @@ class MatMulCompute:
         ---------------------------------
         Return : tensor, Zz matrix for mad
         """
+        if self.format_a == "ND":
+            self._al1_trans_nd2nz()
         if self.src_dtype == "int8" and not self.trans_a:
             block_reduce_multiple_in = self.block_reduce // self.block_in
             a_matrix_shape = [self.m_shape * block_reduce_multiple_in,
@@ -4387,13 +4413,12 @@ class MatMulCompute:
                     axis=[reduce_kb, reduce_kp]),
                 name="tensor_c_matrix",
                 tag="gemm",
-                attrs={"kernel_name": self.kernel_name,
-                       "impl_mode": self.impl_mode})
+                attrs={"kernel_name": self.kernel_name})
         else:
             tensor_c_matrix = tvm.compute(
                 l0c_shape,
                 lambda *indices: tvm.sum(tvm.select(
-                    tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < self.origin_reduce_axis), 
+                    tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < self.origin_reduce_axis),
                     (a_matrix_in(*indices[:-4], indices[-3], reduce_kb, indices[-2], reduce_kp) *
                      (b_matrix_in(*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp)
                      if MatMulComputeParam.batch_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
@@ -4402,9 +4427,22 @@ class MatMulCompute:
                     axis=[reduce_kb, reduce_kp]),
                 name='tensor_c_matrix',
                 tag="gemm",
-                attrs={"kernel_name": self.kernel_name,
-                       "impl_mode": self.impl_mode})
-        if self.dst_dtype == "float32" and self.src_dtype == "float32":
+                attrs={"kernel_name": self.kernel_name})
+        if self.format_out == "NC1HWC0":
+            # ND output
+            tensor_c_gm = tvm.compute(
+                ori_shape,
+                lambda *indices: tensor_c_matrix(*indices[:-2],
+                                                 indices[-1] // l0c_shape[-1],
+                                                 indices[-2] // l0c_shape[-2],
+                                                 indices[-2] % l0c_shape[-2],
+                                                 indices[-1] % l0c_shape[-1]).astype(self.dst_dtype),
+                tag="gemm",
+                name="tensor_c_gm",
+                attrs={"ori_format": "NCHW",
+                       "ori_shape": ori_shape}
+            )
+        elif self.dst_dtype == "float32" and self.src_dtype == "float32":
             output_shape[-4] = self._ceil_div(self.origin_n_shape, self.block_reduce)
             output_shape[-1] = self.block_reduce
             tensor_c_gm = tvm.compute(
@@ -4435,6 +4473,22 @@ class MatMulCompute:
         if "ori_shape" not in self.tensor_b.op.attrs:
             error_manager_cube.raise_err_specific("MatMul", "tensor_b must have attr ori_shape")
 
+    def _get_fully_connection_n_shape(self):
+        """get origin n shape for fully-connection
+        1) NC1HWC0 * (Cin1HW Co1 Co0 Cin0) = NC1HWC0, n shape is Co1*Co0 in Fz shape
+        2) NC1HWC0/FRACTAL_NZ * (Cin1 Co1 Co0 Cin0) = FRACTAL_NZ, n shape is N dim origin_shape_b of NCHW/NHWC format
+        """
+        if self.format_out == "NC1HWC0":
+            self.origin_n_shape = _get_value(self.tensor_b.shape[-3]) * _get_value(self.tensor_b.shape[-2])
+        else:
+            # FRACTAL_NZ output
+            ori_format_b = self.tensor_b.op.attrs["ori_format"].value if "ori_format" in self.tensor_b.op.attrs else "NCHW"
+            n_index = ori_format_b.find('N')
+            if n_index < 0:
+                error_manager_cube.raise_err_specific("FullyConnection", "origin format of input2 is illegal")
+            origin_shape_b = self.tensor_b.op.attrs["ori_shape"]
+            self.origin_n_shape = origin_shape_b[n_index]
+
     def _get_l1_shape(self):
         """ get shape about m,k,n
         Input: None
@@ -4461,8 +4515,13 @@ class MatMulCompute:
                 origin_shape = self.tensor_a.op.attrs["ori_shape"]
                 self.origin_m_shape = origin_shape[-2] if self.trans_a else origin_shape[-1]
                 self.origin_reduce_axis = origin_shape[-1] if self.trans_a else origin_shape[-2]
+        elif self.format_a == "ND":
+            nd_shape = self.tensor_a.shape
+            self.trans_a = not self.trans_a
+            self.origin_m_shape = _get_value(nd_shape[-2]) if self.trans_a else _get_value(nd_shape[-1])
+            self.origin_reduce_axis = _get_value(nd_shape[-1]) if self.trans_a else _get_value(nd_shape[-2])
         else:
-            error_manager_cube.raise_err_specific("MatMul", "tensor_a only supported NZ format")
+            error_manager_cube.raise_err_specific("MatMul", "tensor_a only supported NZ or ND format")
 
         # matrix B
         if self.format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
@@ -4471,6 +4530,8 @@ class MatMulCompute:
             self.n_shape = _get_value(self.tensor_b.shape[-4]) if self.trans_b else _get_value(self.tensor_b.shape[-3])
             if in_dynamic():
                 self.origin_n_shape = self.n_shape * _get_value(self.tensor_b.shape[-2])
+            elif self.op_type == "FullyConnection":
+                self._get_fully_connection_n_shape()
             else:
                 origin_shape = self.tensor_b.op.attrs["ori_shape"]
                 if self.format_b == "FRACTAL_NZ":

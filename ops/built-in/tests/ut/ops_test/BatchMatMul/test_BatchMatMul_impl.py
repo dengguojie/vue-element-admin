@@ -13,13 +13,12 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 BatchMatmul ut case
 """
+import numpy as np
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
-import numpy as np
-import sys
-import time
-import unittest
-import functools
 from te import tvm
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
@@ -37,9 +36,24 @@ from te.platform.cce_conf import te_set_version
 
 from batchmatmul_fusion_case import batchmatmul_ut_fusion_case
 from test_BatchMatMul_fusion import test_batchmatmul_fusion
+from test_bmm_mock_case import *
 
 
 ut_case = OpUT("BatchMatMul", "impl.batch_matmul", "batch_matmul")
+
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 524288,
+        ("L0C_SIZE", ): 131072,
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        }
+def side_effects(*args):
+    return vals[args]
 
 case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
                     {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3,64, 96),"ori_format": "NHWC"},
@@ -419,6 +433,26 @@ def test_matmul_api(test_arg):
     tbe.matmul(tensor_a, tensor_b, trans_a=True, trans_b=True, format_a="FRACTAL_NZ", format_b="FRACTAL_NZ", attrs=matmul_attr)
 
 ut_case.add_cust_test_func(test_func=test_matmul_api)
+
+
+# test mock case
+def test_mock_cases(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            test_matmul_ND2ND_fp16()
+            test_matmul_ND2ND_int8()
+            test_matmul_ND2ND_fp32()
+            test_matmul_ND2ND_fp32_1()
+            test_matmul_NZ2ND_fp16()
+            test_matmul_ND2NZ_fp16()
+            test_matmul_NZ2NZ_fp16()
+            test_matmul_NZ2NZ_int8()
+            test_matmul_fixpipe_0()
+            test_matmul_fixpipe_1()
+            test_matmul_fixpipe_2()
+
+ut_case.add_cust_test_func(test_func=test_mock_cases)
+
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}

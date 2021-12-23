@@ -313,7 +313,7 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             attrs={"ori_format": "NHWC", "ori_shape": src.shape},
             tag="NHWC_trans_FZ"
         )
-    elif src_format == "ND" and dst_format == "FRACTAL_NZ":
+    elif src_format in ["ND", "NHWC"] and dst_format == "FRACTAL_NZ":
         src_shape = tuple(i.value for i in src.shape)
         block_reduce = c0_dict.get(src.dtype, tbe_platform.BLOCK_REDUCE)
         block_size = tbe_platform.BLOCK_IN

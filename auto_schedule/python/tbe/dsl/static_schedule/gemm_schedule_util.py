@@ -22,6 +22,7 @@ import math
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
+from tbe.common.context import op_context
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
@@ -58,6 +59,33 @@ def int_ceil_div(divisor_a, divisor_b):
         }
         raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
     return (divisor_a + divisor_b - 1) // divisor_b
+
+
+def int_ceil_align(value, align_factor):
+    """
+    ceil align
+    :param value: int
+    :param align_factor: int
+    :return: int
+    """
+    return int_ceil_div(value, align_factor) * align_factor
+
+
+def _get_precision_mode(op_type):
+    """
+    get calculation mode, high_performance or high_precision
+    :param op_type: str, current op type
+    :return: str, precision_mode
+    """
+    context = op_context.get_context()
+    op_infos = context.get_op_info() if context else {}
+    if not op_infos:
+        op_infos = {}
+    op_type_list=  ["MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2", "FullyConnection"]
+    for op_info in op_infos:
+        if op_info.op_type in op_type_list:
+            return op_info.precision_mode
+    return ""
 
 
 def shape_to_list(shape):
@@ -791,7 +819,7 @@ def emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd=False)
 
     a_l0a = tensor_map["a_l0a"]
     if a_l0a.dtype == "int8" and a_l0a.op.attrs["transpose_a"] == "false":
-        a_l0a_outer, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[0], 2)
+        a_l0a_outer, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[-4], 2) # split m1 axis
         sch[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
     elif a_l0a.dtype == "float32" and a_l0a.op.attrs["transpose_a"] == "false":
         sch[a_l0a].split(a_l0a.op.axis[-2], factor=8)
@@ -800,7 +828,7 @@ def emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd=False)
         sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
     b_l0b = tensor_map["b_l0b"]
     if b_l0b.dtype == "int8" and b_l0b.op.attrs["transpose_b"] == "true" :
-        b_l0b_outer, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[1], 2)
+        b_l0b_outer, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[-3], 2) # split n1 axis
         sch[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
     elif b_l0b.dtype == "float32" and b_l0b.op.attrs["transpose_b"] == "true":
          sch[b_l0b].split(b_l0b.op.axis[-2], factor=8)
@@ -830,6 +858,9 @@ def emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd=False)
         "mad_pattern": tbe_platform.GEMM_MODE,
         "k_outer": k_axis
     }
+    op_type = c_l0c.op.attrs["op_type"] if "op_type" in c_l0c.op.attrs else ""
+    if _get_precision_mode(op_type) == "high_performance":
+        mad_dict["hf32"] = 1
     sch[c_l0c].emit_insn(c_l0c.op.axis[-4], "mad", mad_dict)
     emit_insn_fp_and_bt(sch, tensor_map)
     emit_insn_ub(sch, tensor_map, is_nd)
@@ -886,3 +917,28 @@ def emit_insn_ub(sch, tensor_map, is_nd):
             sch[fixpipe_to_ub].emit_insn(fixpipe_to_ub.op.axis[0], "dma_copy", dma_dict)
         else:
             sch[fixpipe_to_ub].emit_insn(fixpipe_to_ub.op.axis[0], "dma_copy")
+
+def do_buffer_align(sch, a_l0a, b_l0b, c_l0c, trans_a, trans_b):
+    """do buffer align,
+    m1 and n1 should be aligned to even number to do load2d_transpose when dtype is int8
+
+    Parameters
+    ----------
+    :param sch: schedule
+    :param a_l0a: tensor
+    :param b_l0b: tensor
+    :param c_l0c: tensor
+    :param trans_a: bool
+    :param trans_b: bool
+    """
+    m_align = (1, 2) if not trans_a and a_l0a.dtype == "int8" else (1, 1)
+    n_align = (1, 2) if trans_b and b_l0b.dtype == "int8" else (1, 1)
+    sch[c_l0c].buffer_align(
+        *([(1, 1)] * (len(c_l0c.shape) - 4)),
+        n_align,
+        m_align,
+        (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]),
+        (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]),
+        (1, 1),
+        (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][1])
+    )

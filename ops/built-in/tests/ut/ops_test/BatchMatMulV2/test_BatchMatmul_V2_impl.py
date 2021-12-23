@@ -13,15 +13,30 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 BatchMatmul ut case
 """
-import sys
-import time
-import unittest
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
 ut_case = OpUT("BatchMatmulV2", None, None)
 
 from tbe import tvm
 from impl.batch_matmul_v2 import check_supported
 from impl.batch_matmul_v2 import get_op_support_info
+from test_bmmv2_mock_case import *
+
+
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 524288,
+        ("L0C_SIZE", ): 131072,
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        }
+def side_effects(*args):
+    return vals[args]
 
 case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
                     {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3,64, 96),"ori_format": "NHWC"},
@@ -371,6 +386,25 @@ def test_op_fusion_func(case):
 for fusion_case in case_dequant_requant_sum:
     
     ut_case.add_cust_test_func(["Ascend310"], test_func=test_op_fusion_func(fusion_case))
+    
+# test mock case
+def test_mock_cases(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            test_matmul_ND2ND_fp16()
+            test_matmul_ND2ND_int8()
+            test_matmul_ND2ND_fp32()
+            test_matmul_ND2ND_fp32_1()
+            test_matmul_NZ2ND_fp16()
+            test_matmul_ND2NZ_fp16()
+            test_matmul_NZ2NZ_fp16()
+            test_matmul_NZ2NZ_int8()
+            test_matmul_hf32()
+            test_matmul_fixpipe_0()
+            test_matmul_fixpipe_1()
+            test_matmul_fixpipe_2()
+
+ut_case.add_cust_test_func(test_func=test_mock_cases)
 # open this in local env
 #ut_case.run(["Ascend310"])
 

@@ -466,6 +466,7 @@ def mat_mul_compute(input_x1,
         "kernel_name": kernel_name,
         "impl_mode": impl_mode,
         "format_out": output_y.get("format"),
+        "op_type": "MatMulV2"
     }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2,
                       para_dict=para_dict)
@@ -547,6 +548,7 @@ def mat_mul_compute_self(input_x1,
         "kernel_name": kernel_name,
         "impl_mode": impl_mode,
         "format_out": output_y.get("format"),
+        "op_type": "MatMulV2"
         }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 

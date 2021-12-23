@@ -24,6 +24,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import tbe_platform
 
 
 # General limitation of the size for input shape: 2**31 - 1
@@ -66,10 +67,18 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     nd_fp32out_scenario = [(("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("float", "ND")),
                            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "ND"))]
     nd_fp32out_scenario = []
-
+    cube_vector_scenario = [
+        (("float32", "FRACTAL_NZ"), ("float32", "FRACTAL_NZ"), ("float32", "ND"), ("int8", "ND"), ("float32", "FRACTAL_NZ")),
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_NZ"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
+        (("bfloat16", "FRACTAL_NZ"), ("bfloat16", "FRACTAL_NZ"), ("bfloat16", "ND"), ("int8", "ND"), ("bfloat16", "FRACTAL_NZ"))
+    ]
+    support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
     # Construct scenario list for static
-    if src_fp16_flag:
+    if support_l0c2out:
+        full_case_scenario_list = base_case_scenario + cube_vector_scenario
+    elif src_fp16_flag:
         full_case_scenario_list = base_case_scenario + fp32_out_scenario + nd_case_scenario + nd_fp32out_scenario
     else:
         full_case_scenario_list = base_case_scenario + quant_case_scenario

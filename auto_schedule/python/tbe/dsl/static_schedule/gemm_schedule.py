@@ -29,6 +29,8 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
 from . import gemm_schedule_util as util
 
+K_AXIS_ALIGN_FACTOR = 2
+
 def _get_value(shape_object):
     """
     get the value of shape_object when having attr "value"
@@ -62,6 +64,8 @@ class GEMM_Schedule:
         self.res = res
         self.sch = sch_list[0]
         self.dynamic_para = dynamic_para
+        self.trans_a = False
+        self.trans_b = False
 
     def _init_tiling_input(self, tensor_map):
         """
@@ -71,7 +75,13 @@ class GEMM_Schedule:
         b_l0b = tensor_map["b_l0b"]
         l0a_shape = util.shape_to_list(a_l0a.shape)
         l0b_shape = util.shape_to_list(b_l0b.shape)
-
+        self.trans_a = ("transpose_a" in a_l0a.op.attrs and a_l0a.op.attrs["transpose_a"] == "true")
+        self.trans_b = ("transpose_b" in b_l0b.op.attrs and b_l0b.op.attrs["transpose_b"] == "true")
+        if (not self.trans_a ^ self.trans_b) and a_l0a.dtype == "float32":
+            # for some unaligned cases, shape_a=(2,4), shape_b=(4,16) for example, shape_a_l1 will be aligned as
+            # (1,1,16,8) while shape_b_l1 is (2,1,16,8), the shapes on L0 are (1,1,16,8) and (2, 1, 16, 8), ka != kb
+            l0a_shape[-3] = util.int_ceil_align(l0a_shape[-3], K_AXIS_ALIGN_FACTOR)
+            l0b_shape[-4] = util.int_ceil_align(l0b_shape[-4], K_AXIS_ALIGN_FACTOR)
         # a_shape is [batch_a, k1, m1, m0, k0]
         a_shape = [1, l0a_shape[-3], l0a_shape[-4], l0a_shape[-2], l0a_shape[-1]]
         a_shape[0] = l0a_shape[0] if len(l0a_shape) == 5 else 1
@@ -79,12 +89,11 @@ class GEMM_Schedule:
         # b_shape is [K1*k0, n1, 1, 1, n0]
         b_shape = [l0b_shape[-4] * l0b_shape[-1], l0b_shape[-3], 1, 1, l0b_shape[-2]]
 
-        trans_a = ("transpose_a" in a_l0a.op.attrs and a_l0a.op.attrs["transpose_a"] == "true")
-        trans_b = ("transpose_b" in b_l0b.op.attrs and b_l0b.op.attrs["transpose_b"] == "true")
+        
         trans_flag = 1
-        if trans_a:
+        if self.trans_a:
             trans_flag += 1
-        if trans_b:
+        if self.trans_b:
             trans_flag += 2
 
         return a_shape, b_shape, trans_flag
@@ -244,13 +253,7 @@ class GEMM_Schedule:
                                                      ub_factor_parts, is_nd, handle_ub)
         # attach tensor of l0c and bias, c_slice_axis is l1_m_axis[1]
         sch[c_l0c].compute_at(sch[c_gm], l1_m_axis[1])
-        sch[c_l0c].buffer_align(
-            *([(1, 1)] * (len(c_l0c.shape) - 2)),
-            (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]),
-            (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]),
-            (1, 1),
-            (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][1])
-        )
+        util.do_buffer_align(sch, a_l0a, b_l0b, c_l0c, self.trans_a, self.trans_b)
         util.attach_of_ub(sch, tensor_map, fixpipe_axis)
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
         util.attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, batch_inner)

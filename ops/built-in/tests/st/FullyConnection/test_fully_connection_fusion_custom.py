@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from impl.fully_connection import fully_connection_compute
+from impl.fully_connection import op_select_format
 from impl.add import add_compute
 from impl.relu6 import relu6_compute
+from tbe.common.context import op_context
 from tbe.dsl import auto_schedule
 from te import tvm
 from te.lang.cce import cce_build_code
@@ -160,8 +162,43 @@ def test_fc_add_relu6_fusion_xbatch_910_input_y_case():
         }
         cce_build_code(sch, config)
 
+
+def test_op_select_format_1():
+    x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 16)}
+    w = {'shape': (4, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    y = {'shape': (1, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 1, 16, 16)}
+    op_select_format(x, w, None, None, y, 16, False, 1, 0)
+
+def test_op_select_format_2(test_arg):
+    x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 16)}
+    w = {'shape': (4, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(4, 2, 16, 16)}
+    b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
+    y = {'shape': (8, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 2, 1, 1, 16)}
+    op_select_format(x, w, b, None, y, 32, False, 1, 0)
+
+# NZ -> NZ with batch
+def test_op_select_format_3(test_arg):
+    x = {'shape': (2, 1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 1, 2, 16, 16)}
+    w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
+    y = {'shape': (2, 2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 2, 16, 16)}
+    op_select_format(x, w, b, None, y, 32, False, 2, 0)
+
+# NZ -> NZ no batch
+def test_op_select_format_4(test_arg):
+    x = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 2, 16, 16)}
+    w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    y = {'shape': (2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 16, 16)}
+    op_select_format(x, w, None, None, y, 32, False, 1, 0)
+
+
 if __name__ == '__main__':
-    test_fc_add_relu6_fusion_1batch_910_case1()
-    test_fc_add_relu6_fusion_1batch_910_case2()
-    test_fc_add_relu6_fusion_xbatch_910_input_x_case()
-    test_fc_add_relu6_fusion_xbatch_910_input_y_case()
+    with op_context.OpContext():
+        test_fc_add_relu6_fusion_1batch_910_case1()
+        test_fc_add_relu6_fusion_1batch_910_case2()
+        test_fc_add_relu6_fusion_xbatch_910_input_x_case()
+        test_fc_add_relu6_fusion_xbatch_910_input_y_case()
+        test_op_select_format_1()
+        test_op_select_format_2()
+        test_op_select_format_3()
+        test_op_select_format_4()

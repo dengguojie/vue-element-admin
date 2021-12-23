@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
+from te import tvm
+from te.tvm.target import cce
+from tbe.dsl import auto_schedule
+from impl.fully_connection import fully_connection_compute
 from impl.fully_connection import get_op_support_info
 from impl.fully_connection import op_select_format
 from impl.fully_connection import fully_connection_compute
@@ -10,8 +17,26 @@ from te import tvm
 from te.lang.cce import cce_build_code
 from te.platform.cce_conf import te_set_version
 from te.tvm.target import cce
+from impl.fix_pipe import fixpipe_compute
+
 from op_test_frame.ut import OpUT
 ut_case = OpUT("FullyConnection", None, None)
+
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 524288,
+        ("L0C_SIZE", ): 131072,
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        }
+def side_effects(*args):
+    return vals[args]
+
+
 
 case1 = {"params": [{'shape': (1, 2, 4, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0',
                      "ori_format":"NC1HWC0", "ori_shape":(1, 2, 4, 2, 16)},
@@ -296,6 +321,81 @@ ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_1batch_910_case1)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_1batch_910_case2)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_xbatch_910_input_x_case)
 ut_case.add_cust_test_func(test_func=test_fc_add_relu6_fusion_xbatch_910_input_y_case)
+
+
+def test_fc_5hd25hd_fp16():
+    with cce():
+        tensor_a = tvm.placeholder((64, 96), name="tensor_a", dtype="float16", attrs={"format": "NC1HWC0", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((6, 8, 16, 16), name="tensor_b", dtype="float16", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 2, 4, 12), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "ND"}
+        res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        sch = auto_schedule(res)
+
+def test_fc_nz2nz_fp16():
+    with cce():
+        tensor_a = tvm.placeholder((6, 4, 16, 16), name="tensor_a", dtype="float16", attrs={"format": "FRACTAL_NZ", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((6, 8, 16, 16), name="tensor_b", dtype="float16", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        sch = auto_schedule(res)
+
+def test_fc_5hd25hd_fp32():
+    with cce():
+        tensor_a = tvm.placeholder((64, 96), name="tensor_a", dtype="float32", attrs={"format": "NC1HWC0", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((12, 8, 16, 8), name="tensor_b", dtype="float32", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 2, 4, 12), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "ND"}
+        res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        sch = auto_schedule(res)
+
+def test_fc_nz2nz_fp32():
+    with cce():
+        tensor_a = tvm.placeholder((12, 4, 16, 8), name="tensor_a", dtype="float32", attrs={"format": "FRACTAL_NZ", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((12, 8, 16, 8), name="tensor_b", dtype="float32", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        sch = auto_schedule(res)
+
+def test_fc_fixpipe():
+    with cce():
+        tensor_a = tvm.placeholder((12, 4, 16, 8), name="tensor_a", dtype="float32", attrs={"format": "FRACTAL_NZ", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((12, 8, 16, 8), name="tensor_b", dtype="float32", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        output_dict = {"shape": (64, 128), "format": "ND", "dtype": "float32"}
+        res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
+        sch = auto_schedule(res)
+
+def test_split_fc_4(test_arg):
+    x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 64)}
+    w = {'shape': (4, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(4, 2, 16, 16)}
+    b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
+    y = {'shape': (8, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 2, 1, 1, 16)}
+    get_op_support_info(x, w, b, None, y, 32, False, 1)
+    op_select_format(x, w, b, None, y, 32, False, 1, 0)
+
+# test mock case
+def test_mock_cases(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+                test_fc_5hd25hd_fp16()
+                test_fc_5hd25hd_fp32()
+                test_fc_nz2nz_fp16()
+                test_fc_nz2nz_fp32()
+                test_fc_fixpipe()
+                test_split_fc_3("")
+                test_split_fc("")
+                test_split_fc_1("")
+                test_split_fc_2("")
+                test_split_fc_4("")
+
+ut_case.add_cust_test_func(test_func=test_mock_cases)
+        
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
