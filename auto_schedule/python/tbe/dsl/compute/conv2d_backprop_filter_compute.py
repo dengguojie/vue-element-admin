@@ -789,11 +789,11 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             if not self.var_map:
                 """
                 Load 3D Data Flow:
-                    fmap(DDR) to fmap_matrix(L1) to fmap_fractal(nZ, L0B)
+                    fmap in DDR to fmap_matrix in L1 to fmap_fractal_nZ in L0B
 
                 Dma Mode Data Flow:
-                    fmap(DDR) to fmap_ub(pad, UB) to fmap_matrix(L1) to
-                        fmap_fractal_before(zZ, L1) to fmap_fractal(nZ, L0B)
+                    fmap in DDR to fmap_ub_pad in UB to fmap_matrix in L1 to
+                        fmap_fractal_before_zZ in L1 to fmap_fractal_nZ in L0B
                 """
                 fmap_ub = None
                 if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
