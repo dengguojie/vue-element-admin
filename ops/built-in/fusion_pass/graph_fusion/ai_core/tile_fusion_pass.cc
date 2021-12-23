@@ -92,13 +92,13 @@ Status ConstToAttrTilePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   std::vector<int64_t> const_data;
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)data.GetData();
+    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data.GetData());
     size = data.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int32_t)((*(const_data_ptr + i))));
     }
   } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)data.GetData();
+    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data.GetData());
     size = data.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));

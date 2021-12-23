@@ -116,7 +116,7 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     for (int64_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
-        int64_t inputs_num = fusedDesc->GetInputsSize();
+        int64_t inputs_num1 = fusedDesc->GetInputsSize();
         ge::OpDescPtr ConcatdDesc = AttrUtils::CopyOpDesc(fusedDesc);
         ConcatdDesc->SetName(ConcatdDesc->GetName() + "/ConcatD" + to_string(i));
         ConcatdDesc->SetType("ConcatD");
@@ -124,14 +124,14 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::AttrUtils::SetInt(ConcatdDesc, "concat_dim", concat_dim);
 
         if (i == 0) {
-          for (int64_t a = inputs_num - 1; a >= max_inputs; a--) {
+          for (int64_t a = inputs_num1 - 1; a >= max_inputs; a--) {
             OpDescUtils::ClearInputDesc(ConcatdDesc, a);
           }
         } else {
           for (int64_t a = i * max_inputs - 1; a >= 0; a--) {
             OpDescUtils::ClearInputDesc(ConcatdDesc, a);
           }
-          for (int64_t a = inputs_num - (max_inputs * i + 1); a >= max_inputs; a--) {
+          for (int64_t a = inputs_num1 - (max_inputs * i + 1); a >= max_inputs; a--) {
             OpDescUtils::ClearInputDesc(ConcatdDesc, a);
           }
         }
@@ -170,12 +170,12 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
               return FAILED);
         }
       } else {
-        int64_t inputs_num = fusedDesc->GetInputsSize();
+        int64_t inputs_num2 = fusedDesc->GetInputsSize();
         ge::OpDescPtr LastConcatDDesc = AttrUtils::CopyOpDesc(fusedDesc);
         LastConcatDDesc->SetName(LastConcatDDesc->GetName() + "/ConcatD" + to_string(nodes_num - 1));
         LastConcatDDesc->SetType("ConcatD");
 
-        for (int64_t b = inputs_num - last_node_inputs_num - 1; b >= 0; b--) {
+        for (int64_t b = inputs_num2 - last_node_inputs_num - 1; b >= 0; b--) {
           OpDescUtils::ClearInputDesc(LastConcatDDesc, b);
         }
         ge::NodePtr last_concatd_node = graph.AddNode(LastConcatDDesc);

@@ -31,34 +31,34 @@ class RemapFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
-  Status CreateSplitNode(ge::NodePtr& split_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateSplitNode(ge::NodePtr& split_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                          vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateFloorxNode(ge::NodePtr& floorx_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateFloorxNode(ge::NodePtr& floorx_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateCeilxNode(ge::NodePtr& ceilx_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateCeilxNode(ge::NodePtr& ceilx_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                          vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateFlooryNode(ge::NodePtr& floory_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateFlooryNode(ge::NodePtr& floory_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateCeilyNode(ge::NodePtr& ceily_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateCeilyNode(ge::NodePtr& ceily_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                          vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateMulsx1Node(ge::NodePtr& mulsx1_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateMulsx1Node(ge::NodePtr& mulsx1_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc, float& val) const;
-  Status CreateMulsx2Node(ge::NodePtr& mulsx2_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateMulsx2Node(ge::NodePtr& mulsx2_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc, float& val) const;
-  Status CreateMulsy1Node(ge::NodePtr& mulsy1_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateMulsy1Node(ge::NodePtr& mulsy1_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc, float& val) const;
-  Status CreateMulsy2Node(ge::NodePtr& mulsy2_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateMulsy2Node(ge::NodePtr& mulsy2_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc, float& val) const;
-  Status CreateAddNode(const std::string name, ge::NodePtr& add_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                       vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateCastNode(const std::string name, ge::NodePtr& add_node, ge::NodePtr& fused_node,
+  Status CreateAddNode(const std::string name, ge::NodePtr& add_node, const ge::NodePtr& fused_node,
+                       ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
+  Status CreateCastNode(const std::string name, ge::NodePtr& add_node, const ge::NodePtr& fused_node,
                         ge::ComputeGraph& graph,  vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateConcatNode(ge::NodePtr& concat_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateConcatNode(ge::NodePtr& concat_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                           vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const;
-  Status CreateRemapOffsetsNode(ge::NodePtr& offsets_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateRemapOffsetsNode(ge::NodePtr& offsets_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                                 vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& input0_desc,
                                 ge::GeTensorDesc& input1_desc) const;
-  Status CreateRemapResizeNode(ge::NodePtr& resize_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+  Status CreateRemapResizeNode(ge::NodePtr& resize_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& input0_desc,
                                ge::GeTensorDesc& input1_desc, ge::GeTensorDesc& output_desc) const;
 

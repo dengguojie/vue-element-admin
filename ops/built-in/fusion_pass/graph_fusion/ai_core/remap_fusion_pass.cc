@@ -53,8 +53,9 @@ vector<FusionPattern*> RemapFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status RemapFusionPass::CreateSplitNode(ge::NodePtr& split_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                        vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
+Status RemapFusionPass::CreateSplitNode(ge::NodePtr& split_node, const ge::NodePtr& fused_node,
+                                        ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                        ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> split_desc = nullptr;
   std::string split_desc_name = fused_node->GetName() + "_splitD";
   split_desc = std::make_shared<ge::OpDesc>(split_desc_name, "SplitD");
@@ -84,8 +85,9 @@ Status RemapFusionPass::CreateSplitNode(ge::NodePtr& split_node, ge::NodePtr& fu
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateFloorxNode(ge::NodePtr& floorx_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
+Status RemapFusionPass::CreateFloorxNode(ge::NodePtr& floorx_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> floorx_desc = nullptr;
   std::string floorx_desc_name = fused_node->GetName() + "_floorx";
   floorx_desc = std::make_shared<ge::OpDesc>(floorx_desc_name, "Floor");
@@ -106,8 +108,9 @@ Status RemapFusionPass::CreateFloorxNode(ge::NodePtr& floorx_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateCeilxNode(ge::NodePtr& ceilx_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                        vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
+Status RemapFusionPass::CreateCeilxNode(ge::NodePtr& ceilx_node, const ge::NodePtr& fused_node,
+                                        ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                        ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> ceilx_desc = nullptr;
   std::string ceilx_desc_name = fused_node->GetName() + "_ceilx";
   ceilx_desc = std::make_shared<ge::OpDesc>(ceilx_desc_name, "Ceil");
@@ -129,8 +132,9 @@ Status RemapFusionPass::CreateCeilxNode(ge::NodePtr& ceilx_node, ge::NodePtr& fu
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateFlooryNode(ge::NodePtr& floory_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
+Status RemapFusionPass::CreateFlooryNode(ge::NodePtr& floory_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> floory_desc = nullptr;
   std::string floory_desc_name = fused_node->GetName() + "_floory";
   floory_desc = std::make_shared<ge::OpDesc>(floory_desc_name, "Floor");
@@ -152,8 +156,9 @@ Status RemapFusionPass::CreateFlooryNode(ge::NodePtr& floory_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateCeilyNode(ge::NodePtr& ceily_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                        vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
+Status RemapFusionPass::CreateCeilyNode(ge::NodePtr& ceily_node, const ge::NodePtr& fused_node,
+                                        ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                        ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> ceily_desc = nullptr;
   std::string ceily_desc_name = fused_node->GetName() + "_ceily";
   ceily_desc = std::make_shared<ge::OpDesc>(ceily_desc_name, "Ceil");
@@ -175,9 +180,9 @@ Status RemapFusionPass::CreateCeilyNode(ge::NodePtr& ceily_node, ge::NodePtr& fu
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateMulsx1Node(ge::NodePtr& mulsx1_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc,
-                                         float& val) const {
+Status RemapFusionPass::CreateMulsx1Node(ge::NodePtr& mulsx1_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc, float& val) const {
   std::shared_ptr<ge::OpDesc> mulsx1_desc = nullptr;
   std::string mulsx1_desc_name = fused_node->GetName() + "_mulsx1";
   mulsx1_desc = std::make_shared<ge::OpDesc>(mulsx1_desc_name, "Muls");
@@ -203,9 +208,9 @@ Status RemapFusionPass::CreateMulsx1Node(ge::NodePtr& mulsx1_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateMulsx2Node(ge::NodePtr& mulsx2_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc,
-                                         float& val) const {
+Status RemapFusionPass::CreateMulsx2Node(ge::NodePtr& mulsx2_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc, float& val) const {
   std::shared_ptr<ge::OpDesc> mulsx2_desc = nullptr;
   std::string mulsx2_desc_name = fused_node->GetName() + "_mulsx2";
   mulsx2_desc = std::make_shared<ge::OpDesc>(mulsx2_desc_name, "Muls");
@@ -231,9 +236,9 @@ Status RemapFusionPass::CreateMulsx2Node(ge::NodePtr& mulsx2_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateMulsy1Node(ge::NodePtr& mulsy1_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc,
-                                         float& val) const {
+Status RemapFusionPass::CreateMulsy1Node(ge::NodePtr& mulsy1_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc, float& val) const {
   std::shared_ptr<ge::OpDesc> mulsy1_desc = nullptr;
   std::string mulsy1_desc_name = fused_node->GetName() + "_mulsy1";
   mulsy1_desc = std::make_shared<ge::OpDesc>(mulsy1_desc_name, "Muls");
@@ -258,9 +263,9 @@ Status RemapFusionPass::CreateMulsy1Node(ge::NodePtr& mulsy1_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateMulsy2Node(ge::NodePtr& mulsy2_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
-                                         vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc,
-                                         float& val) const {
+Status RemapFusionPass::CreateMulsy2Node(ge::NodePtr& mulsy2_node, const ge::NodePtr& fused_node,
+                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
+                                         ge::GeTensorDesc& temp_desc, float& val) const {
   std::shared_ptr<ge::OpDesc> mulsy2_desc = nullptr;
   std::string mulsy2_desc_name = fused_node->GetName() + "_mulsy2";
   mulsy2_desc = std::make_shared<ge::OpDesc>(mulsy2_desc_name, "Muls");
@@ -285,7 +290,7 @@ Status RemapFusionPass::CreateMulsy2Node(ge::NodePtr& mulsy2_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateAddNode(const std::string name, ge::NodePtr& add_node, ge::NodePtr& fused_node,
+Status RemapFusionPass::CreateAddNode(const std::string name, ge::NodePtr& add_node, const ge::NodePtr& fused_node,
                                       ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
                                       ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> add_desc = nullptr;
@@ -319,7 +324,7 @@ Status RemapFusionPass::CreateAddNode(const std::string name, ge::NodePtr& add_n
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateCastNode(const std::string name, ge::NodePtr& cast_node, ge::NodePtr& fused_node,
+Status RemapFusionPass::CreateCastNode(const std::string name, ge::NodePtr& cast_node, const ge::NodePtr& fused_node,
                                        ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
                                        ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> cast_desc = nullptr;
@@ -348,7 +353,7 @@ Status RemapFusionPass::CreateCastNode(const std::string name, ge::NodePtr& cast
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateConcatNode(ge::NodePtr& concat_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
+Status RemapFusionPass::CreateConcatNode(ge::NodePtr& concat_node, const ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                                          vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& temp_desc) const {
   std::shared_ptr<ge::OpDesc> concat_desc = nullptr;
   std::string concat_desc_name = fused_node->GetName() + "_concat";
@@ -382,7 +387,7 @@ Status RemapFusionPass::CreateConcatNode(ge::NodePtr& concat_node, ge::NodePtr& 
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateRemapOffsetsNode(ge::NodePtr& offsets_node, ge::NodePtr& fused_node,
+Status RemapFusionPass::CreateRemapOffsetsNode(ge::NodePtr& offsets_node, const ge::NodePtr& fused_node,
                                                ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
                                                ge::GeTensorDesc& input0_desc, ge::GeTensorDesc& input1_desc) const {
   std::shared_ptr<ge::OpDesc> offsets_desc = nullptr;
@@ -422,7 +427,7 @@ Status RemapFusionPass::CreateRemapOffsetsNode(ge::NodePtr& offsets_node, ge::No
   return SUCCESS;
 }
 
-Status RemapFusionPass::CreateRemapResizeNode(ge::NodePtr& resize_node, ge::NodePtr& fused_node,
+Status RemapFusionPass::CreateRemapResizeNode(ge::NodePtr& resize_node, const ge::NodePtr& fused_node,
                                               ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes,
                                               ge::GeTensorDesc& input0_desc, ge::GeTensorDesc& input1_desc,
                                               ge::GeTensorDesc& output_desc) const {
