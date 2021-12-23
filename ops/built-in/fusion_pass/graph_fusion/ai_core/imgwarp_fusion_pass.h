@@ -33,7 +33,7 @@ class IMGWarpFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
   int64_t GetDimNum(const vector<int64_t>& shapes) const;
   void SetAssitValue(float* data, const std::vector<int64_t>& shape) const;
-  Status CreateConstNode(vector<int64_t>& assit_tensor_shape, ge::NodePtr& fuse_node, ge::ComputeGraph& graph,
+  Status CreateConstNode(vector<int64_t>& assit_tensor_shape, ge::ComputeGraph& graph,
                          ge::NodePtr& const_node) const;
   Status CreateAddNode(ge::NodePtr& add_node, ge::NodePtr& fused_node, ge::ComputeGraph& graph,
                        vector<ge::NodePtr>& new_nodes, ge::GeTensorDesc& add_input0_desc) const;

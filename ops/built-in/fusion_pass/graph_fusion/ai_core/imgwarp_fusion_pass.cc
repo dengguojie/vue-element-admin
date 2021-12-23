@@ -74,7 +74,7 @@ void IMGWarpFusionPass::SetAssitValue(float* data, const std::vector<int64_t>& s
   }
 }
 
-Status IMGWarpFusionPass::CreateConstNode(vector<int64_t>& assit_tensor_shape, ge::NodePtr& fuse_node,
+Status IMGWarpFusionPass::CreateConstNode(vector<int64_t>& assit_tensor_shape,
                                           ge::ComputeGraph& graph, ge::NodePtr& const_node) const {
   int64_t assit_size = GetDimNum(assit_tensor_shape);
   ge::GeTensorPtr assit_ptr{nullptr};
@@ -202,7 +202,7 @@ Status IMGWarpFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   // new a const_node
   ge::NodePtr const_node = nullptr;
   int64_t ret = 0;
-  ret = CreateConstNode(warpoffset_shape, fused_node, graph, const_node);
+  ret = CreateConstNode(warpoffset_shape, graph, const_node);
   FUSION_PASS_CHECK(const_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_node is null."), return PARAM_INVALID);
 
   // create a new node for Add
