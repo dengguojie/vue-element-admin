@@ -74,7 +74,6 @@ bool FlattenTiling(const std::string& op_type, const ge::Operator& op_paras, con
                   return false);
 
   const GeShape& src_shape = src_desc->MutableShape();
-  const GeShape& dst_shape = dst_desc->MutableShape();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   int64_t data_size;

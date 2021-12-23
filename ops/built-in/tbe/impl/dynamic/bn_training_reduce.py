@@ -228,7 +228,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
                     range_list[idx] = [(0, None)] * all_unknown_shape_len
 
         def _get_dim(i):
-            return max(([s[i] for s in shape_local]))
+            return max((s[i] for s in shape_local))
 
         def _select_min_upper_bound(input_list):
             min_ele = Constant.VAR_BOUND_LIMIT + 1
@@ -243,7 +243,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
             if shape_out[i] != -1:
                 return shape_out[i], shape_out[i]
 
-            return max(([r[i][0] for r in range_local])), _select_min_upper_bound(([r[i][1] for r in range_local]))
+            return max((r[i][0] for r in range_local)), _select_min_upper_bound((r[i][1] for r in range_local))
 
         shape_local = [x["shape"] for x in inputs_before_reduce]
         range_local = [
@@ -2321,7 +2321,8 @@ class BnReduceAtomicSchedule:
                 return
             res_align_axis = res_a1_start_index - 1
 
-            align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING.get(self._final_out_tensor_ub_rf.dtype)
+            align_factor = Constant.BLOCK_SIZE_BYTE // \
+            Constant.DTYPE_BYTE_MAPPING.get(self._final_out_tensor_ub_rf.dtype)            
             para = {
                 "align_axis_var": self._final_out_tensor_ub_rf.op.axis[res_align_axis + self._axis_offset],
                 "align_factor": align_factor,

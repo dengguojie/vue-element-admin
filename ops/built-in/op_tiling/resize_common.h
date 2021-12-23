@@ -176,4 +176,4 @@ bool GetResizeNearestNeighborV2GradTiling(const ResizeClassCompileParams& compil
  */
 bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, ResizeClassTilingParams& tiling_params);
 }  // namespace optiling
-#endif ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H
+#endif  //  ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H

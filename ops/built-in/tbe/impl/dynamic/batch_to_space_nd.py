@@ -117,7 +117,7 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
                 `y              shape = [None,1,None,None,16]   format = 'NC1HWC0'`
     2.when ori_format is 'NDHWC' or 'NCDHW', input_format is 'NDC1HWC0'
 
-        for example:
+        `for example:`
             ori:
                 `x              shape = [16,16,16,16,16]              format = 'NDHWC'`
                 `block_shape    shape = [3,]                          format = 'ND'`
