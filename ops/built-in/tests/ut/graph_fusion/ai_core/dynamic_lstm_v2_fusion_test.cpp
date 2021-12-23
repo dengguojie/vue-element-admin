@@ -222,4 +222,128 @@ TEST_F(dynamic_lstm_v2_fusion_test, input_weight_parent_graph_test) {
     }
     EXPECT_EQ(find_dynamicLSTM, true);
 }
+TEST_F(dynamic_lstm_v2_fusion_test, dynamic_lstm_v2_fusion_test_2) {
+    ge::Graph graph("dynamic_lstm_v2_fusion_test_1");
+
+    auto xData = op::Data("xData");
+    std::vector<int64_t> dims_x{75, 1, 512};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_NCHW, DT_FLOAT16);
+    xData.update_input_desc_x(tensorDescX);
+    xData.update_output_desc_y(tensorDescX);
+
+    auto wxData = op::Const("w_x");
+    std::vector<int64_t> dims_w{1024, 512};
+    ge::Shape shape_w(dims_w);
+    ge::TensorDesc tensorDescW(shape_w, FORMAT_NCHW, DT_FLOAT);
+    Tensor wx;
+    float *wx_value = new float[1024 * 512];
+    wx.SetTensorDesc(tensorDescW);
+    wx.SetData((uint8_t *)wx_value, 1024 * 512 * sizeof(float));
+    wxData.set_attr_value(wx);
+    wxData.update_output_desc_y(tensorDescW);
+
+    auto whData = op::Const("w_h");
+    std::vector<int64_t> dims_wh{1024, 256};
+    ge::Shape shape_wh(dims_wh);
+    ge::TensorDesc tensorDescWh(shape_wh, FORMAT_NCHW, DT_FLOAT);
+    Tensor wh;
+    float *wh_value = new float[1024 * 256];
+    wh.SetTensorDesc(tensorDescWh);
+    wh.SetData((uint8_t *)wh_value, 1024 * 256 * sizeof(float));
+    whData.set_attr_value(wh);
+    whData.update_output_desc_y(tensorDescWh);
+
+    auto bData = op::Const("bias");
+    std::vector<int64_t> dims_b{1024};
+    ge::Shape shape_b(dims_b);
+    ge::TensorDesc tensorDescB(shape_b, FORMAT_NCHW, DT_FLOAT);
+    Tensor bias;
+    float *bias_value = new float[1024];
+    bias.SetTensorDesc(tensorDescB);
+    bias.SetData((uint8_t *)bias_value, 1024 * sizeof(float));
+    bData.set_attr_value(bias);
+    bData.update_output_desc_y(tensorDescB);
+
+    auto contData = op::Data("cont");
+    std::vector<int64_t> dims_cont{75, 1};
+    ge::Shape shape_cont(dims_cont);
+    ge::TensorDesc tensorDescCont(shape_cont, FORMAT_NCHW, DT_FLOAT);
+    contData.update_input_desc_x(tensorDescCont);
+    contData.update_output_desc_y(tensorDescCont);
+
+    auto xstaticData = op::Const("xstatic");
+    std::vector<int64_t> dims_xstatic{1024, 256};
+    ge::Shape shape_xstatic(dims_xstatic);
+    ge::TensorDesc tensorDescxstatic(shape_xstatic, FORMAT_NCHW, DT_FLOAT16);
+    Tensor xstatic;
+    float *xstatic_value = new float[1024 * 256];
+    xstatic.SetTensorDesc(tensorDescxstatic);
+    xstatic.SetData((uint8_t *)xstatic_value, 1024 * 256 * sizeof(float));
+    xstaticData.set_attr_value(xstatic);
+    xstaticData.update_output_desc_y(tensorDescxstatic);
+
+    auto h0Data = op::Const("h0");
+    std::vector<int64_t> dims_h0{1024, 256};
+    ge::Shape shape_h0(dims_h0);
+    ge::TensorDesc tensorDesch0(shape_h0, FORMAT_NCHW, DT_FLOAT16);
+    Tensor h0;
+    float *h0_value = new float[1024 * 256];
+    h0.SetTensorDesc(tensorDescWh);
+    h0.SetData((uint8_t *)h0_value, 1024 * 256 * sizeof(float));
+    h0Data.set_attr_value(h0);
+    h0Data.update_output_desc_y(tensorDesch0);
+
+    auto c0Data = op::Const("c0");
+    std::vector<int64_t> dims_c0{1024, 256};
+    ge::Shape shape_c0(dims_c0);
+    ge::TensorDesc tensorDescc0(shape_c0, FORMAT_NCHW, DT_FLOAT16);
+    Tensor c0;
+    float *c0_value = new float[1024 * 256];
+    c0.SetTensorDesc(tensorDescc0);
+    c0.SetData((uint8_t *)c0_value, 1024 * 256 * sizeof(float));
+    c0Data.set_attr_value(c0);
+    c0Data.update_output_desc_y(tensorDescc0);
+
+    auto wxstaticData = op::Const("wxstatic");
+    std::vector<int64_t> dims_wxstatic{1024, 256};
+    ge::Shape shape_wxstatic(dims_wxstatic);
+    ge::TensorDesc tensorDescwxstatic(shape_wxstatic, FORMAT_NCHW, DT_FLOAT16);
+    Tensor wxstatic;
+    float *wxstatic_value = new float[1024 * 256];
+    wxstatic.SetTensorDesc(tensorDescwxstatic);
+    wxstatic.SetData((uint8_t *)wxstatic_value, 1024 * 256 * sizeof(float));
+    wxstaticData.set_attr_value(wxstatic);
+    wxstaticData.update_output_desc_y(tensorDescwxstatic);
+
+    auto LSTMOp = op::LSTM("LSTM");
+    LSTMOp.set_input_x(xData)
+        .set_input_cont(contData)
+        .set_input_w_x(wxData)
+        .set_input_bias(bData)
+        .set_input_w_h(whData)
+        .set_input_x_static(xstaticData)
+        .set_input_h_0(h0Data)
+        .set_input_c_0(c0Data)
+        .set_input_w_x_static(wxstaticData)
+        .set_attr_num_output(256)
+        .set_attr_expose_hidden(false);
+
+    std::vector<Operator> inputs{xData, contData, wxData, bData, whData,xstaticData,h0Data,c0Data,wxstaticData};
+    std::vector<Operator> outputs{LSTMOp};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("DynamicLSTMFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findTranspose = false;
+    for (auto node : compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "DynamicLSTMV2") {
+            findTranspose = true;
+            break;
+        }
+    }
+    EXPECT_EQ(findTranspose, true);
+}
 } // namespace fe
