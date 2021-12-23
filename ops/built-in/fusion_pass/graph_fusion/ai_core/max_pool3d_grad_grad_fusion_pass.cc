@@ -80,8 +80,7 @@ Status MaxPool3DGradGradAssitHelpFP16(int32_t D, int32_t H, int32_t W, int32_t n
 vector<FusionPattern*> MaxPool3DGradGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MaxPool3DGradGradFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_MAX_POOL3D_GRAD_GRAD, {MAX_POOL3D_GRAD_GRAD}).SetOutput(PATTERN_MAX_POOL3D_GRAD_GRAD);
@@ -113,8 +112,7 @@ int MaxPool3DGradGradFusionPass::GetDHW(const std::vector<int32_t>& ksize, int32
       H = ksize[3];
       W = ksize[4];
     } else {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unsupported shape for MaxPool3DGradGrad. format = %d",
-                                     format);
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unsupported shape for MaxPool3DGradGrad. format = %d", format);
       return -1;
     }
   }
@@ -130,14 +128,12 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   ge::NodePtr maxpool3dGradGradVNode = GetNodeFromMapping(PATTERN_MAX_POOL3D_GRAD_GRAD, mapping);
 
   FUSION_PASS_CHECK(maxpool3dGradGradVNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "maxpool3dGradGradVNode is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxpool3dGradGradVNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr maxpool3dGradGradDesc = maxpool3dGradGradVNode->GetOpDesc();
   FUSION_PASS_CHECK(maxpool3dGradGradDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "maxpool3dGradGradVNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxpool3dGradGradVNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(maxpool3dGradGradDesc);
@@ -179,8 +175,7 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     ge::GeShape assistShape(assistShapeVec);
     int64_t dimNums = 1 * D * 1 * H * W * FP32_C0;
     unique_ptr<float[]> inputAssit(new (std::nothrow) float[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -198,8 +193,7 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     ge::GeShape assistShape(assistShapeVec);
     int64_t dimNums = 1 * D * 1 * H * W * FP16_C0;
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);

@@ -54,8 +54,7 @@ output_1 ... output_m .. output_n                             SplitVD_1 ... Spli
 vector<FusionPattern*> SplitDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SplitDFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -65,12 +64,10 @@ vector<FusionPattern*> SplitDFusionPass::DefinePatterns() {
 
 Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fused_node's Node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's Node is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fused_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // A maximum of 63 tensors are supported in mini mode.
@@ -154,16 +151,14 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
       outputDesc.push_back(SplitDOutputTensor_1);
     }
     FUSION_PASS_CHECK(splitd_base_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "splitd_base_node:%s is null, fusion failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitd_base_node:%s is null, fusion failed.",
                               splitd_base_node->GetName().c_str()),
                       return PARAM_INVALID);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                            splitd_base_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fused_node->GetName().c_str(), (0), splitd_base_node->GetName().c_str(), 0),
         return FAILED);
 
@@ -198,8 +193,7 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
         FUSION_PASS_CHECK(
             splitd_node == nullptr,
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitd_node:%s is null, fusion failed.",
-                                           splitd_node->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitd_node:%s is null, fusion failed.", splitd_node->GetName().c_str()),
             return PARAM_INVALID);
 
         FUSION_PASS_CHECK(
@@ -215,8 +209,7 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
                 SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i + m), inAnchorPtr),
                 VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitd_node->GetOutDataAnchor(m), inAnchorPtr),
-                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
-                                                             return FAILED);
+                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
           }
         }
       } else {
@@ -249,8 +242,7 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           }
 
           FUSION_PASS_CHECK(last_splitd_node == nullptr,
-                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                           "last_splitd_node:%s is null, fusion failed.",
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "last_splitd_node:%s is null, fusion failed.",
                                     last_splitd_node->GetName().c_str()),
                             return PARAM_INVALID);
 
@@ -267,18 +259,15 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
                   SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i + m), inAnchorPtr),
                   VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
               FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_splitd_node->GetOutDataAnchor(m), inAnchorPtr),
-                                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
-                                                               return FAILED);
+                                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
             }
           }
         } else {
           for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(63 * i)->GetPeerInDataAnchors()) {
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i), inAnchorPtr),
-                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
-                                                             return FAILED);
+                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitd_base_node->GetOutDataAnchor(i), inAnchorPtr),
-                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
-                                                             return FAILED);
+                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
           }
         }
       }
@@ -297,8 +286,7 @@ Status SplitDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fused_node),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed",
-                                                   fused_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "SplitD --> SplitD or SplitVD fusion SUCCESSS!!!!!");

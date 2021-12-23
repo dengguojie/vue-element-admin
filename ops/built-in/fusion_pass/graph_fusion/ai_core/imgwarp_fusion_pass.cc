@@ -46,8 +46,7 @@ static const string FUSED_NODE = "IMGWarp";
 vector<FusionPattern*> IMGWarpFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("IMGWarpFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -80,8 +79,7 @@ Status IMGWarpFusionPass::CreateConstNode(vector<int64_t>& assit_tensor_shape, g
   int64_t assit_size = GetDimNum(assit_tensor_shape);
   ge::GeTensorPtr assit_ptr{nullptr};
   unique_ptr<float[]> const_assit(new (std::nothrow) float[assit_size]());
-  FUSION_PASS_CHECK(const_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "const_assit is NULL."),
+  FUSION_PASS_CHECK(const_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_assit is NULL."),
                     return PARAM_INVALID);
   Status ret = NnSet(assit_size, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(const_assit.get()));
   FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
@@ -94,8 +92,7 @@ Status IMGWarpFusionPass::CreateConstNode(vector<int64_t>& assit_tensor_shape, g
                                const_tensor_desc, reinterpret_cast<uint8_t*>(data_ptr), assit_size * sizeof(float))),
                           return NOT_CHANGED);
   ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assit_ptr);
-  FUSION_PASS_CHECK(const_opdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Create const op desc failed."),
+  FUSION_PASS_CHECK(const_opdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Create const op desc failed."),
                     return NOT_CHANGED);
 
   const_node = graph.AddNode(const_opdesc);
@@ -206,22 +203,19 @@ Status IMGWarpFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::NodePtr const_node = nullptr;
   int64_t ret = 0;
   ret = CreateConstNode(warpoffset_shape, fused_node, graph, const_node);
-  FUSION_PASS_CHECK(const_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_node is null."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(const_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_node is null."), return PARAM_INVALID);
 
   // create a new node for Add
   ge::NodePtr add_node = nullptr;
   ret = CreateAddNode(add_node, fused_node, graph, newNodes, warpoffset_input_desc);
-  FUSION_PASS_CHECK(add_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_node is null."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(add_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_node is null."), return PARAM_INVALID);
 
   // create a new node for IMGWarpOffsets
   ge::NodePtr imgwarp_offsets_node = nullptr;
   ge::GeTensorDesc img_input_desc = fused_node->GetOpDesc()->GetInputDesc(0);
   ret = CreateIMGWarpOffsetsNode(imgwarp_offsets_node, fused_node, graph, newNodes, img_input_desc,
                                  warpoffset_input_desc);
-  FUSION_PASS_CHECK(imgwarp_offsets_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "imgwarp_offsets_node is null."),
+  FUSION_PASS_CHECK(imgwarp_offsets_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "imgwarp_offsets_node is null."),
                     return PARAM_INVALID);
 
   // create a new node for Resize
@@ -229,54 +223,43 @@ Status IMGWarpFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::GeTensorDesc output_desc = fused_node->GetOpDesc()->GetOutputDesc(0);
   ret = CreateIMGWarpResizeNode(imgwarp_resize_node, fused_node, graph, newNodes, img_input_desc, warpoffset_input_desc,
                                 output_desc);
-  FUSION_PASS_CHECK(imgwarp_resize_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "imgwarp_resize_node is null."),
+  FUSION_PASS_CHECK(imgwarp_resize_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "imgwarp_resize_node is null."),
                     return PARAM_INVALID);
 
   // warp_offset->add_node
   auto tmpDataAnchor = fused_node->GetInDataAnchor(1)->GetPeerOutAnchor();
   ret = ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(), fused_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove edge offsets_node failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge offsets_node failed."), return FAILED);
   ret = ge::GraphUtils::AddEdge(tmpDataAnchor, add_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge offsets_node to add node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to add node failed."),
                     return FAILED);
 
   // const_node->add_node
   ret = ge::GraphUtils::AddEdge(const_node->GetOutAnchor(0), add_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge const_node to add node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge const_node to add node failed."),
                     return FAILED);
 
   // add_node->imgwarp_offsets_node
   ret = ge::GraphUtils::AddEdge(add_node->GetOutAnchor(0), imgwarp_offsets_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge add_node to imgwarp_offsets_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add_node to imgwarp_offsets_node failed."),
                     return FAILED);
 
   // img->imgwarp_offsets_node
   auto tempDataAnchor = fused_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   ret = ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(), fused_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove edge img_node failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge img_node failed."), return FAILED);
   ret = ge::GraphUtils::AddEdge(tempDataAnchor, imgwarp_offsets_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge img to imgwarp_offsets_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge img to imgwarp_offsets_node failed."),
                     return FAILED);
 
   // imgwarp_offsets_node->imgwarp_resize_node
   ret = ge::GraphUtils::AddEdge(imgwarp_offsets_node->GetOutDataAnchor(0), imgwarp_resize_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge offsets_node to resize_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to resize_node failed."),
                     return FAILED);
 
   // add_node->imgwarp_resize_node
   ret = ge::GraphUtils::AddEdge(add_node->GetOutAnchor(0), imgwarp_resize_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge add_node to imgwarp_resize_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add_node to imgwarp_resize_node failed."),
                     return FAILED);
 
   // imgwarp_resize_node->warp_img

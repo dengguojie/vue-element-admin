@@ -61,22 +61,17 @@ Status SoftmaxCrossEntropyWithLogitsPass::RemoveNode(ge::NodePtr node, ge::Compu
   for (size_t i = 0; i < node->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = node->GetInDataAnchor(i);
     FUSION_PASS_CHECK(inDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "inDataAnchor is null, remove node failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, remove node failed."), return FAILED);
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(preOutDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "preOutDataAnchor is null, remove node failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preOutDataAnchor is null, remove node failed."), return FAILED);
 
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutDataAnchor, inDataAnchor) != ge::GRAPH_SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, node->GetName().c_str());
   }
   // delete the node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove node failed"),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
                     return FAILED);
   return SUCCESS;
 }
@@ -85,8 +80,7 @@ vector<FusionPattern*> SoftmaxCrossEntropyWithLogitsPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxCrossEntropyWithLogitsPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxCrossEntropyWithLogitsFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern->AddOpDesc(PATTERN_RESHAPE, {"Reshape"})
       .AddOpDesc(PATTERN_RESHAPE_1, {"Reshape"})
@@ -110,15 +104,11 @@ Status SoftmaxCrossEntropyWithLogitsPass::Fusion(ge::ComputeGraph& graph, Mappin
   ge::NodePtr softmax_cross_entropy_with_logits =
       GetNodeFromMapping(PATTERN_SOFTMAX_CROSS_ENTROPY_WITH_LOGITS, mapping);
 
-  FUSION_PASS_CHECK(reshape == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(reshape_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_1 is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(reshape_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_2 is null"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshape == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshape_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_1 is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshape_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_2 is null"), return PARAM_INVALID);
   FUSION_PASS_CHECK(softmax_cross_entropy_with_logits == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax_cross_entropy_with_logits is null"),
-                                                   return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax_cross_entropy_with_logits is null"), return PARAM_INVALID);
 
   // get xentropy input Tensor
   ge::GeTensorDesc first_input_tensor = reshape->GetOpDesc()->GetInputDesc(0);
@@ -179,45 +169,37 @@ Status SoftmaxCrossEntropyWithLogitsPass::Fusion(ge::ComputeGraph& graph, Mappin
   softmax_cross_entropy_with_logits->GetOpDesc()->UpdateOutputDesc(1, second_output);
 
   auto reshapeInDataAnchor = reshape->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(reshapeInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "reshapeInDataAnchor is null"),
+  FUSION_PASS_CHECK(reshapeInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeInDataAnchor is null"),
                     return FAILED);
   auto reshapePeerOutDataAnchor = reshapeInDataAnchor->GetPeerOutAnchor();
 
   auto reshape1InDataAnchor = reshape_1->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(reshapeInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "reshapeInDataAnchor is null"),
+  FUSION_PASS_CHECK(reshapeInDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeInDataAnchor is null"),
                     return FAILED);
   auto reshape1PeerOutDataAnchor = reshape1InDataAnchor->GetPeerOutAnchor();
 
   auto reshape2OutDataAnchor = reshape_2->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(reshape2OutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "reshape2OutDataAnchor is null"),
+  FUSION_PASS_CHECK(reshape2OutDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape2OutDataAnchor is null"),
                     return FAILED);
   auto reshapePeerInDataAnchors = reshape2OutDataAnchor->GetPeerInDataAnchors();
 
   auto inputDataAnchor1 = softmax_cross_entropy_with_logits->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(inputDataAnchor1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "inputDataAnchor1 is null"),
+  FUSION_PASS_CHECK(inputDataAnchor1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDataAnchor1 is null"),
                     return FAILED);
 
   auto inputDataAnchor2 = softmax_cross_entropy_with_logits->GetInDataAnchor(1);
-  FUSION_PASS_CHECK(inputDataAnchor2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "inputDataAnchor2 is null"),
+  FUSION_PASS_CHECK(inputDataAnchor2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDataAnchor2 is null"),
                     return FAILED);
 
   auto outDataAnchor = softmax_cross_entropy_with_logits->GetOutDataAnchor(0);
 
   // delete reshape node
-  FUSION_PASS_CHECK(RemoveNode(reshape, graph) == FAILED, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove reshape node failed"),
+  FUSION_PASS_CHECK(RemoveNode(reshape, graph) == FAILED, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape node failed"),
                     return FAILED);
   FUSION_PASS_CHECK(RemoveNode(reshape_1, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape1 node failed"),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape1 node failed"), return FAILED);
   FUSION_PASS_CHECK(RemoveNode(reshape_2, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape2 node failed"),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape2 node failed"), return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshapePeerOutDataAnchor, inputDataAnchor1) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input edge 1 error"), return FAILED);
@@ -227,8 +209,7 @@ Status SoftmaxCrossEntropyWithLogitsPass::Fusion(ge::ComputeGraph& graph, Mappin
   for (unsigned int i = 0; i < reshapePeerInDataAnchors.size(); ++i) {
     ge::InDataAnchorPtr dstAnchor = reshapePeerInDataAnchors.at(i);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outDataAnchor, dstAnchor) != ge::GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output anchor Failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output anchor Failed."), return FAILED);
   }
   fusionNodes.push_back(softmax_cross_entropy_with_logits);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxCrossEntropyWithLogitsPass fusion end");

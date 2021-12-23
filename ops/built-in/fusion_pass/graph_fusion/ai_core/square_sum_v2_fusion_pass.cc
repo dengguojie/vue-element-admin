@@ -65,8 +65,7 @@ vector<FusionPattern*> SquareSumV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SquareSumV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_REDUCESUMD, {REDUCESUMD})
@@ -86,11 +85,9 @@ Status SquareSumV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::NodePtr square_node = GetNodeFromMapping(PATTERN_SQUARE, mapping);
   ge::NodePtr sum_node = GetNodeFromMapping(PATTERN_REDUCESUMD, mapping);
 
-  FUSION_PASS_CHECK(sum_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "sum node is null, fusion failed."),
+  FUSION_PASS_CHECK(sum_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sum node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(square_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "square_node node is null, fusion failed."),
+  FUSION_PASS_CHECK(square_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "square_node node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get attrs num_classes and dtype of new node
@@ -102,8 +99,7 @@ Status SquareSumV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get keep_dims attr failed."), return FAILED);
 
   vector<int64_t> dims = square_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
-  FUSION_PASS_CHECK(dims.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "input dims is empty, fusion failed."),
+  FUSION_PASS_CHECK(dims.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input dims is empty, fusion failed."),
                     return PARAM_INVALID);
 
   std::vector<int64_t> axis_temp;  // change negative axis to positive
@@ -169,24 +165,17 @@ Status SquareSumV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   for (auto in_data_anchor : sum_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(sum_node->GetOutDataAnchor(0), in_data_anchor),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node out data edge failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node out data edge failed."), return FAILED);
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(square_sum_v2_node->GetOutDataAnchor(0), in_data_anchor),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "Add square_sum_v2 node out data edge failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square_sum_v2 node out data edge failed."), return FAILED);
   }
 
   for (auto in_data_anchor : square_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     if (in_data_anchor->GetOwnerNode()->GetName() != sum_node->GetName()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(square_node->GetOutDataAnchor(0), in_data_anchor),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                       "Remove square node out data edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove square node out data edge failed."), return FAILED);
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(square_sum_v2_node->GetOutDataAnchor(1), in_data_anchor),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                       "Add square_sum_v2 node out data edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square_sum_v2 node out data edge failed."), return FAILED);
     }
   }
   ge::OpDescPtr square_sum_v2_desc = square_sum_v2_node->GetOpDesc();
@@ -200,32 +189,25 @@ Status SquareSumV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     for (auto out_control_anchor : square_node->GetInControlAnchor()->GetPeerOutControlAnchors()) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(out_control_anchor, square_sum_v2_node->GetInControlAnchor()) != SUCCESS,
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square_sum_v2 node input control edge failed."),
-                                         return FAILED);
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square_sum_v2 node input control edge failed."), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_control_anchor, square_node->GetInControlAnchor()) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                       "Remove square node input control edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove square node input control edge failed."), return FAILED);
     }
   }
   if (sum_node->GetOutControlAnchor()) {
     for (auto in_control_anchor : sum_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(square_sum_v2_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add sum node out control edge failed."),
-                                         return FAILED);
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add sum node out control edge failed."), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(sum_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                       "Remove sum node out control edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node out control edge failed."), return FAILED);
     }
   }
 
   // 8.remove input node and const node in subgraph
   FUSION_PASS_CHECK(graph.RemoveNode(square_node) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove square node failed."), return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(sum_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove sum node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(sum_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SquareSumV2FusionPass fusion end");

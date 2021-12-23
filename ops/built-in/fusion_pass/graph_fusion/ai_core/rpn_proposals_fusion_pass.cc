@@ -50,8 +50,7 @@ vector<FusionPattern*> RpnProposalsFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("RpnProposalsFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -64,12 +63,10 @@ vector<FusionPattern*> RpnProposalsFusionPass::DefinePatterns() {
 
 Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // scoreFilterPreSort
@@ -77,14 +74,12 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   ge::OpDescPtr scoreFilterPreSortDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       scoreFilterPreSortDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                     fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   ge::OpDescPtr rpnProposalPostProcessingDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       rpnProposalPostProcessingDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                     fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   scoreFilterPreSortDesc->SetName(fusedDesc->GetName() + "/ScoreFilterPreSort");
   rpnProposalPostProcessingDesc->SetName(fusedDesc->GetName() + "/RpnProposalPostProcessing");
@@ -154,22 +149,18 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   // change attr
   FUSION_PASS_CHECK(SUCCESS != scoreFilterPreSortDesc->DelAttr("img_size"),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Delete the attr of img_size from scoreFilterPreSortDesc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of img_size from scoreFilterPreSortDesc failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(SUCCESS != scoreFilterPreSortDesc->DelAttr("min_size"),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Delete the attr of min_size from scoreFilterPreSortDesc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of min_size from scoreFilterPreSortDesc failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(
       SUCCESS != scoreFilterPreSortDesc->DelAttr("nms_threshold"),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "Delete the attr of nms_threshold from scoreFilterPreSortDesc failed."),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of nms_threshold from scoreFilterPreSortDesc failed."),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(
       SUCCESS != scoreFilterPreSortDesc->DelAttr("post_nms_num"),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "Delete the attr of post_nms_num from scoreFilterPreSortDesc failed."),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of post_nms_num from scoreFilterPreSortDesc failed."),
       return PARAM_INVALID);
 
   ge::NodePtr scoreFilterPreSortNode = graph.AddNode(scoreFilterPreSortDesc);
@@ -186,8 +177,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor(),
                                            scoreFilterPreSortNode->GetInDataAnchor(i)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fusedNode->GetName().c_str(), i, scoreFilterPreSortNode->GetName().c_str(), i),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d].",
@@ -208,8 +198,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(scoreFilterPreSortNode->GetOutDataAnchor(0),
                                          rpnProposalPostProcessingNode->GetInDataAnchor(0)),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "Add edge from fused node:%s's index to fusion node:%s's 1st index failed. %lu %lu",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed. %lu %lu",
               scoreFilterPreSortNode->GetName().c_str(), rpnProposalPostProcessingNode->GetName().c_str(),
               scoreFilterPreSortDesc->GetOutputsSize(), rpnProposalPostProcessingDesc->GetInputsSize()),
       return FAILED);
@@ -219,8 +208,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(scoreFilterPreSortNode->GetOutDataAnchor(1),
                                          rpnProposalPostProcessingNode->GetInDataAnchor(1)),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "Add edge from fused node:%s's index to fusion node:%s's 2nd index failed. %lu %lu",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 2nd index failed. %lu %lu",
               scoreFilterPreSortNode->GetName().c_str(), rpnProposalPostProcessingNode->GetName().c_str(),
               scoreFilterPreSortDesc->GetOutputsSize(), rpnProposalPostProcessingDesc->GetInputsSize()),
       return FAILED);
@@ -253,8 +241,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(scoreFilterPreSortNode->GetOutControlAnchor(),
                                          rpnProposalPostProcessingNode->GetInControlAnchor()),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "Add edge from node:%s's control to node:%s's control failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from node:%s's control to node:%s's control failed.",
               scoreFilterPreSortNode->GetName().c_str(), rpnProposalPostProcessingNode->GetName().c_str()),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from node:%s's control to node:%s's control index.",
@@ -281,8 +268,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     }
   }
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed",
-                                                   fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
                     return FAILED);
   fusionNodes.push_back(scoreFilterPreSortNode);
   fusionNodes.push_back(rpnProposalPostProcessingNode);

@@ -86,8 +86,7 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
 vector<FusionPattern*> PriorBoxPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PriorBoxFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_PRIORBOX, {PRIORBOX}).SetOutput(PATTERN_PRIORBOX);
@@ -212,15 +211,13 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
 Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into PriorBoxPass");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_PRIORBOX, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of priorbox
   ge::OpDescPtr priorboxDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(priorboxDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
-                                                   return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   // Get inputs
   ge::GeTensorDesc priorboxInputTensor = fusedNode->GetOpDesc()->GetInputDesc(0);
@@ -387,16 +384,13 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   ge::GeTensorPtr assitPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Input type is FP16.");
   unique_ptr<uint16_t[]> outputAssit(new (std::nothrow) uint16_t[dimNums]());
-  FUSION_PASS_CHECK(outputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "outputAssit is NULL"),
+  FUSION_PASS_CHECK(outputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAssit is NULL"),
                     return PARAM_INVALID);
   ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(outputAssit.get()));
   FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
   // vector to tensor for const
   ret = BoxValueGenFP16(outputDims, outputData, outputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Generate data by FP16 failed."),
-                    return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Generate data by FP16 failed."), return ret);
   // set output type to fp16
   boxOutTensorDesc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_MAKE_SHARED(

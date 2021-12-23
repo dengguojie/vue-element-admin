@@ -48,8 +48,7 @@ vector<FusionPattern *> HardMaxPass::DefinePatterns()
 {
     vector<FusionPattern *> patterns;
     FusionPattern *pattern = (new (std::nothrow) FusionPattern("HardMaxPass"));
-    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "new pattern error"),
-                      return patterns);
+    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "new pattern error"), return patterns);
     pattern->AddOpDesc(PATTERN_FUSEDNODE, { "HardMax" }).SetOutput(PATTERN_FUSEDNODE);
     patterns.push_back(pattern);
     return patterns;
@@ -69,9 +68,7 @@ Status HardMaxPass::CreateArgMaxDNode(ge::ComputeGraph &graph, ge::NodePtr &fuse
     vector<int64_t> output_shape_vec;
     int64_t dimension = 0;
     auto ret = op.GetAttr("axis", dimension);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "CreateArgMax GetAttr dimension fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateArgMax GetAttr dimension fail"), return FAILED);
     if (dimension < 0) {
         dimension += input_size;
     }
@@ -91,11 +88,9 @@ Status HardMaxPass::CreateArgMaxDNode(ge::ComputeGraph &graph, ge::NodePtr &fuse
     output_desc.SetDataType(ge::DT_INT32);
     output_desc.SetOriginDataType(ge::DT_INT32);
     ret = new_desc->AddInputDesc("x", input_desc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateArgmax AddInputDesc fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateArgmax AddInputDesc fail"), return FAILED);
     ret = new_desc->AddOutputDesc("y", output_desc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateArgmax AddOutputDesc fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateArgmax AddOutputDesc fail"), return FAILED);
     new_node = graph.AddNode(new_desc);
     Operator new_op = ge::OpDescUtils::CreateOperatorFromNode(new_node);
     new_op.SetAttr("dimension", dimension);
@@ -111,12 +106,10 @@ Status HardMaxPass::CreateOneHotDNode(ge::ComputeGraph &graph, ge::NodePtr &fuse
     ge::GeTensorDesc input_desc = argmax_node->GetOpDesc()->GetOutputDesc(0);
     ge::GeTensorDesc output_desc = fused_node->GetOpDesc()->GetInputDesc(0);
     auto ret = new_desc->AddInputDesc("x", input_desc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "CreateOneHotDNode AddInputDesc one fail."),
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateOneHotDNode AddInputDesc one fail."),
         return FAILED);
     ret = new_desc->AddOutputDesc("y", output_desc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "CreateOneHotDNode AddInputDesc one fail."),
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "CreateOneHotDNode AddInputDesc one fail."),
         return FAILED);
     new_node = graph.AddNode(new_desc);
     Operator new_op = ge::OpDescUtils::CreateOperatorFromNode(new_node);
@@ -160,14 +153,12 @@ Status AssistDataGen(int32_t data, uint16_t *output)
 }
 
 Status HardMaxPass::OnValueConstNode(vector<int64_t> &on_value_tensor_shape, ge::GeTensorDesc &input_desc_one,
-	                             ge::GeTensorPtr &assit_on_value_ptr, int32_t on_value,
- ge::GeTensorDesc &on_value_tensor_desc) const
+	                             ge::GeTensorPtr &assit_on_value_ptr, int32_t on_value, ge::GeTensorDesc &on_value_tensor_desc) const
 {
     int64_t on_value_dim_num = GetDimN(on_value_tensor_shape);
     Status ret = SetConstDesc(on_value_tensor_shape, on_value_tensor_desc, input_desc_one);
     unique_ptr<uint16_t[]> on_value_assit(new (std::nothrow) uint16_t[on_value_dim_num]());
-    FUSION_PASS_CHECK(on_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "on_value_assit is NULL"),
+    FUSION_PASS_CHECK(on_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "on_value_assit is NULL"),
         return PARAM_INVALID);
 		
     ret = NnSet(on_value_dim_num, UINT_NUM_ZERO, *reinterpret_cast<uint16_t *>(on_value_assit.get()));
@@ -186,8 +177,7 @@ Status HardMaxPass::OffValueConstNode(vector<int64_t> &off_value_tensor_shape, g
     int64_t off_value_dim_num = GetDimN(off_value_tensor_shape);
     Status ret = SetConstDesc(off_value_tensor_shape, off_value_tensor_desc, input_desc_one);
     unique_ptr<uint16_t[]> off_value_assit(new (std::nothrow) uint16_t[off_value_dim_num]());
-    FUSION_PASS_CHECK(off_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "off_value_assit is NULL"),
+    FUSION_PASS_CHECK(off_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "off_value_assit is NULL"),
         return PARAM_INVALID);
     ret = NnSet(off_value_dim_num, UINT_NUM_ZERO, *reinterpret_cast<uint16_t *>(off_value_assit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "NnSet failed."), return ret);
@@ -204,13 +194,10 @@ Status HardMaxPass::AddEdgeToOneHotDForOut(ge::NodePtr &fused_node, ge::NodePtr 
     Status ret = SUCCESS;
     for (auto in_data_anchor : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
         ret = ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), in_data_anchor);
-        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                          "AddEdgeToOneHotDForOut removeEdge fail"),
+        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdgeToOneHotDForOut removeEdge fail"),
         return FAILED);
         ret = ge::GraphUtils::AddEdge(one_hot_d_node->GetOutDataAnchor(0), in_data_anchor);
-        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                          "AddEdgeToOneHotDForOut addEdge fail"),
-                          return FAILED);
+        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdgeToOneHotDForOut addEdge fail"), return FAILED);
     }
     return SUCCESS;
 }
@@ -229,8 +216,7 @@ Status HardMaxPass::RemoveFusedNode(ge::ComputeGraph &graph, ge::NodePtr &fused_
         }
     }
 	
-    FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
-                      "RemoveFusedNode error"),
+    FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "RemoveFusedNode error"),
         return FAILED);
     return SUCCESS;
 }
@@ -238,8 +224,7 @@ Status HardMaxPass::RemoveFusedNode(ge::ComputeGraph &graph, ge::NodePtr &fused_
 Status HardMaxPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes)
 {
     ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-    FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "Fusion GetNode Error"),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "Fusion GetNode Error"), return PARAM_INVALID);
 	
     ge::NodePtr one_hot_d_node;
     ge::NodePtr argmax_d_node;
@@ -249,24 +234,19 @@ Status HardMaxPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge:
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "Fusion fail"), return FAILED);
 	
     ret = CreateOneHotDNode(graph, fused_node, argmax_d_node, one_hot_d_node, depth, dim);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "Fusion CreateOneHotDNode fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "Fusion CreateOneHotDNode fail"), return FAILED);
 	
     fusion_nodes.push_back(argmax_d_node);
     fusion_nodes.push_back(one_hot_d_node);
 	
-    ret = ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                  argmax_d_node->GetInDataAnchor(0));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdge to argmax_d_node fail"),
-                      return FAILED);
+    ret = ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(), argmax_d_node->GetInDataAnchor(0));
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdge to argmax_d_node fail"), return FAILED);
 	
     ret = ge::GraphUtils::AddEdge(argmax_d_node->GetOutDataAnchor(0), one_hot_d_node->GetInDataAnchor(0));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdge to one_hot_d_node fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdge to one_hot_d_node fail"), return FAILED);
 	
     ret = AddEdgeToOneHotDForOut(fused_node, one_hot_d_node);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdgeToOneHotDForOut fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "AddEdgeToOneHotDForOut fail"), return FAILED);
 	
     vector<int64_t> on_and_off_shape;
     on_and_off_shape.push_back(SCALAR_SHAPE_SIZE);
@@ -295,8 +275,7 @@ Status HardMaxPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge:
     const_off_value_input->GetOpDesc()->SetType("Const");
 	
     ret = RemoveFusedNode(graph, fused_node);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "RemoveFusedNode fail"),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass", "RemoveFusedNode fail"), return FAILED);
 	
     return SUCCESS;
 }

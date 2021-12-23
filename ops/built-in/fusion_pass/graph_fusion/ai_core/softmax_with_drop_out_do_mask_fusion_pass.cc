@@ -59,8 +59,7 @@ vector<FusionPattern*> SoftmaxWithDropOutDoMaskFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                                  vector<ge::NodePtr>& newNodes) {
+Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxWithDropOutDoMaskFusionPass fusion begin.");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_SOFTMAX, mapping);
   ge::NodePtr dropoutNode = GetNodeFromMapping(PATTERN_DROPOUT, mapping);
@@ -90,11 +89,9 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
-  newOpdesc = std::make_shared<ge::OpDesc>(dropoutNode->GetName() + "/" + SOFTMAXWITHDROPOUTDOMASK,
-                                           SOFTMAXWITHDROPOUTDOMASK);
+  newOpdesc = std::make_shared<ge::OpDesc>(dropoutNode->GetName() + "/" + SOFTMAXWITHDROPOUTDOMASK, SOFTMAXWITHDROPOUTDOMASK);
 
-  FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "newOpdesc is null, fusion failed."),
+  FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // add inputs
@@ -115,8 +112,7 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   input_tensor0.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc(input_tensor0) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x failed.",
-                                     newOpName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x failed.", newOpName.c_str()),
       return FAILED);
 
   ge::GeTensorDesc input_tensor1 = dropoutNode->GetOpDesc()->GetInputDesc(1);
@@ -128,8 +124,7 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
 
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc(input_tensor1) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input mask failed.",
-                                     newOpName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input mask failed.", newOpName.c_str()),
       return FAILED);
 
   // add output
@@ -141,8 +136,7 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   output_tensor0.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(
       newOpdesc->AddOutputDesc(output_tensor0) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output y1 failed.",
-                                     newOpName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output y1 failed.", newOpName.c_str()),
       return FAILED);
 
   ge::GeTensorDesc output_tensor1 = dropoutNode->GetOpDesc()->GetOutputDesc(0);
@@ -153,8 +147,7 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   output_tensor1.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_CHECK(
       newOpdesc->AddOutputDesc(output_tensor1) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output y2 failed.",
-                                     newOpName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output y2 failed.", newOpName.c_str()),
       return FAILED);
 
   ge::NodePtr newNode = graph.AddNode(newOpdesc);
@@ -178,44 +171,36 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
       continue;
     }
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(softmaxNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge1 failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge1 failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(newNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge1 failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge1 failed."), return FAILED);
   }
 
   for (auto &inDataAnchor : dropoutNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(dropoutNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge2 failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge2 failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(newNode->GetOutDataAnchor(1), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge2 failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge2 failed."), return FAILED);
   }
 
   if (dropoutNode->GetOutControlAnchor()) {
     for (auto &inControlAnchor : dropoutNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(dropoutNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(newNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out control edge failed."),
-                                                       return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out control edge failed."), return FAILED);
     }
   }
 
   // connect input edge
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(softmaxNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                              newNode->GetInDataAnchor(0)) != SUCCESS,
+      ge::GraphUtils::AddEdge(softmaxNode->GetInDataAnchor(0)->GetPeerOutAnchor(), newNode->GetInDataAnchor(0)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
               softmaxNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(dropoutNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                              newNode->GetInDataAnchor(1)) != SUCCESS,
+      ge::GraphUtils::AddEdge(dropoutNode->GetInDataAnchor(1)->GetPeerOutAnchor(), newNode->GetInDataAnchor(1)) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
               dropoutNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
               newNode->GetName().c_str()),
@@ -224,11 +209,9 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   // set grad op type to
   newNode->GetOpDesc()->SetType(SOFTMAXWITHDROPOUTDOMASK);
 
-  FUSION_PASS_CHECK(graph.RemoveNode(softmaxNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove softmax node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(softmaxNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove softmax node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(dropoutNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove dropout node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(dropoutNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove dropout node failed."),
                     return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass fusion end");
 

@@ -78,8 +78,7 @@ FusionConst2AttrOpRegister& FusionConst2AttrOpRegister::SetConstToAttr(int attrI
   return *this;
 }
 
-FusionConst2AttrOpRegister& FusionConst2AttrOpRegister::SetPreCheckFunc(
-  std::function<Status(ge::NodePtr)> preCheckFunc) {
+FusionConst2AttrOpRegister& FusionConst2AttrOpRegister::SetPreCheckFunc(std::function<Status(ge::NodePtr)> preCheckFunc) {
   preCheckFunc_ = preCheckFunc;
   return *this;
 }

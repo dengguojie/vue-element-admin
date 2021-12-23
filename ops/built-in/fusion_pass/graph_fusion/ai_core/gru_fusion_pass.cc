@@ -52,8 +52,7 @@ vector<FusionPattern*> GRUFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("GRUFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -66,26 +65,22 @@ vector<FusionPattern*> GRUFusionPass::DefinePatterns() {
 Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of GRU
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null."), return PARAM_INVALID);
 
   // get the OpDescPtr of GRU
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode's OpDesc is null."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."),
                     return PARAM_INVALID);
 
   auto gruOp = ge::OperatorFactory::CreateOperator(fusedDesc->GetName() + "_splitD_layer", "DynamicGRUV2");
-  FUSION_PASS_CHECK(gruOp.IsEmpty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "create DynamicGRUV2 operator error"),
+  FUSION_PASS_CHECK(gruOp.IsEmpty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2 operator error"),
                     return FAILED);
 
   // create DynamicGRUV2 OpDesc
   std::shared_ptr<ge::OpDesc> gruOpDesc = nullptr;
   gruOpDesc = ge::OpDescUtils::GetOpDescFromOperator(gruOp);
   gruOp.BreakConnect();
-  FUSION_PASS_CHECK(gruOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "gruOpDesc is null, DynamicGRUV2 failed."),
+  FUSION_PASS_CHECK(gruOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "gruOpDesc is null, DynamicGRUV2 failed."),
                     return PARAM_INVALID);
 
   // process x
@@ -169,12 +164,10 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     // add bias Node
     OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU has bias input.");
     FUSION_PASS_CHECK(AddBiasSplitNode(graph, fusedNode, splitNode) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias split node failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias split node failed."), return FAILED);
     // splitNode must not be nullptr when AddBiasSplit returns SUCCESS
     ge::OpDescPtr splitDesc = splitNode->GetOpDesc();
-    FUSION_PASS_CHECK(splitDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "splitNode's OpDesc is null."),
+    FUSION_PASS_CHECK(splitDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitNode's OpDesc is null."),
                       return PARAM_INVALID);
     GeTensorDesc splitOutDesc = splitDesc->GetOutputDesc(0);
     gruOpDesc->UpdateInputDesc("bias_input", splitOutDesc);
@@ -183,8 +176,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
 
   // create DynamicGRUV2 Node
   ge::NodePtr gruNode = graph.AddNode(gruOpDesc);
-  FUSION_PASS_CHECK(gruNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "DynamicGRUV2 node is null, fusion failed."),
+  FUSION_PASS_CHECK(gruNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DynamicGRUV2 node is null, fusion failed."),
                     return FAILED);
 
   // connect bias(splitD) to gru bias input
@@ -192,8 +184,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     for (int i = 0; i < BIAS_SPLIT_GROUP; i++) {
       graphStatus status = GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i),
                                                gruNode->GetInDataAnchor(i + BIAS_INPUT_INDEX));
-      FUSION_PASS_CHECK(status != GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                        "add slice to conv edge fail"),
+      FUSION_PASS_CHECK(status != GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"),
                         return FAILED);
     }
   }
@@ -201,22 +192,18 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // connect x
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                        gruNode->GetInDataAnchor(0)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "add DynamicLSTMV2 edge to fusion node x failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node x failed."), return FAILED);
 
   // connect weight_input
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                                        gruNode->GetInDataAnchor(1)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "add DynamicLSTMV2 edge to fusion node weight_input failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_input failed."),
                     return FAILED);
 
   // connect weight_hidden
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
                                                        gruNode->GetInDataAnchor(2)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "add DynamicLSTMV2 edge to fusion node weight_hidden failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_hidden failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "hasSeqLength");
@@ -231,11 +218,9 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   if (yDims[0] > first_dim_value) {
     ge::NodePtr slice_node = nullptr;
     auto ret = CreateSliceNode(graph, gruNode, slice_node);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Create slice node fail."),
-                      return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Create slice node fail."), return FAILED);
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(1), slice_node->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddEdge for slice node fail"),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddEdge for slice node fail"), return FAILED);
     output_node = slice_node;
     anchor_index = 0;
   }
@@ -269,8 +254,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = yOriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "add DynamicLSTMV2 edge to fusion node output y failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y failed."),
                       return FAILED);
   }
 
@@ -279,9 +263,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(output_node->GetOutDataAnchor(anchor_index), oriTopPeerAnchorPtri),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "add DynamicLSTMV2 edge to fusion node output y_h failed."),
-                                       return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y_h failed."), return FAILED);
   }
 
   return SUCCESS;
@@ -289,19 +271,16 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
 
 Status GRUFusionPass::AddBiasSplitNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::NodePtr& splitNode) {
   OpDescPtr splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
-  FUSION_PASS_CHECK(splitDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "splitD is null, SplitD failed."),
+  FUSION_PASS_CHECK(splitDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."),
                     return PARAM_INVALID);
   AttrUtils::SetInt(splitDesc, "split_dim", 1);
   AttrUtils::SetInt(splitDesc, "num_split", BIAS_SPLIT_GROUP);
 
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode's OpDesc is null."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."),
                     return PARAM_INVALID);
   ge::GeTensorDesc bias = fusedDesc->GetInputDesc(BIAS_INPUT_INDEX);
-  FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "add SplitD input"),
+  FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add SplitD input"),
                     return FAILED);
 
   // build split node Output Desc
@@ -317,20 +296,17 @@ Status GRUFusionPass::AddBiasSplitNode(ge::ComputeGraph& graph, ge::NodePtr& fus
   splitOutDesc.SetOriginShape(splitDShape);
   for (int i = 0; i < BIAS_SPLIT_GROUP; i++) {
     FUSION_PASS_CHECK(splitDesc->AddOutputDesc(splitOutDesc) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias split output failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias split output failed."), return FAILED);
   }
 
   // create SplitD Node
   splitNode = graph.AddNode(splitDesc);
-  FUSION_PASS_CHECK(splitNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "SplitD node is null, fusion failed."),
+  FUSION_PASS_CHECK(splitNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SplitD node is null, fusion failed."),
                     return FAILED);
   // connect bias to Split input
   graphStatus status = GraphUtils::AddEdge(fusedNode->GetInDataAnchor(BIAS_INPUT_INDEX)->GetPeerOutAnchor(),
                                            splitNode->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(status != GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "add data to Split edge fail"),
+  FUSION_PASS_CHECK(status != GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add data to Split edge fail"),
                     return FAILED);
   return SUCCESS;
 }
@@ -348,9 +324,7 @@ Status GRUFusionPass::CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_
   ge::Format data_format = output_desc1.GetFormat();
   ge::DataType data_type = output_desc1.GetDataType();
   auto ret = new_desc->AddInputDesc(GeTensorDesc(input_shape, data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("GRUFusionPass",
-                    "CreateSliceNode AddInputDesc fail"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("GRUFusionPass", "CreateSliceNode AddInputDesc fail"), return FAILED);
   auto input_desc = new_desc->GetInputDesc(0);
   input_desc.SetOriginShape(origin_shape);
   input_desc.SetOriginDataType(data_type);
@@ -370,9 +344,7 @@ Status GRUFusionPass::CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_
   }
   ge::GeShape output_shape(output_dims);
   ret = new_desc->AddOutputDesc(GeTensorDesc(output_shape, data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("GRUFusionPass",
-                    "CreateSliceNode AddOutputDesc fail"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("GRUFusionPass", "CreateSliceNode AddOutputDesc fail"), return FAILED);
   auto output_desc = new_desc->GetOutputDesc(0);
   output_desc.SetOriginShape(origin_output_shape);
   output_desc.SetOriginDataType(data_type);
@@ -393,15 +365,12 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
 
   vector<int64_t> perm = {0, 2, 1};
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(transposeOpdesc, "perm", perm),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set perm to %s failed.",
-                                                   transposeOpdesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set perm to %s failed.", transposeOpdesc->GetName().c_str()),
                     return FAILED);
 
   ge::GeTensorDesc inputDesc = weightNode->GetOpDesc()->GetOutputDesc(0).Clone();
   std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
-  FUSION_PASS_CHECK(dims.size() != 3, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "weight dim size is not 3."),
-                    return FAILED);
+  FUSION_PASS_CHECK(dims.size() != 3, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weight dim size is not 3."), return FAILED);
   std::vector<int64_t> newDim = {dims[0], dims[2], dims[1]};
 
   ge::GeTensorDesc outputDesc = gruNode->GetOpDesc()->GetInputDesc(anchorIndex).Clone();
@@ -409,12 +378,10 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
   outputDesc.SetShape(GeShape(newDim));
 
   FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.",
-                                                   transposeOpdesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.", transposeOpdesc->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.",
-                                                   transposeOpdesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.", transposeOpdesc->GetName().c_str()),
                     return FAILED);
 
   ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
@@ -423,18 +390,15 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
   ge::InDataAnchorPtr dst = gruNode->GetInDataAnchor(anchorIndex);
 
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove %s input edge error",
-                                                   gruNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove %s input edge error", gruNode->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, transposeNode->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             weightNode->GetName().c_str(), transposeNode->GetName().c_str()),
                     return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), dst) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             transposeNode->GetName().c_str(), gruNode->GetName().c_str()),
                     return FAILED);
   return SUCCESS;

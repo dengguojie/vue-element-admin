@@ -106,8 +106,7 @@ vector<FusionPattern*> MatrixSetDiagFusionPass::DefinePatterns() {
   // matrix_set_diag->matrix_set_diag_d
   // define MatrixSetDiagFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatrixSetDiagFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -151,8 +150,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   int64_t dimsInput1 = matrixsetdiagInputShape.GetDimNum() - 2;
   for (size_t j = 0; j < matrixsetdiagInputShape.GetDimNum(); ++j) {
     if (PatternFusionUtil::IsUnknownShape(matrixsetdiagInputShape.GetDim(j))) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     dimNums = matrixsetdiagInputShape.GetDim(j) * dimNums;
@@ -164,12 +162,10 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   if (PatternFusionUtil::IsUnknownShape(dimNums1) ||
       PatternFusionUtil::IsUnknownShape(dimNums2)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-  FUSION_PASS_CHECK(dimNums1 == 0 || dimNums2 == 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "dims num should not be zero."),
+  FUSION_PASS_CHECK(dimNums1 == 0 || dimNums2 == 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dims num should not be zero."),
                     return NOT_CHANGED);
   // GESHAPE->vector
   vector<int64_t> dimInfo = matrixsetdiagInputShape.GetDims();
@@ -180,8 +176,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::GeTensorPtr assitPtr = nullptr;
   if (dataType == ge::DT_FLOAT) {
     unique_ptr<float[]> inputAssit(new (std::nothrow) float[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -204,8 +199,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                             return PARAM_INVALID);
   } else if (dataType == ge::DT_INT32) {
     unique_ptr<int32_t[]> inputAssit(new (std::nothrow) int32_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums, INT_NUM_ZERO, *reinterpret_cast<int32_t*>(inputAssit.get()));
@@ -229,8 +223,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                             return PARAM_INVALID);
   } else if (dataType == ge::DT_FLOAT16) {
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -253,8 +246,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                             return PARAM_INVALID);
   } else if (dataType == ge::DT_INT8) {
     unique_ptr<int8_t[]> inputAssit(new (std::nothrow) int8_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums, INT8_NUM_ZERO, *reinterpret_cast<int8_t*>(inputAssit.get()));
@@ -278,8 +270,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                             return PARAM_INVALID);
   } else if (dataType == ge::DT_UINT8) {
     unique_ptr<uint8_t[]> inputAssit(new (std::nothrow) uint8_t[dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums, UINT8_NUM_ZERO, *reinterpret_cast<uint8_t*>(inputAssit.get()));

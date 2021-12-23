@@ -89,8 +89,7 @@ vector<FusionPattern*> PReluAbsFusionPass::DefinePatterns() {
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PReluAbsFusionPass");
 
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_RELU, {RELU_NODE})
@@ -120,23 +119,17 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::NodePtr subNode = GetNodeFromMapping(PATTERN_SUB, mapping);
   ge::NodePtr mul1Node = GetNodeFromMapping(PATTERN_MUL1, mapping);
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
-  FUSION_PASS_CHECK(addNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "addNode is null, fusion failed."),
+  FUSION_PASS_CHECK(addNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "addNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(reluNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "reluNode is null, fusion failed."),
+  FUSION_PASS_CHECK(reluNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reluNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(absNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "absNode is null, fusion failed."),
+  FUSION_PASS_CHECK(absNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "absNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(subNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "subNode is null, fusion failed."),
+  FUSION_PASS_CHECK(subNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "subNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul1Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "mul1Node is null, fusion failed."),
+  FUSION_PASS_CHECK(mul1Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul1Node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "mulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   int inputSize = reluNode->GetInDataNodes().size();
@@ -186,24 +179,20 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   std::string preluNodeName = addNode->GetName() + "_" + "prelu";
   std::shared_ptr<ge::OpDesc> preluOpdesc = std::make_shared<ge::OpDesc>(preluNodeName, PRELU_NODE);
-  FUSION_PASS_CHECK(preluOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "preluOpdesc is null, fusion failed."),
+  FUSION_PASS_CHECK(preluOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preluOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::GeTensorDesc reluInputDesc = reluNode->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(preluOpdesc->AddInputDesc("x", reluInputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reluNode input desc failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reluNode input desc failed."), return FAILED);
 
   ge::GeTensorDesc mulInputDesc = mulNode->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(preluOpdesc->AddInputDesc("weight", mulInputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulNode input desc failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulNode input desc failed."), return FAILED);
 
   ge::GeTensorDesc addOutputDesc = addNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(preluOpdesc->AddOutputDesc("y", addOutputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addNode output desc failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addNode output desc failed."), return FAILED);
 
   ge::NodePtr preluNode = graph.AddNode(preluOpdesc);
   preluNode->GetOpDesc()->SetType(PRELU_NODE);
@@ -211,42 +200,30 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reluNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             preluNode->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Add edge between reluNode and preluNode failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between reluNode and preluNode failed."), return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             preluNode->GetInDataAnchor(1)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Add edge between mulNode and preluNode failed."),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between mulNode and preluNode failed."), return FAILED);
 
   for (auto &inDataAnchor : addNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(addNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preluNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
 
-  FUSION_PASS_CHECK(graph.RemoveNode(addNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove addNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(addNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove addNode failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(reluNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove reluNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(reluNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reluNode failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(subNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove subNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(subNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove subNode failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul1Node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove mul1Node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul1Node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul1Node failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(absNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove absNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(absNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove absNode failed."),
                     return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove mulNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(mulNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mulNode failed."),
                     return FAILED);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Leave graph fusion PReluAbsFusionPass!");

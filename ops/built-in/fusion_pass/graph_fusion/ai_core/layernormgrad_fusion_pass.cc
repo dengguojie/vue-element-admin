@@ -48,8 +48,7 @@ vector<FusionPattern *> LayerNormGradFusionPass::DefinePatterns() {
   vector < FusionPattern * > patterns;
 
   FusionPattern *pattern = new(std::nothrow) FusionPattern("LayerNormGradFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
   return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -63,8 +62,7 @@ vector<FusionPattern *> LayerNormGradFusionPass::DefinePatterns() {
 //       including newly added nodes and fused but not deleted nodes
 Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector <ge::NodePtr> &fusionNodes) {
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
   return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr,
@@ -73,14 +71,12 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   ge::OpDescPtr layerNormXDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       layerNormXDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                     fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
   return PARAM_INVALID);
   ge::OpDescPtr layerNormBetaGammaDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       layerNormBetaGammaDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                     fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
   return PARAM_INVALID);
 
   if (layerNormXDesc->GetOutputsSize() < 3) {
@@ -143,8 +139,7 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   ge::NodePtr layerNormBetaGammaNode = graph.AddNode(layerNormBetaGammaDesc);
   FUSION_PASS_CHECK(
       layerNormXNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                     layerNormXNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", layerNormXNode->GetName().c_str()),
   return PARAM_INVALID);
   FUSION_PASS_CHECK(layerNormBetaGammaNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",

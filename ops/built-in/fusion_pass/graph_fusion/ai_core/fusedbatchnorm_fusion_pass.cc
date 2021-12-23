@@ -118,9 +118,7 @@ Status FusedBatchnormFusionPass::GetAllBatchNormNodes(ge::ComputeGraph& graph, v
 Status FusedBatchnormFusionPass::MatchBatchNormNode(NodePtr bnNodePtr, PassMatchResult& matchResult) {
   // BN node has epsilon attr
   OpDescPtr bnOpDescPtr = bnNodePtr->GetOpDesc();
-  FUSION_PASS_CHECK(bnOpDescPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "bnOpDescPtr is null."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bnOpDescPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnOpDescPtr is null."), return PARAM_INVALID);
   if (!ge::AttrUtils::HasAttr(bnOpDescPtr, "epsilon")) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fused batch norm node does not have epsilon attr.");
     return FAILED;
@@ -388,8 +386,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   bnReduceOp->AddOutputDesc("square_sum", matchResult.batchNormPtr->GetOpDesc()->GetInputDesc(2));
 
   ge::NodePtr bnReduceNode = graph.AddNode(bnReduceOp);
-  FUSION_PASS_CHECK(bnReduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "bnReduceNode is null, fusion failed."),
+  FUSION_PASS_CHECK(bnReduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnReduceNode is null, fusion failed."),
                     return PARAM_INVALID);
   // add edge for bnreduce node
   GraphUtils::AddEdge(matchResult.dataNodeOutAnchorVec[0], bnReduceNode->GetInDataAnchor(0));
@@ -415,8 +412,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
 
   ge::NodePtr bnUpdateNode = graph.AddNode(bnUpdateOp);
 
-  FUSION_PASS_CHECK(bnUpdateNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "bnUpdateNode is null, fusion failed."),
+  FUSION_PASS_CHECK(bnUpdateNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnUpdateNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // add edge for input of bnupdate
@@ -616,8 +612,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   for (NodePtr constNodePtr : matchResult.constNodeVec) {
     if (PatternFusionUtil::GetOutEdgeSize(constNodePtr) == 0) {
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNodePtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed",
-                                                       constNodePtr->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNodePtr->GetName().c_str()),
                         return FAILED);
       originalNodes.push_back(constNodePtr);
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNodePtr->GetName().c_str());

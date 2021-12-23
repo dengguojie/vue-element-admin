@@ -60,8 +60,7 @@ vector<FusionPattern*> TensorScatterAddFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TensorScatterAddFusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TensorScatterAddFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -72,25 +71,21 @@ vector<FusionPattern*> TensorScatterAddFusionPass::DefinePatterns() {
 Status TensorScatterAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TensorScatterAddFusionPass fusion begin.");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // create tensor_move OpDesc and scatter_nd_add OpDesc
   std::shared_ptr<ge::OpDesc> tensorMoveOpdesc = nullptr;
   tensorMoveOpdesc = std::make_shared<ge::OpDesc>(fusedNode->GetName(), TENSORMOVE);
   FUSION_PASS_CHECK(tensorMoveOpdesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensorMoveOpdesc is null, fusion failed."),
-                                                   return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensorMoveOpdesc is null, fusion failed."), return PARAM_INVALID);
   std::shared_ptr<ge::OpDesc> scatterNdAdddesc = nullptr;
   scatterNdAdddesc = std::make_shared<ge::OpDesc>(fusedNode->GetName(), SCATTERNDADD);
   FUSION_PASS_CHECK(scatterNdAdddesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "scatterNdAdddesc is null, fusion failed."),
-                                                   return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "scatterNdAdddesc is null, fusion failed."), return PARAM_INVALID);
 
   // add input and output
   ge::GeTensorDesc input_x = fusedNode->GetOpDesc()->GetInputDesc(0);
@@ -121,13 +116,11 @@ Status TensorScatterAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   scatterNdAdd.SetAttr("use_locking", false);
 
   FUSION_PASS_CHECK(tensorMoveNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "tensorMoveNode fusionNode:%s is null, fusion failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensorMoveNode fusionNode:%s is null, fusion failed.",
                             tensorMoveNode->GetName().c_str()),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(scatterNdAddNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "scatterNdAddNode fusionNode:%s is null, fusion failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "scatterNdAddNode fusionNode:%s is null, fusion failed.",
                             scatterNdAddNode->GetName().c_str()),
                     return PARAM_INVALID);
 
@@ -157,15 +150,13 @@ Status TensorScatterAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   // connect scatter_nd_sub'output with next node
   for (auto inDataAnchor : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
 
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(scatterNdAddNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge4 failed."), return FAILED);
   }
 
-  FUSION_PASS_CHECK(graph.RemoveNode(fusedNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Remove fusedNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(fusedNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove fusedNode failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TensorScatterAddFusionPass fusion end");

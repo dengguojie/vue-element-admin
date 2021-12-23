@@ -233,8 +233,7 @@ vector<FusionPattern*> ProposalFusionPass::DefinePatterns() {
   // proposal->proposal_d
   // define DiagFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ProposalFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -249,15 +248,13 @@ Status ProposalFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into ProposalFusionPass");
   // proposal node
   ge::NodePtr proposalVNode = GetNodeFromMapping(PATTERN_PROPOSAL, mapping);
-  FUSION_PASS_CHECK(proposalVNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "proposalVNode is null, fusion failed."),
+  FUSION_PASS_CHECK(proposalVNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "proposalVNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of proposal
   ge::OpDescPtr proposalDesc = proposalVNode->GetOpDesc();
   FUSION_PASS_CHECK(proposalDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "proposalVNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "proposalVNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get the input desc of the entance of proposal node to differentiate between const and var
@@ -277,8 +274,7 @@ Status ProposalFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::GeTensorPtr assitPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into ProposalFusionPass DT_FLOAT16");
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));

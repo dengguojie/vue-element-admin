@@ -55,22 +55,17 @@ Status TransdataTransdataPass::RemoveNode(ge::NodePtr node, ge::ComputeGraph& gr
   for (size_t i = 0; i < node->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = node->GetInDataAnchor(i);
     FUSION_PASS_CHECK(inDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "inDataAnchor is null, remove node failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, remove node failed."), return FAILED);
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(preOutDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "preOutDataAnchor is null, remove node failed."),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preOutDataAnchor is null, remove node failed."), return FAILED);
 
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutDataAnchor, inDataAnchor) != ge::GRAPH_SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, node->GetName().c_str());
   }
   // delete the node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove node failed"),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
                     return FAILED);
   return SUCCESS;
 }
@@ -79,8 +74,7 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("TransdataTransdataPass1");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern1->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_TRANSDATA_2, {"TransData"})
@@ -92,8 +86,7 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass1 pattern end");
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("TransdataTransdataPass2");
-  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern2->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_TRANSDATA_2, {"TransData"})
@@ -109,8 +102,7 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass2 pattern end");
 
   FusionPattern* pattern3 = new (std::nothrow) FusionPattern("TransdataTransdataPass3");
-  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern3->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_TRANSDATA_2, {"TransData"})
@@ -140,14 +132,11 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     reshapeOP = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   }
 
-  FUSION_PASS_CHECK(transData_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "transData_1 is null"),
+  FUSION_PASS_CHECK(transData_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(transData_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "transData_2 is null"),
+  FUSION_PASS_CHECK(transData_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 is null"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(fullyConnection == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fullyConnection is null"),
+  FUSION_PASS_CHECK(fullyConnection == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fullyConnection is null"),
                     return PARAM_INVALID);
 
   if ((reshapeOP != nullptr) && (reshapeOP->GetOutDataNodes().size() > 1)){
@@ -172,8 +161,7 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return SUCCESS;
   }
   ge::OpDescPtr firstTransDataOpDesc = transData_1->GetOpDesc();
-  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "transData_1 opdesc is null"),
+  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 opdesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc firstTransDataInputTensor = firstTransDataOpDesc->GetInputDesc(0);
   if (firstTransDataInputTensor.GetFormat() != ge::FORMAT_NC1HWC0) {
@@ -192,32 +180,26 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   auto firstTransDataOutDataAnchor = transData_1->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(firstTransDataOutDataAnchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "firstTransDataOutDataAnchor is null"),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "firstTransDataOutDataAnchor is null"), return FAILED);
 
   auto secondTransDataOutDataAnchor = transData_2->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(secondTransDataOutDataAnchor == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "secondTransDataOutDataAnchor is null"),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "secondTransDataOutDataAnchor is null"), return FAILED);
   auto secondTransDataPeerInDataAnchor = secondTransDataOutDataAnchor->GetPeerInDataAnchors();
 
   // delete transData_2 node
   if (reshapeOP != nullptr)
     FUSION_PASS_CHECK(graph.RemoveNode(reshapeOP) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape node failed"),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reshape node failed"), return FAILED);
   if (reformatOP != nullptr)
     FUSION_PASS_CHECK(graph.RemoveNode(reformatOP) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reformat node failed"),
-                                                     return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove reformat node failed"), return FAILED);
   FUSION_PASS_CHECK(RemoveNode(transData_2, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_2 node failed"),
-                                                   return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_2 node failed"), return FAILED);
 
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(firstTransDataOutDataAnchor, secondTransDataPeerInDataAnchor.at(0)) != ge::GRAPH_SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add TransData_1 and  fullyConnection edge error"),
-                                     return FAILED);
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add TransData_1 and  fullyConnection edge error"), return FAILED);
 
   fusionNodes.push_back(transData_1);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass fusion end");
