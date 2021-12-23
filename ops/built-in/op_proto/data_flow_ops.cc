@@ -754,7 +754,7 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
   }
 
   Shape elemShape(std::move(elem_dims));
-  if ((ShapeFullDefined(elemShape) || identical_shapes) && RankKnown(elemShape)) {
+  if ((ShapeFullDefined(elemShape) || identical_shapes)) {
     ShapeAndType shape_and_type(elemShape, dtype);
     std::vector<ShapeAndType> handle_shapes_and_types;
     handle_shapes_and_types.reserve(1);
@@ -875,32 +875,32 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
-  Shape input_or_attr_shape;
-  if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
-    input_or_attr_shape = shapes_and_types.at(0).at(0).GetShape();
-  } else {
-    Operator::OpListInt elem_dims;
-    if (op.GetAttr("element_shape", elem_dims) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[element_shape] failed."));
-      return GRAPH_FAILED;
-    }
-    input_or_attr_shape = Shape(std::move(elem_dims));
-  }
 
+  Shape input_or_attr_shape;
   ShapeAndRange shape_and_range;
   bool geted = false;
-  if (!RankKnown(input_or_attr_shape)) {
-    if (GetShapeAndRange(op, shape_and_range, geted, infer_context) != GRAPH_SUCCESS) {
-      AscendString op_name;
-      op.GetName(op_name);
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
-      return GRAPH_FAILED;
-    }
-    if (geted) {
-      input_or_attr_shape = shape_and_range.shape_;
+  if (GetShapeAndRange(op, shape_and_range, geted, infer_context) != GRAPH_SUCCESS) {
+    AscendString op_name;
+    op.GetName(op_name);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
+    return GRAPH_FAILED;
+  }
+  if (geted && RankKnown(shape_and_range.shape_)) {
+    input_or_attr_shape = shape_and_range.shape_;
+  } else {
+    std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
+    if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
+      input_or_attr_shape = shapes_and_types.at(0).at(0).GetShape();
+    } else {
+      Operator::OpListInt elem_dims;
+      if (op.GetAttr("element_shape", elem_dims) != GRAPH_SUCCESS) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[element_shape] failed."));
+        return GRAPH_FAILED;
+      }
+      input_or_attr_shape = Shape(std::move(elem_dims));
     }
   }
+
   Shape output_shape;
   if (Concatenate(indices_shape, input_or_attr_shape, output_shape) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Concatenate function, 1th shape",
