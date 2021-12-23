@@ -34,7 +34,6 @@ class SplitNodeRemoveFusionPass : public PatternFusionBasePass {
  private:
   const std::string FUSED_OP_TYPE = "Split";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_SPLIT_NODE_REMOVE_FUSION_PASS_H_

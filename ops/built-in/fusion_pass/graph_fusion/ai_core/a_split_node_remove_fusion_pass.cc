@@ -39,7 +39,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "Split";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeSplit";
 /*
