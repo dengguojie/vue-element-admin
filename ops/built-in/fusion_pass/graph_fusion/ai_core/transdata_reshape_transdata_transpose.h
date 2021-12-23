@@ -33,7 +33,7 @@ class TransdataTransposeFusionPass : public PatternFusionBasePass {
 
     private:
         Status UnlinkFusedNodeEdge(ge::NodePtr transdata1_node,
-                                   ge::NodePtr reshape_node ,
+                                   ge::NodePtr reshape_node,
                                    ge::NodePtr transdata2_node,
                                    ge::NodePtr transpose_node);
         const string FUSED_OP_TYPE = "TransdataReshapeTransdataTranspose";

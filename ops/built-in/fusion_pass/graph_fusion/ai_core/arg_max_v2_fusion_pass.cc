@@ -48,8 +48,7 @@ static const int64_t COMP = 2147483648;
 vector<FusionPattern*> ArgMaxV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ArgMaxV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                   "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_ARGMAXV2, {ARGMAXV2}).SetOutput(PATTERN_ARGMAXV2);
   patterns.push_back(pattern);
@@ -61,12 +60,10 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   string argmaxv2_node_type = argmaxv2_node->GetType();
   // get opdesc
   ge::OpDescPtr in_op_desc_ptr = argmaxv2_node->GetOpDesc();
-  FUSION_PASS_CHECK(argmaxv2_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Argmaxv2 node is null"),
+  FUSION_PASS_CHECK(argmaxv2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Argmaxv2 node is null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(in_op_desc_ptr == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "ArgMaxv2 OpDesc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ArgMaxv2 OpDesc is null, fusion failed."), return PARAM_INVALID);
   // get operator
   Operator op_argmaxv2 = ge::OpDescUtils::CreateOperatorFromNode(argmaxv2_node);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node %s begin fusion.", in_op_desc_ptr->GetName().c_str());
@@ -137,7 +134,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                       in_op_desc_ptr->GetName().c_str()),
                       return NOT_CHANGED);
   }
-  /* when argmaxv2 outputdata's dtype is int32 does not need fusion, otherwise, 
+  /* when argmaxv2 outputdata's dtype is int32 does not need fusion, otherwise,
   modify output's tensor dtype int64->int32 */
   DataType outputdata_type = in_op_desc_ptr->GetOutputDesc(0).GetDataType();
   FUSION_PASS_CHECK(outputdata_type == ge::DT_INT32,

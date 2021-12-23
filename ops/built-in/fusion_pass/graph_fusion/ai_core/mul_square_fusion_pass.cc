@@ -26,7 +26,7 @@
  */
 
 #include "mul_square_fusion_pass.h"
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include <map>
