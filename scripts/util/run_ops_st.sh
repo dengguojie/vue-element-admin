@@ -102,9 +102,9 @@ run_st() {
   for op_case in $(echo $json_cases); do
     echo "[INFO] run case file: $op_case"
     if [[ ! -e "$(dirname $op_case)/msopst.ini" ]];then
-      python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}"
+      timeout 10m python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}"
     else
-      python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}" -conf "$(dirname $op_case)/msopst.ini"
+      timeout 10m python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}" -conf "$(dirname $op_case)/msopst.ini"
       case_name=`grep -F "case_name"  $op_case|sed 's/^ \+//g; s/\"//g; s/, *//g'`
       result_file="${CANN_ST_OUT}/result.txt"
       echo ${case_name}" [pass]" >> "${result_file}" 2>/dev/null
