@@ -1,0 +1,467 @@
+[{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              255,
+              36
+          ],
+          "format": "ND",
+          "ori_shape": [-1,
+              255,
+              36
+          ],
+          "ori_format": "ND",
+          "typical_shape": [128, 255, 36],
+          "shape_range": [
+              [128, 128]
+          ],
+          "value_range": [
+              [128, 128]
+          ],
+          "name": "softmax",
+          "type": "float16"
+      },
+      {
+          "shape": [
+              128,
+              255,
+              36
+          ],
+          "format": "ND",
+          "ori_shape": [
+              128,
+              255,
+              36
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float16"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          128,
+          255,
+          36
+      ],
+      "format": "ND",
+      "ori_shape": [
+          128,
+          255,
+          36
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float16"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_000"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              255,
+              36
+          ],
+          "format": "ND",
+          "ori_shape": [-1,
+              255,
+              36
+          ],
+          "ori_format": "ND",
+          "typical_shape": [128, 255, 36],
+          "shape_range": [
+              [128, 128]
+          ],
+          "value_range": [
+              [128, 128]
+          ],
+          "name": "softmax",
+          "type": "float"
+      },
+      {
+          "shape": [
+              128,
+              255,
+              36
+          ],
+          "format": "ND",
+          "ori_shape": [
+              128,
+              255,
+              36
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          128,
+          255,
+          36
+      ],
+      "format": "ND",
+      "ori_shape": [
+          128,
+          255,
+          36
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_001"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              128
+          ],
+          "format": "ND",
+          "ori_shape": [-1,
+              128
+          ],
+          "ori_format": "ND",
+          "typical_shape": [16, 128],
+          "shape_range": [
+              [16, 16]
+          ],
+          "value_range": [
+              [16, 16]
+          ],
+          "name": "softmax",
+          "type": "float16"
+      },
+      {
+          "shape": [
+              16,
+              128
+          ],
+          "format": "ND",
+          "ori_shape": [
+              16,
+              128
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float16"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          16,
+          128
+      ],
+      "format": "ND",
+      "ori_shape": [
+          16,
+          128
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float16"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_002"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              123
+          ],
+          "format": "ND",
+          "ori_shape": [-1,
+              123
+          ],
+          "ori_format": "ND",
+          "name": "softmax",
+          "typical_shape": [123, 123],
+          "shape_range": [
+              [123, 123]
+          ],
+          "value_range": [
+              [123, 123]
+          ],
+          "type": "float"
+      },
+      {
+          "shape": [
+              123,
+              123
+          ],
+          "format": "ND",
+          "ori_shape": [
+              123,
+              123
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          123,
+          123
+      ],
+      "format": "ND",
+      "ori_shape": [
+          123,
+          123
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_003"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1],
+          "format": "ND",
+          "ori_shape": [-1],
+          "ori_format": "ND",
+          "typical_shape": [28],
+          "shape_range": [
+              [28, 28]
+          ],
+          "value_range": [
+              [28, 28]
+          ],
+          "name": "softmax",
+          "type": "float"
+      },
+      {
+          "shape": [
+              28
+          ],
+          "format": "ND",
+          "ori_shape": [
+              28
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          28
+      ],
+      "format": "ND",
+      "ori_shape": [
+          28
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_004"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              11
+          ],
+          "format": "ND",
+          "ori_shape": [-1,
+              11
+          ],
+          "ori_format": "ND",
+          "typical_shape": [11, 11],
+          "shape_range": [
+              [11, 11]
+          ],
+          "value_range": [
+              [11, 11]
+          ],
+          "name": "softmax",
+          "type": "float16"
+      },
+      {
+          "shape": [
+              11,
+              11
+          ],
+          "format": "ND",
+          "ori_shape": [
+              11,
+              11
+          ],
+          "ori_format": "ND",
+          "name": "grad_softmax",
+          "type": "float16"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          11,
+          11
+      ],
+      "format": "ND",
+      "ori_shape": [
+          11,
+          11
+      ],
+      "ori_format": "ND",
+      "name": "grad_x",
+      "type": "float16"
+  }],
+  "attr": [],
+  "case_name": "test_SoftmaxGrad_005"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              1,
+              16,
+              16,
+              16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [-1,
+              1,
+              16,
+              16,
+              16
+          ],
+          "ori_format": "NHWC",
+          "typical_shape": [16, 1, 16, 16, 16],
+          "shape_range": [
+              [16, 16]
+          ],
+          "value_range": [
+              [16, 16]
+          ],
+          "name": "softmax",
+          "type": "float16"
+      },
+      {
+          "shape": [
+              16,
+              1,
+              16,
+              16,
+              16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+              16,
+              1,
+              16,
+              16,
+              16
+          ],
+          "ori_format": "NHWC",
+          "name": "grad_softmax",
+          "type": "float16"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          16,
+          1,
+          16,
+          16,
+          16
+      ],
+      "format": "NC1HWC0",
+      "ori_shape": [
+          16,
+          1,
+          16,
+          16,
+          16
+      ],
+      "ori_format": "NHWC",
+      "name": "grad_x",
+      "type": "float16"
+  }],
+  "attr": [{
+      "name": "axes",
+      "type": "list_int",
+      "value": [-1]
+  }],
+  "case_name": "test_SoftmaxGrad_006"
+},
+{
+  "op": "SoftmaxGrad",
+  "input_desc": [{
+          "shape": [-1,
+              6,
+              546,
+              16,
+              16
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_shape": [-1,
+              8732,
+              90
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [8, 6, 546, 16, 16],
+          "shape_range": [
+              [8, 8]
+          ],
+          "value_range": [
+              [8, 8]
+          ],
+          "name": "softmax",
+          "type": "float16"
+      },
+      {
+          "shape": [
+              8,
+              6,
+              546,
+              16,
+              16
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_shape": [
+              8,
+              8732,
+              90
+          ],
+          "ori_format": "NCHW",
+          "name": "grad_softmax",
+          "type": "float16"
+      }
+  ],
+  "output_desc": [{
+      "shape": [
+          8,
+          6,
+          546,
+          16,
+          16
+      ],
+      "format": "FRACTAL_NZ",
+      "ori_shape": [
+          8,
+          8732,
+          90
+      ],
+      "ori_format": "NCHW",
+      "name": "grad_x",
+      "type": "float16"
+  }],
+  "attr": [{
+      "name": "axes",
+      "type": "list_int",
+      "value": [-1]
+  }],
+  "case_name": "test_SoftmaxGrad_007"
+}
+]
