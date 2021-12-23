@@ -819,7 +819,8 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     if format_b != "ND":
         shape_x2 = shape_x2 + [BLOCK_CUBE, BLOCK_CUBE]
 
-    _define_cache_tiling_var(input_x1, input_x2)
+    if "Ascend910" in soc_version:
+        _define_cache_tiling_var(input_x1, input_x2)
 
     tensor_x1 = tvm.placeholder(shape_x1, name="tensor_a", dtype=dtype_in)
     tensor_x2 = tvm.placeholder(shape_x2, name="tensor_b", dtype=dtype_in)

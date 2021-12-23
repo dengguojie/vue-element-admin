@@ -562,8 +562,8 @@ class MatmulTiling(CubeTilingOp):
         self.format_b = GEMMComputeParam.format_b
         self.bias_flag = self.tiling_info["bias_flag"]
         self.none_range_area = self.tiling_info["none_range_area"]
-        self.use_cache_tiling = True if (
-            self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and self.none_range_area) else False
+        self.use_cache_tiling = True if (self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and 
+                self.none_range_area and "Ascend910" in tbe_platform_info.get_soc_spec("SOC_VERSION")) else False
 
         if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             self.use_cache_tiling = False
