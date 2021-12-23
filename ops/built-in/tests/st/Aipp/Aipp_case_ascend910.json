@@ -1,0 +1,164 @@
+[
+  {
+    "case_name": "Aipp_dynamic_shape_aipp_1_ascend910a",
+    "op": "Aipp",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "images",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "name": "params"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "name": "features",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "aipp_config_path",
+        "type": "string",
+        "value": "/home/st_test/ops_testcase/st/Aipp/aipp_dynamic.cfg"
+      }
+    ]
+  }
+]
