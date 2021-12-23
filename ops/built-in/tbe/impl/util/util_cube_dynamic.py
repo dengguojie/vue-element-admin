@@ -361,12 +361,18 @@ class CubeParaProcess:
         self.dilations = paras.get("dilations")
         self.op_type = None
         self.valid_paras = {
-            "nhw_min": 1,
+            "n_min": 1,
+            "hw_min": 1,
             "hw_max": 4096,
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
                              "output": ("NCHW", "NHWC")},
             "valid_dtype": ("float16", "int8", "int32", "float32")
+        }
+        self.dim_valid_dict = {
+            N_DIM: (self.valid_paras.get("n_min"), None),
+            H_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")),
+            W_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max"))
         }
 
     def check_support_valid(self, in_shape, filter_shape):
@@ -413,18 +419,14 @@ class CubeParaProcess:
         """
 
         def _check_range(in_range, dim):
-            dim_valid_dict = {
-                N_DIM: (self.valid_paras.get("nhw_min"), None),
-                H_DIM: (self.valid_paras.get("nhw_min"), self.valid_paras.get("hw_max")),
-                W_DIM: (self.valid_paras.get("nhw_min"), self.valid_paras.get("hw_max"))
-            }
+            
             if in_range:
                 if not isinstance(in_range, (tuple, list)):
                     err_man.raise_err_specific_user(self.op_type, "type of range must be tuple or list.")
-                valid_lower, valid_upper = dim_valid_dict.get(dim)
+                valid_lower, valid_upper = self.dim_valid_dict.get(dim)
                 if not (isinstance(in_range[0], int) and isinstance(in_range[1], int)):
                     err_man.raise_err_specific_user(self.op_type, "each dimension of range must be int.")
-                if not in_range[0] or in_range[0] < valid_lower:
+                if in_range[0] < valid_lower:
                     err_man.raise_err_attr_range_invalid(
                         self.op_type, [valid_lower, valid_upper], \
                             DIM_TO_NAME[dim] + " of " + name + " in_format " + in_format, in_range[0])
@@ -557,8 +559,8 @@ class CubeParaProcess:
             out_w_upper = _get_output(in_range[W_DIM][1], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
                                       self.dilations[W_DIM])
-        if out_h_lower < self.valid_paras.get("nhw_min"):
-            out_h_lower = max(out_h_lower, self.valid_paras.get("nhw_min"))
+        if out_h_lower < self.valid_paras.get("hw_min"):
+            out_h_lower = max(out_h_lower, self.valid_paras.get("hw_min"))
             new_in_range[H_DIM] = (_get_lower_input(out_h_lower, w_shape[H_DIM], (self.pads[0], self.pads[1]), \
                 self.strides[H_DIM], self.dilations[H_DIM]), new_in_range[H_DIM][1])
             correct_range_flag = True
@@ -573,8 +575,8 @@ class CubeParaProcess:
             warnings.warn("The output calculated based on the higher limit of the input h " + \
                 "range is more than 4096, and the higher limit of the output h range is corrected " + \
                 "as {}".format(out_h_upper))
-        if out_w_lower < self.valid_paras.get("nhw_min"):
-            out_w_lower = max(out_w_lower, self.valid_paras.get("nhw_min"))
+        if out_w_lower < self.valid_paras.get("hw_min"):
+            out_w_lower = max(out_w_lower, self.valid_paras.get("hw_min"))
             new_in_range[W_DIM] = (_get_lower_input(out_w_lower, w_shape[W_DIM], (self.pads[2], self.pads[3]), \
                 self.strides[W_DIM], self.dilations[W_DIM]), new_in_range[W_DIM][1])
             correct_range_flag = True

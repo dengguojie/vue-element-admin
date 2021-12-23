@@ -299,6 +299,10 @@ def calc_conv2d(outs, option=None):
             tgt_area["fmap_h"] = tuple(new_in_range[2])
         if tgt_area["fmap_w"][0] != tgt_area["fmap_w"][1]:
             tgt_area["fmap_w"] = tuple(new_in_range[3])
+    if tgt_area.get('batch_n')[0] == 0:
+        batch_n_low = 1
+        batch_n_high = tgt_area.get('batch_n')[1]
+        tgt_area["batch_n"] = (batch_n_low, batch_n_high)
     tgt_list.append(tgt_area)
     # >>> start: generate tgt_area by format
     if fuzz_build:

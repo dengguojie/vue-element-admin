@@ -39,7 +39,7 @@ print("adding Connv2D dyanmic op param process")
 ut_case.add_cust_test_func(test_func=test_conv2d_param_process)
 
 
-def test_conv2d_param_process_2():
+def test_conv2d_param_process_dynamic():
     fmap = tvm.placeholder((-1, 2, 8, 8, 16), name="fmap", dtype="float16", attrs={"ori_shape": (-1, 32, 8, 8), "format": "NCHW", "ori_format": "NCHW", "range": [(1, 2), (32, 32), (8, 8), (8, 8)]})
     weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW"})
     bias_tensor = None
@@ -59,6 +59,5 @@ def test_conv2d_param_process_2():
     proc.check_range_valid([-1, 32, 8, 8], [(1, 2), (32, 32), (8, 8), (8, 8)], "test", "float16")
 
 if __name__ == '__main__':
-    test_conv2d_param_process_2()
+    test_conv2d_param_process_dynamic()
     ut_case.run("Ascend910A")
-

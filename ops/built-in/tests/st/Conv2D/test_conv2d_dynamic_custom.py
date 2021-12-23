@@ -22,8 +22,8 @@ def test_conv2d_param_process():
     print(ori_paras)
     proc = Conv2dParaProcess(ori_paras)
     proc.check_range_valid([-1, 32, 8, 8], [(1, 2), (32, 32), (8, 8), (8, 8)], "test", "float16")
+    proc.get_output_range([2, 1, 4096, 4096],[(1, None), (1, 1), (1, None), (1, None)])
 
 
 if __name__ == '__main__':
     test_conv2d_param_process()
-

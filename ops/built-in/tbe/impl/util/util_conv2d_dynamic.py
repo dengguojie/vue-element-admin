@@ -356,6 +356,15 @@ class Conv2dParaProcess(CubeParaProcess):
 
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
+        self.valid_paras = {
+            "n_min": 0,
+            "hw_min": 1,
+            "hw_max": 4096,
+            "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
+                             "input": ("NCHW", "NHWC"),
+                             "output": ("NCHW", "NHWC")},
+            "valid_dtype": ("float16", "int8", "int32", "float32")
+        }
 
     def check_support_valid(self, in_shape, w_shape):
         """
