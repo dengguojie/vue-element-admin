@@ -198,3 +198,23 @@ TEST_F(DecodeBboxTest_UT, InferShapeDecodeBbox_012) {
   std::vector<int64_t> expected_output_shape = {96, 4};
   EXPECT_EQ(decoded_boxes_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+
+TEST_F(DecodeBboxTest_UT, InferShapeDecodeBbox_013) {
+  ge::op::DecodeBbox op;
+  auto input_desc = create_desc_with_ori({-1, 16, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 16, 4}, ge::FORMAT_NCHW);
+  auto input_desc_1 = create_desc_with_ori({6, 16, 4}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {6, 16, 4}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("box_predictions", input_desc);
+  op.UpdateInputDesc("anchors", input_desc_1);
+  float decode_clip = 8.0;
+  op.SetAttr("decode_clip", decode_clip);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+  auto decoded_boxes_desc = op.GetOutputDesc("decoded_boxes");
+  std::vector<int64_t> expected_output_shape = {-1, 4};
+  EXPECT_EQ(decoded_boxes_desc.GetShape().GetDims(), expected_output_shape);
+}

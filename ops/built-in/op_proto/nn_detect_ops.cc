@@ -730,7 +730,7 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   for (uint32_t i = 0; i < anchors_shape.size(); i++) {
     anchors_shape_n = anchors_shape_n * anchors_shape[i];
   }
-  if (box_predictions_shape_n != anchors_shape_n) {
+  if ((box_predictions_shape_n > 0 && anchors_shape_n > 0) && box_predictions_shape_n != anchors_shape_n) {
     OP_LOGE(op.GetName().c_str(), "first dimension of inputs should be equal");
     OpsInputShapeErrReport(op.GetName(), "the first dimension of anchors and box_predictions should be equal",
                            "box_predictions", ConcatString(box_predictions_shape_n));
@@ -784,12 +784,20 @@ IMPLEMT_COMMON_INFERFUNC(DecodeBboxInferShapeCommon) {
     dim_vector1.push_back(shape_n / 4);
   }
   if ((boxPredictionsShape.size() == 3) && (boxPredictionsShape[2] == 4)) {
-    dim_vector1.push_back(shape_n / 4);
+    if (boxPredictionsShape[0] == -1){
+      dim_vector1.push_back(-1);
+    }else{
+      dim_vector1.push_back(shape_n / 4);
+    }
     dim_vector1.push_back(4);
   }
   Shape out_shape_decoded_boxes(dim_vector1);
   TensorDesc decoded_boxes_desc = op.GetOutputDesc("decoded_boxes");
   decoded_boxes_desc.SetShape(out_shape_decoded_boxes);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (op.GetInputDesc("box_predictions").GetShapeRange(range) == GRAPH_SUCCESS){
+    decoded_boxes_desc.SetShapeRange(range);
+  }
   (void)op.UpdateOutputDesc("decoded_boxes", decoded_boxes_desc);
   return GRAPH_SUCCESS;
 }
@@ -958,6 +966,9 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   if (rois_shape.empty()) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("rois shape is empty, please check!"));
     return GRAPH_FAILED;
+  }
+  if (IsUnknown(score_shape) || IsUnknown(rois_shape)){
+    return GRAPH_SUCCESS;
   }
   int64_t score_shape_dimension = score_shape.size();
   int64_t rois_shape_dimension = rois_shape.size();
