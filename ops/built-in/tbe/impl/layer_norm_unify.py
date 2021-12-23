@@ -52,7 +52,8 @@ def is_special_cases(shape_x, shape_gamma, shape_beta):
     """
     Judge whether it is a special case
     """
-    white_list_x = [[4, 300, 257, 12], [8, 512, 128], [8, 512, 4096], [64, 50, 768]]
+    white_list_x = [[4, 300, 257, 12], [8, 512, 128], [8, 512, 4096],
+    [64, 50, 768], [8, 50, 768], [50, 8, 768], [12, 512, 4096]]
     white_list_gamma = [[12], [128], [4096], [768]]
     white_list_beta = [[12], [128], [4096], [768]]
     shape_x = list(shape_x)
