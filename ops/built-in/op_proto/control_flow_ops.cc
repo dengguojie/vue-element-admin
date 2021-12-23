@@ -240,6 +240,10 @@ graphStatus MergeInferImpl(Operator &op) {
           dim_group.is_max_unknown = true;
         }
       }
+      // if shape unknown but shape range is empty, set it as max_unknown
+      if (dim_group.is_unknown_shape && xi_range.size() == 0) {
+        dim_group.is_max_unknown = true;
+      }
     }
   }
 
