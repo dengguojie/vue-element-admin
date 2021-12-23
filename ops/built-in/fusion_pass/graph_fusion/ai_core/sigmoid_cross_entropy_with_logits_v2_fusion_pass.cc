@@ -79,8 +79,8 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   // create sigmoid_none node
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
 
-  FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                    sigmoidNoneNode->GetName().c_str()), failStatus=true);
+  FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "fusionNode:%s is null, fusion failed.", sigmoidNoneNode->GetName().c_str()), failStatus = true);
 
   newNodes.push_back(sigmoidNoneNode);
 
@@ -93,7 +93,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
     ge::GraphUtils::AddEdge(sigmoidNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
                             sigmoidNoneNode->GetInControlAnchor());
   }
-  
+
   return sigmoidNoneNode;
 }
 
@@ -131,10 +131,10 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
 
   // create reduce node
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
-  FUSION_PASS_CHECK(reduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                    reduceNode->GetName().c_str()), failStatus=true);
+  FUSION_PASS_CHECK(reduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "fusionNode:%s is null, fusion failed.", reduceNode->GetName().c_str()), failStatus = true);
   newNodes.push_back(reduceNode);
-  
+
   // Edge
   ge::GraphUtils::AddEdge(sigmoidNoneNode->GetOutDataAnchor(0), reduceNode->GetInDataAnchor(0));
   for (unsigned int i = 0; i < sigmoidNode->GetAllOutDataAnchors().size(); i++) {
@@ -145,7 +145,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
       }
     }
   }
-  
+
   return reduceNode;
 }
 
@@ -172,11 +172,11 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
   }
 
   ge::NodePtr sigmoidNoneNode = AddSigmoidNoneNode(sigmoidNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "AddSigmoidNoneNode:check failed, fusion failed."), return FAILED);
 
   AddReduceNode(sigmoidNode, sigmoidNoneNode, graph, newNodes, failStatus, reduction);
-  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "AddReduceNode:check failed, fusion failed."), return FAILED);
 
   // unlink all control input of sigmoidNode
