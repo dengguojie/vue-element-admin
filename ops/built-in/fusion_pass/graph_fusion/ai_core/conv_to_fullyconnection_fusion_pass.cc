@@ -135,8 +135,12 @@ Status ConvToFullyConnectionFusionPass::InsertNode(const ge::OutDataAnchorPtr &s
                                                    ge::NodePtr& new_node) {
     ge::NodePtr src_node = src->GetOwnerNode();
     ge::NodePtr dst_node = dst->GetOwnerNode();
-    new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx()));
-    new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx()));
+    ge::GeTensorDesc src_input_desc = src_node->GetOpDesc()->GetOutputDesc(src->GetIdx());
+    ge::GeTensorDesc src_output_desc = dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx());
+    src_output_desc.SetDataType(src_input_desc.GetDataType());
+    src_output_desc.SetOriginDataType(src_input_desc.GetOriginDataType());
+    new_node->GetOpDesc()->UpdateInputDesc(0, src_input_desc);
+    new_node->GetOpDesc()->UpdateOutputDesc(0, src_output_desc);
     if(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
         OP_LOGE(dst_node->GetName().c_str(), "Remove ori_filter edge error.");
         return FAILED;
