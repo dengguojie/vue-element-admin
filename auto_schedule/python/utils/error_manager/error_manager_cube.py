@@ -24,9 +24,9 @@ from te.utils.error_manager.error_manager_util import raise_runtime_error_cube
 def raise_err_one_para(err_code, op_name, para1):
     """
     E62301: "In op[%s], the second value of BL1_shape should be a factor of
-            the block num, actual input is [%s]."
+    the block num, actual input is [%s]."
     E62302: "In op[%s], the second value of BL1_shape should be even number,
-            but actually it is [%s]."
+    but actually it is [%s]."
     E62501: "In op[%s], [%s] should be 6d list"
     E62509: "In op[%s], the type of axis of [%s] must be positive int."
     E62511: "In op[%s], C0 must be 16,  but actually it is [%s]."
@@ -45,17 +45,17 @@ def raise_err_two_paras(err_code, op_name, para1, para2):
     E62004: "In op[%s],filter D must > Pad D, actual are [%s] and [%s]"
     E62005: "In op[%s], x D(after pad) must >= stride D, actual are [%s] and [%s]"
     E62303: "In op[%s], the value of AL1_shape & BL1_shape are  not reasonable,
-            which are [%s] and [%s]."
+    which are [%s] and [%s]."
     E62502: "In op[%s], there is a division by zero operation during calculating,
-            the oprands are [%s] and [%s]."
+    the oprands are [%s] and [%s]."
     E62503: "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation
-             it should be [%s], but actually it is [%s]."
+    it should be [%s], but actually it is [%s]."
     E62504: "In op[%s], the  Dedy's channel must be equal to the Filter's batch in
-            backpropagation it should be [%s], but actually it is [%s]."
+    backpropagation it should be [%s], but actually it is [%s]."
     E62505: "In op[%s], the  input's channel must be equal to the Filter's batch in
-            backpropagation it should be [%s], but actually it is [%s]."
+    backpropagation it should be [%s], but actually it is [%s]."
     E62506: "In op[%s], the  Dedy's channel must be equal to the Filter's channel in
-            backpropagation it should be [%s], but actually it is [%s]."
+    backpropagation it should be [%s], but actually it is [%s]."
     """
     args_dict = {
         "errCode": err_code,
@@ -70,11 +70,11 @@ def raise_err_two_paras(err_code, op_name, para1, para2):
 def raise_err_three_paras(err_code, op_name, para1, para2, para3):
     """
     E62001: "In op[%s],dilation_h, dilation_w and dilation_d must be 1,
-             actual are [%s], [%s] and  [%s]"
+    actual are [%s], [%s] and  [%s]"
     E62304: "In op[%s], the dim of [%s] should be [%s], but it is  [%s]."
     E62305: "In op[%s], the value of [%s] should be [%s], but it is  [%s]."
     E62507: "In op[%s], the [%s] dim of Filter(after dilation) must be less than
-            the corresponding dim of input(after padding), they are [%s] and [%s]."
+    the corresponding dim of input(after padding), they are [%s] and [%s]."
     """
     args_dict = {
         "errCode": err_code,
@@ -89,8 +89,8 @@ def raise_err_three_paras(err_code, op_name, para1, para2, para3):
 
 def raise_err_four_paras(err_code, op_name, para1, para2, para3, para4):
     """
-    E62003: "In op[%s], the size of [%s] on [%s] dimension should be in range [%s],
-            but it is [%s]."
+    E62003: "In op[%s], the size of [%s] on [%s] dimension should be in range [%s], 
+    but it is [%s]."
     """
     args_dict = {
         "errCode": err_code,

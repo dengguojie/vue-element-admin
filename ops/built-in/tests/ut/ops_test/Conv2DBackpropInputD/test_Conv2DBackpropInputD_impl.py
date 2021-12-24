@@ -199,7 +199,6 @@ def _gen_conv2d_bp_input_op_case():
     for test_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_op_testcase:
         ut_case.add_case(["Ascend910A"], _gen_trans_data_case(*test_case))
 
-
 def _test_op_check_supported(test_arg):
     from impl.conv2d_backprop_input_d import check_supported
     weight = {"ori_shape": (32, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
@@ -209,7 +208,6 @@ def _test_op_check_supported(test_arg):
     check_supported(weight, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
                     dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
                     kernel_name="conv2d_backprop_input")
-
 
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)

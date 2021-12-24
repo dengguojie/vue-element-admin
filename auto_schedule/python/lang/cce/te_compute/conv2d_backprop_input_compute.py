@@ -36,23 +36,23 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
 
     para_dict:
 
-        strides : list of strides, [strideh, stridew]
+    strides : list of strides, [strideh, stridew]
 
-        padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
+    padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
 
-        dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
+    dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
 
-        res_dtype : dE/dX data type, "float16" by default
+    res_dtype : dE/dX data type, "float16" by default
 
-        offset_x : offset of x
+    offset_x : offset of x
 
-        offset_w : offset of w
+    offset_w : offset of w
 
-        fusion_para: the l1 fuison para
+    fusion_para: the l1 fuison para
 
-        kernel_name : cce kernel name
+    kernel_name : cce kernel name
 
-        group_dict : The params of group convolution.
+    group_dict : The params of group convolution.
 
     Returns
     ----------

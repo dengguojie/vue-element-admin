@@ -22,7 +22,6 @@ from collections import namedtuple
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
-from tbe.common import utils as tbe_utils
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 
@@ -214,7 +213,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
         -------
         Returns : im2col_fractal tvm lambda function
         """
-        g_after, _, _, a_col_k1, a_col_m0, a_col_k0 = a_im2col_shape
+        _, _, _, a_col_k1, a_col_m0, a_col_k0 = a_im2col_shape
         _, a_row_major_hw, group_c1, kernel_h, kernel_w, _ = tensor_a_row_major.shape
         g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
 
@@ -325,7 +324,7 @@ def im2col_fractal_v2(shape, img2col_para):
     shape : shape of a_im2col
 
     img2col_para : tensor of fmap, kernel_h, kernel_w, padding, stride,
-                   fmap_wo, dilation
+    fmap_wo, dilation
     -------
     Returns : a_im2col_fractal tensor
     """
@@ -379,7 +378,7 @@ class CubeDslPattern:
     cube_pattern_instance : instance of cube mmad pattern
     """
 
-    type_c_map = dict()
+    type_c_map = {}
 
     def __init__(self):
         self._tensor_c = None
@@ -438,7 +437,6 @@ class CubeDslPattern:
         ----------
         tensor_c : mad result tensor
         """
-        is_conv3d_backprop_input = False
         a_group, a_batch, a_m1, a_k1, a_m0, a_k0 = shape_to_list(tensor_a.shape)
         axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
         axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
@@ -559,7 +557,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         feature_map,
         g_after,
         c1_extend,
-        var_map={},
+        var_map=None,
         slice_offset=0,
         valid_shape=()):
         """
@@ -583,6 +581,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         -------
         a_col : a_im2col_fractal tensor
         """
+        if not var_map:
+            var_map = {}
         def _is_load3d_special(var_map, h_out, w_hout):
             if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310")
                 and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -595,9 +595,9 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         if var_map:
             a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)[-5:]
         else:
-            a_batch, a_c1, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
+            a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
         if valid_shape:
-            a_batch, a_c1, a_h, a_w, a_c0 = valid_shape
+            a_batch, _, a_h, a_w, a_c0 = valid_shape
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
         new_pad = [self._pad_up, self._pad_down, self._pad_left, self._pad_right]
@@ -694,20 +694,15 @@ def is_support_v200():
 def calc_info_of_iter_vars(stage):
     """Calcuate information of IterVar.
 
-    Args:
-        stage: Stage of schedule.
+    Args: stage: Stage of schedule.
 
     Returns:
-        A list of elements that are combinations of IterVar.var and information.
-        For example:
+    A list of elements that are combinations of IterVar.var and information.
+    For example:
 
-        [[i0.inner, IterVar(min=0,
-                            extent=3,
-                            parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
-         [i0.outer, IterVar(min=0,
-                            extent=2,
-                            parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
-         [i1, (0, 16)]]
+    [[i0.inner, IterVar(min=0, extent=3, parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
+    [i0.outer, IterVar(min=0, extent=2, parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
+    [i1, (0, 16)]]
     """
 
     Parent = namedtuple("Parent", "var, min, extent, factor, nparts")
@@ -759,11 +754,9 @@ def calc_info_of_iter_vars(stage):
 def print_iter_vars(iter_vars):
     """Pretty print iter_vars.
 
-    Args:
-        iter_vars: List of iter_var.
+    Args: iter_vars: List of iter_var.
 
-    Returns:
-        None.
+    Returns: None.
     """
 
     for i, item in enumerate(iter_vars):
@@ -889,4 +882,5 @@ def is_mini_or_lhisi_version():
     True: mini or lhisi version
     False: Other version
     """
-    return (is_mini_version() or is_lhisi_version())
+    mini_or_lhisi_version_flag = is_mini_version() or is_lhisi_version()
+    return mini_or_lhisi_version_flag
