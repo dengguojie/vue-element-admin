@@ -2691,8 +2691,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     None
     """
     # get input_x format
-    input_format = input_x.get("format")
     ori_shape = input_x.get("ori_shape")
+    input_format = input_x.get("format")
     if input_format == "NC1HWC0":
         if len(ori_shape) == 2:
             new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
@@ -2721,9 +2721,11 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 if axis[0] >= 0:
                     axis[0] = axis[0] + 1
 
-    use_dynamic = True
+    
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-
+    use_dynamic = True
+    if input_format in ("NDC1HWC0",) and input_x.get("dtype").lower() == "float32":
+        use_dynamic = False
     if _is_special_cases(ori_shape, 0):
         use_dynamic = False
     if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
