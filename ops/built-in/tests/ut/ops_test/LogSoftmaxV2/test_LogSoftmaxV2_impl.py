@@ -106,3 +106,17 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)
 })
 
+def test_get_op_support_info(test_arg):
+    from impl.log_softmax_v2 import get_op_support_info
+    get_op_support_info(
+        {
+            "dtype": "float16",
+            "format": "ND",
+            "ori_format": "ND",
+            "ori_shape": (11, 33),
+            "shape": (11, 33),
+            "param_type": "input"
+        }, None, -1, "log_softmax_v2")
+
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
