@@ -155,34 +155,6 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
 COMMON_INFER_FUNC_REG(OCRRecognitionPreHandle,
                       OCRRecognitionPreHandleInferShape);
 
-bool SetConstImage(Operator &op, const std::vector<int64_t> &images_shape,
-                   std::vector<int64_t> &size_out,
-                   const std::string &input_format) {
-  std::vector<int64_t> y_shape;
-  int64_t channelNum;
-  TensorDesc td = op.GetOutputDescByName("resized_img");
-  if (input_format == "NCHW") {
-    channelNum = images_shape[0];
-    y_shape.push_back(channelNum);
-    y_shape.push_back(960);
-    y_shape.push_back(960);
-  } else {
-    channelNum = images_shape[2];
-    y_shape.push_back(960);
-    y_shape.push_back(960);
-    y_shape.push_back(channelNum);
-  }
-  if (channelNum != kChannelNum) {
-    GE_OP_LOGE(op.GetName().c_str(), "Img channel must be 3, but got ",
-	    channelNum);
-    return GRAPH_FAILED;
-  }
-  td.SetShape(ge::Shape(y_shape));
-  td.SetDataType(DT_UINT8);
-  (void)op.UpdateOutputDesc("resized_img", td);
-  return GRAPH_SUCCESS;
-}
-
 IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   TensorDesc img_desc = op.GetInputDescByName("img");
   TensorDesc resized_img_desc = op.GetOutputDescByName("resized_img");
@@ -198,10 +170,55 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
 
   std::vector<int64_t> image_shape = img_desc.GetShape().GetDims();
   std::vector<int64_t> size_out;
-  std::string data_format;
-  (void)op.GetAttr("data_format", data_format);
-
-  return SetConstImage(op, image_shape, size_out, data_format);
+  std::string dt_format = "NHWC";
+  (void)op.GetAttr("data_format", dt_format);
+  const std::set<std::string> kVaildFormat = {"NHWC", "NCHW"};
+  if (kVaildFormat.find(dt_format) == kVaildFormat.end()) {
+    GE_OP_LOGE(op.GetName().c_str(), "Format is invalid, is ", dt_format);
+    return GRAPH_FAILED;
+  }
+  
+  size_t pos_c = dt_format.find("C") - 1;
+  size_t pos_h = dt_format.find("H") - 1;
+  size_t pos_w = dt_format.find("W") - 1;
+  if (image_shape[pos_c] != kChannelNum) {
+    GE_OP_LOGE(op.GetName().c_str(), "Img channel must be 3, but got ",
+	    image_shape[pos_c]);
+    return GRAPH_FAILED;
+  }
+  
+  const int32_t kRank = 3;
+  const int64_t kMinSize = 480;
+  const int64_t kMidSize = 960;
+  const int64_t kMaxSize = 1920;
+  const int64_t kLongSizeLow = 720;
+  const int64_t kLongSizeHigh = 1440;
+  std::vector<int64_t> y_shape(kRank);
+  int64_t resize;
+  if ((image_shape[pos_h] != UNKNOWN_DIM) && (image_shape[pos_w] != UNKNOWN_DIM)) {
+      int64_t longSize = std::max(image_shape[pos_h], image_shape[pos_w]);
+      resize = (longSize <= kLongSizeLow) ? kMinSize : ((longSize <= kLongSizeHigh) ? kMidSize : kMaxSize);
+  } else {
+      resize = UNKNOWN_DIM;
+      std::vector<std::pair<int64_t,int64_t>> resized_range;
+      if (pos_c == 0) {
+        resized_range.push_back({image_shape[pos_c], image_shape[pos_c]});
+      }
+      resized_range.push_back({kMinSize, kMaxSize});
+      resized_range.push_back({kMinSize, kMaxSize});
+      if (pos_c != 0) {
+        resized_range.push_back({image_shape[pos_c], image_shape[pos_c]});
+      }
+      resized_img_desc.SetShapeRange(resized_range);
+  }
+  
+  y_shape[pos_h] = resize;
+  y_shape[pos_w] = resize;
+  y_shape[pos_c] = image_shape[pos_c];
+  resized_img_desc.SetShape(ge::Shape(y_shape));
+  resized_img_desc.SetDataType(DT_UINT8);
+  (void)op.UpdateOutputDesc("resized_img", resized_img_desc);
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(OCRDetectionPreHandle, OCRDetectionPreHandleInferShape);
