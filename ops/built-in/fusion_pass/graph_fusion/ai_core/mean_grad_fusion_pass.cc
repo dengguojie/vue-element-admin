@@ -225,7 +225,7 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 // Since the Const node of the training network is converted to CONSTANTOP,
 // when the Remove node is called, the Const input node cannot be automatically deleted
 // You must delete the Const node of the node by yourself
-Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodePtr node) {
+Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, const ge::NodePtr node) {
   FUSION_PASS_CHECK(node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node is nullptr."), return FAILED);
   for (auto inDataAnchor : node->GetAllInDataAnchors()) {
     int idx = inDataAnchor->GetIdx();
@@ -254,7 +254,7 @@ Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodeP
   return SUCCESS;
 }
 
-Status MeanGradFusionPass::ParseParaFromConst(ge::NodePtr node, int32_t& param, int index) {
+Status MeanGradFusionPass::ParseParaFromConst(const ge::NodePtr node, int32_t& param, const int index) {
   string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(node);
   if (nodeType == "Const" || nodeType == "Constant") {
     vector<ge::ConstGeTensorPtr> weights_vec = ge::OpDescUtils::GetWeights(node);
@@ -271,7 +271,7 @@ Status MeanGradFusionPass::ParseParaFromConst(ge::NodePtr node, int32_t& param, 
       FUSION_PASS_CHECK(tensor->GetData().data() == nullptr,
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensor->GetData().data() is a null."),
                         return FAILED);
-      param = *((int32_t*)tensor->GetData().data() + index);
+      param = *(reinterpret_cast<const int32_t*>(tensor->GetData().data()) + index);
     } else {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "data type not supported");
       return FAILED;

@@ -49,7 +49,7 @@ const int64_t ZERO = 0;
 // varsize intput compile params
 const int64_t VARSIZE_COMPILE_INDEX = 2;
 // indicessize intput compile params
-const int64_t INDICESSIZE_COMPILE_INDEX = 2;
+const int64_t INDICESSIZE_COMPILE_INDEX = 3;
 
 struct ScatterNonAliasingAddTilingParams {
   int64_t tilingMode;

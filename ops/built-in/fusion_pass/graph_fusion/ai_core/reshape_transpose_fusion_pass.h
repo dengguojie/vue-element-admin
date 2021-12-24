@@ -34,7 +34,7 @@ class ReshapeTransposeFusionPass : public PatternFusionBasePass {
  private:
   const string FUSED_OP_TYPE = "ConfusionTranspose";
   bool CheckTransposeInfo(const ge::NodePtr nodePtr);
-  bool ReLinkEdge(ge::NodePtr removeNode, ge::NodePtr mainNode);
+  bool ReLinkEdge(const ge::NodePtr& removeNode, const ge::NodePtr mainNode);
 };
 
 } // namespace fe

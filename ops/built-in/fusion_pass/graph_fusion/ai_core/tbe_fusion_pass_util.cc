@@ -205,7 +205,7 @@ template <typename T>
 static std::vector<int64_t> GetConstIntValue(const uint8_t* const_data, size_t data_size) {
   size_t size = data_size / sizeof(T);
   std::vector<int64_t> result(size);
-  T* data = (T*)const_data;
+  const T* data = reinterpret_cast<const T*>(const_data);
   for (size_t i = 0; i < size; i++) {
     result[i] = *(data + i);
   }

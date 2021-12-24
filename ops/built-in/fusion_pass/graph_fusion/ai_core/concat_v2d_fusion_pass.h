@@ -30,7 +30,8 @@ class Concatv2dFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  bool CheckConcatValid(ge::NodePtr node, ge::Format format, ge::GeShape shape, int32_t dimNum);
+  bool CheckConcatValid(const ge::NodePtr& node, const ge::Format format, const ge::GeShape shape,
+                        const int32_t dimNum);
   static bool HasUnKnowInputShape(const std::vector<ge::NodePtr>& input_nodes);
   Status PatternParse(ge::NodePtr concatv2dNode, vector<ge::NodePtr>& fusedInputNodes,
                       vector<ge::NodePtr>& concatNodes);

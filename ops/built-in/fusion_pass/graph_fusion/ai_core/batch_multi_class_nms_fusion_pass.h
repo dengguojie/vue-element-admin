@@ -34,8 +34,8 @@ class BatchMultiClassNonMaxSuppressionFusionPass : public PatternFusionBasePass 
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  bool CheckTransposeBeforeSlice(ge::NodePtr checkNode);
-  bool CheckfindSoftmax(ge::NodePtr checkNode);
+  bool CheckTransposeBeforeSlice(const ge::NodePtr& checkNode);
+  bool CheckfindSoftmax(const ge::NodePtr& checkNode);
   const string FUSED_OP_TYPE = "BatchMultiClassNonMaxSuppression";
 };
 }  // namespace fe

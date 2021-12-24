@@ -70,7 +70,7 @@ Status ConstToAttrReduceSumPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
 
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   ge::GeTensorDesc axis_input = fusedDesc->GetInputDesc(1);
-  
+
   FUSION_PASS_CHECK(
       TbeFusionPassUtil::IsEmptyTensor(axis_input),
       OP_LOGI(FUSED_OP_TYPE.c_str(), "axis dim num is 1 and axis shape vector[0] is 0, not need fusion."),

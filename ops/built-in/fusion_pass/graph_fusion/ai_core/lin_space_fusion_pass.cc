@@ -112,7 +112,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   const uint8_t* constData = constTensor2->GetData().GetData();
   FUSION_PASS_CHECK(constData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constData is NULL"),
                     return PARAM_INVALID);
-  int32_t num = *((int32_t*)constData);
+  int32_t num = *(reinterpret_cast<const int32_t*>(constData));
   OP_LOGD(FUSED_OP_TYPE.c_str(), "The num is %d\n", num);
 
   Format assistFormat = linspaceInputTensor.GetFormat();

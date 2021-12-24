@@ -23,8 +23,6 @@
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
-using namespace std;
-
 namespace fe {
 
 class MeanGradFusionPass : public PatternFusionBasePass {
@@ -33,7 +31,7 @@ class MeanGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status ParseParaFromConst(ge::NodePtr, int32_t& param, int index);
+  Status ParseParaFromConst(ge::NodePtr node, int32_t& param, int index);
   Status RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodePtr node);
   const string FUSED_OP_TYPE = "MeanGrad";
 };

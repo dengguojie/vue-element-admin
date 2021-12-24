@@ -49,7 +49,7 @@ vector<FusionPattern*> SubSamplePass::DefinePatterns() {
 }
 
 // gen shuffle matrix
-void shuffle_matrix_gen(int64_t labels_size,vector<int32_t> &shuffle_matrix) {
+void shuffle_matrix_gen(int64_t labels_size, vector<int32_t> &shuffle_matrix) {
   for (int32_t i = 0; i < labels_size; i++) {
     shuffle_matrix.push_back(i);
   }
@@ -58,9 +58,9 @@ void shuffle_matrix_gen(int64_t labels_size,vector<int32_t> &shuffle_matrix) {
 
 // set node tensor desc
 void SubSamplePass::set_node_tensor_desc(ge::GeTensorDesc &tensorDesc,
-                                              vector<int64_t> &dims,
-                                              const ge::DataType &dtype,
-                                              const ge::Format &format) const {
+                                         vector<int64_t> &dims,
+                                         const ge::DataType &dtype,
+                                         const ge::Format &format) const {
     ge::GeShape shape(dims);
     tensorDesc.SetShape(shape);
     tensorDesc.SetDataType(dtype);

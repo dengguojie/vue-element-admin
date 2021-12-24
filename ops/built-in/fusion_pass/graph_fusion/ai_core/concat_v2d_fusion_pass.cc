@@ -24,7 +24,6 @@
 #include <map>
 #include <cmath>
 
-#include "concat_v2d_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -35,6 +34,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "tbe_ops_pass_util.h"
+#include "concat_v2d_fusion_pass.h"
 
 using namespace ge;
 namespace fe {
@@ -52,7 +52,8 @@ vector<FusionPattern*> Concatv2dFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool Concatv2dFusionPass::CheckConcatValid(ge::NodePtr node, ge::Format format, ge::GeShape shape, int32_t dimNum) {
+bool Concatv2dFusionPass::CheckConcatValid(const ge::NodePtr& node, const ge::Format format, const ge::GeShape shape,
+                                           const int32_t dimNum) {
   int32_t concatDim = 0;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(node->GetOpDesc(), ATTR_CONCAT_DIM, concatDim),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "There is no concat_dim attr."), return false);
@@ -202,7 +203,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   }
 
   int64_t num_N_new = fusedInputNodes.size();
-  OP_LOGD(concatv2dNode->GetName(),"Node:%s's has %ld inputs.", fusedConcatv2dOpDesc->GetName().c_str(),
+  OP_LOGD(concatv2dNode->GetName(), "Node:%s's has %ld inputs.", fusedConcatv2dOpDesc->GetName().c_str(),
           num_N_new);
   ge::AttrUtils::SetInt(fusedConcatv2dOpDesc, "N", num_N_new);
 

@@ -133,7 +133,7 @@ static Status GetScalarFromOp(ge::NodePtr node, float& value) {
     OP_LOGW("Gelu", "add0_node type is not float or fp16, not change");
     return NOT_CHANGED;
   }
-  float* tensor_data_ptr = (float*)const_input.GetData();
+  const float* tensor_data_ptr = reinterpret_cast<const float*>(const_input.GetData());
   if (tensor_data_ptr == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT("Gelu", "const data of %s node is null.", node->GetName().c_str());
     return GRAPH_FAILED;

@@ -53,7 +53,7 @@ vector<FusionPattern*> BatchMultiClassNonMaxSuppressionFusionPass::DefinePattern
   return patterns;
 }
 
-bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::NodePtr checkNode) {
+bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(const ge::NodePtr& checkNode) {
   auto checkOpType = checkNode->GetType();
   FUSION_PASS_CHECK((checkOpType != "Slice") && (checkOpType != "SliceD"),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not Slice or SliceD, is %s", checkOpType.c_str()),
@@ -65,7 +65,7 @@ bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::N
   return true;
 }
 
-bool BatchMultiClassNonMaxSuppressionFusionPass::CheckfindSoftmax(ge::NodePtr checkNode) {
+bool BatchMultiClassNonMaxSuppressionFusionPass::CheckfindSoftmax(const ge::NodePtr& checkNode) {
   auto ExpandDims_OpType = checkNode->GetType();
   OP_LOGI(FUSED_OP_TYPE.c_str(), "checkNode, is %s", ExpandDims_OpType.c_str());
   FUSION_PASS_CHECK((ExpandDims_OpType != "ExpandDims"),
@@ -218,10 +218,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       float score_threshold_new = 0.0;
 
       ge::AttrUtils::GetFloat(score_thresholdnode, "score_threshold", score_threshold_value);
-      FUSION_PASS_CHECK((65536.0/65535.0) - score_threshold_value < 1e-6,
+      FUSION_PASS_CHECK((65536.0 / 65535.0) - score_threshold_value < 1e-6,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "score threshold should not be zero!"),
                         return FAILED);
-      score_threshold_new = (1 + score_threshold_value) / ((65536.0/65535.0) - score_threshold_value);
+      score_threshold_new = (1 + score_threshold_value) / ((65536.0 / 65535.0) - score_threshold_value);
       ge::AttrUtils::SetFloat(score_thresholdnode, "score_threshold", score_threshold_new);
       vector<int64_t> oriNmsScorceShape = nmsScorceDesc.GetShape().GetDims();
       FUSION_PASS_CHECK(oriNmsScorceShape.empty(),
@@ -251,8 +251,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       ge::GeTensorDesc tensorDescadd1(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
       tensorDescadd1.SetShape(add1newShape);
       tensorDescadd1.SetOriginShape(add1newShape);
-      int32_t realDimCnt0 = add1newShape.GetDimNum();
-      ge::TensorUtils::SetRealDimCnt(tensorDescadd1, realDimCnt0);
+      int32_t realDimCntNew = add1newShape.GetDimNum();
+      ge::TensorUtils::SetRealDimCnt(tensorDescadd1, realDimCntNew);
       FUSION_PASS_CHECK(Adds->AddInputDesc("x", tensorDescadd1) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Adds after valid num is null, fusion failed."),
                       return FAILED);

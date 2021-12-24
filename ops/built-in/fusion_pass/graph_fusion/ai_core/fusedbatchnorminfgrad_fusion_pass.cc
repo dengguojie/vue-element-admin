@@ -20,13 +20,13 @@
  */
 #include <memory>
 #include <string>
-#include "fusedbatchnorminfgrad_fusion_pass.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
+#include "fusedbatchnorminfgrad_fusion_pass.h"
 
 namespace fe {
 static const string PATTERN_BATCHNORMGRAD = "batchNormGrad";

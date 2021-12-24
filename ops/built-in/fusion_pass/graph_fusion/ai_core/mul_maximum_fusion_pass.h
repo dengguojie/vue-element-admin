@@ -33,7 +33,7 @@ class MulMaximumFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status IsMatch(ge::NodePtr& mulNode, ge::NodePtr& maximumNode);
+  Status IsMatch(const ge::NodePtr& mulNode, const ge::NodePtr& maximumNode);
   Status CheckPeerMulInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum);
   const string FUSED_OP_TYPE = "LeakyRelu";
 };
