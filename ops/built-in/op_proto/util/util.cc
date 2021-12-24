@@ -1695,14 +1695,14 @@ void FixRangeMaxToInt32max(GeShape &shape, std::vector<std::pair<int64_t, int64_
   shape = GeShape(dims);
 }
 
-void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
-                       std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape) {
+int64_t CalculateMaxInputDims(const std::vector<std::pair<int64_t, int64_t>>& x_range, const Operator &op) {
   int64_t max_input_dims = 1;
   for (const auto& pair : x_range) {
     if (pair.second < 0) {
       max_input_dims = -1;
       break;
     }
+
     if (array_ops::CheckInt64MulOverflow(max_input_dims, pair.second)) {
       max_input_dims *= pair.second;
     } else {
@@ -1711,6 +1711,12 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
       break;
     }
   }
+  return max_input_dims;
+}
+
+void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range,
+                       std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape) {
+  int64_t max_input_dims = CalculateMaxInputDims(x_range, op);
 
   if (max_input_dims < 0) {
     for (const auto dim : output_shape.GetDims()) {
@@ -1721,17 +1727,25 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
       }
     }
   } else {
+    std::vector<size_t> unknown_dim_indexes;
+    size_t dim_index = 0U;
     int64_t left = max_input_dims;
     left = (left > INT32_MAX) ? INT32_MAX : left;
     for (const auto dim : output_shape.GetDims()) {
       if (dim < 0) {
         y_range.emplace_back(std::pair<int64_t, int64_t>(1, left));
+        unknown_dim_indexes.emplace_back(dim_index);
       } else {
         y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
         if (dim != 0) {
           left = static_cast<int64_t>((static_cast<double>(left) + 0.5) / dim);
         }
       }
+      dim_index++;
+    }
+
+    if (unknown_dim_indexes.size() == 1U) {
+      y_range[unknown_dim_indexes[0U]] = std::pair<int64_t, int64_t>(1, left);
     }
   }
 }

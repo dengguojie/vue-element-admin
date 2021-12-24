@@ -66,6 +66,7 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShape) {
   a = -100;
   b = -10;
   ret = ge::array_ops::CheckInt64MulOverflow(a, b);
+  EXPECT_EQ(ret, true);
 
   std::vector<std::pair<int64_t, int64_t>> x_range3;
   std::vector<std::pair<int64_t, int64_t>> y_range3;
@@ -76,15 +77,22 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShape) {
   std::vector<int64_t> dims1{4,-1};
   ge::GeShape shape3(dims1);
   ge::array_ops::ReshapeRangeInfer(op, x_range3, y_range3, shape3);
+  EXPECT_EQ(y_range3.size(), dims1.size());
+  EXPECT_EQ(y_range3[1].first, 0);
+  EXPECT_EQ(y_range3[1].second, -1);
   
   std::vector<std::pair<int64_t, int64_t>> x_range4;
   std::vector<std::pair<int64_t, int64_t>> y_range4;
-  std::pair<int64_t,int64_t> pair5(16, 16);
+  std::pair<int64_t, int64_t> pair5(1, 4);
+  std::pair<int64_t,int64_t> pair6(16, 16);
   x_range4.push_back(pair5);
-  std::vector<int64_t> dims2{4, -1};
+  x_range4.push_back(pair6);
+  std::vector<int64_t> dims2{-1, 16};
   ge::GeShape shape4(dims2);
-  ge::array_ops::ReshapeRangeInfer(op, x_range4, y_range4, shape4);  
-  EXPECT_EQ(ret, true);
+  ge::array_ops::ReshapeRangeInfer(op, x_range4, y_range4, shape4);
+  EXPECT_EQ(y_range4.size(), dims2.size());
+  EXPECT_EQ(y_range4[0].first, 1);
+  EXPECT_EQ(y_range4[0].second, 4);
 }
 
 TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_range_max_exceeding_int32max) {
