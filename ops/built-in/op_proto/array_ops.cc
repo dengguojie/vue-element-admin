@@ -3128,20 +3128,21 @@ IMPLEMT_INFERFUNC(QueueData, QueueDataInferShape) {
     {ge::DT_DOUBLE, sizeof(double)},   {ge::DT_BOOL,    sizeof(bool)}
   };
 
-  std::vector<int64_t> shapes;
+  int64_t total_size = 0;
   for (size_t i = 0; i < output_types.size(); ++i) {
     if (data_type_size_map.find(output_types[i]) == data_type_size_map.end()) {
-      shapes.emplace_back(-1);
-      continue;
+      total_size = -1;
+      break;
     }
     int64_t type_size = data_type_size_map[output_types[i]];
     int64_t data_len = 
       std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), type_size, std::multiplies<int64_t>{});
     int64_t item_info_size = 64; // sizeof(ItemInfo)
     int64_t dims = sizeof(int64_t) * output_shapes[i].size();
-    shapes.emplace_back(item_info_size + dims + data_len); 
+    total_size += item_info_size + dims + data_len;
   }
-  
+
+  std::vector<int64_t> shapes{total_size};
   Shape shape(shapes);
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
