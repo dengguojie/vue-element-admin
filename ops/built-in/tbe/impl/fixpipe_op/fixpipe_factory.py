@@ -19,10 +19,12 @@ from typing import List
 from tbe.tvm.tensor import Tensor
 from impl.fixpipe_op.fixpipe_conv2d import FixpipeConv2d
 from impl.fixpipe_op.fixpipe_matmul import FixpipeMatmul
+from impl.fixpipe_op.fixpipe_conv2d_backprop_filter import FixpipeConv2dBackpropFilter
 
 FIXPIPE_OP_SUPPORT_MAP = {
     "conv2d": FixpipeConv2d,
     "matmul": FixpipeMatmul,
+    "conv2d_backprop_filter": FixpipeConv2dBackpropFilter,
 }
 
 class FixpipeFactory:

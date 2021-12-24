@@ -14,6 +14,7 @@ from impl.util.platform_adapter import tbe
 from te.platform.cce_conf import te_set_version
 from impl.trans_data import trans_data_compute
 from tbe.common.context import op_context
+from test_mock_case import *
 
 
 ut_case = OpUT(
@@ -24,16 +25,22 @@ ut_case = OpUT(
 DEBUG_MODE = False
 
 
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 524288,
+        ("L0C_SIZE", ): 131072,
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Compiler_arch",): "dav-c220-cube",
+        ("AICORE_TYPE",): "AiCore",
+        ("SOC_VERSION",): "Ascend920A",
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        }
+
 def get_soc_mock(*args):
-    vals = {("CORE_NUM", ): 48,
-            ("CUBE_VECTOR_SPLIT",): True,
-            ("UB_SIZE", ): 196608,
-            ("L0A_SIZE", ): 65536,
-            ("L0B_SIZE", ): 65536,
-            ("L1_SIZE", ): 196608,
-            ("L0C_SIZE", ): 131072,
-            ("SOC_VERSION",): "Ascend920A"
-            }
     return vals[args]
 
 
@@ -358,6 +365,18 @@ _gen_conv2d_bp_filter_op_case()
 _gen_conv2d_bp_filter_check_support_case()
 _gen_conv2d_bp_filter_nd2nz_format()
 ut_case.add_cust_test_func(test_func=_test_conv2d_backprop_filter_compute)
+
+
+# test mock case
+def test_fixpipe_cases(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=get_soc_mock)):
+            test_conv2d_bp_filter_fixpipe_0()
+            test_conv2d_bp_filter_fixpipe_1()
+            test_conv2d_bp_filter_fixpipe_2()
+
+ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
+
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

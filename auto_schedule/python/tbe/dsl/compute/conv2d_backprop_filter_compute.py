@@ -717,7 +717,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             self.stride[1] = fmap_width + self.pad[2] + self.pad[3]
             self.pad[3] += (kernel_width - 1) * dilation_w + 1
             grads_width = grads_width * 2
-            self.shapelist['grads_5hd'][-2] = grads_width
+            self.shapelist.get('grads_5hd')[-2] = grads_width
             self.shape_grads_5hd[-2] = grads_width
         if self.var_map:
             w_one_flag = tvm.var("w_one_flag")
@@ -731,7 +731,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                self.pad[3])
             self.pad[3] = pad_r
             grads_width = grads_width * w_one_flag
-            self.shapelist['grads_5hd'][-2] = grads_width
+            self.shapelist.get('grads_5hd')[-2] = grads_width
             self.shape_grads_5hd[-2] = grads_width
 
         # group dict
@@ -1284,7 +1284,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 # eg: fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
                 # matrix is (1, 49, 2, 3, 3, c0(8)) to fractal is (group(1), batch(1), 8, 9, c0(16), mad_0(8))
                 hw_vm_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
-                c1_index = fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
+                c1_index = group_index * self.group_dict.get("cin1_g") + \
+                    fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
                 kh_vm_index = fkk_indices // kernel_width % kernel_height
                 kw_vm_index = fkk_indices % kernel_width
                 c0_vm_index = fmap_c0_indices % self.c0_size

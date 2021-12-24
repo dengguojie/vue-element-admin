@@ -88,6 +88,9 @@ def get_op_type(x: Tensor):
     if len(x.op.input_tensors) == 1 and \
             x.op.input_tensors[0].name in ["mad1", "res_conv2d"]:
         return "conv2d"
+    if x.op.tag.startswith("conv2d_backprop_filter"):
+        return "conv2d_backprop_filter"
+
     return "None"
 
 

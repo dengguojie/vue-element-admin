@@ -134,9 +134,9 @@ REG_OP(DepthwiseConv2DBackpropFilter)
 * instead.
 */
 REG_OP(DepthwiseConv2DBackpropFilterD)
-    .INPUT(input, TensorType({float16}))
-    .INPUT(out_backprop, TensorType({float16}))
-    .OUTPUT(filter_grad, TensorType({float32}))
+    .INPUT(input, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))
+    .INPUT(out_backprop, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))
+    .OUTPUT(filter_grad, TensorType({DT_FLOAT32}))
     .REQUIRED_ATTR(filter_size, ListInt)
     .REQUIRED_ATTR(strides, ListInt)
     .ATTR(dilations, ListInt, {1, 1, 1, 1})

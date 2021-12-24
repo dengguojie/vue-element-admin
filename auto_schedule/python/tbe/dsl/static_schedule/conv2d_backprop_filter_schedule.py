@@ -56,6 +56,13 @@ BIT_RATIO_DICT = {
     "bfloat16": 2,
 }
 
+FIXPIPE_SCOPE_MAP = {
+    "quant_scale_0": "local.FB0",
+    "relu_weight_0": "local.FB1",
+    "relu_weight_1": "local.FB2",
+    "quant_scale_1": "local.FB3"
+}
+
 def _ceil_div(dividend, divisor):
     """
     do division and round up to an integer
@@ -135,6 +142,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self._lob_size = tbe_platform_info.get_soc_spec("L0B_SIZE")
         self.c0_size = tbe_platform.C0_SIZE
         self.l0b_dma_flag = False
+        self.tensor_map = {}
 
     def schedule(self,  # pylint: disable=R0914,R0915
                  res, spec_node_list, sch_list, dynamic_para=None):
@@ -347,8 +355,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             else:
                 real_k, k_in = sch[res_cc].split(real_k, self.c0_size)
                 hw_single_core_factor = _ceil_div(hw_pad_1 * self.c0_size, block_dim_hw)
-                k_al1 = tiling["AL1_shape"][0] if tiling["AL1_shape"] else dw_k * self.c0_size
-                k_bl1 = tiling["BL1_shape"][0] if tiling["BL1_shape"] else dw_k * self.c0_size
+                k_al1 = tiling.get("AL1_shape")[0] if tiling.get("AL1_shape") else dw_k * self.c0_size
+                k_bl1 = tiling.get("BL1_shape")[0] if tiling.get("BL1_shape") else dw_k * self.c0_size
                 k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size)
                 hw_single_core_factor = _align(hw_single_core_factor, k_one_core_max) // self.c0_size
                 k_1_multicore, real_k = sch[res_cc].split(real_k, hw_single_core_factor)
@@ -386,25 +394,25 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             if tiling.get("BL1_shape") and \
                     tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1] \
                     % (kernel_height * kernel_width) != 0:
-                tiling["BL1_shape"][1] = _align(tiling.get("BL1_shape")[1] *
+                tiling.get("BL1_shape")[1] = _align(tiling.get("BL1_shape")[1] *
                                                 tiling.get("BL0_matrix")[1],
                                                 kernel_height * kernel_width) \
                     // tiling.get("BL0_matrix")[1]
 
             # whether axis K is fully loaded in L0A and L0B
             # excluding axis batch
-            if not tiling["AL0_matrix"]:
+            if not tiling.get("AL0_matrix"):
                 full_k_l0a = 1
             else:
-                full_k_l0a = tiling["AL0_matrix"][1] \
+                full_k_l0a = tiling.get("AL0_matrix")[1] \
                     // _ceil_div(hw_pad_1, block_dim_hw)
             if DEBUG_MODE:
                 print("full_k_in_l0a", full_k_l0a)
 
-            if not tiling["BL0_matrix"]:
+            if not tiling.get("BL0_matrix"):
                 full_k_l0b = 1
             else:
-                full_k_l0b = tiling["BL0_matrix"][0] \
+                full_k_l0b = tiling.get("BL0_matrix")[0] \
                     // _ceil_div(hw_pad_1, block_dim_hw)
             if DEBUG_MODE:
                 print("full_k_in_l0b", full_k_l0b)
@@ -419,20 +427,20 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # ka and kb may be different,
             # the min value corresponds to one MMAD,
             # the larger one is []
-            if tiling["AL0_matrix"]:  # dw_k equals to ka if L0A needs tiling
-                dw_k = tiling["AL0_matrix"][1]
-            elif tiling["BL0_matrix"]:
-                dw_k = tiling["BL0_matrix"][0]
+            if tiling.get("AL0_matrix"):  # dw_k equals to ka if L0A needs tiling
+                dw_k = tiling.get("AL0_matrix")[1]
+            elif tiling.get("BL0_matrix"):
+                dw_k = tiling.get("BL0_matrix")[0]
             else:  # both fully loaded
                 dw_k = hw_pad_1 // block_dim_hw
 
-            if not tiling["AL0_matrix"]:  # if grads no tiling in L0A
+            if not tiling.get("AL0_matrix"):  # if grads no tiling in L0A
                 tiling["AL1_shape"] = []  # then no tiling in L1
 
             # dw_cc is (fmap_channel_1*kernel_height*kernel_width,
             #          grads_channel_1, C0_grads, C0_fmap)
-            dw_tiling_factor = [tiling["CL0_matrix"][0],
-                                tiling["CL0_matrix"][1]]
+            dw_tiling_factor = [tiling.get("CL0_matrix")[0],
+                                tiling.get("CL0_matrix")[1]]
             # nparts N, nparts M
             # dw_tiling_nparts only describe the nparts from single core to L0
             dw_tiling_nparts = \
@@ -441,8 +449,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                            block_dim_cout)]
 
             # tiling parameters of dw_ub
-            dw_ub_tiling_factor = [tiling["CUB_matrix"][0],
-                                   tiling["CUB_matrix"][1]]
+            dw_ub_tiling_factor = [tiling.get("CUB_matrix")[0],
+                                   tiling.get("CUB_matrix")[1]]
             dw_ub_tiling_nparts = [_ceil_div(dw_tiling_factor[0],
                                              dw_ub_tiling_factor[0]),
                                    _ceil_div(dw_tiling_factor[1],
@@ -450,34 +458,34 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw)
             if not self.var_map:
                 hw_single_core_factor = _ceil_div(hw_pad_1 * self.c0_size, block_dim_hw)
-                k_al1 = tiling["AL1_shape"][0] if tiling["AL1_shape"] else dw_k * self.c0_size
-                k_bl1 = tiling["BL1_shape"][0] if tiling["BL1_shape"] else dw_k * self.c0_size
+                k_al1 = tiling.get("AL1_shape")[0] if tiling.get("AL1_shape") else dw_k * self.c0_size
+                k_bl1 = tiling.get("BL1_shape")[0] if tiling.get("BL1_shape") else dw_k * self.c0_size
                 k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size)
                 hw_single_core_factor = _align(hw_single_core_factor, k_one_core_max) // self.c0_size
             # only support loading one batch to L1 at a time for now
             # cout:out->single core(sc)->L1
-            if tiling["AL1_shape"]:  # if grads needs tiling in L1
-                if len(tiling["AL1_shape"]) == 1:  # but no C_1 tiling info
+            if tiling.get("AL1_shape"):  # if grads needs tiling in L1
+                if len(tiling.get("AL1_shape")) == 1:  # but no C_1 tiling info
                     tiling["AL1_shape"] = \
-                        tiling["AL1_shape"] + [1]
+                        tiling.get("AL1_shape") + [1]
                 # nparts K1 in L1, nparts M1 in L1
 
                 grads_l1_tiling_nparts = [hw_single_core_factor //
-                                          (tiling["AL1_shape"][0] // self.c0_size),
+                                          (tiling.get("AL1_shape")[0] // self.c0_size),
                                           dw_tiling_nparts[1]
-                                          // tiling["AL1_shape"][1]]
+                                          // tiling.get("AL1_shape")[1]]
             else:
                 grads_l1_tiling_nparts = [1, 1]
 
-            if tiling["BL1_shape"]:  # if fmap needs tiling in L1
-                if len(tiling["BL1_shape"]) == 1:  # but no fkk tiling info
+            if tiling.get("BL1_shape"):  # if fmap needs tiling in L1
+                if len(tiling.get("BL1_shape")) == 1:  # but no fkk tiling info
                     tiling["BL1_shape"] = \
-                        tiling["BL1_shape"] + [1]  # tiling fkk=1
+                        tiling.get("BL1_shape") + [1]  # tiling fkk=1
                 # DDR to L1 [nparts K1, nparts N1]
                 fmap_l1_tiling_nparts = [hw_single_core_factor //
-                                         (tiling["BL1_shape"][0] // self.c0_size),
+                                         (tiling.get("BL1_shape")[0] // self.c0_size),
                                          dw_tiling_nparts[0]
-                                         // tiling["BL1_shape"][1]]
+                                         // tiling.get("BL1_shape")[1]]
             else:
                 fmap_l1_tiling_nparts = [1, 1]
 
@@ -513,32 +521,32 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             fmap_l1_tiling_factor_k, grads_l1_tiling_factor_k = None, None
             if self.var_map and not flag_all_one_case:
                 if reduce_split_mode:
-                    if tiling["AL1_shape"]:
+                    if tiling.get("AL1_shape"):
                         grads_l1_tiling_factor_k = \
-                            tiling["AL1_shape"][0] // (dw_k * CUBE_DIM)
-                    if tiling["BL1_shape"] and tiling["AL1_shape"]:
+                            tiling.get("AL1_shape")[0] // (dw_k * CUBE_DIM)
+                    if tiling.get("BL1_shape") and tiling.get("AL1_shape"):
                         fmap_l1_tiling_factor_k = \
-                            tiling["BL1_shape"][0] // tiling["AL1_shape"][0]
+                            tiling.get("BL1_shape")[0] // tiling.get("AL1_shape")[0]
                 else:
-                    if tiling["BL1_shape"]:
+                    if tiling.get("BL1_shape"):
                         fmap_l1_tiling_factor_k = \
-                            tiling["BL1_shape"][0] // (dw_k * CUBE_DIM)
-                    if tiling["BL1_shape"] and tiling["AL1_shape"]:
+                            tiling.get("BL1_shape")[0] // (dw_k * CUBE_DIM)
+                    if tiling.get("BL1_shape") and tiling.get("AL1_shape"):
                         grads_l1_tiling_factor_k = \
-                            tiling["AL1_shape"][0] // tiling["BL1_shape"][0]
+                            tiling.get("AL1_shape")[0] // tiling.get("BL1_shape")[0]
             return grads_l1_tiling_factor_k, fmap_l1_tiling_factor_k
 
         def _reduce_split_mode():
             reduce_split_mode = True
             if self.var_map:
-                if tiling["AL1_shape"] and tiling["BL1_shape"]:
+                if tiling.get("AL1_shape") and tiling.get("BL1_shape"):
                     # grads and fmap need tiling in L1
                     reduce_split_mode = \
-                              tiling["AL1_shape"][0] < tiling["BL1_shape"][0]
-                elif tiling["AL1_shape"]:
+                              tiling.get("AL1_shape")[0] < tiling.get("BL1_shape")[0]
+                elif tiling.get("AL1_shape"):
                     # only grads needs tiling in L1
                     reduce_split_mode = True
-                elif tiling["BL1_shape"]:
+                elif tiling.get("BL1_shape"):
                     # only fmap needs tiling in L1
                     reduce_split_mode = False
                 else:
@@ -563,7 +571,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 l0b_attach_mode = \
                          ((batch_num_sc == 1) and (full_k_in_l0b == 1))
 
-            if tiling["AL0_matrix"]:
+            if tiling.get("AL0_matrix"):
                 if l0a_attach_mode:
                     # L0A data is more than that L0C needed, attach to dw_ddr
                     sch[grads_fractal].compute_at(sch[dw_ddr], c_grads_mad_at)
@@ -578,7 +586,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 l0a_attach_scope = dw_ddr
                 l0a_attach_axis = fused_multi_core
 
-            if tiling["BL0_matrix"]:
+            if tiling.get("BL0_matrix"):
                 if l0b_attach_mode:
                     sch[fmap_fractal].compute_at(sch[dw_ddr], c_fmap_mad_at)
                     l0b_attach_scope = dw_ddr
@@ -610,18 +618,18 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             del_n0_outer_flag = l0a_attach_axis == c_grads_mad_at and reorder_flag
 
             def _grad_matrix_attach(run_once_n_dim):
-                if tiling["AL1_shape"]:
+                if tiling.get("AL1_shape"):
                     # if axis K needs split, then attach to dw_cc
                     if al1_attach_mode:
                         al1_attach_axis = al1_at_axis
                         al1_attach_scope = dw_cc
-                        if tiling["A_overhead_opt_flag"]:
+                        if tiling.get("A_overhead_opt_flag"):
                             sch[grads_matrix].allocate_at(sch[al1_attach_scope], al1_at_axis)
                             al1_attach_axis = l0a_attach_axis
                     else:  # if axis K fully load in L1, attach to dw_ddr
                         al1_attach_axis = c_grads_l1_at
                         al1_attach_scope = dw_ddr
-                        if tiling["A_overhead_opt_flag"]:
+                        if tiling.get("A_overhead_opt_flag"):
                             if del_n0_outer_flag:
                                 # the list of axis is c_grads_mad_at, c_fmap_mad_at
                                 run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
@@ -631,7 +639,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 else:  # else: fully load, attach to thread_axis
                     al1_attach_axis = fused_multi_core
                     al1_attach_scope = dw_ddr
-                    if tiling["A_overhead_opt_flag"] and tiling["AL0_matrix"]:
+                    if tiling.get("A_overhead_opt_flag") and tiling.get("AL0_matrix"):
                         if del_n0_outer_flag:
                             # the list of axis is c_grads_mad_at, c_fmap_mad_at
                             run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
@@ -658,7 +666,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             run_once_mdim = [c_grads_mad_at, ] if reorder_l1_mn else [c_grads_mad_at, c_grads_l1_at]
 
             def _fmap_l1_attach(run_once_mdim):
-                if tiling["BL1_shape"]:
+                if tiling.get("BL1_shape"):
                     # if axis K needs split, then attach to dw_cc
                     if bl1_attach_mode:
                         bl1_attach_axis = bl1_at_axis
@@ -669,7 +677,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         bl1_attach_axis = c_fmap_l1_at
                         bl1_attach_scope = dw_ddr
                         if not flag_all_one_case:
-                            if tiling["B_overhead_opt_flag"]:
+                            if tiling.get("B_overhead_opt_flag"):
                                 if not reorder_flag:
                                     # the list of axis is c_fmap_mad_at, c_grads_mad_at
                                     run_once_mdim = list(set(run_once_mdim) - {c_grads_mad_at})
@@ -684,7 +692,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     bl1_attach_axis = fused_multi_core
                     bl1_attach_scope = dw_ddr
                     if not flag_all_one_case:
-                        if tiling["B_overhead_opt_flag"] and tiling["AL0_matrix"]:
+                        if tiling.get("B_overhead_opt_flag") and tiling.get("AL0_matrix"):
                             if not reorder_flag:
                                 # the list of axis is c_fmap_mad_at, c_grads_mad_at
                                 run_once_mdim = list(set(run_once_mdim) - {c_grads_mad_at, })
@@ -870,7 +878,16 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             sch[dw_cc].emit_insn(batch_insn, 'mad', mad_dict)
 
-            # move dw form UB to ddr
+            # manage fixpipe memory
+            for fixpipe_l1_mem in self.tensor_map.get("fixpipe_l1", []):
+                sch[fixpipe_l1_mem].emit_insn(fixpipe_l1_mem.op.axis[0], "dma_copy")
+            if self.tensor_map.get("fixpipe_l1_eltwise") is not None:
+                fixpipe_l1_eltwise = self.tensor_map["fixpipe_l1_eltwise"]
+                sch[fixpipe_l1_eltwise].emit_insn(fixpipe_l1_eltwise.op.axis[0], "dma_copy")
+            for fixpipe_fb_mem in self.tensor_map.get("fixpipe_fb", {}).values():
+                sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
+
+            # move dw from UB to ddr
             if dw_trans_flag:
                 sch[dw_ddr].emit_insn(c_grads_mad_insn, 'dma_copy', {"layout_transform": "nz2nd"})
             else:
@@ -1008,6 +1025,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         # ####################### get computing graph #######################
         # support NZ2ND transdata
         # dw_ddr -> dw_res_trans
+        sch = sch_list[0]
         dw_res_trans = None # pylint: disable=too-many-statements
         dw_trans_flag = False
         fmap_trans_flag = False
@@ -1016,6 +1034,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             dw_trans_flag = True
             dw_res_trans = res
             dw_ddr = res.op.input_tensors[0]
+        elif res.op.tag == "fixpipe_reform":
+            dw_trans_flag = True
+            dw_res_trans = res
+            dw_ddr = res
         else:
             dw_ddr = res
 
@@ -1025,6 +1047,29 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         if dw_ddr.op.tag == "conv2d_backprop_filter_c_split":
             c_split_flag = True
             dw_cc = dw_ddr.op.input_tensors[0]
+        elif dw_ddr.op.tag == "fixpipe_reform":
+            fixpipe_tensor = dw_ddr.op.input_tensors[0]
+            dw_cc = fixpipe_tensor.op.input_tensors[0]
+
+            vector_params = fixpipe_tensor.op.attrs["vector_params"]
+            vector_tensors = fixpipe_tensor.op.attrs["vector_tensors"]
+            fixpipe_fb_dict = {}
+            fixpipe_l1_list = []
+
+            for idx, params_mem in enumerate(vector_params):
+                fixpipe_input = vector_tensors[idx]
+                fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
+                fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
+                if fixpipe_scope_name:
+                    fixpipe_input_fb = sch.cache_read(fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor])
+                    fixpipe_l1_list.append(fixpipe_input_l1)
+                    fixpipe_fb_dict[fixpipe_scope_name] = fixpipe_input_fb
+                else:
+                    self.tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
+            
+            sch[fixpipe_tensor].compute_inline()
+            self.tensor_map["fixpipe_fb"] = fixpipe_fb_dict
+            self.tensor_map["fixpipe_l1"] = fixpipe_l1_list
         else:
             dw_cc = dw_ddr
 
@@ -1193,7 +1238,6 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         weight_shape = [cout_g, cin1_g,
                         kernel_height, kernel_width, c0_fmap]
 
-        sch = sch_list[0]
         _set_var_range()
         dynamic_l0a_attach, dynamic_l0b_attach, dynamic_al1_attach, \
         dynamic_bl1_attach \
@@ -1365,7 +1409,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # not c_split: dw_cc -> dw_ddr(dw_rfactor)
             dw_ddr = dw_rfactor
         # #######################tiling parameters analyze####################
-        batch_num_sc = batch_num//block_dim_batch
+        batch_num_sc = batch_num // block_dim_batch
         if DEBUG_MODE:
             print("start analyzing tiling parameters")
             print("axis K: block_dim_batch", block_dim_batch)
@@ -1492,12 +1536,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             run_once_ndim = []
             c_fmap_mad_at_list = [c_fmap_mad_at, ]
             factor_c = _ceil_div(fkk // block_dim_cin, dw_tiling_nparts[0])
-            if tiling["B_overhead_opt_flag"]:
+            if tiling.get("B_overhead_opt_flag"):
                 if kernel_height * kernel_width % factor_c == 0:
                     nbuffer_size = kernel_height * kernel_width // factor_c
                 else:
                     nbuffer_size = kernel_height * kernel_width
-                if nbuffer_size <= tiling["BL1_shape"][1] and tiling["BL1_shape"][1] % nbuffer_size == 0:
+                if nbuffer_size <= tiling.get("BL1_shape")[1] and tiling.get("BL1_shape")[1] % nbuffer_size == 0:
                     c_fmap_run_once, c_fmap_mad_at = sch[dw_ddr].split(c_fmap_mad_at, nbuffer_size)
                     run_once_ndim = [c_fmap_mad_at, ]
                     c_fmap_mad_at_list = [c_fmap_run_once, c_fmap_mad_at]
@@ -1590,11 +1634,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 # the factor of grads_l1 is smaller than fmap_l1
                 hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
                     hw_mad_1_mad_at, grads_l1_tiling_factor_k)
-                if tiling["AL1_shape"] and tiling["BL1_shape"]:
+                if tiling.get("AL1_shape") and tiling.get("BL1_shape"):
                     # grads and fmap need tiling in L1
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, fmap_l1_tiling_factor_k)
-                elif tiling["AL1_shape"]:
+                elif tiling.get("AL1_shape"):
                     # only grads needs tiling in L1
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, nparts=fmap_l1_tiling_nparts[0])
@@ -1602,13 +1646,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 bl1_at_axis = hw_mad_1_l1_out_at
             else:
                 # the factor of fmap_l1 is smaller than grads_l1
-                if tiling["AL1_shape"] and tiling["BL1_shape"]:
+                if tiling.get("AL1_shape") and tiling.get("BL1_shape"):
                     # grads and fmap need tiling in L1
                     hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
                         hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, grads_l1_tiling_factor_k)
-                elif tiling["BL1_shape"]:
+                elif tiling.get("BL1_shape"):
                     # only fmap needs tiling in L1
                     hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
                         hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
@@ -1675,7 +1719,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 if self.var_map:
                     bool_dw_cc = dynamic_bl1_attach == "dw_cc"
                 else:
-                    bool_dw_cc = tiling["BL1_shape"] and\
+                    bool_dw_cc = tiling.get("BL1_shape") and\
                         (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
                 if bool_dw_cc:
                     if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
@@ -1694,13 +1738,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         if not self.var_map and grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
                             # hw splited one time before BL1  attach
                             hw_parts_offset = \
-                                hw_mad_1_l1_out_at * tiling["BL1_shape"][0]
+                                hw_mad_1_l1_out_at * tiling.get("BL1_shape")[0]
                         else:
                             # hw splited 2 times before BL1 attach
                             hw_parts_offset = \
                                 ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
                                  grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *
-                                 tiling["BL1_shape"][0])
+                                 tiling.get("BL1_shape")[0])
 
                     hw_offset = hw_block_offset + hw_parts_offset
                 else:
@@ -1709,10 +1753,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 # the offset of w according to that of k_axis
                 hw_offset_with_pad = stride_width * hw_offset - pad_left
                 # the extend of w according to that of k_axis
-                if not tiling["BL1_shape"]:
+                if not tiling.get("BL1_shape"):
                     kbl1_data = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
                 else:
-                    kbl1_data = tiling["BL1_shape"][0]
+                    kbl1_data = tiling.get("BL1_shape")[0]
                 hw_extend =\
                     (kbl1_data - 1) * stride_width + kw_dilation
                 if self.var_map:
@@ -1829,11 +1873,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if flag_conv1d_case:
                 bl1_hi = 1
-                if not tiling["BL1_shape"]:
+                if not tiling.get("BL1_shape"):
                     kbl1_data = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
                     nbl1_c1 = c1_fmap
                 else:
-                    kbl1_data = tiling["BL1_shape"][0]
+                    kbl1_data = tiling.get("BL1_shape")[0]
                     nbl1_c1 = ((tiling.get("BL1_shape")[1] *
                                tiling.get("BL0_matrix")[1]) //
                                (kernel_height * kernel_width))

@@ -205,10 +205,6 @@ def depthwise_conv2d_backprop_filter_d(
         # NCHW to HWCK(HWCN)
         shape_w = (shape_w[2], shape_w[3], shape_w[1], shape_w[0])
 
-    para_check.check_dtype(in_dtype.lower(), ('float16', ), param_name="input_fm")
-    para_check.check_dtype(dout_dtype.lower(), ('float16', ), param_name="out_backprop")
-    para_check.check_dtype(w_dtype.lower(), ('float32', ), param_name="filter_grad")
-
     para_check.check_shape(shape_in, min_rank=FEATURE_MAP_DIM,
                            max_rank=FEATURE_MAP_DIM, param_name="input_fm")
     para_check.check_shape(shape_w, min_rank=FILTER_DIM,
