@@ -263,27 +263,33 @@ bool LayerNormONNXFusionPass::CheckDynamic(const ge::NodePtr node, int32_t index
 bool LayerNormONNXFusionPass::GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
                                             std::vector<int64_t>& const_data) {
   size_t size = 0;
+  ge::AscendString op_name;
+  op.GetName(op_name);
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
-    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(const_tensor.GetData());
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op_name.GetString(), "Get const data failed."),
+                      return false);
     if (const_data_ptr == nullptr) {
-      VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "const_data_ptr is null");
+      VECTOR_FUSION_INNER_ERR_REPORT(op_name.GetString(), "const_data_ptr is null");
     }
     size = const_tensor.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
-      const_data.push_back((int32_t)((*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
+      const_data.push_back(static_cast<int32_t>((*(const_data_ptr + i))));
+      OP_LOGD(op_name.GetString(), "const data int32 fusion pass ====== %d",
+              static_cast<int32_t>(*(const_data_ptr + i)));
     }
   } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
-    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(const_tensor.GetData());
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op_name.GetString(),
+                      "Get const data failed."), return false);
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
-      const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
+      const_data.push_back((static_cast<int64_t>(*(const_data_ptr + i))));
+      OP_LOGD(op_name.GetString(), "const data int64 fusion pass ====== %d",
+              static_cast<int64_t>(*(const_data_ptr + i)));
     }
   } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "not support this type");
+    VECTOR_FUSION_INNER_ERR_REPORT(op_name.GetString(), "not support this type");
     return false;
   }
 
@@ -413,7 +419,7 @@ static Status GetScalarFromOp(ge::NodePtr node, float& value) {
     OP_LOGW("LayerNorm", "add0_node type is not float or fp16, not change");
     return NOT_CHANGED;
   }
-  float* tensor_data_ptr = (float*)const_input.GetData();
+  float* tensor_data_ptr = reinterpret_cast<float*>(const_input.GetData());
   if (tensor_data_ptr == nullptr) {
     OP_LOGE("LayerNorm", "const data of %s node is null.", node->GetName().c_str());
     return GRAPH_FAILED;
@@ -570,15 +576,20 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     OP_LOGW(FUSED_OP_TYPE.c_str(), "input shape must be greater than one, not change");
     return NOT_CHANGED;
   }
-  if (op_reducemean0.GetOpType() == "ReduceMean") {
+  ge::AscendString op_type_ascend_string;
+  op_reducemean0.GetOpType(op_type_ascend_string);
+  std::string reducemean0_op_type = op_type_ascend_string.GetString();
+  if (reducemean0_op_type == "ReduceMean") {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "op_reducemean0 type is ReduceMean.");
     if (ge::GRAPH_SUCCESS != op_reducemean0.GetInputConstData("axes", const_tensor)) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get axes from %s.", nodes_map[PATTERN_REDUCEMEAN0]->GetName().c_str());
       return GRAPH_FAILED;
     }
-    DataType dtype = op_reducemean0.GetInputDesc("axes").GetDataType();
+    DataType dtype = op_reducemean0.GetInputDescByName("axes").GetDataType();
     if (!GetConstValue(op_reducemean0, const_tensor, dtype, axes)) {
-      VECTOR_FUSION_INNER_ERR_REPORT(op_reducemean0.GetName().c_str(), "Get Const Value failed ");
+      ge::AscendString op_name;
+      op_reducemean0.GetName(op_name);
+      VECTOR_FUSION_INNER_ERR_REPORT(op_name.GetString(), "Get Const Value failed ");
       return GRAPH_FAILED;
     };
 

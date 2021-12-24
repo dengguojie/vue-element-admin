@@ -251,7 +251,6 @@ ge::NodePtr TransdataReshapeTransposeFusionPass::CreateTransposeNode(const ge::N
 bool TransdataReshapeTransposeFusionPass::UnLinkDataEdges(const ge::NodePtr &transdata_node1,
                                                           ge::NodePtr &reformat_node1,
                                                           const ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
-                                                          const ge::NodePtr &transdata_node2,
                                                           ge::ComputeGraph &graph) {
   if (transdata_node1->GetOutDataAnchor(0) != nullptr) {
     transdata_node1->GetOutDataAnchor(0)->UnlinkAll();
@@ -312,7 +311,7 @@ bool TransdataReshapeTransposeFusionPass::RelinkEdges(ge::NodePtr &transdata_nod
     }
   }
 
-  if (!UnLinkDataEdges(transdata_node1, reformat_node1, reshape_node, reformat_node2, transdata_node2, graph)) {
+  if (!UnLinkDataEdges(transdata_node1, reformat_node1, reshape_node, reformat_node2, graph)) {
     return false;
   }
 
@@ -334,7 +333,8 @@ bool TransdataReshapeTransposeFusionPass::RelinkEdges(ge::NodePtr &transdata_nod
   return true;
 }
 
-bool TransdataReshapeTransposeFusionPass::RelinkControlEdges(ge::NodePtr &src_node, ge::NodePtr &dst_node) const {
+bool TransdataReshapeTransposeFusionPass::RelinkControlEdges(const ge::NodePtr &src_node,
+                                                             ge::NodePtr &dst_node) const {
   ge::InControlAnchorPtr src_in_ctrl_anchor = src_node->GetInControlAnchor();
   ge::InControlAnchorPtr dts_in_ctrl_anchor = dst_node->GetInControlAnchor();
   if (src_in_ctrl_anchor != nullptr && dts_in_ctrl_anchor != nullptr) {

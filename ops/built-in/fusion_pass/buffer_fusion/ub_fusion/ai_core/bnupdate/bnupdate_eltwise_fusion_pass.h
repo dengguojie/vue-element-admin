@@ -25,7 +25,7 @@ class BnupdateEltwiseFusionPass : public BufferFusionPassBase {
  public:
   explicit BnupdateEltwiseFusionPass() {}
 
-  ~BnupdateEltwiseFusionPass() {}
+  ~BnupdateEltwiseFusionPass() override {}
 
  protected:
   /*

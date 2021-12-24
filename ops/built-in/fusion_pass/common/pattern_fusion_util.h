@@ -110,7 +110,7 @@ class PatternFusionUtil {
 
   static Status UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr);
 
-  static bool IsUnknownShape(const int64_t& shape);
+  static bool IsUnknownShape(const int64_t& dims);
   /**
   * @ingroup fe
   * @brief add a control edge from source node to dest node

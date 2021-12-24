@@ -130,7 +130,7 @@ Status JudgeFormatOK(const ge::GeTensorDescPtr &tensor0, const ge::GeTensorDescP
                |
             outout0
  */
-Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_ptr) const {
+Status MulFusionOptimizeFusionPass::CheckParameterAndSet(const ge::NodePtr& in_node_ptr) const {
   auto input_nodes = in_node_ptr->GetInDataNodes();
   auto output_nodes = in_node_ptr->GetOutDataNodes();
   auto input_num = input_nodes.size();
@@ -182,7 +182,7 @@ Status MulFusionOptimizeFusionPass::CheckParameterAndSet(ge::NodePtr& in_node_pt
   return SUCCESS;
 }
 
-Status MulFusionOptimizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
+Status MulFusionOptimizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,vector<ge::NodePtr>& new_nodes) {
   OP_LOGD(kFusedOptype.c_str(), "Enter MulFusionOptimizeFusionPass");
   ge::NodePtr in_node_ptr = GetNodeFromMapping(kPatternMulFusOtimizer, mapping);
   FUSION_PASS_CHECK(in_node_ptr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOptype.c_str(), "Node MUL is null, "

@@ -93,7 +93,7 @@ void PatternFusionUtil::SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const
   if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
     FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGE(curOpType.c_str(), "const_data_ptr is null, fusion failed."),
-                      return );
+                      return);
     size = const_tensor.GetSize() / sizeof(int32_t);
     if (attrInfo.attrType == ATTR_TYPE_SETINT) {
       int32_t const_data = (int32_t)(*const_data_ptr);
@@ -244,11 +244,11 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
       }
     }
     if (fusedDesc->GetInputNameByIndex(attr.attrIndex).empty()) {
-      OP_LOGE(fusionOpType.c_str(), "Get fuseNode:[%s]'s inputName by index [%d] failed.", fusedNode->GetName().c_str(),
-              attr.attrIndex);
+      OP_LOGE(fusionOpType.c_str(), "Get fuseNode:[%s]'s inputName by index [%d] failed.",
+              fusedNode->GetName().c_str(), attr.attrIndex);
       return FAILED;
     }
-    op.GetInputConstData(fusedDesc->GetInputNameByIndex(attr.attrIndex), constTensor);
+    op.GetInputConstData(fusedDesc->GetInputNameByIndex(attr.attrIndex).c_str(), constTensor);
     SetConstValueToAttrWithType(fusionDesc, constTensor, fusedDesc->GetInputDesc(attr.attrIndex).GetDataType(), attr);
   }
   // remove the inputdesc which need to be removed
@@ -265,7 +265,7 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
   }
   fusionDesc->UpdateInputName(fusionDescInputName);
 
-  auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", fusionOpType);
+  auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", fusionOpType.c_str());
   if (realFusedOp.IsEmpty()) {
     OP_LOGE(fusionOpType.c_str(), "create fusion node %s failed", fusionOpType.c_str());
     return FAILED;
@@ -557,7 +557,7 @@ ge::OpDescPtr PatternFusionUtil::GetFusionOpDesc(ge::NodePtr fusedNodePtr, std::
     OP_LOGI(fusionOpType.c_str(), "FuseNode[%s]: the name of the %dth input is %s.", fusionNodeName.c_str(),
             attr.attrIndex, fusionDescPtr->GetInputNameByIndex(attr.attrIndex).c_str());
     Tensor constTensor;
-    op.GetInputConstData(fusionDescPtr->GetInputNameByIndex(attr.attrIndex), constTensor);
+    op.GetInputConstData(fusionDescPtr->GetInputNameByIndex(attr.attrIndex).c_str(), constTensor);
     SetConstValueToAttrWithType(fusionDescPtr, constTensor, opDescPtr->GetInputDesc(attr.attrIndex).GetDataType(),
                                 attr);
   }
@@ -959,7 +959,8 @@ ge::NodePtr PatternFusionUtil::InsertOutputNode(ge::ComputeGraph &graph, ge::Nod
  *          src node                            node1 node2 node3
  */
 ge::NodePtr PatternFusionUtil::InsertSingleNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
-        const bool &is_input, const int32_t &index, vector<ge::NodePtr> &fusion_nodes) {
+                                                const bool &is_input, const int32_t &index,
+                                                vector<ge::NodePtr> &fusion_nodes) {
   ge::NodePtr single_node = nullptr;
   static std::atomic<uint64_t> name_id(0);
   if (is_input) {
