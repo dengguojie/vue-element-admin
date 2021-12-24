@@ -46,7 +46,8 @@ vector<FusionPattern*> HostINFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("HostINFusionPass");
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter HostINFusionPass::DefinePatterns.");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_INInference, {ININFERENCE}).SetOutput(PATTERN_INInference);
   patterns.push_back(pattern);
@@ -57,11 +58,13 @@ vector<FusionPattern*> HostINFusionPass::DefinePatterns() {
 Status HostINFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter GoINhost");
   ge::NodePtr inNode = GetNodeFromMapping(PATTERN_INInference, mapping);
-  FUSION_PASS_CHECK(inNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node Ininfenced is null, fusion failed."),
+  FUSION_PASS_CHECK(inNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node Ininfenced is null, fusion failed."),
                     return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "check INhost");
   FUSION_PASS_CHECK(CheckParameter(inNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Check INInferenceD param failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Check INInferenceD param failed."),
+                    return PARAM_INVALID);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "fusion INhost");
   return INFuison(graph, inNode, newNodes);
@@ -71,7 +74,8 @@ Status HostINFusionPass::CheckParameter(ge::NodePtr& inNodePtr) {
   // get psroipooling node inputs.
   Node::Vistor<NodePtr> inNodes = inNodePtr->GetInDataNodes();
   FUSION_PASS_CHECK((inNodes.size() != 5),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "INInference input nodes num(%lu) != 5", inNodes.size()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "INInference input nodes num(%lu) != 5", inNodes.size()),
                     return PARAM_INVALID);
   return SUCCESS;
 }
@@ -80,13 +84,15 @@ Status HostINFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPt
   // get and update output_dim
   ge::GeAttrValue epsValue;
   FUSION_PASS_CHECK(preOpDescPtr->GetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get attr %s from node %s error", EPSILON.c_str(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "Get attr %s from node %s error", EPSILON.c_str(),
                             preOpDescPtr->GetName().c_str()),
                     return PARAM_INVALID);
 
   FUSION_PASS_CHECK(
       newOpDescPtr->SetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", EPSILON.c_str(), newOpDescPtr->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "Set attr %s to node %s error", EPSILON.c_str(), newOpDescPtr->GetName().c_str()),
       return PARAM_INVALID);
 
   return SUCCESS;
@@ -98,7 +104,8 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
   ge::OpDescPtr inOpDescPtr = inNodePtr->GetOpDesc();
   FUSION_PASS_CHECK(
       inOpDescPtr == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", inOpDescPtr->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "Node:%s's OpDesc is null, fusion failed.", inOpDescPtr->GetName().c_str()),
       return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s 1", inOpDescPtr->GetName().c_str());
 
@@ -128,7 +135,8 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
         return FAILED);
 
     FUSION_PASS_CHECK(SetAttrValueForNewNode(inOpDescPtr, inhostOpDescPtr) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."),
+                      return FAILED);
 
     // get Inhost input
     ge::GeTensorDesc varInputTensorDesc = inOpDescPtr->GetInputDesc(4);
@@ -172,10 +180,12 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
     newNodes.push_back(ininferNodePtr);
 
     FUSION_PASS_CHECK(inhostNodePtr == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: inhostNodePtr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode: inhostNodePtr is null, fusion failed."),
                       return FAILED);
     FUSION_PASS_CHECK(ininferNodePtr == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: ininferNodePtr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode: ininferNodePtr is null, fusion failed."),
                       return FAILED);
 
     // x gamma, beta, mean, variance,
@@ -183,49 +193,56 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                          ininferNodePtr->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               ininferNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                                          ininferNodePtr->GetInDataAnchor(1)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               ininferNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(2)->GetPeerOutAnchor(),
                                                          ininferNodePtr->GetInDataAnchor(2)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(2)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               ininferNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(3)->GetPeerOutAnchor(),
                                                          ininferNodePtr->GetInDataAnchor(3)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(3)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               ininferNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(4)->GetPeerOutAnchor(),
                                                          ininferNodePtr->GetInDataAnchor(4)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(4)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               ininferNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(4)->GetPeerOutAnchor(),
                                                          inhostNodePtr->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge from data node:%s to transpose node:%s failed.",
                               inNodePtr->GetInDataAnchor(4)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               inhostNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(inhostNodePtr->GetOutAnchor(0), ininferNodePtr->GetInDataAnchor(5)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                "Add edge from data node:%s to transpose node:%s failed.",
                 inhostNodePtr->GetName().c_str(), inNodePtr->GetName().c_str()),
         return FAILED);
 
@@ -235,15 +252,18 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
     for (size_t outindex = 0; outindex < outanchorsize; outindex++) {
       for (auto inDataAnchor : inNodePtr->GetOutDataAnchor(outindex)->GetPeerInDataAnchors()) {
         FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(inNodePtr->GetOutDataAnchor(outindex), inDataAnchor) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove inhost out data edge failed."), return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove inhost out data edge failed."),
+                          return FAILED);
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(ininferNodePtr->GetOutDataAnchor(outindex), inDataAnchor) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add inhost out data edge failed."), return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add inhost out data edge failed."),
+                          return FAILED);
       }
     }
 
     // remove Normalize from graph
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(inNodePtr),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inNodePtr node[%s] failed", inNodePtr->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "remove inNodePtr node[%s] failed", inNodePtr->GetName().c_str()),
                       return FAILED);
     return SUCCESS;
   }

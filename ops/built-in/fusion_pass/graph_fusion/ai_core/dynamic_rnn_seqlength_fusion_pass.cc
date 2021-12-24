@@ -125,31 +125,31 @@ Status DynamicRNNSeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comput
     ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
   }
 
-  //Creat Mask
+  // Creat Mask
   ge::NodePtr maskNode = graph.AddNode(rnnMaskDesc);
   FUSION_PASS_CHECK(maskNode == nullptr,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Mask node:%s failed", rnnMaskDesc->GetName().c_str()),
       return FAILED);
   newNodes.push_back(maskNode);
-  //Add Edge
+  // Add Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
                                          maskNode->GetInDataAnchor(0)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add cast input edge failed"), return FAILED);
 
-  //Remove Edge
+  // Remove Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
                                           fusedNode->GetInDataAnchor(seqLenIndex)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and gruv2 failed"), return FAILED);
 
-  //Add Edge
+  // Add Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(maskNode->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(seqLenIndex)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
 
   if (PatternFusionUtil::IsUnknownShape(numStep) || PatternFusionUtil::IsUnknownShape(m_size)) {
-    //Add Edge
+    // Add Edge
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(xIndex)->GetPeerOutAnchor(),
                                             maskNode->GetInDataAnchor(1)),
@@ -282,7 +282,6 @@ Status DynamicRNNSeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   } else {
     return NOT_CHANGED;
   }
-
 }
 
 REGISTER_PASS("DynamicRNNSeqFusionPass", BUILT_IN_GRAPH_PASS, DynamicRNNSeqFusionPass);

@@ -31,7 +31,8 @@ static const string FUSED_NODE_V2 = "DynamicRNNV2";
 vector<FusionPattern*> DynamicRNNInsertTransposePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicRNNInsertTransposePass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE, FUSED_NODE_V2}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -41,12 +42,14 @@ vector<FusionPattern*> DynamicRNNInsertTransposePass::DefinePatterns() {
 Status DynamicRNNInsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define DynamicRNNInsertTransposePass fusion begin.");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fusedNode->GetOpDesc();
   bool time_major = true;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(fuseDesc, "time_major", time_major),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get DynamicRnn's attr time_major failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get DynamicRnn's attr time_major failed."),
+                    return FAILED);
   if (!time_major) {
     // do infer for fused node again, and update fused node output shape
     ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
@@ -79,7 +82,9 @@ Status DynamicRNNInsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping& m
     opOutputDesc->UpdateOutputDesc(7, outputDesc);
     AddTransposeAfterNode(fusedNode, 0, permBoxesList, graph);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(fuseDesc, "time_major", true),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set DynamicRnn's attr time_major true failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "Set DynamicRnn's attr time_major true failed."),
+                      return FAILED);
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "DynamicRnn time_major is true don't need insert Transpose");
   }

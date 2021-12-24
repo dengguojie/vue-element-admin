@@ -26,7 +26,6 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-
 class DynamicRNNInsertTransposePass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;

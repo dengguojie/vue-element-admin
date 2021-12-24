@@ -43,7 +43,8 @@ static const std::string PATTERN_FUSEDNODE = "Im2col";
 vector<FusionPattern*> Im2colFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Im2colFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -60,10 +61,12 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Im2colFusionPass.");
   ge::NodePtr im2colNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
-  FUSION_PASS_CHECK(im2colNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "im2col node is null."),
-                    return PARAM_INVALID);              
+  FUSION_PASS_CHECK(im2colNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "im2col node is null."),
+                    return PARAM_INVALID);
   ge::OpDescPtr im2colOpDesc = im2colNode->GetOpDesc();
-  FUSION_PASS_CHECK(im2colOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "im2col is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(im2colOpDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "im2col is null."), return PARAM_INVALID);
 
   ge::GeTensorDesc im2colInputOpDesc = im2colOpDesc->GetInputDesc(0);
   ge::GeTensorDesc im2colOutputOpDesc = im2colOpDesc->GetOutputDesc(0);
@@ -88,7 +91,9 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   if (outputOriginFormat == ge::FORMAT_NCHW) {
     vector<int64_t> ksizes;
     ge::AttrUtils::GetListInt(im2colOpDesc, "ksizes", ksizes);
-    FUSION_PASS_CHECK(ksizes.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ksizes is null, please check!"), return FAILED);
+    FUSION_PASS_CHECK(ksizes.empty(),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ksizes is null, please check!"),
+                      return FAILED);
     int64_t k = ksizes[0] * ksizes[1];
     vector<int64_t> reshape1DimInfo = {outputN, k, outputC / k, outputH, outputW};
     vector<int64_t> outputDimInfo = {outputN, outputC / k, k, outputH, outputW};
@@ -102,26 +107,31 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     std::shared_ptr<ge::OpDesc> reshapeDesc1 = nullptr;
     reshapeDesc1 = std::make_shared<ge::OpDesc>(im2colNode->GetName() + "_reshape1_layer", "Reshape");
     FUSION_PASS_CHECK(reshapeDesc1 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape1 is null, Reshape failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape1 is null, Reshape failed."),
+                      return PARAM_INVALID);
     std::shared_ptr<ge::OpDesc> transposeDDesc1 = nullptr;
     transposeDDesc1 = std::make_shared<ge::OpDesc>(im2colNode->GetName() + "_transposeD_layer", "TransposeD");
     FUSION_PASS_CHECK(transposeDDesc1 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeD is null, TransposeD failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeD is null, TransposeD failed."),
+                      return PARAM_INVALID);
     std::shared_ptr<ge::OpDesc> reshapeDesc2 = nullptr;
     reshapeDesc2 = std::make_shared<ge::OpDesc>(im2colNode->GetName() + "_reshape2_layer", "Reshape");
     FUSION_PASS_CHECK(reshapeDesc2 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape1 is null, Reshape failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape1 is null, Reshape failed."),
+                      return PARAM_INVALID);
 
     // init const
     unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[5]());
-    FUSION_PASS_CHECK(input_assist_1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
+    FUSION_PASS_CHECK(input_assist_1.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[4]());
-    FUSION_PASS_CHECK(input_assist_2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
+    FUSION_PASS_CHECK(input_assist_2.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     AssistInit(reshape1DimInfo, input_assist_1.get());
     AssistInit(reshape2DimInfo, input_assist_2.get());
-    
+
     // geneate is_input_const
     vector<bool> is_input_const;
     is_input_const.push_back(false);
@@ -130,13 +140,15 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     // add input, output
     ge::GeTensorDesc input_desc1 = im2colNode->GetOpDesc()->GetOutputDesc(0);
     FUSION_PASS_CHECK(reshapeDesc1->AddInputDesc("x", input_desc1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc1 input failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc1 input failed."),
+                      return FAILED);
     ge::GeShape assitShape1(reshape1DimInfo);
     ge::GeShape assitShapeOrigin1(reshape1DimInfo);
     input_desc1.SetShape(assitShape1);
     input_desc1.SetOriginShape(assitShapeOrigin1);
     FUSION_PASS_CHECK(reshapeDesc1->AddOutputDesc("y", input_desc1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc1 output failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc1 output failed."),
+                      return FAILED);
     // add node
     ge::NodePtr reshapeNode1 = graph.AddNode(reshapeDesc1);
 
@@ -162,13 +174,15 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
     // add input, output
     FUSION_PASS_CHECK(transposeDDesc1->AddInputDesc(input_desc1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transposeDDesc1 input failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transposeDDesc1 input failed."),
+                      return FAILED);
     ge::GeShape assitShape(outputDimInfo);
     ge::GeShape assitShapeOrigin(outputDimInfo);
     input_desc1.SetShape(assitShape);
     input_desc1.SetOriginShape(assitShapeOrigin);
     FUSION_PASS_CHECK(transposeDDesc1->AddOutputDesc(input_desc1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transposeDDesc1 output failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transposeDDesc1 output failed."),
+                      return FAILED);
 
     // add node
     ge::NodePtr transposeDNode1 = graph.AddNode(transposeDDesc1);
@@ -178,9 +192,11 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     ge::GeTensorDesc transOutputOpDesc = transposeDDesc1->GetOutputDesc(0);
     ge::GeTensorDesc output_desc1 = reshape2DpPtr->GetOwnerNode()->GetOpDesc()->GetInputDesc(0);
     FUSION_PASS_CHECK(reshapeDesc2->AddInputDesc("x", transOutputOpDesc) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc2 input failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc2 input failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(reshapeDesc2->AddOutputDesc("y", output_desc1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc2 output failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshapeDesc2 output failed."),
+                      return FAILED);
 
     ge::GeTensorDesc reshape2OutOpDesc = reshapeDesc2->GetOutputDesc(0);
     ge::GeShape assitShape2(reshape2DimInfo);
@@ -190,7 +206,9 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     reshape2OutOpDesc.SetFormat(ge::FORMAT_NCHW);
     reshape2OutOpDesc.SetOriginFormat(ge::FORMAT_NCHW);
     Status ret = reshapeDesc2->UpdateOutputDesc(0, reshape2OutOpDesc);
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape2 UpdateOutputDesc failed."), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape2 UpdateOutputDesc failed."),
+                      return FAILED);
 
     // add node
     ge::NodePtr reshapeNode2 = graph.AddNode(reshapeDesc2);
@@ -208,18 +226,22 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     const_node_2->GetOpDesc()->SetType("Constant");
     reshapeDesc2->SetIsInputConst(is_input_const);
 
-
-    // add edge between im2col and reshape1, reshape1 and transpose, transpose and reshape2 
+    // add edge between im2col and reshape1, reshape1 and transpose, transpose and reshape2
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(im2colAnchorPtr1, reshapeNode1->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge between node %s. and node %s failed.",
                               im2colNode->GetName().c_str(), reshapeNode1->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshapeNode1->GetOutDataAnchor(0), transposeDNode1->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshapeNode1->GetOutDataAnchor(0),
+                                              transposeDNode1->GetInDataAnchor(0)) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge between node %s. and node %s failed.",
                               reshapeNode1->GetName().c_str(), transposeDNode1->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode1->GetOutDataAnchor(0), reshapeNode2->GetInDataAnchor(0)) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode1->GetOutDataAnchor(0),
+                                              reshapeNode2->GetInDataAnchor(0)) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Add edge between node %s. and node %s failed.",
                               transposeDNode1->GetName().c_str(), reshapeNode2->GetName().c_str()),
                       return FAILED);
 
@@ -233,7 +255,8 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
         // add edge between reshape2 and post
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshapeNode2->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                  "Add edge between node %s. and node %s failed.",
                                   reshapeNode2->GetName().c_str(), im2colNode->GetName().c_str()),
                           return FAILED);
       }

@@ -37,7 +37,6 @@
 #include "graph/utils/node_utils.h"
 
 namespace fe {
-
 static const char PATTERN_MUL[] = "mul";
 static const char PATTERN_SUB[] = "sub";
 static const char PATTERN_EXP[] = "exp";
@@ -138,7 +137,8 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   logsoftmaxGradOp.BreakConnect();
 
   ge::NodePtr logsoftmaxGradNode = graph.AddNode(opDesc);
-  FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
+  FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
                     return FAILED);
   fusionNodes.push_back(logsoftmaxGradNode);
   if (UpdateAttr(sumNode, logsoftmaxGradNode) == FAILED) {
@@ -281,7 +281,8 @@ Status LogSoftmaxGradFusionPass::LinkOutputEdge(ge::NodePtr oldNode, ge::NodePtr
       auto inputTensor = peerNode->GetOpDesc()->GetInputDesc(dstAnchor->GetIdx());
       FUSION_PASS_CHECK(
           newNode->GetOpDesc()->UpdateOutputDesc(newOutDataAnchor->GetIdx(), inputTensor) == ge::GRAPH_FAILED,
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op:%s update output desc failed", newNode->GetName().c_str()), return false);
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                         "op:%s update output desc failed", newNode->GetName().c_str()), return false);
     }
   }
   ge::OutControlAnchorPtr outControlAnchor = oldNode->GetOutControlAnchor();
