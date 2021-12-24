@@ -88,7 +88,7 @@ Status AReduceMinFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   std::vector<int64_t> const_data;
-  int32_t* const_data_ptr = (int32_t*)data.GetData();
+  const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(data.GetData());
   size_t const_data_size = data.GetSize() / sizeof(int32_t);
   for (size_t i = 0; i < const_data_size; ++i) {
     const_data.push_back((int32_t)((*(const_data_ptr + i))));

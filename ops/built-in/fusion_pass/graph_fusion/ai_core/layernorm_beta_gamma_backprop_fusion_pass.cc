@@ -118,7 +118,7 @@ Status LayerNormBetaGammaBackpropFusionPass::GetAllLayerNormBetaGammaBackpropNod
 }
 
 Status LayerNormBetaGammaBackpropFusionPass::MatchLayerNormBetaGammaBackpropNode(NodePtr lnNodePtr,
-                                                                                 LayerNormMatchResult& matchResult) {
+                                                                                 LayerNormMatchResult& matchResult) const {
   // LayerNormBetaGammaBackprop node has epsilon attr
   OpDescPtr lnOpDescPtr = lnNodePtr->GetOpDesc();
   if (!ge::AttrUtils::HasAttr(lnOpDescPtr, "shape_gamma")) {
@@ -166,7 +166,7 @@ Status LayerNormBetaGammaBackpropFusionPass::MatchLayerNormBetaGammaBackpropNode
 }
 
 Status LayerNormBetaGammaBackpropFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph,
-                                                                 LayerNormMatchResult& matchResult) {
+                                                                 LayerNormMatchResult& matchResult) const {
   NodePtr lnNodePtr = matchResult.layerNormBetaGammaBackpropPtr;
   FUSION_PASS_CHECK(lnNodePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "lnNodePtr is null, fusion failed."),
                     return PARAM_INVALID);

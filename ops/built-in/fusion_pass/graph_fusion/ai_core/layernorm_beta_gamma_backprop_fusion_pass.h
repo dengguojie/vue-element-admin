@@ -46,8 +46,8 @@ class LayerNormBetaGammaBackpropFusionPass : public PatternFusionBasePass {
  private:
   Status MatchPass(ge::ComputeGraph& graph, std::vector<LayerNormMatchResult>& passMatchResultVec);
   Status GetAllLayerNormBetaGammaBackpropNodes(ge::ComputeGraph& graph, std::vector<NodePtr>& batchNormNodeVec);
-  Status MatchLayerNormBetaGammaBackpropNode(ge::NodePtr bnNodePtr, LayerNormMatchResult& matchResult);
-  Status FusionGraphWithPass(ge::ComputeGraph& graph, LayerNormMatchResult& matchResult);
+  Status MatchLayerNormBetaGammaBackpropNode(ge::NodePtr bnNodePtr, LayerNormMatchResult& matchResult) const;
+  Status FusionGraphWithPass(ge::ComputeGraph& graph, LayerNormMatchResult& matchResult) const;
   const string FUSED_OP_TYPE = "LayerNormBetaGammaBackprop";
 };
 }  // namespace fe

@@ -71,7 +71,7 @@ Status HostBNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   return BNFuison(graph, bnNode, newNodes);
 }
 
-Status HostBNFusionPass::CheckParameter(ge::NodePtr& bnNodePtr) {
+Status HostBNFusionPass::CheckParameter(const ge::NodePtr& bnNodePtr) const {
   // get psroipooling node inputs.
   Node::Vistor<NodePtr> inNodes = bnNodePtr->GetInDataNodes();
   FUSION_PASS_CHECK((inNodes.size() != 4 && inNodes.size() != 6),
@@ -80,7 +80,7 @@ Status HostBNFusionPass::CheckParameter(ge::NodePtr& bnNodePtr) {
   return SUCCESS;
 }
 
-Status HostBNFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) {
+Status HostBNFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) const {
   // get and update output_dim
   ge::GeAttrValue epsValue;
   FUSION_PASS_CHECK(preOpDescPtr->GetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
@@ -143,27 +143,27 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
 
   // get bnhost input
   ge::GeTensorDesc meanInputTensorDesc;
-  FUSION_PASS_CHECK(GetSwapInputTensorDesc(bnhostOpDescPtr, meanNodePtr->GetOpDesc(), meanInputTensorDesc) != SUCCESS,
+  FUSION_PASS_CHECK(GetSwapInputTensorDesc(meanNodePtr->GetOpDesc(), meanInputTensorDesc) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."),
                     return NOT_CHANGED);
   ge::GeTensorDesc varInputTensorDesc;
-  FUSION_PASS_CHECK(GetSwapInputTensorDesc(bnhostOpDescPtr, varNodePtr->GetOpDesc(), varInputTensorDesc) != SUCCESS,
+  FUSION_PASS_CHECK(GetSwapInputTensorDesc(varNodePtr->GetOpDesc(), varInputTensorDesc) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
                     return NOT_CHANGED);
   ge::GeTensorDesc momentumInputTensorDesc;
   FUSION_PASS_CHECK(
-      GetSwapInputTensorDesc(bnhostOpDescPtr, momentumNodePtr->GetOpDesc(), momentumInputTensorDesc) != SUCCESS,
+      GetSwapInputTensorDesc(momentumNodePtr->GetOpDesc(), momentumInputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input momentum opDesc failed, fusion failed."), return NOT_CHANGED);
 
   ge::GeTensorDesc scaleInputTensorDesc;
   ge::GeTensorDesc offsetInputTensorDesc;
   if (inputNodes.size() == 6) {
     FUSION_PASS_CHECK(
-        GetSwapInputTensorDesc(bnhostOpDescPtr, scaleNodePtr->GetOpDesc(), scaleInputTensorDesc) != SUCCESS,
+        GetSwapInputTensorDesc(scaleNodePtr->GetOpDesc(), scaleInputTensorDesc) != SUCCESS,
         OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input scale opDesc failed, fusion failed."), return NOT_CHANGED);
 
     FUSION_PASS_CHECK(
-        GetSwapInputTensorDesc(bnhostOpDescPtr, offsetNodePtr->GetOpDesc(), offsetInputTensorDesc) != SUCCESS,
+        GetSwapInputTensorDesc(offsetNodePtr->GetOpDesc(), offsetInputTensorDesc) != SUCCESS,
         OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input offset opDesc failed, fusion failed."), return NOT_CHANGED);
   }
 
@@ -171,12 +171,12 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
 
   ge::GeTensorDesc meanOutputTensorDesc;
   FUSION_PASS_CHECK(
-      GetMeanOutputTensorDesc(bnhostOpDescPtr, bnOpDescPtr, meanInputTensorDesc, meanOutputTensorDesc) != SUCCESS,
+      GetMeanOutputTensorDesc(bnOpDescPtr, meanInputTensorDesc, meanOutputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output mean opDesc failed, fusion failed."), return NOT_CHANGED);
 
   ge::GeTensorDesc varOutputTensorDesc;
   FUSION_PASS_CHECK(
-      GetVarOutputTensorDesc(bnhostOpDescPtr, bnOpDescPtr, varInputTensorDesc, varOutputTensorDesc) != SUCCESS,
+      GetVarOutputTensorDesc(bnOpDescPtr, varInputTensorDesc, varOutputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return NOT_CHANGED);
 
   // update output origin shape of pad
@@ -193,11 +193,11 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   // get bninferenced input
   ge::GeTensorDesc bninfermeanInputTensorDesc;
   FUSION_PASS_CHECK(
-      GetSwapInputTensorDesc(bninferOpDescPtr, meanNodePtr->GetOpDesc(), bninfermeanInputTensorDesc) != SUCCESS,
+      GetSwapInputTensorDesc(meanNodePtr->GetOpDesc(), bninfermeanInputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input mean opDesc failed, fusion failed."), return NOT_CHANGED);
   ge::GeTensorDesc bninfervarInputTensorDesc;
   FUSION_PASS_CHECK(
-      GetSwapInputTensorDesc(bninferOpDescPtr, varNodePtr->GetOpDesc(), bninfervarInputTensorDesc) != SUCCESS,
+      GetSwapInputTensorDesc(varNodePtr->GetOpDesc(), bninfervarInputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."), return NOT_CHANGED);
   // get bninferenced output
   ge::GeTensorDesc bninferdataInputTensorDesc;
@@ -205,7 +205,7 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
                     return NOT_CHANGED);
   ge::GeTensorDesc bninferOutputTensorDesc;
-  FUSION_PASS_CHECK(GetInferOutputTensorDesc(bninferOpDescPtr, bnOpDescPtr, bninferdataInputTensorDesc,
+  FUSION_PASS_CHECK(GetInferOutputTensorDesc(bnOpDescPtr,
                                              bninferOutputTensorDesc) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Create output var opDesc failed, fusion failed."), return NOT_CHANGED);
 
@@ -326,23 +326,21 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   return SUCCESS;
 }
 
-Status HostBNFusionPass::GetSwapInputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
-                                                const ge::OpDescPtr& preOpDescPtr, ge::GeTensorDesc& inputTensorDesc) {
+Status HostBNFusionPass::GetSwapInputTensorDesc(const ge::OpDescPtr& preOpDescPtr, ge::GeTensorDesc& inputTensorDesc) const {
   inputTensorDesc = preOpDescPtr->GetOutputDesc(0);
   return SUCCESS;
 }
 
 Status HostBNFusionPass::GetInputDataTensorDesc(const ge::NodePtr& dataNodePtr, const ge::NodePtr& preNodePtr,
-                                                ge::GeTensorDesc& inputTensorDesc) {
+                                                ge::GeTensorDesc& inputTensorDesc) const {
   int32_t node_index = preNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetIdx();
   inputTensorDesc = dataNodePtr->GetOpDesc()->GetOutputDesc(node_index);
   return SUCCESS;
 }
 
-Status HostBNFusionPass::GetMeanOutputTensorDesc(const ge::OpDescPtr& hostOpDescPtr,
-                                                 const ge::OpDescPtr& currentOpDescPtr,
+Status HostBNFusionPass::GetMeanOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
                                                  const ge::GeTensorDesc& inputTensorDesc,
-                                                 ge::GeTensorDesc& outputTensorDesc) {
+                                                 ge::GeTensorDesc& outputTensorDesc) const {
   outputTensorDesc = currentOpDescPtr->GetInputDesc(1);
   outputTensorDesc.SetShape(inputTensorDesc.GetShape());
   outputTensorDesc.SetOriginShape(inputTensorDesc.GetShape());
@@ -351,10 +349,9 @@ Status HostBNFusionPass::GetMeanOutputTensorDesc(const ge::OpDescPtr& hostOpDesc
   return SUCCESS;
 }
 
-Status HostBNFusionPass::GetVarOutputTensorDesc(const ge::OpDescPtr& hostOpDescPtr,
-                                                const ge::OpDescPtr& currentOpDescPtr,
+Status HostBNFusionPass::GetVarOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
                                                 const ge::GeTensorDesc& inputTensorDesc,
-                                                ge::GeTensorDesc& outputTensorDesc) {
+                                                ge::GeTensorDesc& outputTensorDesc) const {
   outputTensorDesc = currentOpDescPtr->GetInputDesc(2);
 
   outputTensorDesc.SetShape(inputTensorDesc.GetShape());
@@ -363,10 +360,9 @@ Status HostBNFusionPass::GetVarOutputTensorDesc(const ge::OpDescPtr& hostOpDescP
 
   return SUCCESS;
 }
-Status HostBNFusionPass::GetMuOutputTensorDesc(const ge::OpDescPtr& hostOpDescPtr,
-                                               const ge::OpDescPtr& currentOpDescPtr,
+Status HostBNFusionPass::GetMuOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
                                                const ge::GeTensorDesc& inputTensorDesc,
-                                               ge::GeTensorDesc& outputTensorDesc) {
+                                               ge::GeTensorDesc& outputTensorDesc) const {
   outputTensorDesc = currentOpDescPtr->GetInputDesc(3);
   outputTensorDesc.SetShape(inputTensorDesc.GetShape());
   outputTensorDesc.SetOriginShape(inputTensorDesc.GetShape());
@@ -374,7 +370,7 @@ Status HostBNFusionPass::GetMuOutputTensorDesc(const ge::OpDescPtr& hostOpDescPt
 
   return SUCCESS;
 }
-Status HostBNFusionPass::SetAttrValue(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) {
+Status HostBNFusionPass::SetAttrValue(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) const {
   // get and update output_dim
   ge::GeAttrValue epsValue;
   FUSION_PASS_CHECK(preOpDescPtr->GetAttr(EPSILON, epsValue) == ge::GRAPH_FAILED,
@@ -424,10 +420,8 @@ Status HostBNFusionPass::SetAttrValue(const ge::OpDescPtr& preOpDescPtr, ge::OpD
   }
   return SUCCESS;
 }
-Status HostBNFusionPass::GetInferOutputTensorDesc(const ge::OpDescPtr& hostOpDescPtr,
-                                                  const ge::OpDescPtr& currentOpDescPtr,
-                                                  const ge::GeTensorDesc& inputTensorDesc,
-                                                  ge::GeTensorDesc& outputTensorDesc) {
+Status HostBNFusionPass::GetInferOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
+                                                  ge::GeTensorDesc& outputTensorDesc) const {
   outputTensorDesc = currentOpDescPtr->GetOutputDesc(0);
   outputTensorDesc.SetShape(outputTensorDesc.GetShape());
   outputTensorDesc.SetOriginShape(outputTensorDesc.GetShape());

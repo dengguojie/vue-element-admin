@@ -45,14 +45,14 @@ class HostBNFusionPass : public PatternFusionBasePass {
    * @param bnNodePtr: bn node
    * @return SUCCESS/FAILED
    */
-  Status CheckParameter(ge::NodePtr& bnNodePtr);
+  Status CheckParameter(const ge::NodePtr& bnNodePtr) const;
 
   /**
    * Set output_dim and group_size attr value
    * @param newNodePtr: new node
    * @return SUCCESS/FAILED
    */
-  Status SetAttrValueForNewNode(const ge::OpDescPtr& psroiOpDescPtr, ge::OpDescPtr& newOpDescPtr);
+  Status SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) const;
 
   /**
    * Get new input desc info of SwapCo or SwapCi
@@ -61,10 +61,10 @@ class HostBNFusionPass : public PatternFusionBasePass {
    * @param inputTensorDesc: old input desc of SwapCo or SwapCi
    * @return SUCCESS/FAILED
    */
-  Status GetSwapInputTensorDesc(const ge::OpDescPtr& currentOpDescPtr, const ge::OpDescPtr& preOpDescPtr,
-                                ge::GeTensorDesc& inputTensorDesc);
-  Status GetInputDataTensorDesc(const ge::NodePtr& dataNodePtr, const ge::NodePtr& bnNodePtr,
-                                ge::GeTensorDesc& inputTensorDesc);
+  Status GetSwapInputTensorDesc(const ge::OpDescPtr& preOpDescPtr,
+                                ge::GeTensorDesc& inputTensorDesc) const;
+  Status GetInputDataTensorDesc(const ge::NodePtr& dataNodePtr, const ge::NodePtr& preNodePtr,
+                                ge::GeTensorDesc& inputTensorDesc) const;
 
   /**
    * Get new input desc info of SwapCi
@@ -85,8 +85,8 @@ class HostBNFusionPass : public PatternFusionBasePass {
    * @param outputTensorDesc: new out desc of SwapCo
    * @return SUCCESS/FAILED
    */
-  Status GetMeanOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr, const ge::OpDescPtr& nextOpDescPtr,
-                                 const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc);
+  Status GetMeanOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
+                                 const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc) const;
 
   /**
    * Get new output desc info of SwapCo
@@ -96,8 +96,8 @@ class HostBNFusionPass : public PatternFusionBasePass {
    * @param outputTensorDesc: new out desc of SwapCo
    * @return SUCCESS/FAILED
    */
-  Status GetVarOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr, const ge::OpDescPtr& nextOpDescPtr,
-                                const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc);
+  Status GetVarOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
+                                const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc) const;
   /**
    * Get new output desc info of SwapCo
    * @param currentOpDescPtr: current op desc(SwapCo)
@@ -106,13 +106,13 @@ class HostBNFusionPass : public PatternFusionBasePass {
    * @param outputTensorDesc: new out desc of SwapCo
    * @return SUCCESS/FAILED
    */
-  Status GetMuOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr, const ge::OpDescPtr& nextOpDescPtr,
-                               const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc);
+  Status GetMuOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
+                               const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc) const;
 
-  Status GetInferOutputTensorDesc(const ge::OpDescPtr& hostOpDescPtr, const ge::OpDescPtr& currentOpDescPtr,
-                                  const ge::GeTensorDesc& inputTensorDesc, ge::GeTensorDesc& outputTensorDesc);
+  Status GetInferOutputTensorDesc(const ge::OpDescPtr& currentOpDescPtr,
+                                  ge::GeTensorDesc& outputTensorDesc) const;
 
-  Status SetAttrValue(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr);
+  Status SetAttrValue(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr) const;
 
   const string FUSED_OP_TYPE = "BNInference";
 };
