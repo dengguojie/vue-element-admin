@@ -2,7 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
+ * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the
+ License.
 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,25 +29,25 @@
 
 using namespace std;
 
-bool HasUnKnowDimShape(const ge::NodePtr &node_ptr) {
+bool HasUnKnowDimShape(const ge::NodePtr& node_ptr) {
   FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return false);
 
   auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return false);
 
-  for (const auto &ptr : op_desc->GetAllInputsDescPtr()) {
+  for (const auto& ptr : op_desc->GetAllInputsDescPtr()) {
     auto ge_shape = ptr->GetShape();
-    for (const auto &dim : ge_shape.GetDims()) {
+    for (const auto& dim : ge_shape.GetDims()) {
       if (dim == ge::UNKNOWN_DIM) {
         return true;
       }
     }
   }
 
-  for (const auto &ptr : op_desc->GetAllOutputsDescPtr()) {
+  for (const auto& ptr : op_desc->GetAllOutputsDescPtr()) {
     auto ge_shape = ptr->GetShape();
-    for (const auto &dim : ge_shape.GetDims()) {
+    for (const auto& dim : ge_shape.GetDims()) {
       if (dim == ge::UNKNOWN_DIM) {
         return true;
       }
@@ -56,44 +57,44 @@ bool HasUnKnowDimShape(const ge::NodePtr &node_ptr) {
   return false;
 }
 
-bool HasUnKnowShape(const ge::NodePtr &node_ptr) {
-    if (!node_ptr) {
-        return false;
-    }
-
-    auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
-    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-    if (!op_desc) {
-        return false;
-    }
-
-    for (const auto &ptr : op_desc->GetAllInputsDescPtr()) {
-        auto ge_shape = ptr->GetShape();
-        for (const auto &dim : ge_shape.GetDims()) {
-            if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
-                return true;
-            }
-        }
-    }
-
-    for (const auto &ptr : op_desc->GetAllOutputsDescPtr()) {
-        auto ge_shape = ptr->GetShape();
-        for (const auto &dim : ge_shape.GetDims()) {
-            if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
-                return true;
-            }
-        }
-    }
-
+bool HasUnKnowShape(const ge::NodePtr& node_ptr) {
+  if (!node_ptr) {
     return false;
-}
-
-void ClearOpInferDepends(const ge::NodePtr &node_ptr) {
-  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return);
+  }
 
   auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return);
+  if (!op_desc) {
+    return false;
+  }
+
+  for (const auto& ptr : op_desc->GetAllInputsDescPtr()) {
+    auto ge_shape = ptr->GetShape();
+    for (const auto& dim : ge_shape.GetDims()) {
+      if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
+        return true;
+      }
+    }
+  }
+
+  for (const auto& ptr : op_desc->GetAllOutputsDescPtr()) {
+    auto ge_shape = ptr->GetShape();
+    for (const auto& dim : ge_shape.GetDims()) {
+      if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+void ClearOpInferDepends(const ge::NodePtr& node_ptr) {
+  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return );
+
+  auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return );
 
   vector<string> dummyVec;
   op_desc->SetOpInferDepends(dummyVec);
@@ -162,8 +163,7 @@ bool GetIntConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_
   return true;
 }
 
-bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
-                      std::vector<int64_t>&  const_value) {
+bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name, std::vector<int64_t>& const_value) {
   ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
   OP_LOGD(op.GetName().c_str(), "begin to get const value for input name(%s)", const_name.c_str());
   ge::Tensor const_tensor;

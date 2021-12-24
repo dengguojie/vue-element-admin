@@ -62,7 +62,8 @@ vector<FusionPattern*> ConfusionMatrixFusionPass::DefinePatterns() {
 
   // tf confusion_matrix api fused to tbe confusion_matrix
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConfusionMatrixFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_CAST, {CAST})
@@ -89,15 +90,20 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::NodePtr sparseNode = GetNodeFromMapping(PATTERN_SPARSE_TENSOR_DENSE_ADD, mapping);
   ge::NodePtr transposeNode = GetNodeFromMapping(PATTERN_TRANSPOSE, mapping);
   ge::NodePtr packNode = GetNodeFromMapping(PATTERN_PACK, mapping);
-  FUSION_PASS_CHECK(castNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "castNode is null, fusion failed."),
+  FUSION_PASS_CHECK(castNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "castNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(sparseNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sparseNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sparseNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sparseNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(cast1Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast1Node is null, fusion failed."),
+  FUSION_PASS_CHECK(cast1Node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast1Node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(transposeNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeNode is null, fusion failed."),
+  FUSION_PASS_CHECK(transposeNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(packNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packNode is null, fusion failed."),
+  FUSION_PASS_CHECK(packNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::GeTensorDesc inputDesc1 = cast1Node->GetOpDesc()->GetInputDesc(0);
@@ -113,9 +119,10 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   confusionMatrixOp->AddInputDesc("z", inputDesc3);
   confusionMatrixOp->AddOutputDesc("output", outputDesc);
   ge::NodePtr confusionMatrixNode = graph.AddNode(confusionMatrixOp);
-  FUSION_PASS_CHECK(confusionMatrixNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "confusionMatrixNode is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      confusionMatrixNode == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "confusionMatrixNode is null, fusion failed."),
+      return PARAM_INVALID);
 
   ge::OutDataAnchorPtr newInAnchorPtr0 = cast1Node->GetInDataAnchor(0)->GetPeerOutAnchor();
   ge::OutDataAnchorPtr newInAnchorPtr1 = castNode->GetInDataAnchor(0)->GetPeerOutAnchor();
@@ -126,9 +133,11 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
   for (auto inDataAnchor : sparseNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(sparseNode->GetOutDataAnchor(0), inDataAnchor),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(confusionMatrixNode->GetOutDataAnchor(0), inDataAnchor),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                      return FAILED);
   }
 
   ge::OpDescPtr confusionMatrixDesc = confusionMatrixNode->GetOpDesc();
