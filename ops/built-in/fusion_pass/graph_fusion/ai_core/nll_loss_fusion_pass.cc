@@ -27,7 +27,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "NLLLoss";
 static const std::string PATTERN_FUSEDNODE = "NLLLoss";
 
@@ -44,7 +43,8 @@ vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("NLLLossFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -58,13 +58,13 @@ ge::NodePtr NLLLossFusionPass::AddNLLLossSumNode(ge::NodePtr nll_loss_node,
                                                  ge::ComputeGraph& graph,
                                                  vector<ge::NodePtr>& new_nodes,
                                                  bool &fail_status) {
+  constexpr int32_t INPUT_INDEX_TWO = 2;
   ge::OpDescPtr nll_loss_desc = nll_loss_node->GetOpDesc();
-
   // create nll_loss_sum desc
   ge::OpDescPtr nll_loss_sum_desc = AttrUtils::CloneOpDesc(nll_loss_desc);
   nll_loss_sum_desc->UpdateInputDesc(0, nll_loss_desc->GetInputDesc(0));
   nll_loss_sum_desc->UpdateInputDesc(1, nll_loss_desc->GetInputDesc(1));
-  nll_loss_sum_desc->UpdateInputDesc(2, nll_loss_desc->GetInputDesc(2));
+  nll_loss_sum_desc->UpdateInputDesc(INPUT_INDEX_TWO, nll_loss_desc->GetInputDesc(INPUT_INDEX_TWO));
   nll_loss_sum_desc->UpdateOutputDesc(0, nll_loss_desc->GetOutputDesc(0));
   nll_loss_sum_desc->UpdateOutputDesc(1, nll_loss_desc->GetOutputDesc(1));
 
@@ -73,13 +73,16 @@ ge::NodePtr NLLLossFusionPass::AddNLLLossSumNode(ge::NodePtr nll_loss_node,
 
   // create nll_loss_sum node
   ge::NodePtr nll_loss_sum_node = graph.AddNode(nll_loss_sum_desc);
-  FUSION_PASS_CHECK(nll_loss_sum_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusionNode:%s is null, fusion failed.", nll_loss_sum_node->GetName().c_str()), fail_status = true);
+  FUSION_PASS_CHECK(nll_loss_sum_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                                   nll_loss_sum_node->GetName().c_str()),
+                    fail_status = true);
   new_nodes.push_back(nll_loss_sum_node);
 
   // Edge
   for (unsigned int i = 0; i < nll_loss_node->GetAllInDataAnchors().size(); i++) {
-    ge::GraphUtils::AddEdge(nll_loss_node->GetInDataAnchor(i)->GetPeerOutAnchor(), nll_loss_sum_node->GetInDataAnchor(i));
+    ge::GraphUtils::AddEdge(nll_loss_node->GetInDataAnchor(i)->GetPeerOutAnchor(),
+                            nll_loss_sum_node->GetInDataAnchor(i));
   }
 
   for (unsigned int i = 0; i < nll_loss_node->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
@@ -125,8 +128,10 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 
   // create div node
   ge::NodePtr div_node = graph.AddNode(div_desc);
-  FUSION_PASS_CHECK(div_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fusionNode:%s is null, fusion failed.", div_node->GetName().c_str()), fail_status = true);
+  FUSION_PASS_CHECK(div_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                                   div_node->GetName().c_str()),
+                    fail_status = true);
   new_nodes.push_back(div_node);
 
   // Edge
@@ -160,7 +165,8 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   // get nll_loss_node
   ge::NodePtr nll_loss_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(nll_loss_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
+  FUSION_PASS_CHECK(nll_loss_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(nll_loss_node);
@@ -205,7 +211,8 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       }
 
       if (!is_match) {
-        auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(2);
+        constexpr int32_t INPUT_INDEX_TWO = 2;
+        auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(INPUT_INDEX_TWO);
         // weight optional
         if (weight_desc != nullptr) {
           OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape or not optional weight.");
@@ -235,8 +242,10 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
   }
   // remove nll_loss_node from graph
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(nll_loss_node), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "remove fusedNode node[%s] failed", nll_loss_node->GetName().c_str()), return FAILED);
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(nll_loss_node),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed",
+                                                   nll_loss_node->GetName().c_str()),
+                    return FAILED);
 
   return SUCCESS;
 }
