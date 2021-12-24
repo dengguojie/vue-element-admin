@@ -30,11 +30,11 @@ FusionAddOutputOpRegistry* FusionAddOutputOpRegistry::Instance() {
   return &instance;
 }
 
-OpAddOutputOpReciever::OpAddOutputOpReciever(FusionAddOutputOpRegister& reg_data) {
-  FusionAddOutputOpRegistry::Instance()->SetAddOutputRegister(reg_data.opType_, reg_data);
+OpAddOutputOpReciever::OpAddOutputOpReciever(const FusionAddOutputOpRegister& reg) {
+  FusionAddOutputOpRegistry::Instance()->SetAddOutputRegister(reg.opType_, reg);
 }
 
-Status FusionAddOutputOpRegistry::SetAddOutputRegister(const string& opType, FusionAddOutputOpRegister& reg) {
+Status FusionAddOutputOpRegistry::SetAddOutputRegister(const string& opType, const FusionAddOutputOpRegister& reg) {
   if (addOutputOpMap_.find(opType) == addOutputOpMap_.end()) {
     addOutputOpMap_.insert(make_pair(opType, reg));
     OP_LOGD(opType.c_str(), "%s register successfully!", opType.c_str());
@@ -44,9 +44,10 @@ Status FusionAddOutputOpRegistry::SetAddOutputRegister(const string& opType, Fus
   return SUCCESS;
 }
 
-Status FusionAddOutputOpRegistry::GetRegisterByOpType(const string& opType, FusionAddOutputOpRegister& reg) {
-  if (addOutputOpMap_.find(opType) != addOutputOpMap_.end()) {
-    reg = addOutputOpMap_[opType];
+Status FusionAddOutputOpRegistry::GetRegisterByOpType(const string& opType, FusionAddOutputOpRegister& reg) const {
+  std::unordered_map<string, FusionAddOutputOpRegister>::const_iterator iter = addOutputOpMap_.find(opType);
+  if (iter != addOutputOpMap_.cend()) {
+    reg = iter->second;
     OP_LOGD(opType.c_str(), "%s find in registry", opType.c_str());
   } else {
     return FAILED;

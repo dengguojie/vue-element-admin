@@ -27,7 +27,7 @@ FusionRemoveNodeRegistry* FusionRemoveNodeRegistry::Instance() {
   return &instance;
 }
 
-Status FusionRemoveNodeRegistry::SetRemoveNodeRegister(const std::string& opType, FusionRemoveNodeRegister& reg) {
+Status FusionRemoveNodeRegistry::SetRemoveNodeRegister(const std::string& opType, const FusionRemoveNodeRegister& reg) {
   if (removeNodeMap_.find(opType) == removeNodeMap_.end()) {
     removeNodeMap_.insert(make_pair(opType, reg));
     OP_LOGD(opType.c_str(), "Remove node pass of op[%s] register successfully!", opType.c_str());
@@ -37,9 +37,9 @@ Status FusionRemoveNodeRegistry::SetRemoveNodeRegister(const std::string& opType
   return SUCCESS;
 }
 
-Status FusionRemoveNodeRegistry::GetRegisterByOpType(const std::string& opType, FusionRemoveNodeRegister& reg) {
-  auto iter = removeNodeMap_.find(opType);
-  if (iter != removeNodeMap_.end()) {
+Status FusionRemoveNodeRegistry::GetRegisterByOpType(const std::string& opType, FusionRemoveNodeRegister& reg) const {
+  std::map<std::string, FusionRemoveNodeRegister>::const_iterator iter = removeNodeMap_.find(opType);
+  if (iter != removeNodeMap_.cend()) {
     reg = iter->second;
   } else {
     return FAILED;
@@ -64,7 +64,7 @@ FusionRemoveNodeRegister& FusionRemoveNodeRegister::SetPreCheckFunc(std::functio
   return *this;
 }
 
-RemoveNodeReciever::RemoveNodeReciever(FusionRemoveNodeRegister& reg_data) {
-  FusionRemoveNodeRegistry::Instance()->SetRemoveNodeRegister(reg_data.GetOpType(), reg_data);
+RemoveNodeReciever::RemoveNodeReciever(FusionRemoveNodeRegister& reg) {
+  FusionRemoveNodeRegistry::Instance()->SetRemoveNodeRegister(reg.GetOpType(), reg);
 }
 }  // namespace fe

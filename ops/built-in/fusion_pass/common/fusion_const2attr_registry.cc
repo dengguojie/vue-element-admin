@@ -30,11 +30,11 @@ FusionConst2AttrOpRegistry* FusionConst2AttrOpRegistry::Instance() {
   return &instance;
 }
 
-OpConst2AttrOpReciever::OpConst2AttrOpReciever(FusionConst2AttrOpRegister& reg_data) {
-  FusionConst2AttrOpRegistry::Instance()->SetConst2AttrRegister(reg_data.oriOpType_, reg_data);
+OpConst2AttrOpReciever::OpConst2AttrOpReciever(const FusionConst2AttrOpRegister& reg) {
+  FusionConst2AttrOpRegistry::Instance()->SetConst2AttrRegister(reg.oriOpType_, reg);
 }
 
-Status FusionConst2AttrOpRegistry::SetConst2AttrRegister(const string& opType, FusionConst2AttrOpRegister& reg) {
+Status FusionConst2AttrOpRegistry::SetConst2AttrRegister(const string& opType, const FusionConst2AttrOpRegister& reg) {
   if (const2AttrOpMap_.find(opType) == const2AttrOpMap_.end()) {
     const2AttrOpMap_.insert(make_pair(opType, reg));
     OP_LOGD(opType.c_str(), "%s register successfully!", opType.c_str());
@@ -43,9 +43,10 @@ Status FusionConst2AttrOpRegistry::SetConst2AttrRegister(const string& opType, F
   }
   return SUCCESS;
 }
-Status FusionConst2AttrOpRegistry::GetRegisterByOriType(const string& oriOpType, FusionConst2AttrOpRegister& reg) {
-  if (const2AttrOpMap_.find(oriOpType) != const2AttrOpMap_.end()) {
-    reg = const2AttrOpMap_[oriOpType];
+Status FusionConst2AttrOpRegistry::GetRegisterByOriType(const string& oriOpType, FusionConst2AttrOpRegister& reg) const {
+  std::unordered_map<string, FusionConst2AttrOpRegister>::const_iterator iter = const2AttrOpMap_.find(oriOpType);
+  if (iter != const2AttrOpMap_.cend()) {
+    reg = iter->second;
     OP_LOGD(oriOpType.c_str(), "%s find in registery", oriOpType.c_str());
   } else {
     return FAILED;

@@ -61,8 +61,8 @@ class FusionAddOutputOpRegistry {
 
   static FusionAddOutputOpRegistry* Instance();
 
-  Status SetAddOutputRegister(const string& opType, FusionAddOutputOpRegister& addOutputRegister);
-  Status GetRegisterByOpType(const string& oriOpType, FusionAddOutputOpRegister& reg);
+  Status SetAddOutputRegister(const string& opType, const FusionAddOutputOpRegister& reg);
+  Status GetRegisterByOpType(const string& opType, FusionAddOutputOpRegister& reg) const;
 
  private:
   std::unordered_map<string, FusionAddOutputOpRegister> addOutputOpMap_;
@@ -70,7 +70,7 @@ class FusionAddOutputOpRegistry {
 
 class OpAddOutputOpReciever {
  public:
-  OpAddOutputOpReciever(FusionAddOutputOpRegister& reg);
+  OpAddOutputOpReciever(const FusionAddOutputOpRegister& reg);
   virtual ~OpAddOutputOpReciever() = default;
 };
 

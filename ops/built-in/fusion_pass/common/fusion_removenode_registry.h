@@ -21,7 +21,6 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_REMOVENODE_REGISTRY_H_
 #define OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_REMOVENODE_REGISTRY_H_
 
-#include <cstdio>
 #include <map>
 #include <memory>
 #include <string>
@@ -66,9 +65,9 @@ class FusionRemoveNodeRegistry {
 
   static FusionRemoveNodeRegistry* Instance();
 
-  Status SetRemoveNodeRegister(const std::string& opType, FusionRemoveNodeRegister& reg);
+  Status SetRemoveNodeRegister(const std::string& opType, const FusionRemoveNodeRegister& reg);
 
-  Status GetRegisterByOpType(const std::string& opType, FusionRemoveNodeRegister& reg);
+  Status GetRegisterByOpType(const std::string& opType, FusionRemoveNodeRegister& reg) const;
 
  private:
   std::map<std::string, FusionRemoveNodeRegister> removeNodeMap_;

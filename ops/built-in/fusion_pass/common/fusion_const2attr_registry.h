@@ -64,8 +64,8 @@ class FusionConst2AttrOpRegistry {
 
   static FusionConst2AttrOpRegistry* Instance();
 
-  Status SetConst2AttrRegister(const string& opType, FusionConst2AttrOpRegister& const2AttrRegister);
-  Status GetRegisterByOriType(const string& oriOpType, FusionConst2AttrOpRegister& reg);
+  Status SetConst2AttrRegister(const string& opType, const FusionConst2AttrOpRegister& reg);
+  Status GetRegisterByOriType(const string& oriOpType, FusionConst2AttrOpRegister& reg) const;
 
  private:
   std::unordered_map<string, FusionConst2AttrOpRegister> const2AttrOpMap_;
@@ -73,7 +73,7 @@ class FusionConst2AttrOpRegistry {
 
 class OpConst2AttrOpReciever {
  public:
-  OpConst2AttrOpReciever(FusionConst2AttrOpRegister& reg);
+  OpConst2AttrOpReciever(const FusionConst2AttrOpRegister& reg);
   virtual ~OpConst2AttrOpReciever() = default;
 };
 
