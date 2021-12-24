@@ -683,9 +683,9 @@ def aipp_compute(input_tensor, input_shape, input_format,
     """
 
     if input_format == "NHWC":
-        n, h, w, C = input_shape
+        n, h, w, c = input_shape
     else:
-        n, C, h, w = input_shape
+        n, c, h, w = input_shape
 
     output_shape = output_data.get('shape')
     n, c1, h, w, c0 = output_shape
@@ -716,7 +716,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
     if output_format == "NC1HWC0_C04":
         c0 = 4
 
-    c1 = (C + c0 - 1) // c0
+    c1 = (c + c0 - 1) // c0
 
     actual_col_size = h * w
     if "crop" in aipp_config and aipp_config.get("crop") == 1 or \
@@ -749,11 +749,11 @@ def aipp_compute(input_tensor, input_shape, input_format,
         ib.scope_attr(block_index, "thread_extent", batch_num // batch_factor)
 
         if aipp_config.get('input_format') == "YUV420SP_U8":
-            input_offset = batch_factor*((C*src_image_size_h*src_image_size_w)//2)
+            input_offset = batch_factor*((c*src_image_size_h*src_image_size_w) // 2)
         elif aipp_config.get('input_format') in \
                 ["XRGB8888_U8", "RGB888_U8", "ARGB8888_U8",
                  "AYUV444_U8", "YUV400_U8", "RGB16"]:
-            input_offset = batch_factor*((C*src_image_size_h*src_image_size_w))
+            input_offset = batch_factor*((c*src_image_size_h*src_image_size_w))
         elif aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
             input_offset = batch_factor*((2*src_image_size_h*src_image_size_w))
 
@@ -777,7 +777,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                         input_buf.access_ptr(
                             'r',
                             offset=block_index*input_offset +
-                            n1*((C*src_image_size_h*src_image_size_w)//2)))
+                            n1*((c*src_image_size_h*src_image_size_w) // 2)))
                 elif aipp_config.get('input_format') in \
                         ["XRGB8888_U8", "RGB888_U8",
                          "ARGB8888_U8", "AYUV444_U8", "YUV400_U8", "RGB16"]:
@@ -785,7 +785,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                         input_buf.access_ptr(
                             'r',
                             offset=block_index*input_offset +
-                            n1*((C*src_image_size_h*src_image_size_w))))
+                            n1*((c*src_image_size_h*src_image_size_w))))
                 elif aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
                     spr0 = tbe_platform.get_const(
                         input_buf.access_ptr(
@@ -809,7 +809,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
                         input_buf.access_ptr(
                             'r',
                             offset=block_index*input_offset +
-                            n1*((C*src_image_size_h*src_image_size_w)//2) +
+                            n1*((c*src_image_size_h*src_image_size_w) // 2) +
                             src_image_size_h*src_image_size_w)) | \
                            spr1
                 elif aipp_config.get('input_format') == "YUV422SP_U8":

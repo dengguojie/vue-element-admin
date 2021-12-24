@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+apply_ada_max_d
+"""
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
