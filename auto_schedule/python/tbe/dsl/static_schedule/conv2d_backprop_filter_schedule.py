@@ -1504,7 +1504,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                 c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at,
                                 c_grads_l1_at,
                                 c_fmap_mad_at, c_grads_mad_at,
-                                c_fmap_mad_insn, c_grads_mad_insn)
+                                c_fmap_mad_insn, c_grads_mad_insn, sch[dw_ddr].op.axis[3])
         else:
             sch[dw_ddr].compute_inline(instant=True)
             dw_ddr = dw_res_trans
