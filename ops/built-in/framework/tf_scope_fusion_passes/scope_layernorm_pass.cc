@@ -128,7 +128,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
       }
     }
     // Class ScopeTree guarantees scope is not empty.
-    if ((scope->SubType() == kScopeTypeBatchnorm)) {
+    if (scope->SubType() == kScopeTypeBatchnorm) {
       fusion_scopes_bn.push_back(scope);
     } else if (scope->SubType() == kScopeTypeMoments) {
       fusion_scopes_m.push_back(scope);
@@ -142,7 +142,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
       std::string scope_bn_name = scope_bn->Name();
       int is_while = scope_bn_name.find("while");
       if (is_while != -1) {
-        OP_LOGI(kOpType, "break  scope_bn_name is %s.", scope_bn_name.c_str());
+        OP_LOGI(kOpType, "break scope_bn_name is %s.", scope_bn_name.c_str());
         continue;
       }
       for (size_t j = 0; j < fusion_scopes_m.size(); j++) {
@@ -155,7 +155,9 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
         if (is_biggan_bn != -1 || is_biggan_m != -1) {
           return FAILED;
         }
-        if (pos_bn != -1 && pos_m != -1 && scope_bn_name.substr(0, pos_bn) == scope_m_name.substr(0, pos_m)) {
+        // bn and moments scope must in any scope: such as LayerNorm/batchnorm
+        // so pos_bn and pos_m must >=1
+        if (pos_bn >=1 && pos_m >=1 && scope_bn_name.substr(0, pos_bn) == scope_m_name.substr(0, pos_m)) {
           // scope result
           ScopesResult result;
           std::vector<Scope*> result_scopes;
@@ -231,20 +233,34 @@ void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope*>& scopes,
 void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns) {
   // match batchnorm
   std::vector<ScopePattern*> batch;
-  ScopePattern* batch_norm_cell = new (std::nothrow) ScopePattern();
-  if (batch_norm_cell == nullptr) {
+  ScopePattern* batch_norm_cell_add = new (std::nothrow) ScopePattern();
+  if (batch_norm_cell_add == nullptr) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  batch_norm_cell->SetSubType(kScopeTypeBatchnorm);
+  batch_norm_cell_add->SetSubType(kScopeTypeBatchnorm);
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", 2));        // Add num is 1
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
+  batch_norm_cell_add->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
+  batch.push_back(batch_norm_cell_add);
 
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
-  batch_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
-  batch_norm_cell->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
+  ScopePattern* batch_norm_cell_addv2 = new (std::nothrow) ScopePattern();
+  if (batch_norm_cell_addv2 == nullptr) {
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  batch_norm_cell_addv2->SetSubType(kScopeTypeBatchnorm);
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", 2));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));
+  batch_norm_cell_addv2->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
+  batch.push_back(batch_norm_cell_addv2);
 
-  batch.push_back(batch_norm_cell);
   patterns.push_back(batch);
 }
 
