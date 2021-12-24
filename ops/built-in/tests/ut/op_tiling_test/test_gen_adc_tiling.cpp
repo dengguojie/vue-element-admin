@@ -83,23 +83,23 @@ static void RunTestTiling(const std::vector<int64_t>& queryShape, const std::str
 
   TeOpTensorArg tensorArgQuery;
   tensorArgQuery.tensor.push_back(queryTensor);
-  tensorArgQuery.arg_type = TA_SINGLE;
+  tensorArgQuery.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCodeBook;
   tensorArgCodeBook.tensor.push_back(codeBookTensor);
-  tensorArgCodeBook.arg_type = TA_SINGLE;
+  tensorArgCodeBook.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCentroids;
   tensorArgCentroids.tensor.push_back(centroidsTensor);
-  tensorArgCentroids.arg_type = TA_SINGLE;
+  tensorArgCentroids.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgBucketList;
   tensorArgBucketList.tensor.push_back(bucketListTensor);
-  tensorArgBucketList.arg_type = TA_SINGLE;
+  tensorArgBucketList.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgAdcTables;
   tensorArgAdcTables.tensor.push_back(adcTablesTensor);
-  tensorArgAdcTables.arg_type = TA_SINGLE;
+  tensorArgAdcTables.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorArgQuery);
@@ -251,22 +251,22 @@ TEST_F(GenADCTiling, gen_adc_tiling_101) {
 
   TeOpTensorArg tensorArgQuery;
   tensorArgQuery.tensor.push_back(queryTensor);
-  tensorArgQuery.arg_type = TA_SINGLE;
+  tensorArgQuery.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCodeBook;
   tensorArgCodeBook.tensor.push_back(codeBookTensor);
-  tensorArgCodeBook.arg_type = TA_SINGLE;
+  tensorArgCodeBook.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCentroids;
   tensorArgCentroids.tensor.push_back(centroidsTensor);
-  tensorArgCentroids.arg_type = TA_SINGLE;
+  tensorArgCentroids.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgBucketList;
-  tensorArgBucketList.arg_type = TA_SINGLE;
+  tensorArgBucketList.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgAdcTables;
   tensorArgAdcTables.tensor.push_back(adcTablesTensor);
-  tensorArgAdcTables.arg_type = TA_SINGLE;
+  tensorArgAdcTables.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorArgQuery);
@@ -311,23 +311,23 @@ TEST_F(GenADCTiling, gen_adc_tiling_102) {
 
   TeOpTensorArg tensorArgQuery;
   tensorArgQuery.tensor.push_back(queryTensor);
-  tensorArgQuery.arg_type = TA_SINGLE;
+  tensorArgQuery.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCodeBook;
   tensorArgCodeBook.tensor.push_back(codeBookTensor);
-  tensorArgCodeBook.arg_type = TA_SINGLE;
+  tensorArgCodeBook.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCentroids;
   tensorArgCentroids.tensor.push_back(centroidsTensor);
-  tensorArgCentroids.arg_type = TA_SINGLE;
+  tensorArgCentroids.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgBucketList;
   tensorArgBucketList.tensor.push_back(bucketListTensor);
-  tensorArgBucketList.arg_type = TA_SINGLE;
+  tensorArgBucketList.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgAdcTables;
   tensorArgAdcTables.tensor.push_back(adcTablesTensor);
-  tensorArgAdcTables.arg_type = TA_SINGLE;
+  tensorArgAdcTables.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorArgQuery);
@@ -372,23 +372,23 @@ TEST_F(GenADCTiling, gen_adc_tiling_103) {
 
   TeOpTensorArg tensorArgQuery;
   tensorArgQuery.tensor.push_back(queryTensor);
-  tensorArgQuery.arg_type = TA_SINGLE;
+  tensorArgQuery.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCodeBook;
   tensorArgCodeBook.tensor.push_back(codeBookTensor);
-  tensorArgCodeBook.arg_type = TA_SINGLE;
+  tensorArgCodeBook.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgCentroids;
   tensorArgCentroids.tensor.push_back(centroidsTensor);
-  tensorArgCentroids.arg_type = TA_SINGLE;
+  tensorArgCentroids.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgBucketList;
   tensorArgBucketList.tensor.push_back(bucketListTensor);
-  tensorArgBucketList.arg_type = TA_SINGLE;
+  tensorArgBucketList.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorArgAdcTables;
   tensorArgAdcTables.tensor.push_back(adcTablesTensor);
-  tensorArgAdcTables.arg_type = TA_SINGLE;
+  tensorArgAdcTables.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorArgQuery);

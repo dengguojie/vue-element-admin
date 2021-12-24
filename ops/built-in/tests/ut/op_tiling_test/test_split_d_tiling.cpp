@@ -63,7 +63,7 @@ TEST_F(SplitDTiling, SplitD_tiling_0) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[0];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -72,7 +72,7 @@ TEST_F(SplitDTiling, SplitD_tiling_0) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[0];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -110,7 +110,7 @@ TEST_F(SplitDTiling, SplitD_tiling_1) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[0];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
   
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -119,7 +119,7 @@ TEST_F(SplitDTiling, SplitD_tiling_1) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[0];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -157,7 +157,7 @@ TEST_F(SplitDTiling, SplitD_tiling_2) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[1];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -166,7 +166,7 @@ TEST_F(SplitDTiling, SplitD_tiling_2) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[1];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -203,7 +203,7 @@ TEST_F(SplitDTiling, SplitD_tiling_3) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[1];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -212,7 +212,7 @@ TEST_F(SplitDTiling, SplitD_tiling_3) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[1];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -248,7 +248,7 @@ TEST_F(SplitDTiling, SplitD_tiling_4) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[1];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -257,7 +257,7 @@ TEST_F(SplitDTiling, SplitD_tiling_4) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[1];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -294,7 +294,7 @@ TEST_F(SplitDTiling, SplitD_tiling_5) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[0];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -303,7 +303,7 @@ TEST_F(SplitDTiling, SplitD_tiling_5) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[0];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -340,7 +340,7 @@ TEST_F(SplitDTiling, SplitD_tiling_6) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[1];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -349,7 +349,7 @@ TEST_F(SplitDTiling, SplitD_tiling_6) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[1];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";
@@ -386,7 +386,7 @@ TEST_F(SplitDTiling, SplitD_tiling_7) {
   tensorInput.shape = input_shapes;
   tensorInput.dtype = dtypes[0];
   tensorInputs.tensor.push_back(tensorInput);
-  tensorInputs.arg_type = TA_SINGLE;
+  tensorInputs.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputs);
 
   for (size_t i = 0; i < output_shapes.size(); i++) {
@@ -395,7 +395,7 @@ TEST_F(SplitDTiling, SplitD_tiling_7) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[0];
     tensorOutputs.tensor.push_back(tensorOutput);
-    tensorOutputs.arg_type = TA_SINGLE;
+    tensorOutputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputs);
   }
   opParas.op_type = "SplitD";

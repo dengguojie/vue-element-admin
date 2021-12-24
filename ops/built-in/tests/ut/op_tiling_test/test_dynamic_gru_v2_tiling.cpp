@@ -62,7 +62,7 @@ TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_0) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -78,7 +78,7 @@ TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_0) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 

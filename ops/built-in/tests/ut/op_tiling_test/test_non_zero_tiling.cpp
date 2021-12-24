@@ -46,14 +46,14 @@ TEST_F(NonZeroTiling, NonZero_tiling_test_1) {
   tensorInput.shape = inputx;
   tensorInput.dtype = "float16";
   tensorInputArg.tensor.push_back(tensorInput);
-  tensorInputArg.arg_type = TA_SINGLE;
+  tensorInputArg.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensorInputArg);
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = inputx;
   tensorOutput.dtype = "int32";
   tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
+  tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "NonZero";
   std::string compileInfo = "{\"block_dim\": 32, \"workspace\":[4096]}";

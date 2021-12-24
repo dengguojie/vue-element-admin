@@ -103,7 +103,7 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdate_tiling_test_1)
         tensor_input.dtype = input_types[i];
         tensor_input.format = data_format;
         tensor_arg.tensor.push_back(tensor_input);
-        tensor_arg.arg_type = TA_SINGLE;
+        tensor_arg.arg_type = TensorArgType::TA_SINGLE;
         opParas.inputs.push_back(tensor_arg);
     }
     for (size_t i = 0; i < outputs.size(); i++)
@@ -114,7 +114,7 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdate_tiling_test_1)
         tensor_output.dtype = output_types[i];
         tensor_output.format = data_format;
         tensor_arg.tensor.push_back(tensor_output);
-        tensor_arg.arg_type = TA_SINGLE;
+        tensor_arg.arg_type = TensorArgType::TA_SINGLE;
         opParas.outputs.push_back(tensor_arg);
     }
     opParas.op_type = op_name;

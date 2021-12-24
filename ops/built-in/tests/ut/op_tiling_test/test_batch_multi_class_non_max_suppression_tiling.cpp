@@ -50,7 +50,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_input0.ori_format = "ND";
   TeOpTensorArg tensor_input_arg0;
   tensor_input_arg0.tensor.push_back(tensor_input0);
-  tensor_input_arg0.arg_type = TA_SINGLE;
+  tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
 
  // scores
   TeOpTensor tensor_input1;
@@ -60,7 +60,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_input1.ori_format = "ND";
   TeOpTensorArg tensor_input_arg1;
   tensor_input_arg1.tensor.push_back(tensor_input1);
-  tensor_input_arg1.arg_type = TA_SINGLE;
+  tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
 
   // nmsed_boxes
   TeOpTensor tensor_output;
@@ -70,7 +70,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_output.ori_format = "ND";
   TeOpTensorArg tensor_output_arg;
   tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas op_paras;
   op_paras.inputs.push_back(tensor_input_arg0);
@@ -110,7 +110,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_input0.ori_format = "ND";
   TeOpTensorArg tensor_input_arg0;
   tensor_input_arg0.tensor.push_back(tensor_input0);
-  tensor_input_arg0.arg_type = TA_SINGLE;
+  tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
 
   // scores
   TeOpTensor tensor_input1;
@@ -120,7 +120,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_input1.ori_format = "ND";
   TeOpTensorArg tensor_input_arg1;
   tensor_input_arg1.tensor.push_back(tensor_input1);
-  tensor_input_arg1.arg_type = TA_SINGLE;
+  tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
 
   // nmsed_boxes
   TeOpTensor tensor_output;
@@ -130,7 +130,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
   tensor_output.ori_format = "ND";
   TeOpTensorArg tensor_output_arg;
   tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas op_paras;
   op_paras.inputs.push_back(tensor_input_arg0);

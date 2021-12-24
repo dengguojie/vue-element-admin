@@ -57,15 +57,15 @@ TEST_F(SortTiling, sort_tiling_0) {
 
     TeOpTensorArg tensor_argA;
     tensor_argA.tensor.push_back(input_tensor);
-    tensor_argA.arg_type = TA_SINGLE;
+    tensor_argA.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpTensorArg tensor_argC;
     tensor_argC.tensor.push_back(out_tensor);
-    tensor_argC.arg_type = TA_SINGLE;
+    tensor_argC.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpTensorArg tensor_arg;
     tensor_arg.tensor.push_back(out_indices_tensor);
-    tensor_arg.arg_type = TA_SINGLE;
+    tensor_arg.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_argA);

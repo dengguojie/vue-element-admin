@@ -56,13 +56,13 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_0) {
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
+  tensor_input_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_padding_arg;
   tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
+  tensor_padding_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_output_arg;
   tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
@@ -104,13 +104,13 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_1) {
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
+  tensor_input_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_padding_arg;
   tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
+  tensor_padding_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_output_arg;
   tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
@@ -152,13 +152,13 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_2) {
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
+  tensor_input_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_padding_arg;
   tensor_padding_arg.tensor.push_back(tensor_padding);
-  tensor_padding_arg.arg_type = TA_SINGLE;
+  tensor_padding_arg.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_output_arg;
   tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(

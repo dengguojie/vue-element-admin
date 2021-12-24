@@ -60,7 +60,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_0) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -83,7 +83,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_0) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -120,7 +120,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_1) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -143,7 +143,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_1) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -181,7 +181,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_2) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -204,7 +204,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_2) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -240,7 +240,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_3) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -263,7 +263,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_3) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -297,7 +297,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_4) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -320,7 +320,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_4) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -356,7 +356,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_5) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -379,7 +379,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_5) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 
@@ -415,7 +415,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_6) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -438,7 +438,7 @@ TEST_F(DynamicRnnTiling, dynamic_rnn_tiling_6) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = out_dtypes[i];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 

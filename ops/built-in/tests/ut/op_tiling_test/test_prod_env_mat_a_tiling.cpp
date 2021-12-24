@@ -57,7 +57,7 @@ static TeOpTensorArg ProdSimpleTensorArg(const std::vector<int64_t>& shape, cons
 
   TeOpTensorArg tensorArg;
   tensorArg.tensor.push_back(tensor);
-  tensorArg.arg_type = TA_SINGLE;
+  tensorArg.arg_type = TensorArgType::TA_SINGLE;
 
   return tensorArg;
 }

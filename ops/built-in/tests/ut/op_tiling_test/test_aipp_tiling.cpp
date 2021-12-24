@@ -55,13 +55,13 @@ TEST_F(AippTiling, aipp_tiling_0) {
 
   TeOpTensorArg tensor_argImages;
   tensor_argImages.tensor.push_back(tensor_iamges);
-  tensor_argImages.arg_type = TA_SINGLE;
+  tensor_argImages.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_argParams;
   tensor_argParams.tensor.push_back(tensor_params);
-  tensor_argParams.arg_type = TA_SINGLE;
+  tensor_argParams.arg_type = TensorArgType::TA_SINGLE;
   TeOpTensorArg tensor_arg;
   tensor_arg.tensor.push_back(tensor_features);
-  tensor_arg.arg_type = TA_SINGLE;
+  tensor_arg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensor_argImages);

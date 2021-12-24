@@ -65,7 +65,7 @@ TEST_F(DynamicLSTMGradCellTilling, DynamicLSTMGradCellTilling_tilling1) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputArg.tensor.push_back(tensorInput);
-    tensorInputArg.arg_type = TA_SINGLE;
+    tensorInputArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputArg);
   }
 
@@ -75,7 +75,7 @@ TEST_F(DynamicLSTMGradCellTilling, DynamicLSTMGradCellTilling_tilling1) {
     tensorOutput.shape = output_shapes[i];
     tensorOutput.dtype = dtypes[0];
     tensorOutputsArg.tensor.push_back(tensorOutput);
-    tensorOutputsArg.arg_type = TA_SINGLE;
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensorOutputsArg);
   }
 

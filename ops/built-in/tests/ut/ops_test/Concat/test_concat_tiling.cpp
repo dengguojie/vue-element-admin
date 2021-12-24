@@ -50,7 +50,7 @@ TEST_F(ConcatTiling, Concat_tiling1) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -58,7 +58,7 @@ TEST_F(ConcatTiling, Concat_tiling1) {
   tensorOutput.shape = input_shapes[0];
   tensorOutput.dtype = "float16";
   tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
+  tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":0, \"input_size\":3}}";
@@ -91,7 +91,7 @@ TEST_F(ConcatTiling, Concat_tiling2) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -99,7 +99,7 @@ TEST_F(ConcatTiling, Concat_tiling2) {
   tensorOutput.shape = input_shapes[0];
   tensorOutput.dtype = "float16";
   tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
+  tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":1, \"input_size\":3}}";
@@ -132,7 +132,7 @@ TEST_F(ConcatTiling, Concat_tiling3) {
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
     tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
   }
 
@@ -140,7 +140,7 @@ TEST_F(ConcatTiling, Concat_tiling3) {
   tensorOutput.shape = input_shapes[0];
   tensorOutput.dtype = "float16";
   tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
+  tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
 
   std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}}";

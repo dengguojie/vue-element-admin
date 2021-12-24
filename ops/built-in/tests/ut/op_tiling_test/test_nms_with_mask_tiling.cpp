@@ -48,7 +48,7 @@ TEST_F(NMSWithMaskTiling, nms_with_mask_tiling_test) {
   tensor_input.dtype = input_dtype;
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
+  tensor_input_arg.arg_type = TensorArgType::TA_SINGLE;
   opParas.inputs.push_back(tensor_input_arg);
 
   for (size_t i = 0; i < output_shape.size(); i++) {
@@ -57,7 +57,7 @@ TEST_F(NMSWithMaskTiling, nms_with_mask_tiling_test) {
     tensor_output.dtype = output_dtype[i];
     TeOpTensorArg tensor_output_arg;
     tensor_output_arg.tensor.push_back(tensor_output);
-    tensor_output_arg.arg_type = TA_SINGLE;
+    tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
     opParas.outputs.push_back(tensor_output_arg);
   }
 

@@ -57,15 +57,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_0) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -107,15 +107,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -157,15 +157,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -206,15 +206,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -256,15 +256,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -304,15 +304,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -352,15 +352,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);
@@ -400,15 +400,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_5) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   // opParas.inputs.push_back(tensorIvfArg);
@@ -448,15 +448,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_6) {
 
   TeOpTensorArg tensorIvfArg;
   tensorIvfArg.tensor.push_back(tensorIvf);
-  tensorIvfArg.arg_type = TA_SINGLE;
+  tensorIvfArg.arg_type = TensorArgType::TA_SINGLE;
   
   TeOpTensorArg tensorBucketListArg;
   // tensorBucketListArg.tensor.push_back(tensorBucketList);
-  tensorBucketListArg.arg_type = TA_SINGLE;
+  tensorBucketListArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpTensorArg tensorPQDistanceArg;
   tensorPQDistanceArg.tensor.push_back(tensorPQDistance);
-  tensorPQDistanceArg.arg_type = TA_SINGLE;
+  tensorPQDistanceArg.arg_type = TensorArgType::TA_SINGLE;
 
   TeOpParas opParas;
   opParas.inputs.push_back(tensorIvfArg);

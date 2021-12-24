@@ -62,16 +62,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_0) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
 	TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
 	TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -119,16 +119,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_1) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -180,16 +180,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_2) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -237,16 +237,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_3) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -295,16 +295,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_4) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -352,16 +352,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_5) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -408,16 +408,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_6) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -464,16 +464,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_7) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);
@@ -519,16 +519,16 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_8) {
 
     TeOpTensorArg tensor_input_arg0;
     tensor_input_arg0.tensor.push_back(tensor_input0);
-    tensor_input_arg0.arg_type = TA_SINGLE;
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg1;
     tensor_input_arg1.tensor.push_back(tensor_input1);
-    tensor_input_arg1.arg_type = TA_SINGLE;
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_input_arg2;
     tensor_input_arg2.tensor.push_back(tensor_input2);
-    tensor_input_arg2.arg_type = TA_SINGLE;
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
     TeOpTensorArg tensor_output_arg0;
     tensor_output_arg0.tensor.push_back(tensor_output0);
-    tensor_output_arg0.arg_type = TA_SINGLE;
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
 
     TeOpParas opParas;
     opParas.inputs.push_back(tensor_input_arg0);

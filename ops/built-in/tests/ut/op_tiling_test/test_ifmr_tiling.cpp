@@ -79,7 +79,7 @@ TEST_F(IFMRTilingTest, ifmr_tiling_test_1) {
         tensorInput.shape = input_shapes[i];
         tensorInput.dtype = input_types[i];
         tensorInputs.tensor.push_back(tensorInput);
-        tensorInputs.arg_type = TA_SINGLE;
+        tensorInputs.arg_type = TensorArgType::TA_SINGLE;
         opParas.inputs.push_back(tensorInputs);
     }
 
@@ -88,7 +88,7 @@ TEST_F(IFMRTilingTest, ifmr_tiling_test_1) {
         tensorOutput.shape = output_shapes[i];
         tensorOutput.dtype = output_types[i];
         tensorOutputsArg.tensor.push_back(tensorOutput);
-        tensorOutputsArg.arg_type = TA_SINGLE;
+        tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
         opParas.outputs.push_back(tensorOutputsArg);
     }
 
