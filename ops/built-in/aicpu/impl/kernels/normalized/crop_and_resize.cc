@@ -70,7 +70,6 @@ uint32_t CropAndResizeMsCpuKernel::GetInputIndexX(CpuKernelContext &ctx) {
 }
 
 uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
-
   // input_1: boxes
   Tensor *boxesTensor = ctx.Input(kInputIndexBoxes);
   KERNEL_CHECK_NULLPTR(boxesTensor, KERNEL_STATUS_PARAM_INVALID,

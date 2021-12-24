@@ -663,7 +663,8 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContextWithBlock(
   }
   std::string str_data(nodedef, nodedef_len);
   nodedef_proto = CpuKernelUtils::CreateNodeDef();
-  KERNEL_CHECK_NULLPTR(nodedef_proto, std::shared_ptr<CpuKernelContext>(nullptr), "Create node def with block info failed.")
+  KERNEL_CHECK_NULLPTR(nodedef_proto, std::shared_ptr<CpuKernelContext>(nullptr),
+                       "Create node def with block info failed.")
   if (!nodedef_proto->ParseFromString(str_data)) {
     return std::shared_ptr<CpuKernelContext>(nullptr);
   }

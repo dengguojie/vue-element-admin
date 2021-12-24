@@ -241,8 +241,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
     if (max_core_num > outer) {
       max_core_num = outer;
     }
-    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-                        ctx, outer, outer / max_core_num, shard_cumsum),
+    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, outer, outer / max_core_num, shard_cumsum),
                         "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
