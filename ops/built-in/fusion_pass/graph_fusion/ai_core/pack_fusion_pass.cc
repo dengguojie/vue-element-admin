@@ -18,13 +18,14 @@
  * \file pack_fusion_pass.cpp
  * \brief pack fusion pass(Pack --> Pack & Pack)
  */
+#include "pack_fusion_pass.h"
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <map>
 #include <cmath>
 
-#include "pack_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -43,7 +44,8 @@ static const std::string PATTERN_FUSEDNODE = "Pack";
 vector<FusionPattern*> PackFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PackFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -54,10 +56,12 @@ vector<FusionPattern*> PackFusionPass::DefinePatterns() {
 
 Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   size_t inputs_num = fusedDesc->GetInputsSize();
   // A maximum of 63 tensors are supported in mini mode.
@@ -68,12 +72,12 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   }
   const int64_t max_inputs = static_cast<int64_t>(NeedTangent);
   FUSION_PASS_CHECK(static_cast<int64_t>(inputs_num) <= max_inputs,
-                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of Pack node is less than %lld.",
-                            max_inputs),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of Pack node is less than %lld.", max_inputs),
                     return NOT_CHANGED);
 
   if (static_cast<int64_t>(inputs_num) > max_inputs) {
-    size_t nodes_num, nodes_num1;
+    size_t nodes_num = 0;
+    size_t nodes_num1 = 0;
     nodes_num1 = inputs_num % max_inputs;
     if (nodes_num1 == 0) {
       nodes_num = inputs_num / max_inputs;
@@ -85,18 +89,20 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     // create Base_node concat node op description
     std::string Base_nodeName = fusedNode->GetName() + "/ConcatD" + "Base_node";
     std::shared_ptr<ge::OpDesc> concatBaseDesc = std::make_shared<ge::OpDesc>(Base_nodeName, "ConcatD");
-    FUSION_PASS_CHECK(concatBaseDesc == nullptr, 
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatBaseDesc is null, fusion failed."), 
+    FUSION_PASS_CHECK(concatBaseDesc == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatBaseDesc is null, fusion failed."),
                       return PARAM_INVALID);
 
     for (size_t c = 0; c < nodes_num; c++) {
-        ge::GeTensorDesc fusedDesc1 = fusedNode->GetOpDesc()->GetInputDesc(c);
-        FUSION_PASS_CHECK(concatBaseDesc->AddInputDesc(c, fusedDesc1) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add fusedDesc1  failed."), return FAILED);
+      ge::GeTensorDesc fusedDesc1 = fusedNode->GetOpDesc()->GetInputDesc(c);
+      FUSION_PASS_CHECK(concatBaseDesc->AddInputDesc(c, fusedDesc1) != SUCCESS,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add fusedDesc1  failed."),
+                        return FAILED);
     }
     ge::GeTensorDesc addOutputDesc0 = fusedNode->GetOpDesc()->GetOutputDesc(0);
     FUSION_PASS_CHECK(concatBaseDesc->AddOutputDesc(addOutputDesc0) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc0  output desc failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc0  output desc failed."),
+                      return FAILED);
 
     concatBaseDesc->SetType("ConcatD");
 
@@ -107,31 +113,36 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     ge::NodePtr pack_base_node = graph.AddNode(concatBaseDesc);
     fusionNodes.push_back(pack_base_node);
     ge::AttrUtils::SetInt(pack_base_node->GetOpDesc(), "N", nodes_num);
-    FUSION_PASS_CHECK(
-        pack_base_node == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_base_node->GetName().c_str()),
-        return PARAM_INVALID);
+    FUSION_PASS_CHECK(pack_base_node == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.",
+                                                     pack_base_node->GetName().c_str()),
+                      return PARAM_INVALID);
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), inAnchorPtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                        return FAILED);
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(pack_base_node->GetOutDataAnchor(0), inAnchorPtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                        return FAILED);
     }
 
     // create pack node op description of max_inputs
     std::string Pack_nodeName = fusedNode->GetName() + "/Pack" + "Base_node1";
     std::shared_ptr<ge::OpDesc> packBaseDesc = std::make_shared<ge::OpDesc>(Pack_nodeName, "Pack");
-    FUSION_PASS_CHECK(packBaseDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packBaseDesc is null, fusion failed."), 
-              return PARAM_INVALID);
+    FUSION_PASS_CHECK(packBaseDesc == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packBaseDesc is null, fusion failed."),
+                      return PARAM_INVALID);
 
-    for (size_t c = 0; c < max_inputs; c++) {
-        ge::GeTensorDesc fusedDesc2 = fusedNode->GetOpDesc()->GetInputDesc(c);
-        FUSION_PASS_CHECK(packBaseDesc->AddInputDesc(c, fusedDesc2) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add packBaseDesc failed."), return FAILED);
+    for (size_t c = 0; c < static_cast<int64_t>(max_inputs); c++) {
+      ge::GeTensorDesc fusedDesc2 = fusedNode->GetOpDesc()->GetInputDesc(c);
+      FUSION_PASS_CHECK(packBaseDesc->AddInputDesc(c, fusedDesc2) != SUCCESS,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add packBaseDesc failed."),
+                        return FAILED);
     }
     ge::GeTensorDesc addOutputDesc1 = fusedNode->GetOpDesc()->GetOutputDesc(0);
     FUSION_PASS_CHECK(packBaseDesc->AddOutputDesc(addOutputDesc1) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc1  output desc failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc1  output desc failed."),
+                      return FAILED);
 
     packBaseDesc->SetType("Pack");
 
@@ -141,25 +152,27 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     ge::NodePtr pack_base_node1 = graph.AddNode(packBaseDesc);
     fusionNodes.push_back(pack_base_node1);
     ge::AttrUtils::SetInt(pack_base_node1->GetOpDesc(), "N", max_inputs);
-    FUSION_PASS_CHECK(
-        pack_base_node1 == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_base_node1->GetName().c_str()),
-        return PARAM_INVALID);
+    FUSION_PASS_CHECK(pack_base_node1 == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.",
+                                                     pack_base_node1->GetName().c_str()),
+                      return PARAM_INVALID);
 
     // create pack node op description of max_inputs
     std::string Pack_nodeName2 = fusedNode->GetName() + "/Pack" + "Base_node_last";
     std::shared_ptr<ge::OpDesc> packLastDesc = std::make_shared<ge::OpDesc>(Pack_nodeName2, "Pack");
-    FUSION_PASS_CHECK(packLastDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packLastDesc is null, fusion failed."), 
-              return PARAM_INVALID);
+    FUSION_PASS_CHECK(packLastDesc == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "packLastDesc is null, fusion failed."),
+                      return PARAM_INVALID);
 
     for (size_t c = 0; c < final_clear_node_num; c++) {
-        ge::GeTensorDesc fusedDesc3 = fusedNode->GetOpDesc()->GetInputDesc(c);
-        FUSION_PASS_CHECK(packLastDesc->AddInputDesc(c, fusedDesc3) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add fusedDesc3 failed."), return FAILED);
+      ge::GeTensorDesc fusedDesc3 = fusedNode->GetOpDesc()->GetInputDesc(c);
+      FUSION_PASS_CHECK(packLastDesc->AddInputDesc(c, fusedDesc3) != SUCCESS,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add fusedDesc3 failed."), return FAILED);
     }
     ge::GeTensorDesc addOutputDesc2 = fusedNode->GetOpDesc()->GetOutputDesc(0);
     FUSION_PASS_CHECK(packLastDesc->AddOutputDesc(addOutputDesc2) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc2 output desc failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add addOutputDesc2 output desc failed."),
+                      return FAILED);
 
     packLastDesc->SetType("Pack");
 
@@ -169,10 +182,10 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     ge::NodePtr pack_base_node3 = graph.AddNode(packLastDesc);
     fusionNodes.push_back(pack_base_node3);
     ge::AttrUtils::SetInt(pack_base_node3->GetOpDesc(), "N", final_clear_node_num);
-    FUSION_PASS_CHECK(
-        pack_base_node3 == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_base_node3->GetName().c_str()),
-        return PARAM_INVALID);
+    FUSION_PASS_CHECK(pack_base_node3 == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.",
+                                                     pack_base_node3->GetName().c_str()),
+                      return PARAM_INVALID);
 
     for (size_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
@@ -188,24 +201,24 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         ge::GeShape PackOutputShape_1 = PackOutputTensor_1.GetShape();
         int64_t dimnum = PackOutputShape_1.GetDimNum();
 
-        int64_t axis;
+        int64_t axis4;
         const int64_t pack_num = static_cast<int64_t>(max_inputs);
-        ge::AttrUtils::GetInt(pack_node->GetOpDesc(), "axis", axis);
-        if (axis < 0) {
-          axis += (dimnum);
+        ge::AttrUtils::GetInt(pack_node->GetOpDesc(), "axis", axis4);
+        if (axis4 < 0) {
+          axis4 += (dimnum);
         }
         vector<int64_t> dimVector;
-        for (int64_t i = 0; i < dimnum + 1; i++) {
-          if (i < axis) {
-            dimVector.push_back(PackOutputShape_1.GetDim(i));
-          } else if (i == axis) {
+        for (int64_t j = 0; j < dimnum + 1; j++) {
+          if (j < axis4) {
+            dimVector.push_back(PackOutputShape_1.GetDim(j));
+          } else if (j == axis4) {
             dimVector.push_back(pack_num);
           } else {
-            dimVector.push_back(PackOutputShape_1.GetDim(i - 1));
+            dimVector.push_back(PackOutputShape_1.GetDim(j - 1));
           }
         }
 
-        dimVector.erase(std::begin(dimVector) + axis + 1);
+        dimVector.erase(std::begin(dimVector) + axis4 + 1);
 
         ge::GeShape x_shape(dimVector);
         PackOutputTensor_1.SetShape(x_shape);
@@ -216,25 +229,27 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         ge::GeShape PackInputShape_1 = PackInputTensor_1.GetShape();
         concatBaseDesc->UpdateInputDesc(i, PackOutputTensor_1);
 
-        FUSION_PASS_CHECK(
-            pack_node == nullptr,
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_node->GetName().c_str()),
-            return PARAM_INVALID);
+        FUSION_PASS_CHECK(pack_node == nullptr,
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.",
+                                                         pack_node->GetName().c_str()),
+                          return PARAM_INVALID);
 
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(pack_node->GetOutDataAnchor(0), pack_base_node->GetInDataAnchor(i)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
-                    pack_base_node->GetName().c_str(), i, pack_node->GetName().c_str(), i),
+            VECTOR_FUSION_INNER_ERR_REPORT(
+                FUSED_OP_TYPE.c_str(),
+                "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
+                pack_base_node->GetName().c_str(), i, pack_node->GetName().c_str(), i),
             return FAILED);
 
         for (size_t m = 0; static_cast<int64_t>(m) < max_inputs; m++) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(m + i * max_inputs)->GetPeerOutAnchor(),
                                                  pack_node->GetInDataAnchor(m)),
-              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
-                      fusedNode->GetName().c_str(), (m + i * max_inputs), pack_node->GetName().c_str(), m),
+              VECTOR_FUSION_INNER_ERR_REPORT(
+                  FUSED_OP_TYPE.c_str(),
+                  "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
+                  fusedNode->GetName().c_str(), (m + i * max_inputs), pack_node->GetName().c_str(), m),
               return FAILED);
         }
       } else {
@@ -248,48 +263,50 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         ge::GeTensorDesc PackOutputTensor_2 = LastPackDesc->GetOutputDesc(0);
         ge::GeShape PackOutputShape_2 = PackOutputTensor_2.GetShape();
         int64_t dimnum = PackOutputShape_2.GetDimNum();
-        int64_t axis;
+        int64_t axis5;
         int64_t pack_num = final_clear_node_num;
-        ge::AttrUtils::GetInt(last_pack_node->GetOpDesc(), "axis", axis);
-        if (axis < 0) {
-          axis += (dimnum);
+        ge::AttrUtils::GetInt(last_pack_node->GetOpDesc(), "axis", axis5);
+        if (axis5 < 0) {
+          axis5 += (dimnum);
         }
 
         vector<int64_t> dimVector;
-        for (int64_t i = 0; i < dimnum + 1; i++) {
-          if (i < axis) {
-            dimVector.push_back(PackOutputShape_2.GetDim(i));
-          } else if (i == axis) {
+        for (int64_t j = 0; j < dimnum + 1; j++) {
+          if (j < axis5) {
+            dimVector.push_back(PackOutputShape_2.GetDim(j));
+          } else if (j == axis5) {
             dimVector.push_back(pack_num);
           } else {
-            dimVector.push_back(PackOutputShape_2.GetDim(i - 1));
+            dimVector.push_back(PackOutputShape_2.GetDim(j - 1));
           }
         }
-        dimVector.erase(std::begin(dimVector) + axis + 1);
+        dimVector.erase(std::begin(dimVector) + axis5 + 1);
         ge::GeShape x_shape(dimVector);
         PackOutputTensor_2.SetShape(x_shape);
         PackOutputTensor_2.SetOriginShape(x_shape);
         LastPackDesc->UpdateOutputDesc(0, PackOutputTensor_2);
         concatBaseDesc->UpdateInputDesc(i, PackOutputTensor_2);
 
-        FUSION_PASS_CHECK(
-            last_pack_node == nullptr,
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", last_pack_node->GetName().c_str()),
-            return PARAM_INVALID);
+        FUSION_PASS_CHECK(last_pack_node == nullptr,
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                                         last_pack_node->GetName().c_str()),
+                          return PARAM_INVALID);
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(last_pack_node->GetOutDataAnchor(0), pack_base_node->GetInDataAnchor(i)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
-                    pack_base_node->GetName().c_str(), i, last_pack_node->GetName().c_str(), i),
+            VECTOR_FUSION_INNER_ERR_REPORT(
+                FUSED_OP_TYPE.c_str(),
+                "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
+                pack_base_node->GetName().c_str(), i, last_pack_node->GetName().c_str(), i),
             return FAILED);
 
         for (size_t n = 0; n < final_clear_node_num; n++) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(n + i * max_inputs)->GetPeerOutAnchor(),
                                                  last_pack_node->GetInDataAnchor(n)),
-              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
-                      fusedNode->GetName().c_str(), (n + i * max_inputs), last_pack_node->GetName().c_str(), n),
+              VECTOR_FUSION_INNER_ERR_REPORT(
+                  FUSED_OP_TYPE.c_str(),
+                  "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
+                  fusedNode->GetName().c_str(), (n + i * max_inputs), last_pack_node->GetName().c_str(), n),
               return FAILED);
         }
       }
@@ -297,9 +314,10 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   }
   ge::NodeUtils::UnlinkAll(*(fusedNode.get()));
   Status ret = ge::GraphUtils::RemoveJustNode(graph, fusedNode);
-  FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fusedNode->GetName().c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      ret != ge::GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fusedNode->GetName().c_str()),
+      return FAILED);
 
   return SUCCESS;
 }

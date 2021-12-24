@@ -20,12 +20,13 @@
  */
 #include "slice_fusion_pass.h"
 
-#include <math.h>
+#include <cmath>
 
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
@@ -41,7 +42,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "Slice";
 
 static const std::string PATTERN_FUSEDNODE = "FusedNodeSlice";
@@ -50,7 +50,8 @@ vector<FusionPattern*> ConstToAttrSlicePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConstToAttrSliceFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -61,13 +62,15 @@ vector<FusionPattern*> ConstToAttrSlicePass::DefinePatterns() {
 }
 
 Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's Node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's Node is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(fuseDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      fuseDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
+      return PARAM_INVALID);
 
   if (HasUnKnowShape(fused_node)) {
     FUSION_PASS_CHECK(CheckOpSupported(fuseDesc), OP_LOGI(FUSED_NODE, "dynamic shape supported."), return NOT_CHANGED);
@@ -75,14 +78,13 @@ Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   vector<int64_t> dims = fuseDesc->GetOutputDesc(0).GetShape().GetDims();
-  for (int64_t ele : dims) {
-    if (ele == 0) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "The output of slice's dim is 0, need go to aicpu");
-      return NOT_CHANGED;
-    }
+  if (find(dims.begin(), dims.end(), 0) != dims.end()) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The output of slice's dim is 0, need go to aicpu");
+    return NOT_CHANGED;
   }
 
-  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);

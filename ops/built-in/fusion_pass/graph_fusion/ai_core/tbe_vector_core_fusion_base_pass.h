@@ -26,7 +26,7 @@
 #include <vector>
 
 namespace fe {
-class TbeEnableVectorCoreFusionBasePass: public fe::PatternFusionBasePass {
+class TbeEnableVectorCoreFusionBasePass : public fe::PatternFusionBasePass {
  protected:
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& fusionNodes) override;
 
@@ -62,7 +62,6 @@ class TbeEnableVectorCoreFusionBasePass: public fe::PatternFusionBasePass {
   uint32_t ai_core_count_ = 1;
   uint32_t vector_core_count_ = 0;
 };
+}  // end namespace fe
 
-} // end namespace fe
-
-#endif // CANN_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_VECTOR_CORE_FUSION_BASE_PASS_H_
+#endif  // CANN_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_VECTOR_CORE_FUSION_BASE_PASS_H_

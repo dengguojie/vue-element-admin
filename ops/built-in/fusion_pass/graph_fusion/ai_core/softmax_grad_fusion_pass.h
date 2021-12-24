@@ -30,7 +30,7 @@ class SoftmaxGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
 
  private:
-  bool IsMatch(ge::NodePtr mulMode0, ge::NodePtr reduceSumDNode, ge::NodePtr subNode, ge::NodePtr mulNode1);
+  bool IsMatch(ge::NodePtr mul_node0, ge::NodePtr reducesumd_node, ge::NodePtr sub_node, ge::NodePtr mul_node1) const;
 
   const string FUSED_OP_TYPE = "SoftmaxGrad";
 };

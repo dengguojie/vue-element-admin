@@ -18,13 +18,14 @@
  * \file concat_fusion_pass.cpp
  * \brief
  */
+#include "concat_fusion_pass.h"
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <map>
 #include <cmath>
 
-#include "concat_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -41,7 +42,7 @@ namespace fe {
 static const char* FUSED_NODE = "Concat";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeConcat";
 
-void ConcatFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) {
+void ConcatFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) const {
   auto input_count = input_desc_ptr->GetAllInputsSize();
   map<string, uint32_t> name_index_map;
   string name = "x";
@@ -54,7 +55,8 @@ void ConcatFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) {
 vector<FusionPattern*> ConcatFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConcatFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -70,7 +72,8 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   ge::NodePtr fused_node = nullptr;
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
-  FUSION_PASS_CHECK(fused_node1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+  FUSION_PASS_CHECK(fused_node1 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
 
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusionOpType, concatAttrInfo, fused_node);
@@ -83,37 +86,39 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Concat-->ConcatD fusion SUCCESSS!!!!!");
 
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      fusedDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
+      return PARAM_INVALID);
 
   int64_t num_N;
   int64_t num_N_del = 0;
   int64_t num_N_new;
   vector<int64_t> whereI;
   ge::AttrUtils::GetInt(fusedDesc, "N", num_N);
-  for (int i=0;i<num_N;i++) {
-     int64_t Repeatnum = 0;
-     ge::GeTensorDesc selectInputDesc = fused_node->GetOpDesc()->GetInputDesc(i);
-     vector<int64_t> selectInputShape = selectInputDesc.GetShape().GetDims();
-     for (size_t j=0; j<selectInputShape.size(); j++){
-         if (selectInputShape[j] == 0){
-             Repeatnum +=1;
-         }
-     }
-     if (Repeatnum > 0){
-        num_N_del += 1;
-        whereI.push_back(i);
-     }
-  }
-  if (!whereI.empty()){
-      for (size_t i=0; i<whereI.size(); i++){
-          FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(whereI[i] - i)->GetPeerOutAnchor(),
-                                                       fused_node->GetInDataAnchor(whereI[i] - i)) != SUCCESS,
-
-                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"Remove edge failed."), return FAILED);
-          RemoveInputDesc(fusedDesc, whereI[i] - i);
-          ge::NodeUtils::ClearInDataAnchor(fused_node,fused_node->GetInDataAnchor(whereI[i] - i));
+  for (int i = 0; i < num_N; i++) {
+    int64_t Repeatnum = 0;
+    ge::GeTensorDesc selectInputDesc = fused_node->GetOpDesc()->GetInputDesc(i);
+    vector<int64_t> selectInputShape = selectInputDesc.GetShape().GetDims();
+    for (size_t j = 0; j < selectInputShape.size(); j++) {
+      if (selectInputShape[j] == 0) {
+        Repeatnum += 1;
       }
+    }
+    if (Repeatnum > 0) {
+      num_N_del += 1;
+      whereI.push_back(i);
+    }
+  }
+  if (!whereI.empty()) {
+    for (size_t i = 0; i < whereI.size(); i++) {
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(whereI[i] - i)->GetPeerOutAnchor(),
+                                                   fused_node->GetInDataAnchor(whereI[i] - i)) != SUCCESS,
+
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
+      RemoveInputDesc(fusedDesc, whereI[i] - i);
+      ge::NodeUtils::ClearInDataAnchor(fused_node, fused_node->GetInDataAnchor(whereI[i] - i));
+    }
   }
   num_N_new = num_N - num_N_del;
   ge::AttrUtils::SetInt(fusedDesc, "N", num_N_new);
@@ -126,13 +131,14 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     NeedTangent = 48;
   }
   const int64_t max_inputs = NeedTangent;
-  FUSION_PASS_CHECK(inputs_num <= max_inputs,
-                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of ConcatD node is less than %lld.",
-                            max_inputs),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      inputs_num <= max_inputs,
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of ConcatD node is less than %lld.", max_inputs),
+      return NOT_CHANGED);
 
   if (inputs_num > max_inputs) {
-    int64_t nodes_num, nodes_num1;
+    int64_t nodes_num = 0;
+    int64_t nodes_num1 = 0;
     nodes_num1 = inputs_num % max_inputs;
     if (nodes_num1 == 0) {
       nodes_num = inputs_num / max_inputs;
@@ -144,25 +150,28 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     ge::OpDescPtr ConcatdBaseDesc = AttrUtils::CopyOpDesc(fusedDesc);
     ConcatdBaseDesc->SetName(ConcatdBaseDesc->GetName() + "/ConcatD" + "Base_node");
     ConcatdBaseDesc->SetType("ConcatD");
-    int64_t concat_dim;
-    ge::AttrUtils::GetInt(fusedDesc, "concat_dim", concat_dim);
-    ge::AttrUtils::SetInt(ConcatdBaseDesc, "concat_dim", concat_dim);
+    int64_t concat_dim_1;
+    ge::AttrUtils::GetInt(fusedDesc, "concat_dim", concat_dim_1);
+    ge::AttrUtils::SetInt(ConcatdBaseDesc, "concat_dim", concat_dim_1);
 
     for (int64_t c = inputs_num - 1; c >= nodes_num; c--) {
       RemoveInputDesc(ConcatdBaseDesc, c);
     }
 
     ge::NodePtr concatd_base_node = graph.AddNode(ConcatdBaseDesc);
-    FUSION_PASS_CHECK(concatd_base_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatd_base_node is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        concatd_base_node == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatd_base_node is null, fusion failed."),
+        return PARAM_INVALID);
     newNodes.push_back(concatd_base_node);
     ge::AttrUtils::SetInt(concatd_base_node->GetOpDesc(), "N", nodes_num);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), inAnchorPtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                        return FAILED);
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatd_base_node->GetOutDataAnchor(0), inAnchorPtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                        return FAILED);
     }
 
     for (int64_t i = 0; i < nodes_num; i++) {
@@ -171,8 +180,8 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         ge::OpDescPtr ConcatdDesc = AttrUtils::CopyOpDesc(fusedDesc);
         ConcatdDesc->SetName(ConcatdDesc->GetName() + "/ConcatD" + to_string(i));
         ConcatdDesc->SetType("ConcatD");
-        ge::AttrUtils::GetInt(fusedDesc, "concat_dim", concat_dim);
-        ge::AttrUtils::SetInt(ConcatdDesc, "concat_dim", concat_dim);
+        ge::AttrUtils::GetInt(fusedDesc, "concat_dim", concat_dim_1);
+        ge::AttrUtils::SetInt(ConcatdDesc, "concat_dim", concat_dim_1);
 
         if (i == 0) {
           for (int64_t a = inputs_num - 1; a >= max_inputs; a--) {
@@ -196,17 +205,16 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         // infershape begin
         int64_t size = 0;
         const int64_t num_concat = max_inputs;
-        int64_t concat_dim = 0;
-        ge::AttrUtils::GetInt(concatd_node->GetOpDesc(), "concat_dim", concat_dim);
+        int64_t concat_dim_2 = 0;
+        ge::AttrUtils::GetInt(concatd_node->GetOpDesc(), "concat_dim", concat_dim_2);
         ge::GeTensorDesc ConcatDInputTensor_0 = ConcatdDesc->GetInputDesc(0);
         ge::GeShape ConcatDInputShape_0 = ConcatDInputTensor_0.GetShape();
         int64_t dimnum = ConcatDInputShape_0.GetDimNum();
-        auto axis = concat_dim;
+        auto axis = concat_dim_2;
         if (axis < 0) {
           axis += (dimnum);
         }
         for (int64_t n = 0; n < num_concat; n++) {
-          //            ge::GeTensorDesc ConcatDInputTensor_1 = ConcatdDesc->GetDynamicInputDesc("x",i);
           Operator op1 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
           ge::TensorDesc ConcatDInputTensor_1 = op1.GetDynamicInputDesc("x", max_inputs * i + n);
           ge::Shape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
@@ -233,18 +241,20 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatd_node->GetOutDataAnchor(0),
                                                              concatd_base_node->GetInDataAnchor(i)),
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                  "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
-                                  concatd_base_node->GetName().c_str(), i, concatd_node->GetName().c_str(), i),
+                          VECTOR_FUSION_INNER_ERR_REPORT(
+                              FUSED_OP_TYPE.c_str(),
+                              "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
+                              concatd_base_node->GetName().c_str(), i, concatd_node->GetName().c_str(), i),
                           return FAILED);
 
         for (int64_t m = 0; m < max_inputs; m++) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(m + i * max_inputs)->GetPeerOutAnchor(),
                                                  concatd_node->GetInDataAnchor(m)),
-              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
-                      fused_node->GetName().c_str(), (m + i * max_inputs), concatd_node->GetName().c_str(), m),
+              VECTOR_FUSION_INNER_ERR_REPORT(
+                  FUSED_OP_TYPE.c_str(),
+                  "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
+                  fused_node->GetName().c_str(), (m + i * max_inputs), concatd_node->GetName().c_str(), m),
               return FAILED);
         }
       } else {
@@ -257,25 +267,25 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           RemoveInputDesc(LastConcatDDesc, b);
         }
         ge::NodePtr last_concatd_node = graph.AddNode(LastConcatDDesc);
-        FUSION_PASS_CHECK(last_concatd_node == nullptr,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "last_concatd_node is null, fusion failed."),
-                          return PARAM_INVALID);
+        FUSION_PASS_CHECK(
+            last_concatd_node == nullptr,
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "last_concatd_node is null, fusion failed."),
+            return PARAM_INVALID);
         newNodes.push_back(last_concatd_node);
         ge::AttrUtils::SetInt(last_concatd_node->GetOpDesc(), "N", last_node_inputs_num);
         // the last_node infershape begin
         int32_t size = 0;
         int64_t num_concat = last_node_inputs_num;
-        int64_t concat_dim;
-        ge::AttrUtils::GetInt(last_concatd_node->GetOpDesc(), "concat_dim", concat_dim);
+        int64_t concat_dim_3;
+        ge::AttrUtils::GetInt(last_concatd_node->GetOpDesc(), "concat_dim", concat_dim_3);
         ge::GeTensorDesc ConcatDInputTensor_3 = LastConcatDDesc->GetInputDesc(0);
         ge::GeShape ConcatDInputShape_3 = ConcatDInputTensor_3.GetShape();
         int64_t dimnum = ConcatDInputShape_3.GetDimNum();
-        auto axis = concat_dim;
+        auto axis = concat_dim_3;
         if (axis < 0) {
           axis += (dimnum);
         }
         for (int32_t n = 0; n < num_concat; n++) {
-          //            ge::GeTensorDesc ConcatDInputTensor_2 = LastConcatDDesc->GetDynamicInputDesc("x",i);
           Operator op2 = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
           ge::TensorDesc ConcatDInputTensor_2 = op2.GetDynamicInputDesc("x", n + max_inputs * i);
           ge::Shape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
@@ -301,18 +311,20 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         // the last_node infershape end
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_concatd_node->GetOutDataAnchor(0),
                                                              concatd_base_node->GetInDataAnchor(i)),
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                  "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
-                                  concatd_base_node->GetName().c_str(), i, last_concatd_node->GetName().c_str(), i),
+                          VECTOR_FUSION_INNER_ERR_REPORT(
+                              FUSED_OP_TYPE.c_str(),
+                              "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
+                              concatd_base_node->GetName().c_str(), i, last_concatd_node->GetName().c_str(), i),
                           return FAILED);
 
         for (int64_t n = 0; n < last_node_inputs_num; n++) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(n + i * max_inputs)->GetPeerOutAnchor(),
                                                  last_concatd_node->GetInDataAnchor(n)),
-              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
-                      fused_node->GetName().c_str(), (n + i * max_inputs), last_concatd_node->GetName().c_str(), n),
+              VECTOR_FUSION_INNER_ERR_REPORT(
+                  FUSED_OP_TYPE.c_str(),
+                  "Add edge from fused node:%s's index[%ld] to fusion node:%s's index[%ld] failed.",
+                  fused_node->GetName().c_str(), (n + i * max_inputs), last_concatd_node->GetName().c_str(), n),
               return FAILED);
         }
       }
@@ -331,9 +343,10 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     }
   }
 
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fused_node),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(fused_node),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
+      return FAILED);
 
   return SUCCESS;
 }

@@ -24,11 +24,8 @@
 #include "op_log.h"
 
 namespace fe {
-
-Status TbeEnableVectorCoreFusionBasePass::Fusion(ge::ComputeGraph &graph,
-                                                 Mapping &mapping,
-                                                 std::vector<ge::NodePtr> &fusionNodes) {
-
+Status TbeEnableVectorCoreFusionBasePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                                 std::vector<ge::NodePtr>& fusionNodes) {
   return SUCCESS;
 }
 
@@ -39,8 +36,8 @@ bool TbeEnableVectorCoreFusionBasePass::NeedEnableVectorCore(const Mapping& mapp
 bool TbeEnableVectorCoreFusionBasePass::InitCoreCount() {
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
-  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
-                                                                       opti_compilation_info) != SUCCESS) {
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) !=
+      SUCCESS) {
     OP_LOGI("Fail to get platform info.");
     return false;
   }
@@ -51,4 +48,4 @@ bool TbeEnableVectorCoreFusionBasePass::InitCoreCount() {
   return vector_core_count_ > 0 && ai_core_count_ > 0;
 }
 
-} // end namespace fe
+}  // end namespace fe

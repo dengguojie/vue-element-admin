@@ -84,7 +84,7 @@ std::vector<FusionPattern*> SoftmaxGradFusionPass::DefinePatterns() {
 
 // check if mul0's input 0 is same with sub's input 0, mul0's input 1 is same with mul2's input 1
 bool SoftmaxGradFusionPass::IsMatch(ge::NodePtr mul_node0, ge::NodePtr reducesumd_node, ge::NodePtr sub_node,
-                                    ge::NodePtr mul_node1) {
+                                    ge::NodePtr mul_node1) const {
   std::string mul0_input0_name = mul_node0->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string mul0_input1_name = mul_node0->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string sub_input0_name = sub_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();

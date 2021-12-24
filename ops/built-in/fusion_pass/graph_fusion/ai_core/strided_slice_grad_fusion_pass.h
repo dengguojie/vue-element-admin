@@ -32,7 +32,6 @@ class ConstToAttrStridedSliceGradPass : public PatternFusionBasePass {
  private:
   const string FUSED_OP_TYPE = "StridedSliceGradD";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_STRIDED_SLICE_GRAD_FUSION_PASS_H_

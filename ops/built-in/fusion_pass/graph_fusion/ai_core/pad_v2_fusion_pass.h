@@ -32,8 +32,9 @@ class PadV2FusionPass : public PatternFusionBasePass {
 
  private:
   bool GetConstValue(const ge::Operator& op, const ge::Tensor& const_tensor, const ge::DataType& dtype,
-                     std::vector<int64_t>& const_data);
-  Status PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& pad_node, const string& attr_name, int32_t index);
+                     std::vector<int64_t>& const_data) const;
+  Status PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& pad_node, const string& attr_name,
+                            int32_t index) const;
   const string FUSED_OP_TYPE = "PadV2D";
 };
 

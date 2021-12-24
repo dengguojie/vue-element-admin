@@ -40,7 +40,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "StridedSliceGrad";
 
 static const std::string PATTERN_FUSEDNODE = "FusedNodeStridedSliceGrad";
@@ -49,7 +48,8 @@ vector<FusionPattern*> ConstToAttrStridedSliceGradPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConstToAttrStridedSliceGradFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -72,9 +72,9 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
   strided_slice_gradAttrInfo.push_back(end);
   strided_slice_gradAttrInfo.push_back(strides);
 
-  // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetNodeFromMapping failed, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetNodeFromMapping failed, fusion failed."),
                     return PARAM_INVALID);
   // Check StridedSliceGrad support dynamic
   bool unknownShape = false;
@@ -112,7 +112,8 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
   op.GetInputConstData("strides", const_tensor1);
 
   std::vector<int64_t> strides_value;
-  if (!TbeFusionPassUtil::GetConstIntData(const_tensor1, op.GetInputDesc("strides").GetDataType(), strides_value)) {
+  if (!TbeFusionPassUtil::GetConstIntData(const_tensor1, op.GetInputDescByName("strides").GetDataType(),
+                                          strides_value)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "StridedSliceGrad get strides value failed.");
     return FAILED;
   }
@@ -129,17 +130,19 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
   op.GetInputConstData("shape", const_tensor0);
 
   std::vector<int64_t> shape_value;
-  if (!TbeFusionPassUtil::GetConstIntData(const_tensor0, op.GetInputDesc("shape").GetDataType(), shape_value)) {
+  if (!TbeFusionPassUtil::GetConstIntData(const_tensor0, op.GetInputDescByName("shape").GetDataType(), shape_value)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "StridedSliceGrad get shape value failed.");
     return FAILED;
   }
 
-  if (shrink_axis_mask == 2 && (ellipsis_mask != 1 || strides_value.size() != 2 || shape_value.size() <= 2)) {
+  const int64_t TWO = 2;
+  if (shrink_axis_mask == TWO && (ellipsis_mask != 1 || strides_value.size() != TWO || shape_value.size() <= TWO)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGradD can't support such param, graph not changed.");
     return NOT_CHANGED;
   }
 
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::NodePtr fusionNode = nullptr;
   Status ret =
@@ -154,4 +157,3 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
 
 REGISTER_PASS("StridedSliceGradFusionPass", BUILT_IN_GRAPH_PASS, ConstToAttrStridedSliceGradPass);
 }  // namespace fe
-
