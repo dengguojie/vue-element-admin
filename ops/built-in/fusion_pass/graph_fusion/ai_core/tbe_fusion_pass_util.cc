@@ -52,16 +52,19 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   std::string beforeTransposeName = fusedNode->GetName() + "_Input" + to_string(inputIndex) + "_TransposeBefore";
   beforeTransposeDesc = std::make_shared<ge::OpDesc>(beforeTransposeName, FUSED_TRANSPOSE_NODE);
   FUSION_PASS_CHECK(beforeTransposeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."),
+                    return FAILED);
   ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(inputIndex);
   FUSION_PASS_CHECK(beforeTransposeDesc->AddInputDesc("x", inputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
                     return FAILED);
   vector<int64_t> inputShape = inputDesc.GetShape().GetDims();
   size_t inputShapeDims = inputShape.size();
-  FUSION_PASS_CHECK(permList.size() < inputShapeDims,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      permList.size() < inputShapeDims,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
+      return FAILED);
   vector<int64_t> outputShapeVec;
   for (size_t n = 0; n < inputShapeDims; n++) {
     outputShapeVec.push_back(inputShape[permList[n]]);
@@ -70,7 +73,8 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   inputDesc.SetShape(outputShape);
   inputDesc.SetOriginShape(outputShape);
   FUSION_PASS_CHECK(beforeTransposeDesc->AddOutputDesc("y", inputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
                     return FAILED);
   ge::AttrUtils::SetListInt(beforeTransposeDesc, "perm", permList);
 
@@ -83,7 +87,8 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   // remove fused node input edge
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
                                                fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove out data edge failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove out data edge failed."),
+                    return FAILED);
   // add output for transpose
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(beforeTransposeNode->GetOutDataAnchor(0),
                                             fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,
@@ -106,16 +111,19 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
   std::string TransposeName = fusedNode->GetName() + "_Output" + to_string(outputIndex) + "TransposeAfter";
   afterTransposeDesc = std::make_shared<ge::OpDesc>(TransposeName, FUSED_TRANSPOSE_NODE);
   FUSION_PASS_CHECK(afterTransposeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "afterTransposeDesc is null, fusion failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "afterTransposeDesc is null, fusion failed."),
+                    return FAILED);
   ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(outputIndex);
   FUSION_PASS_CHECK(afterTransposeDesc->AddInputDesc("x", outputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
                     return FAILED);
   vector<int64_t> inputShape = outputDesc.GetShape().GetDims();
   size_t inputShapeDims = inputShape.size();
-  FUSION_PASS_CHECK(permList.size() < inputShapeDims,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      permList.size() < inputShapeDims,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
+      return FAILED);
   vector<int64_t> outputShapeVec;
   for (size_t n = 0; n < inputShapeDims; n++) {
     outputShapeVec.push_back(inputShape[permList[n]]);
@@ -124,7 +132,8 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
   outputDesc.SetShape(outputShape);
   outputDesc.SetOriginShape(outputShape);
   FUSION_PASS_CHECK(afterTransposeDesc->AddOutputDesc("y", outputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
                     return FAILED);
   ge::AttrUtils::SetListInt(afterTransposeDesc, "perm", permList);
 
@@ -157,16 +166,19 @@ Status AddCastAfterNode(const ge::NodePtr& fused_node, const int64_t& output_ind
   std::string CastName = fused_node->GetName() + "_Output" + to_string(output_index) + "CastAfter";
   after_cast_desc = std::make_shared<ge::OpDesc>(CastName, FUSED_CAST_NODE);
   FUSION_PASS_CHECK(after_cast_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "after_cast_desc is null, fusion failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "after_cast_desc is null, fusion failed."),
+                    return FAILED);
   ge::GeTensorDesc output_desc = fused_node->GetOpDesc()->GetOutputDesc(output_index);
   FUSION_PASS_CHECK(after_cast_desc->AddInputDesc("x", output_desc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "add after cast of %s failed.", fused_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "add after cast of %s failed.",
+                                                   fused_node->GetName().c_str()),
                     return FAILED);
 
   ge::GeTensorDesc aftercast_output_desc = fused_node->GetOpDesc()->GetOutputDesc(output_index).Clone();
   aftercast_output_desc.SetDataType(dst_type);
   FUSION_PASS_CHECK(after_cast_desc->AddOutputDesc("y", aftercast_output_desc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "add after cast of %s failed.", fused_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "add after cast of %s failed.",
+                                                   fused_node->GetName().c_str()),
                     return FAILED);
   ge::AttrUtils::SetInt(after_cast_desc, "dst_type", dst_type);
   // add node to graph
@@ -246,17 +258,16 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
   std::vector<bool> is_input_const = fuse_desc->GetIsInputConst();
 
   FUSION_PASS_CHECK(!is_input_const.empty(),
-                    OP_LOGI("UpdateAttrIsInputConst",
-                            "The node(%s) have attr is_input_const, will not update again.",
+                    OP_LOGI("UpdateAttrIsInputConst", "The node(%s) have attr is_input_const, will not update again.",
                             fuse_op.GetName().c_str()),
                     return true);
   OP_LOGI("UpdateAttrIsInputConst", "will update the node(%s) attr(is_input_const).", fuse_op.GetName().c_str());
   auto input_size = fuse_desc->GetInputsSize();
-  FUSION_PASS_CHECK(input_size < 1,
-                    OP_LOGI("UpdateAttrIsInputConst",
-                            "The node(%s) have no input desc, will not update is_input_const.",
-                            fuse_op.GetName().c_str()),
-                    return true);
+  FUSION_PASS_CHECK(
+      input_size < 1,
+      OP_LOGI("UpdateAttrIsInputConst", "The node(%s) have no input desc, will not update is_input_const.",
+              fuse_op.GetName().c_str()),
+      return true);
   for (size_t i = 0; i < input_size; i++) {
     auto peer_node = fuse_node->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode();
     auto peer_op_type = peer_node->GetType();
@@ -275,7 +286,7 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
 bool TbeFusionPassUtil::IsEmptyTensor(const ge::GeTensorDesc& tensor_desc) {
   vector<int64_t> shape_info = tensor_desc.GetShape().GetDims();
   int64_t shape_dim = shape_info.size();
-  for(int64_t dim = 0; dim < shape_dim; dim++) {
+  for (int64_t dim = 0; dim < shape_dim; dim++) {
     if (shape_info[dim] == 0) {
       OP_LOGI("IsEmptyTensor", "shape dim num is 1 and shape vector[0] is 0, is empty tensor.");
       return true;
