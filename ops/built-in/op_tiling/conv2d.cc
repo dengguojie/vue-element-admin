@@ -27,6 +27,7 @@
 #include "external/graph/operator.h"
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 #include "../op_proto/util/error_util.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
@@ -39,7 +40,8 @@ namespace optiling {
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
  * @param [out] valValue: val value
  */
-std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDescPtr& op_desc,
+std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::string> varMap, 
+                                 const ge::OpDescPtr& op_desc,
                                  int32_t nDim, int32_t hDim, int32_t wDim) {
     auto input_desc = op_desc->GetInputDescPtr(0);
     auto output_desc = op_desc->GetOutputDescPtr(0);
@@ -63,6 +65,29 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDe
             varValue.insert(varValue.end(), ho);
         } else if (var == "wo") {
             varValue.insert(varValue.end(), wo);
+        } else {
+            // elewise var name _dim_x_x when conv+add fusion
+            int32_t var_index = 0;
+            int32_t dim_index = 0;
+            int32_t dim_value = 0;
+            if (var.find("dim") != std::string::npos) {
+                // dim offset 4 means first 'x' value
+                var_index = var.find("dim") + 4;
+                OP_TILING_CHECK(var_index > var.length(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "elewise var has no valid dim, var_name:%s", var.c_str()),
+                  return varValue);
+                try {
+                    dim_index = std::stoi(var.substr(var_index, 1).c_str());
+                } catch (...) {
+                    CUBE_INNER_ERR_REPORT(opType.c_str(), "elewise var has no valid dim_index, var_name:%s", var.c_str());
+                    return varValue;
+                }
+                dim_value = (dim_index == nDim) ? batch : ho*wo;
+                varValue.insert(varValue.end(), dim_value);
+                GELOGD("elewise fusion optiling var info, var_name: %s, dim_index: %d", var.c_str(), dim_index);
+            } else {
+                GELOGD("unknow var info, var_name: %s", var.c_str());
+            }
         }
     }
     return varValue;
@@ -202,17 +227,8 @@ bool Conv2DTiling(const std::string& opType,
         opInfo = opCompileInfo;
     }
     PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG()
-    std::vector<int64_t> varValue = setValValue(varMap, 
-		                                op_desc, 
-						nDim, 
-                                                hDim, 
-						wDim);
-    bool res = cube_tiling1(opType, 
-		            input_desc->GetShape().GetDims(),
-                            x_format, 
-			    varValue, 
-			    opInfo, 
-			    runInfo);
+    std::vector<int64_t> varValue = setValValue(opType, varMap, op_desc, nDim, hDim, wDim);
+    bool res = cube_tiling1(opType, input_desc->GetShape().GetDims(), x_format, varValue, opInfo, runInfo);
     PROFILING_TILING_AFTER_CALCU_TILING_REG()
     
     std::string node_name = op_desc->GetName();
