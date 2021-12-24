@@ -17,5 +17,6 @@
 """
 boost schedule kit
 """
-from .util import Compare, enhance_check_tiling
+from .util import Compare
+from .util import enhance_check_tiling
 from .schedule_agent import ScheduleAgent

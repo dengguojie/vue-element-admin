@@ -38,12 +38,14 @@ def raise_schedule_agent_err(msg):
 
 
 class AttachMap:
-    """docstring for  AttachMap"""
+    """
+    docstring for  AttachMap
+    """
 
     def __init__(self):
-        # axis:stage
-        self._parent_stages = dict()
-        self._attached_path = dict()
+
+        self._parent_stages = {}
+        self._attached_path = {}
 
     def record_attach(self, stage, scope):
         """
@@ -61,7 +63,7 @@ class AttachMap:
         if self._attached_path.get(scope) is None:
             self._attached_path[scope] = [stage]
         else:
-            self._attached_path[scope].append(stage)
+            self._attached_path.get(scope).append(stage)
 
     def follow_with(self, stage, parent_stage, scope):
         """
@@ -123,11 +125,11 @@ class AttachMap:
         if attached_path.get(new_scope) is None:
             attached_path[new_scope] = child_stages
         else:
-            attached_path[new_scope].extend(child_stages)
+            attached_path.get(new_scope).extend(child_stages)
 
         self._attached_path.pop(scope)
 
-        self._parent_stages[new_scope] = self._parent_stages[scope]
+        self._parent_stages[new_scope] = self._parent_stages.get(scope)
         return
 
     def apply(self):
@@ -143,7 +145,7 @@ class AttachMap:
         None
         """
         for scope, array_stages in self._attached_path.items():
-            parent = self._parent_stages[scope]
+            parent = self._parent_stages.get(scope)
             pre_scope = None
             for axis in parent.leaf_iter_vars:
                 if axis == scope:
@@ -157,9 +159,9 @@ class AttachMap:
         """
         get the axis that the stage compute at
         """
-        compute_path = dict()
+        compute_path = {}
         for scope, array_stages in self._attached_path.items():
-            parent = self._parent_stages[scope]
+            parent = self._parent_stages.get(scope)
             pre_scope = None
             for axis in parent.leaf_iter_vars:
                 if axis == scope:
@@ -174,9 +176,9 @@ class AttachMap:
         """
         get the tensor that the stage compute at
         """
-        attach_dict = dict()
+        attach_dict = {}
         for scope, array_stages in self._attached_path.items():
-            parent = self._parent_stages[scope]
+            parent = self._parent_stages.get(scope)
             for stage in array_stages:
                 attach_dict[stage] = parent
         return attach_dict
@@ -212,16 +214,17 @@ class AttachMap:
 
 
 class ScopeManager:
-    """docstring for ScopeManager
+    """
+    docstring for ScopeManager
     keep active tensor same in whole schedule
     """
 
     def __init__(self, stage):
         self._stage = stage
-        self._axis_unit = dict()
-        self._active_scopes = list()
-        self._axis_split_list = list()
-        self._origin_axis = list()
+        self._axis_unit = {}
+        self._active_scopes = []
+        self._axis_split_list = []
+        self._origin_axis = []
         self._last_attached = None
         self._scope_intrinsic = None
         if len(stage.leaf_iter_vars) != len(stage.all_iter_vars):
@@ -278,7 +281,7 @@ class ScopeManager:
             raise_schedule_agent_err("factor nparts can not be None")
         if self._axis_unit.get(parent) is None:
             raise_schedule_agent_err("parent scope can not be None")
-        unit, extent = self._axis_unit[parent]
+        unit, extent = self._axis_unit.get(parent)
         outer, inner = [None, None]
         if nparts is not None:
             outer, inner = self._stage.split(parent, nparts=nparts)
@@ -301,7 +304,7 @@ class ScopeManager:
         """
         split scopes with nparts
         """
-        unit, extent = self._axis_unit[parent]
+        unit, extent = self._axis_unit.get(parent)
         if split_mode and split_mode.get("round_mode"):
             outer, inner = self._stage.split(parent, nparts=nparts, tail_strategy=split_mode["round_mode"])
         else:
@@ -318,7 +321,7 @@ class ScopeManager:
         """
         split scopes with factor
         """
-        unit, extent = self._axis_unit[parent]
+        unit, extent = self._axis_unit.get(parent)
         if isinstance(factor, tvm.expr.Var):
             factor = tvm.ir_pass.Simplify(factor)
         if split_mode and split_mode.get("round_mode"):
@@ -377,7 +380,7 @@ class ScopeManager:
         visited_scope = set()
         scopes = list(args)
         leaf_ivars = self._stage.leaf_iter_vars
-        valid_scopes = list()
+        valid_scopes = []
         scopes.reverse()
         for axis in scopes:
             if axis is not None \
@@ -437,9 +440,9 @@ class ScopeManager:
         """
         if not self._check_active_scopes(self._active_scopes):
             raise_schedule_agent_err("active itervar should in leaf_iter_vars")
-        unit_list = list()
+        unit_list = []
         for axis in self._active_scopes:
-            unit, _ = self._axis_unit[axis]
+            unit, _ = self._axis_unit.get(axis)
             unit_list.append(unit)
 
         return self._active_scopes, unit_list
@@ -471,16 +474,17 @@ class ScopeManager:
         """
         according to the index get the axis list(after splited) in the index's dimension.
         """
-        unit_list = list()
-        offset_list = list()
+        unit_list = []
+        offset_list = []
         for axis in self._axis_split_list[index]:
             # length and offset of the axis
-            offset, unit = self._axis_unit[axis]
+            offset, unit = self._axis_unit.get(axis)
             unit_list.append(unit)
             offset_list.append(offset)
         return self._axis_split_list[index], unit_list, offset_list
 
-    def _updata_axis_split_list(self, axis_list, ax_before, after_outer, after_inner):
+    @staticmethod
+    def _updata_axis_split_list(axis_list, ax_before, after_outer, after_inner):
         index = axis_list.index(ax_before)
         axis_list[index] = after_inner
         axis_list.insert(index, after_outer)
@@ -497,28 +501,19 @@ class ScopeManager:
             raise ValueError("n_scope must less equal to leaf_ivars")
         return leaf_ivars[-n_scope::]
 
-    def intrin_scopes(self, nlast=0):
+    def _get_intrin_scope(self, axis_maping):
         """
-        this function developed for mmad
-        split the axis of scope and reorder
-        return the nlast axes for emit insn
-        """
-        n_scope_intrin = len(self._origin_axis)
-        nlast = n_scope_intrin if nlast == 0 else nlast
+        get the order of outer and intrin scopes
 
-        if nlast < 0 or nlast > len(self._origin_axis):
-            raise_schedule_agent_err("nlast must >0 and < %d" %
-                                     len(self._origin_axis))
-        # find the first split parent-child scope
-        axis_maping = dict()
-        for relation in self._stage.relations:
-            if not isinstance(relation, tvm.schedule.Split):
-                continue
-            if relation.parent in self._origin_axis:
-                axis_maping[relation.inner] = relation.parent
-        # get the order of outer and intrin scopes
+        Parameters:
+        axis_maping: first split parent-child scope.
+
+        Returns:
+
+        outer and intrin scopes.
+        """
         leaf_ivars = list(self._stage.leaf_iter_vars)
-        outer_ivars = list()
+        outer_ivars = []
         inner_ivars = list(self._origin_axis)
         for scope in leaf_ivars:
             if scope in inner_ivars:
@@ -532,6 +527,30 @@ class ScopeManager:
                                              "be in inner_ivars")
                 offset = inner_ivars.index(parent)
                 inner_ivars[offset] = scope
+
+        return outer_ivars, inner_ivars
+
+    def intrin_scopes(self, nlast=0):
+        """
+        this function developed for mmad
+        split the axis of scope and reorder
+        return the nlast axes for emit insn
+        """
+        n_scope_intrin = len(self._origin_axis)
+        nlast = n_scope_intrin if nlast == 0 else nlast
+
+        if nlast < 0 or nlast > len(self._origin_axis):
+            raise_schedule_agent_err("nlast must >0 and < %d" %
+                                     len(self._origin_axis))
+        # find the first split parent-child scope
+        axis_maping = {}
+        for relation in self._stage.relations:
+            if not isinstance(relation, tvm.schedule.Split):
+                continue
+            if relation.parent in self._origin_axis:
+                axis_maping[relation.inner] = relation.parent
+        # get the order of outer and intrin scopes
+        outer_ivars, inner_ivars = self._get_intrin_scope(axis_maping)
         order_keeped_axis = outer_ivars + inner_ivars
         self._stage.reorder(*order_keeped_axis)
         self._scope_intrinsic = inner_ivars[0]
@@ -566,7 +585,7 @@ class ScopeManager:
             raise_schedule_agent_err("axis should be in leaf_iter_vars")
 
         old_leaf_ivars = list(self._stage.leaf_iter_vars)
-        axis_outers = list()
+        axis_outers = []
         max_index = 0
         for axis, core_num in zip(scope_list, core_num_list):
             axo, axi = self.split(axis, nparts=core_num)
@@ -597,8 +616,8 @@ class ScopeManager:
         """
         get the axis that conv1d used to compute al1_size
         c_ddr bindcore axes's sequence:
-                        [fused_axis, batch_axis_inner,
-                         n_axis_inner, m_axis_inner, ...]
+        [fused_axis, batch_axis_inner,
+        n_axis_inner, m_axis_inner, ...]
         """
         leaf_ivars = self._stage.leaf_iter_vars
         return leaf_ivars[4]
@@ -607,7 +626,7 @@ class ScopeManager:
         """
         get the axes whose name contain scope_key
         """
-        scope_list = list()
+        scope_list = []
         for scope in self._stage.leaf_iter_vars:
             if (scope_end is not None) and (scope == scope_end):
                 break
@@ -643,13 +662,15 @@ class ScopeManager:
 
 
 class ScheduleAgent:
-    """docstring for ScheduleAgent"""
+    """
+    docstring for ScheduleAgent
+    """
 
     def __init__(self, sch):
         self._sch = sch
         self._attach_map = AttachMap()
         # key=op,active op othen than origin_ops
-        self._scope_managers = dict()
+        self._scope_managers = {}
 
     def __getitem__(self, tensor):
         """
@@ -670,7 +691,7 @@ class ScheduleAgent:
             key = tensor
         if self._scope_managers.get(key) is None:
             self._scope_managers[key] = ScopeManager(self._sch[key])
-        return self._scope_managers[key]
+        return self._scope_managers.get(key)
 
     def same_attach(self, tensor_a, tensor_b):
         """
@@ -689,6 +710,45 @@ class ScheduleAgent:
         sch = self._sch
         return self._attach_map.record_same_attach(sch[tensor_a],
                                                    sch[tensor_b])
+
+    def _start_attach(self, factor_list, tensor, parent, split_mode):
+        scopes = self[parent]
+        ax_list, _ = scopes.get_active_scope_and_unit()
+        axis_outer = []
+        axis_intrinsic = []
+        axis_ori_unrelate = []
+
+        origin_axis = scopes.origin_axis
+        for factor, axis in zip(factor_list, ax_list):
+            if factor is not None and (isinstance(factor, tvm.expr.Expr)
+                                        or factor > 1 or axis in origin_axis):
+                axo, axi = scopes.split(axis, factor=factor, split_mode=split_mode)
+                self._attach_map.update_scope(axis, axi)
+                axis_outer.append(axo)
+                axis_intrinsic.append(axi)
+            elif axis in origin_axis:
+                axis_ori_unrelate.append(axis)
+            else:
+                axis_outer.append(axis)
+
+        scope_attach = None
+        if axis_intrinsic:  # len(axis_intrinsic) > 0:
+            reorder_list = axis_outer + axis_ori_unrelate + axis_intrinsic
+            self._sch[parent].reorder(*reorder_list)
+            scope_attach = axis_intrinsic[0]
+            self._attach_map.follow_with(self._sch[tensor],
+                                         self._sch[parent],
+                                         scope_attach)
+            self[parent].set_last_attached(scope_attach)
+        elif axis_outer:  # len(axis_outer) > 0:
+            scope_attach = self[parent].last_attached
+            if scope_attach is not None:  # no else
+                self._attach_map.record_attach(self._sch[tensor],
+                                               scope_attach)
+        else:
+            pass
+
+        return scope_attach
 
     def attach_at(self, tensor, parent, affine_shape, split_mode=None):
         """
@@ -713,49 +773,18 @@ class ScheduleAgent:
                                      "len(shape)+len(reduce_axis) of {} "
                                      .format(parent))
         if split_mode and not split_mode.get("ceil_mode"):
-            factor_list = list(
+            factor_list = [
                 tvm.div(i, j) if i is not None else None
                 for i, j in zip(affine_shape, unit)
-            )
+            ]
         else:
-            factor_list = list(
+            factor_list = [
                 ceil_div(i, j) if i is not None else None
                 for i, j in zip(affine_shape, unit)
-            )
-        axis_outer = list()
-        axis_intrinsic = list()
-        axis_ori_unrelate = list()
+            ]
 
-        def start_attach(factor_list, ax_list):
-            origin_axis = scopes.origin_axis
-            for factor, axis in zip(factor_list, ax_list):
-                if factor is not None and (isinstance(factor, tvm.expr.Expr)
-                                           or factor > 1 or axis in origin_axis):
-                    axo, axi = scopes.split(axis, factor=factor, split_mode=split_mode)
-                    self._attach_map.update_scope(axis, axi)
-                    axis_outer.append(axo)
-                    axis_intrinsic.append(axi)
-                elif axis in origin_axis:
-                    axis_ori_unrelate.append(axis)
-                else:
-                    axis_outer.append(axis)
-        start_attach(factor_list, ax_list)
-        scope_attach = None
-        if axis_intrinsic:  # len(axis_intrinsic) > 0:
-            reorder_list = axis_outer + axis_ori_unrelate + axis_intrinsic
-            self._sch[parent].reorder(*reorder_list)
-            scope_attach = axis_intrinsic[0]
-            self._attach_map.follow_with(self._sch[tensor],
-                                         self._sch[parent],
-                                         scope_attach)
-            self[parent].set_last_attached(scope_attach)
-        elif axis_outer:  # len(axis_outer) > 0:
-            scope_attach = self[parent].last_attached
-            if scope_attach is not None:  # no else
-                self._attach_map.record_attach(self._sch[tensor],
-                                               scope_attach)
-        else:
-            pass
+        scope_attach = self._start_attach(factor_list, tensor, parent, split_mode)
+
         return scope_attach
 
     def root_stage_at(self, parent, scope):
@@ -829,7 +858,8 @@ class ScheduleAgent:
                     attach_map.update_scope(scope, scope_intrinsic)
                     remain_scopes.remove(scope)
 
-    def apply_compute(self, attach_dict, compute_path):
+    @staticmethod
+    def apply_compute(attach_dict, compute_path):
         """
         process the apply by attach_dict/compute_path
         """
@@ -851,11 +881,8 @@ class ScheduleAgent:
 
     def pattern_abc(self,
                     status,
-                    tensor_a,
-                    tensor_b,
-                    affine_shape_to_b,
-                    tensor_c,
-                    affine_shape_to_c):
+                    tensor_dict
+                    ):
         """
         attach tensor_a to tensor_b
         or
@@ -863,9 +890,17 @@ class ScheduleAgent:
         according to the status
         """
         if status is None:
-            return None
+            raise_schedule_agent_err("status {} is invalid".
+                                     format(status))
         if isinstance(status, (list, tuple)):
-            return None
+            raise_schedule_agent_err("status {} dtype is invalid".
+                                     format(status))
+
+        tensor_a = tensor_dict.get('tensor_a')
+        tensor_b = tensor_dict.get('tensor_b')
+        tensor_c = tensor_dict.get('tensor_c')
+        affine_shape_to_b = tensor_dict.get('affine_shape_to_b')
+        affine_shape_to_c = tensor_dict.get('affine_shape_to_c')
 
         attach = None
         if status == Compare.EQUAL:

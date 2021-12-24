@@ -80,7 +80,7 @@ def _get_all_tensors(res):
     :param res: tvm.tensor
     :return: dict of all tensors
     """
-    all_tensor = dict()
+    all_tensor = {}
     all_tensor["res"] = res
 
     def get(tensor):
@@ -96,6 +96,37 @@ def _get_all_tensors(res):
 
     get(res)
     return all_tensor
+
+
+def _get_split_params(ub_x, dilations, dtype, sch, dilated_x):
+    """
+    split params, split
+
+    Parameters:
+
+    ub_x: tensor of ub_x.
+
+    dilations: info of dilations.
+
+    dtype: the tensor x 's dtype.
+
+    sch: dilations schedule.
+
+    dilated_x: tensor of res.
+
+    Returns:
+
+    split tensor.
+    """
+    shape_ub_x = [i.value for i in ub_x.shape]
+    split_axis, split_factor = _get_tiling_factor(shape_ub_x, dilations, dtype)
+    if split_axis == -1:
+        dilate_x_out = dilated_x.op.axis[0]
+        dilate_x_in = dilated_x.op.axis[1]
+    else:
+        dilate_x_out, dilate_x_in = sch[dilated_x].split(dilated_x.op.axis[split_axis], split_factor)
+
+    return dilate_x_out, dilate_x_in
 
 
 def dilation_schedule(res, sch_list):
@@ -127,13 +158,7 @@ def dilation_schedule(res, sch_list):
     sch[ub_dilated_x].set_scope(tbe_platform_info.scope_ubuf)
 
     # get split params, split and compute_at
-    shape_ub_x = [i.value for i in ub_x.shape]
-    split_axis, split_factor = _get_tiling_factor(shape_ub_x, dilations, dtype)
-    if split_axis == -1:
-        dilate_x_out = dilated_x.op.axis[0]
-        dilate_x_in = dilated_x.op.axis[1]
-    else:
-        dilate_x_out, dilate_x_in = sch[dilated_x].split(dilated_x.op.axis[split_axis], split_factor)
+    dilate_x_out, dilate_x_in = _get_split_params(ub_x, dilations, dtype, sch, dilated_x)
     sch[padding_default].compute_inline()
     sch[ub_x].compute_at(sch[dilated_x], dilate_x_out)
     sch[ub_dilated_x].compute_at(sch[dilated_x], dilate_x_out)

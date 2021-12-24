@@ -18,6 +18,7 @@
 conv3d backprop input DSL interface.
 """
 import warnings
+from tbe.dsl.compute.conv3d_backprop_input_compute import conv3d_dx
 
 
 def conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict):
@@ -35,12 +36,12 @@ def conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict):
     input_size : shape of dE/dX, [N, D, H, W, C]
 
     para_dict : dict of parameters
-        strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
-        pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
-        dilations : [1, 1, 1, 1, 1] by default
-        res_dtype : dE/dX data type, "float16" by default
-        kernel_name : conv3d_backprop_input_cce by default
-        group_dict : group of parameters
+    strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
+    pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
+    dilations : [1, 1, 1, 1, 1] by default
+    res_dtype : dE/dX data type, "float16" by default
+    kernel_name : conv3d_backprop_input_cce by default
+    group_dict : group of parameters
 
     Returns
     ----------
@@ -49,5 +50,4 @@ def conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict):
     warnings.warn("te.lang.cce.te_compute.conv3d_backprop_input_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv3d_backprop_input_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.conv3d_backprop_input_compute import conv3d_dx
     return conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict)
