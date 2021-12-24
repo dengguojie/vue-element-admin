@@ -101,7 +101,7 @@ template <typename T>
 void RightShiftCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
                                          int64_t end, const T *input1,
                                          const T *input2, T *output) {
-  switch(type) {
+  switch (type) {
     case BcastShapeType::SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
         *(output + i) = *(input1 + i) >> *(input2 + i);
@@ -139,7 +139,7 @@ uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
       max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
@@ -174,7 +174,7 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumMid) {
       max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores

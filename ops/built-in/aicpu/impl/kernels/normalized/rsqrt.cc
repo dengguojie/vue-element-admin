@@ -84,25 +84,25 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
-                                      CpuKernelContext &ctx) {
+                                      CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
   auto output_y = reinterpret_cast<T *>(y->GetData());
-  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,"Get output data failed")
+  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
   if (data_num <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       if (x->GetDataType() == DT_FLOAT16) {
-        if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) { 
+        if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_FLOAT) {
-        if ((std::fabs((float)input_x[i]) < FLT_EPSILON)) {
+        if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_DOUBLE) {
-        if ((std::fabs((double)input_x[i]) < DBL_EPSILON)) {
+        if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           return KERNEL_STATUS_PARAM_INVALID;
         }
@@ -112,7 +112,7 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
   } else {
     uint32_t min_core_num = 1;
     int64_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
@@ -124,11 +124,11 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
             KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           }
         } else if (x->GetDataType() == DT_FLOAT) {
-          if ((std::fabs((float)input_x[i]) < FLT_EPSILON)) {
+          if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
             KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           }
         } else if (x->GetDataType() == DT_DOUBLE) {
-          if ((std::fabs((double)input_x[i]) < DBL_EPSILON)) {
+          if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
             KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
           }
         }
@@ -146,7 +146,7 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
 template <typename T>
 uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, Tensor *y,
                                              int64_t data_num,
-                                             CpuKernelContext &ctx) {
+                                             CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
                        "Get input data failed")
@@ -162,7 +162,7 @@ uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, Tensor *y,
   } else {
     uint32_t min_core_num = 1;
     int64_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }

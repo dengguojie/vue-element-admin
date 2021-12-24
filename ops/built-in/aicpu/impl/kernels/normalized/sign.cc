@@ -49,7 +49,7 @@ constexpr int64_t kParallelDataNums = 128 * 1024;
 namespace aicpu {
 uint32_t SignCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-                      "[%s] check input and output failed.",kSign);
+                      "[%s] check input and output failed.", kSign);
   KERNEL_HANDLE_ERROR(SignCheck(ctx),
                       "[%s] check params failed.", kSign);
   DataType data_type = ctx.Input(0)->GetDataType();
@@ -63,8 +63,8 @@ uint32_t SignCpuKernel::Compute(CpuKernelContext &ctx) {
     SIGN_COMPUTE_CASE2(DT_COMPLEX128, std::complex<double>, ctx)
     default:
       KERNEL_LOG_ERROR(
-                    "Sign kernel data type [%s] not support.",
-                    DTypeStr(data_type).c_str());
+          "Sign kernel data type [%s] not support.",
+          DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -74,11 +74,11 @@ uint32_t SignCpuKernel::SignCheck(CpuKernelContext &ctx) {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get input data failed.")
+                       "Get input data failed.")
   KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get output data failed")
+                       "Get output data failed")
   KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get input tensor shape failed.")
+                       "Get input tensor shape failed.")
   return KERNEL_STATUS_OK;
 }
 
@@ -88,17 +88,17 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
-  if(data_size <= kParallelDataNums){
+  if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
-      if(*(input_x + i) > static_cast<T>(0)){
+      if (*(input_x + i) > static_cast<T>(0)) {
         *(output_y + i) = static_cast<T>(1);
-      }else if(*(input_x + i) == static_cast<T>(0)){
+      } else if (*(input_x + i) == static_cast<T>(0)) {
         *(output_y + i) = static_cast<T>(0);
-      }else{
+      } else {
         *(output_y + i) = static_cast<T>(-1);
       }
     }
-  }else{
+  } else {
     uint32_t min_core_num = 1;
     int64_t max_core_num =
     	std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
@@ -107,17 +107,17 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
     }
     auto shard_sign = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        if(*(input_x + i) > static_cast<T>(0)){
+        if (*(input_x + i) > static_cast<T>(0)) {
           *(output_y + i) = static_cast<T>(1);
-        }else if(*(input_x + i) == static_cast<T>(0)){
+        } else if (*(input_x + i) == static_cast<T>(0)) {
           *(output_y + i) = static_cast<T>(0);
-        }else{
+        } else {
           *(output_y + i) = static_cast<T>(-1);
         }
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sign),
-                                "Sign Compute failed.")
+                        "Sign Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
@@ -128,32 +128,32 @@ uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
-  if(data_size <= kParallelDataNums){
+  if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
-      if(*(input_x + i) != static_cast<T>(0)){
-        *(output_y + i) = ( *(input_x + i) / Eigen::numext::abs(*(input_x + i)));
-      }else{
+      if (*(input_x + i) != static_cast<T>(0)) {
+        *(output_y + i) = (*(input_x + i) / Eigen::numext::abs(*(input_x + i)));
+      } else {
         *(output_y + i) = static_cast<T>(0);
       }
     }
-  }else{
-    uint32_t min_core_num = 1;
+  } else {
+    uint32_t min_num = 1;
     int64_t max_core_num =
-            std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+            std::max(min_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
     auto shard_sign = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        if(*(input_x + i) != static_cast<T>(0)){
-          *(output_y + i) = ( *(input_x + i) / Eigen::numext::abs(*(input_x + i)));
-        }else{
+        if (*(input_x + i) != static_cast<T>(0)) {
+          *(output_y + i) = (*(input_x + i) / Eigen::numext::abs(*(input_x + i)));
+        } else {
           *(output_y + i) = static_cast<T>(0);
         }
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sign),
-                                "Sign Compute failed.")
+                        "Sign Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }

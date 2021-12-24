@@ -86,7 +86,7 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(CpuKernelContext &ctx) {
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
-  if (data_size <= kParallelDataNums){
+  if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       *(output_y + i) = static_cast<T>(1) /
                         (static_cast<T>(1) + (static_cast<T>(1) /
@@ -122,9 +122,9 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
   ArrayxXd array_x(1, data_num);
 
   if (data_size <= kParallelDataNums) {
-    for (int64_t i = 0; i < data_num; i++){
-      *(output_y + i) = static_cast<T>(1) / 
-                        (static_cast<T>(1) + (static_cast<T>(1) / 
+    for (int64_t i = 0; i < data_num; i++) {
+      *(output_y + i) = static_cast<T>(1) /
+                        (static_cast<T>(1) + (static_cast<T>(1) /
                         Eigen::numext::exp(*(input_x + i))));
     }
     return KERNEL_STATUS_OK;
@@ -135,8 +135,8 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
     if (max_core_num > data_num) {
         max_core_num = data_num;
     }
-    auto shard_sigmoid = [&](size_t start, size_t end){
-      for (size_t i = start; i < end; i++){
+    auto shard_sigmoid = [&](size_t start, size_t end) {
+      for (size_t i = start; i < end; i++) {
         *(output_y + i) = static_cast<T>(1) /
                           (static_cast<T>(1) + (static_cast<T>(1) /
                           Eigen::numext::exp(*(input_x + i))));

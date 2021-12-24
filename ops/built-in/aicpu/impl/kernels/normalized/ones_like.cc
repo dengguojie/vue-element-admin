@@ -19,7 +19,6 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "cpu_kernel_utils.h"
-#include "cpu_types.h"
 #include "log.h"
 #include "utils/kernel_util.h"
 

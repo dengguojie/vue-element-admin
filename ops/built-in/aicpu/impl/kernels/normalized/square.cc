@@ -49,10 +49,10 @@ uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
                              const DataType &input_type,
                              const int64_t parallel[kParallelLevel]) {
   const auto ParallelFor = aicpu::CpuKernelUtils::ParallelFor;
-  T *input = (T *)(ctx.Input(0)->GetData()); 
-  T *output = (T *)(ctx.Output(0)->GetData());
+  T *input = reinterpret_cast<T *>(ctx.Input(0)->GetData());
+  T *output = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   std::int64_t total = ctx.Input(0)->NumElements();
-  int64_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx); 
+  int64_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
   bool parallel_flag = true;
   if (total > parallel[2]) {
   } else if (total > parallel[1]) {

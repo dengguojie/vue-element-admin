@@ -53,7 +53,7 @@ const uint32_t kTotalThetaNumber = 6;
       return ret;                                                      \
     }                                                                  \
     break;                                                             \
-  }                                                               
+  }
 }
 
 namespace aicpu {
@@ -89,8 +89,8 @@ uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(CpuKernelContext &ct
     KERNEL_LOG_ERROR("Can't support data format[%d].", date_format_);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  
-  bool dims_error_flag = (input_n_ == 0 || input_c_ == 0 || input_h_ == 0 || 
+
+  bool dims_error_flag = (input_n_ == 0 || input_c_ == 0 || input_h_ == 0 ||
                           input_w_ == 0 || output_h_ == 0 || output_w_ == 0);
   if (dims_error_flag) {
     KERNEL_LOG_ERROR("Dims error.");
@@ -450,7 +450,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
 template <typename T>
 uint32_t SpatialTransformerCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute.");
-  
+
   switch (input_theta_type_) {
     STN_INNER_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
     STN_INNER_COMPUTE_CASE(DT_FLOAT, float, ctx)
