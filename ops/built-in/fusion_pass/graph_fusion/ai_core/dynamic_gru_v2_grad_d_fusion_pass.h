@@ -17,7 +17,7 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  void GetNodeInfo(ge::NodePtr node);
+  void GetNodeInfo(ge::NodePtr dynamicGRUGradNode);
   void AddInputNodeDesc(ge::OpDescPtr opDesc, const std::string& name, const vector<int64_t>& dims,
                         const ge::Format& format, const vector<int64_t>& originDims, const ge::Format& originFormat,
                         const ge::DataType& dtype);
@@ -48,7 +48,7 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
   ge::NodePtr BuildT0Cell(const string& gateOrder, ge::GeTensorDesc tStateDesc, ge::NodePtr dynamicGRUGradNode,
                           ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddInputReshapeNode(ge::NodePtr dynamicGRUGradNode, string reshapeName, ge::GeTensorDesc inputDesc,
-                                  ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
+                                  ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
   // dw_h  matmul(h.T, dgate_h)
   map<std::string, ge::NodePtr> AddGRUHiddenGradNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                                                      vector<ge::NodePtr>& newNodes, bool& failStatus);
@@ -57,7 +57,7 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
   ge::NodePtr BuildSizeConcatNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr& subNode, ge::ComputeGraph& graph,
                                   bool& failStatus);
   ge::NodePtr AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr& sizeConcatNode, ge::ComputeGraph& graph,
-                            vector<ge::NodePtr>& newNodes, bool& failStatus);
+                            vector<ge::NodePtr>& newNodes);
   ge::NodePtr AddHConcatNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hSplitNode, ge::ComputeGraph& graph,
                              vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hConcatNode, ge::NodePtr gruHiddenGradNode,
@@ -89,16 +89,16 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
                                    const vector<int64_t>& originDims, const ge::Format& originFormat,
                                    const ge::DataType& dtype);
   ge::OpDescPtr CreateConstDesc(const std::string& name, int32_t value, const std::string& dtype);
-  ge::ComputeGraphPtr BuildBodyGraph(ge::ComputeGraph& rootGraph, ge::NodePtr& whileNode, int32_t argNum,
+  ge::ComputeGraphPtr BuildBodyGraph(ge::NodePtr& whileNode, int32_t argNum,
                                      ge::NodePtr dynamicGRUGradNode);
-  ge::OpDescPtr buildConcatDesc(const std::string& nodeName, const std::string& inputName,
+  ge::OpDescPtr buildConcatDesc(const std::string& nodeName,
                                 ge::NodePtr dynamicGRUGradNode, ge::GeTensorDesc input0Desc,
                                 ge::GeTensorDesc input1Desc, ge::GeTensorDesc outputDesc);
   ge::ComputeGraphPtr BuildIfThenGraph(ge::NodePtr ifNode, ge::NodePtr dynamicGRUGradNode, ge::NodePtr& whileNode);
   ge::ComputeGraphPtr BuildElseBranchGraph(ge::NodePtr ifNode, ge::NodePtr dynamicGRUGradNode, ge::NodePtr& whileNode);
   ge::OpDescPtr CreateListConstDesc(const std::string& name, std::vector<int64_t> values);
   ge::OpDescPtr AddBodyMatmulNode(const string& nodeName, ge::GeTensorDesc inputDesc, ge::NodePtr dynamicGRUGradNode);
-  ge::OpDescPtr buildCellDesc(const string& cellName, const string& gateOrder, ge::NodePtr& whileNode, bool lessT);
+  ge::OpDescPtr buildCellDesc(const string& cellName, const string& gateOrder, ge::NodePtr& whileNode);
   ge::NodePtr BuildUnique(std::string name, vector<ge::NodePtr>& newNodes, bool& failStatus, ge::ComputeGraph& graph);
   ge::NodePtr BuildGather(std::string name, ge::GeTensorDesc inputTensorDescH, ge::GeTensorDesc indicesDesc,
                           ge::GeTensorDesc outDesc, vector<ge::NodePtr>& newNodes, bool& failStatus,

@@ -30,15 +30,14 @@ class DynamicGRUV2FusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  void SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_split_desc);
+  void SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_split_desc) const;
   ge::NodePtr AddSplitNode(ge::NodePtr gru_node, ge::NodePtr matmul_node,
                            ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes);
   ge::NodePtr AddMatmulNode(ge::NodePtr gru_node, ge::ComputeGraph& graph,
                             vector<ge::NodePtr>& new_nodes);
-  bool JudgeSplit(ge::NodePtr gru_node, bool& result);
+  bool JudgeSplit(ge::NodePtr gru_node, bool& result) const;
   const string FUSED_OP_TYPE = "DynamicGRUV2FusionPass";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DYNAMIC_GRU_V2_FUSION_PASS_H_

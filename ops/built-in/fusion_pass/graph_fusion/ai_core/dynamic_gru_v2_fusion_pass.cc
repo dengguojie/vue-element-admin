@@ -32,11 +32,20 @@ namespace fe {
 static const int BLOCKSIZE = 16;
 static const char* GRUV2_NODE = "DynamicGRUV2";
 static const std::string PATTERN_GRUV2_NODE = "DynamicGRUV2";
-
-namespace gruv2 {
 static const int GM_IO_SPEED = 32;
 static const int L2_IO_SPEED = 96;
+static const int INDEX_2 = 2;
+static const int INDEX_3 = 3;
+static const int INDEX_4 = 4;
+static const int INDEX_5 = 5;
+static const int INDEX_6 = 6;
+static const int CONST_NUM_2 = 2;
+static const int HIDDEN_NUM = 3;
+static const int CACHE_NUM = 4;
+static const int ALIGN_16 = 16;
+static const float THREE_QUARTERS = 0.75;
 
+namespace gruv2 {
 struct GruCalcParam {
   int t_size;
   float m_size;
@@ -45,7 +54,7 @@ struct GruCalcParam {
   uint32_t core_num;
 };
 
-typedef float (*CalcOp)(int, int, GruCalcParam&);
+using CalcOp = float (*)(int, int, GruCalcParam&);
 
 float FindBestCalc(CalcOp func, GruCalcParam& param) {
   float best = -1.0;
@@ -69,19 +78,23 @@ float FindBestCalc(CalcOp func, GruCalcParam& param) {
 
 
 float CalcSolution1Op(int m_cut, int n_cut, GruCalcParam& param) {
-  float op_m = ceil(ceil(param.m_size / 16) / m_cut) * 16;
+  if (m_cut == 0 || n_cut == 0) {
+    VECTOR_FUSION_INNER_ERR_REPORT("DynamicGRUV2FusionPass", "divied by zero error.");
+    return 0.0;
+  }
+  float op_m = ceil(ceil(param.m_size / ALIGN_16) / m_cut) * ALIGN_16;
   float op_k = param.x_size + param.h_size;
-  float op_h = ceil(ceil(param.h_size / 16) / n_cut) * 16;
-  float op_n = 3 * op_h;
+  float op_h = ceil(ceil(param.h_size / ALIGN_16) / n_cut) * ALIGN_16;
+  float op_n = HIDDEN_NUM * op_h;
 
   // t1
-  float left_matrix_in_cost = op_k * op_m * 2 / GM_IO_SPEED;
-  float right_matrix_in_cost = op_k * op_n * 2 / GM_IO_SPEED;
+  float left_matrix_in_cost = op_k * op_m * CONST_NUM_2 / GM_IO_SPEED;
+  float right_matrix_in_cost = op_k * op_n * CONST_NUM_2 / GM_IO_SPEED;
   float op_t1_total = left_matrix_in_cost + right_matrix_in_cost;
 
   // t2
-  float left_x_matrix_in_cost = op_m * param.x_size * 2 / GM_IO_SPEED;
-  float left_h_matrix_in_cost = op_m * param.h_size * 2 / L2_IO_SPEED;
+  float left_x_matrix_in_cost = op_m * param.x_size * CONST_NUM_2 / GM_IO_SPEED;
+  float left_h_matrix_in_cost = op_m * param.h_size * CONST_NUM_2 / L2_IO_SPEED;
   // no right matrix
   float op_t2_total = left_x_matrix_in_cost + left_h_matrix_in_cost;
 
@@ -96,34 +109,42 @@ float CalcSolution1(GruCalcParam& param) {
 
 
 float CalcSolution2Op1(int m_cut, int n_cut, GruCalcParam& param) {
-  float op1_m = ceil(param.t_size * ceil(param.m_size / 16) / m_cut) * 16;
+  if (m_cut == 0 || n_cut == 0) {
+    VECTOR_FUSION_INNER_ERR_REPORT("DynamicGRUV2FusionPass", "divied by zero error.");
+    return 0.0;
+  }
+  float op1_m = ceil(param.t_size * ceil(param.m_size / ALIGN_16) / m_cut) * ALIGN_16;
   float op1_k = param.x_size;
-  float op1_n = ceil(3 * ceil(param.h_size / 16) / n_cut) * 16;
+  float op1_n = ceil(HIDDEN_NUM * ceil(param.h_size / ALIGN_16) / n_cut) * ALIGN_16;
 
-  float left_matrix_in_cost = op1_m * op1_k * 2 / GM_IO_SPEED;
-  float right_matrix_in_cost = op1_k * op1_n * 2 / GM_IO_SPEED;
+  float left_matrix_in_cost = op1_m * op1_k * CONST_NUM_2 / GM_IO_SPEED;
+  float right_matrix_in_cost = op1_k * op1_n * CONST_NUM_2 / GM_IO_SPEED;
 
   return left_matrix_in_cost + right_matrix_in_cost;
 }
 
 
 float CalcSolution2Op2(int m_cut, int n_cut, GruCalcParam& param) {
-  float op2_m = ceil(ceil(param.m_size / 16) / m_cut) * 16;
+  if (m_cut == 0 || n_cut == 0) {
+    VECTOR_FUSION_INNER_ERR_REPORT("DynamicGRUV2FusionPass", "divied by zero error.");
+    return 0.0;
+  }
+  float op2_m = ceil(ceil(param.m_size / ALIGN_16) / m_cut) * ALIGN_16;
   float op2_k = param.h_size;
-  float op2_h = ceil(ceil(param.h_size / 16) / n_cut) * 16;
-  float op2_n = 3 * op2_h;
+  float op2_h = ceil(ceil(param.h_size / ALIGN_16) / n_cut) * ALIGN_16;
+  float op2_n = HIDDEN_NUM * op2_h;
 
   // t1
-  float left_matrix_in_cost = op2_m * op2_k * 2 / GM_IO_SPEED;
-  float right_matrix_in_cost = op2_k * op2_n * 2 / GM_IO_SPEED;
-  float cache_in_cost = op2_m * op2_n * 4 / L2_IO_SPEED;
+  float left_matrix_in_cost = op2_m * op2_k * CONST_NUM_2 / GM_IO_SPEED;
+  float right_matrix_in_cost = op2_k * op2_n * CONST_NUM_2 / GM_IO_SPEED;
+  float cache_in_cost = op2_m * op2_n * CACHE_NUM / L2_IO_SPEED;
   float op2_t1_total = left_matrix_in_cost + right_matrix_in_cost + cache_in_cost;
 
   // t2
   // last h
-  left_matrix_in_cost = op2_m * op2_k * 2 / L2_IO_SPEED;
+  left_matrix_in_cost = op2_m * op2_k * CONST_NUM_2 / L2_IO_SPEED;
   // no right matrix
-  cache_in_cost = op2_m * op2_n * 4 / L2_IO_SPEED;
+  cache_in_cost = op2_m * op2_n * CACHE_NUM / L2_IO_SPEED;
   float op2_t2_total = left_matrix_in_cost + cache_in_cost;
 
   return op2_t1_total + op2_t2_total * (param.t_size - 1);
@@ -146,7 +167,7 @@ vector<FusionPattern*> DynamicGRUV2FusionPass::DefinePatterns() {
   return patterns;
 }
 
-void DynamicGRUV2FusionPass::SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_split_desc) {
+void DynamicGRUV2FusionPass::SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_split_desc) const {
   std::string direction("UNIDIRECTIONAL");
   int cell_depth = 1;
   float keep_prob = 1.0;
@@ -186,12 +207,13 @@ void DynamicGRUV2FusionPass::SetAttr(ge::OpDescPtr gru_desc, ge::OpDescPtr gru_s
   }
   if (ge::AttrUtils::GetBool(gru_desc, "is_training", is_training)) {
     ge::AttrUtils::SetBool(gru_split_desc, "is_training", is_training);
-  }  
+  }
 }
 
 ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodePtr matmul_node,
                                                  ge::ComputeGraph& graph, vector<ge::NodePtr>& new_nodes) {
-  auto split_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/DynamicGRUV2Hidden",
+  std::string gru_op_name = gru_node->GetName() + "/DynamicGRUV2Hidden";
+  auto split_op = ge::OperatorFactory::CreateOperator(gru_op_name.c_str(),
                                                       "DynamicGRUV2Hidden");
   FUSION_PASS_CHECK(split_op.IsEmpty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2Hidden operator error"),
@@ -203,7 +225,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   ge::OpDescPtr gru_desc = gru_node->GetOpDesc();
   ge::GeTensorDesc x_weight_input_desc = matmul_node->GetOpDesc()->GetOutputDesc(0).Clone();
   gru_split_desc->UpdateInputDesc("x_weight_input", x_weight_input_desc);
-  gru_split_desc->UpdateInputDesc("weight_hidden", gru_desc->GetInputDesc(2));
+  gru_split_desc->UpdateInputDesc("weight_hidden", gru_desc->GetInputDesc(INDEX_2));
   bool has_bias = gru_desc->MutableInputDesc("bias_hidden") != nullptr;
   if (has_bias) {
     gru_split_desc->UpdateInputDesc("bias_hidden", *gru_desc->MutableInputDesc("bias_hidden"));
@@ -220,10 +242,10 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   // output
   gru_split_desc->UpdateOutputDesc("y", gru_desc->GetOutputDesc(0));
   gru_split_desc->UpdateOutputDesc("output_h", gru_desc->GetOutputDesc(1));
-  gru_split_desc->UpdateOutputDesc("update", gru_desc->GetOutputDesc(2));
-  gru_split_desc->UpdateOutputDesc("reset", gru_desc->GetOutputDesc(3));
-  gru_split_desc->UpdateOutputDesc("new", gru_desc->GetOutputDesc(4));
-  gru_split_desc->UpdateOutputDesc("hidden_new", gru_desc->GetOutputDesc(5));
+  gru_split_desc->UpdateOutputDesc("update", gru_desc->GetOutputDesc(INDEX_2));
+  gru_split_desc->UpdateOutputDesc("reset", gru_desc->GetOutputDesc(INDEX_3));
+  gru_split_desc->UpdateOutputDesc("new", gru_desc->GetOutputDesc(INDEX_4));
+  gru_split_desc->UpdateOutputDesc("hidden_new", gru_desc->GetOutputDesc(INDEX_5));
 
   SetAttr(gru_desc, gru_split_desc);
 
@@ -239,22 +261,22 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0),
                           split_node->GetInDataAnchor(0));
   // weight_hidden
-  ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(2)->GetPeerOutAnchor(),
+  ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_2)->GetPeerOutAnchor(),
                           split_node->GetInDataAnchor(1));
   if (has_bias) {
-    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(4)->GetPeerOutAnchor(),
-                            split_node->GetInDataAnchor(2));
+    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_4)->GetPeerOutAnchor(),
+                            split_node->GetInDataAnchor(INDEX_2));
   }
   if (has_seq_length) {
-    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(5)->GetPeerOutAnchor(),
-                            split_node->GetInDataAnchor(3));
+    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_5)->GetPeerOutAnchor(),
+                            split_node->GetInDataAnchor(INDEX_3));
   }
   if (has_init_h) {
-    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(6)->GetPeerOutAnchor(),
-                            split_node->GetInDataAnchor(4));
+    ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_6)->GetPeerOutAnchor(),
+                            split_node->GetInDataAnchor(INDEX_4));
   }
   // output edges
-  for (unsigned int i = 0; i < 6; i++) {
+  for (unsigned int i = 0; i < INDEX_6; i++) {
     if (gru_node->GetOutDataAnchor(i)->GetPeerInDataAnchors().size() > 0) {
       for (InDataAnchorPtr in_anchor_ptr : gru_node->GetOutDataAnchor(i)->GetPeerInDataAnchors()) {
         in_anchor_ptr->UnlinkAll();
@@ -269,7 +291,8 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
 
 ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::ComputeGraph& graph,
                                                   vector<ge::NodePtr>& new_nodes) {
-  auto matmul_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/BatchMatMulV2", "BatchMatMulV2");
+  std::string batchmatmul_op_name = gru_node->GetName() + "/BatchMatMulV2";
+  auto matmul_op = ge::OperatorFactory::CreateOperator(batchmatmul_op_name.c_str(), "BatchMatMulV2");
   FUSION_PASS_CHECK(matmul_op.IsEmpty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create matmul operator error"),
                     return nullptr);
@@ -288,7 +311,8 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   if (has_bias) {
     ge::GeTensorDescPtr bias_desc_ptr = gru_desc->MutableInputDesc("bias_input");
     if (bias_desc_ptr->GetDataType() == ge::DT_FLOAT16) {
-      Operator cast_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/BatchMatMulV2/Cast", "Cast");
+      std::string cast_op_name = gru_node->GetName() + "/BatchMatMulV2/Cast";
+      Operator cast_op = ge::OperatorFactory::CreateOperator(cast_op_name.c_str(), "Cast");
       FUSION_PASS_CHECK(cast_op.IsEmpty(),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create cast operator error"),
                         return nullptr);
@@ -311,18 +335,18 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   }
 
   // output
-  int64_t h_size = gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0);
+  int64_t h_size = gru_node->GetOpDesc()->GetInputDesc(INDEX_2).GetOriginShape().GetDim(0);
   vector<int64_t> output_ori_dims;
   output_ori_dims.push_back(t_size);
   output_ori_dims.push_back(m_size);
-  output_ori_dims.push_back(3 * h_size);
+  output_ori_dims.push_back(HIDDEN_NUM * h_size);
   ge::GeShape output_ori_shape(output_ori_dims);
   vector<int64_t> output_dims;
   output_dims.push_back(t_size);
-  output_dims.push_back(3 * ((h_size + 15) / 16));
-  output_dims.push_back((m_size + 15) / 16);
-  output_dims.push_back(16);
-  output_dims.push_back(16);
+  output_dims.push_back(HIDDEN_NUM * ((h_size + ALIGN_16 - 1) / ALIGN_16));
+  output_dims.push_back((m_size + ALIGN_16 - 1) / ALIGN_16);
+  output_dims.push_back(ALIGN_16);
+  output_dims.push_back(ALIGN_16);
   ge::GeShape output_shape(output_dims);
   ge::GeTensorDesc output_tensor_desc = ge::GeTensorDesc(output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
   output_tensor_desc.SetOriginShape(output_ori_shape);
@@ -345,10 +369,10 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(1)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(1));
   if (has_bias) {
     if (cast_node != nullptr) {
-      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(3)->GetPeerOutAnchor(), cast_node->GetInDataAnchor(0));
-      ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(2));
+      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_3)->GetPeerOutAnchor(), cast_node->GetInDataAnchor(0));
+      ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(INDEX_2));
     } else {
-      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(3)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(2));
+      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_3)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(INDEX_2));
     }
   }
 
@@ -356,7 +380,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
 }
 
 
-bool DynamicGRUV2FusionPass::JudgeSplit(ge::NodePtr gru_node, bool& result) {
+bool DynamicGRUV2FusionPass::JudgeSplit(ge::NodePtr gru_node, bool& result) const {
   PlatformInfo platform_info;
   OptionalInfo optional_info;
   FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
@@ -368,22 +392,22 @@ bool DynamicGRUV2FusionPass::JudgeSplit(ge::NodePtr gru_node, bool& result) {
 
   int t_size = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0);
   float m_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1));
-  float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2));
-  float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0));
+  float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(INDEX_2));
+  float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(INDEX_2).GetOriginShape().GetDim(0));
   m_size = ceil(m_size / BLOCKSIZE) * BLOCKSIZE;
   x_size = ceil(x_size / BLOCKSIZE) * BLOCKSIZE;
   h_size = ceil(h_size / BLOCKSIZE) * BLOCKSIZE;
-  float weight_size = (x_size + h_size) * 3 * h_size * 2;
+  float weight_size = (x_size + h_size) * HIDDEN_NUM * h_size * CONST_NUM_2;
 
   // weight can be entirely loaded in L1
-  if (ceil(m_size / BLOCKSIZE) >= core_num && weight_size < l1_size * 0.75) {
+  if (ceil(m_size / BLOCKSIZE) >= core_num && weight_size < l1_size * THREE_QUARTERS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "weight can be entirely loaded in L1.");
     result = false;
     return true;
   }
 
   // after cores enabled, weight can be loaded in L1
-  if (weight_size / (h_size / BLOCKSIZE) * ceil((h_size / BLOCKSIZE) / core_num) < l1_size * 0.75) {
+  if (weight_size / (h_size / BLOCKSIZE) * ceil((h_size / BLOCKSIZE) / core_num) < l1_size * THREE_QUARTERS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "after cores enabled, weight can be loaded in L1.");
     gruv2::GruCalcParam param({t_size, m_size, x_size, h_size, core_num});
     float solution1_cost = gruv2::CalcSolution1(param);
@@ -406,8 +430,8 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   float t_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0));
   float m_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1));
-  float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2));
-  float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0));
+  float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(INDEX_2));
+  float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(INDEX_2).GetOriginShape().GetDim(0));
   if (PatternFusionUtil::IsUnknownShape(t_size) ||
       PatternFusionUtil::IsUnknownShape(m_size) ||
       PatternFusionUtil::IsUnknownShape(x_size) ||
@@ -416,9 +440,9 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return NOT_CHANGED;
   }
 
-  int64_t input_x = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2);
-  int64_t hidden_size = gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0);
-  if ((input_x % 16 != 0) || (hidden_size % 16 != 0)) {
+  int64_t input_x = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(INDEX_2);
+  int64_t hidden_size = gru_node->GetOpDesc()->GetInputDesc(INDEX_2).GetOriginShape().GetDim(0);
+  if ((input_x % ALIGN_16 != 0) || (hidden_size % ALIGN_16 != 0)) {
     return NOT_CHANGED;
   }
 
