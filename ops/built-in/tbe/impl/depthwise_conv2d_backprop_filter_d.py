@@ -110,6 +110,152 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
+# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument,
+@tbe_platform.fusion_manager.register("depthwise_conv2d_backprop_filter_d")
+def depthwise_conv2d_backprop_filter_d_compute(input_fm,
+                                               out_backprop,
+                                               filter_grad,
+                                               filter_size,
+                                               strides,
+                                               dilations=(1, 1, 1, 1),
+                                               pads=(0, 0, 0, 0),
+                                               data_format='NHWC',
+                                               kernel_name="depthwise_conv2d_backprop_filter"):
+    """
+    algorithm: depthwise conv2d
+
+    calculating  depthwise convolution backward filter
+
+    Parameters
+    ----------
+    input_fm : Tvm tensor.
+        Placeholder for input feature map.
+
+    out_backprop: Tvm tensor.
+        Placeholder for derivatives of loss function with respect to output feature map.
+
+    filter_grad : a dict.
+        4-D origin shape of filter tensor [H, W, C, K],
+        K is depthwise_multiplier, support float32.
+
+    filter_size : a list/tuple of four ints
+        1-D origin shape of filter tensor with [H, W, C, K],
+        K is depthwise_multiplier, support int.
+
+    strides : a list/tuple of four ints
+        strides size, [1, 1, stride_height, stride_width] or
+        [1, stride_height, stride_width, 1].
+
+    dilations : a list/tuple of four ints
+        dilations size, [1, 1, dilation_height, dilation_width] or
+        [1, dilation_height, dilation_width, 1].
+
+    pads : a list/tuple of four ints
+        padding added to each dimension of the input.
+
+    data_format : str
+        shape of origine shape of featuremap [N, C, H, W] or [N, H, W, C].
+
+    kernel_name : str
+        cce kernel name
+
+    Returns
+    -------
+    None
+    """
+    fm_ori_shape = tbe.util.shape_to_list(input_fm.op.attrs["ori_shape"])
+    fm_ori_format = input_fm.op.attrs["ori_format"]
+    dedy_ori_shape = tbe.util.shape_to_list(out_backprop.op.attrs["ori_shape"])
+    dedy_ori_format = out_backprop.op.attrs["ori_format"]
+    dedw_ori_shape = tbe.util.shape_to_list(filter_grad["ori_shape"])
+    dedw_ori_format = filter_grad["ori_format"]
+    dedw_dtype = filter_grad["dtype"]
+
+    _check_data_format(data_format, ["NCHW", "NHWC"])
+    _check_data_format(fm_ori_format, ["NCHW", "NHWC"])
+    _check_data_format(dedy_ori_format, ["NCHW", "NHWC"])
+    _check_data_format(dedw_ori_format, ["HWCK", "HWCN", "NCHW"])
+
+    # check stride and dilation
+    dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3
+    if fm_ori_format == "NHWC":
+        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
+
+    _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w)
+    _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w)
+
+    # check n dim
+    if fm_ori_shape[dim_n] != dedy_ori_shape[dim_n]:
+        dict_args = {
+            "errCode": "E60002",
+            "op_name": "depthwise_conv2d_backprop_filter",
+            "attr_name": "batch",
+            "param1_name": "fmap_n",
+            "param2_name": "dedy_n",
+            "param1_value": str(fm_ori_shape[dim_n]),
+            "param2_value": str(dedw_ori_shape[dim_n]),
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    # check filter size
+    if filter_size != dedw_ori_shape:
+        dict_args = {
+            "errCode": "E60002",
+            "op_name": "depthwise_conv2d_backprop_filter",
+            "attr_name": "shape",
+            "param1_name": "filter_size",
+            "param2_name": "dedw_ori_shape",
+            "param1_value": str(filter_size),
+            "param2_value": str(dedw_ori_shape),
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    # check pads
+    if len(pads) != 4:
+        dict_args = {
+            "errCode": "E50001",
+            "param": "pads",
+            "op_name": "depthwise_conv2d_backprop_filter",
+            "expected_length": "4",
+            "length": str(len(pads)),
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    if dedw_ori_format == "NCHW":
+        # NCHW -> HWCK(HWCN)
+        dedw_shape_hwck = (dedw_ori_shape[2], dedw_ori_shape[3], dedw_ori_shape[1], dedw_ori_shape[0])
+    else:
+        dedw_shape_hwck = dedw_ori_shape
+
+    para_check.check_shape(fm_ori_shape, min_rank=FEATURE_MAP_DIM,
+                           max_rank=FEATURE_MAP_DIM, param_name="input_fm")
+    para_check.check_shape(dedw_shape_hwck, min_rank=FILTER_DIM,
+                           max_rank=FILTER_DIM, param_name="filter_grad")
+    para_check.check_shape(dedy_ori_shape, min_rank=FEATURE_MAP_DIM,
+                           max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
+    para_check.check_shape(strides, min_rank=STRIDES_DIM,
+                           max_rank=STRIDES_DIM, param_name="strides")
+    para_check.check_shape(dilations, min_rank=DILATION_DIM,
+                           max_rank=DILATION_DIM, param_name="dilations")
+
+    para_dict = {
+        "strides": (strides[dim_h], strides[dim_w]),
+        "padding": pads,
+        "dilations": (1, 1, dilations[dim_h], dilations[dim_w]),
+        "groups": fm_ori_shape[dim_c],
+        "res_dtype": dedw_dtype.lower(),
+        "kernel_name": kernel_name,
+    }
+
+    dim_h, dim_w, dim_c, dim_k = dedw_shape_hwck
+    dedw = tbe.conv2d_backprop_filter_compute(
+        input_x=input_fm,
+        out_backprop=out_backprop,
+        filter_sizes=(dim_c * dim_k, 1, dim_h, dim_w),
+        para_dict=para_dict
+    )
+
+    return dedw
 
 # 'pylint: disable=invalid-name,
 @para_check.check_op_params(

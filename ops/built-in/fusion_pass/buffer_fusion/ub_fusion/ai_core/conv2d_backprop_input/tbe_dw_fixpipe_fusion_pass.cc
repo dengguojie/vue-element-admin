@@ -125,9 +125,9 @@ void TbeDwFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr
   ge::NodePtr cube_node = cube_nodes.at(0);
   int64_t group = 1;
   (void)ge::AttrUtils::GetInt(cube_node->GetOpDesc(), "groups", group);
-  bool no_group = (group == 1);
+  bool no_group = (group == 1) && (cube_node->GetType() == "Conv2DBackpropFilterD");
   // dw
-  if (cube_node->GetType() == "Conv2DBackpropFilterD") {
+  if (cube_node->GetType() == "Conv2DBackpropFilterD" || cube_node->GetType() == "DepthwiseConv2DBackpropFilterD") {
     if (!transdata1_nodes.empty()) {
       if (!Conv2DInOutSupportTrans(transdata1_nodes[0], true)) {
         auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata1_nodes[0]);
@@ -135,14 +135,14 @@ void TbeDwFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::NodePtr
           fusion_nodes.erase(iter);
         }
       }
-      if (no_group && cube_node->GetInDataNodes().size() >= kInputNum) {
+      if (cube_node->GetInDataNodes().size() >= kInputNum) {
         ge::NodePtr weight_trans_node = cube_node->GetInDataNodes().at(1);
         if (weight_trans_node->GetType() == kOpTypeTransData && Conv2DInOutSupportTrans(weight_trans_node, true)) {
           fusion_nodes.push_back(weight_trans_node);
         }
       }
     }
-    if (!transdata2_nodes.empty()) {
+    if (!transdata2_nodes.empty() && no_group) {
       if (!Conv2DWeightSupportTrans(transdata2_nodes[0], false)) {
         auto iter = find(fusion_nodes.begin(), fusion_nodes.end(), transdata2_nodes[0]);
         if (iter != fusion_nodes.end()) {

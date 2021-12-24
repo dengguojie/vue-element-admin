@@ -104,6 +104,10 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   ge::GeShape mul_shape = input_desc.GetShape();
   vector<int64_t> dim_mul = mul_shape.GetDims();
 
+  // set dw output dtype to float32 for post mul connection
+  ge::GeTensorDescPtr dedw_ptr = depthwise_dw_node->GetOpDesc()->MutableOutputDesc(0);
+  dedw_ptr->SetDataType(DT_FLOAT);
+
   vector<int32_t> dim_map;
   if (dim_mul.size() != 0) {
     if (std::find(kFormatList.begin(), kFormatList.end(), input_origin_format) !=  kFormatList.end()) {
