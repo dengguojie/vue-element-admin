@@ -25,13 +25,14 @@ from typing import Union
 from datetime import datetime
 from multiprocessing import Pool
 from functools import reduce
-
 import coverage
+
 from sch_test_frame.common import logger
 from sch_test_frame.ut import ut_loader
 from sch_test_frame.ut import ut_report
 from sch_test_frame.ut import op_ut
 from sch_test_frame.utils import file_util
+from sch_test_frame.ut.op_ut_helper import set_timeout
 
 from sch_test_frame.ut.op_ut_case_info import CaseUsage
 
@@ -79,6 +80,7 @@ class OpUTTestRunner:  # pylint: disable=too-few-public-methods
                                             case_usage_list=case_usage_list, run_cfg=run_cfg)
         return ut_run_report
 
+    @set_timeout(300)
     def run(self, run_soc_versions: Union[str, List[str]], op_ut_case: op_ut.OpUT,
             case_name_list: List[str] = None, case_usage_list: List = None) -> ut_report.OpUTReport:
         """

@@ -20,6 +20,7 @@ import os
 import sys
 import stat
 import json
+import signal
 import multiprocessing
 from multiprocessing import Pool
 from sch_test_frame.ut import ut_loader
@@ -148,3 +149,28 @@ def print_case_summary(case_file, soc_version=None):
 
     print("Test Op Count: %d" % len(op_type_list))
     print("Test File Count: %d" % len(case_file_list))
+
+
+def set_timeout(num):
+    """
+    set timeout
+    """
+    def wrap(func):
+        def handle(signum, frame):
+            raise RuntimeError("The duration of case excution has exceed %s seconds! timeout!!" % num)
+
+        def to_do(*args, **kwargs):
+            try:
+                signal.signal(signal.SIGALRM, handle)
+                signal.alarm(num)
+                print("start alarm signal.")
+                res = func(*args, **kwargs)
+                print("close alarm signal.")
+                signal.alarm(0)
+                return res
+            except RuntimeError as e:
+                import traceback
+                print(traceback.format_exc())
+        
+        return to_do
+    return wrap
