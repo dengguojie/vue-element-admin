@@ -712,7 +712,7 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
   // update pads if padding is SAME
   std::string pad_str;
   if (x_shape.GetDimNum() == kConv2dInputSizeLimit && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) &&
-      pad_str == "SAME" && (x_shape.GetDim(idx_h) == -1 or x_shape.GetDim(idx_w) == -1)) {
+      pad_str == "SAME" && (x_shape.GetDim(idx_h) == -1 || x_shape.GetDim(idx_w) == -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1});
     OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
@@ -865,6 +865,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   }
 
   if (is_dynamic && (inC == -1)) {
+      shapeIn.SetDim(cPosition, filterC);
       inC = filterC;
   }
 
@@ -881,16 +882,15 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   strideH = stride.at(hPosition);
   strideW = stride.at(wPosition);
 
-  if (false == GetPadDepthwiseConv2D(op, inH, inW, filterH, filterW, strideH, strideW, dilationH, dilationW, padtop,
-                                     padbottom, padleft, padright)) {
+  if (GetPadDepthwiseConv2D(op, inH, inW, filterH, filterW, strideH, strideW, dilationH, dilationW, padtop,
+                            padbottom, padleft, padright) == false) {
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "get pads attrs failed.");
     return GRAPH_FAILED;
   }
 
   effectiveFilterH = (filterH - 1) * dilationH + 1;
   effectiveFilterW = (filterW - 1) * dilationW + 1;
-  CHECK(strideH == 0 || strideW == 0,  CUBE_INNER_ERR_REPORT(op_name.GetString(), "stride is 0."),
-    return GRAPH_FAILED);
+  CHECK(strideH == 0 || strideW == 0, CUBE_INNER_ERR_REPORT(op_name.GetString(), "stride is 0."), return GRAPH_FAILED);
   outH = (inH + padtop + padbottom - effectiveFilterH) / strideH + 1;
   outW = (inW + padleft + padright - effectiveFilterW) / strideW + 1;
   outC = filterN * filterC;

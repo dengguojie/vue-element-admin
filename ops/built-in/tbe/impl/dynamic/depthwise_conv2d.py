@@ -306,6 +306,7 @@ def depthwise_conv2d(
 
     w_shape = filter.get("ori_shape")
     if filter["ori_format"] == "HWCN":
+        # [H, W, 1, C*N]
         filter_n = w_shape[3] * w_shape[2]
         filter_c = w_shape[2]
         filter_h = w_shape[0]
@@ -328,5 +329,5 @@ def depthwise_conv2d(
     filter["ori_format"] = "NCHW"
 
     conv2d(x, filter, bias, offset_w, y, strides, pads, dilations,
-           groups=filter_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
+           groups=x_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
 
