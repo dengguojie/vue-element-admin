@@ -155,13 +155,82 @@ case10 = {"params": [{"shape": (0, 10), "ori_shape": (0, 10), "dtype": "float16"
          "expect": "success",
          "support_expect": True}
 
-case11 = {"params": [{"shape": (1, 2708, 2708), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 2708),"ori_format": "ND"}, #x
-                    {"shape": (1, 2708, 7), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 7),"ori_format": "ND"}, #h
-                    {"shape": (7,), "dtype": "float32", "format": "ND", "ori_shape": (7,),"ori_format": "ND"},
-                    {"shape": (1, 2708, 7), "dtype": "float32", "format": "ND", "ori_shape": (1, 2708, 7),"ori_format": "ND"},
-                    False, False,
+case11 = {"params": [{"shape": (-1, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (-1,96, 32),"ori_format": "NHWC","range": [[3,3]]},
+                    {"shape": (-1, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (-1,64, 96),"ori_format": "NHWC","range": [[3,3]]},
+                    {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True,True
                     ],
          "case_name": "BatchMatmul_v1_11",
+         "expect": "success",
+         "support_expect": True}
+
+case12 = {"params": [{"shape": (30,), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (30,),"ori_format": "FRACTAL_NZ"}, #x
+                    {"shape": (90,), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (90,),"ori_format": "FRACTAL_NZ"},
+                    {"shape": (60,), "dtype": "float16", "format": "NHWC", "ori_shape": (60,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmul_v1_12",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (30,), "dtype": "float16", "format": "NHWC", "ori_shape": (30,),"ori_format": "NHWC"}, #x
+                    {"shape": (90,), "dtype": "float16", "format": "NHWC", "ori_shape": (90,),"ori_format": "NHWC"},
+                    {"shape": (60,), "dtype": "float16", "format": "NHWC", "ori_shape": (60,),"ori_format": "NHWC"},
+                    {"shape": (96, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (96,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmul_v1_13",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case14 = {"params": [{"shape": (30,), "dtype": "float16", "format": "NHWC", "ori_shape": (30,),"ori_format": "NHWC"}, #x
+                    {"shape": (90,), "dtype": "float16", "format": "NHWC", "ori_shape": (90,),"ori_format": "NHWC"},
+                    {"shape": (2700,), "dtype": "float16", "format": "NHWC", "ori_shape": (2700,),"ori_format": "NHWC"},
+                    {"shape": (96, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (96,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmul_v1_14",
+         "expect": "success",
+         "support_expect": True}
+
+case16 = {"params": [{"shape": (3, 32, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 32, 96),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 64),"ori_format": "NHWC"}, #h
+                    {"shape": (96,), "dtype": "float32", "format": "NHWC", "ori_shape": (96,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 96),"ori_format": "NHWC"},
+                    True,True,
+                    ],
+         "case_name": "BatchMatmul_v1_16",
+         "expect": "success",
+         "support_expect": True}
+
+case17 = {"params": [{"shape": (3, 32, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 32, 96),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 1, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 1, 64),"ori_format": "NHWC"}, #h
+                    {"shape": (96,), "dtype": "float32", "format": "NHWC", "ori_shape": (96,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 96),"ori_format": "NHWC"},
+                    True,True,
+                    ],
+         "case_name": "BatchMatmul_v1_17",
+         "expect": "success",
+         "support_expect": True}
+
+case18 = {"params": [{"shape": (3, 32, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 32, 96),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 64, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 64, 64),"ori_format": "NHWC"}, #h
+                    {"shape": (96,), "dtype": "float32", "format": "NHWC", "ori_shape": (96,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 96),"ori_format": "NHWC"},
+                    False,False,],
+         "case_name": "BatchMatmul_v1_18",
+         "expect": "success",
+         "support_expect": True}
+
+case19 = {"params": [{"shape": (3, 32, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 32, 96),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 64, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 64, 64),"ori_format": "NHWC"}, #h
+                    {"shape": (96,), "dtype": "float16", "format": "NHWC", "ori_shape": (96,),"ori_format": "NHWC"},
+                    {"shape": (3, 96, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 96, 96),"ori_format": "NHWC"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v1_19",
          "expect": "success",
          "support_expect": True}
 
@@ -172,6 +241,9 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 ut_case.add_case("Ascend920A", case9)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
+ut_case.add_case(["Ascend910A"], case14)
 print("==========add case for batchmamtul fusion===============")
 for fusion_case in batchmatmul_ut_fusion_case:
    ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
@@ -186,8 +258,18 @@ def test_split_batch_matmul_1(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
     get_op_support_info(x1, x2, trans_b=True)
+
+def test_split_batch_matmul_2(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    get_op_support_info(x1, x2,bias=True)
+    x3 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
+    x4 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
+    get_op_support_info(x3, x4)
+
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_1)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_2)
 
 def test_batchmatmul_confusion_transpose_910(test_arg):
     te_set_version("Ascend910")
@@ -331,6 +413,11 @@ def test_op_check_supported(test_arg):
     _test_supported(case4)
     _test_supported(case5)
     _test_supported(case10)
+    _test_supported(case11)
+    _test_supported(case16)
+    _test_supported(case17)
+    _test_supported(case18)
+    _test_supported(case19)
 
 def test_op_select_format(test_arg):
     from impl.batch_matmul import op_select_format

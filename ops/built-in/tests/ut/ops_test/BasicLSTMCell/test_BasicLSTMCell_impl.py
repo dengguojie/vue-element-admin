@@ -429,90 +429,138 @@ case10 = {"params": [{"shape": (128, 8,16,16), "dtype": "float16", "format": "FR
           "expect": RuntimeError,
           "support_expect": True}
 
-case11 = {"params": [{"shape": (3, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 48),"ori_format": "ND"}, #x
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #h
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #c
-                     {"shape": (5, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (80, 128),"ori_format": "ND"}, #w
-                     {"shape": (128,), "dtype": "float16", "format": "ND", "ori_shape": (128,),"ori_format": "ND"},  #b
-                     {"shape": (128,), "dtype": "uint8", "format": "ND", "ori_shape": (128,),"ori_format": "ND"}, #mask
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ct
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ht
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #it
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #jt
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ft
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ot
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #tanhct
-                     ],
-          "case_name": "BasicLSTMCell_11",
-          "expect": "success",
-          "support_expect": True}
+case11 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096, 8192),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "int32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
+         "case_name": "BasicLSTMCell_11",
+         "expect": RuntimeError,
+         "support_expect": True}
 
-case12 = {"params": [{"shape": (1000, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 16000),"ori_format": "ND"}, #x
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #h
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #c
-                     {"shape": (1002, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (16032, 128),"ori_format": "ND"}, #w
-                     {"shape": (128,), "dtype": "float16", "format": "ND", "ori_shape": (128,),"ori_format": "ND"},  #b
-                     {"shape": (128,), "dtype": "uint8", "format": "ND", "ori_shape": (128,),"ori_format": "ND"}, #mask
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ct
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ht
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #it
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #jt
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ft
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #ot
-                     {"shape": (2, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 32),"ori_format": "ND"}, #tanhct
-                     ],
+case12 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2048,),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096, 8192),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
           "case_name": "BasicLSTMCell_12",
-          "expect": "success",
+          "expect": RuntimeError,
           "support_expect": True}
 
-case13 = {"params": [{"shape": (1, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 16),"ori_format": "ND"}, #x
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #h
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #c
-                     {"shape": (3, 8,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (48, 128),"ori_format": "ND"}, #w
-                     {"shape": (128,), "dtype": "float16", "format": "ND", "ori_shape": (128,),"ori_format": "ND"},  #b
-                     {"shape": (128,), "dtype": "uint8", "format": "ND", "ori_shape": (128,),"ori_format": "ND"}, #mask
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #ct
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #ht
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #it
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #jt
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #ft
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #ot
-                     {"shape": (2, 1000,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16000, 32),"ori_format": "ND"}, #tanhct
-                     ],
+case13 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128,),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096, 8192),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
           "case_name": "BasicLSTMCell_13",
-          "expect": "success",
+          "expect": RuntimeError,
           "support_expect": True}
 
-case14 = {"params": [{"shape": (1, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 16),"ori_format": "ND"}, #x
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #h
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #c
-                     {"shape": (101, 400,16,16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (1616, 6400),"ori_format": "ND"}, #w
-                     {"shape": (6400,), "dtype": "float16", "format": "ND", "ori_shape": (6400,),"ori_format": "ND"},  #b
-                     {"shape": (6400,), "dtype": "uint8", "format": "ND", "ori_shape": (6400,),"ori_format": "ND"}, #mask
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #ct
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #ht
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #it
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #jt
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #ft
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #ot
-                     {"shape": (100, 1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (1, 1600),"ori_format": "ND"}, #tanhct
-                     ],
+case14 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128,),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096, 8192),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
           "case_name": "BasicLSTMCell_14",
-          "expect": "success",
+          "expect": RuntimeError,
           "support_expect": True}
 
-ut_case.add_precision_case("Ascend910A", case1)
-ut_case.add_precision_case("Ascend910A", case2)
-ut_case.add_case(["Ascend910A"], case3)
-ut_case.add_case(["Ascend910A"], case4)
-ut_case.add_case(["Ascend910A"], case5)
-ut_case.add_case(["Ascend910A"], case6)
-ut_case.add_case(["Ascend910A"], case7)
-ut_case.add_case(["Ascend910A"], case8)
-ut_case.add_case(["Ascend910A"], case9)
-ut_case.add_case(["Ascend910A"], case10)
-# ut_case.add_case(["Ascend910"], case11)
-# ut_case.add_case(["Ascend910"], case12)
-# ut_case.add_case(["Ascend910"], case13)
-# ut_case.add_case(["Ascend910"], case14)
+case15 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096,),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
+          "case_name": "BasicLSTMCell_15",
+          "expect": RuntimeError,
+          "support_expect": True}
 
+case16 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #x
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #h
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #c
+                    {"shape": (256, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_LSTM", "ori_shape": (4096, 8192),"ori_format": "ND"}, #w
+                    {"shape": (8192,), "dtype": "float32", "format": "ND", "ori_shape": (8192, 1024),"ori_format": "ND"},  #b
+                    {"shape": (8192,), "dtype": "uint8", "format": "ND", "ori_shape": (8192,),"ori_format": "ND"}, #mask
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ct
+                    {"shape": (128, 8, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ht
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #it
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #jt
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ft
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #ot
+                    {"shape": (128, 8, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (128, 2048),"ori_format": "ND"}, #tanhct
+                    ],
+          "case_name": "BasicLSTMCell_16",
+          "expect": RuntimeError,
+          "support_expect": True}
+
+ut_case.add_precision_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_precision_case(["Ascend910A", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310"], case5)
+ut_case.add_case(["Ascend910A", "Ascend310"], case6)
+ut_case.add_case(["Ascend910A", "Ascend310"], case7)
+ut_case.add_case(["Ascend910A", "Ascend310"], case8)
+ut_case.add_case(["Ascend910A", "Ascend310"], case9)
+ut_case.add_case(["Ascend910A", "Ascend310"], case10)
+ut_case.add_case(["Ascend910A", "Ascend310"], case11)
+ut_case.add_case(["Ascend910A", "Ascend310"], case12)
+ut_case.add_case(["Ascend910A", "Ascend310"], case13)
+ut_case.add_case(["Ascend910A", "Ascend310"], case14)
+ut_case.add_case(["Ascend910A", "Ascend310"], case15)
+ut_case.add_case(["Ascend910A", "Ascend310"], case16)
+
+def test_basic_lstm_cell_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.basic_lstm_cell import basic_lstm_cell
+    te_set_version("Ascend710")
+    basic_lstm_cell(*(case1["params"]))
+    basic_lstm_cell(*(case2["params"]))
+    basic_lstm_cell(*(case3["params"]))
+    basic_lstm_cell(*(case4["params"]))
+
+ut_case.add_cust_test_func(test_func=test_basic_lstm_cell_001)

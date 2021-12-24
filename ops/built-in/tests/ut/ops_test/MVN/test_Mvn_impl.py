@@ -70,6 +70,93 @@ ut_case.add_precision_case("all", {"params": [{"shape": (11,3,4,4), "dtype": "fl
                                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
                                    })
 
+ut_case.add_case("all", {"params": [{"shape": (2, 4, 16, 16), "dtype": "float16", "format": "NCHW", 
+                         "ori_shape": (2, 4, 16, 16), "ori_format": "NCHW", "param_type": "input"}, 
+                        {"shape": (2, 4, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 4, 16, 16), 
+                         "ori_format": "NCHW","param_type": "output"}, False, True],
+                          "expect": "success",
+                         })
+
+def test_get_op_support_info_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.mvn import get_op_support_info
+    te_set_version("Ascend310")
+    get_op_support_info(
+        {
+            "shape": (11, 3, 4, 4),
+            "dtype": "float32",
+            "format": "NCHW",
+            "ori_shape": (11, 3, 4, 4),
+            "ori_format": "NCHW",
+            "param_type": "input"
+        }, None, True, False, 1e-9, "mvn")
+    get_op_support_info(
+        {
+            "shape": (11, 3, 4, 4),
+            "dtype": "float32",
+            "format": "NCHW",
+            "ori_shape": (11, 3, 4, 4),
+            "ori_format": "NCHW",
+            "param_type": "input"
+        }, None, True, True, 1e-9, "mvn")
+    get_op_support_info(
+        {
+            "shape": (11, 3, 4, 4),
+            "dtype": "float32",
+            "format": "ND",
+            "ori_shape": (11, 3, 4, 4),
+            "ori_format": "ND",
+            "param_type": "input"
+        }, None, True, False, 1e-9, "mvn")
+
+
+def test_mvn_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.mvn import mvn
+    te_set_version("SD3403")
+    try:
+        mvn(
+            {
+                "shape": (11, 3, 4, 4),
+                "dtype": "float32",
+                "format": "NCHW",
+                "ori_shape": (11, 3, 4, 4),
+                "ori_format": "NCHW",
+                "param_type": "input"
+            }, {
+                "shape": (11, 3, 4, 4),
+                "dtype": "float16",
+                "format": "NCHW",
+                "ori_shape": (11, 3, 4, 4),
+                "ori_format": "NCHW",
+                "param_type": "input"
+            }, True, False, 1e-9, "mvn")
+    except RuntimeError:
+        pass
+
+    try:
+        mvn(
+            {
+                "shape": (11, 3, 4, 4),
+                "dtype": "float16",
+                "format": "NCHW",
+                "ori_shape": (11, 3, 4, 4),
+                "ori_format": "NCHW",
+                "param_type": "input"
+            }, {
+                "shape": (11, 3, 4, 4),
+                "dtype": "float16",
+                "format": "NCHW",
+                "ori_shape": (11, 3, 4, 4),
+                "ori_format": "NCHW",
+                "param_type": "input"
+            }, True, False, 1e-9, "mvn")
+    except RuntimeError:
+        pass
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_001)
+ut_case.add_cust_test_func(test_func=test_mvn_001)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend310"])
 
