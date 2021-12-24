@@ -140,7 +140,9 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
   // creat a antiquant node
   std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
   mulDesc = std::make_shared<ge::OpDesc>(avgPoolNode->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
+  FUSION_PASS_CHECK(mulDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."),
+                    return nullptr);
 
   // add input
   ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);

@@ -210,7 +210,8 @@ vector<FusionPattern*> SPPPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SPPPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_SPP, {SPP}).SetOutput(PATTERN_SPP);
@@ -224,7 +225,8 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into SPPPass");
   // diag node
   ge::NodePtr sppNode = GetNodeFromMapping(PATTERN_SPP, mapping);
-  FUSION_PASS_CHECK(sppNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sppNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sppNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sppNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // Get Input Node
@@ -269,11 +271,13 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
   if (sppHyramidHeight == 1) {
     ge::OpDescPtr singlePoolingOp;
     ge::NodePtr singlePoolingNode;
-    FUSION_PASS_MAKE_SHARED((singlePoolingOp = std::make_shared<ge::OpDesc>(sppNode->GetName() + "_spp_pooling", "SppPooling")),
+    FUSION_PASS_MAKE_SHARED((singlePoolingOp = std::make_shared<ge::OpDesc>(sppNode->GetName() +
+                                                                            "_spp_pooling", "SppPooling")),
                             return INTERNAL_ERROR);
 
     FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(singlePoolingOp, sppInputDesc, 0, sppPoolMethod),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make pooling layer failed."),
+                      return FAILED);
 
     singlePoolingNode = graph.AddNode(singlePoolingOp);
 
@@ -286,7 +290,8 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
     for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
       ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
       FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPP output anchor ptr is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "SPP output anchor ptr is null, fusion failed."),
                         return FAILED;);
       ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
       FUSION_PASS_CHECK(
@@ -312,21 +317,26 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
     poolingOp.push_back(tmpOp);
 
     FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(poolingOp[i], sppInputDesc, i, sppPoolMethod),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make pooling layer failed."),
+                      return FAILED);
     tmpNode = graph.AddNode(poolingOp[i]);
-    FUSION_PASS_CHECK(tmpNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode[%ld] is null, fusion failed.", i),
+    FUSION_PASS_CHECK(tmpNode == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "poolingNode[%ld] is null, fusion failed.", i),
                       return PARAM_INVALID);
     poolingNode.push_back(tmpNode);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, poolingNode[i]->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "add edge from src node[%s] to dst node[%s] failed.",
                               inputNode->GetName().c_str(), poolingNode[i]->GetName().c_str()),
                       return FAILED);
   }
 
   ge::OpDescPtr concatOp;
   ge::NodePtr concatNode;
-  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>(sppNode->GetName() + "_concat", "ConcatD")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>(sppNode->GetName() + "_concat", "ConcatD")),
+                          return INTERNAL_ERROR);
   int64_t concatDim = 1;
   FUSION_PASS_CHECK(SUCCESS != MakeConcatLayer(concatOp, poolingOp, concatDim),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
@@ -344,11 +354,13 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPP output anchor ptr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "SPP output anchor ptr is null, fusion failed."),
                       return FAILED;);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "add edge from src node[%s] to dst node[%s] failed.",
                               concatNode->GetName().c_str(), outputNode->GetName().c_str()),
                       return FAILED);
   }

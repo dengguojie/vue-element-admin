@@ -46,7 +46,8 @@ static const std::string PATTERN_MAXPOOL = "FusedNodeMaxPool";
 vector<FusionPattern*> PaddMaxPoolFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PaddMaxPoolFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_PADD, {PADD})
@@ -64,9 +65,11 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADD, mapping);
   NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
   ge::NodePtr maxpool_node = GetNodeFromMapping(PATTERN_MAXPOOL, mapping);
-  FUSION_PASS_CHECK(pad_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maxpool_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."),
+  FUSION_PASS_CHECK(maxpool_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxpool_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // check output link
@@ -78,10 +81,12 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // get all node's desc
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
   ge::OpDescPtr maxpool_desc = maxpool_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(maxpool_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxpool_node's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "maxpool_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get shape and format
@@ -184,9 +189,11 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // create node
   std::shared_ptr<ge::OpDesc> pool_desc = nullptr;
   pool_desc = std::make_shared<ge::OpDesc>(pad_node->GetName() + "_pooling", "Pooling");
-  FUSION_PASS_CHECK(pool_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pool_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(pool_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pool_desc is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(pool_desc->AddInputDesc(input_desc) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."),
+  FUSION_PASS_CHECK(pool_desc->AddInputDesc(input_desc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."),
                     return FAILED);
   FUSION_PASS_CHECK(pool_desc->AddOutputDesc(output_desc) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output failed."), return FAILED);
@@ -252,7 +259,8 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // connect input edge
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pad_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             pool_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Add edge between node %s. and node %s failed.",
                             pad_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             pool_node->GetName().c_str()),
                     return FAILED);
@@ -260,9 +268,11 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // connect output edge
   for (auto inDataAnchor : maxpool_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(maxpool_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(pool_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
+                      return FAILED);
   }
 
   // set node type
@@ -284,10 +294,12 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   }
 
   // delete fused nodes
-  FUSION_PASS_CHECK(graph.RemoveNode(pad_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pad_node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(pad_node) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pad_node failed."),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(maxpool_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maxpool_node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maxpool_node failed."),
+                    return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "PaddMaxPoolFusionPass graph fusion success!");
   return SUCCESS;

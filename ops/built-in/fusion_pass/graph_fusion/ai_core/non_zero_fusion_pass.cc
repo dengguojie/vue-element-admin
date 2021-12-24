@@ -84,7 +84,7 @@ Status NonZeroFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(nonZeroNode->GetOutDataAnchor(0), inAnchor) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                     "Adding edge from fusion node: %s's index[0] to fused node: %s's indexes is failed.",
+                                     "Add edge from fusion node: %s's index[0] to fused node: %s's indexes is failed.",
               nonZeroNode->GetName().c_str(), castNode->GetName().c_str()),
       return FAILED);
   }

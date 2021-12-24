@@ -47,7 +47,8 @@ vector<FusionPattern*> NormalizeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("NormalizeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -60,23 +61,27 @@ vector<FusionPattern*> NormalizeFusionPass::DefinePatterns() {
 Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of Normalize
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   // get the OpDescPtr of Normalize
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   // clone the OpDescPtr for NormalizeSum, including the input/output/attr
   ge::OpDescPtr normalizeSumDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       normalizeSumDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   // clone the OpDescPtr for NormalizeScale, including the input/output/attr
   ge::OpDescPtr normalizeScaleDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       normalizeScaleDesc == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   normalizeSumDesc->SetName(fusedDesc->GetName() + "/NormalizeSum");
   normalizeScaleDesc->SetName(fusedDesc->GetName() + "/NormalizeScale");
@@ -104,9 +109,10 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
  
   FUSION_PASS_CHECK(
     shapeSize != 4 && shapeSize != 2,
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node %s's Only Support 4 dim and 2 dim", fusedNode->GetName().c_str()),
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+      "Node %s's Only Support 4 dim and 2 dim", fusedNode->GetName().c_str()),
     return PARAM_INVALID);
-  
+
   if (across_spatial) {
     output_shape_vector.push_back(input_shape_vector[0]);
     output_shape_vector.push_back(1);
@@ -150,18 +156,21 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   ge::NodePtr normalizeScaleNode = graph.AddNode(normalizeScaleDesc);
   FUSION_PASS_CHECK(
       normalizeSumNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", normalizeSumDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "fusionNode:%s is null, fusion failed.", normalizeSumDesc->GetName().c_str()),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(
       normalizeScaleNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", normalizeScaleDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "fusionNode:%s is null, fusion failed.", normalizeScaleDesc->GetName().c_str()),
       return PARAM_INVALID);
 
   // connect the input 0 of Normalize to input 0 of NormalizeSum
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                          normalizeSumNode->GetInDataAnchor(0)),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
               fusedNode->GetName().c_str(), 0, normalizeSumNode->GetName().c_str(), 0),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -172,7 +181,8 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor(),
                                            normalizeScaleNode->GetInDataAnchor(i)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+          "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 fusedNode->GetName().c_str(), i, normalizeScaleNode->GetName().c_str(), i),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -182,7 +192,8 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   // connect the output 0 of NormalizeSum to input 2 of NormalizeScale
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(normalizeSumNode->GetOutDataAnchor(0), normalizeScaleNode->GetInDataAnchor(2)),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d] failed.",
               normalizeSumNode->GetName().c_str(), 0, normalizeScaleNode->GetName().c_str(), 2),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d].",
@@ -239,8 +250,8 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     }
     for (auto inControlAnchor : fusedNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetOutControlAnchor(), inControlAnchor),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's output control failed.",
-                                fusedNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "Remove edge from fused node:%s's output control failed.", fusedNode->GetName().c_str()),
                         return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's output control index.",
               fusedNode->GetName().c_str());
@@ -256,7 +267,8 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   // remove Normalize from graph
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
                     return FAILED);
 
   newNodes.push_back(normalizeSumNode);
