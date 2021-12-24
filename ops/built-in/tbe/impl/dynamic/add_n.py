@@ -169,5 +169,6 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name, "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors,
+              "build_args": {"enable_alloc_mem_by_use_count": True}}
     tbe.build(schedules, config)
