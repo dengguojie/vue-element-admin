@@ -35,6 +35,7 @@ struct ProdForceSeATilingParams{
   int64_t coreLoopLeft;
   int64_t coreOffset;
   int64_t nframes;
+  int64_t coreNumsUsed;
 };
 
 void ProdForceSeAWriteTilingParams(const ProdForceSeATilingParams& params, OpRunInfo& run_info) {
@@ -44,6 +45,7 @@ void ProdForceSeAWriteTilingParams(const ProdForceSeATilingParams& params, OpRun
   ByteBufferPut(run_info.tiling_data, params.coreLoopLeft);
   ByteBufferPut(run_info.tiling_data, params.coreOffset);
   ByteBufferPut(run_info.tiling_data, params.nframes);
+  ByteBufferPut(run_info.tiling_data, params.coreNumsUsed);
 }
 
 void ProdForceSeAPrintTilingParams(const std::string& opType, const ProdForceSeATilingParams& params) {
@@ -53,6 +55,7 @@ void ProdForceSeAPrintTilingParams(const std::string& opType, const ProdForceSeA
   OP_LOGD("ProdForceSeA", "op [ProdForceSeA] : params.coreLoopLeft=%d", params.coreLoopLeft);
   OP_LOGD("ProdForceSeA", "op [ProdForceSeA] : params.coreOffset=%d", params.coreOffset);
   OP_LOGD("ProdForceSeA", "op [ProdForceSeA] : params.nframes=%d", params.nframes);
+  OP_LOGD("ProdForceSeA", "op [ProdForceSeA] : params.coreNumsUsed=%d", params.coreNumsUsed);
 }
 
 int64_t ProdForceSeACeilDiv(int64_t dividend, int64_t divisor) {
@@ -120,15 +123,24 @@ bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
   int64_t nframes = nlistShape[0];
   int64_t nall = forceShape[2];
   int64_t coreLoopLeft = 0;
+  int64_t coreNumsUsed = 0;
   coreNums = (splitCount == 2) ? AI_CORE_NUM + VECTOR_CORE_NUM : coreNums;
   int64_t coreLoopUnit = ProdForceSeACeilDiv(nloc, coreNums);
   if (splitCount == 1) {
-    coreLoopLeft = nloc % coreNums;
+    coreNumsUsed = ProdForceSeACeilDiv(nloc, coreLoopUnit);
+    coreLoopLeft = nloc % coreLoopUnit;
   } else {
-    coreLoopLeft = (splitIndex == 0) ? 0 : nloc % coreNums;
+    if (ProdForceSeACeilDiv(nloc, coreLoopUnit) > AI_CORE_NUM) {
+      coreNumsUsed =
+        (splitIndex == 0) ? AI_CORE_NUM : ProdForceSeACeilDiv(nloc, coreLoopUnit) - AI_CORE_NUM;
+      coreLoopLeft = (splitIndex == 0) ? 0 : nloc % coreLoopUnit;
+    } else {
+      coreNumsUsed = (splitIndex == 0) ? ProdForceSeACeilDiv(nloc, coreLoopUnit) : 0;
+      coreLoopLeft = (splitIndex == 0) ? nloc % coreLoopUnit : 0;
+    }
   }
   int64_t coreOffset = (splitIndex == 0) ? 0 : coreLoopUnit * AI_CORE_NUM;
-  ProdForceSeATilingParams params{nloc, nall, coreLoopUnit, coreLoopLeft, coreOffset, nframes};
+  ProdForceSeATilingParams params{nloc, nall, coreLoopUnit, coreLoopLeft, coreOffset, nframes, coreNumsUsed};
   run_info.block_dim = coreNums;
   ProdForceSeAWriteTilingParams(params, run_info);
   ProdForceSeAPrintTilingParams(opType, params);

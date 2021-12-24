@@ -88,10 +88,10 @@ class ProdForceSeA:
         self.nall = self.tik_instance.Scalar("int64", name="nall")
         self.nloc = self.tik_instance.Scalar("int64", name="nloc")
         self.nframes = self.tik_instance.Scalar("int64", name="nframes")
-
         self.core_loop_unit = self.tik_instance.Scalar("int64", name="core_loop_unit")
         self.core_loop_left = self.tik_instance.Scalar("int64", name="core_loop_left")
         self.core_offset = self.tik_instance.Scalar("int64", name="core_offset")
+        self.core_nums_used = self.tik_instance.Scalar("int64", name="core_nums_used")
         self.nnei_unit_len = _ceil_fill(self.nnei, 128)
         if self.nnei_unit_len > Constant.NNEI_UNIT_MAX:
             self.nnei_unit_len = Constant.NNEI_UNIT_MAX
@@ -138,12 +138,14 @@ class ProdForceSeA:
         self.core_offset.set_as(tiling_ub[tiling_para_index])
         tiling_para_index = tiling_para_index + 1
         self.nframes.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.core_nums_used.set_as(tiling_ub[tiling_para_index])
 
     def _run_multi_core_loop(self):
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_idx:
-            with self.tik_instance.if_scope(core_idx < self.core_nums - 1):
+            with self.tik_instance.if_scope(core_idx < self.core_nums_used - 1):
                 self._run_one_core_loop(core_idx, self.core_loop_unit)
-            with self.tik_instance.else_scope():
+            with self.tik_instance.if_scope(core_idx == self.core_nums_used - 1):
                 with self.tik_instance.if_scope(self.core_loop_left == 0):
                     self._run_one_core_loop(core_idx, self.core_loop_unit)
                 with self.tik_instance.else_scope():
@@ -151,7 +153,7 @@ class ProdForceSeA:
 
     def _run_one_core_loop(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
-            loop_offset = frame_idx * self.nloc + self.core_offset + core_idx * core_loop_unit
+            loop_offset = frame_idx * self.nloc + self.core_offset + core_idx * self.core_loop_unit
             nloc_loop = core_loop_unit // Constant.NLOC_UNIT_LEN
             nloc_left = core_loop_unit % Constant.NLOC_UNIT_LEN
             # nloc loop
@@ -286,13 +288,16 @@ class ProdForceSeA:
                                 1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                             force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + core_idx * core_loop_unit + nloc_offset
+                        force_offset = frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset
                         self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                             force_add_ub_fp32, 0, 3, 0, 0, 8, Constant.NLOC_UNIT_LEN, stride_unit=2)
                         self.tik_instance.set_atomic_add(1)
                         self.tik_instance.data_move(self.force_gm[force_offset],
-                                                    force_assis_ub_fp32, 0, 3, 1, 0,
-                                                    (self.nall - Constant.NLOC_UNIT_LEN) // Constant.BLOCK_FLOAT32)
+                                                    force_assis_ub_fp32, 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
+                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
+                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
                         self.tik_instance.set_atomic_add(0)
 
                     #second
@@ -484,15 +489,17 @@ class ProdForceSeA:
                                                    1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + core_idx * core_loop_unit + nloc_offset
+                        force_offset = frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset
                         self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                                                 force_add_ub_fp32, 0, 3, 0, 0, 8,
                                                 Constant.NLOC_UNIT_LEN, stride_unit=2)
                         self.tik_instance.set_atomic_add(1)
                         self.tik_instance.data_move(self.force_gm[force_offset],
-                                                    force_assis_ub_fp32,
-                                                    0, 3, 1, 0,
-                                                    (self.nall - Constant.NLOC_UNIT_LEN) // Constant.BLOCK_FLOAT32)
+                                                    force_assis_ub_fp32, 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
+                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
+                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
                         self.tik_instance.set_atomic_add(0)
 
                     #second
@@ -557,7 +564,7 @@ class ProdForceSeA:
                     ndescrpt = self.nnei_unit_len * 4
                     with self.tik_instance.for_range(0, nloc_left) as l_idx:
                         deriv_nnei_vcpadd_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
-                            (3 * self.nnei_unit_len,),name="deriv_nnei_vcpadd_ub_fp32",
+                            (3 * self.nnei_unit_len + 32,),name="deriv_nnei_vcpadd_ub_fp32",
                             scope=tik.scope_ubuf)
                         # prepare
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
@@ -658,6 +665,9 @@ class ProdForceSeA:
                                                                         (Constant.BLOCK_FLOAT32 * 3, ),
                                                                         name="force_assis_ub_fp32",
                                                                         scope=tik.scope_ubuf)
+                            self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
+                            self.tik_instance.vector_dup(3, force_add_ub_fp32, 0, 1, 1, 8)
+                            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
                             force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                                 (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                                 scope=tik.scope_ubuf)
@@ -680,13 +690,17 @@ class ProdForceSeA:
                                     1, 1, 1, 1, 8, 8, 8)
                             self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = frame_idx * self.nall * 3 + core_idx * core_loop_unit + nloc_offset + l_idx
+                            force_offset = \
+                                frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset + l_idx
                             self.tik_instance.vadds(1, force_assis_ub_fp32,
                                 force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             self.tik_instance.set_atomic_add(1)
                             self.tik_instance.data_move(self.force_gm[force_offset],
-                                                        force_assis_ub_fp32, 0, 3, 1, 0,
-                                                        (self.nall - 1) // Constant.BLOCK_FLOAT32)
+                                                        force_assis_ub_fp32, 0, 1, 1, 0, 0)
+                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
+                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
                         #second
@@ -874,13 +888,17 @@ class ProdForceSeA:
                                     1, 1, 1, 1, 8, 8, 8)
                             self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = frame_idx * self.nall * 3 + core_idx * core_loop_unit + nloc_offset + l_idx
+                            force_offset = \
+                                frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset + l_idx
                             self.tik_instance.vadds(1, force_assis_ub_fp32,
                                 force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             self.tik_instance.set_atomic_add(1)
                             self.tik_instance.data_move(self.force_gm[force_offset],
-                                                        force_assis_ub_fp32, 0, 3, 1, 0,
-                                                        (self.nall - 1) // Constant.BLOCK_FLOAT32)
+                                                        force_assis_ub_fp32, 0, 1, 1, 0, 0)
+                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
+                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
                         #second
