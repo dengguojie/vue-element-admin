@@ -236,51 +236,23 @@ def _get_bias(shape_bias):
     return shape_bias
 
 
-def _get_input_shape(shape_x, transpose, src_dtype):
+def _get_input_shape(input_shape, transpose, src_dtype, input_name):
     """ get input shape
     :param shape_x
     :return:  input shape
     """
-    shape_length = len(shape_x)
-    dim_a = shape_x[shape_length - 2]
-    dim_b = shape_x[shape_length - 1]
+    shape_length = len(input_shape)
+    dim_a = input_shape[shape_length - 2]
+    dim_b = input_shape[shape_length - 1]
     shape_length = shape_length - 2
-    res = shape_x[:shape_length]
+    res = input_shape[:shape_length]
     factor_base = 32 if src_dtype == "int8" else 16
-    if transpose:
+    if (transpose and input_name == "a") or (not transpose and input_name == "b"):
         factor_1 = factor_base
         factor_2 = 16
     else:
         factor_1 = 16
         factor_2 = factor_base
-    if dim_a % factor_1 != 0:
-        dim_a = (dim_a // factor_1) * factor_1 + factor_1
-    res.append(dim_a)
-
-    if dim_b % factor_2 != 0:
-        dim_b = (dim_b // factor_2) * factor_2 + factor_2
-    res.append(dim_b)
-
-    return res
-
-
-def _get_input_shape_b(shape_y, transpose, src_dtype):
-    """ get input shape
-    :param shape_x
-    :return:  input shape
-    """
-    shape_length = len(shape_y)
-    dim_a = shape_y[shape_length - 2]
-    dim_b = shape_y[shape_length - 1]
-    shape_length = shape_length - 2
-    res = shape_y[:shape_length]
-    factor_base = 32 if src_dtype == "int8" else 16
-    if transpose:
-        factor_1 = 16
-        factor_2 = factor_base
-    else:
-        factor_1 = factor_base
-        factor_2 = 16
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
     res.append(dim_a)
@@ -355,8 +327,8 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
 def check_supported(input_x,
                     input_y,
                     bias=None,
-                    offset_w={},
-                    output_z={},
+                    offset_w=None,
+                    output_z=None,
                     trans_a=False,
                     trans_b=False,
                     offset_x=0,
@@ -529,7 +501,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
     return result
 
 
-def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_z={}, trans_a=False,
+def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w=None, output_z=None, trans_a=False,
                               trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     algorithm: batch_matmul
@@ -612,7 +584,7 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
                             para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
                     trans_b=False, offset_x=0, kernel_name="matmul"):
     """ algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -680,8 +652,8 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
     shape_a = list(shape_a)
     shape_b = list(shape_b)
     if input_x.get("format") == "FRACTAL_NZ":
-        shape_a = _get_input_shape(shape_a, trans_a, src_dtype)
-        shape_b = _get_input_shape_b(shape_b, trans_b, src_dtype)
+        shape_a = _get_input_shape(shape_a, trans_a, src_dtype, "a")
+        shape_b = _get_input_shape(shape_b, trans_b, src_dtype, "b")
 
     para_check.check_shape(shape_a, param_name="input_x")
     para_check.check_shape(shape_b, param_name="input_y")

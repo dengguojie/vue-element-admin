@@ -65,11 +65,11 @@ def _get_bias(shape_bias):
     return shape_bias
 
 
-def _get_input_shape(shape_x, transpose):
-    dim_a = shape_x[0]
-    dim_b = shape_x[1]
+def _get_input_shape(input_shape, transpose, input_name):
+    dim_a = input_shape[0]
+    dim_b = input_shape[1]
     res = []
-    if transpose:
+    if (transpose and input_name == "a") or (not transpose and input_name == "b"):
         factor_1 = 32
         factor_2 = 16
     else:
@@ -87,28 +87,6 @@ def _get_input_shape(shape_x, transpose):
         res.append(dim_b)
     else:
         res.append(dim_b)
-    return res
-
-
-def _get_input_shape_b(shape_y, transpose):
-    dim_a = shape_y[0]
-    dim_b = shape_y[1]
-    res = []
-    if transpose:
-        factor_1 = 16
-        factor_2 = 32
-    else:
-        factor_1 = 32
-        factor_2 = 16
-
-    if dim_a % factor_1 != 0:
-        dim_a = (dim_a // factor_1) * factor_1 + factor_1
-    res.append(dim_a)
-
-    if dim_b % factor_2 != 0:
-        dim_b = (dim_b // factor_2) * factor_2 + factor_2
-    res.append(dim_b)
-
     return res
 
 
@@ -116,8 +94,8 @@ def check_supported(input_x1,
                     input_x2,
                     compress_index,
                     bias,
-                    offset_w={},
-                    output_y={},
+                    offset_w=None,
+                    output_y=None,
                     trans_a=False,
                     trans_b=False,
                     offset_x=0,
@@ -177,8 +155,8 @@ def compress_mat_mul_compute(input_x1,
                              input_x2,
                              compress_index,
                              bias,
-                             offset_w={},
-                             output_y={},
+                             offset_w=None,
+                             output_y=None,
                              trans_a=False,
                              trans_b=False,
                              offset_x=0,
@@ -253,8 +231,8 @@ def compress_mat_mul_compute_self(input_x1,
                                   input_x2,
                                   compress_index,
                                   bias,
-                                  offset_w={},
-                                  output_y={},
+                                  offset_w=None,
+                                  output_y=None,
                                   trans_a=False,
                                   trans_b=False,
                                   offset_x=0,
@@ -400,8 +378,8 @@ def compress_mat_mul(input_x1,
                      input_x2,
                      compress_index,
                      bias,
-                     offset_w={},
-                     output_y={},
+                     offset_w=None,
+                     output_y=None,
                      trans_a=False,
                      trans_b=False,
                      offset_x=0,
@@ -456,8 +434,8 @@ def compress_mat_mul(input_x1,
     shape_b = list(shape_b)
 
     para_check.check_format(input_x1.get("format"), ('FRACTAL_NZ'), param_name="input_x1")
-    shape_a = _get_input_shape(shape_a, trans_a)
-    shape_b = _get_input_shape_b(shape_b, trans_b)
+    shape_a = _get_input_shape(shape_a, trans_a, "a")
+    shape_b = _get_input_shape(shape_b, trans_b, "b")
 
     para_check.check_shape(shape_a, param_name="input_x1")
     para_check.check_shape(shape_b, param_name="input_x2")

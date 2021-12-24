@@ -557,7 +557,6 @@ def check_and_config_para(input_x1: dict, input_x2: dict, bias: dict, output_z: 
     """
     check and config dynamic mode
     """
-
     # get format and dtype
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
@@ -776,7 +775,6 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     res : dict
     A dict object, dict with input tensor and output tensor
     """
-
     # check soc_version
     soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):

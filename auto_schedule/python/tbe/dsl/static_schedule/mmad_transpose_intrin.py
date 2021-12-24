@@ -24,14 +24,19 @@ from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from te.platform import cce_util
 from .util import ceil
 
+
 @tvm.register_func("tvm.intrin.cce.dma_copy_matmul_transpose")
 def dma_copy_matmul_transpose(stmt):
-    """dma_copy for Matmul + ConfusionTranspose"""
+    """
+    dma_copy for Matmul + ConfusionTranspose
+    """
     return dma_copy_mmad_transpose(stmt, "matmul_transpose")
 
 
 def dma_copy_mmad_transpose(stmt, intrin_cmd):
-    """dma_copy for mmad + ConfusionTranspose"""
+    """
+    dma_copy for mmad + ConfusionTranspose
+    """
     ir_builder = tvm.ir_builder.create()
     vars_list = []
 
@@ -62,7 +67,9 @@ def dma_copy_mmad_transpose(stmt, intrin_cmd):
 
 
 def _get_matmul_axis(vars_list, blk_m, blk_n, split_m, split_n):
-    """get matmul outer axis of m, n"""
+    """
+    get matmul outer axis of m, n
+    """
     if blk_n == 1:
         block_idx = 0
         var_n = vars_list[0] if split_n != 1 else 0
@@ -82,15 +89,17 @@ def _get_matmul_axis(vars_list, blk_m, blk_n, split_m, split_n):
     return block_idx, var_m, var_n
 
 
-def _get_batch_matmul_axis(vars_list, batch, split_m, split_n):
-    """get batch matmul outer axis of m, n"""
+def _get_batch_matmul_axis(vars_list, split_m, split_n):
+    """
+    get batch matmul outer axis of m, n
+    """
     block_idx = vars_list[0]
     var_b = vars_list[1]
     var_n = 0 if split_n == 1 else vars_list[2]
     var_m = 0 if split_m == 1 else vars_list[-4]
 
     return block_idx, var_b, var_m, var_n
-    
+
 
 def ub_2_gm_matmul_transopose(*args):
     """
@@ -202,16 +211,14 @@ def ub_2_gm_batch_matmul_transopose(*args):
     # min burst in m and n
     m_burst = matmul_m_split // 16
     n_burst = matmul_n_split // 16
-    
-    block_idx, var_b, var_m, var_n = _get_batch_matmul_axis(vars_list, batch, split_m, split_n)
+
+    block_idx, var_b, var_m, var_n = _get_batch_matmul_axis(vars_list, split_m, split_n)
 
     min_data_move = shape_trans[-1] * shape_trans[-2] * shape_trans[-3]
     mini_block = shape_trans[-1] * shape_trans[-2]
     split_blk = ceil(shape_trans[0] * shape_trans[1], blk_batch)
 
-    if (shape_m == 128 and shape_n == 64) or \
-        (shape_m == 512 and shape_n == 64) or \
-        (shape_m == 128 and shape_n == 64):
+    if (shape_m, shape_n) in [(128, 64), (512, 64), (128, 64)]:
         batch_offset = ((block_idx*split_blk + var_b) % shape_trans[1]) * \
                         shape_trans[0] * shape_trans[-4] * min_data_move + \
                         ((block_idx*split_blk + var_b) // shape_trans[1]) * min_data_move

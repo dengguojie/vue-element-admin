@@ -330,7 +330,7 @@ def _is_fuzzily_build():
     return (context and context.get_build_type() == "fuzzily_build")
 
 
-def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
+def check_supported(input_x, input_y, bias=None, output_z=None, trans_a=False,
                     trans_b=False, kernel_name="matmul"):
     """
     get the op supported situation
@@ -419,7 +419,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
 
 @tbe_platform.fusion_manager.register("batch_matmul")
-def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,
+def batch_matmul_compute(input_x, input_y, bias=None, output_z=None, trans_a=False,
                          trans_b=False, kernel_name="matmul"):
     """
     algorithm: batch_matmul
@@ -496,7 +496,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     return result
 
 
-def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=False,
+def batch_matmul_compute_self(input_x, input_y, bias=None, output_z=None, trans_a=False,
                               trans_b=False, kernel_name="matmul"):
     """
     algorithm: batch_matmul
@@ -575,7 +575,7 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
                             para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
-def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
+def batch_matmul(input_x, input_y, bias=None, output_z=None, trans_a=False,
                  trans_b=False, kernel_name="matmul"):
     """ algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input

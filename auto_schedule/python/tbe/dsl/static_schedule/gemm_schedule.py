@@ -18,24 +18,24 @@
 gemm schedule
 """
 from enum import Enum
-from functools import reduce  # pylint: disable=C0302
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.buildcfg import build_config
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
 from . import gemm_schedule_util as util
 
 K_AXIS_ALIGN_FACTOR = 2
+
 
 def _get_value(shape_object):
     """
     get the value of shape_object when having attr "value"
     """
     return shape_object.value if hasattr(shape_object, "value") else shape_object
+
 
 def print_ir_matmul(process, sch):
     """
@@ -56,7 +56,7 @@ def print_ir_matmul(process, sch):
             print(end)
 
 
-class GEMM_Schedule:
+class GemmScheduleV2:
     """
     class of gemm schedule
     """
@@ -67,6 +67,38 @@ class GEMM_Schedule:
         self.trans_a = False
         self.trans_b = False
 
+    @staticmethod
+    def get_al1_bound(tiling, tensor_map):
+        """
+        cal the l1 bound of al1
+        """
+        m_parts = util.int_ceil_div(_get_value(tensor_map["a_l0a"].shape[-4]), tiling["CL0_matrix"][1])
+        if tiling["AL1_shape"]:
+            k_bound = tiling["AL1_shape"][0]
+            al1_parts = util.int_ceil_div(m_parts, tiling["AL1_shape"][1])
+        else:
+            k_bound = _get_value(tensor_map["a_l0a"].shape[-3]) * _get_value(tensor_map["a_l0a"].shape[-1])
+            al1_parts = m_parts
+        m_factors = util.int_ceil_div(al1_parts, tiling["block_dim"][2])
+        m_bound = m_factors * tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
+        return k_bound * m_bound
+
+    @staticmethod
+    def get_bl1_bound(tiling, tensor_map):
+        """
+        cal the l1 bound of bl1
+        """
+        n_parts = util.int_ceil_div(_get_value(tensor_map["b_l0b"].shape[-3]), tiling["CL0_matrix"][0])
+        if tiling["BL1_shape"]:
+            k_bound = tiling["BL1_shape"][0]
+            bl1_parts = util.int_ceil_div(n_parts, tiling["BL1_shape"][1])
+        else:
+            k_bound = _get_value(tensor_map["b_l0b"].shape[-4]) * _get_value(tensor_map["b_l0b"].shape[-1])
+            bl1_parts = n_parts
+        n_factors = util.int_ceil_div(bl1_parts, tiling["block_dim"][1])
+        n_bound = n_factors * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][3]
+        return k_bound * n_bound
+    
     def _init_tiling_input(self, tensor_map):
         """
         init the input of tiling
@@ -82,11 +114,11 @@ class GEMM_Schedule:
             # (1,1,16,8) while shape_b_l1 is (2,1,16,8), the shapes on L0 are (1,1,16,8) and (2, 1, 16, 8), ka != kb
             l0a_shape[-3] = util.int_ceil_align(l0a_shape[-3], K_AXIS_ALIGN_FACTOR)
             l0b_shape[-4] = util.int_ceil_align(l0b_shape[-4], K_AXIS_ALIGN_FACTOR)
-        # a_shape is [batch_a, k1, m1, m0, k0]
+        # a_shape dim: batch_a, k1, m1, m0, k0
         a_shape = [1, l0a_shape[-3], l0a_shape[-4], l0a_shape[-2], l0a_shape[-1]]
         a_shape[0] = l0a_shape[0] if len(l0a_shape) == 5 else 1
 
-        # b_shape is [K1*k0, n1, 1, 1, n0]
+        # b_shape dim: K1*k0, n1, 1, 1, n0
         b_shape = [l0b_shape[-4] * l0b_shape[-1], l0b_shape[-3], 1, 1, l0b_shape[-2]]
 
         
@@ -97,7 +129,6 @@ class GEMM_Schedule:
             trans_flag += 2
 
         return a_shape, b_shape, trans_flag
-
 
     def _get_tiling_matmul(self, kernel_name, tensor_map):
         """
@@ -133,41 +164,9 @@ class GEMM_Schedule:
         tiling = get_tiling(info_dict)
         return tiling, fuse_num
 
-    def _get_al1_bound(self, tiling, tensor_map):
-        """
-        cal the l1 bound of al1
-        """
-        m_parts = util.int_ceil_div(_get_value(tensor_map["a_l0a"].shape[-4]), tiling["CL0_matrix"][1])
-        if tiling["AL1_shape"]:
-            k_bound = tiling["AL1_shape"][0]
-            al1_parts = util.int_ceil_div(m_parts, tiling["AL1_shape"][1])
-        else:
-            k_bound = _get_value(tensor_map["a_l0a"].shape[-3]) * _get_value(tensor_map["a_l0a"].shape[-1])
-            al1_parts = m_parts
-        m_factors = util.int_ceil_div(al1_parts, tiling["block_dim"][2])
-        m_bound = m_factors * tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
-        return k_bound * m_bound
-
-
-    def _get_bl1_bound(self, tiling, tensor_map):
-        """
-        cal the l1 bound of bl1
-        """
-        n_parts = util.int_ceil_div(_get_value(tensor_map["b_l0b"].shape[-3]), tiling["CL0_matrix"][0])
-        if tiling["BL1_shape"]:
-            k_bound = tiling["BL1_shape"][0]
-            bl1_parts = util.int_ceil_div(n_parts, tiling["BL1_shape"][1])
-        else:
-            k_bound = _get_value(tensor_map["b_l0b"].shape[-4]) * _get_value(tensor_map["b_l0b"].shape[-1])
-            bl1_parts = n_parts
-        n_factors = util.int_ceil_div(bl1_parts, tiling["block_dim"][1])
-        n_bound = n_factors * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][3]
-        return k_bound * n_bound
-
-
     def _mem_process(self, tiling, tensor_map):
-        al1_bound = self._get_al1_bound(tiling, tensor_map)
-        bl1_bound = self._get_bl1_bound(tiling, tensor_map)
+        al1_bound = self.get_al1_bound(tiling, tensor_map)
+        bl1_bound = self.get_bl1_bound(tiling, tensor_map)
         a_l1, b_l1, a_l0a, b_l0b, c_l0c = (
             tensor_map["a_l1"],
             tensor_map["b_l1"],
@@ -191,7 +190,6 @@ class GEMM_Schedule:
                 mem_unique_list += [tensor_map["bias_l1"], tensor_map["bias_bt"]]
             for mem_unique_mem in mem_unique_list:
                 self.sch[mem_unique_mem].mem_unique()
-
 
     def gemm_schedule(self):
         """
@@ -224,9 +222,7 @@ class GEMM_Schedule:
             tiling = util.check_tiling(tiling, fuse_num, tensor_map, handle_ub)
 
         # get tensor
-        a_l1, b_l1, a_l0a, b_l0b, c_l0c, c_gm = (
-            tensor_map["a_l1"],
-            tensor_map["b_l1"],
+        a_l0a, b_l0b, c_l0c, c_gm = (
             tensor_map["a_l0a"],
             tensor_map["b_l0b"],
             tensor_map["c_l0c"],
@@ -286,5 +282,5 @@ def gemm_schedule(res, sch_list, dynamic_para=None):
     res: tensor
     sch_list: list of schedule
     """
-    gemm_sch = GEMM_Schedule(res, sch_list, dynamic_para)
+    gemm_sch = GemmScheduleV2(res, sch_list, dynamic_para)
     return gemm_sch.gemm_schedule()
