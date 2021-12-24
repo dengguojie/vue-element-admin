@@ -75,7 +75,9 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::OpDe
  * @param [out] opInfo: op info
  * @return bool: success or not
  */
-bool getFuzzyBuildInfo(const nlohmann::json& opCompileInfo, std::vector<std::string>& varMap, nlohmann::json& opInfo) {
+bool getFuzzyBuildInfo(const nlohmann::json& opCompileInfo, 
+                       std::vector<std::string>& varMap, 
+                       nlohmann::json& opInfo) {
     // >>> start: splice compile info
     opInfo = opCompileInfo[0];
     try {
@@ -86,7 +88,9 @@ bool getFuzzyBuildInfo(const nlohmann::json& opCompileInfo, std::vector<std::str
     nlohmann::json item;
     for (size_t i = 1; i < opCompileInfo.size(); ++i) {
         item = opCompileInfo[i];
-        std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+        std::vector<std::string> key_list = {"repo_seeds", 
+		                             "repo_range", 
+                                             "cost_range"};
         for (auto key: key_list) {
             if (item[key].is_object() && !item[key].empty()) {
                 std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
@@ -114,17 +118,21 @@ bool getFuzzyBuildInfo(const nlohmann::json& opCompileInfo, std::vector<std::str
  * @return bool: success or not
  */
 
-bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+bool Conv2DTiling(const std::string& opType, 
+		  const ge::Operator& opParas, 
+                  const nlohmann::json& opCompileInfo, 
                   utils::OpRunInfo& runInfo) {
     PROFILING_TILING_INIT(opType.c_str());
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
     auto input_desc = op_desc->GetInputDescPtr(0);
     if (input_desc == nullptr) {
         OP_LOGE(opType.c_str(), "GetInputDescPtr failed");
+	return false;
     }
     auto output_desc = op_desc->GetOutputDescPtr(0);
     if (output_desc == nullptr) {
         OP_LOGE(opType.c_str(), "GetOutputDescPtr failed");
+	return false;
     }
     ge::Format input_format = input_desc->GetFormat();
     std::string x_format = ge::TypeUtils::FormatToSerialString(input_format).c_str();
@@ -143,11 +151,20 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
         hDim = x_format.find("H");
         wDim = x_format.find("W");
     }
-    GELOGD("optiling x_format is %s, nDim = %d, cDim = %d, hDim = %d, wDim = %d",
-            x_format.c_str(), nDim, cDim, hDim, wDim);
+    GELOGD("optiling x_format is %s, nDim = %d, cDim = %d, hDim = %d, wDim = %d", 
+           x_format.c_str(), nDim, cDim, hDim, wDim);
 
-    if (op_desc->GetInputsSize() == 0 || op_desc->GetOutputsSize() == 0 ||
-        input_desc->GetShape().GetDimNum() == 0 || output_desc->GetShape().GetDimNum() == 0) {
+    int32_t batch = input_desc->GetShape().GetDim(nDim);
+    int32_t hi = input_desc->GetShape().GetDim(hDim);
+    int32_t wi = input_desc->GetShape().GetDim(wDim);
+    int32_t ho = output_desc->GetShape().GetDim(hDim);
+    int32_t wo = output_desc->GetShape().GetDim(wDim);
+
+
+    if (op_desc->GetInputsSize() == 0 || 
+        op_desc->GetOutputsSize() == 0 ||
+        input_desc->GetShape().GetDimNum() == 0 ||
+       	output_desc->GetShape().GetDimNum() == 0) {
         OP_LOGE(opType.c_str(), "inputsize or outputsize is zero");
         return false;
     }
@@ -163,6 +180,10 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
     if (opCompileInfo.empty()) {
         GELOGD("op compile info is empty");
         return false;
+    }
+
+    if (ho != 1 && wo == 1) {
+        OP_LOGE(opType.c_str(), "not support ho != 1 and wo == 1.");
     }
 
     // accurate build has only one item
@@ -181,19 +202,23 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
         opInfo = opCompileInfo;
     }
     PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG()
-    std::vector<int64_t> varValue = setValValue(varMap, op_desc, nDim, hDim, wDim);
-
-    bool res = cube_tiling1(opType, input_desc->GetShape().GetDims(), x_format, varValue, opInfo, runInfo);
+    std::vector<int64_t> varValue = setValValue(varMap, 
+		                                op_desc, 
+						nDim, 
+                                                hDim, 
+						wDim);
+    bool res = cube_tiling1(opType, 
+		            input_desc->GetShape().GetDims(),
+                            x_format, 
+			    varValue, 
+			    opInfo, 
+			    runInfo);
     PROFILING_TILING_AFTER_CALCU_TILING_REG()
-    // for log
-    int32_t batch = input_desc->GetShape().GetDim(nDim);
-    int32_t hi = input_desc->GetShape().GetDim(hDim);
-    int32_t wi = input_desc->GetShape().GetDim(wDim);
-    int32_t ho = output_desc->GetShape().GetDim(hDim);
-    int32_t wo = output_desc->GetShape().GetDim(wDim);
+    
     std::string node_name = op_desc->GetName();
     GELOGD("[%s] tiling_data is %d, %d, %d, %d, %d, %d", node_name.c_str(),
            runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
+
     PROFILING_TILING_END()
     return res;
 }
