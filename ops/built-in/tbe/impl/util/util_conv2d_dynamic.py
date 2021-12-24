@@ -365,6 +365,11 @@ class Conv2dParaProcess(CubeParaProcess):
                              "output": ("NCHW", "NHWC")},
             "valid_dtype": ("float16", "int8", "int32", "float32")
         }
+        self.dim_valid_dict = {
+            N_DIM: (self.valid_paras.get("n_min"), None),
+            H_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")),
+            W_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max"))
+        }
 
     def check_support_valid(self, in_shape, w_shape):
         """
