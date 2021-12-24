@@ -43,6 +43,17 @@ FIXPIPE_SCOPE_MAP = {
     "quant_scale_1": "local.FB3"
 }
 
+INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
+UNIT_POST_ELTWISE = "post_eltwise"
+
+
+def _is_support_fixpipe_op():
+    if tbe_platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
+        return tbe_platform_info.intrinsic_check_support(
+            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
+
+    return False
+
 # common math funtion
 def int_ceil_div(divisor_a, divisor_b):
     """
@@ -839,10 +850,11 @@ def emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd=False)
     # when output dtype is int8, split c_gm
     c_gm = tensor_map["c_gm"]
     c_l0c = tensor_map["c_l0c"]
+    emit_str = "fixpipe_op" if _is_support_fixpipe_op() else "dma_copy"
     if is_nd and tensor_map.get("fixpipe_to_ub") is None:
         sch[c_gm].split(c_gm_emit_axis[1], 16)
         dma_dict = {"layout_transform": "nz2nd"}
-        sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy", dma_dict)
+        sch[c_gm].emit_insn(c_gm_emit_axis[0], emit_str, dma_dict)
     else:
         if c_gm.dtype == "int8":
             sch[c_gm].split(c_gm.op.axis[-1], 16)
@@ -850,9 +862,9 @@ def emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd=False)
             sch[c_l0c].storage_align(c_l0c.op.axis[-4], n_shape, 0)
         if a_l1.dtype == "float32" and c_gm.dtype == "float32":
             _, chanel_split_in = sch[c_gm].split(c_gm_emit_axis[0], factor=2)
-            sch[c_gm].emit_insn(chanel_split_in, "dma_copy",  {"layout_transform": "channel_split"})
+            sch[c_gm].emit_insn(chanel_split_in, emit_str,  {"layout_transform": "channel_split"})
         else:
-            sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy")
+            sch[c_gm].emit_insn(c_gm_emit_axis[0], emit_str)
 
     mad_dict = {
         "mad_pattern": tbe_platform.GEMM_MODE,

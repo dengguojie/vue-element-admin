@@ -510,6 +510,7 @@ def test_mock_cases(test_args):
             test_matmul_fixpipe_1()
             test_matmul_fixpipe_2()
 
+
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
 
