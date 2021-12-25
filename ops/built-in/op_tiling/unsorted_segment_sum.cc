@@ -19,12 +19,14 @@
  * \brief
  */
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "op_const.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 const std::string UNSORTED_SEGMENT_SUM_OP_TYPE = "UnsortedSegmentSum";
@@ -73,6 +75,8 @@ const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_SMALLBLOCK = 14;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16;
 enum EleByte { FP16_BYTE = 2, FP32_BYTE = 4, INT32_BYTE = 4, INT8_BYTE = 1, UINT8_BYTE = 1 };
+
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "ub_tensor_num"};
 
 struct TilingParamsFp32 {
   // common params
@@ -161,6 +165,7 @@ struct TilingParamsFp32 {
   int32_t output_ub_init_last_row_times_front_part_last_core_input_scalar;
   int32_t output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar;
   int32_t output_ub_init_last_row_times_last_part_last_core_input_scalar;
+  int32_t num_segments;
 };
 
 struct TilingParamsInt32 {
@@ -206,6 +211,7 @@ struct TilingParamsInt32 {
   int32_t repeat_times_last_part_lastcore;
   int32_t e_mov_times_gm2ub_input_scalar_lastcore;
   int32_t repeat_time_front_part_input_scalar_lastcore;
+  int32_t num_segments;
 };
 
 /******************COMMON_FUNCTION******************/
@@ -245,43 +251,20 @@ int32_t UssCeilDivNoAtomic(const int32_t& num, const int32_t& factor, const int3
   return res;
 }
 
-bool GetUssCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, int32_t& core_num,
-                         int32_t& ub_size, int32_t& ub_tensor_num) {
-  using namespace nlohmann;
-  if (op_compile_info_json == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
-    return false;
-  }
-  const auto& allVars = op_compile_info_json["vars"];
-  // core num
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
-    return false;
-  }
-  core_num = allVars["core_num"].get<std::int32_t>();
-  // ub size
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
-    return false;
-  }
-  ub_size = allVars["ub_size"].get<std::int32_t>();
-  // ub tensor num
-  if (allVars.count("ub_tensor_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_tensor_num is null");
-    return false;
-  }
-  ub_tensor_num = allVars["ub_tensor_num"].get<std::int32_t>();
-  GELOGD("op [%s] : GetCompileParams, core_num[%d], ub_size[%d].", UNSORTED_SEGMENT_SUM_OP_TYPE.c_str(), core_num,
-         ub_size);
+bool GetUssCompileParams(const std::string& op_type, const std::vector<int64_t>& opCompileInfo,
+                         int32_t& core_num, int32_t& ub_size, int32_t& ub_tensor_num) {
+  OP_TILING_CHECK(COMPILE_INFO_KEY.size() != opCompileInfo.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse opCompileInfo failed."),
+                  return false);
+  core_num = opCompileInfo[0];
+  ub_size = opCompileInfo[1];
+  ub_tensor_num = opCompileInfo[2];
   return true;
 }
 
-bool GetTilingMode(const std::vector<int64_t>& input_shape, const int32_t& e_size, const std::string& input_dtype,
+bool GetTilingMode(const GeShape& input_shape, const int32_t& e_size, const ge::DataType& input_dtype,
                    const int32_t& ub_tensor_ele_num, int32_t& select_key, const int32_t& num_segments) {
-  int input_dim = input_shape.size();
-  if (input_shape.empty()) {
-    return false;
-  }
+  int input_dim = input_shape.GetShapeSize();
   if (num_segments > 1) {
     if (input_dim == 1) {
       select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
@@ -311,13 +294,13 @@ bool GetTilingMode(const std::vector<int64_t>& input_shape, const int32_t& e_siz
 }
 
 bool GetTilingModeNoAtomic(
-  const std::vector<int64_t>& input_shape, const int32_t& e_size, const int32_t& ids_size,
-  const std::string& input_dtype, const std::string& ids_dtype, const int32_t& ub_tensor_size,
+  const GeShape& input_shape, const int32_t& e_size, const int32_t& ids_size,
+  const ge::DataType& input_dtype, const ge::DataType& ids_dtype, const int32_t& ub_tensor_size,
   const int32_t& ub_tensor_size_input, int32_t& select_key, int32_t& e_once_num, int32_t& id_once_num,
   const int32_t& need_core, const int32_t& output_ub_ele_num_one_row, int32_t& num_segment_max,
   const int32_t& mask, const int32_t& all_size, int32_t& num_segments) {
   int input_byte = 0;
-  if (input_dtype  == DTYPE_FP16) {
+  if (input_dtype  == ge::DT_FLOAT16) {
     input_byte = 2;
   } else {
     input_byte = 4;
@@ -327,11 +310,6 @@ bool GetTilingModeNoAtomic(
   id_once_num = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / INT32_BYTE;
   num_segment_max = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / input_byte;
   num_segment_max = num_segment_max / e_size;
-
-  if (input_shape.empty()) {
-    OP_LOGD("input shape is empty");
-    return false;
-  }
   if (num_segments == 1) {
     select_key = SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE;
     return true;
@@ -339,11 +317,11 @@ bool GetTilingModeNoAtomic(
     // e big id big
     select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID;
     return true;
-  } else if (e_size > e_once_num && ids_size < id_once_num) {
+  } else if (e_size > e_once_num && ids_size <= id_once_num) {
     // e nig id small
     select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID;
     return true;
-  } else if (e_size < e_once_num && ids_size < id_once_num) {
+  } else if (e_size <= e_once_num && ids_size <= id_once_num) {
     // e small id small
     select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID;
     if (need_core > 1 && e_size < output_ub_ele_num_one_row) {
@@ -352,7 +330,7 @@ bool GetTilingModeNoAtomic(
       select_key = SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN;
     }
     return true;
-  } else if (ids_size > id_once_num && e_size < e_once_num) {
+  } else if (ids_size > id_once_num && e_size <= e_once_num) {
     // e small id big
     select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID;
     if (need_core > 1 && e_size < output_ub_ele_num_one_row) {
@@ -363,20 +341,20 @@ bool GetTilingModeNoAtomic(
   return false;
 }
 
-bool GetEleDtype(const std::string& dtype, EleByte& elebyte) {
-  if (dtype == "float32") {
+bool GetEleDtype(const ge::DataType& dtype, EleByte& elebyte) {
+  if (dtype == ge::DT_FLOAT) {
     elebyte = FP32_BYTE;
     return true;
-  } else if (dtype == "float16") {
+  } else if (dtype == ge::DT_FLOAT16) {
     elebyte = FP16_BYTE;
     return true;
-  } else if (dtype == "int32") {
+  } else if (dtype == ge::DT_INT32) {
     elebyte = INT32_BYTE;
     return true;
-  } else if (dtype == "int8") {
+  } else if (dtype == ge::DT_INT8) {
     elebyte = INT8_BYTE;
     return true;
-  } else if (dtype == "uint8") {
+  } else if (dtype == ge::DT_UINT8) {
     elebyte = UINT8_BYTE;
     return true;
   }
@@ -466,11 +444,11 @@ bool IsUsingAllCoreByNumSegments(const int32_t& num_segments, const int32_t& cor
 }
 
 void ComputeUbTensorSizeNoAtomic(
-  const int32_t& ub_size, const std::vector<int64_t>& input_shape,
-  const std::string& input_dtype, const int32_t& e_size, int32_t& ub_tensor_size_id, int32_t& ub_tensor_size_input,
+  const int32_t& ub_size, const GeShape& input_shape,
+  const ge::DataType& input_dtype, const int32_t& e_size, int32_t& ub_tensor_size_id, int32_t& ub_tensor_size_input,
   int32_t& ub_tensor_size_output, const int32_t& output_ub_ele_num_one_row,
   const int32_t & need_core_num, const int32_t& mask, int32_t num_segments) {
-  int32_t input_ele_byte = (input_dtype == DTYPE_FP16)? 2 : 4;
+  int32_t input_ele_byte = (input_dtype == ge::DT_FLOAT16)? 2 : 4;
   if (num_segments == 1) {
     ub_tensor_size_id = ub_size / 2;
     ub_tensor_size_input = ub_tensor_size_id;
@@ -529,8 +507,8 @@ void NumSegmentOne(
     repeat_times_last_part = repeat_times;
   }
 }
-void ComputeUbTensorSize(const int32_t& ub_size, const std::vector<int64_t>& input_shape,
-                         const std::string& input_dtype, const int32_t& e_size,
+void ComputeUbTensorSize(const int32_t& ub_size, const GeShape& input_shape,
+                         const ge::DataType& input_dtype, const int32_t& e_size,
                          int32_t& ub_tensor_size, const int32_t& num_segments) {
   if (num_segments > 1) {
     if (e_size == 1) {
@@ -557,8 +535,7 @@ void ComputeUbTensorSize(const int32_t& ub_size, const std::vector<int64_t>& inp
 /******************MODE_FP32_INPUT_LAST_AXIS_ALIGN******************/
 void ComputeEleNumOneCore(const int32_t& min_ele_num, const int32_t& ids_num, const int32_t& core_num,
                           const int32_t& e_size, int32_t& ids_ele_num_front_core, int32_t& ids_ele_num_last_core,
-                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core,
-                          const int32_t& num_segments) {
+                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core, const int32_t& num_segments) {
   int32_t ids_num_align = UssCeil(ids_num, min_ele_num);
   if (num_segments > 1) {
     if (e_size == 1) {
@@ -707,7 +684,7 @@ void ComputeNumSegmentsParams(
 }
 
 void ComputeENumParams(
-  const std::string& input_dytpe, const int32_t& e_num, const EleByte& ele_byte,
+  const ge::DataType& input_dytpe, const int32_t& e_num, const EleByte& ele_byte,
   const int32_t& e_once_num, int32_t& e_mov_times_gm2ub_input_scalar, int32_t& e_ub2gm_front_burst_len_input_scalar,
   int32_t& e_num_front_part_input_scalar, int32_t& repeat_time_front_part_input_scalar,
   int32_t& e_ub2gm_last_burst_len_input_scalar, int32_t& e_num_last_part_input_scalar,
@@ -722,8 +699,8 @@ void ComputeENumParams(
   int32_t& repeat_times_last_part_lastcore, int32_t& e_mov_times_gm2ub_input_scalar_lastcore,
   int32_t& repeat_time_front_part_input_scalar_lastcore) {
   int32_t max_ele_num_one_ub_tensor = e_once_num;
-  int32_t mask = (input_dytpe == DTYPE_INT32) ? MASK_INT32 : MASK_FP16;
-  int32_t byte = (input_dytpe == DTYPE_INT32) ? INT32_BLOCK_NUM : FP16_BLOCK_NUM;
+  int32_t mask = (input_dytpe == ge::DT_INT32) ? MASK_INT32 : MASK_FP16;
+  int32_t byte = (input_dytpe == ge::DT_INT32) ? INT32_BLOCK_NUM : FP16_BLOCK_NUM;
   int32_t count = e_num * num_segments_front_core_input_scalar;
   int32_t lastcore_count = e_num * num_segments_last_core_input_scalar;
   if (e_num % byte == 0 && e_num > byte) {
@@ -881,7 +858,7 @@ void ComputeENumParams(
   }
 }
 
-void InitTilingParams(TilingParamsFp32& params) {
+void InitTilingParams(TilingParamsFp32& params, int32_t num_segments) {
   // common params
   params.select_key_input_scalar = 0;
   params.need_core_num_input_scalar = 0;
@@ -968,9 +945,12 @@ void InitTilingParams(TilingParamsFp32& params) {
   params.output_ub_init_last_row_times_front_part_last_core_input_scalar = 0;
   params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar = 0;
   params.output_ub_init_last_row_times_last_part_last_core_input_scalar = 0;
+
+  // num_segments init params
+  params.num_segments = num_segments;
 }
 
-void InitTilingParams(TilingParamsInt32& params) {
+void InitTilingParams(TilingParamsInt32& params, int32_t num_segments) {
   // common params
   params.select_key_input_scalar = 0;
   params.need_core_num_input_scalar = 0;
@@ -1012,417 +992,436 @@ void InitTilingParams(TilingParamsInt32& params) {
   params.repeat_times_last_part_lastcore = 0;
   params.e_mov_times_gm2ub_input_scalar_lastcore = 0;
   params.repeat_time_front_part_input_scalar_lastcore = 0;
+
+  // num_segments init params
+  params.num_segments = num_segments;
 }
 
-void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
+void WriteTilingParams(const std::string& opType, const TilingParamsFp32& params, utils::OpRunInfo& run_info) {
   // common params
-  ByteBufferPut(run_info.tiling_data, params.select_key_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
+  run_info.AddTilingData(params.select_key_input_scalar);
+  run_info.AddTilingData(params.need_core_num_input_scalar);
 
   // input data params
   // front core
-  ByteBufferPut(run_info.tiling_data, params.input_ele_num_front_core_input_scalar);
+  run_info.AddTilingData(params.input_ele_num_front_core_input_scalar);
   // front part front core
-  ByteBufferPut(run_info.tiling_data, params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_burst_len_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_burst_len_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_ele_num_ub_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_ele_num_ub_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_rows_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_rows_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_burst_len_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_burst_len_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_ele_num_ub_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_ele_num_ub_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_rows_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_rows_front_part_front_core_input_scalar);
   // last part front core
-  ByteBufferPut(run_info.tiling_data, params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_burst_len_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_burst_len_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_ele_num_ub_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_ele_num_ub_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_rows_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_rows_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_burst_len_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_burst_len_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_ele_num_ub_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_ele_num_ub_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_front_rows_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.input_last_rows_last_part_front_core_input_scalar);
   // last core
-  ByteBufferPut(run_info.tiling_data, params.input_ele_num_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_burst_len_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_burst_len_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_ele_num_ub_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_ele_num_ub_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_rows_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_rows_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_ele_num_last_core_input_scalar);
+  run_info.AddTilingData(params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_burst_len_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_burst_len_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_ele_num_ub_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_ele_num_ub_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_rows_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_rows_front_part_last_core_input_scalar);
   // last part last core
-  ByteBufferPut(run_info.tiling_data, params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_burst_len_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_burst_len_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_ele_num_ub_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_ele_num_ub_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_front_rows_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_rows_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_burst_len_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_burst_len_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_ele_num_ub_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_ele_num_ub_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_front_rows_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_rows_last_part_last_core_input_scalar);
 
   // e num params
-  ByteBufferPut(run_info.tiling_data, params.e_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_mov_times_gm2ub_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_front_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_num_front_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_last_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_num_last_part_input_scalar);
+  run_info.AddTilingData(params.e_num_input_scalar);
+  run_info.AddTilingData(params.e_mov_times_gm2ub_input_scalar);
+  run_info.AddTilingData(params.e_ub2gm_front_burst_len_input_scalar);
+  run_info.AddTilingData(params.e_num_front_part_input_scalar);
+  run_info.AddTilingData(params.e_ub2gm_last_burst_len_input_scalar);
+  run_info.AddTilingData(params.e_num_last_part_input_scalar);
 
   // ids params
-  ByteBufferPut(run_info.tiling_data, params.ids_size_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_mov_times_gm2ub_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_front_burst_len_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_last_burst_len_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_mov_times_gm2ub_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_front_burst_len_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_last_burst_len_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_size_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_mov_times_gm2ub_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_front_burst_len_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_last_burst_len_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_mov_times_gm2ub_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_front_burst_len_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_last_burst_len_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_last_part_last_core_input_scalar);
 
   // output init params
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_times_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_times_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_times_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_times_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_axis_align_front_part_ele_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.input_last_axis_align_floor_ele_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.last_part_vadd_mask_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_gm2ub_last_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data,
-                params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data,
-                params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data,
-                params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data,
-                params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_times_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_times_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_times_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_times_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.input_last_axis_align_front_part_ele_num_input_scalar);
+  run_info.AddTilingData(params.input_last_axis_align_floor_ele_num_input_scalar);
+  run_info.AddTilingData(params.last_part_vadd_mask_input_scalar);
+  run_info.AddTilingData(params.e_gm2ub_last_burst_len_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  run_info.AddTilingData(params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
+
+  if (opType == "SegmentSum") {
+    // num_segments params
+    run_info.AddTilingData(params.num_segments);
+  }
 }
 
-void WriteTilingParams(const TilingParamsInt32& params, OpRunInfo& run_info) {
+void WriteTilingParams(const std::string& opType, const TilingParamsInt32& params, utils::OpRunInfo& run_info) {
   // common params
-  ByteBufferPut(run_info.tiling_data, params.select_key_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.num_segments_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.num_segments_last_core_input_scalar);
+  run_info.AddTilingData(params.select_key_input_scalar);
+  run_info.AddTilingData(params.need_core_num_input_scalar);
+  run_info.AddTilingData(params.num_segments_front_core_input_scalar);
+  run_info.AddTilingData(params.num_segments_last_core_input_scalar);
 
   // ids params
-  ByteBufferPut(run_info.tiling_data, params.ids_size_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_mov_times_gm2ub_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_front_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_front_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_ele_num_ub_last_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.ids_last_burst_len_input_scalar);
+  run_info.AddTilingData(params.ids_size_input_scalar);
+  run_info.AddTilingData(params.ids_mov_times_gm2ub_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_front_part_input_scalar);
+  run_info.AddTilingData(params.ids_front_burst_len_input_scalar);
+  run_info.AddTilingData(params.ids_ele_num_ub_last_part_input_scalar);
+  run_info.AddTilingData(params.ids_last_burst_len_input_scalar);
 
   // e num params
-  ByteBufferPut(run_info.tiling_data, params.e_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_mov_times_gm2ub_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_front_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_num_front_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.repeat_time_front_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_last_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_num_last_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.repeat_time_last_part_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.align_scalar);
-  ByteBufferPut(run_info.tiling_data, params.align_scalar_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.e_gm2ub_front_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.e_gm2ub_last_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.num_segment_max);
-  ByteBufferPut(run_info.tiling_data, params.num_segment_max_time);
-  ByteBufferPut(run_info.tiling_data, params.num_segment_max_time_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.front_num_segment);
-  ByteBufferPut(run_info.tiling_data, params.front_num_segment_last);
-  ByteBufferPut(run_info.tiling_data, params.front_num_segment_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.front_num_segment_last_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_front_burst_len_input_scalar_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.e_ub2gm_last_burst_len_input_scalar_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.repeat_times);
-  ByteBufferPut(run_info.tiling_data, params.repeat_times_last_part);
-  ByteBufferPut(run_info.tiling_data, params.repeat_times_last_part_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.e_mov_times_gm2ub_input_scalar_lastcore);
-  ByteBufferPut(run_info.tiling_data, params.repeat_time_front_part_input_scalar_lastcore);
+  run_info.AddTilingData(params.e_num_input_scalar);
+  run_info.AddTilingData(params.e_mov_times_gm2ub_input_scalar);
+  run_info.AddTilingData(params.e_ub2gm_front_burst_len_input_scalar);
+  run_info.AddTilingData(params.e_num_front_part_input_scalar);
+  run_info.AddTilingData(params.repeat_time_front_part_input_scalar);
+  run_info.AddTilingData(params.e_ub2gm_last_burst_len_input_scalar);
+  run_info.AddTilingData(params.e_num_last_part_input_scalar);
+  run_info.AddTilingData(params.repeat_time_last_part_input_scalar);
+  run_info.AddTilingData(params.align_scalar);
+  run_info.AddTilingData(params.align_scalar_lastcore);
+  run_info.AddTilingData(params.e_gm2ub_front_burst_len_input_scalar);
+  run_info.AddTilingData(params.e_gm2ub_last_burst_len_input_scalar);
+  run_info.AddTilingData(params.num_segment_max);
+  run_info.AddTilingData(params.num_segment_max_time);
+  run_info.AddTilingData(params.num_segment_max_time_lastcore);
+  run_info.AddTilingData(params.front_num_segment);
+  run_info.AddTilingData(params.front_num_segment_last);
+  run_info.AddTilingData(params.front_num_segment_lastcore);
+  run_info.AddTilingData(params.front_num_segment_last_lastcore);
+  run_info.AddTilingData(params.e_ub2gm_front_burst_len_input_scalar_lastcore);
+  run_info.AddTilingData(params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+  run_info.AddTilingData(params.repeat_times);
+  run_info.AddTilingData(params.repeat_times_last_part);
+  run_info.AddTilingData(params.repeat_times_last_part_lastcore);
+  run_info.AddTilingData(params.e_mov_times_gm2ub_input_scalar_lastcore);
+  run_info.AddTilingData(params.repeat_time_front_part_input_scalar_lastcore);
+
+  if (opType == "SegmentSum") {
+    // num_segments params
+    run_info.AddTilingData(params.num_segments);
+  }
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& params) {
-  GELOGD("op [%s] : params.select_key_input_scalar=%d", op_type.c_str(), params.select_key_input_scalar);
-  GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
-  GELOGD("op [%s] : params.input_ele_num_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
+  OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
+  OP_LOGD(op_type, " : params.input_ele_num_front_core_input_scalar=%d",
          params.input_ele_num_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_mov_times_gm2ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_front_core_input_scalar=%d",
          params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_burst_len_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_burst_len_front_part_front_core_input_scalar=%d",
          params.input_front_burst_len_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_burst_len_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_burst_len_front_part_front_core_input_scalar=%d",
          params.input_last_burst_len_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_front_core_input_scalar=%d",
          params.input_front_ele_num_ub_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_front_core_input_scalar=%d",
          params.input_last_ele_num_ub_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_rows_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_rows_front_part_front_core_input_scalar=%d",
          params.input_front_rows_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_rows_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_rows_front_part_front_core_input_scalar=%d",
          params.input_last_rows_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_mov_times_gm2ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_front_core_input_scalar=%d",
          params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_burst_len_last_part_front_core_input_scalar=%d",
          params.input_front_burst_len_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_burst_len_last_part_front_core_input_scalar=%d",
          params.input_last_burst_len_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_front_core_input_scalar=%d",
          params.input_front_ele_num_ub_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_front_core_input_scalar=%d",
          params.input_last_ele_num_ub_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_rows_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_rows_last_part_front_core_input_scalar=%d",
          params.input_front_rows_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_rows_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_rows_last_part_front_core_input_scalar=%d",
          params.input_last_rows_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.input_ele_num_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_ele_num_last_core_input_scalar=%d",
          params.input_ele_num_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_mov_times_gm2ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_last_core_input_scalar=%d",
          params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_burst_len_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_burst_len_front_part_last_core_input_scalar=%d",
          params.input_front_burst_len_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_burst_len_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_burst_len_front_part_last_core_input_scalar=%d",
          params.input_last_burst_len_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_last_core_input_scalar=%d",
          params.input_front_ele_num_ub_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_last_core_input_scalar=%d",
          params.input_last_ele_num_ub_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_rows_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_rows_front_part_last_core_input_scalar=%d",
          params.input_front_rows_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_rows_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_rows_front_part_last_core_input_scalar=%d",
          params.input_last_rows_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_mov_times_gm2ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_last_core_input_scalar=%d",
          params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_burst_len_last_part_last_core_input_scalar=%d",
          params.input_front_burst_len_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_burst_len_last_part_last_core_input_scalar=%d",
          params.input_last_burst_len_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_last_core_input_scalar=%d",
          params.input_front_ele_num_ub_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_last_core_input_scalar=%d",
          params.input_last_ele_num_ub_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_front_rows_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_front_rows_last_part_last_core_input_scalar=%d",
          params.input_front_rows_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_rows_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_rows_last_part_last_core_input_scalar=%d",
          params.input_last_rows_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.e_num_input_scalar=%d", op_type.c_str(), params.e_num_input_scalar);
-  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar=%d", op_type.c_str(), params.e_mov_times_gm2ub_input_scalar);
-  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
+  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
+  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
          params.e_ub2gm_front_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_num_front_part_input_scalar=%d", op_type.c_str(), params.e_num_front_part_input_scalar);
-  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
+  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
          params.e_ub2gm_last_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_num_last_part_input_scalar=%d", op_type.c_str(), params.e_num_last_part_input_scalar);
-  GELOGD("op [%s] : params.ids_size_input_scalar=%d", op_type.c_str(), params.ids_size_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
+  OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
+  OP_LOGD(op_type, " : params.ids_ele_num_front_core_input_scalar=%d",
          params.ids_ele_num_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_mov_times_gm2ub_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_front_core_input_scalar=%d",
          params.ids_mov_times_gm2ub_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_front_burst_len_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_front_burst_len_front_core_input_scalar=%d",
          params.ids_front_burst_len_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_last_burst_len_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_last_burst_len_front_core_input_scalar=%d",
          params.ids_last_burst_len_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_front_core_input_scalar=%d",
          params.ids_ele_num_ub_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_front_core_input_scalar=%d",
          params.ids_ele_num_ub_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_last_core_input_scalar=%d",
          params.ids_ele_num_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_mov_times_gm2ub_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_last_core_input_scalar=%d",
          params.ids_mov_times_gm2ub_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_front_burst_len_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_front_burst_len_last_core_input_scalar=%d",
          params.ids_front_burst_len_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_last_burst_len_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_last_burst_len_last_core_input_scalar=%d",
          params.ids_last_burst_len_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_last_core_input_scalar=%d",
          params.ids_ele_num_ub_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_last_core_input_scalar=%d",
          params.ids_ele_num_ub_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar=%d",
          params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_times_front_part_front_core_input_scalar=%d",
          params.output_ub_init_times_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar=%d",
          params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_times_last_part_front_core_input_scalar=%d",
          params.output_ub_init_times_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar=%d",
          params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_times_front_part_last_core_input_scalar=%d",
          params.output_ub_init_times_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar=%d",
          params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_times_last_part_last_core_input_scalar=%d",
          params.output_ub_init_times_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.input_last_axis_align_front_part_ele_num_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_axis_align_front_part_ele_num_input_scalar=%d",
          params.input_last_axis_align_front_part_ele_num_input_scalar);
-  GELOGD("op [%s] : params.input_last_axis_align_floor_ele_num_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.input_last_axis_align_floor_ele_num_input_scalar=%d",
          params.input_last_axis_align_floor_ele_num_input_scalar);
-  GELOGD("op [%s] : params.last_part_vadd_mask_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.last_part_vadd_mask_input_scalar=%d",
          params.last_part_vadd_mask_input_scalar);
-  GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
          params.e_gm2ub_last_burst_len_input_scalar);
 
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
-         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
+         params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d",
          params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
-         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
+         params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d",
          params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
-         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
+         params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d",
          params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
-         op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
+         params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d",
          params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
+  OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& params) {
-  GELOGD("op [%s] : params.select_key_input_scalar=%d", op_type.c_str(), params.select_key_input_scalar);
-  GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
-  GELOGD("op [%s] : params.num_segments_front_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
+  OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
+  OP_LOGD(op_type, " : params.num_segments_front_core_input_scalar=%d",
          params.num_segments_front_core_input_scalar);
-  GELOGD("op [%s] : params.num_segments_last_core_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.num_segments_last_core_input_scalar=%d",
          params.num_segments_last_core_input_scalar);
-  GELOGD("op [%s] : params.ids_size_input_scalar=%d", op_type.c_str(), params.ids_size_input_scalar);
-  GELOGD("op [%s] : params.ids_mov_times_gm2ub_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
+  OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_input_scalar=%d",
          params.ids_mov_times_gm2ub_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_front_part_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_input_scalar=%d",
          params.ids_ele_num_ub_front_part_input_scalar);
-  GELOGD("op [%s] : params.ids_front_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_front_burst_len_input_scalar=%d",
          params.ids_front_burst_len_input_scalar);
-  GELOGD("op [%s] : params.ids_ele_num_ub_last_part_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_input_scalar=%d",
          params.ids_ele_num_ub_last_part_input_scalar);
-  GELOGD("op [%s] : params.ids_last_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.ids_last_burst_len_input_scalar=%d",
          params.ids_last_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_num_input_scalar=%d", op_type.c_str(), params.e_num_input_scalar);
-  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar=%d", op_type.c_str(), params.e_mov_times_gm2ub_input_scalar);
-  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
+  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
+  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
          params.e_ub2gm_front_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_num_front_part_input_scalar=%d", op_type.c_str(), params.e_num_front_part_input_scalar);
-  GELOGD("op [%s] : params.repeat_time_front_part_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
+  OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar=%d",
          params.repeat_time_front_part_input_scalar);
-  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
          params.e_ub2gm_last_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_num_last_part_input_scalar=%d", op_type.c_str(), params.e_num_last_part_input_scalar);
-  GELOGD("op [%s] : params.repeat_time_last_part_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
+  OP_LOGD(op_type, " : params.repeat_time_last_part_input_scalar=%d",
          params.repeat_time_last_part_input_scalar);
 
-  GELOGD("op [%s] : params.align_scalar=%d", op_type.c_str(), params.align_scalar);
-  GELOGD("op [%s] : params.align_scalar_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.align_scalar=%d",params.align_scalar);
+  OP_LOGD(op_type, " : params.align_scalar_lastcore=%d",
          params.align_scalar_lastcore);
-  GELOGD("op [%s] : params.e_gm2ub_front_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_gm2ub_front_burst_len_input_scalar=%d",
          params.e_gm2ub_front_burst_len_input_scalar);
-  GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
          params.e_gm2ub_last_burst_len_input_scalar);
-  GELOGD("op [%s] : params.num_segment_max=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.num_segment_max=%d",
          params.num_segment_max);
-  GELOGD("op [%s] : params.num_segment_max_time=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.num_segment_max_time=%d",
          params.num_segment_max_time);
-  GELOGD("op [%s] : params.num_segment_max_time_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.num_segment_max_time_lastcore=%d",
          params.num_segment_max_time_lastcore);
-  GELOGD("op [%s] : params.front_num_segment=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.front_num_segment=%d",
          params.front_num_segment);
-  GELOGD("op [%s] : params.front_num_segment_last=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.front_num_segment_last=%d",
          params.front_num_segment_last);
-  GELOGD("op [%s] : params.front_num_segment_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.front_num_segment_lastcore=%d",
          params.front_num_segment_lastcore);
-  GELOGD("op [%s] : params.front_num_segment_last_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.front_num_segment_last_lastcore=%d",
          params.front_num_segment_last_lastcore);
-  GELOGD("op [%s] : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d",
          params.e_ub2gm_front_burst_len_input_scalar_lastcore);
-  GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d",
          params.e_ub2gm_last_burst_len_input_scalar_lastcore);
-  GELOGD("op [%s] : params.repeat_times=%d", op_type.c_str(), params.repeat_times);
-  GELOGD("op [%s] : params.repeat_times_last_part=%d", op_type.c_str(), params.repeat_times_last_part);
-  GELOGD("op [%s] : params.repeat_times_last_part_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.repeat_times=%d", params.repeat_times);
+  OP_LOGD(op_type, " : params.repeat_times_last_part=%d", params.repeat_times_last_part);
+  OP_LOGD(op_type, " : params.repeat_times_last_part_lastcore=%d",
          params.repeat_times_last_part_lastcore);
-  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar_lastcore=%d",
          params.e_mov_times_gm2ub_input_scalar_lastcore);
-  GELOGD("op [%s] : params.repeat_time_front_part_input_scalar_lastcore=%d", op_type.c_str(),
+  OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar_lastcore=%d",
          params.repeat_time_front_part_input_scalar_lastcore);
+  OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
 // tiling function
-bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_paras,
-                              const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
-  GELOGI("op[%s] op tiling begin.", op_type.c_str());
-  if (op_paras.inputs.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty.");
-    return false;
-  }
-  if (op_paras.inputs.size() < 2) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs.size() < 2.");
-    return false;
-  }
-  if (op_paras.inputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_data tensor is empty.");
-    return false;
-  }
-  if (op_paras.inputs[1].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ids tensor is empty.");
-    return false;
-  }
-  const std::vector<int64_t>& input_shape = op_paras.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& ids_shape = op_paras.inputs[1].tensor[0].shape;
-  const int32_t& input_size = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
-  const int32_t& ids_size = std::accumulate(ids_shape.begin(), ids_shape.end(), 1, std::multiplies<int>());
-  GELOGD("op [%s] : input_size=%d, ids_size=%d", op_type.c_str(), input_size, ids_size);
-  if (input_shape.size() < ids_shape.size()) {
+bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op_paras,
+                              const std::vector<int64_t>& opCompileInfo, utils::OpRunInfo& run_info) {
+  using namespace ge;
+
+  OP_LOGI(op_type.c_str(), "Tiling running.");
+
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
+
+  // get input Desc
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  const GeShape &input_shape = input_desc->MutableShape();
+
+  // get input ids Desc
+  input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  const GeShape &ids_shape = input_desc->MutableShape();
+
+  const int32_t& input_size = input_shape.GetShapeSize();
+  const int32_t& ids_size = ids_shape.GetShapeSize();
+
+  OP_LOGD(op_type, " : input_size=%d, ids_size=%d", input_size, ids_size);
+  if (input_shape.GetDimNum() < ids_shape.GetDimNum()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim of input must be greater than or equal with dim of ids");
     return false;
   }
-  for (unsigned i = 0; i < ids_shape.size(); i++) {
-    GELOGD("op[%s] ids_shape[i] is %d", op_type.c_str(), ids_shape[i]);
-    if (input_shape[i] != ids_shape[i]) {
+  for (unsigned i = 0; i < ids_shape.GetDimNum(); i++) {
+    OP_LOGD(op_type, " ids_shape[i] is %d",ids_shape.GetDim(i));
+    if (input_shape.GetDim(i) != ids_shape.GetDim(i)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
       return false;
     }
   }
-  std::string key_num_segments = "num_segments";
-  if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
-    return false;
+  int32_t num_segments;
+  std::vector<int64_t> shape_value;
+  if (op_type == "SegmentSum") {
+    // the input segment_ids index is 1
+    OP_TILING_CHECK(!(ops::GetConstIntData(op_paras, 1, shape_value)),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                    return false);
+    num_segments = (*std::max_element(std::begin(shape_value), std::end(shape_value))) + 1;
+    OP_LOGD(op_type, " : num_segments=%d", num_segments);
+  } else {
+    std::vector<int64_t> key_num_segments;
+    if (!(ops::GetConstIntData(op_paras, 2, shape_value))) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
+      return false;
+    }
+    ops::GetConstInt(op_paras, 2, num_segments);
+    if (num_segments <= 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments is small then 0");
+      return false;
+    }
+    OP_LOGD(op_type, " : num_segments=%d", num_segments);
   }
-  const int32_t* num_segments_ptr =
-    reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
-  int32_t num_segments = *num_segments_ptr;
-  if (num_segments <= 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments is small then 0");
-    return false;
-  }
-  GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
   if (input_size == 0 || ids_size == 0) {
     TilingParamsFp32 params;
-    InitTilingParams(params);
+    InitTilingParams(params, num_segments);
     params.select_key_input_scalar = 0;
     params.need_core_num_input_scalar = 1;
-    WriteTilingParams(params, run_info);
+    WriteTilingParams(op_type, params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
-    run_info.block_dim = params.need_core_num_input_scalar;
-    // workspace, null for tik op
-    std::vector<int64_t> workspace;
-    run_info.workspaces = workspace;
+    run_info.SetBlockDim(params.need_core_num_input_scalar);
     return true;
   }
   int32_t e_size = input_size / ids_size;
-  GELOGD("op[%s] e_size is %d", op_type.c_str(), e_size);
-  const std::string& input_dtype = op_paras.inputs[0].tensor[0].dtype;
-  const std::string& ids_dtype = op_paras.inputs[1].tensor[0].dtype;
+  OP_LOGD(op_type, " e_size is %d", e_size);
+  const ge::DataType input_dtype = operator_info->MutableInputDesc(0)->GetDataType();
+  const ge::DataType ids_dtype = operator_info->MutableInputDesc(1)->GetDataType();
   bool flag = false;
   // get input dtype
   EleByte input_ele_byte = FP32_BYTE;
@@ -1434,7 +1433,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
 
   EleByte output_ele_byte = input_ele_byte;
   int32_t output_ub_ele_num_one_row = BYTE_BLOCK / output_ele_byte;
-  GELOGD("op[%s] output_ub_ele_num_one_row is %d", op_type.c_str(), output_ub_ele_num_one_row);
+  OP_LOGD(op_type, " output_ub_ele_num_one_row is %d", output_ub_ele_num_one_row);
   // get ids dtype
   EleByte ids_ele_byte = FP32_BYTE;
   flag = GetEleDtype(ids_dtype, ids_ele_byte);
@@ -1446,23 +1445,22 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
   int32_t core_num = 1;
   int32_t ub_size = 256 * 1024;
   int32_t ub_tensor_num = 0;
-  flag = GetUssCompileParams(op_type, op_compile_info_json, core_num, ub_size, ub_tensor_num);
+  flag = GetUssCompileParams(op_type, opCompileInfo, core_num, ub_size, ub_tensor_num);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
     return false;
   }
-
-  if (input_dtype == DTYPE_FP32) {
+  if (input_dtype == ge::DT_FLOAT) {
     int32_t ub_tensor_size = 0;
     ComputeUbTensorSize(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, num_segments);
     if (e_size == 1) {
       ub_tensor_size = ub_tensor_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
     }
-    GELOGD("op [%s] : ub_tensor_size=%d", op_type.c_str(), ub_tensor_size);
+    OP_LOGD(op_type, " : ub_tensor_size=%d", ub_tensor_size);
     int32_t ub_tensor_ele_num = ub_tensor_size / input_ele_byte;
     // fp32 tiling params
     TilingParamsFp32 params;
-    InitTilingParams(params);
+    InitTilingParams(params, num_segments);
     // select key
     flag = GetTilingMode(input_shape, e_size, input_dtype, ub_tensor_ele_num, params.select_key_input_scalar,
                          num_segments);
@@ -1910,24 +1908,21 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
           BYTE_BLOCK);
     }
     // write tiling params to run_info
-    WriteTilingParams(params, run_info);
+    WriteTilingParams(op_type, params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
-    run_info.block_dim = params.need_core_num_input_scalar;
-    // workspace, null for tik op
-    std::vector<int64_t> workspace;
-    run_info.workspaces = workspace;
-  } else if (input_dtype == DTYPE_INT32 || input_dtype == DTYPE_FP16) {
+    run_info.SetBlockDim(params.need_core_num_input_scalar);
+  } else if (input_dtype == ge::DT_INT32 || input_dtype == ge::DT_FLOAT16) {
     // int32 tiling params
     TilingParamsInt32 params;
-    InitTilingParams(params);
+    InitTilingParams(params, num_segments);
     // commmn params
     // select key
     int32_t e_once_num = 0;
     int32_t id_once_num = 0;
     int32_t mask = 0;
-    if (input_dtype == DTYPE_INT32) {
+    if (input_dtype == ge::DT_INT32) {
       mask = MASK_INT32;
     } else {
       mask = MASK_FP16;
@@ -1941,19 +1936,18 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     ComputeUbTensorSizeNoAtomic(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, ub_tensor_size_input,
                                 ub_tensor_size_output, output_ub_ele_num_one_row,
                                 params.need_core_num_input_scalar, mask, num_segments);
-    GELOGD("op [%s] : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
-           op_type.c_str(), ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
+    OP_LOGD(op_type, " : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
+           ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
 
     flag = GetTilingModeNoAtomic(input_shape, e_size, ids_size, input_dtype, ids_dtype, ub_tensor_size,
     ub_tensor_size_input, params.select_key_input_scalar, e_once_num, id_once_num, params.need_core_num_input_scalar,
     output_ub_ele_num_one_row, params.num_segment_max, mask, input_size, num_segments);
-    GELOGD("op[%s]:e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", op_type.c_str(), e_once_num,
+    OP_LOGD(op_type, " :e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", e_once_num,
            id_once_num, params.num_segment_max);
     if (!flag) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetTilingMode failed.");
       return false;
     }
-
     ComputeNumSegmentsParams(
       params.need_core_num_input_scalar, num_segments,
       params.num_segments_front_core_input_scalar, params.num_segments_last_core_input_scalar,
@@ -1983,18 +1977,16 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       params.repeat_times, params.repeat_times_last_part, params.repeat_times_last_part_lastcore,
       params.e_mov_times_gm2ub_input_scalar_lastcore, params.repeat_time_front_part_input_scalar_lastcore);
     // write tiling params to run_info
-    WriteTilingParams(params, run_info);
+    WriteTilingParams(op_type, params, run_info);
     // cout tiling params
     PrintTilingParams(op_type, params);
     // BlockDim, core num used in tik op
-    run_info.block_dim = params.need_core_num_input_scalar;
-    // workspace, null for tik op
-    std::vector<int64_t> workspace;
-    run_info.workspaces = workspace;
+    run_info.SetBlockDim(params.need_core_num_input_scalar);
   }
   GELOGI("op[%s] op tiling success.", op_type.c_str());
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(UnsortedSegmentSum, UnsortedSegmentSumTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(UnsortedSegmentSum, UnsortedSegmentSumTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(SegmentSum, UnsortedSegmentSumTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

@@ -368,6 +368,7 @@ set(_tf_plugins
   scatter_sub_plugin.cc
   scatter_update_plugin.cc
   segment_max_plugin.cc
+  segment_sum_plugin.cc
   select_plugin.cc
   select_plugin_v2.cc
   selu_plugin.cc

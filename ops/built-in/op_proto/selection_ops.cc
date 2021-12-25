@@ -27,6 +27,7 @@
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
+#include "op_const.h"
 #include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
@@ -2060,6 +2061,86 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxDInferShape) {
 COMMON_INFER_FUNC_REG(SegmentMaxD, SegmentMaxDInferShape);
 VERIFY_FUNC_REG(SegmentMaxD, SegmentMaxDVerify);
 // ----------------SegmentMaxD END-------------------
+
+// ----------------SegmentSum-------------------
+static bool SegmentSumShapeVerify(const Operator& op, const std::string& input_name,
+                                  const std::string& segment_ids_name) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_shape_dims = op_info->MutableInputDesc("x")->MutableShape().GetDims();
+  auto segment_ids_shape_dims = op_info->MutableInputDesc("segment_ids")->MutableShape().GetDims();
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(SegmentSum, SegmentSumInferShapeVerifier) {
+  if (!SegmentSumShapeVerify(op, "x", "segment_ids")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(SegmentSumInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_info->MutableInputDesc("x");
+  auto output_desc = op_info->MutableOutputDesc("y");
+  auto shape_x = input_x_desc->MutableShape().GetDims();
+  auto output_shape_dims = input_x_desc->MutableShape().GetDims();
+  if (output_shape_dims.empty()) {
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("the input[x]'s shape should not be empty."));
+    return GRAPH_FAILED;
+  }
+  const vector<string> depend_name = {"segment_ids"};
+  PREPARE_DYNAMIC_SHAPE(depend_name);
+  const std::string segment_ids_name = "segment_ids";
+  Tensor segment_ids;
+  int64_t first_axis_dims;
+  int64_t out_range_first_dims;
+  if (GRAPH_SUCCESS != op.GetInputConstData(segment_ids_name, segment_ids)) {
+    OP_LOGI("segment_max", "GetInputConstData %s failed.", segment_ids_name.c_str());
+    first_axis_dims = -1;
+    out_range_first_dims = 0;
+  } else {
+    auto data_type = op.GetInputDesc(segment_ids_name).GetDataType();
+    std::vector<int64_t> const_data;
+    if (!GetConstIntData(segment_ids, data_type, const_data)) {
+      std::string err_msg = ConcatString("failed to call GetConstIntData function ",
+          "due to invalid data type of input[segment_ids]. data_type is ",
+          DTypeStr(data_type));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+    first_axis_dims = (*std::max_element(const_data.begin(), const_data.end())) + 1;
+    out_range_first_dims = first_axis_dims;
+  }
+
+  if (IsUnknownRankShape(shape_x)) {
+    output_desc->SetShape(GeShape(shape_x));
+  } else {
+    output_shape_dims[0] = first_axis_dims;
+    Shape output_shape(output_shape_dims);
+    output_desc->SetShape(GeShape(output_shape_dims));
+    if (IsUnKnownShape) {
+      std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+      std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+      output_shape_range.push_back(std::pair<int64_t, int64_t>(out_range_first_dims, first_axis_dims));
+      input_x_desc->GetShapeRange(shape_range_x);
+      for (size_t i = 1; i < output_shape_dims.size(); i++) {
+        if (i < shape_range_x.size()) {
+          output_shape_range.push_back(shape_range_x[i]);
+        }
+      }
+      MakeUpShapeRange(output_shape_dims, output_shape_range);
+      output_desc->SetShapeRange(output_shape_range);
+    }
+  }
+  DataType input_dtype = input_x_desc->GetDataType();
+  output_desc->SetDataType(input_dtype);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(SegmentSum, SegmentSumInferShape);
+VERIFY_FUNC_REG(SegmentSum, SegmentSumInferShapeVerifier);
+// ----------------SegmentSum END-------------------
 
 // ----------------SliceD Op Begin ----------------------
 IMPLEMT_VERIFIER(SliceD, SliceDVerify) {

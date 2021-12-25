@@ -299,7 +299,7 @@ class UnsortedSegmentSum():
         Modify : 2020-12-9
     """
 
-    def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name):
+    def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name, opname="unsort_segment_sum"):
         """
         constructor of class UnsortedSegmentSum
 
@@ -334,6 +334,7 @@ class UnsortedSegmentSum():
         self.tik_instance = tik.Tik()
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
         self.core_num = _tik_get_core_num()
+        self.opname = opname
         if self.input_dtype == Constant.DTYPE_FP32:
             self.ub_tensor_num = 3
 
@@ -343,7 +344,7 @@ class UnsortedSegmentSum():
                 Modify : 2020-12-9
             """
 
-            def __init__(self, tik_instance, input_dtype, ids_dtype, num_segments_dtype):
+            def __init__(self, tik_instance, input_dtype, ids_dtype, num_segments_dtype, opname):
                 """
                 constructor of class GmTensor
 
@@ -361,9 +362,10 @@ class UnsortedSegmentSum():
                 self.input_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,), name="input_gm",
                                                     scope=tik.scope_gm)
                 self.ids_gm = tik_instance.Tensor(ids_dtype, (Constant.MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
-                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (Constant.MIN_TENSOR_ELE_NUM,),
-                                                           name="num_segments",
-                                                           scope=tik.scope_gm)
+                if opname == "unsort_segment_sum":
+                    self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (Constant.MIN_TENSOR_ELE_NUM,),
+                                                               name="num_segments",
+                                                               scope=tik.scope_gm)
                 if input_dtype == Constant.DTYPE_FP32:
                     self.output_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,),
                                                          name="output_gm",
@@ -384,7 +386,7 @@ class UnsortedSegmentSum():
             Modify : 2020-12-9
             """
 
-            def __init__(self):
+            def __init__(self, opname):
                 """
                 constructor of class UbTensor
 
@@ -399,7 +401,8 @@ class UnsortedSegmentSum():
                 self.input_ub = None
                 self.ids_ub = None
                 self.output_ub = None
-                self.num_segments_ub = None
+                if opname == "unsort_segment_sum":
+                    self.num_segments_ub = None
 
         # scalar of tiling params
         class CommonScalar():
@@ -431,6 +434,8 @@ class UnsortedSegmentSum():
                                                                    name="num_segments_front_core")
                 self.num_segments_last_core = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="num_segments_last_core")
+                self.num_segments = tik_instance.Scalar(dtype=num_segments_dtype,
+                                                        name="num_segments")
 
         class Fp32InputDataInputScalar():
             """
@@ -769,23 +774,24 @@ class UnsortedSegmentSum():
                         dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_row_last_part_last_core")
 
-        self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype, self.ids_dtype, self.num_segments_dtype)
-        self.obj_ub_tensor = UbTensor()
+        self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype, self.ids_dtype, self.num_segments_dtype,
+                                      self.opname)
+        self.obj_ub_tensor = UbTensor(self.opname)
         self.obj_common_scalar = CommonScalar(self.tik_instance, self.num_segments_dtype, self.ids_dtype)
         self.obj_fp32_input_data_input_scalar = Fp32InputDataInputScalar(self.tik_instance)
         self.obj_fp32_e_num_input_scalar = Fp32ENumInputScalar(self.tik_instance)
         self.obj_fp32_ids_input_scalar = Fp32IdsInputScalar(self.tik_instance)
         self.obj_fp32_output_init_input_scalar = Fp32OutputInitInputScalar(self.tik_instance)
 
-        with self.tik_instance.new_stmt_scope():
-            # num_segments
-            self.obj_ub_tensor.num_segments_ub = self.tik_instance.Tensor(self.num_segments_dtype,
-                                                                          (Constant.MIN_TENSOR_ELE_NUM,),
-                                                                          name="num_segments_ub",
-                                                                          scope=tik.scope_ubuf)
-            self.tik_instance.data_move(self.obj_ub_tensor.num_segments_ub, self.obj_gm_tensor.num_segments_gm, 0, 1, 1,
-                                        0, 0)
-            self.obj_common_scalar.num_segments_scalar.set_as(self.obj_ub_tensor.num_segments_ub[1])
+        if self.opname == "unsorted_segment_sum":
+            with self.tik_instance.new_stmt_scope():
+                self.obj_ub_tensor.num_segments_ub = self.tik_instance.Tensor(self.num_segments_dtype,
+                                                                              (Constant.MIN_TENSOR_ELE_NUM,),
+                                                                              name="num_segments_ub",
+                                                                              scope=tik.scope_ubuf)
+                self.tik_instance.data_move(self.obj_ub_tensor.num_segments_ub,
+                                            self.obj_gm_tensor.num_segments_gm, 0, 1, 1, 0, 0)
+                self.obj_common_scalar.num_segments_scalar.set_as(self.obj_ub_tensor.num_segments_ub[1])
 
         with self.tik_instance.new_stmt_scope():
             self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE,
@@ -1087,6 +1093,10 @@ class UnsortedSegmentSum():
             self.obj_fp32_output_init_input_scalar. \
                 init_times_last_row_last_part_last_core. \
                 set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            if self.opname == "segment_sum":
+                input_scalar_index = input_scalar_index + 1
+                self.obj_common_scalar.num_segments.\
+                set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
 
     def unsorted_segment_sum(self):
         """
@@ -1111,9 +1121,9 @@ class UnsortedSegmentSum():
                             name="output_ub",
                             scope=tik.scope_ubuf)
                         self.tik_instance.vector_dup(Constant.MASK_FP32, self.obj_ub_tensor.output_ub[0], 0,
-                                1, 1, 8)
-                        self.tik_instance.data_move(self.obj_gm_tensor.output_gm[0],
-                                                    self.obj_ub_tensor.output_ub[0], 0, 1, 1, 0, 0)
+                                                     1, 1, 8)
+                        self.tik_instance.data_move(self.obj_gm_tensor.output_gm[0], self.obj_ub_tensor.output_ub[0],
+                                                    0, 1, 1, 0, 0)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == \
@@ -1302,12 +1312,18 @@ class UnsortedSegmentSum():
         opt_config = {
             "enable_const_fold": True
         }
-
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm, self.obj_gm_tensor.num_segments_gm],
-            outputs=[self.obj_gm_tensor.output_gm],
-            flowtable=[self.obj_gm_tensor.tiling_gm], config=opt_config)
+        if self.opname == "segment_sum":
+            self.tik_instance.BuildCCE(
+                kernel_name=self.kernel_name,
+                inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm],
+                outputs=[self.obj_gm_tensor.output_gm],
+                flowtable=[self.obj_gm_tensor.tiling_gm], config=opt_config)
+        else:
+            self.tik_instance.BuildCCE(
+                kernel_name=self.kernel_name,
+                inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm, self.obj_gm_tensor.num_segments_gm],
+                outputs=[self.obj_gm_tensor.output_gm],
+                flowtable=[self.obj_gm_tensor.tiling_gm], config=opt_config)
 
 
 def _enable_atomic_add(tik_inst):

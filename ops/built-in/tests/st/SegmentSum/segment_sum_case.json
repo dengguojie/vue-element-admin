@@ -1,0 +1,134 @@
+[
+  {
+      "case_name": "Test_SegmentSum_001",
+      "op": "SegmentSum",
+      "calc_expect_func_file": "test_segment_sum_golden.py:calc_expect_func",
+      "input_desc": [
+          {
+              "format": "ND",
+              "type": "float32",
+              "shape": [-1, -1],
+              "typical_shape": [3, 4],
+              "shape_range": [[0, 400], [0, 400]],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "x"
+          },
+          {
+              "format": "ND",
+              "type": "int32",
+              "shape": [3],
+              "typical_shape": [3],
+              "shape_range": [[0, 400]],
+              "value": [0, 0, 0],
+              "is_const": true,
+              "name": "segment_ids"
+          }
+      ],
+      "output_desc": [
+          {
+              "format": "ND",
+              "type": ["float32"],
+              "shape": [-1, -1],
+              "typical_shape": [1, 4],
+              "shape_range": [[0, 400], [0, 400]],
+              "name": "y"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SegmentSum_002",
+        "op": "SegmentSum",
+        "calc_expect_func_file": "test_segment_sum_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [-1, -1],
+                "typical_shape": [3, 4],
+                "shape_range": [[0, 400], [0, 400]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "int32",
+                "shape": [3],
+                "typical_shape": [3],
+                "shape_range": [[0, 400]],
+                "value": [0, 0, 0],
+                "is_const": true,
+                "name": "segment_ids"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": ["float16"],
+                "shape": [-1, -1],
+                "typical_shape": [1, 4],
+                "shape_range": [[0, 400], [0, 400]],
+                "name": "y"
+              }
+        ]
+    },
+    {
+        "case_name": "Test_SegmentSum_003",
+        "op": "SegmentSum",
+        "calc_expect_func_file": "test_segment_sum_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [-1, -1],
+                "typical_shape": [3, 9],
+                "shape_range": [[0, 400], [0, 400]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "int32",
+                "shape": [3],
+                "typical_shape": [3],
+                "shape_range": [[0, 400]],
+                "value": [0, 0, 0],
+                "is_const": true,
+                "name": "segment_ids"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": ["float32"],
+                "shape": [-1, -1],
+                "typical_shape": [1, 9],
+                "shape_range": [[0, 400], [0, 400]],
+                "name": "y"
+              }
+        ]
+    }
+]
