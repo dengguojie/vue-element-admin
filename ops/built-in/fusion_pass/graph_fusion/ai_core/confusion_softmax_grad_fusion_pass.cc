@@ -37,7 +37,6 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
-
 // node type
 static const string TYPE_SOFTMAXGRAD = "ConfusionSoftmaxGrad";
 static const string TYPE_MUL = "Mul";
@@ -74,11 +73,9 @@ after:
 */
 
 vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
-
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGrad pattern begin.");
 
   vector<FusionPattern*> patterns;
-
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConfusionSoftmaxGradFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
@@ -86,8 +83,8 @@ vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
   pattern->AddOpDesc(PATTERN_MUL, {TYPE_MUL})
       .AddOpDesc(PATTERN_SUM, {TYPE_REDUCESUMD})
       .AddOpDesc(PATTERN_SUB, {TYPE_SUB})
-      .SetInputs(PATTERN_SUM, {PATTERN_MUL})// mul->reducesumD
-      .SetInputs(PATTERN_SUB, {PATTERN_SUM})// reducesumD->sub
+      .SetInputs(PATTERN_SUM, {PATTERN_MUL}) // mul->reducesumD
+      .SetInputs(PATTERN_SUB, {PATTERN_SUM}) // reducesumD->sub
       .SetOutput(PATTERN_SUB);
 
   patterns.push_back(pattern);
@@ -223,10 +220,8 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   FUSION_PASS_CHECK(graph.RemoveNode(reduceSumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove reduce sum node failed."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Leave ConfusionSoftmaxGradFusionPass");
-
   return SUCCESS;
 }
 
 REGISTER_PASS("ZConfusionSoftmaxGradFusionPass", BUILT_IN_GRAPH_PASS, ConfusionSoftmaxGradFusionPass);
-
 }  // namespace fe

@@ -35,7 +35,6 @@
 #include "error_util.h"
 
 namespace fe {
-
 static const char* CAST = "Cast";
 static const string PATTERN_CAST1 = "cast1";
 static const string PATTERN_CAST2 = "cast2";
@@ -55,7 +54,7 @@ vector<FusionPattern *> CastCastFusionPass::DefinePatterns() {
     return patterns;
 }
 
-Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2) {
+Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2) const {
     std::shared_ptr<ge::OpDesc> cast1Op = castNode1->GetOpDesc();
     std::shared_ptr<ge::OpDesc> cast2Op = castNode2->GetOpDesc();
     FUSION_PASS_CHECK(cast1Op == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "cast1Op is null"), return FAILED);
@@ -75,8 +74,8 @@ Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2)
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 out data node size is more than 1");
         return FAILED;
     }
-    if ((cast1InputDataType == ge::DT_FLOAT16 && cast2OutputDataType == ge::DT_INT32)
-        || (cast1InputDataType == ge::DT_INT32 && cast2OutputDataType == ge::DT_FLOAT16)) {
+    if ((cast1InputDataType == ge::DT_FLOAT16 && cast2OutputDataType == ge::DT_INT32) ||
+        (cast1InputDataType == ge::DT_INT32 && cast2OutputDataType == ge::DT_FLOAT16)) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Cast1 input type is u% Cast2 output data type is u%",
                 cast1InputDataType, cast2OutputDataType);
         return SUCCESS;
@@ -85,7 +84,6 @@ Status CastCastFusionPass::IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2)
 }
 
 Status CastCastFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusionNodes) {
-
     ge::NodePtr castNode1 = GetNodeFromMapping(PATTERN_CAST1, mapping);
     ge::NodePtr castNode2 = GetNodeFromMapping(PATTERN_CAST2, mapping);
     FUSION_PASS_CHECK(castNode1 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "cast1 node is null"), return FAILED);

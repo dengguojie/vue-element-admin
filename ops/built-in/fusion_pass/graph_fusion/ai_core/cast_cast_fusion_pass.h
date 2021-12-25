@@ -30,7 +30,7 @@ class CastCastFusionPass : public PatternFusionBasePass {
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
  private:
-  Status IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2);
+  Status IsMatch(ge::NodePtr castNode1, ge::NodePtr castNode2) const;
   Status ReLinkControlAnchor(ge::NodePtr castNode1, ge::NodePtr castNode2);
 
   const string FUSED_OP_TYPE = "CastCast";

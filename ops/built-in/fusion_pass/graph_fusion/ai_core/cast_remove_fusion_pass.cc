@@ -38,9 +38,7 @@
 #include "tbe_ops_pass_util.h"
 
 using namespace ge;
-namespace fe
-{
-
+namespace fe {
 static const char *FUSED_NODE = "Cast";
 static const std::string PATTERN_FUSEDNODE = "Cast";
 
@@ -75,8 +73,7 @@ Status CastRemoveFusionPass::ReLinkControlAnchor(ge::NodePtr castNode, ge::NodeP
 }
 
 Status CastRemoveFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
-                                      vector<ge::NodePtr> &fusionNodes) {
-    // PatternFusionUtil patternFusionUtil;
+                                    vector<ge::NodePtr> &fusionNodes) {
     ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
     FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "fusedNode is null, fusion failed."), return PARAM_INVALID);

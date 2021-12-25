@@ -37,7 +37,7 @@ Status AssitHelp(const int32_t n, vector<int64_t> shape, Dtype& output1) {
 }
 
 Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info,
-                                                  Operator& op) {
+                                                  const Operator& op) {
   bool keep_dims = false;
   const string keep_dims_name = "keep_dims";
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {

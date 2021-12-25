@@ -49,7 +49,7 @@ class AReduceSumFusionPass : public PatternFusionBasePass {
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  Status CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, Operator& op);
+  Status CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, const Operator& op);
   const string FUSED_OP_TYPE = "ReduceSum";
 };
 }  // namespace fe

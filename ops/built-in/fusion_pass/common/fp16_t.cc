@@ -729,8 +729,7 @@ static uint16_t fp16Div(uint16_t v1, uint16_t v2) {
       mB = mTmp;
     }
     mDiv = (float)(mA * 1.0f / mB);
-    fp16_t fpDiv;
-    fpDiv = mDiv;
+    fp16_t fpDiv = mDiv;
     ret = fpDiv.val;
     if (sA != sB) {
       ret |= FP16_SIGN_MASK;
