@@ -34,6 +34,7 @@ class NLLLossFusionPass : public PatternFusionBasePass {
                                 vector<ge::NodePtr>& new_nodes, bool& fail_status);
   ge::NodePtr AddDivNode(ge::NodePtr nll_loss_node, ge::NodePtr nll_loss_sum_node, ge::ComputeGraph& graph,
                          vector<ge::NodePtr>& new_nodes, bool& fail_status);
+  bool IsFusionPassEnable(ge::NodePtr nll_loss_node, string reduction, string aic_version, bool is_unknown_shape);
   const string FUSED_OP_TYPE = "NLLLoss";
 };
 

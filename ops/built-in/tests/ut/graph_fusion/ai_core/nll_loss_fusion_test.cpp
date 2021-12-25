@@ -402,3 +402,126 @@ TEST_F(nll_loss_fusion_test, nll_loss_fusion_test_6) {
   EXPECT_EQ(find_nll_loss, true);
   EXPECT_EQ(find_div, true);
 }
+
+TEST_F(nll_loss_fusion_test, nll_loss_fusion_test_7) {
+
+  // x
+  auto data_x = op::Data("x");
+  std::vector<int64_t> data_x_vec{1028, 1028};
+  ge::Shape data_x_shape(data_x_vec);
+  ge::TensorDesc data_x_desc(data_x_shape, FORMAT_ND, DT_FLOAT);
+  data_x.update_input_desc_x(data_x_desc);
+  data_x.update_output_desc_y(data_x_desc);
+
+  // target
+  auto data_target = op::Data("target");
+  std::vector<int64_t> data_target_vec{1028};
+  ge::Shape data_target_shape(data_target_vec);
+  ge::TensorDesc data_target_desc(data_target_shape, FORMAT_ND, DT_INT32);
+  data_target.update_input_desc_x(data_target_desc);
+  data_target.update_output_desc_y(data_target_desc);
+
+  // reduction
+  string reduction = "mean";
+
+  auto nll_loss_op = op::NLLLoss("NLLLoss");
+  nll_loss_op.set_input_x(data_x)
+             .set_input_target(data_target)
+             .set_attr_reduction(reduction);
+
+  std::vector<Operator> inputs{data_x, data_target};
+  std::vector<Operator> outputs{nll_loss_op};
+
+  ge::Graph graph("nll_loss_fusion_test_7");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("NLLLossFusionPass",
+                                               fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool find_nll_loss = false;
+  bool find_div = false;
+  for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "NLLLoss") {
+            find_nll_loss = true;
+        }
+
+        if (node->GetType() == "Div") {
+            find_div = true;
+        }
+    }
+
+  EXPECT_EQ(find_nll_loss, true);
+  EXPECT_EQ(find_div, true);
+}
+
+TEST_F(nll_loss_fusion_test, nll_loss_fusion_test_8) {
+
+  // x
+  auto data_x = op::Data("x");
+  std::vector<int64_t> data_x_vec{1028, 1028};
+  ge::Shape data_x_shape(data_x_vec);
+  ge::TensorDesc data_x_desc(data_x_shape, FORMAT_ND, DT_FLOAT);
+  data_x.update_input_desc_x(data_x_desc);
+  data_x.update_output_desc_y(data_x_desc);
+
+  // target
+  auto data_target = op::Data("target");
+  std::vector<int64_t> data_target_vec{1028};
+  ge::Shape data_target_shape(data_target_vec);
+  ge::TensorDesc data_target_desc(data_target_shape, FORMAT_ND, DT_INT32);
+  data_target.update_input_desc_x(data_target_desc);
+  data_target.update_output_desc_y(data_target_desc);
+
+  // weight
+  auto data_weight = op::Data("weight");
+  std::vector<int64_t> data_weight_vec{1028};
+  ge::Shape data_weight_shape(data_weight_vec);
+  ge::TensorDesc data_weight_desc(data_weight_shape, FORMAT_ND, DT_FLOAT);
+  data_weight.update_input_desc_x(data_weight_desc);
+  data_weight.update_output_desc_y(data_weight_desc);
+
+  // reduction
+  string reduction = "mean";
+
+  auto nll_loss_op = op::NLLLoss("NLLLoss");
+  nll_loss_op.set_input_x(data_x)
+             .set_input_target(data_target)
+             .set_input_weight(data_weight)
+             .set_attr_reduction(reduction);
+
+  std::vector<Operator> inputs{data_x, data_target, data_weight};
+  std::vector<Operator> outputs{nll_loss_op};
+
+  ge::Graph graph("nll_loss_fusion_test_8");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+  fe::PlatformInfo platform_info;
+  fe::OptionalInfo opti_compilation_info;
+  platform_info.str_info.aic_version = "AIC-C-300";
+  opti_compilation_info.soc_version = "soc_version";
+  fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+  fe::FusionPassTestUtils::RunGraphFusionPass("NLLLossFusionPass",
+                                               fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool find_nll_loss = false;
+  bool find_div = false;
+  for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "NLLLoss") {
+            find_nll_loss = true;
+        }
+
+        if (node->GetType() == "Div") {
+            find_div = true;
+        }
+    }
+
+  EXPECT_EQ(find_nll_loss, true);
+  EXPECT_EQ(find_div, true);
+}

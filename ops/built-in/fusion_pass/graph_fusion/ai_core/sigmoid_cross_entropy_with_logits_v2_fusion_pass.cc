@@ -29,6 +29,8 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "SigmoidCrossEntropyWithLogitsV2";
 static const std::string PATTERN_FUSEDNODE = "SigmoidCrossEntropyWithLogitsV2";
+static constexpr int32_t INPUT_INDEX_TWO = 2;
+static constexpr int32_t INPUT_INDEX_THREE = 3;
 
 vector<FusionPattern*> SigmoidCrossEntropyWithLogitsV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -55,8 +57,6 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   ge::OpDescPtr sigmoidNoneDesc = AttrUtils::CloneOpDesc(sigmoidDesc);
   std::map<string, uint32_t> input_name_id;
   // update node inputname
-  constexpr int32_t INPUT_INDEX_TWO = 2;
-  constexpr int32_t INPUT_INDEX_THREE = 3;
   input_name_id["predict"] = 0;
   input_name_id["target"] = 1;
   input_name_id["weight"] = INPUT_INDEX_TWO;
