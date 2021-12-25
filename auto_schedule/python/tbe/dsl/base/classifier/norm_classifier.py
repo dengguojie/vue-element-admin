@@ -211,8 +211,8 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
     is_no_fuse_axis = not is_fuse_axis
     is_disable_fuse_axes = len(disable_fuse_axes) > 0
     is_unify_broadcast_axis_unknown = broadcast_axis is None and input_type_list != [0] * len(input_type_list)
-    is_cannot_remove_one = is_no_after_broadcast_input or is_no_fuse_axis \
-                           or is_unify_broadcast_axis_unknown or is_disable_fuse_axes
+    is_cannot_remove_one = is_no_after_broadcast_input or is_no_fuse_axis or \
+        is_unify_broadcast_axis_unknown or is_disable_fuse_axes
     if is_cannot_remove_one:
         return False, False
 
@@ -224,7 +224,7 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
     is_compile_known_all_one = True
     for remove_axis_idx in remove_axis_list:
         for single_input in ins:
-            single_shape = list(single_input["shape"])
+            single_shape = list(single_input.get("shape"))
             is_compile_known_all_one = is_compile_known_all_one and single_shape[remove_axis_idx] == 1
 
     for remove_axis_idx in remove_axis_list:
@@ -233,10 +233,10 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
         # A -> (1, A) and reduce axis is [0]
         is_all_common_axis = len(reduce_axis) == 0
         for single_input in ins:
-            single_shape = list(single_input["shape"])
+            single_shape = list(single_input.get("shape"))
             if single_shape[remove_axis_idx] > 1:
                 return False, False
-            single_range = list(single_input["range"])
+            single_range = list(single_input.get("range"))
             single_shape.pop(remove_axis_idx)
             single_range.pop(remove_axis_idx)
             if is_all_common_axis:
@@ -303,7 +303,7 @@ def _process_extra_params(input_num, extra_params):
         is_broadcast_axis_known = \
             input_index in ori_compile_broadcast_axes and input_index not in ori_runtime_broadcast_axes
         if is_broadcast_axis_known:
-            broadcast_axis_list[input_index] = ori_compile_broadcast_axes[input_index]
+            broadcast_axis_list[input_index] = ori_compile_broadcast_axes.get(input_index)
 
     input_type_flag = 0
     complete_shape_index = [i for i in range(input_num) if ori_input_type_list[i] == 0]
@@ -332,7 +332,7 @@ def _process_extra_params(input_num, extra_params):
 
 
 def _judge_is_const_and_dynamic_mixed(norm_classify_out):
-   # const process can not be performed when dynamic and const are mixed in norm classify output
+    # const process can not be performed when dynamic and const are mixed in norm classify output
     is_const_set = set()
     for single_classify_out in norm_classify_out:
         is_const = True
@@ -343,7 +343,6 @@ def _judge_is_const_and_dynamic_mixed(norm_classify_out):
     is_const_and_dynamic_mixed = len(is_const_set) == 2
 
     return is_const_and_dynamic_mixed
- 
 
 
 def classify(ins: list, extra_params: dict):
@@ -434,7 +433,7 @@ def classify(ins: list, extra_params: dict):
                     norm_classify_out.append(single_classify_out)
                     norm_pattern_non_duplicate_list.append(norm_pattern)
 
-    is_const_and_dynamic_mixed =  _judge_is_const_and_dynamic_mixed(norm_classify_out)
+    is_const_and_dynamic_mixed = _judge_is_const_and_dynamic_mixed(norm_classify_out)
     get_context().add("_const_and_dynamic_mixed", is_const_and_dynamic_mixed)
     if disable_fuse_axes:
         extra_params.update({"disable_fuse_axes": disable_fuse_axes_new_idx})
@@ -454,7 +453,7 @@ class NormClassifier:
         self.ins = ins
 
         self.NAME_INDEX = 0
-        self.max_shape_len = max(len(x["shape"]) for x in ins)
+        self.max_shape_len = max(len(x.get("shape")) for x in ins)
         self.reduce_axis = reduce_axis
         self.unreduce_axis = sorted(set(range(self.max_shape_len)) - set(self.reduce_axis))
 
@@ -487,8 +486,8 @@ class NormClassifier:
                 inputs_after_bro.append(self.ins[index])
             else:
                 if input_type in inputs_before_bro:
-                    inputs_before_bro[input_type].append(self.ins[index])
-                    inputs_bro_axis[input_type].append(self.broadcast_axis_list[index])
+                    inputs_before_bro.get(input_type).append(self.ins[index])
+                    inputs_bro_axis.get(input_type).append(self.broadcast_axis_list[index])
                 else:
                     inputs_before_bro[input_type] = [self.ins[index]]
                     inputs_bro_axis[input_type] = [self.broadcast_axis_list[index]]
@@ -514,7 +513,7 @@ class NormClassifier:
         # }
         """
         def __get_shape_and_range_list(_inputs):
-            _shape_list = [x["shape"] for x in _inputs]
+            _shape_list = [x.get("shape") for x in _inputs]
             _range_list = []
             for _single_input in _inputs:
                 _single_range = _single_input.get("range")
@@ -549,7 +548,7 @@ class NormClassifier:
             _shape_out = [___get_dim(i) for i in range(len(_shape_list[0]))]
             _range_out = [___get_range(i) for i in range(len(_range_list[0]))]
 
-            for _index in range(len(_shape_out)):
+            for _index, _ in enumerate(_shape_out):
                 if _range_out[_index][0] == _range_out[_index][1]:
                     _shape_out[_index] = _range_out[_index][0]
 
@@ -591,13 +590,13 @@ class NormClassifier:
             shape_to_fuse, range_to_fuse = __infer_shape_and_range(local_shape_list, local_range_list)
 
         for input_type in self.inputs_before_bro:
-            local_shape_list, local_range_list = __get_shape_and_range_list(self.inputs_before_bro[input_type])
+            local_shape_list, local_range_list = __get_shape_and_range_list(self.inputs_before_bro.get(input_type))
             local_shape, local_range = __infer_shape_and_range(local_shape_list, local_range_list)
             # all_broadcast_axis means all broadcast axes of input are known
             # partial_broadcast_axis means partial broadcast axes can be inferred
             # partial_unbroadcast_axis means partial unbroadcast axes can be inferred
             all_broadcast_axis, partial_broadcast_axis, partial_unbroadcast_axis = \
-                __infer_broadcast_axis(local_shape, local_range, self.inputs_bro_axis[input_type])
+                __infer_broadcast_axis(local_shape, local_range, self.inputs_bro_axis.get(input_type))
             # the value of dim corresponding to the broadcast axis set 1
             if all_broadcast_axis is not None:
                 for idx in all_broadcast_axis:
@@ -615,7 +614,7 @@ class NormClassifier:
         # we suppose the shape_to_fuse is [-1] * max_shape_len
         # except that dims inputs_before_bro are const and shape_to_fuse can be inferred
         if not shape_to_fuse:
-            before_bro_shape_list = [inputs_before_bro_info[x]["shape"] for x in inputs_before_bro_info]
+            before_bro_shape_list = [inputs_before_bro_info.get(x).get("shape") for x in inputs_before_bro_info]
             shape_to_fuse = [-1] * self.max_shape_len
             range_to_fuse = [(1, None) for _ in range(self.max_shape_len)]
             for idx in range(self.max_shape_len):
@@ -633,15 +632,16 @@ class NormClassifier:
         obtain the broadcast axis when all broadcast axes of inputs are the same
         """
         broadcast_axis_set = set()
+        broadcast_axis_list = None
         for input_type in self.inputs_before_bro_info:
-            single_broadcast_axis = self.inputs_before_bro_info[input_type].get("all_broadcast_axis")
+            single_broadcast_axis = self.inputs_before_bro_info.get(input_type).get("all_broadcast_axis")
             if single_broadcast_axis is None:
-                return None
+                return broadcast_axis_list
             broadcast_axis_set.add(tuple(sorted(single_broadcast_axis)))
         if len(broadcast_axis_set) == 1:
-            return list(broadcast_axis_set)[0]
+            broadcast_axis_list = list(broadcast_axis_set)[0]
 
-        return None
+        return broadcast_axis_list
 
     def _simplify(self):
         """
@@ -651,7 +651,7 @@ class NormClassifier:
         def __obtain_state():
             if is_pad_axis:
                 self.NAME_INDEX += 1
-                return "pad_"+str(self.NAME_INDEX)
+                return "pad_" + str(self.NAME_INDEX)
             if is_reduce_axis and not is_broadcast_axis:
                 return "reduce"
             if is_broadcast_axis and not is_reduce_axis:
@@ -760,10 +760,10 @@ class NormClassifier:
                     return [ModeType.BROADCAST_REDUCE_OPPOSITE], False, False
                 elif all_broadcast_axis == list(range(self.max_shape_len)):
                     return [ModeType.ALL_BROADCAST], False, False
-                else:
-                    return [ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE], False, True
+
+                return [ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE], False, True
             # infer mode
-            _enum_broadcast_unknown = False if (len(self.reduce_axis) == len(self.unreduce_axis) == 1) else True
+            _enum_broadcast_unknown = not len(self.reduce_axis) == len(self.unreduce_axis) == 1
 
             return ___increase_and_decrease_enum(), _enum_broadcast_unknown, False
 
@@ -782,7 +782,7 @@ class NormClassifier:
             def ___gen_single_out_shape_or_range(__ori_value_list, __axis_list, __set_value,
                                                  __in_axis_set_value=True):
                 __out_list = []
-                for __index in range(len(__ori_value_list)):
+                for __index, _ in enumerate(__ori_value_list):
                     if __in_axis_set_value:
                         if __index in __axis_list:
                             __out_list.append(__set_value)
@@ -880,9 +880,9 @@ class NormClassifier:
             # have duplicated broadcast axis
             if _broadcast_axis_set:
                 for _idx in _broadcast_axis_set:
-                    _input_dim = [x["shape"][_idx] for x in _input_dict]
+                    _input_dim = [x.get("shape")[_idx] for x in _input_dict]
                     # all broadcast dims are not equal to 1
-                    if not (min(_input_dim) == max(_input_dim) == 1):
+                    if not min(_input_dim) == max(_input_dim) == 1:
                         return True
 
             return False
@@ -897,25 +897,27 @@ class NormClassifier:
         for input_type in self.inputs_before_bro_info:
             input_type_order_list.append(input_type)
             mode_list, flag_of_unknown_broadcast, flag_of_no_fuse = \
-                __infer_before_broadcast_mode(self.inputs_before_bro_info[input_type]["all_broadcast_axis"],
-                                              self.inputs_before_bro_info[input_type]["partial_broadcast_axis"],
-                                              self.inputs_before_bro_info[input_type]["partial_unbroadcast_axis"])
+                __infer_before_broadcast_mode(
+                    self.inputs_before_bro_info.get(input_type).get("all_broadcast_axis"),
+                    self.inputs_before_bro_info.get(input_type).get("partial_broadcast_axis"),
+                    self.inputs_before_bro_info.get(input_type).get("partial_unbroadcast_axis"))
             exist_unknown_broadcast_case = exist_unknown_broadcast_case or flag_of_unknown_broadcast
             exist_no_fuse_case = exist_no_fuse_case or flag_of_no_fuse
             single_input_out = []
             for mode in mode_list:
                 single_input_out.append(
-                    __gen_single_mode_out(mode,
-                                          input_type,
-                                          self.inputs_before_bro_info[input_type]["shape"],
-                                          self.inputs_before_bro_info[input_type]["range"],
-                                          self.inputs_before_bro_info[input_type]["all_broadcast_axis"])
+                    __gen_single_mode_out(
+                        mode,
+                        input_type,
+                        self.inputs_before_bro_info.get(input_type).get("shape"),
+                        self.inputs_before_bro_info.get(input_type).get("range"),
+                        self.inputs_before_bro_info.get(input_type).get("all_broadcast_axis"))
                 )
             before_broadcast_enum_out[input_type] = single_input_out
 
         after_broadcast_enum_out = [__gen_single_mode_out(ModeType.COMMON, 0)]
 
-        product_in = [before_broadcast_enum_out[index] for index in before_broadcast_enum_out]
+        product_in = [before_broadcast_enum_out.get(index) for index in before_broadcast_enum_out]
         product_in.append(after_broadcast_enum_out)
         input_type_order_list.append(0)
         # combine all possibilities for each type of input
@@ -941,21 +943,22 @@ class NormClassifier:
                     no_fuse_case.append(__gen_single_mode_out(ModeType.NO_FUSE, input_type))
                 else:
                     # no fuse case but broadcast axis of single input is known
-                    if self.inputs_before_bro_info[input_type]["all_broadcast_axis"] is not None:
+                    if self.inputs_before_bro_info.get(input_type).get("all_broadcast_axis") is not None:
                         no_fuse_case.append(
-                            __gen_single_mode_out(ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE,
-                                                  input_type,
-                                                  self.inputs_before_bro_info[input_type]["shape"],
-                                                  self.inputs_before_bro_info[input_type]["range"],
-                                                  self.inputs_before_bro_info[input_type]["all_broadcast_axis"])
+                            __gen_single_mode_out(
+                                ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE,
+                                input_type,
+                                self.inputs_before_bro_info.get(input_type).get("shape"),
+                                self.inputs_before_bro_info.get(input_type).get("range"),
+                                self.inputs_before_bro_info.get(input_type).get("all_broadcast_axis"))
                         )
                     # unknown broadcast
                     else:
                         no_fuse_case.append(
                             __gen_single_mode_out(ModeType.BROADCAST_UNKNOWN,
                                                   input_type,
-                                                  self.inputs_before_bro_info[input_type]["shape"],
-                                                  self.inputs_before_bro_info[input_type]["range"])
+                                                  self.inputs_before_bro_info.get(input_type).get("shape"),
+                                                  self.inputs_before_bro_info.get(input_type).get("range"))
                         )
                         dict_args = {
                             "errCode": "E90001",

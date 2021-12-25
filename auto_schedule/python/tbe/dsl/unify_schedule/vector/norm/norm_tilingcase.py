@@ -325,7 +325,7 @@ def _add_tiling_case(norm_graph_info, norm_info):
                 _tiling_case.block_split_axis_index = _block_split_axis
                 _tiling_case.ub_split_axis_index = _ub_split_axis
                 # tilingcase that block split 0 can enable multi_core
-                _tiling_case.multi_core = True if _block_split_axis == 0 else False
+                _tiling_case.multi_core = _block_split_axis == 0
                 _tiling_case.is_partial_reorder_case = True
                 tiling_case_list.append(_tiling_case)
 
@@ -350,7 +350,7 @@ def _add_tiling_case(norm_graph_info, norm_info):
         _tiling_case = NormTilingCase()
         _tiling_case.block_split_axis_index = None if all_reduce_normal_case else 0
         _tiling_case.ub_split_axis_index = None if all_reduce_normal_case else 0
-        _tiling_case.multi_core = False if all_reduce_normal_case else True
+        _tiling_case.multi_core = not all_reduce_normal_case
         _tiling_case.is_aligned_in_ub_case = True
         tiling_case_list.append(_tiling_case)
 
@@ -448,7 +448,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
                 workspace_type_list.append(1)
             else:
                 workspace_type_list.append(0)
-            workspace_bytes_list.append(DTYPE_BYTE_MAPPING[workspace_tensor.dtype])
+            workspace_bytes_list.append(DTYPE_BYTE_MAPPING.get(workspace_tensor.dtype))
 
         after_reduce_align_shape = util.shape_to_list(norm_info.shape_after_reduce)[:]
         after_reduce_align_shape[-1] = (after_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
@@ -471,19 +471,20 @@ def _gen_const_tiling_case(norm_info, graph_info):
                 "type": workspace_type
             }
             get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
-        return
 
     def __save_temp_disable_fuse_axes_info():
-        disable_fuse_axes = []
-        if "_disable_fuse_axes" in get_compile_info():
-            disable_fuse_axes = get_compile_info()["_disable_fuse_axes"]
-            get_compile_info()["_disable_fuse_axes"] = []
+        _disable_fuse_axes = []
+        _compile_info = get_compile_info()
+        if "_disable_fuse_axes" in _compile_info:
+            _disable_fuse_axes = _compile_info.get("_disable_fuse_axes")
+            _compile_info["_disable_fuse_axes"] = []
 
-        return disable_fuse_axes
+        return _disable_fuse_axes
 
-    def __rollback_disable_fuse_axes(disable_fuse_axes):
-        if "_disable_fuse_axes" in get_compile_info():
-            get_compile_info()["_disable_fuse_axes"] = disable_fuse_axes
+    def __rollback_disable_fuse_axes(_disable_fuse_axes):
+        _compile_info = get_compile_info()
+        if "_disable_fuse_axes" in _compile_info:
+            _compile_info["_disable_fuse_axes"] = disable_fuse_axes
 
     current_compute = get_context().get_current_compute()
     # flag of const
@@ -500,7 +501,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
                                                                         before_reduce_shape, block_size)
     const_workspace_tensors = graph_info.workspace_and_reduce_tensor_set \
         if const_tiling_case.is_partial_reorder_case else graph_info.workspace_tensor_set
-    exist_workspace_after_reduce = True if const_workspace_tensors & graph_info.after_reduce_tensor_set else False
+    exist_workspace_after_reduce = bool(const_workspace_tensors & graph_info.after_reduce_tensor_set)
     add_compile_info_inner("_exist_workspace_after_reduce", exist_workspace_after_reduce)
 
     # before fuse axis
@@ -525,7 +526,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
     __rollback_disable_fuse_axes(disable_fuse_axes)
 
     tiling_format = __select_tiling_format()
-    tiling_data = decode(run_info["tiling_data"], tiling_format)
+    tiling_data = decode(run_info.get("tiling_data"), tiling_format)
 
     const_tiling_case.block_split_axis_index = tiling_data.get("block_axis")
     const_tiling_case.block_factor = tiling_data.get("block_factor")
@@ -556,7 +557,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
     if block_dims is None:
         block_dims = {}
         add_compile_info_inner("_const_block_dims", block_dims)
-    block_dims[const_tiling_case.tiling_key] = run_info["block_dim"]
+    block_dims[const_tiling_case.tiling_key] = run_info.get("block_dim")
 
     # add workspace info in json
     if tiling_data.get("ub_axis") in reduce_axis_index and get_op_context() and \
@@ -807,6 +808,8 @@ class NormComputeGraphInfo:
         self.before_reduce_tensor_set: Optional[Set[Tensor]] = set()
         self.after_reduce_tensor_set: Optional[Set[Tensor]] = set()
         self.other_tensor_set: Optional[Set[Tensor]] = set()
+        # special cast tensor that need reuse
+        self.special_cast_tensor_and_ori_tensor_map: Dict[Tensor, Tensor] = {}
         # max type and min type in graph
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
@@ -864,7 +867,7 @@ class NormComputeGraphInfo:
         get endpoint tensor
         """
         for output_tensor in self.output_tensor_set:
-            if not self.tensor_consumers_map[output_tensor]:
+            if not self.tensor_consumers_map.get(output_tensor):
                 self.endpoint_output_tensor = output_tensor
                 break
 
@@ -875,7 +878,7 @@ class NormComputeGraphInfo:
         # mid_output_tensor_set
         # mid_tensor_set
         for tensor in self.tensor_list:
-            if tensor in self.output_tensor_set and self.tensor_consumers_map[tensor]:
+            if tensor in self.output_tensor_set and self.tensor_consumers_map.get(tensor):
                 # Tensor in output and has consumers is middle_out_tensor
                 self.mid_output_tensor_set.add(tensor)
                 self.mid_tensor_set.add(tensor)
@@ -896,7 +899,7 @@ class NormComputeGraphInfo:
 
             # update fake_node's shape and dtype
             for tensor_i in tensors:
-                if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
+                if DTYPE_BYTE_MAPPING.get(tensor_i.dtype) > DTYPE_BYTE_MAPPING.get(dtype):
                     dtype = tensor_i.type
                 shape_i = util.shape_to_list(tensor_i.shape)
                 diff_length = dim_length - len(shape_i)
@@ -958,8 +961,8 @@ class NormComputeGraphInfo:
                     hook[2](_root_tensor)
             for in_tensor in _root_tensor.op.input_tensors:
                 _tensor_consumers_map.setdefault(in_tensor, set())
-                _tensor_consumers_map[in_tensor].add(_root_tensor)
-                _tensor_producers_map[_root_tensor].add(in_tensor)
+                _tensor_consumers_map.get(in_tensor).add(_root_tensor)
+                _tensor_producers_map.get(_root_tensor).add(in_tensor)
                 if stop_tensor_set is not None and in_tensor in stop_tensor_set:
                     _visited_list.add(in_tensor)
                     _tensor_producers_map[in_tensor] = set()
@@ -999,9 +1002,9 @@ class NormComputeGraphInfo:
         self.min_type = self.tensor_list[0].dtype
 
         for item in self.tensor_list:
-            if DTYPE_BYTE_MAPPING[item.dtype] > DTYPE_BYTE_MAPPING[self.max_type]:
+            if DTYPE_BYTE_MAPPING.get(item.dtype) > DTYPE_BYTE_MAPPING.get(self.max_type):
                 self.max_type = item.dtype
-            elif DTYPE_BYTE_MAPPING[item.dtype] < DTYPE_BYTE_MAPPING[self.min_type]:
+            elif DTYPE_BYTE_MAPPING.get(item.dtype) < DTYPE_BYTE_MAPPING.get(self.min_type):
                 self.min_type = item.dtype
             if judge_tvm_shape_equal(list(item.shape), shape_before_reduce):
                 self.before_reduce_tensor_set.add(item)
@@ -1049,6 +1052,21 @@ class NormComputeGraphInfo:
                                      self.reduce_tensor_set)
                 for single_tensor in before_visited_set:
                     self.before_mid_out_and_after_reduce_tensor_set.add(single_tensor)
+            if "elewise_single_cast" in mid_output.op.tag:
+                # mid_output tensor is fp32->fp16
+                # its consumer tensor is fp16->fp32
+                # so, its consumer tensor can reuse its producer tensor
+                consumer_set = self.tensor_consumers_map.get(mid_output)
+                producer_set = self.tensor_producers_map.get(mid_output)
+                if len(consumer_set) != 1 or len(producer_set) != 1:
+                    continue
+                consumer_tensor = list(consumer_set)[0]
+                producer_tensor = list(producer_set)[0]
+                find_special_cast_tensor = "elewise_single_cast" in consumer_tensor.op.tag and \
+                    mid_output.dtype == "float16" and consumer_tensor.dtype == "float32" and \
+                    producer_tensor.dtype == "float32"
+                if find_special_cast_tensor:
+                    self.special_cast_tensor_and_ori_tensor_map[consumer_tensor] = producer_tensor
 
     def find_workspace_tensor(self):
         """
@@ -1058,15 +1076,15 @@ class NormComputeGraphInfo:
             # stop when current tensor is end tensor or cross hierarchy tensor
             if _current_tensor == self.endpoint_output_tensor or \
                     _current_tensor in cross_hierarchy_tensor_set:
-                path_index_and_tensor_map[_idx].add(_current_tensor)
+                path_index_and_tensor_map.get(_idx).add(_current_tensor)
                 return
             # _idx represents the index of path
             if _current_tensor in self.reduce_tensor_set:
-                path_index_and_tensor_map[_idx].add(_current_tensor)
-            for _consumer_tensor in self.tensor_consumers_map[_current_tensor]:
+                path_index_and_tensor_map.get(_idx).add(_current_tensor)
+            for _consumer_tensor in self.tensor_consumers_map.get(_current_tensor):
                 # Reduce nodes exist on this path
                 if _consumer_tensor in self.reduce_tensor_set:
-                    path_index_and_tensor_map[_idx].add(_consumer_tensor)
+                    path_index_and_tensor_map.get(_idx).add(_consumer_tensor)
                 _find_possible_cross_hierarchy_tensor(_idx, _consumer_tensor)
 
         def _judge_workspace_or_cache_clone(cross_hierarchy_tensor):
@@ -1091,8 +1109,8 @@ class NormComputeGraphInfo:
                 return "cache_clone", visited_list
             return "workspace", visited_list
 
-        def _update_cache_clone_list(visited_tensor):
-            for tensor in visited_tensor:
+        def _update_cache_clone_list(_visited_tensor):
+            for tensor in _visited_tensor:
                 if tensor not in self.cache_clone_tensor_list:
                     self.cache_clone_tensor_list.append(tensor)
 
@@ -1100,9 +1118,9 @@ class NormComputeGraphInfo:
         tensors_and_num_path_map = {}
         # find the cross hierarchy tensors
         for single_tensor in self.tensor_producers_map:
-            if len(self.tensor_consumers_map[single_tensor]) > 1:
+            if len(self.tensor_consumers_map.get(single_tensor)) > 1:
                 path_index_and_tensor_map = {}
-                for idx, consumer_tensor in enumerate(self.tensor_consumers_map[single_tensor]):
+                for idx, consumer_tensor in enumerate(self.tensor_consumers_map.get(single_tensor)):
                     path_index_and_tensor_map[idx] = set()
                     _find_possible_cross_hierarchy_tensor(idx, consumer_tensor)
                 visited_special_tensor_set = path_index_and_tensor_map.get(0)
@@ -1123,7 +1141,7 @@ class NormComputeGraphInfo:
 
         for single_tensor in self.cache_clone_tensor_list:
             self.cache_clone_tensor_and_num_path_map[single_tensor] = \
-                tensors_and_num_path_map[single_tensor] if single_tensor in tensors_and_num_path_map else 1
+                tensors_and_num_path_map.get(single_tensor) if single_tensor in tensors_and_num_path_map else 1
 
         for single_tensor in self.reduce_tensor_set:
             self.workspace_and_reduce_tensor_set.add(single_tensor)
@@ -1164,8 +1182,9 @@ class NormComputeGraphInfo:
 
         # check whether the outputs are legal:
         # 1. real pure outputs must in the last sub graph
-        last_sub_tensor_set = set(self.split_tensor_and_sub_graph_map[self.endpoint_output_tensor]["sub_tensor_list"])
-        if not (self.real_pure_output_tensor_set & last_sub_tensor_set == self.real_pure_output_tensor_set):
+        last_sub_tensor_set = \
+            set(self.split_tensor_and_sub_graph_map.get(self.endpoint_output_tensor).get("sub_tensor_list"))
+        if not self.real_pure_output_tensor_set & last_sub_tensor_set == self.real_pure_output_tensor_set:
             raise_error("norm schedule does not support output fork now")
 
     def calc_coexisting_quantities_and_temp_buffer_size(self):
@@ -1200,10 +1219,7 @@ class NormComputeGraphInfo:
                     if all_axes[-1] not in reduce_axes:
                         self.temp_ub_size += 64
                     else:
-                        if len(reduce_axes) == 1:
-                            self.temp_ub_size += 512
-                        else:
-                            self.temp_ub_size += 512
+                        self.temp_ub_size += 512
                 elif dtype in ["float16", ]:
                     if all_axes[-1] not in reduce_axes:
                         self.temp_ub_size += 64
@@ -1216,21 +1232,18 @@ class NormComputeGraphInfo:
                 if all_axes[-1] not in reduce_axes:
                     self.temp_ub_size += 64
                 else:
-                    if len(reduce_axes) == 1:
-                        self.temp_ub_size += 512
-                    else:
-                        self.temp_ub_size += 512
+                    self.temp_ub_size += 512
 
             if tag.find("reduce") != -1:
                 reduce_axes = util.get_reduce_axes(_tensor)
                 all_axes = util.get_reduce_all_axes(_tensor)
                 if all_axes[-1] not in reduce_axes:
                     self.temp_ub_size += 256
-                if tag in ["reduce_sum", ]:
+                if tag in ["reduce_sum"]:
                     _reduce_sum_space()
                 elif tag in ["reduce_max", "reduce_min"]:
                     _reduce_max_space()
-                elif tag in ["reduce_prod", ]:
+                elif tag in ["reduce_prod"]:
                     _reduce_prod_space()
                 else:
                     raise RuntimeError("Unknown reduce_insn is %s" % tag)
@@ -1248,8 +1261,8 @@ class NormComputeGraphInfo:
                     _current_space += ALIGN_AND_REMOVE_PAD_EXTRA_NODES
                 if _tensor in self.real_output_tensor_set:
                     # the space that remove pad buffer need
-                    _pad_space = \
-                        _current_space + ALIGN_AND_REMOVE_PAD_EXTRA_NODES - len(self.tensor_producers_map[_tensor])
+                    _pad_space = _current_space + ALIGN_AND_REMOVE_PAD_EXTRA_NODES -\
+                        len(self.tensor_producers_map.get(_tensor))
                     _current_space = max(_current_space, _pad_space)
             # num of broadcast axis > 1 or float16 and last broadcast(normal sch or workspace sch but not AR)
             if util.is_unified_broadcast(_tensor):
@@ -1273,7 +1286,7 @@ class NormComputeGraphInfo:
             if _tensor in dependent_map:
                 return len(dependent_map)
             _need_space = []
-            for _tensor_i in _producer_map[_tensor]:
+            for _tensor_i in _producer_map.get(_tensor):
                 _need_space.append(_r_coexisting(_tensor_i, _producer_map, _consumer_map, _is_workspace, _is_pad))
 
             _current_space = _calc_current_space(_tensor, _is_workspace=_is_workspace, _is_pad=_is_pad)
@@ -1286,16 +1299,16 @@ class NormComputeGraphInfo:
             _need_space.append(_current_space)
             _refresh_dependent(_tensor, _producer_map)
             if _tensor not in dependent_map:
-                dependent_map[_tensor] = _consumer_map[_tensor].copy()
+                dependent_map[_tensor] = _consumer_map.get(_tensor).copy()
 
             return max(_need_space)
 
         def _refresh_dependent(_tensor, _producer_map):
-            for _tensor_i in _producer_map[_tensor]:
+            for _tensor_i in _producer_map.get(_tensor):
                 if _tensor_i not in dependent_map:
                     continue
-                dependent_map[_tensor_i].remove(_tensor)
-                if not dependent_map[_tensor_i]:
+                dependent_map.get(_tensor_i).remove(_tensor)
+                if not dependent_map.get(_tensor_i):
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
@@ -1319,7 +1332,7 @@ class NormComputeGraphInfo:
         # common sch
         coexisting_quantities = []
         dependent_map = {}
-        for tensor_i in self.tensor_producers_map[_out]:
+        for tensor_i in self.tensor_producers_map.get(_out):
             coexisting_quantities.append(_r_coexisting(tensor_i, self.tensor_producers_map,
                                                        self.tensor_consumers_map))
         if not _out.op.tag == FAKE_NODE_TAG:
@@ -1331,13 +1344,13 @@ class NormComputeGraphInfo:
             coexisting_quantities.append(_local_current_space)
         tensor_space = (self.soc_ub_size - self.temp_ub_size) // max(coexisting_quantities)
         self.available_ub_size =\
-            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self.max_type]
+            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
 
         # align and remove pad sch
         coexisting_quantities = []
         dependent_map = {}
         self.temp_ub_size = 0
-        for tensor_i in self.tensor_producers_map[_out]:
+        for tensor_i in self.tensor_producers_map.get(_out):
             coexisting_quantities.append(_r_coexisting(tensor_i, self.tensor_producers_map, self.tensor_consumers_map,
                                                        _is_pad=True))
         if not _out.op.tag == FAKE_NODE_TAG:
@@ -1349,22 +1362,22 @@ class NormComputeGraphInfo:
             coexisting_quantities.append(_local_current_space)
         tensor_space = (self.soc_ub_size - self.temp_ub_size) // max(coexisting_quantities)
         self.pad_available_ub_size =\
-            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self.max_type]
+            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
         self.pad_max_entire_size = max(get_align_and_remove_pad_entire_size(self.min_type) *
-                                       DTYPE_BYTE_MAPPING[self.min_type] // DTYPE_BYTE_MAPPING[self.max_type],
+                                       DTYPE_BYTE_MAPPING.get(self.min_type) // DTYPE_BYTE_MAPPING.get(self.max_type),
                                        get_align_and_remove_pad_entire_size(self.max_type))
 
         # workspace sch
         # calculate the number of coexisting quantities and available ub size of sub graph
         for workspace_tensor in self.workspace_tensor_and_sub_graph_map:
             sub_tensor_producers_map = \
-                self.workspace_tensor_and_sub_graph_map[workspace_tensor]["sub_tensor_producers_map"]
+                self.workspace_tensor_and_sub_graph_map.get(workspace_tensor).get("sub_tensor_producers_map")
             sub_tensor_consumers_map = \
-                self.workspace_tensor_and_sub_graph_map[workspace_tensor]["sub_tensor_consumers_map"]
+                self.workspace_tensor_and_sub_graph_map.get(workspace_tensor).get("sub_tensor_consumers_map")
             coexisting_quantities = []
             dependent_map = {}
             self.temp_ub_size = 0
-            for tensor_i in sub_tensor_producers_map[workspace_tensor]:
+            for tensor_i in sub_tensor_producers_map.get(workspace_tensor):
                 coexisting_quantities.append(_r_coexisting(tensor_i, sub_tensor_producers_map,
                                                            sub_tensor_consumers_map, _is_workspace=True))
             _local_current_space = _calc_current_space(workspace_tensor, _is_workspace=True)
@@ -1380,11 +1393,11 @@ class NormComputeGraphInfo:
             }
         sub_graph_available_ub_size_list = []
         for tensor in self.workspace_info_map:
-            local_ub_size = self.soc_ub_size - self.workspace_info_map[tensor]["temp_ub_size"]
-            tensor_space = local_ub_size // self.workspace_info_map[tensor]["coexisting_quantity"]
+            local_ub_size = self.soc_ub_size - self.workspace_info_map.get(tensor).get("temp_ub_size")
+            tensor_space = local_ub_size // self.workspace_info_map.get(tensor).get("coexisting_quantity")
             sub_graph_available_ub_size_list.append(tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE)
         self.workspace_available_ub_size = \
-            min(sub_graph_available_ub_size_list) // DTYPE_BYTE_MAPPING[self.max_type]
+            min(sub_graph_available_ub_size_list) // DTYPE_BYTE_MAPPING.get(self.max_type)
 
         get_context().get_current_compute().add("_available_ub_size_list", [self.available_ub_size,
                                                                             self.workspace_available_ub_size,
@@ -1415,7 +1428,7 @@ class NormInfo:
 
     def _judge_non_reduce(self):
         for reduce_axis in self.reduce_axis_indices:
-            if not (util.expr_equal(self.shape_before_reduce[reduce_axis], 1)):
+            if not util.expr_equal(self.shape_before_reduce[reduce_axis], 1):
                 return False
 
         return True
@@ -1425,9 +1438,7 @@ class NormInfo:
             return False
         discontinuous_axis_num = 1
         for i in range(1, len(self.reduce_axis_indices)):
-            if self.reduce_axis_indices[i] == self.reduce_axis_indices[i - 1] + 1:
-                continue
-            else:
+            if self.reduce_axis_indices[i] != self.reduce_axis_indices[i - 1] + 1:
                 discontinuous_axis_num += 1
 
         return discontinuous_axis_num >= 2
