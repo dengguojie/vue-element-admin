@@ -334,10 +334,11 @@ def check_avg_pool_v2_range(x, ksize, strides, padding, pads):
     return check_result
 
 @tbe_register.register_param_generalization("AvgPoolV2")
-def avg_pool_v2_generalization(x: dict, weight: dict, y: dict, ksize: Union[tuple, list], strides: Union[tuple, list],
-                               padding: str = "CALCULATED", pads: tuple = (0, 0, 0, 0), data_format: str = "NCHW",
-                               global_pooling: bool = False, ceil_mode: bool = False, exclusive: bool = True,
-                               kernel_name: str = "avg_pool_v2", generalize_config: dict = None) -> list:
+def avg_pool_v2_generalization(x: dict, weight: dict, bias: dict, y: dict, ksize: Union[tuple, list],
+                               strides: Union[tuple, list], padding: str = "CALCULATED", pads: tuple = (0, 0, 0, 0),
+                               data_format: str = "NCHW", global_pooling: bool = False, ceil_mode: bool = False,
+                               exclusive: bool = True, offset_x: int = 0, kernel_name: str = "avg_pool_v2",
+                               generalize_config: dict = None) -> list:
     """
     avg_pool_v2 generalization
 
@@ -378,8 +379,8 @@ def avg_pool_v2_generalization(x: dict, weight: dict, y: dict, ksize: Union[tupl
     if check_result:
         return check_result
     else:
-        return [x, weight, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
-            kernel_name]
+        return [x, weight, bias, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
+            offset_x, kernel_name]
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements

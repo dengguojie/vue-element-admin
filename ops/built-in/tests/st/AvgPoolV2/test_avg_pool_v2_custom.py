@@ -26,15 +26,15 @@ def test_avg_pool_v2_generalization_graph_mode_01():
             'format': 'FRACTAL_Z',
             'dtype': 'float16',
             'range': [(16, 16), (1, 1), (5, 5), (5, 5)]
-        }, {
+        }, None, {
             'shape': (-1, 16, 1, 1),
             'ori_shape': (-1, 16, 1, 1),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 1, 5, 5), (1, 1, 2, 2), "VALID", None, 'NCHW', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 1, 5, 5), (1, 1, 2, 2), "VALID", None, 'NCHW', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_01']
     avg_pool_v2_generalization(*input_list)
 
@@ -58,15 +58,15 @@ def test_avg_pool_v2_generalization_graph_mode_02():
             'format': 'FRACTAL_Z',
             'dtype': 'float16',
             'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
-        }, {
+        }, None, {
             'shape': (-1, 16, 1, 1),
             'ori_shape': (-1, 16, 1, 1),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 1, 3, 3), (1, 1, 1, 1), "SAME", None, 'NCHW', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 1, 3, 3), (1, 1, 1, 1), "SAME", None, 'NCHW', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_02']
     avg_pool_v2_generalization(*input_list)
 
@@ -90,15 +90,15 @@ def test_avg_pool_v2_generalization_graph_mode_03():
             'format': 'FRACTAL_Z',
             'dtype': 'float16',
             'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
-        }, {
+        }, None, {
             'shape': (-1, 16, 1, 1),
             'ori_shape': (-1, 16, 1, 1),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 1, 3, 3), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NCHW', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 1, 3, 3), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NCHW', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_03']
     avg_pool_v2_generalization(*input_list)
 
@@ -122,15 +122,15 @@ def test_avg_pool_v2_generalization_graph_mode_04():
             'format': 'FRACTAL_Z',
             'dtype': 'float16',
             'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
-        }, {
+        }, None, {
             'shape': (-1, 1, 1, 16),
             'ori_shape': (-1, 1, 1, 16),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 5, 5, 1), (1, 2, 2, 1), "VALID", None, 'NHWC', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 5, 5, 1), (1, 2, 2, 1), "VALID", None, 'NHWC', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_04']
     avg_pool_v2_generalization(*input_list)
 
@@ -161,8 +161,8 @@ def test_avg_pool_v2_generalization_graph_mode_05():
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_05']
     avg_pool_v2_generalization(*input_list)
 
@@ -186,15 +186,15 @@ def test_avg_pool_v2_generalization_graph_mode_06():
             'format': 'FRACTAL_Z',
             'dtype': 'float16',
             'range': [(16, 16), (1, 1), (3, 3), (3, 3)]
-        }, {
+        }, None, {
             'shape': (-1, 1, 1, 16),
             'ori_shape': (-1, 1, 1, 16),
             'ori_format': 'NHWC',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         },
-        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, kernel_name, generalize_config
-        (1, 3, 3, 1), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NHWC', None, None, None,
+        # ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive, offset_x
+        (1, 3, 3, 1), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NHWC', None, None, None, 0,
         'test_avg_pool_v2_generalization_graph_mode_06']
     avg_pool_v2_generalization(*input_list)
 
