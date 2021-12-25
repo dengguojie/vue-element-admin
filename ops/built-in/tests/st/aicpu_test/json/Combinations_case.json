@@ -1,0 +1,576 @@
+[
+  {
+    "case_name": "Test_Combinations_000",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[4]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[6, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_001",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[4]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[6, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_002",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[8]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[28, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_003",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[16]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[120, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_004",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[32]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[496, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_005",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[64]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[2016, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_006",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[128]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[8128, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_007",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[256]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[32640, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_008",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[512]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[130816, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_009",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[1024]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[523776, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_0010",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[2048]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[2096128, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_011",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[4096]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[8386560, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_012",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[8192]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[33550336, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Combinations_013",
+    "op": "Combinations",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[16384]],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "format": ["ND"],
+        "type": ["int64", "double"],
+        "shape": [[134209536, 2]]
+        }
+    ],
+    "attr": [
+      {
+        "name": "r",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "with_replacement",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
+]

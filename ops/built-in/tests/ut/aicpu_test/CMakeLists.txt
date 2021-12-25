@@ -94,6 +94,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/check_numerics.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/combinations.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/conj.cc
@@ -250,7 +251,7 @@ set(_cpu_kernels_ut_files
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
   testcase/check_numerics/src/check_numerics_utest.cpp
-  testcase/tile_with_axis/src/tile_with_axis_utest.cpp
+  testcase/combinations/src/combinations_utest.cpp
   testcase/common/src/async_cpu_kernel_utest.cpp
   testcase/common/src/async_event_util_utest.cpp
   testcase/common/src/attr_value_utest.cpp
@@ -332,6 +333,7 @@ set(_cpu_kernels_ut_files
   testcase/sub/src/sub_utest.cpp
   testcase/tan/src/tan_utest.cpp
   testcase/tanhgrad/src/tanhgrad_utest.cpp
+  testcase/tile_with_axis/src/tile_with_axis_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
   testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp

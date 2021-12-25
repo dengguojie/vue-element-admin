@@ -1378,5 +1378,64 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetDInferShape) {
 
 COMMON_INFER_FUNC_REG(ConcatOffsetD, ConcatOffsetDInferShape);
 // --------------------ConcatOffsetD Op End------------------------
+
+// --------------------Combinations Op Begin------------------------
+static int64_t combi(int64_t input_num, int32_t r) {
+  int ans = 1;
+  for(int i = input_num; i > input_num - r; i--) ans *= i;
+  for(int i = r; i > 1; i--) ans /= i;
+  return ans;
+}
+
+IMPLEMT_COMMON_INFERFUNC(CombinationsInferShape) {
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  std::vector<int64_t> dim_vector;
+  int64_t dimsInput = shape.GetDimNum() - 1;
+  int32_t r;
+  if (op.GetAttr("r", r) == GRAPH_FAILED) {
+    r = 2;
+  }
+  if (r < 1) {
+      std::string err_msg = GetAttrSizeErrMsg("r", std::to_string(r), ConcatString("more than or equal to 1"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+  }
+  if (r > shape.GetShapeSize()) {
+      std::string err_msg = GetAttrSizeErrMsg("r", std::to_string(r), ConcatString("less than or equal to input_num"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+  }
+  bool with_replacement;
+  if (op.GetAttr("with_replacement", with_replacement) == GRAPH_FAILED) {
+    with_replacement = false;
+  }
+  if (with_replacement == true) {
+    dim_vector.push_back(combi(shape.GetShapeSize(), r) + shape.GetShapeSize());
+  } else if (with_replacement == false) {
+    dim_vector.push_back(combi(shape.GetShapeSize(), r));
+  }
+  dim_vector.push_back(r);
+  Shape output_shape(dim_vector);
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(output_shape);
+  td.SetDataType(input_dtype);
+  if (op.UpdateOutputDesc("y", td) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Combinations, CombinationsVerify)
+{
+  if (op.GetInputDesc("x").GetDataType() != op.GetOutputDesc("y").GetDataType()) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Combinations, CombinationsInferShape);
+VERIFY_FUNC_REG(Combinations, CombinationsVerify);
+// --------------------Combinations Op End------------------------
 }  // namespace ge
 

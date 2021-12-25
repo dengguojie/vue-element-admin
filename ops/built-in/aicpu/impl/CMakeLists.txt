@@ -18,6 +18,7 @@ set(local_kernels_src_files
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/check_numerics.cc
+    kernels/normalized/combinations.cc
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
     kernels/normalized/conj.cc
