@@ -28,6 +28,39 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
+namespace{
+  constexpr int64_t CUT_LEN =3;
+  constexpr int64_t DST_LEN = 2;
+  constexpr int64_t PADDING_FACTOR = 2;
+  constexpr int64_t DTYPE_RATE_INDEX = 2;
+  constexpr int64_t OUTPUT_SIZE_INDEX = 3;
+  constexpr int64_t BEGIN_MASK_INDEX = 4;
+  constexpr int64_t END_MASK_INDEX = 5;
+  constexpr int64_t ELLIPSIS_MASK_INDEX = 6;
+  constexpr int64_t AXIS_MASK_INDEX = 7;
+  constexpr int64_t SHRINK_AXIS_INDEX = 8;
+  constexpr int64_t SHAPE_DIM_INDEX_2 = 2;
+  constexpr int64_t SHAPE_DIM_INDEX_3 = 3;
+  constexpr int64_t SHAPE_DIM_INDEX_4 = 4;
+  constexpr int64_t SHAPE_DIM_INDEX_5 = 5;
+  constexpr int64_t SHAPE_DIM_INDEX_6 = 6;
+  constexpr int64_t SHAPE_DIM_INDEX_7 = 7;
+  constexpr int64_t TILING_PADDING_INDEX_2 = 2;
+  constexpr int64_t TILING_PADDING_INDEX_3 = 3;
+  constexpr int64_t TILING_PADDING_INDEX_4 = 4;
+  constexpr int64_t TILING_PADDING_INDEX_5 = 5;
+  constexpr int64_t TILING_PADDING_INDEX_6 = 6;
+  constexpr int64_t TILING_PADDING_INDEX_7 = 7;
+  constexpr int64_t TILING_PADDING_INDEX_8 = 8;
+  constexpr int64_t TILING_PADDING_INDEX_9 = 9;
+  constexpr int64_t TILING_PADDING_INDEX_10 = 10;
+  constexpr int64_t TILING_PADDING_INDEX_11 = 11;
+  constexpr int64_t TILING_PADDING_INDEX_12 = 12;
+  constexpr int64_t TILING_PADDING_INDEX_13 = 13;
+  constexpr int64_t TILING_PADDING_INDEX_14 = 14;
+  constexpr int64_t TILING_PADDING_INDEX_15 = 15;
+}
+
 namespace optiling {
 
 const int64_t ONE_BLOCK_BYTES = 32;
@@ -158,18 +191,18 @@ static bool GetPadCompileParams(const std::vector<int64_t>& compile_info, PadCom
                   return false);
   compile_params.core_num = compile_info[0];
   compile_params.ub_size = compile_info[1];
-  compile_params.dtype_rate = compile_info[2];
-  compile_params.tiling_two_max_output_size = compile_info[3];
+  compile_params.dtype_rate = compile_info[DTYPE_RATE_INDEX];
+  compile_params.tiling_two_max_output_size = compile_info[OUTPUT_SIZE_INDEX];
   if (compile_params.op_type == OP_STRIDED_SLICE_GRAD) {
     OP_TILING_CHECK(compile_info.size() != COMPILE_INFO_SIZE_9,
                     VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "the compile info num must == 9, is %zu",
                                                     compile_info.size()),
                     return false);
-    compile_params.begin_mask = static_cast<std::uint64_t>(compile_info[4]);
-    compile_params.end_mask = static_cast<std::uint64_t>(compile_info[5]);
-    compile_params.ellipsis_mask = static_cast<std::uint64_t>(compile_info[6]);
-    compile_params.new_axis_mask = static_cast<std::uint64_t>(compile_info[7]);
-    compile_params.shrink_axis_mask = static_cast<std::uint64_t>(compile_info[8]);
+    compile_params.begin_mask = static_cast<std::uint64_t>(compile_info[BEGIN_MASK_INDEX]);
+    compile_params.end_mask = static_cast<std::uint64_t>(compile_info[END_MASK_INDEX]);
+    compile_params.ellipsis_mask = static_cast<std::uint64_t>(compile_info[ELLIPSIS_MASK_INDEX]);
+    compile_params.new_axis_mask = static_cast<std::uint64_t>(compile_info[AXIS_MASK_INDEX]);
+    compile_params.shrink_axis_mask = static_cast<std::uint64_t>(compile_info[SHRINK_AXIS_INDEX]);
   }
   return true;
 }
@@ -343,14 +376,14 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   std::vector<int64_t> merge_input_shape_dims;
   std::vector<int64_t> merge_paddings_values;
   merge_input_shape_dims.reserve(MAX_SHAPE_LEN);
-  merge_paddings_values.reserve(MAX_SHAPE_LEN * 2);
+  merge_paddings_values.reserve(MAX_SHAPE_LEN * PADDING_FACTOR);
   int64_t merge_input_shape_dim = 1;
   bool pre_dim_pidding_flag = true;
   for (size_t i = 0; i < shape_len; i++) {
     auto cu_idx = shape_len - i - 1;
     auto cu_input_dim = input_shape[cu_idx];
-    auto cu_paddings_value_left = paddings_const_values[cu_idx * 2];
-    auto cu_paddings_value_right = paddings_const_values[cu_idx * 2 + 1];
+    auto cu_paddings_value_left = paddings_const_values[cu_idx * PADDING_FACTOR];
+    auto cu_paddings_value_right = paddings_const_values[cu_idx * PADDING_FACTOR + 1];
     auto cu_output_dim = cu_input_dim + cu_paddings_value_left + cu_paddings_value_right;
     if (i == shape_len - 1) {
       merge_input_shape_dims.insert(merge_input_shape_dims.begin(), cu_input_dim * merge_input_shape_dim);
@@ -383,28 +416,28 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
 
   tiling_params.tiling_input_dim_0 = merge_input_shape_dims[0];
   tiling_params.tiling_input_dim_1 = merge_input_shape_dims[1];
-  tiling_params.tiling_input_dim_2 = merge_input_shape_dims[2];
-  tiling_params.tiling_input_dim_3 = merge_input_shape_dims[3];
-  tiling_params.tiling_input_dim_4 = merge_input_shape_dims[4];
-  tiling_params.tiling_input_dim_5 = merge_input_shape_dims[5];
-  tiling_params.tiling_input_dim_6 = merge_input_shape_dims[6];
-  tiling_params.tiling_input_dim_7 = merge_input_shape_dims[7] * compile_params.dtype_rate;
+  tiling_params.tiling_input_dim_2 = merge_input_shape_dims[SHAPE_DIM_INDEX_2];
+  tiling_params.tiling_input_dim_3 = merge_input_shape_dims[SHAPE_DIM_INDEX_3];
+  tiling_params.tiling_input_dim_4 = merge_input_shape_dims[SHAPE_DIM_INDEX_4];
+  tiling_params.tiling_input_dim_5 = merge_input_shape_dims[SHAPE_DIM_INDEX_5];
+  tiling_params.tiling_input_dim_6 = merge_input_shape_dims[SHAPE_DIM_INDEX_6];
+  tiling_params.tiling_input_dim_7 = merge_input_shape_dims[SHAPE_DIM_INDEX_7] * compile_params.dtype_rate;
   tiling_params.tiling_pading_00 = merge_paddings_values[0];
   tiling_params.tiling_pading_01 = merge_paddings_values[1];
-  tiling_params.tiling_pading_10 = merge_paddings_values[2];
-  tiling_params.tiling_pading_11 = merge_paddings_values[3];
-  tiling_params.tiling_pading_20 = merge_paddings_values[4];
-  tiling_params.tiling_pading_21 = merge_paddings_values[5];
-  tiling_params.tiling_pading_30 = merge_paddings_values[6];
-  tiling_params.tiling_pading_31 = merge_paddings_values[7];
-  tiling_params.tiling_pading_40 = merge_paddings_values[8];
-  tiling_params.tiling_pading_41 = merge_paddings_values[9];
-  tiling_params.tiling_pading_50 = merge_paddings_values[10];
-  tiling_params.tiling_pading_51 = merge_paddings_values[11];
-  tiling_params.tiling_pading_60 = merge_paddings_values[12];
-  tiling_params.tiling_pading_61 = merge_paddings_values[13];
-  tiling_params.tiling_pading_70 = merge_paddings_values[14] * compile_params.dtype_rate;
-  tiling_params.tiling_pading_71 = merge_paddings_values[15] * compile_params.dtype_rate;
+  tiling_params.tiling_pading_10 = merge_paddings_values[TILING_PADDING_INDEX_2];
+  tiling_params.tiling_pading_11 = merge_paddings_values[TILING_PADDING_INDEX_3];
+  tiling_params.tiling_pading_20 = merge_paddings_values[TILING_PADDING_INDEX_4];
+  tiling_params.tiling_pading_21 = merge_paddings_values[TILING_PADDING_INDEX_5];
+  tiling_params.tiling_pading_30 = merge_paddings_values[TILING_PADDING_INDEX_6];
+  tiling_params.tiling_pading_31 = merge_paddings_values[TILING_PADDING_INDEX_7];
+  tiling_params.tiling_pading_40 = merge_paddings_values[TILING_PADDING_INDEX_8];
+  tiling_params.tiling_pading_41 = merge_paddings_values[TILING_PADDING_INDEX_9];
+  tiling_params.tiling_pading_50 = merge_paddings_values[TILING_PADDING_INDEX_10];
+  tiling_params.tiling_pading_51 = merge_paddings_values[TILING_PADDING_INDEX_11];
+  tiling_params.tiling_pading_60 = merge_paddings_values[TILING_PADDING_INDEX_12];
+  tiling_params.tiling_pading_61 = merge_paddings_values[TILING_PADDING_INDEX_13];
+  tiling_params.tiling_pading_70 = merge_paddings_values[TILING_PADDING_INDEX_14] * compile_params.dtype_rate;
+  tiling_params.tiling_pading_71 = merge_paddings_values[TILING_PADDING_INDEX_15] * compile_params.dtype_rate;
 
   auto last_dim_output =
       tiling_params.tiling_input_dim_7 + tiling_params.tiling_pading_70 + tiling_params.tiling_pading_71;
@@ -412,7 +445,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   if (last_dim_output < compile_params.tiling_two_max_output_size) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
-    if (shape_len == 2 && (tiling_params.tiling_pading_60 + tiling_params.tiling_pading_61 == 0)) {
+    if (shape_len == DST_LEN && (tiling_params.tiling_pading_60 + tiling_params.tiling_pading_61 == 0)) {
       // when origin shape len is 2, will split the core_dim to dim 3, base the core_num
       int64_t split_dim = 1;
       for (int64_t i = 0; i < compile_params.core_num; i++) {
@@ -426,7 +459,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
       tiling_params.tiling_input_dim_5 = split_dim;
     }
   }
-  if ((shape_len == 2 && tiling_params.tiling_input_dim_7 > TILING_0_SIGMENT_1 * compile_params.core_num) ||
+  if ((shape_len == DST_LEN && tiling_params.tiling_input_dim_7 > TILING_0_SIGMENT_1 * compile_params.core_num) ||
       (shape_len == 1 && tiling_params.tiling_input_dim_7 >= TILING_0_SIGMENT_2 * compile_params.core_num)) {
     tiling_params.tiling_key = TILING_MODE_0;
     tiling_params.tiling_input_dim_cut_axis = 0;
@@ -492,12 +525,12 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
         return false);
     for (size_t i = 0; i < format_nchw_idx.size(); i++) {
       auto dim_idx = format_nchw_idx[i];
-      paddings_new_values[i * 2] = paddings_const_values[dim_idx * 2];
-      paddings_new_values[i * 2 + 1] = paddings_const_values[dim_idx * 2 + 1];
+      paddings_new_values[i * PADDING_FACTOR] = paddings_const_values[dim_idx * PADDING_FACTOR];
+      paddings_new_values[i * PADDING_FACTOR + 1] = paddings_const_values[dim_idx * PADDING_FACTOR + 1];
     }
 
     // modify C1 padding = C padding / SHAPE_C0
-    auto padding_c1_idx = (format_nchw_idx.size() - 3) * 2;
+    auto padding_c1_idx = (format_nchw_idx.size() - CUT_LEN) * PADDING_FACTOR;
     paddings_new_values[padding_c1_idx] = paddings_new_values[padding_c1_idx] / SHAPE_C0;
     paddings_new_values[padding_c1_idx + 1] = paddings_new_values[padding_c1_idx + 1] / SHAPE_C0;
 

@@ -48,8 +48,10 @@ const int64_t TILING_MODE_5 = 5;
 const int64_t ZERO = 0;
 constexpr int32_t BYTE_SIZE_2 = 2;
 constexpr int32_t BYTE_SIZE_4 = 4;
-constexpr int32_t INDEX_TWO = 2;
-constexpr int32_t INDEX_ONE = 1;
+constexpr int32_t VARSIZE_INDEX = 2;
+constexpr int32_t UPDATES_DESC_INDEX = 2;
+constexpr int32_t INDICE_DESC_INDEX = 1;
+constexpr int32_t INDICE_INDEX = 3;
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "var_size", "indices_size"};
 
@@ -257,8 +259,8 @@ bool GetScatteUpdateCompileParams(const std::string& opType, const std::vector<i
 
   coreNum = opCompileInfo[0];
   ubSize = opCompileInfo[1];
-  varSize = opCompileInfo[INDEX_TWO];
-  indicesSize = opCompileInfo[3];
+  varSize = opCompileInfo[VARSIZE_INDEX];
+  indicesSize = opCompileInfo[INDICE_INDEX];
 
   return true;
 }
@@ -273,8 +275,8 @@ bool ScatterUpdateTiling(const std::string& opType, const ge::Operator& opParas,
                   return false);
 
   auto var_desc = operator_info->MutableInputDesc(0);
-  auto indices_desc = operator_info->MutableInputDesc(INDEX_ONE);
-  auto updates_desc = operator_info->MutableInputDesc(INDEX_TWO);
+  auto indices_desc = operator_info->MutableInputDesc(INDICE_DESC_INDEX);
+  auto updates_desc = operator_info->MutableInputDesc(UPDATES_DESC_INDEX);
   OP_TILING_CHECK(var_desc == nullptr || indices_desc == nullptr || updates_desc == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "get InputDesc failed."), return false);
 

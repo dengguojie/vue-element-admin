@@ -20,7 +20,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct SmoothL1LossGradV2CompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   ge::DataType dtype;
