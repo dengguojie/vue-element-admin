@@ -5,7 +5,7 @@ import sys
 
 
 def parse_ini_files(ini_files):
-    """parse ini files"""
+    """ Parse ini files. """
     aicpu_ops_info = {}
     print(ini_files)
     parse_ini_to_obj(ini_files, aicpu_ops_info)
@@ -13,7 +13,7 @@ def parse_ini_files(ini_files):
 
 
 def parse_ini_to_obj(ini_file, aicpu_ops_info):
-    """parse ini file to object"""
+    """ Parse ini file to object. """
     with open(ini_file) as inif:
         lines = inif.readlines()
         op = {}
@@ -33,7 +33,7 @@ def parse_ini_to_obj(ini_file, aicpu_ops_info):
 
 
 def check_op_info(aicpu_ops):
-    """check op info"""
+    """ Check op info. """
     print("\n==============check valid for ops info start==============")
     required_op_info_keys = ["computeCost", "engine", "flagAsync", "flagPartial", "opKernelLib"]
 
@@ -80,7 +80,7 @@ def check_op_info(aicpu_ops):
 
 
 def write_json_file(aicpu_ops_info, json_file_path):
-    """write json file"""
+    """ Write json file. """
     json_file_real_path = os.path.realpath(json_file_path)
     with open(json_file_real_path, "w") as f:
         # Only the owner and group have rights
@@ -89,7 +89,7 @@ def write_json_file(aicpu_ops_info, json_file_path):
 
 
 def parse_ini_to_json(inf_paths, ouf_path):
-    """parse ini file to json"""
+    """ Parse ini file to json. """
     aicpu_ops_info = parse_ini_files(inf_paths)
     try:
         check_op_info(aicpu_ops_info)

@@ -69,7 +69,7 @@ class IniParser(object):
         if len(missing_keys) > 0:
             print("op: " + op_name + " opInfo missing: " + ",".join(missing_keys))
             raise KeyError("bad key value")
-        self.aicpu_ops_info[op_name]["opInfo"]["userDefined"] = True
+        self.aicpu_ops_info.get(op_name)["opInfo"]["userDefined"] = True
 
     def check_op_info(self, op_name, op_info):
         """
@@ -90,7 +90,7 @@ class IniParser(object):
             custom_set = op_info.get(CUSTOM_PREF)
             # NOTE: do not use bool(xxx) here, bool('False') returns True
             if bool(util.strtobool(custom_set)):
-                self.custom_ops_info[op_name] = self.aicpu_ops_info[op_name]
+                self.custom_ops_info[op_name] = self.aicpu_ops_info.get(op_name)
 
     def check_op_input_output(self, io_sec_info):
         """
@@ -191,6 +191,7 @@ class IniParser(object):
 
 
 def main():
+    """ A Parser function for ini file. """
     parser = argparse.ArgumentParser(
         prog="Parser_ini.py",
         usage="python3 PATH-TO/parser_ini.py [INI FILES] [OUTPUT_FILE.json] OPERATION",
