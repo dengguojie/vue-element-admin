@@ -78,7 +78,8 @@ vector<FusionPattern*> DiagPartFusionPass::DefinePatterns() {
   // diag_part->diag_part_d
   // define DiagPartFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DiagPartFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -126,7 +127,8 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   // multipies of half dims
   int64_t dimNums = 1;
-  for (size_t j = 0; j < diagpartInputShape.GetDimNum() / 2; ++j) {
+  const int64_t input_to_output_dims_times = 2;
+  for (size_t j = 0; j < diagpartInputShape.GetDimNum() / input_to_output_dims_times; ++j) {
     if (PatternFusionUtil::IsUnknownShape(diagpartInputShape.GetDim(j))) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DiagPartFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
@@ -144,13 +146,16 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::GeTensorDesc tensorDesc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT);
   if (dataType == ge::DT_FLOAT) {
     unique_ptr<float[]> inputAssit(new (std::nothrow) float[dimNums * dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums * dimNums, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
     ret = AssitHelp(dimNums, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
@@ -167,14 +172,17 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
         return PARAM_INVALID);
   } else if (dataType == ge::DT_INT32) {
     unique_ptr<int32_t[]> inputAssit(new (std::nothrow) int32_t[dimNums * dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums, INT_NUM_ZERO, *reinterpret_cast<int32_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
     ret = AssitHelp(dimNums, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
@@ -191,14 +199,17 @@ Status DiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
         return PARAM_INVALID);
   } else if (dataType == ge::DT_FLOAT16) {
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums * dimNums]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(dimNums * dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
     ret = AssitHelpFP16(dimNums, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelpFP16 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelpFP16 failed."), return ret);
 
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = diagpartInputShape;
