@@ -29,6 +29,7 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling import tiling_api
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule import util
+from te.platform import cce_params
 
 FIXPIPE_REFORM_TAG = "fixpipe_reform"
 QUANT_SCALE_0_STR = "quant_scale_0"
@@ -292,9 +293,9 @@ class FixpipeFusion:
 
         for tensor in self.fixpipe_inputs:
             if tensor == self.weight_input:
-                scope_inputs = scope_fb1
+                scope_inputs = cce_params.scope_fb1
             elif next_op_map[tensor].op.tag in ("dequant_vector", "requant_vector"):
-                scope_inputs = scope_fb0
+                scope_inputs = cce_params.scope_fb0
 
             input_fb = sch.cache_read(tensor, scope_inputs, next_op_map[tensor]) # fb0: QUANT_PRE, fb1: RELU_PRE
             input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
@@ -612,7 +613,7 @@ class DynamicShape:
             sch[bl0].mem_unique()
             sch[cl0].mem_unique()
 
-    def set_al1_bound(self, sch, al1, conv_param, tiling_param, strideh_opti_flag):
+    def set_al1_bound(self, sch, al1, conv_param, tiling_param, l0a_load2d_flag, strideh_opti_flag):
         """
         Set al1 bound for dynamic shape.
         """
@@ -635,25 +636,28 @@ class DynamicShape:
                 multi_m_al1 = tiling_param["multi_m_al1"]
                 k1_al1 = tiling_param["k1_al1"]
                 m_al1 = multi_m_al1 * m_cl0
-                if self.hw_dynamic:
-                    additional_rows = tvm.select(
-                        tvm.floormod(m_al1, out_width) == 0,
-                        0,
-                        tvm.select(tvm.floormod(m_al1*2, out_width) == 0, 1, 2))
-                elif self.n_dynamic:
-                    if m_al1 % out_width == 0:
-                        additional_rows = 0
-                    elif m_al1*2 % out_width == 0:
-                        additional_rows = 1
-                    else:
-                        additional_rows = 2
-                m_al1 = modify_m_for_load3d()
-                al1_bound = m_al1*k1_al1*in_c0
+                if l0a_load2d_flag:
+                    pass
+                else:
+                    if self.hw_dynamic:
+                        additional_rows = tvm.select(
+                            tvm.floormod(m_al1, out_width) == 0,
+                            0,
+                            tvm.select(tvm.floormod(m_al1 * 2, out_width) == 0, 1, 2))
+                    elif self.n_dynamic:
+                        if m_al1 % out_width == 0:
+                            additional_rows = 0
+                        elif m_al1 * 2 % out_width == 0:
+                            additional_rows = 1
+                        else:
+                            additional_rows = 2
+                    m_al1 = modify_m_for_load3d()
+                al1_bound = m_al1 * k1_al1 * in_c0
             else:
                 if strideh_opti_flag:
                     in_height = (in_height - 1) // stride_h + 1
-                m_al1 = ceil(in_height*in_width, in_c0)
-                al1_bound = m_al1*in_c1*in_c0
+                m_al1 = ceil(in_height * in_width, in_c0)
+                al1_bound = m_al1 * in_c1 * in_c0
 
             sch[al1].set_buffer_size(al1_bound)
 
@@ -672,7 +676,8 @@ class DynamicShape:
         if self.hw_dynamic:
             sch[res].pragma(res_pragma_axis, "gm_no_sync", 1)
 
-    def dynamic_mode_im2col_v2(self, sch, conv_param, tensor_param, tiling_param, emit_insn_dict, input_nd_flag):
+    def dynamic_mode_im2col_v2(self, sch, conv_param, tensor_param, tiling_param,
+                               emit_insn_dict, input_nd_flag, l0a_load2d_flag):
         """
         Use im2col_v2 in dynamic shape situation.
         """
@@ -717,12 +722,18 @@ class DynamicShape:
             'l1_group_flag': 1
         }
 
-        sch[al0].emit_insn(dynamic_al0_pragma_axis, 'im2col_v2', im2col_attr_0)
-        if input_nd_flag:
+        if l0a_load2d_flag:
+            sch[al1].emit_insn(al1.op.axis[0], "dma_copy")
+        elif input_nd_flag:
             im2col_attr.update({"layout_transform": "nd2nz"})
             sch[al1].emit_insn(al1.op.axis[2], "dma_copy", im2col_attr)
         else:
             sch[al1].emit_insn(al1.op.axis[0], "dma_copy", im2col_attr)
+
+        if l0a_load2d_flag:
+            sch[al0].emit_insn(dynamic_al0_pragma_axis, "dma_copy")
+        else:
+            sch[al0].emit_insn(dynamic_al0_pragma_axis, 'im2col_v2', im2col_attr_0)
 
 
 class StridedRead:
@@ -732,29 +743,35 @@ class StridedRead:
     def __init__(self, conv_param):
         self.flag = conv_param.strided_read_flag
 
-    def config_al1_rowmajor_input(self, sch, fmap_row_major, scope_al1):
+    def process_strided_read(self, sch, al1, strideh_opti_flag, l0a_load2d_flag):
         """
-        Get the al1 tensor in stridedread fusion.
+        Inline the output tensor of strided read when strideh_opti or l0a_load2d is enabled.
         """
-        al1 = get_src_tensor(fmap_row_major)
-        sch[al1].set_scope(scope_al1)
-        return al1
+        def inline_fmap_strided_read(fusion_flag, al1):
+            if fusion_flag and self.flag:
+                fmap_strided_read = get_src_tensor(al1)
+                sch[fmap_strided_read].compute_inline()
 
-    def process_strided_read(self, sch, al1, strideh_opti_flag):
-        """
-        Inline the output tensor of strided read when strideh_opti is enabled.
-        """
-        if strideh_opti_flag and self.flag:
-            fmap_strided_read = get_src_tensor(al1)
-            sch[fmap_strided_read].compute_inline()
+        inline_fmap_strided_read(strideh_opti_flag, al1)
+        inline_fmap_strided_read(l0a_load2d_flag, al1)
 
 
 class StridedWrite:
     """
     Class of Conv2d + StridedWrite fusion.
     """
-    def __init__(self):
-        pass
+    def __init__(self, res):
+        self.flag = res.op.tag == "strided_write"
+
+    def process_strided_write(self, sch, res):
+        """
+        Inline the output tensor of strided write.
+        """
+        if self.flag:
+            strided_write_src = get_src_tensor(res)
+            res_hw, res_c0 = res.shape[-2:]
+            sch[strided_write_src].compute_inline()
+            sch[res].bind_buffer(res.op.axis[0], res_hw * res_c0 * res.op.attrs['stride'], 0)
 
 
 class Im2colDma:
@@ -845,6 +862,26 @@ class InnerBatch:
                 err_man.raise_err_specific("conv2d", "innerbatch case must full load M.")
             if batch_cl0 * batch_dim > batch:
                 err_man.raise_err_specific("conv2d", "innerbatch batch_cl0*batch_dim cannot be greater than batch.")
+class L0aLoad2d:
+    """
+    class of fmap load2d optimization.
+    """
+    def __init__(self, conv_param):
+        self.flag = conv_param.l0a_load2d_flag
+
+    def align_al1_load2d(self, sch, al1):
+        """
+        al1 M align.
+        """
+        if self.flag:
+            sch[al1].storage_align(al1.op.axis[1], 256, 0)
+
+    def load2d_emit_insn(self, sch, al1, al0):
+        """
+        Emit insn for al1 and al0 when al1_load2d is enabled.
+        """
+        sch[al1].emit_insn(al1.op.axis[0], "dma_copy")
+        sch[al0].emit_insn(al0.op.axis[0], "dma_copy")
 
 
 class StridehOpti:
@@ -961,9 +998,10 @@ class Conv2dSchedule:
         self._aipp_fusion = AippFusion(conv_param)
         self._dynamic_shape = DynamicShape(conv_param, tiling_dict_flag, tiling_case, var_range)
         self._strided_read = StridedRead(conv_param)
-        self._strided_write = StridedWrite()
+        self._strided_write = StridedWrite(res)
         self._im2col_dma = Im2colDma(conv_param)
         self._inner_batch = InnerBatch()
+        self._l0a_load2d = L0aLoad2d(conv_param)
         self._strideh_opti = StridehOpti(conv_param)
         self._c04 = C04Opti(conv_param)
         self._conv1d = Conv1dSplitw(conv_param)
@@ -1195,7 +1233,7 @@ class Conv2dSchedule:
             """
             Config row major scope.
             """
-            if self._dynamic_shape.flag:
+            if self._dynamic_shape.flag or self._l0a_load2d.flag:
                 return None
             fmap_row_major = tensor_map["fmap_row_major"]
             sch[fmap_row_major].set_scope(cce.scope_cbuf)
@@ -1206,16 +1244,18 @@ class Conv2dSchedule:
             Config al1 scope.
             """
             scope_al1 = self._lx_fusion.config_al1_scope()
-            if self._dynamic_shape.flag:
-                return self._dynamic_shape.config_al1_dynamic(sch, tensor_map, scope_al1)
-            if self._strideh_opti.flag:
-                return self._strideh_opti.config_al1_strideh_opti(sch, tensor_map, scope_al1)
-            if self._input_nd2nz.flag:
-                return self._input_nd2nz.config_al1_nd2nz(sch, fmap_row_major, scope_al1)
-            if self._strided_read.flag or self._aipp_fusion.flag:
-                return self._strided_read.config_al1_rowmajor_input(sch, fmap_row_major, scope_al1)
-            if self._c04.mode == "not_first_layer_c04":
-                return self._c04.config_al1_c04(sch, tensor_map, scope_al1)
+            al1_already_exist_flags = (self._dynamic_shape.flag,
+                                       self._l0a_load2d.flag,
+                                       self._strideh_opti.flag,
+                                       self._input_nd2nz.flag,
+                                       self._strided_read.flag,
+                                       self._aipp_fusion.flag,
+                                       self._c04.mode == "not_first_layer_c04")
+            for flag in al1_already_exist_flags:
+                if flag:
+                    al1 = tensor_map["fmap_l1"]
+                    sch[al1].set_scope(scope_al1)
+                    return al1
 
             al1 = sch.cache_read(fmap, scope_al1, [fmap_row_major])
             return al1
@@ -1260,7 +1300,7 @@ class Conv2dSchedule:
             """
             if self._bias_flag:
                 bias_l1 = sch.cache_read(self._bias_tensor, cce.scope_cbuf, [cl0])
-                bias_bt = sch.cache_read(bias_l1, scope_bt, [cl0])
+                bias_bt = sch.cache_read(bias_l1, cce_params.scope_bt, [cl0])
                 return bias_l1, bias_bt
 
             return None, None
@@ -1308,7 +1348,7 @@ class Conv2dSchedule:
             """
             Align row major in various situation.
             """
-            if self._dynamic_shape.flag:
+            if self._dynamic_shape.flag or self._l0a_load2d.flag:
                 return None
             if self._conv1d.flag:
                 return self._conv1d.align_row_major_conv1d(sch, fmap_row_major, self._block_k0)
@@ -1345,6 +1385,7 @@ class Conv2dSchedule:
         self._im2col_dma.align_al1_im2col(sch, al1_im2col, self._block_k0)
         self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag)
 
+        self._strided_write.process_strided_write(sch, self._res)
         # inline input_nd
         self._input_nd2nz.inline_input_nd_dynamic(sch, self._tensor_map, self._dynamic_shape.flag)
 
@@ -1881,7 +1922,8 @@ class Conv2dSchedule:
         self._lx_fusion.config_l1_tensormap(sch, fmap, al1, self._op_graph)
 
         #=================================dynamic shape process=====================================
-        self._dynamic_shape.set_al1_bound(sch, al1, conv_param, tiling_param, self._strideh_opti.flag)
+        self._dynamic_shape.set_al1_bound(sch, al1, conv_param, tiling_param,
+                                          self._l0a_load2d.flag, self._strideh_opti.flag)
         self._dynamic_shape.set_cl0_bound(sch, cl0, cl0_tiling)
         self._dynamic_shape.res_hw_dynamic_pragma(sch, res, res_pragma_axis)
 
@@ -1985,7 +2027,10 @@ class Conv2dSchedule:
 
             if self._dynamic_shape.flag:
                 self._dynamic_shape.dynamic_mode_im2col_v2(
-                    sch, conv_param, tensor_param, tiling_param, emit_insn_dict, self._input_nd2nz.flag)
+                    sch, conv_param, tensor_param, tiling_param,
+                    emit_insn_dict, self._input_nd2nz.flag, self._l0a_load2d.flag)
+            elif self._l0a_load2d.flag:
+                self._l0a_load2d.load2d_emit_insn(sch, al1, al0)
             else:
                 setfmatrix_dict = config_setfmatrix()
                 al1_emit_insn()

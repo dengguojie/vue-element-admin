@@ -53,6 +53,20 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         """
         Compute of al1.
         """
+        #===============================l0a load2d optimization==============================
+        if l0a_load2d_flag:
+            al1_load2d_shape = (batch, in_c1, in_height * in_width, in_c0)
+
+            al1_load2d = tvm.compute(
+                al1_load2d_shape,
+                lambda n_idx, ci1_idx, m_idx, ci0_idx:
+                fmap(n_idx, ci1_idx, m_idx // in_width, m_idx % in_width, ci0_idx),
+                name="al1_load2d",
+                tag=OP_TAG + "al1_load2d")
+
+            return al1_load2d
+
+        #===============================dynamic shape========================================
         if dynamic_flag:
             fmap_l1_shape = (group_opt,
                              batch,
@@ -64,14 +78,13 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 fmap_l1_shape,
                 lambda group_idx, n_idx, ci1_idx, hi_idx, wi_idx, ci0_idx:
                 fmap(n_idx,
-                     ci1_idx + group_idx*ci1_opt,
-                     hi_idx*stride_h if strideh_opti_flag else hi_idx,
+                     ci1_idx + group_idx * ci1_opt,
+                     hi_idx * stride_h if strideh_opti_flag else hi_idx,
                      wi_idx,
                      ci0_idx),
                 name="fmap_l1",
                 tag=OP_TAG + "fmap_l1")
 
-            conv_param.tensor_map["fmap_l1"] = fmap_l1
             return fmap_l1
 
         #===========================strideh optimization=====================================
@@ -84,13 +97,12 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 lambda n_idx, ci1_idx, hi_idx, wi_idx, ci0_idx:
                 fmap(n_idx,
                      ci1_idx,
-                     hi_idx*stride_h,
+                     hi_idx * stride_h,
                      wi_idx,
                      ci0_idx),
                 name="fmap_l1",
                 tag=OP_TAG + "fmap_l1")
 
-            conv_param.tensor_map["fmap_l1"] = fmap_l1
             return fmap_l1
 
         #=========================C0=4====================================================
@@ -108,10 +120,28 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 name="fmap_l1_c04",
                 tag=OP_TAG + "fmap_l1_c04")
 
-            conv_param.tensor_map["fmap_l1_c04"] = fmap_l1_c04
             return fmap_l1_c04
 
         return fmap
+
+    def load2d_l0a_compute(fmap_l1):
+        """
+        Compute of al0 in fmap load2d.
+        """
+        al0_load2d_shape = (group_opt,
+                            batch,
+                            ceil_div(in_height * in_width, block_m0),
+                            in_c1,
+                            block_m0,
+                            in_c0)
+
+        al0_load2d = tvm.compute(
+            al0_load2d_shape,
+            lambda group_idx, n_idx, m1_idx, ci1_idx, m0_idx, ci0_idx:
+            fmap_l1(n_idx, group_idx * ci1_opt + ci1_idx, m0_idx + block_m0 * m1_idx, ci0_idx),
+            name=OP_TAG + "al0_load2d")
+
+        return al0_load2d
 
     def dynamic_l0a_compute(fmap_l1):
         """
@@ -130,8 +160,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 """
                 group_idx, n_idx, m1_idx, k1_idx, m0_idx, k0_idx = idx
 
-                virtual_h = m1_idx*block_size + m0_idx
-                virtual_w = k1_idx*block_size + k0_idx
+                virtual_h = m1_idx * block_size + m0_idx
+                virtual_w = k1_idx * block_size + k0_idx
                 dilate_h, dilate_w = dilate
 
                 back_c1 = virtual_w // block_size // kernel_w // kernel_h
@@ -162,7 +192,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         im2col_shape = (group_opt,
                         batch,
                         howo_mad // block_m0,
-                        ci1_opt*kernel_h*kernel_w,
+                        ci1_opt * kernel_h * kernel_w,
                         block_m0,
                         block_k0)
 
@@ -192,11 +222,11 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 width_out = (in_weight.value + padding_left + padding_right -
                              ((kernel_w - 1)*dilate_w + 1)) // (stride_w) + 1
 
-                h_index = (howo // width_out)*stride_h + k_h*dilate_h
-                w_index = (howo % width_out)*stride_w + k_w*dilate_w
+                h_index = (howo // width_out)*stride_h + k_h * dilate_h
+                w_index = (howo % width_out)*stride_w + k_w * dilate_w
                 if conv_param.l0a_dma_flag:
                     return fmap_l1(batch,
-                                   cin_1 + group*ci1_opt,
+                                   cin_1 + group * ci1_opt,
                                    h_index - padding_top,
                                    w_index - padding_left,
                                    cin_0)
@@ -207,7 +237,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                             w_index > in_weight.value + padding_left - 1),
                     tvm.const(offset_x, compute_dtype),
                     fmap_l1(batch,
-                            cin_1 + group*ci1_opt,
+                            cin_1 + group * ci1_opt,
                             h_index - padding_top,
                             w_index - padding_left,
                             cin_0))
@@ -229,14 +259,14 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 row_major_reshape_shape,
                 lambda group_idx, n_idx, howo_idx, k_idx:
                 tvm.select(
-                    tvm.all(k_idx < in_c1_opt*kernel_h*kernel_w*in_c0,
+                    tvm.all(k_idx < in_c1_opt * kernel_h * kernel_w * in_c0,
                             howo_idx < out_hw,
-                            group_idx*k_size + k_idx < reduce_value),
+                            group_idx * k_size + k_idx < reduce_value),
                     fmap_row_major(group_idx,
                                    n_idx,
                                    howo_idx,
-                                   k_idx // (kernel_h*kernel_w*in_c0),
-                                   k_idx // (kernel_w*in_c0) % kernel_h,
+                                   k_idx // (kernel_h * kernel_w * in_c0),
+                                   k_idx // (kernel_w * in_c0) % kernel_h,
                                    k_idx // (in_c0) % (kernel_w),
                                    k_idx % in_c0),
                     tvm.const(0.0, compute_dtype)),
@@ -246,7 +276,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         fmap_row_major_shape = (group_opt,
                                 batch,
-                                out_height*out_width,
+                                out_height * out_width,
                                 ci1_opt,
                                 kernel_h,
                                 kernel_w,
@@ -281,8 +311,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 lambda group_idx, n_idx, m1_idx, k1_idx, m0_idx, k0_idx:
                 fmap_row_major_reshape(group_idx,
                                        n_idx,
-                                       m1_idx*block_m0 + m0_idx,
-                                       k1_idx*block_k0 + k0_idx),
+                                       m1_idx * block_m0 + m0_idx,
+                                       k1_idx * block_k0 + k0_idx),
                 name="im2col_fractal",
                 tag=OP_TAG + 'im2col_fractal')
             return res_im2col_fractal
@@ -299,7 +329,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     def l0c_compute(fmap_im2col, bias_tensor=None):
         # CL0's M is aligned by block_m0.
-        mad_m = ceil_div(out_height*out_width, block_m0) * block_m0
+        mad_m = ceil_div(out_height * out_width, block_m0) * block_m0
         mad_shape = (group_opt, batch, co1_opt, mad_m, block_n0)
         weight_k1, _, _, _ = weight_fracz_shape
 
@@ -348,14 +378,14 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
             lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
             tvm.sum(
                 tvm.select(
-                    tvm.all((group_idx*reduce_k1 + axis_k1)*block_k0 + axis_k0 < reduce_value),
+                    tvm.all((group_idx * reduce_k1 + axis_k1)*block_k0 + axis_k0 < reduce_value),
                     ((fmap_im2col[group_idx,
                                   batch_idx,
                                   howo_idx // block_m0,
                                   axis_k1,
                                   howo_idx % block_m0,
                                   axis_k0]) *
-                     weight[group_idx*reduce_k1 + axis_k1,
+                     weight[group_idx * reduce_k1 + axis_k1,
                             co1_idx,
                             co0_idx,
                             axis_k0]).astype(mad_dtype)),
@@ -413,6 +443,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     padding = pad_top, pad_bottom, pad_left, pad_right
     stride = stride_h, stride_w
     dilate = dilate_h, dilate_w
+    kernel = kernel_h, kernel_w
 
     out_height = conv_param.h_out
     out_width = conv_param.w_out
@@ -480,10 +511,22 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         # for L1 breadth fusion, fmap must load all at once
         strideh_opti_flag = False
 
+    # l0a_load2d_flag
+    if padding == (0, 0, 0, 0) and stride == (1, 1) and kernel == (1, 1) and weight_dtype in ("float16", "bfloat16"):
+        l0a_load2d_flag = True
+        c04_mode = "disabled"
+        c04_flag = False
+    else:
+        l0a_load2d_flag = False
+
+    if lxfusion_para["l1_fusion_type"] in (0, 1) or lxfusion_para["input_memory_type"][0] == 1:
+        l0a_load2d_flag = False
+
     # input_nd_flag
     input_nd_flag = fmap.op.tag == "NHWC_trans_5HD"
 
     if input_nd_flag: # to be completed
+        l0a_load2d_flag = False
         strideh_opti_flag = False
 
     # weight_nd_flag
@@ -497,32 +540,34 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     batch, in_c1, in_height, in_width, in_c0 = fmap_5hd_shape
 
     # M
-    howo_mad = (out_height*out_width + block_m0 - 1) // block_m0*block_m0
+    howo_mad = (out_height * out_width + block_m0 - 1) // block_m0 * block_m0
 
     # K
     row_major_c0 = 4 if c04_flag else in_c0
-    k1_size = (ci1_opt*kernel_h*kernel_w*row_major_c0 + block_k0 - 1) // block_k0
-    k_size = (ci1_opt*kernel_h*kernel_w*in_c0 + block_k0 - 1) // block_k0*block_k0
+    k1_size = (ci1_opt * kernel_h * kernel_w * row_major_c0 + block_k0 - 1) // block_k0
+    k_size = (ci1_opt * kernel_h * kernel_w * in_c0 + block_k0 - 1) // block_k0 * block_k0
 
-    reduce_value = in_c1*kernel_h*kernel_w*block_k0
+    reduce_value = in_c1 * kernel_h * kernel_w * block_k0
 
     out_c1 = ceil_div(weight_ori_shape_nchw[0], block_n0)
 
-    res_shape = batch, out_c1, out_height*out_width, block_n0
+    res_shape = batch, out_c1, out_height * out_width, block_n0
     if conv_type == ConvType.FP32:
-        res_fp32_shape = batch, out_c1*2, out_height*out_width, 8
+        res_fp32_shape = batch, out_c1 * 2, out_height * out_width, 8
 
     #============================check parameters=========================================
-    if c04_flag and kernel_h*kernel_w*4 > 65535:
+    if c04_flag and kernel_h * kernel_w * 4 > 65535:
         err_man.raise_err_specific(
             "conv2d",
-            "In v220, small channel case, the 4*Hk*Wk must be smaller than " +
+            "In v220, small channel case, the 4 * Hk * Wk must be smaller than " +
             "or equal to 65535. you can try to disable the small channel.")
 
     #==========================conv compute begin==============================
     fmap_l1 = al1_compute(fmap)
 
-    if dynamic_flag:
+    if l0a_load2d_flag:
+        fmap_im2col = load2d_l0a_compute(fmap_l1)
+    elif dynamic_flag:
         fmap_im2col = dynamic_l0a_compute(fmap_l1)
     else:
         fmap_row_major, fmap_row_major_reshape = row_major_compute(fmap_l1)
@@ -535,20 +580,14 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     update_tensormap = {
         "cl0": cl0,
         "filter": weight,
+        "fmap_im2col": fmap_im2col,
+        "fmap_l1": fmap_l1
     }
-    if dynamic_flag:
-        update_tensormap.update({
-            "fmap_im2col": fmap_im2col
-        })
-    else:
+    if not dynamic_flag and not l0a_load2d_flag:
         update_tensormap.update({
             "fmap_row_major": fmap_row_major,
             "fmap_row_major_reshape": fmap_row_major_reshape,
-            "fmap_im2col": fmap_im2col
         })
-
-    if strideh_opti_flag or dynamic_flag:
-        update_tensormap.update({"fmap_l1": fmap_l1})
 
     if conv_param.strided_read_flag or conv_param.aipp_fuse_flag:
         update_tensormap.update({"fmap": fmap.op.input_tensors[0]})
@@ -559,8 +598,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     #===========================update dimmap=============================
     filter_matrix_dim = (
-        (ci1_opt*in_c0*kernel_h*kernel_w + block_k0 - 1) // block_k0,
-        (out_c1*block_n0 + block_n0 - 1) // block_n0,
+        (ci1_opt * in_c0 * kernel_h * kernel_w + block_k0 - 1) // block_k0,
+        (out_c1 * block_n0 + block_n0 - 1) // block_n0,
         block_n0,
         block_k0)
 
@@ -584,6 +623,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     conv_param.input_nd_flag = input_nd_flag
     conv_param.weight_nd_flag = weight_nd_flag
     conv_param.impl_mode = para_dict.get("impl_mode", "")
+    conv_param.l0a_load2d_flag = l0a_load2d_flag
 
     #==============save tiling_info_dict for conv2d_tiling_case=============
     tiling_query_param = conv_param.tiling_query_param
@@ -608,7 +648,6 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         "out_fm_memory_type": [],
         "l1_fusion_type": -1,
         "fusion_type": 0,
-        # "reserved_ub": 0,
         "kernel_name": para_dict.get("kernel_name"),
         "dynamic_shape_flag": True
         }
