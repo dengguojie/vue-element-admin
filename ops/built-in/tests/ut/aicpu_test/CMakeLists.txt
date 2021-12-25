@@ -129,6 +129,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/multinomial_alias_draw.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/neg.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/nms_with_mask.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/non_max_suppression_v3_kernels.cc
@@ -299,6 +300,7 @@ set(_cpu_kernels_ut_files
   testcase/matmul/src/matmul_utest.cpp
   testcase/matrix_triangular_solve/src/matrix_triangular_solve_utest.cpp
   testcase/mul/src/mul_utest.cpp
+  testcase/multinomial_alias_draw/multinomial_alias_draw_utest.cpp
   testcase/neg/src/neg_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
   testcase/nms_with_mask/src/nms_with_mask_utest.cpp

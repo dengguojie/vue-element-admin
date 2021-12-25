@@ -55,6 +55,7 @@ set(local_kernels_src_files
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/nms_with_mask.cc
     kernels/normalized/mul.cc
+    kernels/normalized/multinomial_alias_draw.cc
     kernels/normalized/neg.cc
     kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/non_zero_with_value_shape.cc

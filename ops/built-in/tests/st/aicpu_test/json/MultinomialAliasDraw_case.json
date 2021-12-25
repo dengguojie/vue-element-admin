@@ -1,0 +1,200 @@
+[
+    {
+        "case_name": "Test_MultinomialAliasDraw_001",
+        "op": "MultinomialAliasDraw",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [[128],[256],[1024],[2048],[4000],[8000],[16000],[32000],[64000],[128000],
+                [250000],[500000],[2000000]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        0.001
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [[128],[256],[1024],[2048],[4000],[8000],[16000],[32000],[64000],[128000],
+                [250000],[500000],[2000000]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        4
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [[100],[100],[100],[100],[100],[100],[100],[100],[100],[100],
+                [100],[100],[100]]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "num_samples",          
+                "type": "int",         
+                "value": 100          
+            }
+        ]
+    },
+    {
+        "case_name": "Test_MultinomialAliasDraw_002",
+        "op": "MultinomialAliasDraw",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [[128],[256],[1024],[2048],[4000],[8000],[16000],[32000],[64000],[128000],
+                [250000],[500000],[2000000]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        0.001
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [[128],[256],[1024],[2048],[4000],[8000],[16000],[32000],[64000],[128000],
+                [250000],[500000],[2000000]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        4
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [[100],[100],[100],[100],[100],[100],[100],[100],[100],[100],
+                [100],[100],[100]]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "num_samples",          
+                "type": "int",         
+                "value": 100        
+            }
+        ]
+    },
+    {
+        "case_name": "NUM_SAMPLE_FLOAT_1M",
+        "op": "MultinomialAliasDraw",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [250000],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        0.001
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [250000],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        4
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [250000]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "num_samples",          
+                "type": "int",         
+                "value": 250000        
+            }
+        ]
+    },
+    {
+        "case_name": "NUM_SAMPLE_DOBULE_8M",
+        "op": "MultinomialAliasDraw",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1000000],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        0.001
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1000000],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        4
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1000000]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "num_samples",          
+                "type": "int",         
+                "value": 1000000        
+            }
+        ]
+    }
+]

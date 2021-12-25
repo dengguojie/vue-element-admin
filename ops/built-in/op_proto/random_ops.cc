@@ -63,6 +63,33 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
 
 INFER_FUNC_REG(Multinomial, MultinomialInfer);
 
+IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
+  Shape q_shape;
+  Shape j_shape;
+  if (WithRank(op.GetInputDesc(0), 1, q_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(1), 1, j_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  if (q_shape.GetDim(0) != j_shape.GetDim(0)) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),std::string("q_shape should be equal to j_shape"));
+    return GRAPH_FAILED;
+  }
+
+  int64_t num;
+  (void)op.GetAttr("num_samples", num);
+  std::vector<int64_t> out_dims = {num};
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetDataType(DT_INT64);
+  output_desc.SetShape(Shape(out_dims));
+  op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MultinomialAliasDraw, MultinomialAliasDrawInfer);
+
+
 IMPLEMT_INFERFUNC(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer) {
   Shape unused;
   std::string err_msg;
