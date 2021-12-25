@@ -363,6 +363,7 @@ class CubeParaProcess:
         self.valid_paras = {
             "n_min": 1,
             "hw_min": 1,
+            "nhw_min": 1,
             "hw_max": 4096,
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
