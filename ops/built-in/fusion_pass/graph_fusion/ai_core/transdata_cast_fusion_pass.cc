@@ -171,12 +171,10 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::NodePtr castFloat16ToBoolNode = graph.AddNode(castFloat16ToBoolDesc);
   FUSION_PASS_CHECK(
       castInt8ToFloat16Node == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                     castInt8ToFloat16Node->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(castFloat16ToBoolNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   castFloat16ToBoolNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // save fusedNode input anchor

@@ -159,11 +159,11 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   linSpaceDDesc->AddInputDesc(3, linspaceDesc->GetInputDesc(2));
 
   ge::NodePtr linSpaceDNode = graph.AddNode(linSpaceDDesc);
-  fusionNodes.push_back(linSpaceDNode);
   FUSION_PASS_CHECK(
       linSpaceDNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", linSpaceDNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNodeis null, fusion failed."),
       return PARAM_INVALID);
+  fusionNodes.push_back(linSpaceDNode);
 
   linSpaceDDesc->SetType("LinSpaceD");
   OP_LOGD(FUSED_OP_TYPE.c_str(), "The size of linspaced's indataanchor is %d\n",

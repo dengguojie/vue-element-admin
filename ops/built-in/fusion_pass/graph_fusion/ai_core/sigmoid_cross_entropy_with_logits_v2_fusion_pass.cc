@@ -84,9 +84,8 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
 
   FUSION_PASS_CHECK(sigmoidNoneNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   sigmoidNoneNode->GetName().c_str()),
-                    failStatus = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    failStatus=true);
 
   newNodes.push_back(sigmoidNoneNode);
 
@@ -138,9 +137,8 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
   // create reduce node
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
   FUSION_PASS_CHECK(reduceNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   reduceNode->GetName().c_str()),
-                    failStatus = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    failStatus=true);
   newNodes.push_back(reduceNode);
 
   // Edge

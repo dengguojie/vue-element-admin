@@ -109,7 +109,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddNewNode(ge::ComputeGraph& graph, ge::
                                                    vector<ge::NodePtr>& newNodes, bool& failStatus) {
   ge::NodePtr node = graph.AddNode(opDesc);
   FUSION_PASS_CHECK(node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(node);
   return node;

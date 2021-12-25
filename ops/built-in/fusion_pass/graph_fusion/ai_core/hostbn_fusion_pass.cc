@@ -102,7 +102,7 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   ge::OpDescPtr bnOpDescPtr = bnNodePtr->GetOpDesc();
   FUSION_PASS_CHECK(
       bnOpDescPtr == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", bnOpDescPtr->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OpDesc is null, fusion failed."),
       return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s 1", bnOpDescPtr->GetName().c_str());
   // get conv node inputs.

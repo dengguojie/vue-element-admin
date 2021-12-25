@@ -95,7 +95,10 @@ Status TensorScatterSubFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   FUSION_PASS_CHECK(tensorMoveOpdesc->AddOutputDesc(output_y) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output y failed."), return FAILED);
   ge::NodePtr tensorMoveNode = graph.AddNode(tensorMoveOpdesc);
-
+  FUSION_PASS_CHECK(tensorMoveNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "tensorMoveNode fusionNode is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::GeTensorDesc input_var = tensorMoveNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(scatterNdSubdesc->AddInputDesc("var", input_var) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input var failed."), return FAILED);
@@ -110,19 +113,13 @@ Status TensorScatterSubFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output var failed."), return FAILED);
 
   ge::NodePtr scatterNdSubNode = graph.AddNode(scatterNdSubdesc);
-
+  FUSION_PASS_CHECK(scatterNdSubNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "scatterNdSubNode fusionNode is null, fusion failed."),
+                    return PARAM_INVALID);
   // set attr
   Operator scatterNdSub = ge::OpDescUtils::CreateOperatorFromNode(scatterNdSubNode);
   scatterNdSub.SetAttr("use_locking", false);
-
-  FUSION_PASS_CHECK(tensorMoveNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensorMoveNode fusionNode:%s is null, fusion failed.",
-                            tensorMoveNode->GetName().c_str()),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(scatterNdSubNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "scatterNdSubNode fusionNode:%s is null, fusion failed.",
-                            scatterNdSubNode->GetName().c_str()),
-                    return PARAM_INVALID);
 
   tensorMoveOpdesc->SetName(fusedDesc->GetName() + "/TensorMove");
   scatterNdSubdesc->SetName(fusedDesc->GetName() + "/ScatterNdSub");

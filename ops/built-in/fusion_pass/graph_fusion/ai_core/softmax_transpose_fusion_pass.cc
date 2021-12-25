@@ -136,7 +136,7 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
   ge::OpDescPtr inOpDescPtr = inNodePtr->GetOpDesc();
   FUSION_PASS_CHECK(
       inOpDescPtr == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", inOpDescPtr->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OpDesc is null, fusion failed."),
       return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s", inOpDescPtr->GetName().c_str());
 

@@ -69,8 +69,7 @@ ge::NodePtr PReluGradFusionPass::AddPReluGradNoneNode(ge::NodePtr prelugradNode,
   ge::NodePtr prelugradNoneNode = graph.AddNode(prelugradNoneDesc);
   FUSION_PASS_CHECK(
       prelugradNoneNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "fusionNode:%s is null, fusion failed.", prelugradNoneNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
       failStatus = true);
   newNodes.push_back(prelugradNoneNode);
 
@@ -135,8 +134,7 @@ ge::NodePtr PReluGradFusionPass::AddReduceNode(ge::NodePtr prelugradNode, ge::No
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
   FUSION_PASS_CHECK(
       reduceNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "fusionNode:%s is null, fusion failed.", reduceNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
       failStatus = true);
   newNodes.push_back(reduceNode);
 

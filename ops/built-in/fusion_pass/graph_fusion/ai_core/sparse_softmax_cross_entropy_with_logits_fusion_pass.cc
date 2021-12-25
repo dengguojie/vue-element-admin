@@ -112,11 +112,11 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   OneHot->AddOutputDesc("y", tensorDesc0);
   ge::NodePtr OneHotNode = graph.AddNode(OneHot);
-  fusionNodes.push_back(OneHotNode);
   FUSION_PASS_CHECK(
       OneHotNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OneHotNode fusionNode:%s is null, fusion failed.", OneHotNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OneHotNode fusionNode is null, fusion failed."),
       return PARAM_INVALID);
+  fusionNodes.push_back(OneHotNode);
   
   // Construct pointer value(input2 of onehot--->Default value 1)
   ge::GeTensorPtr assitPtr2 = nullptr;
@@ -210,14 +210,13 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   // ADD one node(SoftMaxNode)
   ge::NodePtr SoftMaxNode = graph.AddNode(SoftMax);
-  fusionNodes.push_back(SoftMaxNode);
-  if (SoftMaxNode == nullptr){
+  if (SoftMaxNode == nullptr) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftMaxNode fusionNode:%s is null, fusion failed.",
-            SoftMaxNode->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SoftMaxNode fusionNode is null, fusion failed.");
     return PARAM_INVALID;
   }
+  fusionNodes.push_back(SoftMaxNode);
   // Even side
   // Put OneHot Output0 side add to SoftMaxNode Input0 side
   if (SUCCESS != ge::GraphUtils::AddEdge(OneHotNode->GetOutDataAnchor(0), SoftMaxNode->GetInDataAnchor(1))){

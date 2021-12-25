@@ -139,12 +139,11 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   ge::NodePtr layerNormBetaGammaNode = graph.AddNode(layerNormBetaGammaDesc);
   FUSION_PASS_CHECK(
       layerNormXNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", layerNormXNode->GetName().c_str()),
-  return PARAM_INVALID);
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                                     return PARAM_INVALID);
   FUSION_PASS_CHECK(layerNormBetaGammaNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                            layerNormBetaGammaNode->GetName().c_str()),
-  return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: is null, fusion failed."),
+                    return PARAM_INVALID);
   for (unsigned int i = 0; i < fusedNode->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor(),

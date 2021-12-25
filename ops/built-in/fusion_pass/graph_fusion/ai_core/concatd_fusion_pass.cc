@@ -98,8 +98,7 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
     ge::NodePtr concatd_base_node = graph.AddNode(ConcatdBaseDesc);
     FUSION_PASS_CHECK(concatd_base_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatd_base_node:%s is null, fusion failed.",
-                              concatd_base_node->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatd_base_node is null, fusion failed."),
                       return PARAM_INVALID);
     fusionNodes.push_back(concatd_base_node);
     ge::AttrUtils::SetInt(concatd_base_node->GetOpDesc(), "N", nodes_num);

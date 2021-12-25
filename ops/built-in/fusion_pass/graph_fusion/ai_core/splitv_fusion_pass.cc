@@ -170,6 +170,10 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     }
 
     ge::NodePtr splitvd_base_node = graph.AddNode(SplitVDBaseDesc);
+    FUSION_PASS_CHECK(splitvd_base_node == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "splitvd_base_node is null, fusion failed."),
+                      return PARAM_INVALID);
     fusionNodes.push_back(splitvd_base_node);
     ge::AttrUtils::SetListInt(splitvd_base_node->GetOpDesc(), "size_splits", size_splits_new);
     ge::AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "split_dim", split_dim_num);
@@ -192,11 +196,6 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
       SplitVDBaseDesc->UpdateOutputDesc(h, SplitVDOutputTensor_1);
       outputDesc.push_back(SplitVDOutputTensor_1);
     }
-    FUSION_PASS_CHECK(
-        splitvd_base_node == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitvd_base_node:%s is null, fusion failed.",
-                                       splitvd_base_node->GetName().c_str()),
-        return PARAM_INVALID);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
@@ -215,6 +214,10 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           OpDescUtils::ClearOutputDesc(SplitVDDesc, c);
         }
         ge::NodePtr splitvd_node = graph.AddNode(SplitVDDesc);
+        FUSION_PASS_CHECK(
+            splitvd_node == nullptr,
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitvd_node is null, fusion failed."),
+            return PARAM_INVALID);
         fusionNodes.push_back(splitvd_node);
 
         vector<int64_t> size_splits_new2;
@@ -235,12 +238,6 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           SplitVDOutputTensor_2.SetShape(SplitVDOutputShape_2);
           SplitVDDesc->UpdateOutputDesc(h, SplitVDOutputTensor_2);
         }
-
-        FUSION_PASS_CHECK(
-            splitvd_node == nullptr,
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitvd_node:%s is null, fusion failed.",
-                                           splitvd_node->GetName().c_str()),
-            return PARAM_INVALID);
 
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i),
                                                              splitvd_node->GetInDataAnchor(0)),
@@ -270,6 +267,10 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
             OpDescUtils::ClearOutputDesc(LastSplitVDDesc, c);
           }
           ge::NodePtr last_splitvd_node = graph.AddNode(LastSplitVDDesc);
+          FUSION_PASS_CHECK(last_splitvd_node == nullptr,
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                           "last_splitvd_nodeis null, fusion failed."),
+                            return PARAM_INVALID);
           fusionNodes.push_back(last_splitvd_node);
 
           vector<int64_t> size_splits_new3;
@@ -290,11 +291,6 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
             LastSplitVDDesc->UpdateOutputDesc(h, SplitVDOutputTensor_3);
           }
 
-          FUSION_PASS_CHECK(
-              last_splitvd_node == nullptr,
-              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "last_splitvd_node:%s is null, fusion failed.",
-                                             last_splitvd_node->GetName().c_str()),
-              return PARAM_INVALID);
           FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i),
                                                                last_splitvd_node->GetInDataAnchor(0)),
                             VECTOR_FUSION_INNER_ERR_REPORT(

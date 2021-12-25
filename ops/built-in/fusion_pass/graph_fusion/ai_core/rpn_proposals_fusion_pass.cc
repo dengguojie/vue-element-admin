@@ -175,12 +175,10 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   ge::NodePtr scoreFilterPreSortNode = graph.AddNode(scoreFilterPreSortDesc);
   ge::NodePtr rpnProposalPostProcessingNode = graph.AddNode(rpnProposalPostProcessingDesc);
   FUSION_PASS_CHECK(scoreFilterPreSortNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                            scoreFilterPreSortNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNodeis null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(rpnProposalPostProcessingNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                            rpnProposalPostProcessingNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     return PARAM_INVALID);
   for (unsigned int i = 0; i < fusedNode->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(

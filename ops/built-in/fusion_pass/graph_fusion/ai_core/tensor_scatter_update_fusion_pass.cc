@@ -98,7 +98,10 @@ Status TensorScatterUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   FUSION_PASS_CHECK(tensorMoveOpdesc->AddOutputDesc(output_y) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output y failed."), return FAILED);
   ge::NodePtr tensorMoveNode = graph.AddNode(tensorMoveOpdesc);
-
+  FUSION_PASS_CHECK(tensorMoveNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "tensorMoveNode fusionNode is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::GeTensorDesc input_var = tensorMoveNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(scatterNdUpdatedesc->AddInputDesc("var", input_var) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input var failed."), return FAILED);
@@ -113,19 +116,13 @@ Status TensorScatterUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output var failed."), return FAILED);
 
   ge::NodePtr scatterNdUpdateNode = graph.AddNode(scatterNdUpdatedesc);
-
+  FUSION_PASS_CHECK(scatterNdUpdateNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "scatterNdUpdateNode fusionNode is null, fusion failed."),
+                    return PARAM_INVALID);
   // set attr
   Operator scatterNdUpdate = ge::OpDescUtils::CreateOperatorFromNode(scatterNdUpdateNode);
   scatterNdUpdate.SetAttr("use_locking", false);
-
-  FUSION_PASS_CHECK(tensorMoveNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensorMoveNode fusionNode:%s is null, fusion failed.",
-                            tensorMoveNode->GetName().c_str()),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(scatterNdUpdateNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "scatterNdUpdateNode fusionNode:%s is null, fusion failed.",
-                            scatterNdUpdateNode->GetName().c_str()),
-                    return PARAM_INVALID);
 
   tensorMoveOpdesc->SetName(fusedDesc->GetName() + "/TensorMove");
   scatterNdUpdatedesc->SetName(fusedDesc->GetName() + "/ScatterNdUpdate");

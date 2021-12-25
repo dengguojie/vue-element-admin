@@ -143,11 +143,11 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   ge::NodePtr batchNormUpdateV2Node = graph.AddNode(batchNormUpdateV2Desc);
   FUSION_PASS_CHECK(
       batchNormReduceNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormReduceNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(
       batchNormUpdateV2Node == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", batchNormUpdateV2Node->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
       return PARAM_INVALID);
 
   // update input and output name map

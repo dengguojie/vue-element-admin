@@ -963,8 +963,8 @@ ge::NodePtr DynamicRNNGradFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGradNod
 
   // create concat node
   ge::NodePtr splitNode = graph.AddNode(splitDesc);
-  FUSION_PASS_CHECK(splitNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                  splitNode->GetName().c_str()),
+  FUSION_PASS_CHECK(splitNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(splitNode);
 
@@ -1024,8 +1024,8 @@ ge::NodePtr DynamicRNNGradFusionPass::AddHConcatNode(ge::NodePtr dynamicRNNGradN
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+  FUSION_PASS_CHECK(concatNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1089,8 +1089,8 @@ ge::NodePtr DynamicRNNGradFusionPass::AddConcatNode(ge::NodePtr dynamicRNNGradNo
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+  FUSION_PASS_CHECK(concatNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1159,8 +1159,8 @@ ge::NodePtr DynamicRNNGradFusionPass::AddConcatNodeT_1(ge::NodePtr dynamicRNNGra
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   concatNode->GetName().c_str()),
+  FUSION_PASS_CHECK(concatNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(concatNode);
 
@@ -1240,8 +1240,8 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
 
   // create matmul node
   ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
-  FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   matmulNode->GetName().c_str()),
+  FUSION_PASS_CHECK(matmulNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(matmulNode);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge for matmulDw.");
@@ -1287,8 +1287,8 @@ Status DynamicRNNGradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNGradNo
 
   // create reduce_sum node
   ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-  FUSION_PASS_CHECK(reduceSumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                      reduceSumNode->GetName().c_str()),
+  FUSION_PASS_CHECK(reduceSumNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     return FAILED);
   newNodes.push_back(reduceSumNode);
 
@@ -1445,13 +1445,13 @@ Status DynamicRNNGradFusionPass::AddDbReduceSumNode(ge::NodePtr dynamicRNNGradNo
 
     // create reduce_sum node
     ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
-    FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                     matmulNode->GetName().c_str()),
+    FUSION_PASS_CHECK(matmulNode == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                       return FAILED);
     newNodes.push_back(matmulNode);
     ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-    FUSION_PASS_CHECK(reduceSumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                        reduceSumNode->GetName().c_str()),
+    FUSION_PASS_CHECK(reduceSumNode == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                       return FAILED);
     newNodes.push_back(reduceSumNode);
 

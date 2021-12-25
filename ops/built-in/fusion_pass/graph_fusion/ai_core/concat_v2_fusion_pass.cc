@@ -165,11 +165,10 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
 
     ge::NodePtr concatext2_base_node = graph.AddNode(ConcatExt2BaseDesc);
-    FUSION_PASS_CHECK(
-        concatext2_base_node == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatext2_base_node:%s is null, fusion failed.",
-                                       concatext2_base_node->GetName().c_str()),
-        return PARAM_INVALID);
+    FUSION_PASS_CHECK(concatext2_base_node == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "concatext2_base_node is null, fusion failed."),
+                      return PARAM_INVALID);
     fusionNodes.push_back(concatext2_base_node);
     ge::AttrUtils::SetInt(concatext2_base_node->GetOpDesc(), "N", nodes_num);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {

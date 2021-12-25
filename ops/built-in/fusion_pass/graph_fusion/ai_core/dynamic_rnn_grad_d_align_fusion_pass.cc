@@ -1791,8 +1791,7 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::AddTransposeNode(ge::NodePtr dynamic
   // create transpose node
   ge::NodePtr transposeNode = graph.AddNode(transposeDesc);
   FUSION_PASS_CHECK(transposeNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   transposeNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(transposeNode);
 
@@ -1869,8 +1868,7 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::AddDxPadNode(ge::NodePtr dynamicRNNG
   // create pad node
   ge::NodePtr dxPadNode = graph.AddNode(dxPadDesc);
   FUSION_PASS_CHECK(dxPadNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   dxPadNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
                     failStatus = true);
   newNodes.push_back(dxPadNode);
 

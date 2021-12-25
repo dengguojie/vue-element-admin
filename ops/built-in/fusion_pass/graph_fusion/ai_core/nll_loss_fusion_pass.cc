@@ -74,9 +74,8 @@ ge::NodePtr NLLLossFusionPass::AddNLLLossSumNode(ge::NodePtr nll_loss_node,
   // create nll_loss_sum node
   ge::NodePtr nll_loss_sum_node = graph.AddNode(nll_loss_sum_desc);
   FUSION_PASS_CHECK(nll_loss_sum_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   nll_loss_sum_node->GetName().c_str()),
-                    fail_status = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    fail_status=true);
   new_nodes.push_back(nll_loss_sum_node);
 
   // Edge
@@ -129,9 +128,8 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
   // create div node
   ge::NodePtr div_node = graph.AddNode(div_desc);
   FUSION_PASS_CHECK(div_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                                   div_node->GetName().c_str()),
-                    fail_status = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    fail_status=true);
   new_nodes.push_back(div_node);
 
   // Edge
