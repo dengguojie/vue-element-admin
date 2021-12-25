@@ -149,8 +149,8 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
     ge::AttrUtils::SetStr(basicLstmCellStateGradDesc, "activation", "Tanh");
 
     // add reshape
-    auto reshapeOp = ge::OperatorFactory::CreateOperator(
-        dynamicRNNGradNode->GetName() + "/cellReshape" + std::to_string(i), "Reshape");
+    string reshapeNodeName = dynamicRNNGradNode->GetName() + "/cellReshape" + std::to_string(i);
+    auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeNodeName.c_str(), "Reshape");
     FUSION_PASS_CHECK(reshapeOp.IsEmpty(),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
                       return result);
@@ -198,7 +198,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
     ge::NodePtr matmulNode = graph.AddNode(lstmBatchMatMulDesc);
     FUSION_PASS_CHECK(matmulNode == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "fusionNode:matmulNode is null, fusion failed."),
+                                                     "fusionNode:matmulNode is null, fusion failed."),
                       failStatus = true);
     matmul_nodes.push_back(matmulNode);
     newNodes.push_back(matmulNode);
@@ -427,7 +427,7 @@ void DynamicRNNGradAlignFusionPass::AddBatchMatMulForCell(const GeShape& output_
   AttrUtils::SetInt(lstmBatchMatMulDesc, "hidden_size", hidden_dim);
 }
 
-Status DynamicRNNGradAlignFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
+Status DynamicRNNGradAlignFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode,
                                                      vector<ge::NodePtr>& newNodes, bool& failStatus,
                                                      vector<vector<ge::NodePtr>> resultNode, ge::NodePtr lstmSplitC,
                                                      ge::NodePtr lstmSplitDy, ge::NodePtr lstmSplitI,
@@ -835,7 +835,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
 
   // add edge for cell
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add Edge for loop cell node.");
-  AddEdgeForCell(dynamicRNNGradNode, graph, newNodes, failStatus, result_node, lstmSplitC, lstmSplitDy, lstmSplitI,
+  AddEdgeForCell(dynamicRNNGradNode, newNodes, failStatus, result_node, lstmSplitC, lstmSplitDy, lstmSplitI,
                  lstmSplitJ, lstmSplitF, lstmSplitO, lstmSplitTanh, lstmXConcatD, lstmGageConcatD);
 
   return lstmGageConcatD;
@@ -1192,8 +1192,6 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddConcatNode(ge::NodePtr dynamicRNNG
                                dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/ConcatD", "ConcatD")),
                           failStatus = true;
                           return nullptr);
-
-  int64_t t_dim = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(0);
   // input x
   vector<int64_t> input_x_nz_dims{t_dim, input_nz_dim, batch_nz_dim, 16, 16};
   ge::GeTensorDesc inputTensorDescX = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).Clone();
@@ -1245,8 +1243,6 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddConcatNodeT_1(ge::NodePtr dynamicR
                                dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/ConcatD", "ConcatD")),
                           failStatus = true;
                           return nullptr);
-
-  int64_t t_dim = 1;
 
   // input x
   vector<int64_t> input_x_nz_dims{t_dim, input_nz_dim, batch_nz_dim, 16, 16};
@@ -1648,7 +1644,7 @@ Status DynamicRNNGradAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
     return SUCCESS;
   }
   if (PatternFusionUtil::IsUnknownShape(
-          dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["dy"]).GetShape().GetDim(0)) ||
+      dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["dy"]).GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(
           dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["c"]).GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(
