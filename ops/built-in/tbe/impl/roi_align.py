@@ -17,7 +17,7 @@ roi_align
 """
 # 'pylint: disable=too-many-lines
 import math
-
+import functools
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -51,6 +51,9 @@ ONE = 1.0
 ES_UB_SIZE = 192
 ES_LIMIT_SAMPLE_NUM = 90
 COM_LIMIT_SAMPLE_NUM = 128
+# vreduce src1_pattern
+MODE_ZERO_16 = 0b0000000100000001
+MODE_ZERO = 0b00000001000000010000000100000001
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
@@ -1688,9 +1691,13 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
     proposal_num_128 = 128
     if dtype == "float32":
         dtype_num = 1
+        mask_ub_dtype = "uint32"
+        mask_scalar = MODE_ZERO 
     else:
         dtype_num = 2
-
+        mask_ub_dtype = "uint16"
+        mask_scalar = MODE_ZERO_16
+    process_num = functools.reduce(lambda x, y: x * y, proposal.shape)
     roi_h_fp32 = tik_instance.Tensor(
         dtype, [128], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
     roi_w_fp32 = tik_instance.Tensor(
@@ -1704,14 +1711,19 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
         dtype, [128], name="roi_fp32_fm_index", scope=tbe_platform.scope_ubuf)
     roi_int32_fm_index = tik_instance.Tensor(
         "int32", [128], name="roi_int32_fm_index", scope=tbe_platform.scope_ubuf)
-    support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
-    if support_vextract is False and dtype == "float32":
+    if sup_vextract_fp32 is False and sup_vextract_fp16 is True and dtype == "float32":
         tik_instance.vec_conv(64, "", roi_fp16_pos[0, 0], proposal[0, 0],
                               (128 * 8) // 64, 4, 8)
 
         tik_instance.vextract(roi_fp16_fm_index[0], roi_fp16_pos, 8, 0)
         tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
                               roi_fp16_fm_index[0], 2, 8, 4)
+    elif sup_vextract_fp32 is False and sup_vextract_fp16 is False:
+        mask_ub = tik_instance.Tensor(mask_ub_dtype, [8], name="mask_ub", scope=tbe_platform.scope_ubuf)
+        tik_instance.vec_dup(8, mask_ub, mask_scalar, 1, 8)
+        tik_instance.vreduce(process_num, roi_fp32_fm_index, proposal[0, 0], mask_ub, 1, 1, 8, 0, 0, None, "counter")
+        tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
+                              roi_fp32_fm_index[0], 2, 8, 8 // dtype_num)
     else:
         tik_instance.vextract(roi_fp32_fm_index[0], proposal[0, 0], 8, 0)
         tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
@@ -3227,7 +3239,10 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     :param kernel_name:
     :return:
     """
-
+    global sup_vextract_fp32
+    global sup_vextract_fp16
+    sup_vextract_fp32 = tbe_platform.api_check_support("tik.vextract", "float32")
+    sup_vextract_fp16 = tbe_platform.api_check_support("tik.vextract", "float16")
     tik_instance = tik.Tik(tik.Dprofile(), True)
     rois_shape = rois_dict.get("shape")
     dtype = feature_map_dict.get("dtype")
@@ -3415,8 +3430,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                                                0, 1,
                                                64 * n_bust, 0, 0)
 
-                    support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
-                    if dtype == "float16":
+                    if dtype == "float16" and sup_vextract_fp16 is True:
                         if cce_product == tbe_platform.ASCEND_310:
                             j_value = tik_instance.Scalar(dtype=dtype)
                             with tik_instance.for_range(0, 128) as j:
@@ -3427,23 +3441,22 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                         tik_instance.vextract(proposals_ub_x0[0, 0], rois_ub[0], 8, 1)
                         tik_instance.vextract(proposals_ub_y0[0, 0], rois_ub[0], 8, 2)
                         tik_instance.vextract(proposals_ub_x1[0, 0], rois_ub[0], 8, 3)
+                    elif dtype == "float32" and sup_vextract_fp32 is True:
+                        tik_instance.vextract(proposals_ub_x0[0, 0], rois_ub[0], 8, 1)
+                        tik_instance.vextract(proposals_ub_y0[0, 0], rois_ub[0], 8, 2)
+                        tik_instance.vextract(proposals_ub_x1[0, 0], rois_ub[0], 8, 3)
+                        tik_instance.vextract(proposals_ub_y1[0, 0], rois_ub[0], 8, 4)
                     else:
-                        if support_vextract is False:
-                            j_value = tik_instance.Scalar(dtype=dtype)
-                            with tik_instance.for_range(0, 128) as j:
-                                j_value.set_as(rois_ub[j, 1])
-                                proposals_ub_x0[j, 0].set_as(j_value)
-                                j_value.set_as(rois_ub[j, 2])
-                                proposals_ub_y0[j, 0].set_as(j_value)
-                                j_value.set_as(rois_ub[j, 3])
-                                proposals_ub_x1[j, 0].set_as(j_value)
-                                j_value.set_as(rois_ub[j, 4])
-                                proposals_ub_y1[j, 0].set_as(j_value)
-                        else:
-                            tik_instance.vextract(proposals_ub_x0[0, 0], rois_ub[0], 8, 1)
-                            tik_instance.vextract(proposals_ub_y0[0, 0], rois_ub[0], 8, 2)
-                            tik_instance.vextract(proposals_ub_x1[0, 0], rois_ub[0], 8, 3)
-                            tik_instance.vextract(proposals_ub_y1[0, 0], rois_ub[0], 8, 4)
+                        j_value = tik_instance.Scalar(dtype=dtype)
+                        with tik_instance.for_range(0, 128) as j:
+                            j_value.set_as(rois_ub[j, 1])
+                            proposals_ub_x0[j, 0].set_as(j_value)
+                            j_value.set_as(rois_ub[j, 2])
+                            proposals_ub_y0[j, 0].set_as(j_value)
+                            j_value.set_as(rois_ub[j, 3])
+                            proposals_ub_x1[j, 0].set_as(j_value)
+                            j_value.set_as(rois_ub[j, 4])
+                            proposals_ub_y1[j, 0].set_as(j_value)
 
                     tik_instance, roi_bin_h_fp32_value, \
                     roi_bin_w_fp32_value, \

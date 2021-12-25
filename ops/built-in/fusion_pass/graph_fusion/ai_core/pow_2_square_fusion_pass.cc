@@ -19,7 +19,7 @@
  * \brief pow fusion pass( --> square)
  */
 #include "pow_2_square_fusion_pass.h"
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -42,12 +42,16 @@ static const string PATTERN_POW = "Pow";
 static const string CONSTANT = "Const";
 static const string CONSTANTOP = "Constant";
 static const string DATAOP = "Data";
+static const float SQUARE_NUM = 2.0;
+static const float FP_MIN = 1e-6;
+static const size_t FP_BYTES = 4;
 
 vector<FusionPattern*> Pow2SquareFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Pow2SquareFusionPass");
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Pow2SquareFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_POW, {POW}).SetOutput(PATTERN_POW);
   patterns.push_back(pattern);
@@ -58,14 +62,16 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   float constData = 0.0;
   size_t constSize2 = 0;
   ge::DataType constType2 = DT_UNDEFINED;
-  float* constDataPtr = 0;
+  float* constDataPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define Pow2SquareFusionPass fusion begin");
   ge::NodePtr pow_node = GetNodeFromMapping(PATTERN_POW, mapping);
-  FUSION_PASS_CHECK(pow_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pow node is null, fusion failed."),
+  FUSION_PASS_CHECK(pow_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pow node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr pow_desc = pow_node->GetOpDesc();
-  FUSION_PASS_CHECK(pow_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pow_node's Op_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(pow_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pow_node's Op_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::ConstGeTensorPtr constTensor2 = nullptr;
@@ -79,20 +85,19 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     return NOT_CHANGED;
   }
   vector<ge::GeTensorPtr> pow_y = ge::OpDescUtils::MutableWeights(constNode2);
-  FUSION_PASS_CHECK(pow_y.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor!"),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(pow_y.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor!"), return NOT_CHANGED);
   constTensor2 = pow_y[0];
   constSize2 = constTensor2->GetData().GetSize();
   constType2 = constTensor2->GetTensorDesc().GetDataType();
   if (constTensor2->GetData().GetData() != nullptr) {
     constDataPtr = (float*)constTensor2->GetData().GetData();
-    constData = (float)(*constDataPtr);
+    constData = static_cast<float>(*constDataPtr);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow index is %f", constData);
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor");
     return NOT_CHANGED;
   }
-  if (fabs(constData - 2.0) <= 1e-6 && constType2 == ge::DT_FLOAT && constSize2 == 4) {
+  if (fabs(constData - SQUARE_NUM) <= FP_MIN && constType2 == ge::DT_FLOAT && constSize2 == FP_BYTES) {
     ge::GeTensorDesc input_desc0 = pow_node->GetOpDesc()->GetInputDesc(0);
     ge::GeTensorDesc input_desc1 = pow_node->GetOpDesc()->GetInputDesc(1);
     ge::GeTensorDesc output_desc0 = pow_node->GetOpDesc()->GetOutputDesc(0);
@@ -107,7 +112,8 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(pow_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                          square_node->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square node in data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add square node in data edge failed."),
+                      return FAILED);
 
     if (pow_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of layerpownode is [%d].",
@@ -116,9 +122,9 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         inAnchorPtr->UnlinkAll();
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(square_node->GetOutDataAnchor(0), inAnchorPtr),
                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                  "Add edge from fused node:%s's 2nd index to fusion "
-                                  "node:%s's 1st index failed.",
-                                  pow_node->GetName().c_str(), square_node->GetName().c_str()),
+                                                         "Add edge from fused node:%s's 2nd index to fusion "
+                                                         "node:%s's 1st index failed.",
+                                                         pow_node->GetName().c_str(), square_node->GetName().c_str()),
                           return FAILED);
         OP_LOGD(FUSED_OP_TYPE.c_str(),
                 "Add edge from fused node:%s's 2nd index to fusion node:%s's 1st "
@@ -128,19 +134,22 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(pow_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                             pow_node->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node in data0 edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node in data0 edge failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(pow_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                                             pow_node->GetInDataAnchor(1)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node in data1 edge failed."), return FAILED);
-
-    FUSION_PASS_CHECK(graph.RemoveNode(pow_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node in data1 edge failed."),
                       return FAILED);
+
+    FUSION_PASS_CHECK(graph.RemoveNode(pow_node) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove pow node failed."), return FAILED);
     //    remove constNode2 node if output is 1
     if (constNode2->GetAllOutDataAnchors().size() == 1) {
       if (constNode2->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() == 0 &&
           constNode2->GetAllInDataAnchors().size() == 0) {
         FUSION_PASS_CHECK(graph.RemoveNode(constNode2) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove constant 2 node failed."), return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove constant 2 node failed."),
+                          return FAILED);
       }
     }
     return SUCCESS;

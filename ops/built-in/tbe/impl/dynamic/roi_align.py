@@ -978,39 +978,60 @@ class RoiAlign():
                 x_lo_w, x_hi_w, y_lo_w, y_hi_w, \
                 x_lo, x_hi, y_lo, y_hi, raw_x, raw_y = \
                     self._get_grid_weight(grid_w_roi, grid_h_roi, rois_start_w, rois_start_h)
-                with tik_instance.if_scope(self.feature_map_to_ub_verify >= 1):
-                    with tik_instance.new_stmt_scope():
-                        self._bilinear_interpolate_all_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
-                                                             x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                             n_bust, core_bias, index,
-                                                             curr_roi, roi_128_number, cache_index)
-                with tik_instance.else_scope():
-                    with tik_instance.if_scope(self.feature_map_to_l1_verify >= 1):
+                if self.l1_size != 0:
+                    with tik_instance.if_scope(self.feature_map_to_ub_verify >= 1):
                         with tik_instance.new_stmt_scope():
-                            self._bilinear_interpolate_all_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
-                                                                 x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                 n_bust, core_bias, index,
-                                                                 curr_roi, roi_128_number, cache_index)
+                            self._bilinear_interpolate_all_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                n_bust, core_bias, index,
+                                                                curr_roi, roi_128_number, cache_index)
+                    with tik_instance.else_scope():
+                        with tik_instance.if_scope(self.feature_map_to_l1_verify >= 1):
+                            with tik_instance.new_stmt_scope():
+                                self._bilinear_interpolate_all_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                    x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                    n_bust, core_bias, index,
+                                                                    curr_roi, roi_128_number, cache_index)
+                        with tik_instance.else_scope():
+                            with tik_instance.if_scope(self.w_number_ub >= 2):
+                                with tik_instance.new_stmt_scope():
+                                    self._bilinear_interpolate_w_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                    x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                    n_bust, core_bias, index,
+                                                                    curr_roi, roi_128_number, cache_index)
+                            with tik_instance.else_scope():
+                                with tik_instance.if_scope(self.w_number_l1 >= 2):
+                                    with tik_instance.new_stmt_scope():
+                                        self._bilinear_interpolate_w_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                        x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                        n_bust, core_bias, index,
+                                                                        curr_roi, roi_128_number, cache_index)
+                                with tik_instance.else_scope():
+                                    with tik_instance.new_stmt_scope():
+                                        self._bilinear_interpolate_without_cache(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                                x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                                n_bust, core_bias, index,
+                                                                                curr_roi, roi_128_number, cache_index)
+                else:
+                    with tik_instance.if_scope(self.feature_map_to_ub_verify >= 1):
+                        with tik_instance.new_stmt_scope():
+                            self._bilinear_interpolate_all_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                n_bust, core_bias, index,
+                                                                curr_roi, roi_128_number, cache_index)
                     with tik_instance.else_scope():
                         with tik_instance.if_scope(self.w_number_ub >= 2):
                             with tik_instance.new_stmt_scope():
                                 self._bilinear_interpolate_w_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
-                                                                   x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                   n_bust, core_bias, index,
-                                                                   curr_roi, roi_128_number, cache_index)
+                                                                x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                n_bust, core_bias, index,
+                                                                curr_roi, roi_128_number, cache_index)
                         with tik_instance.else_scope():
-                            with tik_instance.if_scope(self.w_number_l1 >= 2):
-                                with tik_instance.new_stmt_scope():
-                                    self._bilinear_interpolate_w_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
-                                                                       x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                       n_bust, core_bias, index,
-                                                                       curr_roi, roi_128_number, cache_index)
-                            with tik_instance.else_scope():
-                                with tik_instance.new_stmt_scope():
-                                    self._bilinear_interpolate_without_cache(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
-                                                                             x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                             n_bust, core_bias, index,
-                                                                             curr_roi, roi_128_number, cache_index)
+                            with tik_instance.new_stmt_scope():
+                                self._bilinear_interpolate_without_cache(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
+                                                                        x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
+                                                                        n_bust, core_bias, index,
+                                                                        curr_roi, roi_128_number, cache_index)
 
     def _get_roi_align_perf_scale_for_zero(self, proposals_ub_x0,
                                            proposals_ub_y0, proposals_ub_x1,

@@ -88,5 +88,90 @@
     }
 	],
     "case_name": "test_ROIAlign_000"
+  },
+  {
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+		  -1,
+		  -1,
+		  -1
+        ],
+        "typical_shape": [
+          5,
+          4,
+		  76,
+		  76,
+		  16
+        ],
+        "format": "NC1HWC0",
+        "shape_range": [
+          [1, 65535],
+          [1, 65535],
+          [1, 65535],
+          [1, 65535],
+          [1, 65535]
+        ],
+        "param_type": "input",
+        "name": "features",
+        "type": "float32"
+      },
+	  {
+        "shape": [
+          15,
+		  5
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "rois",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          4,
+		  7,
+		  7,
+		  16
+        ],
+        "format": "NC1HWC0",
+        "param_type": "output",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+	{
+        "name": "spatial_scale",
+        "value": 0.5,
+        "type": "float"
+    },
+	{
+        "name": "pooled_height",
+        "value": 7,
+        "type": "int"
+    },
+	{
+        "name": "pooled_width",
+        "value": 7,
+        "type": "int"
+    },
+	{
+        "name": "sample_num",
+        "value": 0,
+        "type": "int"
+    },
+	{
+        "name": "roi_end_mode",
+        "value": 0,
+        "type": "int"
+    }
+	],
+    "case_name": "test_ROIAlign_001"
   }
 ]

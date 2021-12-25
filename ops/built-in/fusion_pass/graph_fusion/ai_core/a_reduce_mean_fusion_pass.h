@@ -49,7 +49,7 @@ class AReduceMeanFusionPass : public PatternFusionBasePass {
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  Status CheckMeanFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, Operator& op);
+  Status CheckMeanFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, const Operator& op);
   const string FUSED_OP_TYPE = "ReduceMean";
 };
 }  // namespace fe

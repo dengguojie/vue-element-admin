@@ -39,7 +39,20 @@ class Constant:
     TILING_MODE_1 = 1
     TILING_MODE_2 = 2
     TILING_MODE_3 = 3
-
+    # vreduce src1_pattern
+    MODE_ZERO = 0b0000000100000001
+    MODE_ONE = 0b0000001000000010
+    MODE_TWO = 0b0000010000000100
+    MODE_THREE = 0b0000100000001000
+    MODE_FOUR = 0b0001000000010000
+    MODE_LIST = [MODE_ZERO, MODE_ONE, MODE_TWO, MODE_THREE, MODE_FOUR]
+    # vreduce for times 5
+    VREDUCE_TIMES = 5
+    VECDUP_ELES = 8
+    # ub size limits
+    WIDTH_DIM_CONST = 80
+    WIDTH_DIM_CONST_NEW = 70
+    UB_SIZE_NEW_VER = 196608
 
 # 'pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
 # 'pylint: disable=unused-argument
@@ -90,6 +103,8 @@ class RoiAlignGrad():
         self.available_c1_num = None
         self.exist_rois_n = False
         self.rois_n_gm = None
+        self.with_dim_limit = Constant.WIDTH_DIM_CONST if self.ub_size > Constant.UB_SIZE_NEW_VER \
+                              else Constant.WIDTH_DIM_CONST_NEW
 
     def _get_tiling_args(self, tiling_ub):
         """
@@ -467,7 +482,7 @@ class RoiAlignGrad():
         w_num = self.x_width
 
         with tik_instance.new_stmt_scope():
-            tmp_ub = tik_instance.Tensor("float32", [available_c1_num * 2 * 80 * 16],
+            tmp_ub = tik_instance.Tensor("float32", [available_c1_num * 2 * self.with_dim_limit * 16],
                                          name="tmp_ub",
                                          scope=tbe_platform.scope_ubuf)
             self._clear_ub(tmp_ub)
@@ -780,11 +795,19 @@ class RoiAlignGrad():
 
             tik_instance.vconv(64, "", roi_pos[0, 0], rois_data_tmp[0, 0], (Constant.BATCH_SIZE * 8) // 64, 1, 1, 4, 8)
 
-            tik_instance.vextract(roi_pos_new[0, 0], roi_pos, 8, 0)
-            tik_instance.vextract(roi_pos_new[1, 0], roi_pos, 8, 1)
-            tik_instance.vextract(roi_pos_new[2, 0], roi_pos, 8, 2)
-            tik_instance.vextract(roi_pos_new[3, 0], roi_pos, 8, 3)
-            tik_instance.vextract(roi_pos_new[4, 0], roi_pos, 8, 4)
+            if tbe_platform.api_check_support("tik.vextract", "float16"):
+                tik_instance.vextract(roi_pos_new[0, 0], roi_pos, 8, 0)
+                tik_instance.vextract(roi_pos_new[1, 0], roi_pos, 8, 1)
+                tik_instance.vextract(roi_pos_new[2, 0], roi_pos, 8, 2)
+                tik_instance.vextract(roi_pos_new[3, 0], roi_pos, 8, 3)
+                tik_instance.vextract(roi_pos_new[4, 0], roi_pos, 8, 4)
+            else:
+                mask_ub = tik_instance.Tensor("uint16", [Constant.VECDUP_ELES], name="mask_ub",
+                                              scope=tbe_platform.scope_ubuf)
+                for i in range(Constant.VREDUCE_TIMES):
+                    tik_instance.vec_dup(Constant.VECDUP_ELES, mask_ub, Constant.MODE_LIST[i], 1, 8)
+                    tik_instance.vreduce(Constant.BATCH_SIZE * 8, roi_pos_new[i, 0], roi_pos, mask_ub, 1, 1, 8, 0, 0,
+                                         None, "counter")
 
             tik_instance.vconv(64, "", rois_data_ub[0, 0], roi_pos_new[0, 0], (Constant.BATCH_SIZE * 10) // 128, 1, 1,
                                8, 4)

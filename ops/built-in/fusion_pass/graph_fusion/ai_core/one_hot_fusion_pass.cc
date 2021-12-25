@@ -60,7 +60,7 @@ vector<FusionPattern*> OneHotFusionPass::DefinePatterns() {
 template <typename SRCTYPE, typename DESTYPE>
 static DESTYPE GetOneHotConstValue(const uint8_t* const_data) {
   DESTYPE result;
-  SRCTYPE* data = (SRCTYPE*)const_data;
+  const SRCTYPE* data = reinterpret_cast<const SRCTYPE*>(const_data);
   result = *data;
   return result;
 }

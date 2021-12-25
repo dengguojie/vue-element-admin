@@ -1,6 +1,8 @@
 # !/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import te
@@ -48,3 +50,11 @@ case3 = {"params": [{"shape": (1, 1, 36, 36, 16), "dtype": "float16", "format": 
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.run("Ascend910A")
+
+vals = {("tik.vextract", "float16"): False}
+def side_effects(*args):
+    return vals[args]
+
+with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMock(side_effect=side_effects)):
+    ut_case.run("Ascend710",'ROIAlignGrad_dynamic_shape_RoiAlignGrad_1')

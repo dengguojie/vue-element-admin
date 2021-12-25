@@ -33,9 +33,12 @@ using namespace ge;
 using namespace std;
 const int64_t BLOCK_SIZE = 32;
 const int64_t C0_CONST = 16;
-const int64_t WIDTH_DIM_CONST = 80;
 const int64_t DIM_H = 2;
 const int64_t DIM_W = 3;
+//ub size limits
+const int64_t WIDTH_DIM_CONST = 80;
+const int64_t WIDTH_DIM_CONST_NEW = 70;
+const int64_t UB_SIZE_NEW_VER = 196608;
 
 // A. block tiling: indices tiling
 // 1. one params row size is smaller than 32B
@@ -152,6 +155,7 @@ bool ROIAlignGradTiling(const std::string& opType, const ge::Operator& opParas, 
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse op_info failed."), return false);
   int64_t core_num = op_info[0];
+  int64_t ub_size = op_info[1];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   bool flag = true;
@@ -176,9 +180,10 @@ bool ROIAlignGradTiling(const std::string& opType, const ge::Operator& opParas, 
   runParams.rois_row_lenth = rois_shape.GetDim(1);
   runParams.x_width = x_width;
   runParams.x_height = x_diff_shape.GetDim(DIM_H);
+  int64_t width_dim_limits = ub_size > UB_SIZE_NEW_VER ? WIDTH_DIM_CONST : WIDTH_DIM_CONST_NEW;
 
   if (c1_num == C0_CONST) {
-    if (x_width <= WIDTH_DIM_CONST) {
+    if (x_width <= width_dim_limits) {
       runParams.tilingMode = TILING_MODE_2;
     } else {
       runParams.tilingMode = TILING_MODE_1;
