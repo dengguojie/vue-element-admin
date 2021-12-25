@@ -711,7 +711,22 @@ class ScheduleAgent:
         return self._attach_map.record_same_attach(sch[tensor_a],
                                                    sch[tensor_b])
 
-    def _start_attach(self, factor_list, tensor, parent, split_mode):
+    def _get_axis_info(self, factor_list, parent, split_mode):
+        """
+        get infor of axis.
+
+        Parameters:
+
+        factor_list: infor of factor.
+
+        parent: Tensor.
+
+        split_mode: dict, include ceil_mode and round_mode.default is None.
+
+        Returns:
+
+        value of axis.
+        """
         scopes = self[parent]
         ax_list, _ = scopes.get_active_scope_and_unit()
         axis_outer = []
@@ -730,6 +745,28 @@ class ScheduleAgent:
                 axis_ori_unrelate.append(axis)
             else:
                 axis_outer.append(axis)
+
+        return axis_outer, axis_intrinsic, axis_ori_unrelate
+
+    def _start_attach(self, factor_list, tensor, parent, split_mode):
+        """
+        get info of scope_attach.
+        
+        Parameters:
+
+        factor_list: info of factor.
+
+        tensor: infor of tensor.
+
+        parent: Tensor.
+
+        split_mode: dict, include ceil_mode and round_mode.default is None.
+
+        Returns:
+
+        scope_attach value.
+        """
+        axis_outer, axis_intrinsic, axis_ori_unrelate = self._get_axis_info(factor_list, parent, split_mode)
 
         scope_attach = None
         if axis_intrinsic:  # len(axis_intrinsic) > 0:
@@ -805,20 +842,7 @@ class ScheduleAgent:
         apply the attach path
         '''
 
-        attach_map = self._attach_map
-        parent_stages = list(set(attach_map.parent_stages.values()))
-        remain_scopes = set(attach_map.attached_path.keys())
-        for parent in parent_stages:
-            scope_intrinsic = self[parent.origin_op].scope_intrinsic
-            if scope_intrinsic is None:
-                continue
-            leaf_ivars = list(parent.leaf_iter_vars)
-            index = leaf_ivars.index(scope_intrinsic)
-            un_attachable_scopes = leaf_ivars[index + 1:]
-            for scope in list(remain_scopes):
-                if scope in un_attachable_scopes:
-                    attach_map.update_scope(scope, scope_intrinsic)
-                    remain_scopes.remove(scope)
+        self.pre_apply()
         self._attach_map.apply()
 
     def get_compute_path(self):

@@ -161,6 +161,7 @@ def test_op_select_format(test_arg):
                      {"shape": (7, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (7, 4, 5), "ori_format": "ND"},
                      )
 
+
 def test_op_check_supported(test_arg):
     from impl.batch_matmul import check_supported
     input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (2,3), (3,5)), "dtype": 'float16'}
