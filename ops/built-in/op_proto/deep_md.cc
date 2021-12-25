@@ -488,4 +488,116 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
 COMMON_INFER_FUNC_REG(ProdEnvMatA, ProdEnvMatAInferShape);
 VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------ProdEnvMatA END---------------------
+// --------------------------TabulateFusionGrad Begin---------------------
+IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusionGrad"),
+        return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(opDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get op desc"), return GRAPH_FAILED);
+  GeTensorDescPtr tableDesc = opDesc->MutableInputDesc("table");
+  CHECK(tableDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get table desc"), return GRAPH_FAILED);
+  std::vector<int64_t> tableShape = tableDesc->MutableShape().GetDims();
+  CHECK(tableShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of table should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr tableInfoDesc = opDesc->MutableInputDesc("table_info");
+  CHECK(tableInfoDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get table info desc"), return GRAPH_FAILED);
+  std::vector<int64_t> tableInfoShape = tableInfoDesc->MutableShape().GetDims();
+  CHECK(tableInfoShape.size() != 1 || tableInfoShape[0] < 5,
+        OP_LOGE(opName.GetString(), "Size of table_info should be greater equal than 5"),
+        return GRAPH_FAILED);
+
+  GeTensorDescPtr emXDesc = opDesc->MutableInputDesc("em_x");
+  CHECK(emXDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get em_x desc"), return GRAPH_FAILED);
+  std::vector<int64_t> emXShape = emXDesc->MutableShape().GetDims();
+  CHECK(emXShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of em_x should be 2"), return GRAPH_FAILED);
+  
+  GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
+  CHECK(emDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get em desc"), return GRAPH_FAILED);
+  std::vector<int64_t> emShape = emDesc->MutableShape().GetDims();
+  CHECK(emShape.size() != 3, OP_LOGE(opName.GetString(), "Dim of em should be 3"), return GRAPH_FAILED);
+  
+  GeTensorDescPtr dyDesc = opDesc->MutableInputDesc("dy");
+  CHECK(dyDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get dy desc"), return GRAPH_FAILED);
+  std::vector<int64_t> dyShape = dyDesc->MutableShape().GetDims();
+  CHECK(dyShape.size() != 3, OP_LOGE(opName.GetString(), "Dim of dy should be 3"), return GRAPH_FAILED);
+  
+  GeTensorDescPtr descriptorDesc = opDesc->MutableInputDesc("descriptor");
+  CHECK(descriptorDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descriptor desc"), return GRAPH_FAILED);
+  std::vector<int64_t> descriptorShape = descriptorDesc->MutableShape().GetDims();
+  CHECK(descriptorShape.size() != 3, OP_LOGE(opName.GetString(), "Dim of descriptor should be 3"), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TabulateFusionGradInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusionGrad"),
+        return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr emXDesc = opDesc->MutableInputDesc("em_x");
+  std::vector<int64_t> emXDims = emXDesc->MutableShape().GetDims();
+  GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
+  std::vector<int64_t> emDims = emDesc->MutableShape().GetDims();
+
+  GeTensorDescPtr dyDemXDesc = opDesc->MutableOutputDesc("dy_dem_x");
+  CHECK(dyDemXDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get dy_dem_x desc"), return GRAPH_FAILED);
+  GeTensorDescPtr dyDemDesc = opDesc->MutableOutputDesc("dy_dem");
+  CHECK(dyDemDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get dy_dem desc"), return GRAPH_FAILED);
+
+  dyDemXDesc->SetDataType(emXDesc->GetDataType());
+  dyDemDesc->SetDataType(emDesc->GetDataType());
+
+  if (IsUnknownVec(emXDims)) {
+    dyDemXDesc->SetShape(ge::GeShape(emXDims));
+    dyDemXDesc->SetOriginShape(ge::GeShape(emXDims));
+
+    std::vector<std::pair<int64_t, int64_t>> dyDemXShapeRange;
+    MakeUpShapeRange(emXDims, dyDemXShapeRange);
+    dyDemXDesc->SetShapeRange(dyDemXShapeRange);
+
+    dyDemDesc->SetShape(ge::GeShape(emDims));
+    dyDemDesc->SetOriginShape(ge::GeShape(emDims));
+
+    std::vector<std::pair<int64_t, int64_t>> dyDemShapeRange;
+    MakeUpShapeRange(emDims, dyDemShapeRange);
+    dyDemDesc->SetShapeRange(dyDemShapeRange);
+
+    return GRAPH_SUCCESS;
+  }
+
+  int32_t splitCount = 1;
+  int32_t splitIndex = 0;
+  op.GetAttr("split_count", splitCount);
+  op.GetAttr("split_index", splitIndex);
+  if (splitCount == 1) {
+    dyDemXDesc->SetShape(ge::GeShape(emXDims));
+    dyDemDesc->SetShape(ge::GeShape(emDims));
+  } else if (splitCount == 2){
+    int64_t nloc = emDims[0];
+    int64_t splitValue = (nloc + splitCount - 1) / splitCount;
+    
+    if (splitIndex == 0) {
+      OP_LOGI(opName.GetString(), "split_index is 0, splitValue=%ld", splitValue);
+      dyDemXDesc->SetShape(ge::GeShape({splitValue * emDims[1], 1}));
+      dyDemDesc->SetShape(ge::GeShape({splitValue, emDims[1], emDims[2]}));
+    } else {
+      OP_LOGI(opName.GetString(), "split_index is 1, splitValue=%ld", nloc - splitValue);
+      dyDemXDesc->SetShape(ge::GeShape({(nloc - splitValue) * emDims[1], 1}));
+      dyDemDesc->SetShape(ge::GeShape({nloc - splitValue, emDims[1], emDims[2]}));
+    }
+  } else {
+    std::string errMsg = GetInputInvalidErrMsg("not support split_count > 2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), errMsg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TabulateFusionGrad, TabulateFusionGradInferShape);
+VERIFY_FUNC_REG(TabulateFusionGrad, TabulateFusionGradVerify);
+// --------------------------TabulateFusionGrad END---------------------
 }  // namespace ge

@@ -361,6 +361,7 @@ from .square_sum_all import square_sum_all
 from .pad_v2 import pad_v2
 
 from .scan_pq_codes import scan_pq_codes
+from .tabulate_fusion_grad import tabulate_fusion_grad
 from .ascend_dequant import ascend_dequant
 from .ascend_dequant_s16 import ascend_dequant_s16
 from .ascend_requant import ascend_requant

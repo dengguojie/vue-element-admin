@@ -311,6 +311,7 @@ set(_tf_plugins
   prod_env_mat_a_plugin.cc
   prod_virial_se_a_plugin.cc
   prod_force_se_a_plugin.cc
+  tabulate_fusion_grad_plugin.cc
   quantized_resize_bilinear_plugin.cc
   queue_close_plugin.cc
   queue_data_plugin.cc

@@ -138,8 +138,8 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
 
   ge::OpDescPtr opDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(opDesc = std::make_shared<ge::OpDesc>(addNodeName, "Add"), return INTERNAL_ERROR);
-  FUSION_PASS_CHECK(opDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to create Add node"),
-                    return FAILED);
+  FUSION_PASS_CHECK(opDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to create Add op desc"), return FAILED);
 
   ge::GeTensorDesc outputDesc = fusedOpDesc->GetOutputDesc(preNodeOutputIdx);
   FUSION_PASS_CHECK(opDesc->AddInputDesc(0, outputDesc) != ge::GRAPH_SUCCESS,
@@ -167,6 +167,66 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
                     return FAILED);
 
   OP_LOGD(fusedOpType.c_str(), "End to create Add node");
+  return SUCCESS;
+}
+
+Status DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(const std::string& fusedOpType, ge::ComputeGraph& graph,
+                                                            ge::NodePtr& concatNode, const std::string& concatNodeName,
+                                                            const vector<ge::NodePtr>& preNodes,
+                                                            const uint32_t& preNodeOutputIdx,
+                                                            const vector<int32_t>& concatAttrs) {
+  OP_LOGD(fusedOpType.c_str(), "Enter into create Concat node");
+
+  FUSION_PASS_CHECK(preNodes.size() != 3 || preNodes[0] == nullptr || preNodes[1] == nullptr || preNodes[2] == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodes"),
+                    return PARAM_INVALID);
+  ge::OpDescPtr fusedOpDesc = preNodes[0]->GetOpDesc();
+  FUSION_PASS_CHECK(fusedOpDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to get OpDesc of fused node"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(preNodeOutputIdx < 0 || preNodeOutputIdx >= fusedOpDesc->GetAllOutputsDescSize(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodeOutputIdx"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(concatAttrs.size() < 2 || concatAttrs[0] < 0 || concatAttrs[1] < 1,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check ConcatD attrs"),
+                    return PARAM_INVALID);
+
+  ge::OpDescPtr concatDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(concatDesc = std::make_shared<ge::OpDesc>(concatNodeName, "ConcatD"), return INTERNAL_ERROR);
+  FUSION_PASS_CHECK(concatDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to create Concat op desc."),
+                    return FAILED);
+
+  ge::GeTensorDesc outputDesc = fusedOpDesc->GetOutputDesc(preNodeOutputIdx);
+  ge::GeTensorDesc outputDescAic = preNodes[1]->GetOpDesc()->GetOutputDesc(preNodeOutputIdx);
+  ge::GeTensorDesc outputDescVec = preNodes[2]->GetOpDesc()->GetOutputDesc(preNodeOutputIdx);
+  FUSION_PASS_CHECK(concatDesc->AddInputDesc("x1", outputDescAic) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add x1 desc for Concat."),
+                    return FAILED);
+  FUSION_PASS_CHECK(concatDesc->AddInputDesc("x2", outputDescVec) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add x2 desc for Concat."),
+                    return FAILED);
+  FUSION_PASS_CHECK(concatDesc->AddOutputDesc(outputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add y desc for Concat."),
+                    return FAILED);
+
+  ge::AttrUtils::SetInt(concatDesc, "concat_dim", concatAttrs[0]);
+  ge::AttrUtils::SetInt(concatDesc, "N", concatAttrs[1]);
+
+  concatNode = graph.AddNode(concatDesc);
+  FUSION_PASS_CHECK(concatNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add ConcatD Node to graph"),
+                    return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(preNodes[1]->GetOutDataAnchor(preNodeOutputIdx),
+                                                       concatNode->GetInDataAnchor(0)),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from output to concat x1."),
+                    return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(preNodes[2]->GetOutDataAnchor(preNodeOutputIdx),
+                                                       concatNode->GetInDataAnchor(1)),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from output to concat x2."),
+                    return FAILED);
+
+  OP_LOGD(fusedOpType.c_str(), "End to create Concat node");
   return SUCCESS;
 }
 

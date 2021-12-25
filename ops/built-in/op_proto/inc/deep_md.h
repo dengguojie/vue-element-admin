@@ -174,6 +174,40 @@ REG_OP(ProdVirialSeA)
     .ATTR(split_count, Int, 1)
     .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(ProdVirialSeA)
+
+/**
+* @brief Calculate TabulateFusionGrad. \n
+*
+* @par Inputs:
+* Five inputs, including:
+* @li table: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li table_info: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li em_x: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li em: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li dy: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li descriptor: A Tensor. Must be one of the following types: float16, float32, float64. \n
+*
+* @par Outputs:
+* @li dy_dem_x: A Tensor. Must be one of the following types: float16, float32, float64.
+* @li dy_dem: A Tensor. Must be one of the following types: float16, float32, float64. \n
+*
+* @par Attributes:
+* Two attributes, including:
+* @li split_count: A Scalar. 
+* @li split_index: A Scalar. \n
+*/
+REG_OP(TabulateFusionGrad)
+  .INPUT(table, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .INPUT(table_info, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .INPUT(em_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .INPUT(em, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .INPUT(descriptor, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .OUTPUT(dy_dem_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .OUTPUT(dy_dem, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+  .ATTR(split_count, Int, 1)
+  .ATTR(split_index, Int, 0)
+  .OP_END_FACTORY_REG(TabulateFusionGrad)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_DEEP_MD_H_
