@@ -16,102 +16,82 @@
 celu
 """
 import te.lang.cce as tbe
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils.error_manager import error_manager_vector
-from te.utils import para_check
+from tbe import tvm
+from tbe.common.register import register_op_compute
+from tbe.common.utils import para_check
 from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
 
 
+@register_op_compute("Celu")
 # 'pylint:disable=too-many-arguments, too-many-locals
-@fusion_manager.register("Celu")
-def celu_compute(x, y, a1, a2, a3, kernel_name="celu"):
+def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
     """
     Implement the operator by referring to  the
             TBE Operator Development Guide.
-    celu:
-    if x >= 0
-        y = alpha3 * 3
-    else
-        y = alpha1 * (exp(x/alpha2)-1)
-    x:dict of x, include shape and dtype
-    y:dict of y, include shape and dtype
-    a1: scalar, alpha1
-    a2: scalar, alpha2
-    a3: scalar, alpha3
+    scale * (max(0, x) + min(0, alpha * (exp(x/input_scale) - 1)
+    x:dict of x, include shape and data_type
+    y:dict of y, include shape and data_type
+    alpha: attr, alpha of the min
+    input_scale: attr, input scale of the input
 
     """
 
-    dtype = x.dtype
-
-    vexp_support = False
+    high_perf = False
+    data_type = x.dtype
+    
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
-        vexp_support = True
+        high_perf = True
 
-    if dtype.lower() == "float16" and vexp_support:
-        x = tbe.cast_to(x, "float32")
-        compute_dtype = "float32"
+    type_fp16 = "float16"
+    type_fp32 = "float32"
+
+    if data_type.lower() == type_fp16 and high_perf:
+        compute_type = type_fp32
+        x = tbe.cast_to(x, type_fp32)
     else:
-        compute_dtype = dtype
+        compute_type = data_type
 
-    rec_a2 = tvm.const(-1/a2, compute_dtype)
-    negative_x = tbe.vmuls(x, tvm.const(-1, compute_dtype))
-    vmax_x = tbe.vmaxs(negative_x, tvm.const(0, compute_dtype))
-    div_a2x = tbe.vmuls(vmax_x, rec_a2)
-    exp_a2x = tbe.vexp(div_a2x)
-    neg_part = tbe.vadds(exp_a2x, tvm.const(-1, compute_dtype))
-    pos_part = tbe.vmaxs(x, tvm.const(0, compute_dtype))
-    mul_a1 = tbe.vmuls(neg_part, tvm.const(a1, compute_dtype))
-    mul_a3 = tbe.vmuls(pos_part, tvm.const(a3, compute_dtype))
-    res = tbe.vadd(mul_a1, mul_a3)
-    if dtype.lower() == "float16" and vexp_support:
-        res = tbe.cast_to(res, dtype)
+    # min(0, alpha * (exp(x/input_scale)-1))
+    x_mul_rec_input_scale = tbe.vmuls(x, tvm.const(1.0/alpha, compute_type))
+    exp_x_mul_rec_input_scale = tbe.vexp(x_mul_rec_input_scale)
+    exp_x_mul_rec_input_scale_minus1 = tbe.vadds(exp_x_mul_rec_input_scale, tvm.const(-1.0, compute_type))
+    alpha_times_exp_minus1 = tbe.vmuls(exp_x_mul_rec_input_scale_minus1, tvm.const(alpha, compute_type))
+    vmin_x = tbe.vmins(alpha_times_exp_minus1, tvm.const(0.0, compute_type))
 
-    return res
+    # max(0, x)
+    vmax_x = tbe.vmaxs(x, tvm.const(0.0, compute_type))
+
+    # add min max
+    result = tbe.vadd(vmax_x, vmin_x)
+
+    if data_type.lower() == type_fp16 and high_perf:
+        result = tbe.cast_to(result, data_type)
+
+    return result
 
 
-# 'pylint: disable=invalid-name,too-many-arguments
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def celu(x, y, alpha1=1.0, alpha2=1.0, alpha3=1.0, kernel_name="celu"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
+def celu(x, y, alpha=1.0, kernel_name="celu"):
     """
     Implement the operator by referring to  the
             TBE Operator Development Guide.
-    celu:
-    if x >= 0
-        y = alpha3 * 3
-    else
-        y = alpha1 * (exp(x/alpha2)-1)
-    x:dict of x, include shape and dtype
-    y:dict of y, include shape and dtype
-    a1: scalar, alpha1
-    a2: scalar, alpha2
-    a3: scalar, alpha3
-
+    scale * (max(0, x) + min(0, alpha * (exp(x/input_scale) - 1)
+    x:dict of x, include shape and data_type
+    y:dict of y, include shape and data_type
+    notice: Celu formula is above with scale = 1.0 and input_scale=alpha
     """
-    util.check_kernel_name(kernel_name)
-    shape_input = x.get("shape")
-    dtype_input = x.get("dtype")
-    input_dtype = dtype_input.lower()
+    data_x = tvm.placeholder(x.get("shape"), dtype=x.get("dtype"), name="data_x")
+    if alpha == 0:
+        raise ZeroDivisionError("alpha is zero, zero division error occur!")
 
-    para_check.check_shape(shape_input, param_name="x")
+    res = celu_compute(data_x, y, alpha=alpha, kernel_name=kernel_name)
 
-    check_list = ("float16", "float32")
-    para_check.check_dtype(dtype_input, check_list, param_name="x")
-
-    if alpha2 == 0:
-        error_manager_vector.raise_err_input_value_invalid("celu", "alpha2", "non-zero", "zero")
-
-    data_input = tvm.placeholder(shape_input, name="data_input", dtype=input_dtype)
-
-    res = celu_compute(data_input, y, alpha1, alpha2, alpha3, kernel_name)
-
+    # auto schedule
     with tvm.target.cce():
-        auto_sch = generic.auto_schedule(res)
+        schedule = tbe.auto_schedule(res)
 
+    # operator build
     config = {"name": kernel_name,
-              "tensor_list": [data_input, res]}
-    tbe.cce_build_code(auto_sch, config)
+              "tensor_list": [data_x, res]}
+    tbe.build(schedule, config)

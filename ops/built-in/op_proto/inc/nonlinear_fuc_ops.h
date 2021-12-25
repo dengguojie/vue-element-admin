@@ -640,9 +640,7 @@ REG_OP(Elu)
 *x: A float16, float32, for the input data type . \n
 
 *@par Attributes:
-*@li alpha1: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" .
-*@li alpha2: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" .
-*@li alpha3: A float32. Defines at which positive value the ELU saturates. Defaults to "1.0" . \n
+*li alpha: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" .
 
 *@par Outputs:
 *y: A float16, float32, for the normalized result . \n
@@ -658,9 +656,7 @@ REG_OP(Elu)
 REG_OP(Celu)
     .INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16}))
-    .ATTR(alpha1, Float, 1.0)
-    .ATTR(alpha2, Float, 1.0)
-    .ATTR(alpha3, Float, 1.0)
+    .ATTR(alpha, Float, 1.0)
     .OP_END_FACTORY_REG(Celu)
 
 /**
