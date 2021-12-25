@@ -18,6 +18,7 @@
 conv3d backprop filter DSL interface.
 """
 import warnings
+from tbe.dsl.compute.conv3d_backprop_filter_compute import conv3d_dw as conv3d_dw_tbe
 
 
 def conv3d_dw(x, out_backprop, filter_size, para_dict):
@@ -33,12 +34,12 @@ def conv3d_dw(x, out_backprop, filter_size, para_dict):
     filter_size : 5-D shape, specifies the filter sizes
 
     para_dict : dict of parameters
-        strides : 3-D shape, specifies in depth, height and width dimension
-        pads : 6-D shape, specifies in up/down/left/right dimension
-        dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
-        res_dtype : the output data type
-        kernel_name : conv3d_backprop_filter_cce by default
-        group_dict : group of parameters
+    strides : 3-D shape, specifies in depth, height and width dimension
+    pads : 6-D shape, specifies in up/down/left/right dimension
+    dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
+    res_dtype : the output data type
+    kernel_name : conv3d_backprop_filter_cce by default
+    group_dict : group of parameters
 
     Returns
     -------
@@ -47,5 +48,4 @@ def conv3d_dw(x, out_backprop, filter_size, para_dict):
     warnings.warn("te.lang.cce.te_compute.conv3d_backprop_filter_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv3d_backprop_filter_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.conv3d_backprop_filter_compute import conv3d_dw
-    return conv3d_dw(x, out_backprop, filter_size, para_dict)
+    return conv3d_dw_tbe(x, out_backprop, filter_size, para_dict)

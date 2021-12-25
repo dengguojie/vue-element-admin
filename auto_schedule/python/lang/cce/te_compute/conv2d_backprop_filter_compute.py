@@ -18,6 +18,8 @@
 conv2d backprop filter DSL interface.
 """
 import warnings
+from tbe.dsl.compute.conv2d_backprop_filter_compute \
+    import conv2d_backprop_filter_compute as conv2d_backprop_filter_compute_tbe
 
 
 def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict):
@@ -34,15 +36,15 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
 
     para_dict:
 
-        strides : 2-D shape, specifies in height and width dimension
+    strides : 2-D shape, specifies in height and width dimension
 
-        padding : 4-D shape, specifies in up/down/left/right dimension
+    padding : 4-D shape, specifies in up/down/left/right dimension
 
-        dilations : 4-D shape, specifies in batch/channel/height/width dimension
+    dilations : 4-D shape, specifies in batch/channel/height/width dimension
 
-        groups : The number of filter's group. Default value is 1.
+    groups : The number of filter's group. Default value is 1.
 
-        res_dtype : the output data type
+    res_dtype : the output data type
 
     Returns
     -------
@@ -51,5 +53,5 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
     warnings.warn("te.lang.cce.te_compute.conv2d_backprop_filter_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv2d_backprop_filter_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
-    return conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict)
+
+    return conv2d_backprop_filter_compute_tbe(input_x, out_backprop, filter_sizes, para_dict)

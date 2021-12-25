@@ -56,10 +56,8 @@ def check_reget_multioutput_list(outs):
     if len(outs) != 3:
         return False
     res_out, mean_out, var_out = outs
-    if res_out.op.tag == "res_out" and mean_out.op.tag == "mean_out" and var_out.op.tag == "var_out":
-        return True
-    else:
-        return False
+    condition = (res_out.op.tag == "res_out" and mean_out.op.tag == "mean_out" and var_out.op.tag == "var_out")
+    return condition
 
 
 def reget_layernorm_multioutput(outs):
@@ -76,8 +74,8 @@ def reget_layernorm_multioutput(outs):
                                   name='cube_layer_norm',
                                   tag="cube_layer_norm")
         return [virtual_res] + outs
-    else:
-        return outs
+
+    return outs
 
 
 def _get_all_tensors(res):
@@ -87,7 +85,7 @@ def _get_all_tensors(res):
     :return: list
     """
 
-    all_tensor = dict()
+    all_tensor = {}
 
     def get(tensor):
         """
@@ -110,7 +108,7 @@ def _set_tensor_scope(sch, des_tensor):
     """
     set the scope of tensor
     """
-    Tensor_MAP= {}
+    tensor_map = {}
     out_tensor = []
     ub_tensor = []
     for tensor_name, tensor_member in des_tensor.items():
@@ -119,29 +117,29 @@ def _set_tensor_scope(sch, des_tensor):
         elif tensor_name in ("x", "gamma", "beta"):
             pass
         elif "l0a" in tensor_name:
-            Tensor_MAP["x_l0a"] = tensor_member
+            tensor_map["x_l0a"] = tensor_member
             sch[tensor_member].set_scope(cce.scope_ca)
         elif "l0b" in tensor_name:
             if tensor_name == "x_l0b":
-                Tensor_MAP["x_l0b"] = tensor_member
+                tensor_map["x_l0b"] = tensor_member
             else:
-                Tensor_MAP["one_l0b"] = tensor_member
+                tensor_map["one_l0b"] = tensor_member
             sch[tensor_member].set_scope(cce.scope_cb)
         elif "l0c" in tensor_name:
             sch[tensor_member].set_scope(cce.scope_cc)
             if tensor_name == "x_sum_l0c":
-                Tensor_MAP["x_l0c"] = tensor_member
+                tensor_map["x_l0c"] = tensor_member
             else:
-                Tensor_MAP["xx_l0c"] = tensor_member
+                tensor_map["xx_l0c"] = tensor_member
         elif "l1" in tensor_name:
-            Tensor_MAP["x_l1"] = tensor_member
+            tensor_map["x_l1"] = tensor_member
             sch[tensor_member].set_scope(cce.scope_cbuf)
         else:
             sch[tensor_member].set_scope(cce.scope_ubuf)
             ub_tensor.append(tensor_member)
-        Tensor_MAP["ub_tensor"] = ub_tensor
-        Tensor_MAP["out_tensor"] = out_tensor
-    return Tensor_MAP
+        tensor_map["ub_tensor"] = ub_tensor
+        tensor_map["out_tensor"] = out_tensor
+    return tensor_map
 
 
 def _get_tiling(res):
@@ -166,7 +164,7 @@ def _get_tiling(res):
     return tiling
 
 
-class CceLayerNormCubeOp(object):
+class CceLayerNormCubeOp:
     """
     CceLayerNormCubeOp: schedule definition of layernorm
 
@@ -195,27 +193,46 @@ class CceLayerNormCubeOp(object):
         self._res = None
         self._batch = False
 
+    def _calc_split_para(self, tiling):
+        """
+        calc para for axis split
+
+        Parameters
+        ----------
+        tiling : containing all tiling information, dict
+
+        Returns
+        -------
+        split para for axis, dict
+        """
+        split_para_dict = {}
+        n_l0c_factor, m_l0c_factor, m_l0c_block_factor = tiling.get("CL0_matrix")[:3]
+        n_ub_factor, m_ub_factor, m_ub_block_factor = tiling.get("CUB_matrix")[:3]
+        split_para_dict['n_l0c_factor'] = n_l0c_factor
+        split_para_dict['m_l0c_factor'] = m_l0c_factor
+        split_para_dict['n_ub_parts'] = n_l0c_factor // n_ub_factor
+        split_para_dict['m_ub_parts'] = m_l0c_factor // m_ub_factor
+        split_para_dict['block_m_ub_parts'] = m_l0c_block_factor // m_ub_block_factor
+        return split_para_dict
+
     def _split_l0c_and_ub(self, tiling):
         """
         split m, n based ub and l0c unit
         """
-        n_l0c_factor, m_l0c_factor, m_l0c_block_factor = tiling["CL0_matrix"][:3]
-        n_ub_factor, m_ub_factor, m_ub_block_factor = tiling["CUB_matrix"][:3]
+        split_para_dict = self._calc_split_para(tiling)
+        n_outer, n_inner = self._sch[self._res].split(
+            self._res.op.axis[-4], factor=split_para_dict.get("n_l0c_factor"))
+        m_outer, m_inner = self._sch[self._res].split(
+            self._res.op.axis[-3], factor=split_para_dict.get("m_l0c_factor"))
 
-        # (N, M, 16, 16)
-        n_outer, n_inner = self._sch[self._res].split(self._res.op.axis[-4], factor=n_l0c_factor)
-        m_outer, m_inner = self._sch[self._res].split(self._res.op.axis[-3], factor=m_l0c_factor)
+        n_inner_outer, n_inner_inner = self._sch[self._res].split(
+            n_inner, nparts=split_para_dict.get("n_ub_parts"))
+        m_inner_outer, m_inner_inner = self._sch[self._res].split(
+            m_inner, nparts=split_para_dict.get("m_ub_parts"))
 
-        m_ub_parts = m_l0c_factor // m_ub_factor
-        n_ub_parts = n_l0c_factor // n_ub_factor
-
-        n_inner_outer, n_inner_inner = self._sch[self._res].split(n_inner, nparts=n_ub_parts)
-        m_inner_outer, m_inner_inner = self._sch[self._res].split(m_inner, nparts=m_ub_parts)
-
-        if m_l0c_block_factor // m_ub_block_factor != 1:
-            block_m_ub_parts = m_l0c_block_factor // m_ub_block_factor
-            m_block_outer, m_m_block_inner = self.sch[self._res].split(
-                self._res.op.axis[-2], nparts=block_m_ub_parts)
+        if split_para_dict.get("block_m_ub_parts") != 1:
+            m_block_outer, _ = self.sch[self._res].split(
+                self._res.op.axis[-2], nparts=split_para_dict.get("block_m_ub_parts"))
             self._sch[self._res].reorder(n_outer,
                                      m_outer,
                                      n_inner_outer,
@@ -255,7 +272,7 @@ class CceLayerNormCubeOp(object):
 
     def _attach_at_ub(self, tensor_map, ub_at_axis, m_outer_inner_inner, block_axis_inner):
         """
-        attach ub tensor in res tensor 
+        attach ub tensor in res tensor
         """
         for out_tensor in tensor_map["out_tensor"]:
             if out_tensor.op.name in ("mean_out", "var_out"):
@@ -275,14 +292,14 @@ class CceLayerNormCubeOp(object):
 
     def _attach_l0c(self, x_l0c, xx_l0c, m_outer_inner_inner):
         """
-        attach l0c tensor in res tensor 
+        attach l0c tensor in res tensor
         """
-        self._sch[x_l0c].compute_at(self._sch[self._res ], m_outer_inner_inner)
-        self._sch[xx_l0c].compute_at(self._sch[self._res ], m_outer_inner_inner)
+        self._sch[x_l0c].compute_at(self._sch[self._res], m_outer_inner_inner)
+        self._sch[xx_l0c].compute_at(self._sch[self._res], m_outer_inner_inner)
 
     def _attach_l0ab(self, tensor_map, m_outer_inner_inner, m_outer_inner_outer, block_axis_inner):
         """
-        attach l0a and l0c tensor in res tensor 
+        attach l0a and l0c tensor in res tensor
         """
         self._sch[tensor_map["one_l0b"]].compute_at(self._sch[self._res], block_axis_inner)
         self._sch[tensor_map["x_l0a"]].compute_at(self._sch[self._res], m_outer_inner_inner)
@@ -314,28 +331,29 @@ class CceLayerNormCubeOp(object):
         """
         for ub_tensor in tensor_map["ub_tensor"]:
             if ub_tensor.op.name in ("xx_sum_cub", "x_sum_cub", "x_ub", "input_gamma_ub", "input_beta_ub"):
-                self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "dma_copy")
+                self._sch[ub_tensor].emit_insn(self._sch[ub_tensor].op.axis[0], "dma_copy")
             elif ub_tensor.op.name in ("trans_var", "trans_mean"):
                 ub_ori_shape_len = len(ub_tensor.shape) - 2
-                self._sch [ub_tensor].buffer_align(
+                self._sch[ub_tensor].buffer_align(
                     *(((1, 1),) * ub_ori_shape_len),
                     (16, 16),
                     (16, 16)
                 )
-                self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "dma_copy")
+                self._sch[ub_tensor].emit_insn(self._sch[ub_tensor].op.axis[0], "dma_copy")
             elif ub_tensor.op.name == "xx_sum_cub_scalar":
-                self._sch [ub_tensor].compute_inline()
+                self._sch[ub_tensor].compute_inline()
             elif ub_tensor.op.name == "xx_sum_cub_broadcast":
-                self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "vector_broadcast")
+                self._sch[ub_tensor].emit_insn(self._sch[ub_tensor].op.axis[0], "vector_broadcast")
             elif ub_tensor.op.name in ("scale_mul", "scale_add"):
                 block_num_fp32 = 8
-                k_inner_out, k_inner_inner = self._sch [ub_tensor].split(self._sch [ub_tensor].op.axis[-1], factor=block_num_fp32)
-                self._sch [ub_tensor].reorder(k_inner_out,
-                                       *self._sch [ub_tensor].op.axis[0:-1],
+                k_inner_out, k_inner_inner = self._sch[ub_tensor].split(
+                    self._sch[ub_tensor].op.axis[-1], factor=block_num_fp32)
+                self._sch[ub_tensor].reorder(k_inner_out,
+                                       *self._sch[ub_tensor].op.axis[0:-1],
                                        k_inner_inner)
-                self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "vector_auto")
+                self._sch[ub_tensor].emit_insn(self._sch[ub_tensor].op.axis[0], "vector_auto")
             else:
-                self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "vector_auto")
+                self._sch[ub_tensor].emit_insn(self._sch[ub_tensor].op.axis[0], "vector_auto")
 
     def _emit_insn_cube(self, tensor_map):
         """
@@ -346,10 +364,11 @@ class CceLayerNormCubeOp(object):
                 self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[0], "dma_copy")
             elif tensor_name in ("x_l0c", "xx_l0c"):
                 k_outer, _ = tensor_map[tensor_name].op.reduce_axis
-                k_outer_outer, k_outer_inner = self._sch[tensor_map[tensor_name]].split(k_outer, nparts=1)
+                k_outer_outer, _ = self._sch[tensor_map[tensor_name]].split(k_outer, nparts=1)
                 self._sch[tensor_map[tensor_name]].reorder(k_outer_outer, *tensor_map[tensor_name].op.axis)
                 mad_dict = {"mad_pattern": 0, "k_outer": [k_outer_outer]}
-                self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[-4], "mad", mad_dict)
+                self._sch[tensor_map[tensor_name]].emit_insn(
+                    self._sch[tensor_map[tensor_name]].op.axis[-4], "mad", mad_dict)
             elif tensor_name == "one_l0b":
                 self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[0], "set_2d")
 
@@ -360,6 +379,33 @@ class CceLayerNormCubeOp(object):
         self._emit_insn_out(tensor_map, n_inner_inner)
         self._emit_insn_ub(tensor_map)
         self._emit_insn_cube(tensor_map)
+
+    def _do_schedule(self, tiling, tensor_map):
+        """
+        The main sch process
+
+        Parameters
+        ----------
+        tiling : containing all tiling information, dict
+
+        tensor_map: containing all tensors, dict
+        """
+        # split mini parts in ub and L0c
+        n_outer, m_outer, ub_at_axis, n_inner_inner = self._split_l0c_and_ub(tiling)
+
+        # blind blocks
+        block_axis_inner, m_outer_inner = self._split_multi_block(tiling, n_outer, m_outer)
+
+        # split parts from L1 -> L0C
+        m_outer_inner_outer, m_outer_inner_inner = self._split_l1(tiling, m_outer_inner)
+
+        # compute at of tensor
+        self._attach_at_ub(tensor_map, ub_at_axis, m_outer_inner_inner, block_axis_inner)
+        self._attach_l0c(tensor_map.get("x_l0c"), tensor_map.get("xx_l0c"), m_outer_inner_inner)
+        self._attach_l0ab(tensor_map, m_outer_inner_inner, m_outer_inner_outer, block_axis_inner)
+
+        # emit insn of tensor
+        self._emit_insn(tensor_map, n_inner_inner)
 
     def schedule(self, res, spec_node_list, sch_list, tiling_case=None):
         """
@@ -381,19 +427,15 @@ class CceLayerNormCubeOp(object):
         True for success, False for no schedule
         """
 
-        sch = sch_list[0]
-        self._sch = sch
+        self._sch = sch_list[0]
         self._res = res
         if len(res.shape) > 4:
             self._batch = True
-    
+
         # get all tensor of the sch
         all_tensor = _get_all_tensors(res)
         # set the scope of different tensor
-        tensor_map = _set_tensor_scope(sch, all_tensor)
-
-        x_l0c = tensor_map["x_l0c"]
-        xx_l0c = tensor_map["xx_l0c"]
+        tensor_map = _set_tensor_scope(self._sch, all_tensor)
 
         # get the split factor and nparts of case
         if tiling_case is None:
@@ -401,24 +443,9 @@ class CceLayerNormCubeOp(object):
         else:
             tiling = tiling_case
 
-        # split mini parts in ub and L0c
-        n_outer, m_outer, ub_at_axis, n_inner_inner = self._split_l0c_and_ub(tiling)
+        self._do_schedule(tiling, tensor_map)
 
-        # blind blocks
-        block_axis_inner, m_outer_inner = self._split_multi_block(tiling, n_outer, m_outer)
-
-        # split parts from L1 -> L0C
-        m_outer_inner_outer, m_outer_inner_inner = self._split_l1(tiling, m_outer_inner)
-
-        # compute at of tensor
-        self._attach_at_ub(tensor_map, ub_at_axis, m_outer_inner_inner, block_axis_inner)
-        self._attach_l0c(x_l0c, xx_l0c, m_outer_inner_inner)
-        self._attach_l0ab(tensor_map, m_outer_inner_inner, m_outer_inner_outer, block_axis_inner)
-
-        # emit insn of tensor
-        self._emit_insn(tensor_map, n_inner_inner)
-
-        _print_ir_conv("final IR", sch)
+        _print_ir_conv("final IR", self._sch)
         tensor_map.clear()
         all_tensor.clear()
         tiling.clear()

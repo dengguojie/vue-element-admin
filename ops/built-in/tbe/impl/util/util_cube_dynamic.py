@@ -1062,7 +1062,8 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             err_man.raise_err_specific_user(
                 "conv2d_backprop_input", "the format of out_backprop and data_format are not the same.")
         if self.y.get("ori_format") != self.data_format:
-            err_man.raise_err_specific_user("the format of y and data_format are not the same.")
+            err_man.raise_err_specific_user(
+                "conv2d_backprop_input", "the format of y and data_format are not the same.")
         para_check.check_kernel_name(self.paras.get("kernel_name"))
         self.check_para_dim(self.strides, "strides")
         self.check_para_dim(self.dilations, "dilations")

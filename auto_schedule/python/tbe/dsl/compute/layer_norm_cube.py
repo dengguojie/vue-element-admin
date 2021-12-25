@@ -25,7 +25,7 @@ BLOCK_K0 = 16
 BLOCK_M0 = 16
 
 
-class LayerNormCube(object):
+class LayerNormCube:
     """
     LayerNormCube: compute definition of layernorm
 
@@ -88,8 +88,14 @@ class LayerNormCube(object):
         beta_ub_fp32 = tvm.compute(shape_gamma,
                                    lambda *indices: (beta_ub(*indices)).astype("float32"),
                                    name="cast_input_beta")
-
-        return [x_l1, x_l0a, x_ub_fp32], gamma_ub_fp32, beta_ub_fp32
+        tensor_dict = {
+            "x_l1": x_l1,
+            "x_l0a": x_l0a,
+            "x_ub_fp32": x_ub_fp32,
+            "gamma_ub_fp32": gamma_ub_fp32,
+            "beta_ub_fp32": beta_ub_fp32,
+        }
+        return tensor_dict
 
     def _cal_mean_of_ln(self, x_l0a):
         # cal the mean of layernorm
@@ -143,7 +149,8 @@ class LayerNormCube(object):
                                  tag="xx_sum_cub")
 
         xx_sum_cub_scalar = tvm.compute(shape_xx_sum_scalar,
-                                        lambda *indices: xx_sum_cub(*indices[:-2], indices[-2], indices[-2], indices[-1], indices[-1]),
+                                        lambda *indices: xx_sum_cub(*indices[:-2], indices[-2], indices[-2],
+                                                                    indices[-1], indices[-1]),
                                         name="xx_sum_cub_scalar")
         xx_sum_cub_broadcast = tvm.compute(self._reduce_shape_nz,
                                            lambda *indices: xx_sum_cub_scalar(
@@ -174,7 +181,8 @@ class LayerNormCube(object):
                               tag="cast_" + para_name)
 
         nd_trans = tvm.compute(self._reduce_shape_nz,
-                               lambda *indices: nd_fp16(*indices[:-4], indices[-4], indices[-3], indices[-1], indices[-2]),
+                               lambda *indices: nd_fp16(*indices[:-4], indices[-4], indices[-3],
+                                                        indices[-1], indices[-2]),
                                name="trans_" + para_name,
                                tag="trans_" + para_name)
         nd_out = tvm.compute(nd_output_shape,
@@ -208,14 +216,51 @@ class LayerNormCube(object):
 
         return y
 
+    def _do_compute(self, tensor_dict, shape_x):
+        """
+        x_tensorlist : list, the tensor list of x_l1, x_l0a, x_ub_fp32
+        gamma_ub_fp32: tensor, the tvm tensor of gamma_ub_fp32
+        input_beta_ub_fp32beta: tensor, the tvm tensor of input_beta_ub_fp32beta
+        shape_x: list or tuple, the shape of input_x
+
+        Returns
+        -------
+        Result of mean, var, res
+        """
+        # get mean in nz
+        mean_nz = self._cal_mean_of_ln(tensor_dict.get("x_l0a"))
+        # get var in nz
+        var_nz = self._cal_var_of_ln(tensor_dict.get("x_l0a"), tensor_dict.get("x_l1"), mean_nz)
+        # nz to nd of mean and var
+        mean_nd = self._mean_var_nz2nd(mean_nz, "mean")
+        var_nd = self._mean_var_nz2nd(var_nz, "var")
+
+        # cal the result of layer_norm, (x-mean)/(var+eps)^0.5
+        y = self._cal_y_of_ln(tensor_dict.get("x_ub_fp32"), mean_nz, var_nz, self._para.get("epsilon"))
+
+        # cal gamma*y + beta
+        scale_mul = tvm.compute(shape_x,
+                                lambda *indices: y(*indices) *
+                                    tensor_dict.get("gamma_ub_fp32")(indices[-1] + indices[-4]*BLOCK_K0),
+                                name="scale_mul")
+        res_fp32 = tvm.compute(shape_x,
+                               lambda *indices: scale_mul(*indices) +
+                                   tensor_dict.get("beta_ub_fp32")(indices[-1] + indices[-4]*BLOCK_K0),
+                               name="scale_add")
+        #  turn res from fp32 to fp16
+        res = tvm.compute(shape_x,
+                          lambda *indices: (res_fp32(*indices)).astype("float16"),
+                          name="cast_res")
+        res = tvm.compute(shape_x, lambda *indices: res(*indices),
+                          name="res_out",
+                          tag="res_out")
+        return mean_nd, var_nd, res
+
     def layer_norm_cube_compute(self, input_x, input_gamma, input_beta):
         """
-        input_x : Tensor
-            the tvm tensor of input x, only support float16
-        input_gamma: dict
-            the tvm tensor of input x, only support float16
-        input_beta: dict
-            the tvm tensor of input x, only support float16
+        input_x: Tensor, the tvm tensor of input x, only support float16
+        input_gamma: dict, the tvm tensor of input x, only support float16
+        input_beta: dict, the tvm tensor of input x, only support float16
 
         Returns
         -------
@@ -223,7 +268,6 @@ class LayerNormCube(object):
         """
         shape_x = shape_util.shape_to_list(input_x.shape)
         ori_shape = self._para.get("ori_shape")
-        epsilon = self._para.get("epsilon")
         reduce_num = ori_shape[-1]
 
         self._shape_nz = shape_x
@@ -235,35 +279,7 @@ class LayerNormCube(object):
             self._reduce_shape_nz = self._batch + self._reduce_shape_nz
 
         # get input tensor in l1, ub, l0a
-        x_tensorlist, gamma_ub_fp32, beta_ub_fp32 = self._init_input_tensor(input_x, input_gamma, input_beta)
-        x_l1, x_l0a, x_ub_fp32 = x_tensorlist
+        tensor_dict = self._init_input_tensor(input_x, input_gamma, input_beta)
 
-        # get mean in nz
-        mean_nz = self._cal_mean_of_ln(x_l0a)
-
-        # get var in nz
-        var_nz = self._cal_var_of_ln(x_l0a, x_l1, mean_nz)
-
-        # nz to nd of mean and var
-        mean_nd = self._mean_var_nz2nd(mean_nz, "mean")
-        var_nd = self._mean_var_nz2nd(var_nz, "var")
-
-        # cal (x-mean)/(var+eps)^0.5
-        y = self._cal_y_of_ln(x_ub_fp32, mean_nz, var_nz, epsilon)
-
-        # cal gamma*y + beta
-        scale_mul = tvm.compute(shape_x,
-                                lambda *indices: y(*indices) * gamma_ub_fp32(indices[-1] + indices[-4]*BLOCK_K0),
-                                name="scale_mul")
-        res_fp32 = tvm.compute(shape_x,
-                               lambda *indices: scale_mul(*indices) + beta_ub_fp32(indices[-1] + indices[-4]*BLOCK_K0),
-                               name="scale_add")
-        #  turn res from fp32 to fp16
-        res = tvm.compute(shape_x,
-                          lambda *indices: (res_fp32(*indices)).astype("float16"),
-                          name="cast_res")
-        res = tvm.compute(shape_x, lambda *indices: res(*indices),
-                          name="res_out",
-                          tag="res_out")
-
-        return mean_nd, var_nd, res
+        outputs = self._do_compute(tensor_dict, shape_x)
+        return outputs

@@ -29,13 +29,12 @@ from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
 from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import \
     CceConv3dBackpropFilterOp
 from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule as gemm_schedule1
-from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule as gemm_schedule2  
+from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule as gemm_schedule2
 from .constants import Pattern
 
 
-gemm_schedule = gemm_schedule2
 @register_schedule(pattern=Pattern.CONV3D_BACKPROP_FILTER)
-def schedule(outs, tiling_case):
+def schedule_conv3d_bp_filter(outs, tiling_case):
     """
     schedule for conv3d_backprop_filter op
     """
@@ -44,7 +43,7 @@ def schedule(outs, tiling_case):
 
 
 @register_schedule(pattern=Pattern.CONV2D_BACKPROP_FILTER)
-def schedule(outs, tiling_case):
+def schedule_conv2d_bp_filter(outs, tiling_case):
     """
     schedule for conv2d_backprop_filter op
     """
@@ -54,7 +53,7 @@ def schedule(outs, tiling_case):
 
 @register_schedule(pattern=Pattern.MAT_MUL)
 @register_schedule(pattern=Pattern.BATCH_MATMUL)
-def schedule(outs, tiling_case):
+def schedule_matmul(outs, tiling_case):
     """
     schedule for matmul op
     """
@@ -72,9 +71,13 @@ class ConvSchedule:
 
         self._tiling_case = tiling_case
         self._scope = "local.UB"
+        self._schedule_op = None
         self._get_schedule_info()
 
     def _get_schedule_info(self):
+        """
+        get scheule info
+        """
         self._var_range = self._tiling_case['var_range']
 
         self._schedule = tvm.create_schedule([res.op for res in self._outs])
@@ -83,6 +86,9 @@ class ConvSchedule:
         self._m_k_n_shape = self._tiling_case.get('m_k_n_shape')
 
     def do_conv2d_schedule(self):
+        """
+        do schedule for conv2d
+        """
         self._schedule_op = CceConvOp()
         self._schedule_op.schedule(
             self._outs[0], self._outs, [self._schedule], convbn1_flag=False,
@@ -91,6 +97,9 @@ class ConvSchedule:
         return self._schedule
 
     def do_conv2dbp_input_schedule(self):
+        """
+        do schedule for conv2dbp_input
+        """
         self._schedule_op = CceConv2dBackpropInputOp(
             self._scope, need_tensorize=True, need_pragma=True)
         self._schedule_op.schedule(
@@ -100,6 +109,9 @@ class ConvSchedule:
         return self._schedule
 
     def do_conv2dbp_filter_schedule(self):
+        """
+        do schedule for conv2dbp_filter
+        """
         attach_flags = ("dynamic_l0a_attach", "dynamic_l0b_attach",
                         "dynamic_al1_attach", "dynamic_bl1_attach",
                         "bl1_hw_allin_flag")
@@ -118,6 +130,9 @@ class ConvSchedule:
         return self._schedule
 
     def do_conv3dbp_filter_schedule(self):
+        """
+        do schedule for conv3dbp_filter
+        """
         self._schedule_op = CceConv3dBackpropFilterOp(
             self._scope, need_tensorize=True, need_pragma=True)
         self._schedule_op.schedule(
@@ -127,9 +142,13 @@ class ConvSchedule:
         return self._schedule
 
     def do_mat_mul_schedule(self):
+        """
+        do schedule for gemm
+        """
+        gemm_schedule = gemm_schedule2
         if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
-            global gemm_schedule
             gemm_schedule = gemm_schedule1
+
         gemm_schedule(self._outs[0], [self._schedule],
                       {"tiling_strategy": self._tiling_strategy,
                        "m_k_n_shape": self._m_k_n_shape,

@@ -18,7 +18,7 @@
 gemm_compute
 """
 import warnings
-
+from tbe.dsl.compute.gemm_compute import gemm as gemm_tbe
 
 def gemm(tensor_a, tensor_b, para_dict):
     """
@@ -47,5 +47,5 @@ def gemm(tensor_a, tensor_b, para_dict):
     warnings.warn("te.lang.cce.te_compute.gemm_compute is expired, "
         "please replace it with the func tbe.dsl.compute.gemm_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.gemm_compute import gemm
-    return gemm(tensor_a, tensor_b, para_dict)
+
+    return gemm_tbe(tensor_a, tensor_b, para_dict)

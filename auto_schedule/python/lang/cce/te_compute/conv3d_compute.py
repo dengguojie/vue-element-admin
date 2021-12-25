@@ -18,6 +18,7 @@
 conv3d compute
 """
 import warnings
+from tbe.dsl.compute.conv3d_compute import conv3d as conv3d_tbe
 
 
 def conv3d(x, filter, filter_size, para_dict):
@@ -41,5 +42,5 @@ def conv3d(x, filter, filter_size, para_dict):
     warnings.warn("te.lang.cce.te_compute.conv3d_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv3d_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.conv3d_compute import conv3d
-    return conv3d(x, filter, filter_size, para_dict)
+
+    return conv3d_tbe(x, filter, filter_size, para_dict)

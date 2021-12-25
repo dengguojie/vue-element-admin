@@ -85,13 +85,14 @@ def _param_check(x, dilations):
                 "Dilation",
                 "Elements in dilations should be positive integer"
                 )
-    dtype = x.get("dtype")
-    if dtype not in ("int8", "float16", "float32"):
+    x_dtype = x.get("dtype")
+    supported_dtype = ("int8", "float16", "float32")
+    if x_dtype not in supported_dtype:
         args_dict = {
             "errCode": "E60005",
             "param_name": "x",
-            "expected_dtype": "(int8, float16, float32)",
-            "dtype": "{}".format(dtype)
+            "expected_dtype": str(supported_dtype),
+            "dtype": "{}".format(x_dtype)
         }
         raise RuntimeError(
             args_dict,

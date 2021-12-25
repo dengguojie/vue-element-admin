@@ -190,7 +190,6 @@ def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_pa
     epsilon = 1e-12
     normalize = (input_xArr - mean) / np.sqrt(variance + epsilon)
     res = input_gammaArr*normalize + input_betaArr
-
     if dtype == "float16":
         mean = mean.astype(np.float16)
         variance = variance.astype(np.float16)

@@ -35,7 +35,7 @@ def shape_align(shape, dtype):
     :return: list; aligned shape
     """
     align_factor = tbe_platform.BLOCK_REDUCE_INT8 if dtype == "int8" else tbe_platform.BLOCK_REDUCE
-    res = [i for i in shape]
+    res = list(shape)
     res[-1] = math.ceil(res[-1] / align_factor) * align_factor
     return res
 
@@ -57,7 +57,7 @@ def get_first_axis_need_dilate(dilations):
     """
     get the highest dim need to be dilated, that is the index of the
     first element which is more than 1.
-     for example: for input dilations = (1, 1, 3, 4, 1), result is 2
+    for example: for input dilations = (1, 1, 3, 4, 1), result is 2
     :param dilations: list or tuple
     :return: int
     """
@@ -86,7 +86,7 @@ def calc_space_of_ub(shape, dilations, index, dtype):
         "float16": 2,
         "float32": 4
     }
-    return type_size_map[dtype] * num_element
+    return type_size_map.get(dtype) * num_element
 
 
 def _calc_dilated_shape(shape, dilations):
@@ -150,7 +150,7 @@ def _param_check(tensor_x, dilations):
             args_dict,
             error_manager_util.get_error_message(args_dict)
         )
-    if not all(list(value > 0 and type(value) == int for value in dilations)):
+    if not all([value > 0 and isinstance(value, int) for value in dilations]):
         args_dict = {
             "errCode": "E60038",
             "desc": "Elements in dilations should be positive integer"
@@ -213,8 +213,8 @@ def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     ub_dilated_x = tvm.compute(
         shape_dilated,
         lambda *indices: tvm.select(
-            tvm.all(*list((indices[i] % dilations[i] == 0) for i in range(len(indices)))),
-            ub_x(*list(indices[i] // dilations[i] for i in range(len(indices)))),
+            tvm.all(*[(indices[i] % dilations[i] == 0) for i in range(len(indices))]),
+            ub_x(*[indices[i] // dilations[i] for i in range(len(indices))]),
             padding_default(*indices)
         ),
         name="ub_dilated_x"
