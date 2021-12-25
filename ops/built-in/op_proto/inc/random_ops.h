@@ -207,6 +207,27 @@ REG_OP(Randperm)
     .OP_END_FACTORY_REG(Randperm)
 
 /**
+*@brief Fills a tensor with elements drawn from the poisson distribution. \n
+
+*@par Inputs:
+*x:  A Tensor. Must be one of the following types: float16, float. \n
+
+*@par Attributes:
+*@li seed: An optional int. Defaults to 0. \n
+
+*@par Outputs:
+*y: A Tensor list with same type as "x" . \n
+
+*@par Third-party framework compatibility
+*@ Compatible with the Pytorch operator Poisson.
+*/
+REG_OP(Poisson)
+    .INPUT(x, TensorType({ DT_FLOAT16,DT_FLOAT }))
+    .OUTPUT(y, TensorType({ DT_FLOAT16,DT_FLOAT }))
+    .ATTR(seed, Int, 0)
+    .OP_END_FACTORY_REG(Poisson)   
+ 
+/**
 *@brief Outputs random values from the Poisson distribution(s) described by rate . \n
 
 *@par Inputs:
@@ -731,7 +752,6 @@ REG_OP(Uniform)
 *@attention Constraints:
 * Compatible with the Caffe operator ContinuationIndicator.
 */
-
 REG_OP(ContinuationIndicator)
     .REQUIRED_ATTR(time_step, Int)
     .REQUIRED_ATTR(batch_size, Int)

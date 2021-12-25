@@ -63,6 +63,7 @@ set(local_kernels_src_files
     kernels/normalized/non_zero_with_value_shape.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
+    kernels/normalized/poisson.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc

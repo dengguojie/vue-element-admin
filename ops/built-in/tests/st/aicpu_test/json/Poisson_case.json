@@ -1,0 +1,72 @@
+[
+    {
+        "case_name": "Test_Poisson_initialization",
+        "op": "Poisson",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [128,128],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [128,128]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 10
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Poisson_float",
+        "op": "Poisson",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [[128],[256],[1024],[2,1024],[4,1024],[8,1024],[16,1024],[32,1024],[64,1024],[128,1024],
+                [256,1024],[512,1024],[2,1024,1024]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [[128],[256],[1024],[2,1024],[4,1024],[8,1024],[16,1024],[32,1024],[64,1024],[128,1024],
+                [256,1024],[512,1024],[2,1024,1024]]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 10
+            }
+        ]
+    }  
+]

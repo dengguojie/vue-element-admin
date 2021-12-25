@@ -821,4 +821,17 @@ IMPLEMT_COMMON_INFERFUNC(ContinuationIndicatorInferShape) {
 }
 COMMON_INFER_FUNC_REG(ContinuationIndicator, ContinuationIndicatorInferShape);
 // ------------------ContinuationIndicator End-------------------------------
+
+IMPLEMT_INFERFUNC(Poisson, PoissonInfer) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Poisson, PoissonInfer);
 }  // namespace ge
