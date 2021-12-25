@@ -37,7 +37,8 @@ def test_op_check_supported(test_arg):
     input_x = {'ori_shape': (-1, -1), 'shape': (2, 3), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     perm = {'ori_shape': (-1,), 'shape': (2,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     output_y = {'ori_shape': (-1, -1), 'shape': (3, 2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == False:
+    res, _ = check_supported(input_x, perm, output_y)
+    if res:
         raise Exception("Failed to call check_supported in Transpose.")
 
 def test_op_check_supported(test_arg):
@@ -50,24 +51,18 @@ def test_op_check_supported_in_white_list_return_false(test_arg):
     input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     perm = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == False:
+    res, _ = check_supported(input_x, perm, output_y)
+    if not res:
         raise Exception("1024,1024,fp16 in white list, should return True, then call transpose instead of transpose_d")
-
-def test_op_check_supported_not_in_white_list_return_true(test_arg):
-    from impl.dynamic.transpose import check_supported
-    input_x = {'ori_shape': (1234, 4321), 'shape': (1234, 4321), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    perm = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    output_y = {'ori_shape': (4321, 1234), 'shape': (4321, 1234), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == True:
-        raise Exception("1234,4321,fp16 not in white list, should return False")
 
 def test_op_check_supported_dtype_not_in_white_list_return_true(test_arg):
     from impl.dynamic.transpose import check_supported
     input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
     perm = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
-    if check_supported(input_x, perm, output_y) == True:
-        raise Exception("1024,1024,int8 not in white list, should return False")
+    res, _ = check_supported(input_x, perm, output_y)
+    if not res:
+        raise Exception("1024,1024,int8 in white list, should return True")
 
 def test_op_check_cpu_false(test_arg):
     from impl.dynamic.transpose import by_dynamic_static_union_version 
@@ -83,7 +78,8 @@ def test_op_check_supported_not_in_white_list_but_fuzzily_build(test_arg):
     output_y = {'ori_shape': (4321, 1234), 'shape': (4321, 1234), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     with tbe.common.context.op_context.OpContext("transpose_ut"):
         tbe_context.get_context().set_build_type("fuzzily_build")
-        if check_supported(input_x, perm, output_y) == False:
+        res, _ = check_supported(input_x, perm, output_y)
+        if not res:
             raise Exception("fuzzily build, should return True")
 			
 def test_op_check_supported_in_white_list_fuzzy_match_return_true_1(test_arg):
@@ -91,7 +87,8 @@ def test_op_check_supported_in_white_list_fuzzy_match_return_true_1(test_arg):
     input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == False:
+    res, _ = check_supported(input_x, perm, output_y)
+    if not res:
         raise Exception("128, 12, 197, 64,fp16 in fuzzy white list, should return True")
 
 def test_op_check_supported_in_white_list_fuzzy_match_return_true_2(test_arg):
@@ -99,26 +96,37 @@ def test_op_check_supported_in_white_list_fuzzy_match_return_true_2(test_arg):
     input_x = {'ori_shape': (768, 12, 197), 'shape': (768, 12, 197), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
     perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
     output_y = {'ori_shape': (197, 12, 768), 'shape': (197, 12, 768), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == False:
+    res, _ = check_supported(input_x, perm, output_y)
+    if not res:
         raise Exception("768, 12, 197,fp16 in fuzzy white list, should return True")
 
-def test_op_check_supported_in_white_list_fuzzy_match_return_false_3(test_arg):
+def test_get_ub_core_for_cov(test_arg):
+    from impl.dynamic.transpose import get_ub_size 
+    from impl.dynamic.transpose import get_core_num
+    from impl.dynamic.transpose import _static_scenario_goto_old_version 
     from impl.dynamic.transpose import check_supported
-    input_x = {'ori_shape': (768, 12, 997), 'shape': (768, 12, 997), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    get_ub_size()
+    get_core_num()
+    shape_hit = [1, 128, 128, 3]
+    shape_miss = [2, 128, 128, 3]
+    _static_scenario_goto_old_version(shape_hit,  2)
+    _static_scenario_goto_old_version(shape_miss, 2)
+    input_x = {'ori_shape': (1, 128, 128, 3), 'shape': (1, 128, 128, 3), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
     perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    output_y = {'ori_shape': (997, 12, 768), 'shape': (997, 12, 768), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
-    if check_supported(input_x, perm, output_y) == True:
-        raise Exception("768, 12, 997,fp16 not in fuzzy white list, should return False")
+    output_y = {'ori_shape': (1, 3, 18, 128), 'shape': (1, 3, 128, 128), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
 
+    res, _ = check_supported(input_x, perm, output_y)
+    if res:
+        raise Exception("1, 128, 128, 3 is in black list, should return False")
+    
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_return_true)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_but_fuzzily_build)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_1)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_2)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_false_3)
+ut_case.add_cust_test_func(test_func=test_get_ub_core_for_cov)
 
 
 def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
@@ -194,12 +202,14 @@ def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
 #                                          ok
 #
 #------------------------------------------------------------------------------------------------
-add_ts_case(["Ascend910A"], "int8",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
-add_ts_case(["Ascend910A"], "int16",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
-add_ts_case(["Ascend910A"], "uint8",   (8, 16),                    (1, 0),                 (16, 8),                 "random")
-add_ts_case(["Ascend910A"], "uint8",   (10,3,4,2,3,4),             (2, 1, 0, 5, 4, 3),     (4, 3, 10, 4, 3, 2),     "random")
-add_ts_case(["Ascend910A"], "float32", (1000, 2000),               (1, 0),                 (2000, 1000),            "random")
-add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
+add_ts_case(["Ascend910A"], "float16",   (1024, 12, 30, 26),           (0, 2, 1, 3),           (1024, 30,12,26),        "random")
+#add_ts_case(["Ascend910A"], "int8",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
+#add_ts_case(["Ascend910A"], "int16",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
+#add_ts_case(["Ascend910A"], "uint8",   (8, 16),                    (1, 0),                 (16, 8),                 "random")
+#add_ts_case(["Ascend910A"], "uint8",   (10,3,4,2,3,4),             (2, 1, 0, 5, 4, 3),     (4, 3, 10, 4, 3, 2),     "random")
+#add_ts_case(["Ascend910A"], "float32", (1000, 2000),               (1, 0),                 (2000, 1000),            "random")
+#add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
+#add_ts_case(["Ascend910A"], "int64",   (2, 3),                     (1, 0),                 (3, 2),                  "random")
 #add_ts_case(["Ascend910A"], "int8",    (56, 56, 3),                (2, 1, 0),              (3, 56, 56),             "random")
 #add_ts_case(["Ascend910A"], "int8",    (50, 56, 21, 3),            (0, 3, 2, 1),           (50, 3, 21, 56),         "arange")
 #add_ts_case(["Ascend910A"], "uint8",   (33, 200),                  (1, 0),                 (200, 33),               "random")
@@ -209,7 +219,6 @@ add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),      
 #add_ts_case(["Ascend910A"], "int8",    (3, 2, 64000),              (1, 0, 2),              (2, 3, 64000),           "random")
 #add_ts_case(["Ascend910A"], "int8",    (3, 2, 64001),              (1, 0, 2),              (2, 3, 64001),           "random")
 #add_ts_case(["Ascend910A"], "int8",    (2, 3, 3876),               (1, 0, 2),              (3, 2, 3876),            "random")
-#add_ts_case(["Ascend910A"], "int64",   (2, 3),                     (1, 0),                 (3, 2),                  "random")
 #add_ts_case(["Ascend910A"], "float32", (2, 3, 4, 500, 601),        (0, 2, 1, 3, 4),        (2, 4, 3, 500, 601),     "random")
 #add_ts_case(["Ascend910A"], "float32", (2, 3, 4, 5, 6),            (0, 2, 1, 3, 4),        (2, 4, 3, 5, 6),         "random")
 #add_ts_case(["Ascend910A"], "float32", (20000, 3),                 (1, 0),                 (3, 20000),              "random")

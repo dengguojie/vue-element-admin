@@ -35,7 +35,7 @@ using namespace std;
 
 
 namespace optiling {
-#define LOOP_FOR_UB_PADDING 10
+#define LOOP_FOR_UB_PADDING 30
 #define RETURN_IF_FAIL(res) \
   do { \
   	  if (res == false) { \
@@ -742,6 +742,10 @@ static bool GetShapePerm(const string& opType, const ge::Operator& paras, Compil
   for (int64_t i = 0; i < shapeInfo.outShapeSize; i++) {
     shapeInfo.outShape[i] = outShape[i];
   }
+  OP_LOGI(opType.c_str(), "input_shape: [%s], output_shape: [%s], perm: [%s].",
+                          vec_to_string(inShape, inShape.size()).c_str(),
+                          vec_to_string(outShape, outShape.size()).c_str(),
+                          vec_to_string(perm, perm.size()).c_str());
 
   return true;
 }
@@ -1059,7 +1063,7 @@ void RemoveAxis(ShapeInfo& shapeInfo) {
 
   if (IsAllOne(shapeInfo)) {
     shapeInfo.reducedInShape[0] = 1;
-    shapeInfo.reducedPerm[0] = 1;
+    shapeInfo.reducedPerm[0] = 0;
     shapeInfo.reducedOutShape[0] = 1;
     shapeInfo.dim = 1;
     return;
@@ -2889,8 +2893,7 @@ static void MergeDupAxis(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
   }
 }
 
-static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
-  int64_t ubSize = 0;
+static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& runtimeInfo, int64_t& ubSize) {
   bool lastAxisTrans = si.isLastAxisTranspose;
   int64_t reservedVol = si.lastAxisLen * ci.fp16Times;
 
@@ -2912,8 +2915,6 @@ static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo
 
   leftVol = (leftVol == 0) ? 1 : leftVol;
 
-  // since block align padding may result ub size not enough
-  // loop 10 is ok for lastAxisLen from 1 to 256
   if (si.isLastTwoAlignedAndTrans) {
     int64_t vol = sqrt(leftVol);
     runtimeInfo.borrowInfo.srcVol = vol;
@@ -2921,6 +2922,8 @@ static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo
     return;
   }
 
+  // since block align padding may result ub size not enough
+  // loop 10 is ok for lastAxisLen from 1 to 256
   for (int i = 0; i < LOOP_FOR_UB_PADDING; i++) {
     int64_t vol = sqrt(leftVol) - i;
     if (vol * AlignX(vol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times <= ubSize) {
@@ -3106,6 +3109,16 @@ static int64_t GetDupAxisInSrc(const RuntimeInfo& runtimeInfo, int64_t index) {
   const BorrowInfo& bi = runtimeInfo.borrowInfo;
   for (int64_t i = 0; i < bi.srcNum; i++) {
     if (index == bi.srcIndexIn[i].idx_in) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static int64_t GetDupAxisInDst(const RuntimeInfo& runtimeInfo, int64_t index) {
+  const BorrowInfo& bi = runtimeInfo.borrowInfo;
+  for (int64_t i = 0; i < bi.dstNum; i++) {
+    if (index == bi.dstIndexIn[i].idx_in) {
       return i;
     }
   }
@@ -3315,7 +3328,75 @@ static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& ri) {
   bi.tailBurstLen_out = (bi.tailBurstLen_out * lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
 }
 
-static bool CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int borrowDstAxisNum) {
+static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& ri, BorrowInfo& bi, int64_t ubSize) {
+  // Update step to avoid repeat_num > 255 or ub overflow
+  bool lastAxisTrans = si.isLastAxisTranspose;
+  int64_t dstOnlyVol = 1;
+  int64_t srcVol = 1;
+  bool overflowFlag = false;
+  for (int64_t i = 0; i < bi.dstNum; i++) {
+    bool dupFlag = false;
+    for (int64_t j = 0; j < bi.srcNum; j++) {
+      if (bi.dstIndexIn[i].idx_in == bi.srcIndexIn[j].idx_in) {
+        dupFlag = true;
+        break;
+      }
+    }
+    if (!dupFlag) {
+      dstOnlyVol *= bi.dstIndexIn[i].step;
+    }
+  }
+  for (int64_t i = 0; i < bi.srcNum; i++) {
+    int64_t dupId = GetDupAxisInDst(ri, bi.srcIndexIn[i].idx_in);
+    if (dupId == -1) {
+      srcVol *= bi.srcIndexIn[i].step;
+    } else {
+      srcVol *= max(bi.srcIndexIn[i].step, bi.dstIndexIn[dupId].step);
+    }
+  }
+  if (dstOnlyVol * AlignX(srcVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
+    if (bi.dstIndexIn[bi.dstNum - 1].step > 2) {
+      bi.dstIndexIn[bi.dstNum - 1].step--;
+    }
+    overflowFlag = true;
+  }
+  
+  int64_t dstVol = 1;
+  int64_t srcOnlyVol = 1;
+  for (int64_t i = 0; i < bi.srcNum; i++) {
+    bool dupFlag = false;
+    for (int64_t j = 0; j < bi.dstNum; j++) {
+      if (bi.srcIndexIn[i].idx_in == bi.dstIndexIn[j].idx_in) {
+        dupFlag = true;
+        break;
+      }
+    }
+    if (!dupFlag) {
+      srcOnlyVol *= bi.srcIndexIn[i].step;
+    }
+  }
+  for (int64_t i = 0; i < bi.dstNum; i++) {
+    int64_t dupId = GetDupAxisInSrc(ri, bi.dstIndexIn[i].idx_in);
+    if (dupId == -1) {
+      dstVol *= bi.dstIndexIn[i].step;
+    } else {
+      dstVol *= max(bi.dstIndexIn[i].step, bi.srcIndexIn[dupId].step);
+    }
+  }
+  if (srcOnlyVol * AlignX(dstVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
+    if (bi.dstIndexIn[bi.dstNum - 1].step > 2) {
+      bi.dstIndexIn[bi.dstNum - 1].step--;
+    }
+    overflowFlag = true;
+  }
+  return overflowFlag;
+}
+
+static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
+                                   const ShapeInfo& si,
+                                   RuntimeInfo& ri,
+                                   int borrowDstAxisNum,
+                                   int64_t ubSize) {
   int64_t dim = si.dim;
   int64_t borrowed = 1;
   int64_t tailEle = si.lastAxisLen;
@@ -3347,6 +3428,11 @@ static bool CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int bor
       } else {
         bi.dstNum++;
         bi.dstIndexIn[dstNum].step = (bi.dstVol / borrowed) == 0 ? 1 : (bi.dstVol / borrowed);
+        for (int j = 0; j < LOOP_FOR_UB_PADDING; j++) {
+          if(!UpdateStep(ci, si, ri, bi, ubSize)) {
+            break;
+          }
+        }
         borrowed *= bi.dstIndexIn[dstNum].step;
         bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
         bi.dstIndexIn[dstNum].tail = si.reducedOutShape[id] % (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
@@ -3971,9 +4057,10 @@ static void CalcRepetStrideS5(const CompilerInfo& compilerInfo, const ShapeInfo&
 
 static bool TilingDataScenario4(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                 RuntimeInfo& runtimeInfo) {
-  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+  int64_t ubSize = 0;
+  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo, ubSize);
   CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM);
-  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM));
+  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(compilerInfo, shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM, ubSize));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
   CalcSrcDstPerm(runtimeInfo);
@@ -3989,9 +4076,10 @@ static bool TilingDataScenario4(const CompilerInfo& compilerInfo, const ShapeInf
 
 static bool TilingDataScenario5(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                 RuntimeInfo& runtimeInfo) {
-  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+  int64_t ubSize = 0;
+  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo, ubSize);
   CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM_LT);
-  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT));
+  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(compilerInfo, shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT, ubSize));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
   CalcSrcDstPerm(runtimeInfo);
@@ -4988,20 +5076,14 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
       runtimeInfo.dstJumpFactor[index++] = shapeInfo.reducedOutShape[i];
     }
 
-    // 4. src factor
-    index = 0;
-    for (int64_t i = 0; i < dim - 2; i++) {
-      runtimeInfo.srcJumpFactor[index++] = shapeInfo.reducedInShape[i];
-    }
-
-    // 5. stride for repeat in data_move
+    // 4. stride for repeat in data_move
     int64_t repeatAxis = shapeInfo.reducedPerm[dim - 2];
     for (int64_t i = repeatAxis + 1; i < shapeInfo.dim - 1; i++) {
       vol *= shapeInfo.reducedInShape[i];
     }
     runtimeInfo.srcStride = (vol - 1) * shapeInfo.lastAxisBurstLen;
 
-    // 6. init tuple
+    // 5. init tuple
     CalcTupleDstS9(compilerInfo, shapeInfo, runtimeInfo);
   } else {
     // 1. dst stride
@@ -5016,16 +5098,12 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
     }
 
     // 3. src factor
-    for (int64_t i = 0; i < dim - 2; i++) {
-      runtimeInfo.srcJumpFactor[index++] = shapeInfo.reducedInShape[i];
-    }
-
-    // 4. src factor
     index = 0;
     for (int64_t i = 0; i < dim - 2; i++) {
       runtimeInfo.srcJumpFactor[index++] = shapeInfo.reducedInShape[i];
     }
 
+    // 4. stride for repeat in data_move
     int64_t repeatAxis = shapeInfo.dim - 2;
     int64_t permIndex = GetPermIndex(shapeInfo.reducedPerm, dim, repeatAxis);
     for (int64_t i = permIndex + 1; i < shapeInfo.dim - 1; i++) {
@@ -5033,7 +5111,7 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
     }
     runtimeInfo.dstStride = (vol - 1) * shapeInfo.lastAxisBurstLen;
 
-    // 6. init tuple
+    // 5. init tuple
     CalcTupleSrcS9(compilerInfo, shapeInfo, runtimeInfo);
   }
 
@@ -5042,9 +5120,10 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
 
 static bool TilingDataScenario10(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                  RuntimeInfo& runtimeInfo) {
-  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+  int64_t ubSize = 0;
+  CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo, ubSize);
   CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM_LT);
-  CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT);
+  CalcDstBorrowAxisIndex(compilerInfo, shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT, ubSize);
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
   CalcSrcDstPerm(runtimeInfo);

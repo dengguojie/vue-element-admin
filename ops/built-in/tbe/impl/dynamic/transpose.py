@@ -22,8 +22,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from tbe.common.platform.platform_info import api_check_support
 
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-TRANSPOSE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+# 'pylint: disable=too-few-public-methods
 ACCU_BLOCK_SIZE = 128  # should less than 240 for both 310 and 910
 ROW_UNIT = 128
 
@@ -77,12 +76,18 @@ TILING_HEAD_LEN = 4
 TILING_FIXED_MAX_LEN = 2048
 
 
+def get_ub_size():
+    return tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+
+def get_core_num():
+    return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
 def _fuzzy_match(shape_t):
     """
     temporary function, for dynamic & static union version not fully verified
     """
     white_list_shape_fuzzy =  [
-                               [-1, 12, 197, 64], [-1, 197, 12, 64], [-1, 197, 768], [-1, 768, 196], [8, 32, 64, -1],
+                               [-1, 12, 197, 64], [-1, 197, 12, 64], [-1, 197, 768], [-1, 768, 196],
                                [-1, 768, 197], [768, -1, 197], [128, 197, 12, -1], [128, 12, 197, -1],
                                [-1, 3, 300, 18, 2], [-1, 2, 18, 3, 300], [-1, 3, 64, 300, 18], [-1, 3, 128, 300, 18],
                                [-1, 3, 128, 150, 18], [-1, 3, 256, 75, 18], [-1, 3, 256, 150, 18], [-1, 1, 1, 256],
@@ -101,6 +106,94 @@ def _fuzzy_match(shape_t):
             return True
     return False
 
+def _fuzzy_match_black(shape_t):
+    """
+    temporary function, for dynamic & static union version not fully verified
+    """
+    black_list_shape_fuzzy =  [
+                               #SSDRESNET34 1BATCH
+                               [-1, 10, 10, 6, 4], [-1, 10, 10, 6, 81], [-1, 19, 19, 6, 4], [-1, 19, 19, 6, 81],
+                               [-1, 38, 38, 4, 4], [-1, 38, 38, 4, 81], [-1, 5, 5, 6, 81], [-1, 1, 1, 4, 81],
+                               [-1, 3, 3, 4, 81], [-1, 1, 1, 4, 4], [-1, 3, 3, 4, 4], [-1, 5, 5, 6, 4],
+                               #ALBERT
+                               [-1, 30, 12, 26], [-1, 12, 30, 26],
+                               #FACEBOXES
+                               [-1, 8525, 4], [-1, 8525, 2], [-1, 2, 8525], [-1, 4, 200],
+                               #RETINANETNEW
+                               [-1, 147312, 1, 4], [-1, 147312, 80], [-1, 4, 300],
+                               #SSDMOBILENETV1FPNNEW
+                               [-1, 392832, 1, 4], [-1, 1, 4, 392832], [-1, 392832, 6],
+                               #VGGSSD
+                               [-1, 8732, 21], [-1, 21, 8732],
+                               [-1, 10, 10, 126], [-1, 10, 10, 24], [-1, 1, 1, 16], [-1, 1, 1, 84], [-1, 126, 10, 10],
+                               [-1, 126, 19, 19], [-1, 126, 5, 5], [-1, 16, 1, 1], [-1, 16, 3, 3], [-1, 16, 38, 38],
+                               [-1, 19, 19, 126], [-1, 19, 19, 24], [-1, 21, 8732], [-1, 24, 10, 10], [-1, 24, 19, 19],
+                               [-1, 24, 5, 5], [-1, 3, 3, 16], [-1, 3, 3, 84], [-1, 38, 38, 16], [-1, 38, 38, 84],
+                               [-1, 5, 5, 126], [-1, 5, 5, 24], [-1, 84, 1, 1], [-1, 84, 3, 3], [-1, 84, 38, 38],
+                               #TRANSFORMER
+                               [145, -1, 8], [21, -1, 8], [25, -1, 8], [273, -1, 8], [-1, 8, 1, 64], [-1, 1, 8, 64],
+                               [33, -1, 8], [49, -1, 8], [81, -1, 8], [-1, 4, 8, 64], [-1, 8, 145], [-1, 8, 21],
+                               [-1, 8, 25], [-1, 8, 273], [-1, 8, 33], [-1, 8, 8, 64], [-1, 8, 49], [-1, 8, 81], 
+                               [-1, 8, 8, 64], [-1, 8, 4, 64],  [257, -1, 8], [-1, 8, 257],
+                              ]
+    for shape_w in black_list_shape_fuzzy:
+        if len(shape_t) != len(shape_w):
+            continue
+        count = 0
+        for i, _ in enumerate(shape_t):
+            if shape_w[i] == -1 or shape_t[i] == shape_w[i]:
+                count = count + 1
+                continue
+            break
+        if count == len(shape_t):
+            return True
+    return False
+
+def _static_scenario_goto_old_version(shape, core_num):
+    if core_num > 32 or core_num == 1:
+        return True
+
+    black_list_shape = [
+                         [1, 128, 128, 3], [1, 128, 128, 512], [1, 128, 256, 256],
+                         [1, 16, 16, 3], [1, 16, 16, 512], [1, 256, 128, 128],
+                         [1, 256, 256, 3], [1, 3, 128, 128], [1, 3, 16, 16],
+                         [1, 32, 32, 3], [1, 32, 32, 512],  [1, 3, 256, 256],
+                         [1, 3, 32, 32], [1, 3, 4, 4], [1, 3, 64, 64],
+                         [1, 3, 8, 8], [1, 512, 16, 16], [1, 512, 32, 32],
+                         [1, 512, 4, 4], [1, 512 ,512, 128], [1, 512, 512, 3],
+                         [1, 512, 64, 64], [1, 512, 8, 8], [1, 64, 64, 3],
+                         [1, 64, 64, 512], [1, 8, 8, 3], [1, 8, 8, 512],
+                         [24, 512, 1024], [24, 512, 4096], [16, 512, 4096], [16, 512, 1024],
+                         [256, 224, 224, 3], [64, 224, 224, 3],
+                         #SSDMOBILENETV1FPNNEW
+                         [4, 392832], [392832, 4], [4, 3142656], [3142656, 4], [4, 1571328], [1571328, 4],
+                         [4, 12570624], [12570624, 4], [4, 6, 392832], [4, 6285312], [6285312, 4],
+                         [4, 25141248], [25141248, 4],
+                         #SSDRESNET34 1BATCH
+                         [4, 8732], [8732, 4],
+                         #GNMT125
+                         [1, 50],
+                         #MASKRCNN
+                         [1, 100, 90, 4], [1, 100, 91], [1, 160800, 1, 4], [1, 160800, 1], [1, 4, 100], [160800, 2],
+                         [160800, 4], [2, 160800], [4, 160800], [4, 9000], [9000, 4],
+                         #CTCREVIVEV1024
+                         [1, 128, 6410], [1, 16, 6410], [1, 256, 6410], [1, 32, 6410], [1, 64, 6410],
+                         #FASTERRCNNRESNET60
+                         [1867776, 4], [4, 1867776], [4, 576000], [576000, 4], [64, 100, 90, 4], [64, 100, 91],
+                         [64, 29184, 1, 4], [64, 29184, 1], [64, 4, 100],
+                         #MTCNNPNET
+                         [1, 157, 2, 283], [1, 157, 283, 2],
+                         #RCNN
+                         [25, 64, 512], [64, 25, 512]
+                      ]
+    shape_t = list(shape)
+    if shape_t in black_list_shape:
+        return True
+
+    if _fuzzy_match_black(shape_t):
+        return True
+
+    return False
 
 def _by_dynamic_static_union_version(shape, core_num):
     """
@@ -195,9 +288,7 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [32, 1, 3, 3], [1, 32, 3, 3], [96, 1, 3, 3], [1, 96, 3, 3],
                          [144, 1, 3, 3], [1, 144, 3, 3], [192, 1, 3, 3], [1, 192, 3, 3], [384, 1, 3, 3],
                          [1, 384, 3, 3], [576, 1, 3, 3], [1, 576, 3, 3], [960, 1, 3, 3], [1, 960, 3, 3],
-                         [8, 128, 20, 20], [128, 1024, 4096], [64, 1024, 4096],
-                         [32, 84, 38, 38], [32, 126, 19, 19], [32, 126, 10, 10], [32, 24, 10, 10],
-                         [8, 84, 38, 38], [8, 126, 19, 19], [8, 126, 10, 10], [1, 84, 38, 38], [1, 126, 19, 19],
+                         [8, 128, 20, 20],
                          [8, 8, 20, 20, 16], [8, 64, 40, 40], [8, 4, 40, 40, 16], [8, 32, 80, 80],
                          [8, 2, 80, 80, 16], [8, 16, 160, 160], [8, 1, 160, 160, 16], [8, 320, 320, 3],
                          [8, 3, 320, 320], [3, 3, 32, 1], [3, 3, 96, 1], [3, 3, 144, 1], [3, 3, 192, 1],
@@ -237,7 +328,7 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     if util_common.is_unknown([input_x, perm, output_y]):
         return True, ""
 
-    if _by_dynamic_static_union_version(x_shape, TRANSPOSE_CORE_NUM):
+    if _by_dynamic_static_union_version(x_shape, get_core_num()):
         return True, ""
 
     if tbe_context.get_context():
@@ -248,7 +339,10 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     if tbe_platform.api_check_support("tik.vcopy"):
         return True, ""
 
-    return False, ""
+    if _static_scenario_goto_old_version(x_shape, get_core_num()):
+        return False, ""
+
+    return True, ""
 
 
 # 'pylint: disable=too-many-statements, too-many-arguments
@@ -269,7 +363,7 @@ def _set_param_scalar_arr(tiling_reg_list, ub_input, ub_offset, param, actual_nu
 
 def _get_half_ub():
     # first div 2 means half the ub, second div 2 means b16
-    return (UB_SIZE - RESERVED_UB * 1024) // 2 // 2
+    return (get_ub_size() - RESERVED_UB * 1024) // 2 // 2
 
 
 # 'pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
@@ -1293,32 +1387,32 @@ class Transpose:
         return 4
 
     def _get_ub_size_by_dtype(self):
-        return (UB_SIZE - RESERVED_UB * 2048) // self._sizeof_dtype(self.x_dtype)
+        return (get_ub_size() - RESERVED_UB * 2048) // self._sizeof_dtype(self.x_dtype)
 
     def _get_ub_size_by_int64(self):
-        return (UB_SIZE - RESERVED_UB * 1024) // self._sizeof_dtype("int64")
+        return (get_ub_size() - RESERVED_UB * 1024) // self._sizeof_dtype("int64")
 
     @staticmethod
     def _get_src_size():
-        if UB_SIZE == 256 * 1024:
+        if get_ub_size() == 256 * 1024:
             return 3968 - 16  # 910
-        if UB_SIZE == 248 * 1024:
+        if get_ub_size() == 248 * 1024:
             return 3968 - 16  # 310
-        if UB_SIZE == 192 * 1024:
+        if get_ub_size() == 192 * 1024:
             return 2848  # cs & a100
-        if UB_SIZE == 128 * 1024:
+        if get_ub_size() == 128 * 1024:
             return 1861  # es
         return 3968 - 16
 
     @staticmethod
     def _get_dst_size():
-        if UB_SIZE == 256 * 1024:
+        if get_ub_size() == 256 * 1024:
             return 247  # 910, 247 to avoid bank conflict
-        if UB_SIZE == 248 * 1024:
+        if get_ub_size() == 248 * 1024:
             return 245  # 310, 245 to avoid bank conflict
-        if UB_SIZE == 192 * 1024:
+        if get_ub_size() == 192 * 1024:
             return 191  # cs & a100
-        if UB_SIZE == 128 * 1024:
+        if get_ub_size() == 128 * 1024:
             return 123  # es
         return 247
 
@@ -4997,8 +5091,6 @@ class Transpose:
     #                                    scenario_8
     # -------------------------------------------------------------------------------------------------
     def _move_data_s8(self, ub_input_64):
-        if self.x_dtype in ("bool", "uint8", "int8", "int64", "uint64"):
-            return
         # 4 255 3 8 -> 3 255 4 8
         if api_check_support("tik.vcopy", "int16"):
             ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
@@ -5453,7 +5545,7 @@ class Transpose:
         """
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
-        with self.tik_inst.for_range(0, TRANSPOSE_CORE_NUM, block_num=TRANSPOSE_CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, get_core_num(), block_num=get_core_num()) as block_idx:
             with self.tik_inst.if_scope(scenario == 7):
                 tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                         self.ub_input_64, fixed_len, per_core_len)
@@ -5508,8 +5600,8 @@ class Transpose:
         """
         self.compute_tiling()
         tbe_context.get_context().add_compile_info("vars", {
-            "ub_size": UB_SIZE // BLOCK_SIZE,
-            "core_num": TRANSPOSE_CORE_NUM,
+            "ub_size": get_ub_size() // BLOCK_SIZE,
+            "core_num": get_core_num(),
             "dtype": self.x_dtype
         })
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
@@ -5559,3 +5651,4 @@ def transpose(x, perm, y, kernel_name="transpose"):
     input_list = [data_in, data_perm]
     transpose_instance = Transpose(tik_inst, x_dtype, tensor_list, kernel_name)
     return transpose_instance.compute(input_list)
+
