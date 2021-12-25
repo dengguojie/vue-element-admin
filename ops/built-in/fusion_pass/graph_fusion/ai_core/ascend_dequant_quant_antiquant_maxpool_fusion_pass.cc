@@ -46,7 +46,7 @@ static const string PATTERN_MAXPOOL = "MaxPool";
 static const string PATTERN_INPUT = "input";
 
 vector<FusionPattern*> AscendDequantQuantAntiquantMaxpoolFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass pattern begin");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass pattern begin");
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AscendDequantQuantAntiquantMaxpoolFusion");
@@ -65,7 +65,7 @@ vector<FusionPattern*> AscendDequantQuantAntiquantMaxpoolFusionPass::DefinePatte
       .SetOutput(PATTERN_MAXPOOL);
 
   patterns.push_back(pattern);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass pattern end");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass pattern end");
   return patterns;
 }
 
@@ -79,9 +79,9 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::CheckPeerAllInDataAnchors(c
   return FAILED;
 }
 
-Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNode, ge::NodePtr& quantNode,
+Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& dequantNode, ge::NodePtr& quantNode,
                                                              ge::NodePtr& antiqNode, ge::NodePtr& maxpoolNode) {
-  FUSION_PASS_CHECK(deqNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "deqNode is null, fusion failed."),
+  FUSION_PASS_CHECK(dequantNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dequantNode is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(quantNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "quantNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -89,8 +89,8 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNod
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(maxpoolNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxpoolNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(CheckPeerAllInDataAnchors(deqNode->GetOutDataAnchor(0), 1) != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", deqNode->GetName().c_str()),
+  FUSION_PASS_CHECK(CheckPeerAllInDataAnchors(dequantNode->GetOutDataAnchor(0), 1) != SUCCESS,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", dequantNode->GetName().c_str()),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckPeerAllInDataAnchors(quantNode->GetOutDataAnchor(0), 1) != SUCCESS,
@@ -101,34 +101,36 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNod
       OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", antiqNode->GetName().c_str()),
       return NOT_CHANGED);
 
-  ge::DataType deq_out_dtype = deqNode->GetOpDesc()->GetOutputDesc(0).GetDataType();
+  ge::DataType deq_out_dtype = dequantNode->GetOpDesc()->GetOutputDesc(0).GetDataType();
   ge::DataType antiq_out_dtype = antiqNode->GetOpDesc()->GetOutputDesc(0).GetDataType();
   if (deq_out_dtype != antiq_out_dtype) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "the output dtype of %s and %s is not equal.", deqNode->GetName().c_str(),
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the output dtype of %s and %s is not equal.", dequantNode->GetName().c_str(),
             antiqNode->GetName().c_str());
     return NOT_CHANGED;
   }
   ge::Operator maxpool_op = ge::OpDescUtils::CreateOperatorFromNode(maxpoolNode);
   std::vector<int64_t> kernel_size;
-  std::vector<int64_t> strides;
+  ge::AscendString op_name;
+  (void) maxpool_op.GetName(op_name);
   if (maxpool_op.GetAttr("ksize", kernel_size) != GRAPH_SUCCESS) {
-    OP_LOGI(maxpool_op.GetName().c_str(), "Get attr ksize of maxpool operator failed.");
+    OP_LOGI(op_name.GetString(), "Get attr ksize of maxpool operator failed.");
     return NOT_CHANGED;
   }
+  std::vector<int64_t> strides;
   if (maxpool_op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
-    OP_LOGI(maxpool_op.GetName().c_str(), "Get attr strides of maxpool operator failed.");
+    OP_LOGI(op_name.GetString(), "Get attr strides of maxpool operator failed.");
     return NOT_CHANGED;
   }
   // 限制maxpool的融合：ksize全部为1，strides全部为1.
   for (auto i : kernel_size) {
     if (i != 1) {
-      OP_LOGI(maxpool_op.GetName().c_str(), "the value of kernel size is not equal to 1.");
+      OP_LOGI(op_name.GetString(), "the value of kernel size is not equal to 1.");
       return NOT_CHANGED;
     }
   }
-  for (auto j : kernel_size) {
+  for (auto j : strides) {
     if (j != 1) {
-      OP_LOGI(maxpool_op.GetName().c_str(), "the value of strides is not equal to 1.");
+      OP_LOGI(op_name.GetString(), "the value of strides is not equal to 1.");
       return NOT_CHANGED;
     }
   }
@@ -149,7 +151,7 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNod
     return NOT_CHANGED;
   }
   // 通过inAnchor拿到outAnchor，再通过outAnchor拿到对应的子图node，再获取到const输入
-  auto deq_in_anchors = deqNode->GetAllInDataAnchors();
+  auto deq_in_anchors = dequantNode->GetAllInDataAnchors();
   std::vector<ge::GeTensorPtr> deqWeights;
   for (auto& deq_in_anchor : deq_in_anchors) {
     auto deq_out_anchor = deq_in_anchor->GetPeerOutAnchor();
@@ -165,30 +167,30 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNod
       deqWeights.push_back(weight);
     }
   }
-  size_t deq_in_nodes_size = deqNode->GetOpDesc()->GetInputsSize();
+  size_t deq_in_nodes_size = dequantNode->GetOpDesc()->GetInputsSize();
   size_t deq_nonconst_size = deq_in_nodes_size - deqWeights.size();
   if (deq_nonconst_size != 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "dequant node need 1 inputs,but now is %d.", (int)deq_nonconst_size);
     return NOT_CHANGED;
   }
 
-  ge::NodePtr deqInputNode = deqNode->GetInDataNodes().at(0);
+  ge::NodePtr deqInputNode = dequantNode->GetInDataNodes().at(0);
   FUSION_PASS_CHECK(deqInputNode == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "deqInputNode is null, fusion failed."),
                     return PARAM_INVALID);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "graph node check is done .next to start fuse.");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "graph node check is done. start to run fusion.");
   return SUCCESS;
 }
 
 Status AscendDequantQuantAntiquantMaxpoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                             vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass fusion begin");
-  ge::NodePtr deqNode = GetNodeFromMapping(PATTERN_DEQUANT, mapping);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass fusion begin");
+  ge::NodePtr dequantNode = GetNodeFromMapping(PATTERN_DEQUANT, mapping);
   ge::NodePtr quantNode = GetNodeFromMapping(PATTERN_QUANT, mapping);
   ge::NodePtr antiqNode = GetNodeFromMapping(PATTERN_ANTIQUANT, mapping);
   ge::NodePtr maxpoolNode = GetNodeFromMapping(PATTERN_MAXPOOL, mapping);
 
-  FUSION_PASS_CHECK(deqNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "deqNode is null, fusion failed."),
+  FUSION_PASS_CHECK(dequantNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dequantNode is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(quantNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "quantNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -197,11 +199,11 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::Fusion(ge::ComputeGraph& gr
   FUSION_PASS_CHECK(maxpoolNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxPoolNode is null, fusion failed."),
                     return PARAM_INVALID);
 
-  if (IsMatch(deqNode, quantNode, antiqNode, maxpoolNode) != SUCCESS) {
+  if (IsMatch(dequantNode, quantNode, antiqNode, maxpoolNode) != SUCCESS) {
     return NOT_CHANGED;
   }
 
-  deqNode->GetOpDesc()->SetType("AscendDequant");
+  dequantNode->GetOpDesc()->SetType("AscendDequant");
 
   FUSION_PASS_CHECK(graph.RemoveNode(antiqNode) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove antiquant node failed."), return FAILED);
@@ -210,8 +212,8 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::Fusion(ge::ComputeGraph& gr
   FUSION_PASS_CHECK(graph.RemoveNode(maxpoolNode) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove maxPool node failed."), return FAILED);
 
-  fusionNodes.push_back(deqNode);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass fusion end");
+  fusionNodes.push_back(dequantNode);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AscendDequantQuantAntiquantMaxpoolFusionPass fusion end");
   return SUCCESS;
 }
 

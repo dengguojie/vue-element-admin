@@ -31,8 +31,7 @@ using namespace ge;
 namespace fe {
 const int64_t ConstToAttrStridedSliceV2Pass::DEFAULT_STRIDE = 1;
 const std::string ConstToAttrStridedSliceV2Pass::FUSEDNODE = "StridedSliceV2";
-const std::string ConstToAttrStridedSliceV2Pass::PATTERN_FUSEDNODE =
-    "FusedNodeStridedSlice";
+const std::string ConstToAttrStridedSliceV2Pass::PATTERN_FUSEDNODE = "FusedNodeStridedSlice";
 
 bool ConstToAttrStridedSliceV2Pass::CheckMask(const int64_t new_mask,
                                               const int64_t shrink_mask,
@@ -126,9 +125,9 @@ vector<FusionPattern *> ConstToAttrStridedSliceV2Pass::DefinePatterns() {
   return patterns;
 }
 
-Status ConstToAttrStridedSliceV2Pass::SetConstDesc(
-    vector<int64_t> &tensor_shape, ge::GeTensorDesc &tensor_desc,
-    ge::GeTensorDesc &des_desc) const {
+Status ConstToAttrStridedSliceV2Pass::SetConstDesc(vector<int64_t> &tensor_shape,
+                                                   ge::GeTensorDesc &tensor_desc,
+                                                   ge::GeTensorDesc &des_desc) const {
   ge::GeShape tenShapes(tensor_shape);
   tensor_desc.SetOriginFormat(des_desc.GetOriginFormat());
   tensor_desc.SetFormat(des_desc.GetFormat());
@@ -139,16 +138,19 @@ Status ConstToAttrStridedSliceV2Pass::SetConstDesc(
   return SUCCESS;
 }
 
-bool ConstToAttrStridedSliceV2Pass::GetConstValue(
-    const Operator &op, const Tensor &const_tensor, const DataType &dtype,
-    std::vector<int64_t> &const_data) {
+bool ConstToAttrStridedSliceV2Pass::GetConstValue(const Operator &op,
+                                                  const Tensor &const_tensor,
+                                                  const DataType &dtype,
+                                                  std::vector<int64_t> &const_data) {
   size_t size = 0;
+  ge::AscendString op_name;
+  (void) op.GetName(op_name);
   if (dtype == ge::DT_INT32) {
     int32_t *const_data_ptr = (int32_t *)const_tensor.GetData();
     size = const_tensor.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int32_t)((*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d",
+      OP_LOGD(op_name.GetString(), "const data int32 fusion pass ====== %d",
               (int32_t)(*(const_data_ptr + i)));
     }
   } else if (dtype == ge::DT_INT64) {
@@ -156,20 +158,21 @@ bool ConstToAttrStridedSliceV2Pass::GetConstValue(
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d",
+      OP_LOGD(op_name.GetString(), "const data int64 fusion pass ====== %d",
               (int64_t)(*(const_data_ptr + i)));
     }
   } else {
-    OP_LOGE(op.GetName().c_str(), "not support this type");
+    OP_LOGE(op_name.GetString(), "not support this type");
     return false;
   }
   return true;
 }
 
-Status ConstToAttrStridedSliceV2Pass::GetStridedSliceV2CpuState(
-    const Operator &op, ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc,
-    bool &need_to_cpu) {
-  size_t dim_num = op.GetInputDesc("x").GetShape().GetDimNum();
+Status ConstToAttrStridedSliceV2Pass::GetStridedSliceV2CpuState(const Operator &op,
+                                                                ge::NodePtr &fused_node,
+                                                                ge::OpDescPtr fuse_desc,
+                                                                bool &need_to_cpu) {
+  size_t dim_num = op.GetInputDescByName("x").GetShape().GetDimNum();
   int64_t new_mask = 0;
   int64_t shrink_mask = 0;
   if ((ge::GRAPH_SUCCESS != op.GetAttr("new_axis_mask", new_mask)) ||
@@ -208,19 +211,23 @@ Status ConstToAttrStridedSliceV2Pass::GetStridedSliceV2CpuState(
   return SUCCESS;
 }
 
-Status ConstToAttrStridedSliceV2Pass::GetReverseState(
-    const Operator &op, ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc,
-    std::vector<int64_t> &new_axes, bool &need_to_reverse) {
+Status ConstToAttrStridedSliceV2Pass::GetReverseState(const Operator &op,
+                                                      ge::NodePtr &fused_node,
+                                                      ge::OpDescPtr fuse_desc,
+                                                      std::vector<int64_t> &new_axes,
+                                                      bool &need_to_reverse) {
   Tensor axes_tensor;
   vector<int64_t> axes_list;
   bool no_axes = false;
+  ge::AscendString op_name;
+  (void) op.GetName(op_name);
   if (fuse_desc->MutableInputDesc(fuse_desc->GetInputIndexByName("axes")) !=
       nullptr) {
     if (op.GetInputConstData("axes", axes_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Get constValue failed of [axes]");
+      OP_LOGE(op_name.GetString(), "Get constValue failed of [axes]");
       return GRAPH_FAILED;
     }
-    DataType dtype = op.GetInputDesc("axes").GetDataType();
+    DataType dtype = op.GetInputDescByName("axes").GetDataType();
     GetConstValue(op, axes_tensor, dtype, axes_list);
   } else {
     no_axes = true;
@@ -233,7 +240,7 @@ Status ConstToAttrStridedSliceV2Pass::GetReverseState(
   ge::AttrUtils::GetListInt(fused_node->GetOpDesc(), "strides", strides);
   int64_t indice = 0;
   int64_t begin_dim = begin.size();
-  int64_t dim_num = op.GetInputDesc("x").GetShape().GetDimNum();
+  int64_t dim_num = op.GetInputDescByName("x").GetShape().GetDimNum();
   if (no_axes) {
     for (int32_t i = 0; i < begin_dim; i++) {
       new_axes.push_back(i);
@@ -263,7 +270,8 @@ Status ConstToAttrStridedSliceV2Pass::GetReverseState(
   return SUCCESS;
 }
 
-void ConstToAttrStridedSliceV2Pass::UpdateShapeAndDataType(ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc) {
+void ConstToAttrStridedSliceV2Pass::UpdateShapeAndDataType(ge::NodePtr &fused_node,
+                                                           ge::OpDescPtr fuse_desc) {
   std::vector<int64_t> begin;
   ge::AttrUtils::GetListInt(fused_node->GetOpDesc(), "begin", begin);
   int64_t dim_num = begin.size();
@@ -338,14 +346,16 @@ void ConstToAttrStridedSliceV2Pass::MakeConstNode(ge::NodePtr &fused_node,
 
   vector<ge::GeTensorPtr> slice_tensor_ptr =
       ge::OpDescUtils::MutableWeights(fused_node);
-  ge::GeTensorPtr begin_tensor_ptr = slice_tensor_ptr[0];  // begin
+  // handle begin
+  ge::GeTensorPtr begin_tensor_ptr = slice_tensor_ptr[0];
   ge::GeTensorDesc op_tensor_desc = begin_tensor_ptr->MutableTensorDesc();
   (void)SetConstDesc(begin_dim, begin_tensor_ptr->MutableTensorDesc(),
                      op_tensor_desc);
   begin_tensor_ptr->SetData(reinterpret_cast<uint8_t *>(begin.data()),
                             dim_num * sizeof(int64_t));
 
-  ge::GeTensorPtr end_tensor_ptr = slice_tensor_ptr[1];  // end
+  // handle end
+  ge::GeTensorPtr end_tensor_ptr = slice_tensor_ptr[1];
   (void)SetConstDesc(begin_dim, end_tensor_ptr->MutableTensorDesc(),
                      op_tensor_desc);
   end_tensor_ptr->SetData(reinterpret_cast<uint8_t *>(end.data()),
@@ -376,7 +386,8 @@ void ConstToAttrStridedSliceV2Pass::MakeConstNode(ge::NodePtr &fused_node,
     ge::GeTensorPtr strides_tensor_ptr = nullptr;
     FUSION_PASS_MAKE_SHARED(
         (strides_tensor_ptr =
-             std::make_shared<ge::GeTensor>(strides_tensor_desc, reinterpret_cast<uint8_t *>(strides.data()),
+             std::make_shared<ge::GeTensor>(strides_tensor_desc,
+                                            reinterpret_cast<uint8_t *>(strides.data()),
                                             dim_num * sizeof(int64_t))),
         return);
     AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, strides_tensor_ptr);
@@ -416,7 +427,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     }
   }
   if (is_dynamic_shape) {
-    OP_LOGD(FUSEDNODE.c_str(), "is dynamic shape.");
+    OP_LOGD(FUSEDNODE.c_str(), "is dynamic shape scene.");
     std::vector<string> need_del_attr = {"begin", "end", "strides", "begin_mask", "end_mask",
                                          "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
     for (size_t i = 0; i < need_del_attr.size(); i++) {
@@ -434,7 +445,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     fuse_desc->AddInferFunc(realFusedOpDescPtr->GetInferFunc());
     return SUCCESS;
   } else {
-    OP_LOGD(FUSEDNODE.c_str(), "is not dynamic shape.");
+    OP_LOGD(FUSEDNODE.c_str(), "is not dynamic shape scene.");
   }
 
   bool need_to_reverse = true;
@@ -501,7 +512,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     fuse_desc->UpdateInputName(name_index_map);
     ClearOpInferDepends(fused_node);
   }
-  OP_LOGD(FUSEDNODE.c_str(), "SetType to [ %s ]", fuse_desc->GetType().c_str());
+  OP_LOGD(FUSEDNODE.c_str(), "Set OpType to [ %s ]", fuse_desc->GetType().c_str());
   fusion_node.push_back(fused_node);
   return SUCCESS;
 }

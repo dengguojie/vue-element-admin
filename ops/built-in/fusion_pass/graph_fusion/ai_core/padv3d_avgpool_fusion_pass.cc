@@ -44,10 +44,10 @@ static const std::string PATTERN_PADV3D = "PadV3D";
 static const std::string PATTERN_POOLING = "AvgPoolV2";
 
 vector<FusionPattern*> Padv3dAvgpoolFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
+  vector<FusionPattern*> patterns;
   FusionPattern *pattern =
       new (std::nothrow) FusionPattern("Padv3dAvgpoolFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "new a pattern object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_PADV3D, {PADV3D, PADV3})
@@ -66,9 +66,9 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   // get all nodes
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADV3D, mapping);
   ge::NodePtr pooling_node = GetNodeFromMapping(PATTERN_POOLING, mapping);
-  FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pad_node is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(pooling_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(pooling_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pooling_node is null, fusion failed."), return PARAM_INVALID);
 
   // check output link
@@ -80,15 +80,15 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   // get all node's desc
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
   ge::OpDescPtr Pooling_desc = pooling_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pad_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(Pooling_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(Pooling_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pooling_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   // get shape and format
   ge::GeTensorDesc input_desc = pad_desc->GetInputDesc(0);
   ge::Format input_format = input_desc.GetFormat();
-  
+
   // get op
   Operator op_pad = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
   Operator op_Pooling = ge::OpDescUtils::CreateOperatorFromNode(pooling_node);
@@ -129,7 +129,6 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   bool paddings_contiguous = false;
   op_pad.GetAttr("paddings_contiguous", paddings_contiguous);
 
- 
   // verify
   if (CheckFormatAndPading(input_format, paddings, paddings_contiguous) != SUCCESS) {
     return NOT_CHANGED;
@@ -166,12 +165,14 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   return SUCCESS;
 }
 
-void Padv3dAvgpoolFusionPass::UpdateAttrPads(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
-                                             std::vector<int32_t>& new_pad, bool paddings_contiguous) {
-  //pad_indexs store HW OR DHW index
+void Padv3dAvgpoolFusionPass::UpdateAttrPads(ge::Format& input_format,
+                                             std::vector<std::vector<int64_t>>& paddings,
+                                             std::vector<int32_t>& new_pad,
+                                             bool paddings_contiguous) {
+  // pad_indexs store HW OR DHW index
   std::vector<std::pair<int, int>> pad_indexs;
-  //paddings_contiguous = true ,paddings is x1_begin,x1_end,x2_begin,x2_end...
-  //paddings_contiguous = false, paddings is x1_begin,x2_begin... x1_end,x2_end...
+  // paddings_contiguous = true ,paddings is x1_begin,x1_end,x2_begin,x2_end...
+  // paddings_contiguous = false, paddings is x1_begin,x2_begin... x1_end,x2_end...
   if (paddings_contiguous) {
     if (input_format == FORMAT_NHWC) {
       pad_indexs.push_back(std::pair<int, int>(1, 0));
@@ -229,20 +230,21 @@ void Padv3dAvgpoolFusionPass::UpdateAttrPads(ge::Format& input_format, std::vect
   int size = pad_indexs.size();
   for (int i = 0; i < size; ++i) {
     new_pad.push_back(paddings[pad_indexs[i].first][pad_indexs[i].second]);
-  } 
+  }
 }
 
-Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
+Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format,
+                                                     std::vector<std::vector<int64_t>>& paddings,
                                                      bool paddings_contiguous) {
-  if ((input_format != FORMAT_NHWC) && (input_format != FORMAT_NCHW) && 
+  if ((input_format != FORMAT_NHWC) && (input_format != FORMAT_NCHW) &&
       (input_format != FORMAT_NCDHW) && (input_format != FORMAT_NDHWC)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "input format is not match.");
     return NOT_CHANGED;
   }
-  
+
   int size = paddings.size();
   if (size != 4 && size != 5) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "paddding size is not match, shoud be is 4 0r  5cur is %d.", size);
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "paddding size is not match, shoud be is 4 or 5, current is %d.", size);
     return NOT_CHANGED;
   }
 
@@ -253,10 +255,10 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, s
     }
   }
 
-  //pad_indexs store NC index
+  // pad_indexs store NC index
   std::vector<std::pair<int, int>> pad_indexs;
-  //paddings_contiguous = true ,paddings is x1_begin,x1_end,x2_begin,x2_end...
-  //paddings_contiguous = false, paddings is x1_begin,x2_begin... x1_end,x2_end...
+  // paddings_contiguous = true ,paddings is x1_begin,x1_end,x2_begin,x2_end...
+  // paddings_contiguous = false, paddings is x1_begin,x2_begin... x1_end,x2_end...
   if (paddings_contiguous) {
     if (input_format == FORMAT_NHWC) {
       pad_indexs.push_back(std::pair<int, int>(0, 0));
@@ -296,7 +298,7 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, s
       pad_indexs.push_back(std::pair<int, int>(2, 1));
       pad_indexs.push_back(std::pair<int, int>(4, 1));
     }
-  }  
+  }
 
   int index_size = pad_indexs.size();
   for (int i = 0; i < index_size; ++i) {
@@ -307,8 +309,8 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, s
 
     if (paddings[pad_indexs[i].first][pad_indexs[i].second] != 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(),
-              "the pad_index of paddings are not match. is shoud be 0, cur is %d, format is %d, pad_index is[%d][%d]", 
-              paddings[pad_indexs[i].first][pad_indexs[i].second], input_format, pad_indexs[i].first, 
+              "the pad_index of paddings are not match. is shoud be 0, cur is %d, format is %d, pad_index is[%d][%d]",
+              paddings[pad_indexs[i].first][pad_indexs[i].second], input_format, pad_indexs[i].first,
               pad_indexs[i].second);
       return NOT_CHANGED;
     }
@@ -316,7 +318,9 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format, s
   return SUCCESS;
 }
 
-Status Padv3dAvgpoolFusionPass::CheckPadAndKsize(ge::Format& input_format, std::vector<int32_t>& pads, std::vector<int32_t>& ksize) {
+Status Padv3dAvgpoolFusionPass::CheckPadAndKsize(ge::Format& input_format,
+                                                 std::vector<int32_t>& pads,
+                                                 std::vector<int32_t>& ksize) {
   if (ksize.size() < 4) {
     return NOT_CHANGED;
   }
