@@ -153,7 +153,8 @@ class ProdForceSeA:
 
     def _run_one_core_loop(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
-            loop_offset = frame_idx * self.nloc + self.core_offset + core_idx * self.core_loop_unit
+            nloc_offset_vector = self.core_offset + core_idx * self.core_loop_unit
+            loop_offset = frame_idx * self.nloc + nloc_offset_vector
             nloc_loop = core_loop_unit // Constant.NLOC_UNIT_LEN
             nloc_left = core_loop_unit % Constant.NLOC_UNIT_LEN
             # nloc loop
@@ -288,7 +289,7 @@ class ProdForceSeA:
                                 1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                             force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset
+                        force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
                         self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                             force_add_ub_fp32, 0, 3, 0, 0, 8, Constant.NLOC_UNIT_LEN, stride_unit=2)
                         self.tik_instance.set_atomic_add(1)
@@ -489,7 +490,7 @@ class ProdForceSeA:
                                                    1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset
+                        force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
                         self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                                                 force_add_ub_fp32, 0, 3, 0, 0, 8,
                                                 Constant.NLOC_UNIT_LEN, stride_unit=2)
@@ -690,8 +691,7 @@ class ProdForceSeA:
                                     1, 1, 1, 1, 8, 8, 8)
                             self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = \
-                                frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset + l_idx
+                            force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
                             self.tik_instance.vadds(1, force_assis_ub_fp32,
                                 force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             self.tik_instance.set_atomic_add(1)
@@ -700,7 +700,8 @@ class ProdForceSeA:
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
                                                         force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2],
+                                                        0, 1, 1, 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
                         #second
@@ -888,8 +889,7 @@ class ProdForceSeA:
                                     1, 1, 1, 1, 8, 8, 8)
                             self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = \
-                                frame_idx * self.nall * 3 + core_idx * self.core_loop_unit + nloc_offset + l_idx
+                            force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
                             self.tik_instance.vadds(1, force_assis_ub_fp32,
                                 force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             self.tik_instance.set_atomic_add(1)
@@ -898,7 +898,8 @@ class ProdForceSeA:
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
                                                         force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
+                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2],
+                                                        0, 1, 1, 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
                         #second

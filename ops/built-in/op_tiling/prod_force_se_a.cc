@@ -131,8 +131,7 @@ bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
     coreLoopLeft = nloc % coreLoopUnit;
   } else {
     if (ProdForceSeACeilDiv(nloc, coreLoopUnit) > AI_CORE_NUM) {
-      coreNumsUsed =
-        (splitIndex == 0) ? AI_CORE_NUM : ProdForceSeACeilDiv(nloc, coreLoopUnit) - AI_CORE_NUM;
+      coreNumsUsed = (splitIndex == 0) ? AI_CORE_NUM : ProdForceSeACeilDiv(nloc, coreLoopUnit) - AI_CORE_NUM;
       coreLoopLeft = (splitIndex == 0) ? 0 : nloc % coreLoopUnit;
     } else {
       coreNumsUsed = (splitIndex == 0) ? ProdForceSeACeilDiv(nloc, coreLoopUnit) : 0;
