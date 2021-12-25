@@ -4089,4 +4089,57 @@ IMPLEMT_COMMON_INFERFUNC(FillDiagonalInferShape) {
 COMMON_INFER_FUNC_REG(FillDiagonal, FillDiagonalInferShape);
 // ----------------FillDiagonal END-------------------
 
+// -----------------------Trace-----------------------
+static bool InferShapeAndTypeTrace(Operator& op, const std::string& inputName, const std::string outputName) {
+  TensorDesc vOutputDesc = op.GetOutputDescByName(outputName.c_str());
+  DataType inputDtype = op.GetInputDescByName(inputName.c_str()).GetDataType();
+  ge::Shape inputShape = op.GetInputDescByName(inputName.c_str()).GetShape();
+  std::vector<int64_t> inputDims = inputShape.GetDims();
+  if (inputDims.size() != 2) {
+    OP_LOGE(outputName.c_str(), "the input shape must is 2-D matrix.\n");
+    return false;
+  }
+
+  if (inputDtype != DT_FLOAT16 && inputDtype != DT_FLOAT) {
+    OP_LOGE("the input dtype must is float16 or float.\n");
+    return false;
+  }
+
+  // set output tensor dim
+  std::vector<int64_t> dimVec(1, 1);
+  ge::Shape outputShape = ge::Shape(dimVec);
+  vOutputDesc.SetShape(outputShape);
+  vOutputDesc.SetDataType(inputDtype);
+  op.UpdateOutputDesc(outputName.c_str(), vOutputDesc);
+  return true;
+}
+
+IMPLEMT_VERIFIER(Trace, TraceVerify) {
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  ge::Shape shapeX = op.GetInputDescByName("x").GetShape();
+  if (shapeX.GetDimNum() != 2) {
+    OP_LOGE(op_name.GetString(), "the input shape must is 2-D matrix.\n");
+    return GRAPH_FAILED;
+  }
+  DataType dtypeX = op.GetInputDescByName("x").GetDataType();
+  if (dtypeX != DT_FLOAT16 && dtypeX != DT_FLOAT) {
+    OP_LOGE(op_name.GetString(), "the input dtype must is float16 or float.\n");
+    return GRAPH_FAILED;
+  }
+  
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TraceInferShape) {
+  if (InferShapeAndTypeTrace(op, "x", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(Trace, TraceInferShape);
+VERIFY_FUNC_REG(Trace, TraceVerify);
+// ---------------------Trace END----------------------
+
 }  // namespace ge

@@ -1360,6 +1360,25 @@ REG_OP(FillDiagonal)
     .ATTR(wrap, Bool, false)
     .OP_END_FACTORY_REG(FillDiagonal)
 
+/**
+*@brief: Returns the sum of the elements of the diagonal of the input 2-D matrix. \n
+
+*@par Inputs:
+*x: A Tensor. Must be one of the following types:
+*    float16, float. \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the Pytorch operator Trace.
+*/
+
+REG_OP(Trace)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(Trace)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_

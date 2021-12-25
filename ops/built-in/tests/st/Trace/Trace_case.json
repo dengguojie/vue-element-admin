@@ -1,0 +1,276 @@
+[
+    {
+      "op": "Trace",
+      "case_name": "test_trace_static_fp16_1234",
+      "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape": [
+            1234,
+            1234
+          ],
+          "format": "ND",
+          "ori_shape": [
+            1234,
+            1234
+          ],
+          "ori_format": "ND",
+          "name": "x",
+          "param_name": "x",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            1
+          ],
+          "format": "ND",
+          "ori_shape": [
+            1
+          ],
+          "ori_format": "ND",
+          "name": "y",
+          "param_name": "y",
+          "type": "float16"
+        }
+      ]
+    },
+    {
+        "op": "Trace",
+        "case_name": "test_trace_static_fp16_20",
+        "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              20,
+              20
+            ],
+            "format": "ND",
+            "ori_shape": [
+              20,
+              20
+            ],
+            "ori_format": "ND",
+            "name": "x",
+            "param_name": "x",
+            "type": "float16"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1
+            ],
+            "ori_format": "ND",
+            "name": "y",
+            "param_name": "y",
+            "type": "float16"
+          }
+        ]
+      },
+      {
+        "op": "Trace",
+        "case_name": "test_trace_static_2_fp32_10000",
+        "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              10000,
+              10000
+            ],
+            "ori_shape": [
+                10000,
+                10000
+              ],
+            "value_range": [
+                [
+                  0.1,
+                  1.0
+                ]
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x",
+            "type": "float32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1
+            ],
+            "ori_format": "ND",
+            "name": "y",
+            "param_name": "y",
+            "type": "float32"
+          }
+        ]
+      },
+      {
+        "op": "Trace",
+        "case_name": "test_trace_dynamic_1_fp16_1234",
+        "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              -1,
+              1234
+            ],
+            "ori_shape": [
+              -1,
+              1234
+            ],
+            "value_range": [
+                [
+                  0.1,
+                  1.0
+                ]
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x",
+            "type": "float16",
+            "shape_range": [
+                [
+                  1,
+                  -1
+                ]
+            ],
+            "typical_shape": [
+                1234,
+                1234
+            ]
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1
+            ],
+            "ori_format": "ND",
+            "name": "y",
+            "param_name": "y",
+            "type": "float16"
+          }
+        ]
+      },
+      {
+        "op": "Trace",
+        "case_name": "test_trace_dynamic_2_fp32_10000",
+        "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              10000,
+              -1
+            ],
+            "ori_shape": [
+                10000,
+                -1
+              ],
+            "value_range": [
+                [
+                  0.1,
+                  1.0
+                ]
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x",
+            "type": "float32",
+            "shape_range": [
+                [
+                  1,
+                  -1
+                ]
+            ],
+            "typical_shape": [
+                10000,
+                10000
+            ]
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1
+            ],
+            "ori_format": "ND",
+            "name": "y",
+            "param_name": "y",
+            "type": "float32"
+          }
+        ]
+      },
+      {
+        "op": "Trace",
+        "case_name": "test_trace_dynamic_3_fp32_10000",
+        "calc_expect_func_file": "test_trace_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              -2
+            ],
+            "ori_shape": [
+                -2
+              ],
+            "value_range": [
+                [
+                  0.1,
+                  1.0
+                ]
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x",
+            "type": "float32",
+            "shape_range": [
+                [
+                  1,
+                  65535
+                ],
+                [
+                  1,
+                  65535
+                ]
+            ],
+            "typical_shape": [
+                10000,
+                10000
+            ]
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1
+            ],
+            "ori_format": "ND",
+            "name": "y",
+            "param_name": "y",
+            "type": "float32"
+          }
+        ]
+      }
+  ]

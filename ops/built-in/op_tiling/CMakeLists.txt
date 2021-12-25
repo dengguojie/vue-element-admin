@@ -195,6 +195,7 @@ set(_optiling_files
   cache_tiling.cc
   tiling_handler.h
   prod_force_se_a.cc
+  trace.cc
 )
 
 set(_op_tiling_include
