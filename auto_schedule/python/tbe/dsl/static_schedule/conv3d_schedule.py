@@ -333,16 +333,16 @@ class CceConv3dOp:
                 }
 
         return nbuffer_flag_al1, compute_al1_axis, nbuffer_axis, k_outer_outer_inner_size // nbuffer_size
-    
+
     def _get_cyclebuffer_flag(self, tiling, shape_w, w_dtype, shape_fmap, stride_d,
                               pad_d, l0a_load2d_flag, dilation_h, dilation_w):
         """
         calculate whether to do cyclebuffer
-        
+
         Parameters
         ----------
         tiling : tiling_new
-        
+
         shape_w : filter shape
 
         shape_fmap : fmap shape
@@ -356,7 +356,7 @@ class CceConv3dOp:
         dilation_h : dilation on h direction
 
         dilation_w : dilation on w direction
-        
+
         return
         ---------
         cyclebuffer_flag
@@ -376,16 +376,16 @@ class CceConv3dOp:
         if tiling["AL1_shape"]:
             cyc_size = int(tiling["AL1_shape"][0] * tiling["AL1_shape"][-1] // \
                            (dilated_k_w * dilated_k_h * tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
-        
+
         if cyc_size == filter_d * channel_c1:
             cyclebuffer_flag = True
 
         if l0a_load2d_flag or filter_d <= stride_d or d_out == d_dim:
             cyclebuffer_flag = False
-        
+
         if channel_c1 * filter_h * filter_w % matrix_ka != 0:
             cyclebuffer_flag = False
-        
+
         return cyclebuffer_flag
 
     def _cachebuffer(self, spec_node_list):
@@ -487,7 +487,7 @@ class CceConv3dOp:
             "reduce_factor": reduce_factor
         }
 
-    def _check_tiling(self, tiling, w_dtype):
+    def _check_tiling(self, tiling):
         """
         default tiling check
 
@@ -553,13 +553,11 @@ class CceConv3dOp:
         strided = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][0]
         strideh = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][1]
         stridew = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][2]
-        dilationd = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][0]
         dilationh = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][1]
         dilationw = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][2]
         bias_flag = conv3d_compute.Conv3DParam.tiling_info_dict["bias_flag"]
         batch_size = fmap_shape_ndc1hwc0[0]
         in_size_w = fmap_shape_ndc1hwc0[-2]
-        kernel_d = shape_w_ndc1hwc0[1]
         kernel_h = shape_w_ndc1hwc0[-3]
         kernel_w = shape_w_ndc1hwc0[-2]
 
@@ -593,7 +591,7 @@ class CceConv3dOp:
                                                         strided, padd, l0a_load2d_flag,
                                                         dilationh, dilationw)
 
-        tiling_ok_flag = self._check_tiling(tiling_new, w_dtype)
+        tiling_ok_flag = self._check_tiling(tiling_new)
 
         tiling = {}
         tiling["AL0_matrix"] = tiling_new["AL0_matrix"][0:4]
@@ -641,23 +639,9 @@ class CceConv3dOp:
             config = tbe_platform.CUBE_MKN[w_dtype]
             ci0 = config['mac'][1]
             l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
-            m_bit_length = {
-                "float32": 32,
-                "float16": 16,
-                "uint8": 8,
-                "int8": 8,
-                "uint4": 4,
-                "int4": 4
-            }
-            m_bit_ratio = {
-                "int32": 4,
-                "float32": 4,
-                "float16": 2,
-                "uint8": 1,
-                "int8": 1,
-                "uint4": 1.0 / 2,
-                "int4": 1.0 / 2
-            }
+            m_bit_length = {"float32": 32, "float16": 16, "uint8": 8, "int8": 8, "uint4": 4,"int4": 4}
+            m_bit_ratio = {"int32": 4, "float32": 4, "float16": 2, "uint8": 1,
+                           "int8": 1, "uint4": 1.0 / 2, "int4": 1.0 / 2}
             input_data_type = in_dtype
             w_out = (in_size_w + padw[0] + padw[1] - ((kernel_w - 1) * dilationw + 1)) // stridew + 1
             if "fmap_w" in self.var_map:
@@ -681,15 +665,9 @@ class CceConv3dOp:
             tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, 16]
             tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16]
             tiling["CUB_matrix"] = [tiling_n, tiling_m, 16, 16]
-            tiling["manual_pingpong_buffer"] = {
-                'AL1_pbuffer': 1,
-                'BL1_pbuffer': 1,
-                'AL0_pbuffer': 1,
-                'BL0_pbuffer': 1,
-                'CL0_pbuffer': 1,
-                'CUB_pbuffer': 1,
-                'UBG_pbuffer': 1,
-            }
+            tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1, 'BL1_pbuffer': 1,
+                                                'AL0_pbuffer': 1, 'BL0_pbuffer': 1,
+                                                'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1}
             tiling["block_dim"] = [1, 1, 1]
             device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if "batch_n" in self.var_map:
@@ -1221,11 +1199,9 @@ class CceConv3dOp:
         pad_right = c_ub.op.attrs['padding'][2]
         pad_left = c_ub.op.attrs['padding'][3]
         kernel_w = c_ub.op.attrs['kernel_w']
-        kernel_h = c_ub.op.attrs['kernel_h']
         kernel_d = c_ub.op.attrs['kernel_d']
 
         fmap_w = fmap.shape[-2] if fmap.op.input_tensors else fmap.op.shape[-2]
-        fmap_cin1_ori = fmap.shape[2] if fmap.op.input_tensors else fmap.op.shape[2]
         stride_w = c_ub.op.attrs['stride'][1]
         dilation_w = c_ub.op.attrs['dilation'][1]
 
@@ -1269,7 +1245,7 @@ class CceConv3dOp:
                 _al1 = _fuse_fmap_tensor
             return _fuse_fmap_tensor, _fmap_col_before, _fmap_col, _al1
 
-        fuse_fmap_tensor, fmap_col_before, fmap_col, al1 = _load2d_process()
+        _, fmap_col_before, fmap_col, al1 = _load2d_process()
 
         sch[c_ub].buffer_align((1, 1), (1, 1),
                                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
@@ -1334,7 +1310,7 @@ class CceConv3dOp:
             tiling["CL0_matrix"][0],
             tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
         ]
-        
+
         if self.flag_load3d_special_case:
             c_tiling_factor[1] = c_tiling_factor[1] // 2
 
@@ -1347,7 +1323,7 @@ class CceConv3dOp:
         ]
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
-       
+
         if self.flag_load3d_special_case:
             c_ub_factor = [
                 compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
@@ -1409,7 +1385,7 @@ class CceConv3dOp:
         c_outer_outer_outer_outer, c_outer_outer_outer_inner = sch[
             res_c].split(c_outer_outer_outer, nparts=block_dim[1])
         bl1_at_c_axis = c_outer_outer_outer_inner
-        
+
         if self.flag_load3d_special_case:
             m_outer_outer_outer_size = max(1, al1_factor[1] // 2)
         else:
@@ -1580,7 +1556,7 @@ class CceConv3dOp:
         k_outer_outer_inner_size = int(k_outer_outer_size //
                                        max(al1_factor[0], bl1_factor[0]))
 
-        nbuffer_flag_al1, compute_al1_axis, _, k_outer_outer_inner_outer_size \
+        nbuffer_flag_al1, compute_al1_axis, _, _ \
             = self._get_nbuffer_al1_flag(tiling, compute_al1_axis,
                                          buffer_dict, k_outer_outer_inner,
                                          k_outer_outer_inner_size, shape_w)
@@ -1700,9 +1676,8 @@ class CceConv3dOp:
             cin1_g = group_dict["cin1_g"]
             _, _, _, fmap_hi, fmap_wi, fmap_c0 = fmap.shape
             stride_h = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][1]
-            l0c_mc, l0c_m0 = tiling['CL0_matrix'][1:3]
             stride_update = 1 if self._tensor_map["opti_h_flag"] else stride_h
-            EXTEND_H_CALCULATE_FACTOR = 2
+            extend_h_calculate_factor = 2
             if tiling["AL1_shape"]:
                 al1_m_tiling = tiling["AL1_shape"][1] * c_tiling_factor[1]
                 if l0a_load2d_flag:
@@ -1712,7 +1687,7 @@ class CceConv3dOp:
                     additional_rows = tvm.select(
                         tvm.floormod(al1_m_tiling, w_out) == 0,
                         0,
-                        tvm.select(tvm.floormod(al1_m_tiling * EXTEND_H_CALCULATE_FACTOR, w_out) == 0,
+                        tvm.select(tvm.floormod(al1_m_tiling * extend_h_calculate_factor, w_out) == 0,
                             1, 2))
                     ho_len = tvm.floordiv(al1_m_tiling, self.var_map['w_out']) + additional_rows
                     hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
@@ -1720,7 +1695,7 @@ class CceConv3dOp:
                 else:
                     if al1_m_tiling % int(w_out) == 0:
                         additional_rows = 0
-                    elif al1_m_tiling * EXTEND_H_CALCULATE_FACTOR % int(w_out) == 0:
+                    elif al1_m_tiling * extend_h_calculate_factor % int(w_out) == 0:
                         additional_rows = 1
                     else:
                         additional_rows = 2

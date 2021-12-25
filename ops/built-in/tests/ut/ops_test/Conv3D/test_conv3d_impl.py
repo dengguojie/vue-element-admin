@@ -722,4 +722,3 @@ ut_case.add_case(["Ascend910A"],
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     exit(0)
- 

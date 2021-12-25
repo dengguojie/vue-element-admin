@@ -17,13 +17,12 @@
 """
 cube util.
 """
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.dsl.compute import cube_util
 from tbe import tvm
 
 
-def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
+def _im2col_row_major(a_im2col_vm_shape,
                       tensor_a,
                       kernel_w,
                       cout_g,
@@ -61,12 +60,7 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
     Returns : a_im2col_row_major tensor
 
     """
-    def __im2col_row_major_indices(indices,  # pylint: disable=R0913,R0914
-                                   tensor_a,
-                                   kernel_w,
-                                   padding_var,
-                                   stride,
-                                   dilation):
+    def __im2col_row_major_indices(indices, tensor_a, padding_var, stride, dilation):
         """
         calculate im2col_row_major tvm lambda function
         Parameters
@@ -89,7 +83,7 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
         g_index, n_index, deep_index, hw_index, c1_index, kh_index, kw_index, c0_index = indices
         stride_h, stride_w = stride
         _, dilate_h, dilate_w = dilation
-        info_padding_up, _, info_padding_left, info_padding_right = padding_var
+        info_padding_up, _, info_padding_left, _ = padding_var
 
         c1_index = g_index * (cout_g // c_0) + c1_index
         h_index = (hw_index // width_out) * stride_h + kh_index * dilate_h
@@ -121,12 +115,13 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
 
     return tvm.compute(a_im2col_vm_shape,
                        lambda *indices: __im2col_row_major_indices(
-                           indices, tensor_a, kernel_w, padding_var, stride, dilation),
+                           indices, tensor_a, padding_var, stride, dilation),
                        name='im2col_row_major',
                        tag=tag + 'im2col_row_major',
                        attrs={'padding': padding, "dilation":dilation,
                               'padding_var': padding_var, 'width_out_var': width_out,
                               'special_load3d_flag': special_load3d_flag})
+
 
 def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
     """
@@ -141,8 +136,7 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
     -------
     Returns : a_im2col_fractal tensor
     """
-    def __im2col_fractal_indices(indices,  # pylint: disable=R0914
-                                 tensor_a_row_major):
+    def __im2col_fractal_indices(indices, tensor_a_row_major):
         """
         calculate im2col_fractal tvm lambda function
         Parameters
@@ -154,7 +148,7 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
         -------
         Returns : im2col_fractal tvm lambda function
         """
-        _, _, _, _, _, a_col_m0, a_col_k0 = a_im2col_shape
+        _, _, _, _, _, a_col_m0, _ = a_im2col_shape
         _, _, _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
         g_index, n_index, deep_index, m1_index, k1_index, m0_index, k0_index = indices
 
@@ -199,13 +193,12 @@ class CubeDslPattern:
     cube_pattern_instance : instance of cube mmad pattern
     """
 
-    type_c_map = dict()
+    type_c_map = {}
 
     def __init__(self):
         pass
 
-    def generate_c(self,  # pylint: disable=R0914
-                   tensor_a, tensor_b, c_type, tag=""):
+    def generate_c(self, tensor_a, tensor_b, c_type, tag=""):
         """
         calculate the mad result tensor
 
@@ -221,8 +214,7 @@ class CubeDslPattern:
         ----------
         tensor_c : mad result tensor
         """
-        def __mad_condition(indices,  # pylint: disable=R0914,R0913
-                            axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
+        def __mad_condition(indices, axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all(
@@ -239,9 +231,7 @@ class CubeDslPattern:
                 tvm.const(0.0, type_c))
             return tensor_c
 
-        def __mad_condition_stride1(indices,  # pylint: disable=R0914,R0913
-                                    axis_kd, axis_k1,
-                                    axis_k0, tensor_a, tensor_b):
+        def __mad_condition_stride1(indices, axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all((deep_index - axis_kd + pad_head) >= 0,
@@ -254,9 +244,7 @@ class CubeDslPattern:
                 tvm.const(0.0, type_c))
             return tensor_c
 
-        def __mad_condition_noverlap(indices,  # pylint: disable=R0914,R0913
-                                     axis_k1,
-                                     axis_k0, tensor_a, tensor_b):
+        def __mad_condition_noverlap(indices, axis_k1, axis_k0, tensor_a, tensor_b):
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all((deep_index + pad_head) % stride_d < kernel_d,
@@ -294,12 +282,12 @@ class CubeDslPattern:
         a_group, a_batch, a_deep, a_m1, a_k1, a_m0, a_k0 = cube_util.shape_to_list(tensor_a.shape)
         axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
         axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
-        b_group, b_kd, _, b_n1, b_n0, _ = list(i.value for i in tensor_b.shape)
+        _, b_kd, _, b_n1, b_n0, _ = [i.value for i in tensor_b.shape]
         axis_kd = tvm.reduce_axis([0, b_kd], name='axis_kd')
-        pad_head, pad_tail = self._pad_head, self._pad_tail  # pylint: disable=E1101
-        stride_d = self._stride_d  # pylint: disable=E1101
-        output_depth = self.output_shape[1]  # pylint: disable=E1101
-        kernel_d = self._kernel_d  # pylint: disable=E1101
+        pad_head, pad_tail = self._pad_head, self._pad_tail
+        stride_d = self._stride_d
+        output_depth = self.output_shape[1]
+        kernel_d = self._kernel_d
         shape_c = (a_group, a_batch, output_depth, b_n1, a_m1 * a_m0, b_n0)
         type_c = c_type
 
@@ -342,7 +330,7 @@ class CubeDslPattern:
         return tensor_c
 
 
-class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
+class ConvDslPattern(CubeDslPattern):
     """
     ConvDslPattern
 
@@ -396,7 +384,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         stride = [self._stride_h, self._stride_w]
         dilation = [self._dilate_h, self._dilate_w]
 
-        height_out, width_out = list(
+        height_out, width_out = [
             ((i + p_before + p_after - ((kernel - 1) * d + 1)) // s + 1)
             for i, p_before, p_after, kernel, s, d in
             zip(new_hw,
@@ -404,7 +392,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 new_pad_after,
                 [kernel_h, kernel_w],
                 stride,
-                dilation))
+                dilation)]
         return height_out, width_out
 
     def _get_special_load3d_flag(self, var_map, h_out, w_out):
@@ -432,7 +420,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             self.flag_load3d_special_case = True
         return w_out
 
-    def generate_a(self, feature_map, group_dict, var_map={}, tag=""):  # pylint: disable=R0914
+    def generate_a(self, feature_map, group_dict, var_map={}, tag=""):
         """
         calculate im2col_fractal tensor
 
