@@ -1015,6 +1015,21 @@ class CceConvOp:
             -------
             tiling
             """
+            def get_scalar_num():
+                """
+                get the number of scalar tensor that loads into UB.
+                """
+                scalar_num = 0
+                for lop in self._op_graph.input_ops:
+                    if "cache_buffer" in lop:
+                        if len(lop["cache_buffer"].shape) == 1 and not isinstance(lop["cache_buffer"], tvm.expr.Var):
+                            tensor_shape = list(i.value for i in lop["cache_buffer"].shape)
+                            if tensor_shape == [1]:
+                                log.debug("[conv2d ub fusion] cache_readed scalar tensor: {}".format(
+                                    lop["cache_buffer"]))
+                                scalar_num += 1
+                return scalar_num
+
             def get_fused_ub_cl0():
                 """
                 get fused_ub_cl0 for tiling
@@ -1151,6 +1166,10 @@ class CceConvOp:
                     special_mode_dict["convfp16_double_out"] = True
                 else:
                     special_mode_dict["convfp16_double_out"] = False
+
+                if scalar_num != 0:
+                    special_mode_dict.update({"scalar_num": scalar_num})
+
                 in_mem = list(map(int, self._input_memory_type))
                 out_mem = list(map(int, self._output_memory_type))
                 pooling_shape = [0, 0]
@@ -1171,7 +1190,8 @@ class CceConvOp:
 
                 ub_multiples = 1
                 fused_coefficient[-1] = fp32_cub_coefficient(fused_coefficient[-1], ub_multiples, res_dtype)
-                
+
+                fused_coefficient[-1] += fix_fused_coeff_fp32_cast(fusion_type_new)
                 if self._v200_width_out_1_flag:
                     fused_coefficient[-1] = 1 * ub_multiples + fused_coefficient[-1]/2
                     nonlocal fused_ub_cl0
@@ -1232,6 +1252,46 @@ class CceConvOp:
                     ub_multiples = coeff(res_dtype, "float16")
                     cub_coefficient += ub_multiples - 1
                 return cub_coefficient
+
+            def fix_fused_coeff_fp32_cast(fusion_type):
+                """
+                fix fused_coefficient when fp32 cast happens in ub.
+                Only triggered in certain cases.
+                """
+                add_coeff = 0
+
+                triggered_condition_list = [
+                    (fusion_type == 68186112)
+                    and is_support_v200(), # conv + dequant + tanh
+                    (fusion_type == 33832960)
+                    and is_support_v200() # conv + accumulate_nv2 + relu
+                ]
+                for case in triggered_condition_list:
+                    if case:
+                        for lop in self._op_graph.body_ops:
+                            if lop["op"] == "elewise_single_cast":
+                                dst_type = lop["dst_buffer"].dtype
+                                src_type = lop["prev_op"][0]["dst_buffer"].dtype
+                                if (src_type, dst_type) == ("float16", "float32"):
+                                    log.debug(
+                                        "[conv2d ub fusion] fp16_cast_to_fp32: {}".format(
+                                            lop["dst_buffer"]))
+                                    add_coeff += 2
+                                if (src_type, dst_type) == ("float32", "float16"):
+                                    log.debug(
+                                        "[conv2d ub fusion] fp32_cast_to_fp16: {}".format(
+                                            lop["dst_buffer"]))
+                                    add_coeff += 1
+                            elif "convolution_" not in lop["op"] and \
+                                    lop["dst_buffer"].dtype == "float32" and \
+                                    len(lop["next_op"]) >= 2:
+                                log.debug(
+                                    "[conv2d ub fusion] fp32 ub tensors which cannot reuse memory allocation: {}".
+                                    format(lop["dst_buffer"]))
+                                add_coeff += 2
+                        return add_coeff
+
+                return add_coeff
 
             def get_default_tiling():
                 """
@@ -1496,6 +1556,8 @@ class CceConvOp:
             c_shape = get_c_shape()
             reserved_ub = get_reserved_ub()
             fused_ub_cl0 = get_fused_ub_cl0()
+            scalar_num = get_scalar_num()
+
             if self._dynamic_flag and (not tilingdict_flag):
                 tiling_new = self._tiling_case
             elif is_support_v200() and ConvParam.res_dtype == "int32":
@@ -1550,6 +1612,11 @@ class CceConvOp:
                         special_mode_dict["convfp16_double_out"] = True
                     else:
                         special_mode_dict["convfp16_double_out"] = False
+
+                    if scalar_num != 0:
+                        special_mode_dict.update({"scalar_num": scalar_num})
+
+                    fused_coefficient[-1] += fix_fused_coeff_fp32_cast(fusion_type_new)
 
                     if self._v200_width_out_1_flag:
                         fused_coefficient[-1] = 1 + fused_coefficient[-1]/2
@@ -3182,6 +3249,7 @@ class CceConvOp:
 
                 tmp_cache_buffer = self._schedule.cache_read(lop["dst_buffer"], cce.scope_ubuf, list(set(tmp_read_map)))
                 lop["cache_buffer"] = tmp_cache_buffer
+                # lop["cache_buffer"] is the param which was cache_readed into UB, also known as param.local.UB.
 
                 if self._pre_relu_fused_flag and ("relu" in remove_suffix_num_for_name(
                         lop["next_op"][0]["dst_buffer"].op.name)):
