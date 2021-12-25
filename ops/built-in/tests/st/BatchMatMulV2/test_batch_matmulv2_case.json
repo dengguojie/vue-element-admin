@@ -275,7 +275,7 @@
     "output_desc": [
       {
         "format": "NHWC",
-        "shape": [
+        "shape":  [
           -1,
           96,
           32

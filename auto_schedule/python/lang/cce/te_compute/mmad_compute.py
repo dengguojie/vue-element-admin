@@ -33,7 +33,7 @@ def matmul(tensor_a,
            quantize_params=None,
            format_out=None,
            compress_index=None,
-           attrs={},
+           attrs=None,
            kernel_name="MatMul"):
     """
     algorithm: mmad

@@ -3,7 +3,7 @@
     "op": "Conv2DBackpropInput",
     "case_name" : "test_conv2d_backprop_input_001",
     "calc_expect_func_file" : "test_conv2d_backprop_input_golden.py:calc_expect_func",
-    "input_desc": [
+    "input_desc":  [
       {
         "format": "ND",
         "ori_format": "ND",

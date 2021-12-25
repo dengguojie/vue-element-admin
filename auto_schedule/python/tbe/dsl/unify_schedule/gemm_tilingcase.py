@@ -637,7 +637,7 @@ class MatmulTiling(CubeTilingOp):
         tiling["tiling"]["attach_same_to_static"] = False
         return tiling
 
-    def _get_cache_tiling(self):
+    def get_cache_tiling(self):
         '''
         according to size in l1, generate 9 kind of templates, each subdivided into 132 different
         templates as follows templates according to size in l1 sub template
@@ -1141,7 +1141,7 @@ class MatmulTiling(CubeTilingOp):
         return tiling
 
 
-    def _get_compile_time(self, target_area):
+    def get_compile_time(self, target_area):
         """
         caculate total all compile time depends on target_area
         """
@@ -1184,7 +1184,7 @@ class MatmulTiling(CubeTilingOp):
         return element_list
 
 
-    def _get_gear_repo_shapes(self, target_area=None):
+    def get_gear_repo_shapes(self, target_area=None):
         """
         caculate all gear repo seeds during range
 
@@ -1234,7 +1234,7 @@ class MatmulTiling(CubeTilingOp):
         return False
 
 
-    def _get_gear_tiling_range(self, gear_repo_shapes, seed_shape):
+    def get_gear_tiling_range(self, gear_repo_shapes, seed_shape):
         """
         cacaulate gear repository range
 
@@ -1294,7 +1294,7 @@ class MatmulTiling(CubeTilingOp):
         if self.none_range_area:
             return True
 
-        if len(self._get_gear_repo_shapes(target_area)) > (len(self.__class__.GEAR_M_N)**2):
+        if len(self.get_gear_repo_shapes(target_area)) > (len(self.__class__.GEAR_M_N)**2):
             return True
 
         return False

@@ -205,7 +205,7 @@ def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_filter_fuzz_build_generalization_general']
+        'depthwise_conv2d_backprop_filter_fuzz_build_generalization_general', {"mode": "keep_rank"}]
     depthwise_conv2d_backprop_filter_generalization(*input_list)
 
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general)

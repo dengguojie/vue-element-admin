@@ -4,7 +4,7 @@
     "op": "DepthwiseConv2DBackpropFilter",
     "case_name" : "test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed",
     "calc_expect_func_file" : "test_depthwise_conv2d_backprop_filter_golden.py:calc_expect_func",
-    "input_desc": [
+    "input_desc":  [
       {
         "format": "NCHW",
         "ori_format": "NCHW",

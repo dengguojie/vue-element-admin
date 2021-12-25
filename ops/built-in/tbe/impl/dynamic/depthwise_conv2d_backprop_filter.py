@@ -27,6 +27,7 @@ from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import CubeParaProcess
 from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 from impl.util.util_cube_dynamic import gen_conv_shape_range
+from impl.util.util_cube_dynamic import check_graph_mode
 
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -560,6 +561,7 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
     """
     support_mode = ["keep_rank"]
     is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    graph_flag = check_graph_mode(input_fm)
     if not is_generalize_config:
         return
     result = []
@@ -585,7 +587,7 @@ def depthwise_conv2d_backprop_filter_generalization(input_fm,
                 error_manager_cube.raise_err_specific_user(OP_TYPE,
                                                            "invalid {} ori_shape {}, only support {}d".format(
                                                                name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            tensor = gen_conv_shape_range(tensor, OP_TYPE)
+            tensor = gen_conv_shape_range(tensor, OP_TYPE, graph_flag)
             if name == "input_fm":
                 tensor = correct_conv2d_backprop_range_start(tensor, filter_grad, dilations, pads, data_format)
                 x_h_range, x_w_range = _calc_max_fmap_w(input_fm, out_backprop, filter_grad,

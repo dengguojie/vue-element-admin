@@ -549,7 +549,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     return False
         return True
 
-    def _check_tiling_al0(self, tiling_mess):
+    def check_tiling_al0(self, tiling_mess):
         """
         Check if tiling in repository al0 space is legal
 

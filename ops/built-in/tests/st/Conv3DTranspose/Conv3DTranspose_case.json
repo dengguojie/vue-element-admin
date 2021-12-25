@@ -2,7 +2,7 @@
 	{
 		"case_name": "Test_Conv3DTranspose_VALID",
 		"op": "Conv3DTranspose",
-		"input_desc": [
+		"input_desc":  [
 			{
 				"format": "ND",
 				"ori_format": "ND", 

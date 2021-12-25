@@ -296,7 +296,7 @@
     "attr": [
       {
         "name": "adj_x1",
-        "value": true,
+        "value":  true,
         "type": "bool"
       },
       {
