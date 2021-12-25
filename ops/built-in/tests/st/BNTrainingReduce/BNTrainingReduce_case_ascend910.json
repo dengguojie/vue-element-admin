@@ -4,132 +4,62 @@
     "op": "BNTrainingReduce",
     "input_desc": [
       {
-        "format": [
-          "NCHW"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1
-        ],
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [1, 1, 1, 1],
         "data_distribute": [
           "uniform"
         ],
         "value_range": [
-          [
-            0.1,
-            1.0
-          ]
+          [0.1, 1.0]
         ],
-        "name": "x",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1
-        ]
+        "name": "x"
       }
     ],
     "output_desc": [
       {
-        "format": [
-          "NCHW"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "sum",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1
-        ]
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [1, 1, 1, 1],
+        "name": "sum"
       },
       {
-        "format": [
-          "NCHW"
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [1, 1, 1, 1],
+        "name": "square_sum"
+      }
+    ]
+  },
+  {
+    "case_name": "BNTrainingReduce_static_shape_dynamic_bn_training_reduce_3_ascend910a_1",
+    "op": "BNTrainingReduce",
+    "input_desc": [
+      {
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [64, 1024, 1, 1],
+        "data_distribute": [
+          "uniform"
         ],
-        "type": [
-          "float32"
+        "value_range": [
+          [0.1, 1.0]
         ],
-        "shape": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "square_sum",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1
-        ]
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [1, 1024, 1, 1],
+        "name": "sum"
+      },
+      {
+        "format": ["NCHW"],
+        "type": ["float32"],
+        "shape": [1, 1024, 1, 1],
+        "name": "square_sum"
       }
     ]
   },

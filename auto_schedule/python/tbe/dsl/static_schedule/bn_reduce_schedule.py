@@ -22,6 +22,7 @@ from __future__ import division
 import math
 
 import te.lang.cce
+import te.platform as tbe_platform
 from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common import platform as cce
@@ -33,6 +34,7 @@ from .group_norm_reduce_schedule import gn_reduce_schedule
 from .util import get_nearest_factor
 from .util import DTYPE_WIDTH_MAP
 from .util import get_reduce_axis_num
+
 
 MAX_SHAPE_NUM = 10000000
 
@@ -1342,6 +1344,10 @@ def bn_reduce_schedule(res, input_tensors):
     input_tensor = input_tensors[0]
     sum_x = res[0]
     square_sum_x = res[1]
+
+    # check whether can use atomic
+    is_atomic = tbe_platform.api_check_support("tik.set_atomic_add")
+
     shape_input = shape_to_list(input_tensor.shape)
     if len(shape_input) != 5:
         raise RuntimeError("Batch normalization only support 5D format.")
@@ -1403,7 +1409,7 @@ def bn_reduce_schedule(res, input_tensors):
     elif batch >= core_num and shape_input[2] * shape_input[3] > threshold:
         pass
     else:
-        if not _is_in_shape_white_list(shape_input):
+        if not _is_in_shape_white_list(shape_input) and is_atomic:
             sch = tvm.create_schedule(
                 [out.op for out in res])
             sch_list = [sch]
@@ -1436,7 +1442,7 @@ def bn_reduce_schedule(res, input_tensors):
         sch[cast_0].compute_inline()
 
     if is_in_reduce:
-        if batch >= core_num:
+        if batch >= core_num and is_atomic:
             in_schedule_cut_batch(sch_list, res, sum_x,
                                   square_sum_x, data_ub, cast_0_ub,
                                   data_mul_ub, ub_split_reduce_axis,
@@ -1449,7 +1455,7 @@ def bn_reduce_schedule(res, input_tensors):
                             is_keep_dim, is_in_reduce, max_ub_count)
         elif ub_split_axis == 2 and \
                 outer_loop >= core_num and \
-                shape_input[ub_split_axis] % core_num == 0:
+                shape_input[ub_split_axis] % core_num == 0 and is_atomic:
             schedule_cut_h_twice(sch_list, res, sum_x,
                                  square_sum_x, data_ub, cast_0_ub,
                                  data_mul_ub, split_factor, is_keep_dim,
@@ -1471,7 +1477,7 @@ def bn_reduce_schedule(res, input_tensors):
                         is_keep_dim, is_in_reduce, max_ub_count)
     elif ub_split_axis == 2 and \
             outer_loop >= core_num and \
-            shape_input[ub_split_axis] % core_num == 0:
+            shape_input[ub_split_axis] % core_num == 0 and is_atomic:
         schedule_cut_h_twice(sch_list, res, sum_x,
                              square_sum_x, data_ub, cast_0_ub,
                              data_mul_ub, split_factor, is_keep_dim,
@@ -1479,11 +1485,11 @@ def bn_reduce_schedule(res, input_tensors):
     elif ub_split_axis == 2 and \
             shape_input[ub_split_axis] >= half_core_num and \
             shape_input[ub_split_axis] % half_core_num == 0 and \
-            shape_input[0] < core_num and shape_input[0] == 2:
+            shape_input[0] < core_num and shape_input[0] == 2 and is_atomic:
         schedule_fuse_h_n(sch_list, res, sum_x, square_sum_x,
                           data_ub, cast_0_ub, data_mul_ub,
                           split_factor, is_keep_dim)
-    elif batch >= core_num:
+    elif batch >= core_num and is_atomic:
         schedule_cut_batch(sch_list, res, sum_x,
                            square_sum_x, data_ub, cast_0_ub,
                            data_mul_ub, ub_split_axis,
