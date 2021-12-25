@@ -221,6 +221,19 @@ IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
 
 INFER_FUNC_REG(RandomPoisson, RandomPoissonInfer);
 
+IMPLEMT_INFERFUNC(Exponential, ExponentialInfer) {
+
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+
+  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Exponential, ExponentialInfer);
+
 IMPLEMT_INFERFUNC(RandomShuffle, RandomShuffleInfer) {
   TensorDesc desc = op.GetInputDesc(0);
   Shape shape = desc.GetShape();

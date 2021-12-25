@@ -737,5 +737,33 @@ REG_OP(ContinuationIndicator)
     .REQUIRED_ATTR(batch_size, Int)
     .OUTPUT(y, TensorType({DT_FLOAT}))
     .OP_END_FACTORY_REG(ContinuationIndicator)
+
+/**
+*@brief Outputs random values from the Exponential distribution(s) described by rate . \n
+
+*@par Inputs:
+*Inputs include:
+* @li x: A Tensor. Must be one of the following types: half, float32, float64. \n
+
+*@par Attributes:
+*@li lambda: An optional float. Defaults to 1.
+*@li seed: An optional int. Defaults to 0.The random number generator is seeded by the given seed.
+ Otherwise, it is seeded by a random seed. \n
+
+*@par Outputs:
+*y: A Tensor of type dtype float16, float, double. \n
+
+*@attention Constraints:
+*The implementation for Exponential on Ascend uses AICPU, with bad performance.
+
+*@par Third-party framework compatibility
+*@li compatible with tensorflow Exponential operator.
+*/
+REG_OP(Exponential)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .ATTR(lambda, Float, 1)
+    .ATTR(seed, Int, 0)
+    .OP_END_FACTORY_REG(Exponential)
 }   // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RANDOM_OPS_H_

@@ -33,6 +33,7 @@ set(local_kernels_src_files
     kernels/normalized/embedding_lookup.cc
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
+    kernels/normalized/exponential.cc
     kernels/normalized/fill.cc
     kernels/normalized/floor.cc
     kernels/normalized/floordiv.cc

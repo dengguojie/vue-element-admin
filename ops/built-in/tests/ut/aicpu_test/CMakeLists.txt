@@ -108,6 +108,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/elugrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/embedding_lookup.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/exponential.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/floor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/floordiv.cc
@@ -276,6 +277,7 @@ set(_cpu_kernels_ut_files
   testcase/elugrad/src/elugrad_utest.cpp
   testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
+  testcase/exponential/src/exponential_utest.cpp
   testcase/fill/src/fill_utest.cpp
   testcase/floor/src/floor_utest.cpp
   testcase/floordiv/src/floordiv_utest.cpp
