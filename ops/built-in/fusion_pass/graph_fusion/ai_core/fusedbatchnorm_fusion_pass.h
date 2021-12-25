@@ -63,7 +63,7 @@ class FusedBatchnormFusionPass : public PatternFusionBasePass {
         STREAM_LABEL = "_stream_label";
     }
 
-    ~FusedBatchnormFusionPass() {
+    ~FusedBatchnormFusionPass() override {
     }
     protected:
     std::vector<FusionPattern*> DefinePatterns() override;

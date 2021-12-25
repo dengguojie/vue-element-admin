@@ -19,6 +19,8 @@
  * \brief all const2attr pass.
  */
 #include "const2attr_fusion_pass.h"
+#include <string>
+#include <vector>
 #include "op_log.h"
 #include "error_util.h"
 #include "fusion_const2attr_registry.h"
@@ -30,8 +32,6 @@
 #include "graph_optimizer/fusion_common/graph_pass_util.h"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 #include "pattern_fusion_util.h"
-#include <string>
-#include <vector>
 
 namespace fe {
 REGISTER_PASS("ConstToAttrPass", BUILT_IN_GRAPH_PASS, Const2AttrFusionPass);

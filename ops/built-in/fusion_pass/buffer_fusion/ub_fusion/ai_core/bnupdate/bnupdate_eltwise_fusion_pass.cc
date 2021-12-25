@@ -78,7 +78,8 @@ vector<BufferFusionPattern *> BnupdateEltwiseFusionPass::DefinePatterns() {
  * @return bool: fusion status ok or not.
  */
 Status BnupdateEltwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                    vector<ge::NodePtr> &fusion_nodes) {
+                                                 vector<ge::NodePtr> &fusion_nodes)
+{
   OP_LOGD(kFusedOpType.c_str(), "Begin to do BNUpdateEltwiseFusionPass!");
 
   fusion_nodes = GetMatchedNodes(mapping);

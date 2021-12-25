@@ -112,7 +112,7 @@ void PatternFusionUtil::SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const
   } else if (dtype == ge::DT_INT64) {
     int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
     FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGE(curOpType.c_str(), "const_data_ptr is null, fusion failed."),
-                      return );
+                      return);
     size = const_tensor.GetSize() / sizeof(int64_t);
     if (attrInfo.attrType == ATTR_TYPE_SETINT) {
       int64_t const_data = (int64_t)(*const_data_ptr);
@@ -131,7 +131,7 @@ void PatternFusionUtil::SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const
   } else if (dtype == ge::DT_FLOAT) {
     float* const_data_ptr = (float*)const_tensor.GetData();
     FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGE(curOpType.c_str(), "const_data_ptr is null, fusion failed."),
-                      return );
+                      return);
     size = const_tensor.GetSize() / sizeof(float);
     if (attrInfo.attrType == ATTR_TYPE_SETFLOAT) {
       float const_data = (float)(*const_data_ptr);
@@ -150,7 +150,7 @@ void PatternFusionUtil::SetConstValueToAttrWithType(ge::OpDescPtr op_desc, const
   } else if (dtype == ge::DT_FLOAT16) {
     uint16_t* const_data_ptr = (uint16_t*)const_tensor.GetData();
     FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGE(curOpType.c_str(), "const_data_ptr is null, fusion failed."),
-                      return );
+                      return);
     size = const_tensor.GetSize() / sizeof(uint16_t);
     if (attrInfo.attrType == ATTR_TYPE_SETFLOAT) {
       uint16_t const_data = (uint16_t)(*const_data_ptr);
