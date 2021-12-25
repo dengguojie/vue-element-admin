@@ -118,6 +118,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/index_to_addr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/invgrad.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/is_close.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/is_inf.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/is_nan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
@@ -285,6 +286,7 @@ set(_cpu_kernels_ut_files
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
   testcase/invgrad/src/invgrad_utest.cpp
+  testcase/is_close/src/is_close_utest.cpp
   testcase/is_inf/src/is_inf_utest.cpp
   testcase/is_nan/src/is_nan_utest.cpp
   testcase/less/src/less_utest.cpp
