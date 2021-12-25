@@ -448,6 +448,10 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                 format_list_output = format_list_output + [item] * len(dtype_list)
             unknownshape_format_list = ["ND"] * len(dtype_total)
 
+    # dynamic shape, 5HD + 5HD
+    if -1 in shape_x or -1 in shape_y:
+        if x_flag.get("4d") and x_cdim > 0 and format_x == format_y and y_flag.get("4d") and x_cdim == y_cdim:
+            unknownshape_format_list = [item if item == "NC1HWC0" else "ND" for item in format_list]
 
     param_list = _gen_para(dtype_total, format_list_input0, format_list_input1, format_list_output,
                            unknownshape_format_list, shape_x, shape_y)

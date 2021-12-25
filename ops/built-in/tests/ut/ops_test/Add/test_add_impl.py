@@ -232,6 +232,27 @@ def test_op_select_format(test_arg):
                      {"shape": (32, 2, 2, 16, 108), "dtype": "float16", "format": "NDHWC", "ori_shape": (32, 2, 2, 16, 108),
                       "ori_format": "NDHWC", "sub_format" : 0},
                      "test_add_op_select_format_19")
+    op_select_format({"shape": (-1, -1, -1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (-1, -1, -1, 16),
+                      "ori_format": "NHWC"},
+                     {"shape": (-1, -1, -1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (-1, -1, -1, 16),
+                      "ori_format": "NHWC"},
+                     {"shape": (-1, -1, -1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (-1, -1, -1, 16),
+                      "ori_format": "NHWC"},
+                     "test_add_op_select_format_20")
+    op_select_format({"shape": (-1, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     {"shape": (-1, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     {"shape": (-1, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     "test_add_op_select_format_21")
+    op_select_format({"shape": (22, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (22, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     {"shape": (22, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (22, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     {"shape": (22, 16, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (22, 16, -1, -1),
+                      "ori_format": "NCHW"},
+                     "test_add_op_select_format_21")
 
     def __test_util_commom():
         input_parm = ({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},

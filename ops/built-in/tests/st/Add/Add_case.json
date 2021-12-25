@@ -5266,5 +5266,48 @@
       }
     ],
     "case_name": "test_Add_dynamic_000"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1, 16, -1, -1],
+        "ori_shape": [-1, 16, -1, -1],
+        "typical_shape": [4, 16, 1, 1],
+        "shape_range": [[1, 8], [1, 12], [1, 12]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "input_x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1, 16, -1, -1],
+        "ori_shape": [-1, 16, -1, -1],
+        "typical_shape": [4, 16, 1, 1],
+        "shape_range": [[1, 8], [1, 12], [1,12]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "input_y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NC1HWC0",
+        "ori_format": "NCHW",
+        "shape": [-1, 1, -1, -1, 16],
+        "ori_shape": [-1, 16, -1, -1],
+        "typical_shape": [4, 1, 1, 1, 16],
+        "shape_range": [[1, 8], [1, 12], [1, 12]],
+        "type": "float16",
+        "name": "output_z"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Add_dynamic_001"
   }
 ]
