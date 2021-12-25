@@ -38,7 +38,6 @@ class TransdataTransposeFusionPass : public PatternFusionBasePass {
                                    ge::NodePtr transpose_node);
         const string FUSED_OP_TYPE = "TransdataReshapeTransdataTranspose";
     };
-
 } // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TRANSDATA_RESHAPE_TRANSDATA_TRANSPOSE_FUSION_PASS_H_

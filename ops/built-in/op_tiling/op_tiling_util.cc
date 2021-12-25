@@ -128,7 +128,7 @@ static bool TransJsonToVector(const ge::Operator& op, const nlohmann::json& comp
 void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
                              const std::vector<std::string>& compile_info_key,
                              const std::map<std::string, int64_t>& optional_key) {
-  std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString())));
+  auto json_object = std::make_shared<nlohmann::json>(nlohmann::json::parse(compile_info.GetString()));
   std::vector<int64_t>* parsed_vector_ptr = new std::vector<int64_t>(compile_info_key.size(), 0);
   bool bsucc = TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
   OP_TILING_CHECK(!bsucc, delete parsed_vector_ptr, return nullptr);

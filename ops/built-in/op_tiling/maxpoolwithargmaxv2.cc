@@ -34,6 +34,7 @@ namespace {
   constexpr int32_t TILING_MODE_3 = 3;
   constexpr int32_t TILING_MODE_5 = 5;
   constexpr int32_t ALLIGN_NUM = 16;
+  constexpr int32_t INPUT_INDEX_FOUR = 4;
 }
 
 namespace optiling {
@@ -173,6 +174,10 @@ static int32_t GetFactor(TilingParam& param, int32_t one_sixth_ub_ele, int32_t c
   } else {
     align_output_w = param.output_w;
   }
+  if (stride_h == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgMaxV2", "stride_h value cannot be zero");
+    return 0;
+  }
   int32_t mask_memory = align_output_w * k_h * k_w;
   int32_t mask_factor = one_sixth_ub_ele / mask_memory;
   int32_t input_factor = (one_sixth_ub_ele / (param.pad_w * c0) - k_h) / stride_h + 1;
@@ -255,10 +260,10 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     int32_t one_sixth_ub_ele = ub_ele / TILING_DIVIDE_6;
     param.n_c1 = input_shape[0] * input_shape[1];
     int32_t require_memory_1 = GetRequireMemory(param, TILING_MODE_1,
-                                                param.pad_h * param.pad_w * input_shape[4],
+                                                param.pad_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
                                                 ksize_h, ksize_w);
     int32_t require_memory_2 = GetRequireMemory(param, TILING_MODE_2,
-                                                ksize_h * param.pad_w * input_shape[4],
+                                                ksize_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
                                                 ksize_h, ksize_w);
     if (require_memory_1 <= one_sixth_ub_ele) {
       param.tiling_mode = TILING_MODE_1;
@@ -270,7 +275,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
     } else if (require_memory_2 <= one_sixth_ub_ele) {
       param.tiling_mode = TILING_MODE_2;
-      param.h_factor = GetFactor(param, one_sixth_ub_ele, input_shape[4],
+      param.h_factor = GetFactor(param, one_sixth_ub_ele, input_shape[INPUT_INDEX_FOUR],
                                  ksize_h, ksize_w, strides_h);
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;

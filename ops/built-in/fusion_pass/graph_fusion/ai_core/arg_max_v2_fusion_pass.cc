@@ -75,9 +75,9 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Node:%s does not need fusion.", in_op_desc_ptr->GetName().c_str()),
                     return NOT_CHANGED);
   std::vector<std::pair<int64_t, int64_t>> range;
-  int64_t aixs_const_val = 0;
   Tensor const_data;
   if (op_argmaxv2.GetInputConstData("dimension", const_data) == GRAPH_SUCCESS) {
+    int64_t aixs_const_val = 0;
     auto aixs_tensor_desc = op_argmaxv2.GetInputDesc("dimension");
     DataType input_axis_dtype = aixs_tensor_desc.GetDataType();
     uint8_t* const_data_ptr = const_data.GetData();

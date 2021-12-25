@@ -44,6 +44,7 @@ namespace {
   constexpr int32_t SHAPE_INDEX_H = 2;
   constexpr int32_t SHAPE_INDEX_W = 3;
   constexpr int64_t DTYPE_SIZE_FP32 = 4;
+  constexpr int32_t BLOCK_ALLIGN = 16;
 }
 
 namespace optiling {
@@ -601,7 +602,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
     int64_t c1 = input_shape[SHAPE_INDEX_C1];
     int64_t hi = input_shape[SHAPE_INDEX_H];
     int64_t wi = input_shape[SHAPE_INDEX_W];
-    int64_t actual_workspace = n * c1 * hi * wi * 16 * DTYPE_SIZE_FP32;
+    int64_t actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
     if (actual_workspace > WORKSPACE_SIZE) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Overlap is too large to support, please decrease input_shape.");
       return false;

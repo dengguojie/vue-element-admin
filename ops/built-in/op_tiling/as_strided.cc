@@ -101,8 +101,6 @@ static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t 
 static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row, const int64_t col) {
   int64_t elem_index_in_ori = 0;
   int64_t dim_step = 3;
-  int64_t idx_1 = 1;
-  int64_t idx_2 = 2;
 
   // row and col are 1-based
   if (row == 0 || col == 0) {
@@ -110,6 +108,8 @@ static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row
   } else {
     int64_t n_row = row - 1;
     for (int64_t i = 0; i < as_info.dim_num; i++) {
+      int64_t idx_1 = 1;
+      int64_t idx_2 = 2;
       elem_index_in_ori += (n_row / as_info.dim_except_last_paras[i*dim_step] %
                             as_info.dim_except_last_paras[i*dim_step+idx_1] *
                             as_info.dim_except_last_paras[i*dim_step+idx_2]);

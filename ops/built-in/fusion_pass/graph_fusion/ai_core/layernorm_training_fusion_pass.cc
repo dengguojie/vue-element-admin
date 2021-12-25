@@ -313,7 +313,7 @@ Status LayerNormTrainingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   ge::GeTensorDesc ln_out_tensor = add_node2->GetOpDesc()->GetOutputDesc(0);
 
-  /* 3. Add new Opdesc of LayerNorm*/
+  /* 3. Add new Opdesc of LayerNorm */
   std::shared_ptr<ge::OpDesc> ln_opdesc = nullptr;
   std::string ln_node_name = add_node2->GetName() + "_" + "layernorm";
   ln_opdesc = std::make_shared<ge::OpDesc>(ln_node_name, LAYERNORM);

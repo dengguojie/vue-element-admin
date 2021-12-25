@@ -31,7 +31,6 @@ class ArgMaxV2FusionPass : public PatternFusionBasePass {
  private:
   const string FUSED_OP_TYPE = "ArgMaxV2";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ARG_MAX_V2_FUSION_PASS_H_

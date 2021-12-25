@@ -57,6 +57,13 @@ namespace fe {
   static const char PATTERN_TRANSDATA2[] = "FusedNodeTransdata2";
   static const char PATTERN_REFORMAT1[] = "FusedNodeReformat1";
   static const char PATTERN_REFORMAT2[] = "FusedNodeReformat2";
+  constexpr int32_t LAST_SECOND_INDEX = 2;
+  constexpr int32_t DIM_INDEX_TWO = 2;
+  constexpr int32_t DIM_INDEX_THREE = 3;
+  constexpr int32_t DIM_INDEX_FOUR = 4;
+  constexpr int32_t TRANSOPSE_OUT_LEN = 5;
+  constexpr int32_t TRANSDATA_OUT_LEN = 4;
+  constexpr int32_t BLOCK_ALLIGN = 16;
 
 vector<FusionPattern*> TransdataTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -229,9 +236,9 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     return NOT_CHANGED;
   }
   // perm vlaue
-  //(a,c/16,b/16,16,16)->(c/16,a,b/16,16,16)=[1,0,2,3,4]
-  //(a,c/16,b/16,16,16)->(b/16,c/16,a,16,16)=[2,1,0,3,4]
-  //(ab,d/16,c/16,16,16)->(ab,d/16,c/16,16,16)=[0,1,2,3,4]
+  // (a,c/16,b/16,16,16)->(c/16,a,b/16,16,16)=[1,0,2,3,4]
+  // (a,c/16,b/16,16,16)->(b/16,c/16,a,16,16)=[2,1,0,3,4]
+  // (ab,d/16,c/16,16,16)->(ab,d/16,c/16,16,16)=[0,1,2,3,4]
   // transdata1 info
   vector<int64_t> transdata1_origin_shape = transdata_desc1->GetInputDesc(0).GetOriginShape().GetDims();
   vector<int64_t> transdata_diminfo1_shape = transdata_desc1->GetInputDesc(0).GetShape().GetDims();
@@ -248,32 +255,32 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
             transdata_node1->GetName().c_str(), transdata_diminfo1_shape.size());
     return NOT_CHANGED;
   }
-  if (transdata1_origin_shape[transdata1_origin_shape.size() - 1] % 16 != 0 ||
-      transdata1_origin_shape[transdata1_origin_shape.size() - 2] % 16 != 0 ||
-      reshapediminfo[reshapediminfo.size() - 1] % 16 != 0 || reshapediminfo[reshapediminfo.size() - 2] % 16 != 0) {
+  if (transdata1_origin_shape[transdata1_origin_shape.size() - 1] % BLOCK_ALLIGN  != 0 ||
+      transdata1_origin_shape[transdata1_origin_shape.size() - 2] % BLOCK_ALLIGN  != 0 ||
+      reshapediminfo[reshapediminfo.size() - 1] % BLOCK_ALLIGN  != 0 || reshapediminfo[reshapediminfo.size() - 2] % BLOCK_ALLIGN  != 0) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "last two dimension should be divisible by 16, but actually is [%ld] and [%ld].",
-            transdata1_origin_shape[transdata1_origin_shape.size() - 2],
+            transdata1_origin_shape[transdata1_origin_shape.size() - LAST_SECOND_INDEX],
             transdata1_origin_shape[transdata1_origin_shape.size() - 1]);
     return NOT_CHANGED;
   }
   vector<int64_t> permValue_cond1({1, 0, 2, 3, 4});
   vector<int64_t> trans_after_reshape_cond1(
-      {transdata_diminfo1_shape[0] * transdata_diminfo1_shape[2] * 16, transdata_diminfo1_shape[1] * 16});
+      {transdata_diminfo1_shape[0] * transdata_diminfo1_shape[DIM_INDEX_TWO] * 16, transdata_diminfo1_shape[1] * 16});
   vector<int64_t> transpose_out_shape1(
-      {transdata_diminfo1_shape[1], transdata_diminfo1_shape[0] * transdata_diminfo1_shape[2], 16, 16});
+      {transdata_diminfo1_shape[1], transdata_diminfo1_shape[0] * transdata_diminfo1_shape[DIM_INDEX_TWO], 16, 16});
   vector<int64_t> permValue_cond2({2, 1, 0, 3, 4});
   vector<int64_t> trans_after_reshape_cond2(
-      {transdata_diminfo1_shape[0], transdata_diminfo1_shape[1] * transdata_diminfo1_shape[2] * 16 * 16});
+      {transdata_diminfo1_shape[0], transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * 16 * 16});
   vector<int64_t> transpose_out_shape2(
-      {transdata_diminfo1_shape[1] * transdata_diminfo1_shape[2] * 16, transdata_diminfo1_shape[0] / 16, 16, 16});
+      {transdata_diminfo1_shape[1] * transdata_diminfo1_shape[2] * BLOCK_ALLIGN, transdata_diminfo1_shape[0] / BLOCK_ALLIGN, 16, 16});
   vector<int64_t> permValue_cond3({0, 1, 2, 3, 4});
-  vector<int64_t> transpose_out_shape3(5);
-  if (transdata_diminfo1_out_shape.size() == 4) {
+  vector<int64_t> transpose_out_shape3(TRANSOPSE_OUT_LEN);
+  if (transdata_diminfo1_out_shape.size() == TRANSDATA_OUT_LEN) {
     transpose_out_shape3[0] = transdata_diminfo1_out_shape[0];
-    transpose_out_shape3[1] = transdata_diminfo1_out_shape[3] / 16;
-    transpose_out_shape3[2] = transdata_diminfo1_out_shape[1] * transdata_diminfo1_out_shape[2] / 16;
-    transpose_out_shape3[3] = 16;
-    transpose_out_shape3[4] = 16;
+    transpose_out_shape3[1] = transdata_diminfo1_out_shape[DIM_INDEX_THREE] / BLOCK_ALLIGN;
+    transpose_out_shape3[DIM_INDEX_TWO] = transdata_diminfo1_out_shape[1] * transdata_diminfo1_out_shape[DIM_INDEX_TWO] / BLOCK_ALLIGN;
+    transpose_out_shape3[DIM_INDEX_THREE] = 16;
+    transpose_out_shape3[DIM_INDEX_FOUR] = 16;
   }
   std::set<DataType> supported_perm_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32,
                                               ge::DT_INT16, ge::DT_UINT16,  ge::DT_UINT32};

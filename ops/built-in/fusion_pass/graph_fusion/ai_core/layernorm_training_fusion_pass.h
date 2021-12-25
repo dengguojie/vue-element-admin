@@ -45,7 +45,6 @@ class LayerNormTrainingFusionPass : public PatternFusionBasePass {
 
   const string FUSED_OP_TYPE = "LayerNorm";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_TRAINING_FUSION_PASS_H_
