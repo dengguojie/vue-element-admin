@@ -34,6 +34,9 @@ static const char CONSTANTOP[] = "Constant";
 
 static const uint16_t UINT_NUM_ZERO = 0;
 static const int64_t CIN_THESHOLD = 64;
+static const int64_t HWCN_INDEX = 3;
+static const int64_t IN_DIM_H = 2;
+static const int64_t IN_DIM_W = 3;
 
 template <typename Dtype>
 Status passThroughAssistHelpFP16(const int32_t n, Dtype& output1, const vector<int64_t>& passThroughDInputDimInfo) {
@@ -44,9 +47,10 @@ Status passThroughAssistHelpFP16(const int32_t n, Dtype& output1, const vector<i
   int32_t tmp_x = 1;
   t = tmp_x;
   FUSION_PASS_CHECK(passThroughDInputDimInfo.empty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT("passThroughAssistHelpFP16", "AssistHelpFP16 InputDDimInfo is empty, Create Assist exit."),
+                    VECTOR_FUSION_INNER_ERR_REPORT("passThroughAssistHelpFP16",
+                    "AssistHelpFP16 InputDDimInfo is empty, Create Assist exit!"),
                     return FAILED);
-  int32_t windowSize = passThroughDInputDimInfo[2] * passThroughDInputDimInfo[3];
+  int32_t windowSize = passThroughDInputDimInfo[IN_DIM_H] * passThroughDInputDimInfo[IN_DIM_W];
   OP_LOGI("passThroughAssistHelpFP16", "START TO DO passThroughAssistHelpFP16 windowSize:%d.", windowSize);
 
   int32_t channelSize = passThroughDInputDimInfo[1];
@@ -74,7 +78,7 @@ static Status ParseNumberIdx(ge::GeTensorDesc& tensorDesc, size_t& numberIdx) {
     return SUCCESS;
   }
   if (tensorGeFormat == FORMAT_HWCN) {
-    numberIdx = 3;
+    numberIdx = HWCN_INDEX;
     return SUCCESS;
   }
   return FAILED;
@@ -83,7 +87,8 @@ static Status ParseNumberIdx(ge::GeTensorDesc& tensorDesc, size_t& numberIdx) {
 vector<FusionPattern*> PassThroughFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PassThroughFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed!"),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {PASS_THROUGH_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -93,10 +98,12 @@ vector<FusionPattern*> PassThroughFusionPass::DefinePatterns() {
 Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr passThroughNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(passThroughNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughNode is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughNode is null, fusion failed!"),
+                    return PARAM_INVALID);
   ge::OpDescPtr passThroughDesc = passThroughNode->GetOpDesc();
   FUSION_PASS_CHECK(passThroughDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughDesc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "passThroughDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   std::string passThroughName = passThroughNode->GetName();
 
   bool reverse = true;
@@ -114,7 +121,6 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
       !ge::AttrUtils::GetInt(passThroughDesc, "stride", stride),
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Cannot get attr:stride from node.", passThroughName.c_str()),
       return NOT_CHANGED);
-
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The OriginDataType of node's first input is %d,", passThroughName.c_str(),
           passThroughDesc->GetInputDesc(0).GetDataType());
 
@@ -129,21 +135,23 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::Format assitMatrixFormat = passThroughInput.GetFormat();
 
   FUSION_PASS_CHECK(passThroughInputDimInfo.empty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: input shape is null.", passThroughName.c_str()),
-                    return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: input shape is null.",
+                    passThroughName.c_str()), return FAILED);
 
   size_t inChannelIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(passThroughInput, inChannelIdx),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+              "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
               passThroughName.c_str(), ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str()),
       return FAILED);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s.", passThroughName.c_str(),
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s!", passThroughName.c_str(),
           ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str());
   size_t inNumberIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != ParseNumberIdx(passThroughInput, inNumberIdx),
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+              "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
               passThroughName.c_str(), ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str()),
       return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s.", passThroughName.c_str(),
@@ -173,17 +181,18 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[destSize]());
   FUSION_PASS_CHECK(inputAssit.get() == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: inputAssit is NULL", passThroughName.c_str()),
-                    return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: inputAssit is NULL",
+                    passThroughName.c_str()), return PARAM_INVALID);
 
   Status ret = NnSet(destSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.", passThroughName.c_str()),
-                    return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.",
+                    passThroughName.c_str()), return ret);
 
   ret = passThroughAssistHelpFP16(destSize, *inputAssit.get(), passThroughDInputDimInfo);
   FUSION_PASS_CHECK(ret != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.", passThroughName.c_str()),
-                    return ret);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.",
+                    passThroughName.c_str()), return ret);
 
   // define the shape of auxiliary matrix
   tensorDesc.SetShape(ge::GeShape(passThroughDInputDimInfo));
@@ -202,10 +211,11 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::OpDescUtils::SetWeights(passThroughNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(passThroughNode);
   FUSION_PASS_CHECK(constInputNodes.empty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed."),
+                    return PARAM_INVALID);
   NodePtr constInput = constInputNodes[0];
   constInput->GetOpDesc()->SetType(CONSTANTOP);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Success to do PassThroughFusionPass.", passThroughName.c_str());
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Success to do PassThroughFusionPass!", passThroughName.c_str());
   return SUCCESS;
 }
 REGISTER_PASS("PassThroughFusionPass", BUILT_IN_GRAPH_PASS, PassThroughFusionPass);

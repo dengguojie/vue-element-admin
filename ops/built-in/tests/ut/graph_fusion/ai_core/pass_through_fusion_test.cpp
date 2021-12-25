@@ -51,6 +51,7 @@ TEST_F(pass_through_fusion_test, pass_through_fusion_test_1) {
 
     EXPECT_EQ(findTranspose, true);
 }
+
 TEST_F(pass_through_fusion_test, pass_through_fusion_test_2) {
     ge::Graph graph("pass_through_fusion_test_2");
 
@@ -62,6 +63,7 @@ TEST_F(pass_through_fusion_test, pass_through_fusion_test_2) {
     std::vector<int64_t> dims_y{1, 32, 10, 10};
     ge::Shape shape_y(dims_y);
     ge::TensorDesc tensorDescY(shape_y, FORMAT_NHWC, DT_FLOAT16);
+
     x.update_output_desc_y(tensorDescY);
 
     auto passThroughOp = op::PassThrough("pass_through");
@@ -81,3 +83,36 @@ TEST_F(pass_through_fusion_test, pass_through_fusion_test_2) {
 
     EXPECT_EQ(findTranspose, true);
 }
+
+TEST_F(pass_through_fusion_test, pass_through_fusion_test_3) {
+    ge::Graph graph("pass_through_fusion_test_3");
+
+    auto x = op::Data("x");
+    std::vector<int64_t> dims_x{20, 20, 32, 1};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_HWCN, DT_FLOAT16);
+    x.update_input_desc_x(tensorDescX);
+    std::vector<int64_t> dims_y{10, 10, 128, 1};
+    ge::Shape shape_y(dims_y);
+    ge::TensorDesc tensorDescY(shape_y, FORMAT_HWCN, DT_FLOAT16);
+
+    x.update_output_desc_y(tensorDescY);
+
+    auto passThroughOp = op::PassThrough("pass_through");
+    passThroughOp.set_input_x(x)
+                 .set_attr_stride(2)
+                 .set_attr_reverse(false);
+
+    std::vector<Operator> inputs{x};
+    std::vector<Operator> outputs{passThroughOp};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("PassThroughFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findTranspose = true;
+
+    EXPECT_EQ(findTranspose, true);
+}
+

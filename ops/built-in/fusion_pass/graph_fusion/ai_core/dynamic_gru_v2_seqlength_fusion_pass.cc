@@ -39,17 +39,16 @@ namespace fe {
 static const char *FUSED_NODE = "DynamicGRUV2";
 static const std::string PATTERN_FUSEDNODE = "DynamicGRUV2";
 static const int SEQ_LEN_INDEX = 5;
+static const int BIAS_INDEX = 2;
 
 vector<FusionPattern *> DynamicGRUV2SeqFusionPass::DefinePatterns()
 {
   vector<FusionPattern *> patterns;
-
   FusionPattern *pattern = new (std::nothrow) FusionPattern("DynamicGRUV2SeqFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                                                 "dynamicGRUV2 seqLength pattern object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, { FUSED_NODE }).SetOutput(PATTERN_FUSEDNODE);
-
   patterns.push_back(pattern);
   return patterns;
 }
@@ -86,7 +85,7 @@ Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Unexcepted seqlength input shape"), return FAILED);
   int64_t batchSize = dimLength[0];
   int64_t numStep = fusedNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(0);
-  int64_t hiddenSize = fusedNode->GetOpDesc()->GetInputDesc(2).GetShape().GetDim(0);
+  int64_t hiddenSize = fusedNode->GetOpDesc()->GetInputDesc(BIAS_INDEX).GetShape().GetDim(0);
   int64_t m_size = fusedNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(1);
 
   std::vector <int64_t> maskDims = {numStep, batchSize, hiddenSize};
@@ -119,32 +118,32 @@ Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
     ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
   }
 
-  //Creat Mask
+  // Creat Mask
   ge::NodePtr maskNode = graph.AddNode(rnnMaskDesc);
   FUSION_PASS_CHECK(maskNode == nullptr,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Mask node:%s failed", rnnMaskDesc->GetName().c_str()),
       return FAILED);
   newNodes.push_back(maskNode);
 
-  //Add Edge
+  // Add Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
-                                          maskNode->GetInDataAnchor(0)),
+                                         maskNode->GetInDataAnchor(0)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask input edge failed"), return FAILED);
 
-  //Remove Edge
+  // Remove Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
-                                          fusedNode->GetInDataAnchor(seqLenIndex)),
+                                            fusedNode->GetInDataAnchor(seqLenIndex)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and gruv2 failed"), return FAILED);
 
-  //Add Edge
+  // Add Edge
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(maskNode->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(seqLenIndex)),
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
 
   if (PatternFusionUtil::IsUnknownShape(numStep) || PatternFusionUtil::IsUnknownShape(m_size)) {
-    //Add Edge
+    // Add Edge
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(xIndex)->GetPeerOutAnchor(),
                                             maskNode->GetInDataAnchor(1)),
@@ -161,16 +160,14 @@ Status DynamicGRUV2SeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
 
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fusedNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
-                            "fusedNode is null, fusion failed."),
-  return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // get the OpDescPtr of dynamic_gru_v2
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(fusedNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
-                            "fusedNode OpDesc is null, fusion failed."),
-  return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // process seq_length
   bool hasSeqLength = fusedDesc->MutableInputDesc("seq_length") != nullptr;
@@ -192,7 +189,6 @@ Status DynamicGRUV2SeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   } else {
     return NOT_CHANGED;
   }
-
 }
 
 REGISTER_PASS("DynamicGRUV2AddSeqPass", BUILT_IN_GRAPH_PASS, DynamicGRUV2SeqFusionPass);
