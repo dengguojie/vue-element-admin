@@ -42,7 +42,7 @@ class CalcBucketsLimitAndOffsetCpuKernel : public CpuKernel {
 
  private:
   int64_t input_num_elements_[kInputNum]{0};
-  void *datas_[kInputNum + kOutputNum]{0};
+  void *datas_[kInputNum + kOutputNum]{nullptr};
   int64_t total_limit_{0};
 };
 }  // namespace aicpu

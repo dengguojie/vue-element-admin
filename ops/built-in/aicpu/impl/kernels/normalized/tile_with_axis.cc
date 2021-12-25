@@ -108,7 +108,7 @@ uint32_t TileWithAxisCpuKernel::TileCompute(CpuKernelContext &ctx) {
   }
 }
 
-uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) {
+uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) const {
   Tensor *input = ctx.Input(kFirstInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
   int32_t axis = 1;

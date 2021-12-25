@@ -17,7 +17,7 @@ class TileWithAxisCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t TileParaCheck(CpuKernelContext &ctx);
+  uint32_t TileParaCheck(CpuKernelContext &ctx) const;
 
   template <typename T, int32_t OPTION, int32_t DIMS>
   uint32_t TileComputeByAxis(CpuKernelContext &ctx);

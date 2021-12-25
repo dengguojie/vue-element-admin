@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "non_zero_with_value_shape.h" 
+#include "non_zero_with_value_shape.h"
+
+#include "cpu_kernel_utils.h"
 #include "cpu_tensor.h"
 #include "cpu_tensor_shape.h"
 #include "cpu_types.h"
 #include "utils/kernel_util.h"
-#include "cpu_kernel_utils.h"
 
 namespace {
 const char *kNonZeroWithValueShape = "NonZeroWithValueShape";
-const uint32_t inputs_num = 3;
-const uint32_t outputs_num = 2;
-}
+const uint32_t INPUTS_NUM = 3;
+const uint32_t OUTPUTS_NUM = 2;
+}  // namespace
 namespace aicpu {
 uint32_t NonZeroWithValueShapeCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, inputs_num, outputs_num),
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, INPUTS_NUM, OUTPUTS_NUM),
                       "Check input and output number failed.");
   Tensor *count = ctx.Input(2);
   KERNEL_CHECK_NULLPTR(count, KERNEL_STATUS_PARAM_INVALID,
@@ -35,7 +36,7 @@ uint32_t NonZeroWithValueShapeCpuKernel::Compute(CpuKernelContext &ctx) {
 
   Tensor *out_value = ctx.Output(0);
   auto out_value_shape = out_value->GetTensorShape();
-  int32_t count_num = reinterpret_cast<int32_t *>(count->GetData())[0];
+  int32_t count_num = static_cast<int32_t *>(count->GetData())[0];
   std::vector<int64_t> out_value_shape_values = {count_num};
   out_value_shape->SetDimSizes(out_value_shape_values);
 
@@ -46,5 +47,6 @@ uint32_t NonZeroWithValueShapeCpuKernel::Compute(CpuKernelContext &ctx) {
 
   return KERNEL_STATUS_OK;
 }
-  REGISTER_CPU_KERNEL(kNonZeroWithValueShape, NonZeroWithValueShapeCpuKernel);
-}
+
+REGISTER_CPU_KERNEL(kNonZeroWithValueShape, NonZeroWithValueShapeCpuKernel);
+}  // namespace aicpu

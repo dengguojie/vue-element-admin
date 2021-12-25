@@ -266,5 +266,4 @@ uint32_t ImageWarpOffsetsCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 REGISTER_CPU_KERNEL(kImageWarpOffsets, ImageWarpOffsetsCpuKernel);
-
 }  // namespace aicpu
