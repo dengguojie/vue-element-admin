@@ -1299,23 +1299,25 @@ REG_OP(EmbeddingBag)
  *@li output_h:A Tensor. Must be one of the following types: float16, float32.
  *@li output_c:A Tensor. Must be one of the following types: float16, float32.
  *
+ *@par Attributes:
+ *time_major:An bool identifying the time major in the op. Default to false.
  * @par Restrictions:
  * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(LSTMP)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(wx, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(wr, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(project, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(real_mask, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(init_c, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(wx, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(wr, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(project, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(output_c, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(time_major, Bool, false)
     .OP_END_FACTORY_REG(LSTMP)
-
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_

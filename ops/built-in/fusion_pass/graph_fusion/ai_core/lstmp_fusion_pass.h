@@ -39,8 +39,8 @@ class LSTMPFusionPass : public PatternFusionBasePass {
                              ge::NodePtr& new_node);
   Status CreateConstNode(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
   Status CreateSplitNode(ge::ComputeGraph& graph, ge::OpDescPtr& dynamicv3_desc, ge::NodePtr& new_node, const std::string& output_name);
-  Status AddEdgeForOptionInput(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
-  Status AddEdgeForOutput(ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node, ge::NodePtr& splith_node, ge::NodePtr& splitc_node);
+  Status AddEdgeForInput(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
+  Status AddEdgeForOutput(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
   Status RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node);
   int CalcInputWxIndex(ge::OpDescPtr& fused_desc);
   const string FUSED_OP_TYPE = "LSTMP";

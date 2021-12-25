@@ -1401,9 +1401,15 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   int64_t hidden_size = 0;
   int64_t num_step = 0;
   int64_t state = 0;
+  bool time_major = false;
+  op.GetAttr("time_major", time_major); 
   if (dim_num == 3) {
-    num_step = shapex.GetDims().at(0);
-    batch_size = shapex.GetDims().at(1);
+    batch_size = shapex.GetDims().at(0);
+    num_step = shapex.GetDims().at(1);
+    if (time_major == true) {
+      num_step = shapex.GetDims().at(0);
+      batch_size = shapex.GetDims().at(1);
+    }
     hidden_size = shapewx.GetDims().at(0) / 4;
     state = shapewr.GetDims().at(1);
   } else {
@@ -1414,17 +1420,20 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   
   auto x_dtype = inputx.GetDataType();
   auto output_y = op.GetOutputDesc("y");
-  std::vector<int64_t> dims_y = {num_step, batch_size, state};
+  std::vector<int64_t> dims_y = {batch_size, num_step, state};
+  if (time_major == true) {
+    dims_y = {num_step, batch_size, state};
+  }
   output_y.SetShape(ge::Shape(dims_y));
   output_y.SetDataType(x_dtype);
 
   auto output_rt = op.GetOutputDesc("output_h");
-  std::vector<int64_t> dims_rt = {batch_size, state};
+  std::vector<int64_t> dims_rt = {1, batch_size, state};
   output_rt.SetShape(ge::Shape(dims_rt));
   output_rt.SetDataType(x_dtype);
 
   auto output_ct = op.GetOutputDesc("output_c");
-  std::vector<int64_t> dims_ct = {batch_size, hidden_size};
+  std::vector<int64_t> dims_ct = {1, batch_size, hidden_size};
   output_ct.SetShape(ge::Shape(dims_ct));
   output_ct.SetDataType(x_dtype);
 
