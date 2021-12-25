@@ -30,8 +30,10 @@
 namespace fe {
 REGISTER_PASS("ARemoveNodeFusionPass", BUILT_IN_GRAPH_PASS, RemoveNodeFusionPass);
 
-static const uint32_t PASS_UINT_ONE = 1;
-static const std::string kOpTypeData = "Data";
+const uint32_t PASS_UINT_ONE = 1;
+const int SIZE_NUMBER_2 = 2;
+const int SIZE_NUMBER_0 = 0;
+const std::string kOpTypeData = "Data";
 
 vector<FusionPattern*> RemoveNodeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -87,8 +89,9 @@ Status RemoveNodeFusionPass::Run(ge::ComputeGraph& graph) {
   for (auto& item : removeNodeMap) {
     Status status = RemoveNode(item.first, item.second, graph);
     FUSION_PASS_CHECK(status != SUCCESS && status != NOT_CHANGED,
-                      VECTOR_FUSION_INNER_ERR_REPORT(item.first->GetType().c_str(), "Fail to remove node[%s] in remove node fusion pass.",
-                              item.first->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(item.first->GetType().c_str(),
+                                                     "Fail to remove node[%s] in remove node fusion pass.",
+                                                     item.first->GetName().c_str()),
                       return FAILED);
     if (status == SUCCESS) {
       effectTimes++;
@@ -243,7 +246,7 @@ bool RemoveNodeFusionPass::VerifyLinkPair(map<uint32_t, InDataAnchorPtr>& inData
   linkIndexPairVec = newLinkIndexPairVec;
 
   // check every out data anchor has inanchor
-  for (outAnchorIter = outDataAnchorMap.begin(); outAnchorIter != outDataAnchorMap.end(); outAnchorIter++) {
+  for (outAnchorIter = outDataAnchorMap.begin(); outAnchorIter != outDataAnchorMap.end(); ++outAnchorIter) {
     if (outIndexMap.find(outAnchorIter->first) == outIndexMap.end()) {
       OP_LOGD("VerifyLinkPair", "The out anchor index[%u] does not have any paired inDataAnchor.",
               outAnchorIter->first);
@@ -263,7 +266,7 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
   // find unlinked inDataAnchor
   vector<InDataAnchorPtr> unlinkedInAnchorVec;
   map<uint32_t, InDataAnchorPtr>::iterator inAnchorIter;
-  for (inAnchorIter = inDataAnchorMap.begin(); inAnchorIter != inDataAnchorMap.end(); inAnchorIter++) {
+  for (inAnchorIter = inDataAnchorMap.begin(); inAnchorIter != inDataAnchorMap.end(); ++inAnchorIter) {
     bool isLink = false;
     for (LinkIndexPair& linkPair : linkIndexPairVec) {
       if (linkPair.inAnchorIndex == inAnchorIter->first) {
@@ -378,6 +381,7 @@ bool RemoveNodeFusionPass::VerifyRemoveInAnchor(InDataAnchorPtr inDataAnchorPtr,
       return false;
     }
   }
+
   OP_LOGD(nodeOfOtherEnd->GetType().c_str(),
           "The node[%s] can be removed "
           "for all in data anchors of this node can be removed.",
@@ -407,14 +411,16 @@ Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) const {
   OutControlAnchorPtr outControlAnchorPtr = node->GetOutControlAnchor();
   if (outControlAnchorPtr != nullptr) {
     if (!outControlAnchorPtr->GetPeerInControlAnchors().empty() && !node->GetInDataNodes().empty()) {
-      for (InControlAnchorPtr inControlAnchorPtr : outControlAnchorPtr->GetPeerInControlAnchors()) {
+      for (InControlAnchorPtr inControlAnchorPtr1 : outControlAnchorPtr->GetPeerInControlAnchors()) {
         for (NodePtr inNode : node->GetInDataNodes()) {
           if (inNode->GetOutControlAnchor() == nullptr) {
             continue;
           }
 
-          FUSION_PASS_CHECK(AddCtrlEdge(inNode->GetOutControlAnchor(), inControlAnchorPtr) != SUCCESS,
-                            VECTOR_FUSION_INNER_ERR_REPORT(inNode->GetType().c_str(), "Fail to re-link output control edge."), return FAILED);
+          FUSION_PASS_CHECK(AddCtrlEdge(inNode->GetOutControlAnchor(), inControlAnchorPtr1) != SUCCESS,
+                            VECTOR_FUSION_INNER_ERR_REPORT(inNode->GetType().c_str(),
+                                                           "Fail to re-link output control edge."),
+                                                           return FAILED);
         }
       }
     }
@@ -429,8 +435,8 @@ Status RemoveNodeFusionPass::AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr,
   // check whether this control anchor has been linked.
   NodePtr otherEndNode = inCtrlAnchorPtr->GetOwnerNode();
   bool isLinked = false;
-  for (InControlAnchorPtr inCtrlAnchorPtr : outCtrlAnchorPtr->GetPeerInControlAnchors()) {
-    if (otherEndNode == inCtrlAnchorPtr->GetOwnerNode()) {
+  for (InControlAnchorPtr inCtrlAnchorPtr1 : outCtrlAnchorPtr->GetPeerInControlAnchors()) {
+    if (otherEndNode == inCtrlAnchorPtr1->GetOwnerNode()) {
       isLinked = true;
       break;
     }
@@ -451,10 +457,10 @@ Status RemoveNodeFusionPass::ReLinkDataAnchor(vector<LinkIndexPair>& linkIndexPa
   // unlink all edge of node
   map<uint32_t, InDataAnchorPtr>::iterator inIter;
   map<uint32_t, OutDataAnchorPtr>::iterator outIter;
-  for (inIter = inDataAnchorMap.begin(); inIter != inDataAnchorMap.end(); inIter++) {
+  for (inIter = inDataAnchorMap.begin(); inIter != inDataAnchorMap.end(); ++inIter) {
     inIter->second->UnlinkAll();
   }
-  for (outIter = outDataAnchorMap.begin(); outIter != outDataAnchorMap.end(); outIter++) {
+  for (outIter = outDataAnchorMap.begin(); outIter != outDataAnchorMap.end(); ++outIter) {
     outIter->second->UnlinkAll();
   }
 
@@ -477,9 +483,10 @@ Status RemoveNodeFusionPass::ReLinkDataAnchor(vector<LinkIndexPair>& linkIndexPa
 
     for (InDataAnchorPtr inAnchor : outInputDataAnchorVec) {
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(inputOutDataAnchor, inAnchor) != ge::GRAPH_SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT("ReLinkDataAnchor", "Fail to link data edge[%u, %u] of the node.",
-                                linkPair.inAnchorIndex, linkPair.outAnchorIndex),
-                        return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT("ReLinkDataAnchor",
+                                                       "Fail to link data edge[%u, %u] of the node.",
+                                                       linkPair.inAnchorIndex, linkPair.outAnchorIndex), 
+                                                       return FAILED);
     }
   }
   return SUCCESS;
@@ -489,7 +496,7 @@ Status GatherNdPreCheck(NodePtr node) {
   string curOpType = node->GetType();
   OP_LOGI(curOpType.c_str(), "Current Node name is :%s", node->GetName().c_str());
   size_t gather_nd_input_size = node->GetOpDesc()->GetInputsSize();
-  if (gather_nd_input_size != 2) {
+  if (gather_nd_input_size != SIZE_NUMBER_2) {
     OP_LOGW(curOpType.c_str(), "gather_nd_input_size is %u which must be 2, pre check failed", gather_nd_input_size);
     return NOT_CHANGED;
   }
@@ -508,7 +515,7 @@ Status GatherNdPreCheck(NodePtr node) {
                                "ARemoveNodeFusionPass cannot be applied for unknown shape");
     return NOT_CHANGED;
   }
-  for (int i = (int)dim_info.size() - 2; i >= 0; i--) {
+  for (int i = (int)dim_info.size() - SIZE_NUMBER_2; i >= SIZE_NUMBER_0; i--) {
     // case [2,0], [1,1,0,0]
     if (PatternFusionUtil::IsUnknownShape(dim_info[i]) || dim_info[i] != 1) {
       OP_LOGI(curOpType.c_str(), "Indice of GatherNd gets a normal tensor or "

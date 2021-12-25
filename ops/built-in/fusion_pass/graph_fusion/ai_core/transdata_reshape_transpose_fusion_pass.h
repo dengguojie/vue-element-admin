@@ -50,6 +50,5 @@ class TransdataReshapeTransposeFusionPass : public PatternFusionBasePass {
 
   const string FUSED_OP_TYPE = "TransdataReshapeTransposeFusionPass";
 };
-
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TRANSDATA_RESHAPE_TRANSPOSE_FUSION_PASS_H_

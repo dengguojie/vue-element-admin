@@ -45,7 +45,8 @@ Status Const2AttrFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   return SUCCESS;
 }
 Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr opsKernelInfoStorePtr) {
-  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("Const2AttrFusion", "opsKernelInfoStorePtr is nullptr"),
+  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, 
+                    VECTOR_FUSION_INNER_ERR_REPORT("Const2AttrFusion", "opsKernelInfoStorePtr is nullptr"),
                     return FAILED);
 
   int32_t matchTimes = 0;
@@ -434,6 +435,4 @@ REGISTER_CONST2ATTR("CumulativeLogsumexpD")
 REGISTER_CONST2ATTR("FillV2D").OriginOpType("FillV2").NeedCheckSupported(true).SetConstToAttr(0, "dims", "SetListInt");
 
 REGISTER_CONST2ATTR("ExpandD").OriginOpType("Expand").NeedCheckSupported(true).SetConstToAttr(1, "shape", "SetListInt");
-
-
 }  // namespace fe

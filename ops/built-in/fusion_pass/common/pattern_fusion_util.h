@@ -122,7 +122,7 @@ class PatternFusionUtil {
   static ge::NodePtr InsertSingleNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
                                       const bool &is_input, const int32_t &index, vector<ge::NodePtr> &fusion_nodes);
 
-  static Status InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode, unsigned int constIdx,
+  static Status InsertSliceDNodes(ComputeGraph& graph, const NodePtr srcNode, unsigned int constIdx,
                                   const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx);
 
  private:

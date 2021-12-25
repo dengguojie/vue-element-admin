@@ -54,6 +54,9 @@ static const std::string PATTERN_DIV0 = "FusedNodeDiv0";
 static const std::string PATTERN_MUL0 = "FusedNodeMul0";
 static const std::string PATTERN_ADD1 = "FusedNodeAdd1";
 static const std::string LAYERNORM = "LayerNorm";
+const double EPSILON_NUMBER_1 = 0.1;
+const double NUMBER_2 = 2.0;
+
 /*
 case 1: default single op net                       |case 2: default single op net (without affine)
         x                                           |        x
@@ -205,7 +208,8 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   ge::OpDescPtr new_desc_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(opname, optype)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", opname.c_str());
-                          new_desc_ptr = nullptr; return INTERNAL_ERROR);
+                          new_desc_ptr = nullptr; 
+                          return INTERNAL_ERROR);
   ge::GeTensorDesc input_descs = previous_node->GetOpDesc()->GetInputDesc(0);
   new_desc_ptr->AddInputDesc(input_descs);
   new_desc_ptr->AddOutputDesc(input_descs);
@@ -476,7 +480,7 @@ Status LayerNormONNXFusionPass::CheckValue(std::map<std::string, ge::NodePtr>& n
   FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_POW0], exp),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_POW0.c_str()),
                     return NOT_CHANGED);
-  if (std::fabs(exp - 2.0) > std::numeric_limits<float>::epsilon()) {
+  if (std::fabs(exp - NUMBER_2) > std::numeric_limits<float>::epsilon()) {
     OP_LOGW("LayerNorm", "the exp of pow is %f, which should be equal to 2, not change", exp);
     return NOT_CHANGED;
   }
@@ -498,7 +502,7 @@ Status LayerNormONNXFusionPass::CheckValue(std::map<std::string, ge::NodePtr>& n
   FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_ADD0], epsilon),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get epsilon from const node of %s.", PATTERN_ADD0.c_str()),
                     return NOT_CHANGED);
-  if (epsilon > 0.1) {
+  if (epsilon > EPSILON_NUMBER_1) {
     OP_LOGW("LayerNorm", "the epsilon of Add0 is %f, which should be close to 0, not change", epsilon);
     return NOT_CHANGED;
   }
@@ -540,7 +544,6 @@ static Status CheckNodeInputSame(std::map<std::string, ge::NodePtr>& nodes_map) 
 
 Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "start running in LayerNormONNX fusion pass");
-
   // step1: get all the nodes from mapping.
   std::map<std::string, ge::NodePtr> nodes_map = {
       {PATTERN_REDUCEMEAN0, nullptr}, {PATTERN_SUB0, nullptr}, {PATTERN_CAST0, nullptr}, {PATTERN_POW0, nullptr},
@@ -561,7 +564,7 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_CHECK(CheckNodeInputSame(nodes_map) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "The input of sub0 and reducemean0, div0 and (pow0 or cast0) have different input node,\
-                           fusion failed."),
+                            fusion failed."),
                     return NOT_CHANGED);
   // check dynamic
   if (CheckDynamic(nodes_map[PATTERN_REDUCEMEAN0], 0)) {
@@ -592,7 +595,6 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       VECTOR_FUSION_INNER_ERR_REPORT(op_name.GetString(), "Get Const Value failed ");
       return GRAPH_FAILED;
     };
-
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "op_reducemean0 type is ReduceMeanD.");
     if (op_reducemean0.GetAttr("axes", axes) != GRAPH_SUCCESS) {
@@ -600,7 +602,6 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       return GRAPH_FAILED;
     }
   }
-  
   for (size_t i = 0; i < axes.size(); i++) {
     axes[i] = axes[i] > 0 ? axes[i] : axes[i] + dims_size;
   }
@@ -673,7 +674,6 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::GeTensorDesc var_desc = nodes_map[PATTERN_REDUCEMEAN1]->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(layer_desc->AddOutputDesc("variance", var_desc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add var_desc failed."), return FAILED);
-
 
   // step7: add layer_norm node and set value for attr
   ge::NodePtr layer_node = graph.AddNode(layer_desc);

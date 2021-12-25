@@ -19,6 +19,7 @@
  * \brief fusedbatchnormgrad fusion pass
  *   (fusedbatchnormgrad --> BNTrainingReduceGrad & BNTrainingUpdateGrad)
  */
+
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_FUSEDBATCHNORMGRAD_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_FUSEDBATCHNORMGRAD_FUSION_PASS_H_
 
@@ -27,7 +28,6 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-
 class FusedBatchNormGradFusionPass : public PatternFusionBasePass {
     public:
     FusedBatchNormGradFusionPass() {
@@ -47,7 +47,7 @@ class FusedBatchNormGradFusionPass : public PatternFusionBasePass {
         BATCHNORMGRAD_ATTR_TRAINING = "is_training";
         STREAM_LABEL = "_stream_label";
     }
-    ~FusedBatchNormGradFusionPass() {
+    ~FusedBatchNormGradFusionPass() override{
     }
     protected:
     vector<FusionPattern*> DefinePatterns() override;
@@ -69,6 +69,7 @@ class FusedBatchNormGradFusionPass : public PatternFusionBasePass {
     std::string BATCHNORMGRAD_ATTR_BIAS;
     std::string BATCHNORMGRAD_ATTR_TRAINING;
     std::string STREAM_LABEL;
+
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_FUSEDBATCHNORMGRAD_FUSION_PASS_H_

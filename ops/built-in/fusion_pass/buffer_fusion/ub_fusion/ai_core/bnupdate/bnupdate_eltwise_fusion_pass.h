@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+/*!
+ *\file bnupdate_eltwise_fusion_pass.cpp
+ *\brief bnupdate eltwise fusion pass
+ */
 #ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_BNUPDATE_BNUPDATE_ELTWISE_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_BNUPDATE_BNUPDATE_ELTWISE_FUSION_PASS_H_
 
@@ -24,7 +28,6 @@ namespace fe {
 class BnupdateEltwiseFusionPass : public BufferFusionPassBase {
  public:
   explicit BnupdateEltwiseFusionPass() {}
-
   ~BnupdateEltwiseFusionPass() override {}
 
  protected:

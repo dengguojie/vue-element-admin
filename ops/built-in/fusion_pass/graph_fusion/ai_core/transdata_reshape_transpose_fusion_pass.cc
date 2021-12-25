@@ -54,6 +54,13 @@ static const std::string OP_TYPE_RESHAPE = "Reshape";
 static const std::string OP_TYPE_REFORMAT = "ReFormat";
 static const std::string OP_TYPE_TRANSPOSE = "TransposeD";
 
+static const uint32_t DIM_NUMBER_16 = 16;
+static const uint32_t DIM_NUMBER_0 = 0;
+static const uint32_t DIM_NUMBER_1 = 1;
+static const uint32_t DIM_NUMBER_2 = 2;
+static const uint32_t DIM_NUMBER_3 = 3;
+static const uint32_t DIM_NUMBER_4 = 4;
+
 vector<FusionPattern*> TransdataReshapeTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -168,22 +175,22 @@ bool TransdataReshapeTransposeFusionPass::VerifyFusedNode(const ge::NodePtr &tra
   ge::OpDescPtr transdata1_op = transdata_node1->GetOpDesc();
   ge::OpDescPtr transdata2_op = transdata_node2->GetOpDesc();
   ge::OpDescPtr reshape_op = reshape_node->GetOpDesc();
-  if (transdata1_op->GetInputDescPtr(0)->GetFormat() != ge::FORMAT_FRACTAL_NZ ||
-          transdata1_op->GetOutputDescPtr(0)->GetFormat() != ge::FORMAT_ND) {
+  if (transdata1_op->GetInputDescPtr(DIM_NUMBER_0)->GetFormat() != ge::FORMAT_FRACTAL_NZ ||
+          transdata1_op->GetOutputDescPtr(DIM_NUMBER_0)->GetFormat() != ge::FORMAT_ND) {
     OP_LOGD(transdata1_op->GetName().c_str(), "The transdata node1 must transfer from FRACTAL_NZ to ND.");
     return false;
   }
-  if (transdata2_op->GetInputDescPtr(0)->GetFormat() != ge::FORMAT_ND ||
+  if (transdata2_op->GetInputDescPtr(DIM_NUMBER_0)->GetFormat() != ge::FORMAT_ND ||
           transdata2_op->GetOutputDescPtr(0)->GetFormat() != ge::FORMAT_FRACTAL_NZ) {
     OP_LOGD(transdata2_op->GetName().c_str(), "The transdata node2 must transfer from ND to FRACTAL_NZ.");
     return false;
   }
-  if (transdata1_op->GetInputDescPtr(0)->GetShape().GetDimNum() < 4) {
+  if (transdata1_op->GetInputDescPtr(DIM_NUMBER_0)->GetShape().GetDimNum() < DIM_NUMBER_4) {
     OP_LOGD(transdata1_op->GetName().c_str(),
             "The input dim size of transdata node1 must be great or equal than 4.");
     return false;
   }
-  if (transdata2_op->GetOutputDescPtr(0)->GetShape().GetDimNum() < 4) {
+  if (transdata2_op->GetOutputDescPtr(DIM_NUMBER_0)->GetShape().GetDimNum() < DIM_NUMBER_4) {
     OP_LOGD(transdata2_op->GetName().c_str(),
             "The output dim size of transdata node2 must be great or equal than 4.");
     return false;
@@ -195,22 +202,22 @@ bool TransdataReshapeTransposeFusionPass::VerifyFusedNode(const ge::NodePtr &tra
     return false;
   }
   size_t reshape_dim_size = reshape_input_tensor->GetShape().GetDimNum();
-  if (reshape_dim_size < 2) {
+  if (reshape_dim_size < DIM_NUMBER_2) {
     OP_LOGD(reshape_op->GetName().c_str(),
             "The dim size of reshape node's input and output must not be small than two, but [%zu].", reshape_dim_size);
     return false;
   }
 
-  int64_t input_dim1 = reshape_input_tensor->GetShape().GetDim(reshape_dim_size - 1);
-  int64_t input_dim2 = reshape_input_tensor->GetShape().GetDim(reshape_dim_size - 2);
-  int64_t output_dim1 = reshape_output_tensor->GetShape().GetDim(reshape_dim_size - 1);
-  int64_t output_dim2 = reshape_output_tensor->GetShape().GetDim(reshape_dim_size - 2);
+  int64_t input_dim1 = reshape_input_tensor->GetShape().GetDim(reshape_dim_size - DIM_NUMBER_1);
+  int64_t input_dim2 = reshape_input_tensor->GetShape().GetDim(reshape_dim_size - DIM_NUMBER_2);
+  int64_t output_dim1 = reshape_output_tensor->GetShape().GetDim(reshape_dim_size - DIM_NUMBER_1);
+  int64_t output_dim2 = reshape_output_tensor->GetShape().GetDim(reshape_dim_size - DIM_NUMBER_2);
   if (input_dim1 != output_dim2 || input_dim2 != output_dim1) {
     OP_LOGD(reshape_op->GetName().c_str(),
             "The last two dim of reshape node's input and output should be exchangeable.");
     return false;
   }
-  if (input_dim1 % 16 != 0 || input_dim2 % 16 != 0) {
+  if (input_dim1 % DIM_NUMBER_16 != DIM_NUMBER_0 || input_dim2 % DIM_NUMBER_16 != DIM_NUMBER_0) {
     OP_LOGD(reshape_op->GetName().c_str(),
             "The last two dim of reshape node's input should be aligned with 16, actually is [%ld, %ld].",
             input_dim1, input_dim2);
@@ -235,12 +242,12 @@ ge::NodePtr TransdataReshapeTransposeFusionPass::CreateTransposeNode(const ge::N
   for (size_t i = 0; i < dim_size; i++) {
     perm.push_back(static_cast<int64_t>(i));
   }
-  int64_t temp_val = perm[dim_size - 2];
-  perm[dim_size - 2] = perm[dim_size - 1];
-  perm[dim_size - 1] = temp_val;
-  temp_val = perm[dim_size - 4];
-  perm[dim_size - 4] = perm[dim_size - 3];
-  perm[dim_size - 3] = temp_val;
+  int64_t temp_val = perm[dim_size - DIM_NUMBER_2];
+  perm[dim_size - DIM_NUMBER_2] = perm[dim_size - DIM_NUMBER_1];
+  perm[dim_size - DIM_NUMBER_1] = temp_val;
+  temp_val = perm[dim_size - DIM_NUMBER_4];
+  perm[dim_size - DIM_NUMBER_4] = perm[dim_size - DIM_NUMBER_3];
+  perm[dim_size - DIM_NUMBER_3] = temp_val;
 
   (void)ge::AttrUtils::SetListInt(transpose_op_desc, "perm", perm);
   ge::NodePtr transpose_node = graph.AddNode(transpose_op_desc);

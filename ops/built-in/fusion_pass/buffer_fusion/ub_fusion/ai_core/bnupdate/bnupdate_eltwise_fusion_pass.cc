@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+/*!
+ *\file bnupdate_eltwise_fusion_pass.cpp
+ *\brief bnupdate eltwise fusion pattern 
+ */
 #include "bnupdate_eltwise_fusion_pass.h"
 #include <string>
 #include <vector>

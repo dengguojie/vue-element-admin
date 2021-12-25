@@ -42,11 +42,13 @@ using namespace std;
 
 namespace fe {
 
-static const char* STREAMSWITCH = "StreamSwitch";
-static const string ATTR_TYPE_SETFLOAT = "SetFloat";
-static const string ATTR_TYPE_SETLISTFLOAT = "SetListFloat";
-static const string ATTR_TYPE_SETINT = "SetInt";
-static const string ATTR_TYPE_SETLISTINT = "SetListInt";
+const char* STREAMSWITCH = "StreamSwitch";
+const string ATTR_TYPE_SETFLOAT = "SetFloat";
+const string ATTR_TYPE_SETLISTFLOAT = "SetListFloat";
+const string ATTR_TYPE_SETINT = "SetInt";
+const string ATTR_TYPE_SETLISTINT = "SetListInt";
+const uint32_t CHANNELIDX_NUMBER_2 = 2;
+const uint32_t CHANNELIDX_NUMBER_3 = 3;
 
 
 Status PatternFusionUtil::AddInputToOutput(ge::NodePtr node, std::vector<PassInputInfo>& inputInfoVec) {
@@ -384,7 +386,7 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
 }
 
 Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode) {
-  //link control anchor
+  // link control anchor
   FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
                     OP_LOGE("LinkControlAnchorForConst", "fusionNode or OpDesc is null, fusion failed."),
                     return FAILED);
@@ -574,11 +576,11 @@ Status PatternFusionUtil::ParseChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& 
     return SUCCESS;
   }
   if (tensorGeFormat == FORMAT_NHWC) {
-    channelIdx = 3;
+    channelIdx = CHANNELIDX_NUMBER_3;
     return SUCCESS;
   }
   if (tensorGeFormat == FORMAT_HWCN) {
-    channelIdx = 2;
+    channelIdx = CHANNELIDX_NUMBER_2;
     return SUCCESS;
   }
   return FAILED;
@@ -595,7 +597,7 @@ Status PatternFusionUtil::ParseNChannelIdx(ge::GeTensorDesc& tensorDesc, size_t&
     return SUCCESS;
   }
   if (tensorGeFormat == FORMAT_HWCN) {
-    channelIdx = 3;
+    channelIdx = CHANNELIDX_NUMBER_3;
     return SUCCESS;
   }
   return FAILED;
@@ -858,7 +860,7 @@ Status PatternFusionUtil::UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr
 const int64_t UNKNOWN_SHAPE_VALUE = -1;
 const int64_t SHAPE_UNKNOWN_DIM_NUM = -2;
 
-bool PatternFusionUtil::IsUnknownShape(const int64_t& dims) {
+bool PatternFusionUtil::IsUnknownShape(const int64_t &dims) {
   if (dims == UNKNOWN_SHAPE_VALUE || dims == SHAPE_UNKNOWN_DIM_NUM) {
     return true;
   }
@@ -959,8 +961,7 @@ ge::NodePtr PatternFusionUtil::InsertOutputNode(ge::ComputeGraph &graph, ge::Nod
  *          src node                            node1 node2 node3
  */
 ge::NodePtr PatternFusionUtil::InsertSingleNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
-                                                const bool &is_input, const int32_t &index,
-                                                vector<ge::NodePtr> &fusion_nodes) {
+    const bool &is_input, const int32_t &index, vector<ge::NodePtr> &fusion_nodes) {
   ge::NodePtr single_node = nullptr;
   static std::atomic<uint64_t> name_id(0);
   if (is_input) {
@@ -979,7 +980,7 @@ ge::NodePtr PatternFusionUtil::InsertSingleNode(ge::ComputeGraph &graph, ge::Nod
   return single_node;
 }
 
-Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode, unsigned int weightIdx,
+Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, const NodePtr srcNode, unsigned int weightIdx,
                                             const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx) {
   string curOpType = "SliceD";
   OpDescPtr convDesc = srcNode->GetOpDesc();

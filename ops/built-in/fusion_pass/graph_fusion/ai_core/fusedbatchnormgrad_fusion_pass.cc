@@ -37,6 +37,13 @@
 #include "pattern_fusion_util.h"
 
 namespace fe {
+static const uint32_t NUMBER_2 = 2;
+static const uint32_t NUMBER_3 = 3;
+static const uint32_t NUMBER_4 = 4;
+static const uint32_t NUMBER_0 = 0;
+static const uint32_t NUMBER_5 = 5;
+static const uint32_t NUMBER_1 = 1;
+
 vector<FusionPattern*> FusedBatchNormGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern(PATTERN_FUSEDBATCHNORMGRAD);
@@ -91,26 +98,26 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                       return NOT_CHANGED);
 
     size_t outDataAnchorSize = fusedBatchNormGrad->GetAllOutDataAnchors().size();
-    if (outDataAnchorSize < 3) {
+    if (outDataAnchorSize < NUMBER_3) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "BatchNormGrad should have more than three outputs.");
       return NOT_CHANGED;
     }
-    if (outDataAnchorSize == 4) {
-      OutDataAnchorPtr fusedOutAnchorThree = fusedBatchNormGrad->GetOutDataAnchor(3);
+    if (outDataAnchorSize == NUMBER_4) {
+      OutDataAnchorPtr fusedOutAnchorThree = fusedBatchNormGrad->GetOutDataAnchor(NUMBER_3);
       if (!fusedOutAnchorThree->GetPeerInDataAnchors().empty()) {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "only support three real outputs for fusedBatchNormGrad.");
         return NOT_CHANGED;
       }
     }
-    if (outDataAnchorSize == 5) {
-      OutDataAnchorPtr fusedOutAnchorThree = fusedBatchNormGrad->GetOutDataAnchor(3);
-      OutDataAnchorPtr fusedOutAnchorFour = fusedBatchNormGrad->GetOutDataAnchor(4);
+    if (outDataAnchorSize == NUMBER_5) {
+      OutDataAnchorPtr fusedOutAnchorThree = fusedBatchNormGrad->GetOutDataAnchor(NUMBER_3);
+      OutDataAnchorPtr fusedOutAnchorFour = fusedBatchNormGrad->GetOutDataAnchor(NUMBER_4);
       if (!fusedOutAnchorThree->GetPeerInDataAnchors().empty() || !fusedOutAnchorFour->GetPeerInDataAnchors().empty()) {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "only support three real outputs for fusedBatchNormGrad.");
         return NOT_CHANGED;
       }
     }
-    if (outDataAnchorSize > 5) {
+    if (outDataAnchorSize > NUMBER_5) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "BatchNormGrad only should have less than five outputs.");
       return NOT_CHANGED;
     }
@@ -123,16 +130,16 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
         return INTERNAL_ERROR);
 
     ge::Node::Vistor<ge::NodePtr> input_node_vector = fusedBatchNormGrad->GetInDataNodes();
-    ge::GeTensorDesc inputDesc0 = input_node_vector.at(0)->GetOpDesc()->GetOutputDesc(0);
-    ge::GeTensorDesc inputDesc1 = input_node_vector.at(1)->GetOpDesc()->GetOutputDesc(0);
-    ge::GeTensorDesc inputDesc3 = input_node_vector.at(3)->GetOpDesc()->GetOutputDesc(0);
-    ge::GeTensorDesc inputDesc4 = input_node_vector.at(4)->GetOpDesc()->GetOutputDesc(0);
-    xUpdateBnOp->AddInputDesc("grads", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(1));
-    xUpdateBnOp->AddInputDesc("x", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(1));
-    xUpdateBnOp->AddInputDesc("batch_mean", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xUpdateBnOp->AddInputDesc("batch_variance", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xUpdateBnOp->AddOutputDesc("diff_scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xUpdateBnOp->AddOutputDesc("diff_offset", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
+    ge::GeTensorDesc inputDesc0 = input_node_vector.at(NUMBER_0)->GetOpDesc()->GetOutputDesc(NUMBER_0);
+    ge::GeTensorDesc inputDesc1 = input_node_vector.at(NUMBER_1)->GetOpDesc()->GetOutputDesc(NUMBER_0);
+    ge::GeTensorDesc inputDesc3 = input_node_vector.at(NUMBER_3)->GetOpDesc()->GetOutputDesc(NUMBER_0);
+    ge::GeTensorDesc inputDesc4 = input_node_vector.at(NUMBER_4)->GetOpDesc()->GetOutputDesc(NUMBER_0);
+    xUpdateBnOp->AddInputDesc("grads", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_1));
+    xUpdateBnOp->AddInputDesc("x", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_1));
+    xUpdateBnOp->AddInputDesc("batch_mean", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xUpdateBnOp->AddInputDesc("batch_variance", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xUpdateBnOp->AddOutputDesc("diff_scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xUpdateBnOp->AddOutputDesc("diff_offset", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
 
     ge::NodePtr xUpdateOp = graph.AddNode(xUpdateBnOp);
     fusionNodes.push_back(xUpdateOp);
@@ -142,25 +149,25 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
         xReduceBnOp = std::make_shared<ge::OpDesc>(fusedBatchNormGradName + "_Reduce", PASS_OP_TYPE_BNREDUCEGRAD),
         return INTERNAL_ERROR);
 
-    ge::GeTensorDesc inputDesc2 = input_node_vector.at(2)->GetOpDesc()->GetOutputDesc(0);
-    xReduceBnOp->AddInputDesc("grads", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(1));
-    xReduceBnOp->AddInputDesc("x", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(1));
-    xReduceBnOp->AddInputDesc("diff_scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xReduceBnOp->AddInputDesc("diff_offset", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xReduceBnOp->AddInputDesc("scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xReduceBnOp->AddInputDesc("batch_mean", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xReduceBnOp->AddInputDesc("batch_variance", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(3));
-    xReduceBnOp->AddOutputDesc("y", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(1));
+    ge::GeTensorDesc inputDesc2 = input_node_vector.at(NUMBER_2)->GetOpDesc()->GetOutputDesc(NUMBER_0);
+    xReduceBnOp->AddInputDesc("grads", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_1));
+    xReduceBnOp->AddInputDesc("x", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_1));
+    xReduceBnOp->AddInputDesc("diff_scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xReduceBnOp->AddInputDesc("diff_offset", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xReduceBnOp->AddInputDesc("scale", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xReduceBnOp->AddInputDesc("batch_mean", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xReduceBnOp->AddInputDesc("batch_variance", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_3));
+    xReduceBnOp->AddOutputDesc("y", fusedBatchNormGrad->GetOpDesc()->GetInputDesc(NUMBER_1));
     ge::NodePtr xReduceOp = graph.AddNode(xReduceBnOp);
     fusionNodes.push_back(xReduceOp);
 
     // add edge for input of xUpdate
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutDataAnchor(0), xReduceOp->GetInDataAnchor(2)),
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutDataAnchor(NUMBER_0), xReduceOp->GetInDataAnchor(NUMBER_2)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                               "Add edge between xUpdateOp output(0) and xReduceOp "
                               "input(2) failed."),
                       return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutDataAnchor(1), xReduceOp->GetInDataAnchor(3)),
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutDataAnchor(NUMBER_1), xReduceOp->GetInDataAnchor(NUMBER_3)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                               "Add edge between xUpdateOp output(1) and xReduceOp "
                               "input(3) failed."),
@@ -188,18 +195,21 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
               fusedBatchNormGrad->GetName().c_str(), fusedBatchNormGrad->GetAllInDataAnchors().size());
       FUSION_PASS_CHECK(nullptr == inDataAnchor->GetPeerOutAnchor(),
                         OP_LOGW(FUSED_OP_TYPE.c_str(), "inDataAnchor is null"), continue);
-      if (inDataAnchor->GetIdx() == 0) {
+      if (inDataAnchor->GetIdx() == NUMBER_0) {
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(0)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between grads input node and x_update node failed."),
-            return FAILED);
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), 
+                                               xUpdateOp->GetInDataAnchor(NUMBER_0)),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                           "Add edge between grads input node and x_update node failed."),
+                                           return FAILED);
 
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(0)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between grads input node and x_reduce node failed."),
-            return FAILED);
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(NUMBER_0)),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                           "Add edge between grads input node and x_reduce node failed."),
+                                           return FAILED);
       }
-      if (inDataAnchor->GetIdx() == 1) {
+      if (inDataAnchor->GetIdx() == NUMBER_1) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(1)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between x input node and x_update node failed."), return FAILED);
@@ -207,29 +217,29 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
             SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(1)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between x input node and x_reduce node failed."), return FAILED);
       }
-      if (inDataAnchor->GetIdx() == 2) {
+      if (inDataAnchor->GetIdx() == NUMBER_2) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(4)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between scale input node and x_reduce node failed."),
             return FAILED);
       }
-      if (inDataAnchor->GetIdx() == 3) {
+      if (inDataAnchor->GetIdx() == NUMBER_3) {
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(2)),
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(NUMBER_2)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "Add edge between batch_mean input node and x_update "
                     "node failed."),
             return FAILED);
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(5)),
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(NUMBER_5)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "Add edge between batch_mean input node and x_reduce "
                     "node failed."),
             return FAILED);
       }
-      if (inDataAnchor->GetIdx() == 4) {
+      if (inDataAnchor->GetIdx() == NUMBER_4) {
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(3)),
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xUpdateOp->GetInDataAnchor(NUMBER_3)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "Add edge between batch_variance input node and "
                     "x_update node failed."),
@@ -244,7 +254,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     }
     for (auto outDataAnchor : fusedBatchNormGrad->GetAllOutDataAnchors()) {
       auto outputIdex = outDataAnchor->GetIdx();
-      if (outputIdex == 0) {
+      if (outputIdex == NUMBER_0) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),
@@ -257,7 +267,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between xReduceOp input and graph node failed."), return FAILED);
         }
         continue;
-      } else if (outputIdex < 3) {
+      } else if (outputIdex < NUMBER_3) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),
@@ -269,7 +279,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
               SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutDataAnchor(outputIdex - 1), peerInDataAnchor),
               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between xUpdateOp input and graph node failed."), return FAILED);
         }
-      } else if (outputIdex > 2) {
+      } else if (outputIdex > NUMBER_2) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),

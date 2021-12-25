@@ -188,7 +188,8 @@ Status MulFusionOptimizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   FUSION_PASS_CHECK(in_node_ptr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOptype.c_str(), "Node MUL is null, "
                                                                       "fusion failed."), return PARAM_INVALID);
   OP_LOGD(kFusedOptype.c_str(), "Check MulFusionOptimizeFusionPass");
-  FUSION_PASS_CHECK(CheckParameterAndSet(in_node_ptr) != SUCCESS, OP_LOGW(kFusedOptype.c_str(), "Check MUL param failed."),
+  FUSION_PASS_CHECK(CheckParameterAndSet(in_node_ptr) != SUCCESS, 
+                    OP_LOGW(kFusedOptype.c_str(), "Check MUL param failed."),
                     return NOT_CHANGED);
 
   OP_LOGD(kFusedOptype.c_str(), "End MulFusionOptimizeFusionPass");
