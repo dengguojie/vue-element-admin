@@ -25,7 +25,7 @@ const int32_t KSplitSize = 64 * 1024;
 const char *kScatterElements = "ScatterElements";
 #define DO_COMPUTE_CASE(DTYPE, TYPE, ITYPE, CTX)   \
   case (DTYPE): {                                  \
-    if((ITYPE) == DT_INT32) {                      \
+    if ((ITYPE) == DT_INT32) {                     \
       return DoCompute<TYPE, int32_t>(ctx);        \
     } else {                                       \
       return DoCompute<TYPE, int64_t>(ctx);        \
@@ -64,7 +64,7 @@ uint32_t ScatterElementsCpuKernel::Compute(CpuKernelContext &ctx) {
                     ctx);
   default:
     std::string err_msg = ConcatString(
-        "Input[0] data type[",DTypeStr(data_type),"] is unsupported.",
+        "Input[0] data type[", DTypeStr(data_type), "] is unsupported.",
         "It should be float16|float|double|bool|int8|int16|int32|int64|uint8|",
         "unint32|unit64|complex16|complex32");
     KERNEL_LOG_ERROR("%s", err_msg.c_str());
