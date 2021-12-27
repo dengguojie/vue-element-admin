@@ -40,7 +40,7 @@ static const char FUSED_NODE[] = "ArgMaxWithK";
 static const char PATTERN_FUSEDNODE[] = "ArgMaxWithK";
 
 namespace fe {
-vector<FusionPattern*> ArgMaxWithKFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> ArgMaxWithKFusionPass::DefinePatterns() {
 
   vector<FusionPattern*> patterns;
 
@@ -56,7 +56,7 @@ vector<FusionPattern*> ArgMaxWithKFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status ArgMaxWithKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status ArgMaxWithKFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of ArgMaxWithK
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),

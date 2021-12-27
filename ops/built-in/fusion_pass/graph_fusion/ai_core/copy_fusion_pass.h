@@ -27,8 +27,8 @@
 namespace fe {
 class CopyFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
   const string FUSED_OP_TYPE = "Copy";
 };
 }  // namespace fe

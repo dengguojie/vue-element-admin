@@ -30,23 +30,20 @@
 namespace fe {
 class ExtremumGradFusionPass : public PatternFusionBasePass {
  public:
-  ExtremumGradFusionPass();
-  ~ExtremumGradFusionPass();
-
   Status Run(ge::ComputeGraph& graph) override;
   Status Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr opsKernelInfoStorePtr) override;
 
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  bool CheckImplyType();
+  bool CheckImplyType() const;
   bool MatchDx(ge::NodePtr nodeSelect, std::map<std::string, ge::NodePtr>& recordMap);
 
   bool MatchDy(ge::NodePtr nodeSelect, std::map<std::string, ge::NodePtr>& recordMap);
 
-  Status RunOnePatternFusion(ge::ComputeGraph& graph, ge::NodePtr equalNode);
+  Status RunOnePatternFusion(ge::ComputeGraph& graph, ge::NodePtr nodeEqual);
 
   Status DoFusion(ge::ComputeGraph& graph, const std::map<std::string, ge::NodePtr>& recordMap,
                   vector<ge::NodePtr>& fusionNodes);
@@ -57,24 +54,25 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
   ge::NodePtr CreateExtremumGradNode(ge::ComputeGraph& graph, ge::NodePtr nodeEqual, ge::NodePtr selectDxNode,
                                      ge::NodePtr selectDyNode, const std::map<std::string, ge::NodePtr>& recordMap);
 
-  Status SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, ge::OpDescPtr selectOpDesc, ge::OpDescPtr extreGradOpDesc);
+  Status SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, ge::OpDescPtr selectOpDesc, 
+                               ge::OpDescPtr extreGradOpDesc) const;
 
-  Status AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, ge::NodePtr equalNode, ge::NodePtr extreGradNode,
-                      ge::NodePtr outputDxNode, ge::NodePtr outputDyNode);
+  Status AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, ge::NodePtr nodeEqual, ge::NodePtr extreGradNode,
+                      ge::NodePtr outputDxNode, ge::NodePtr outputDyNode) const;
 
-  Status ReplaceEdgeDst(ge::OutDataAnchorPtr src, ge::InDataAnchorPtr dst, ge::InDataAnchorPtr newDst);
+  Status ReplaceEdgeDst(ge::OutDataAnchorPtr src, ge::InDataAnchorPtr dst, ge::InDataAnchorPtr newDst) const;
 
-  Status ReplaceEdgeSrc(ge::OutDataAnchorPtr src, ge::OutDataAnchorPtr newSrc, ge::InDataAnchorPtr dst);
+  Status ReplaceEdgeSrc(ge::OutDataAnchorPtr src, ge::OutDataAnchorPtr newSrc, ge::InDataAnchorPtr dst) const;
 
   bool CheckAttrMatch(const std::map<string, ge::NodePtr>& recordMap);
 
   void SetExtemDataDumpAttr(const std::map<string, ge::NodePtr>& recordMap, vector<ge::NodePtr>& fusionNodes);
 
-  bool CheckEqualOp(ge::NodePtr nodeEqual);
+  bool CheckEqualOp(ge::NodePtr nodeEqual) const;
 
-  bool CheckNameScope(const string& nameA, const string& nameB);
+  bool CheckNameScope(const string& nameA, const string& nameB) const;
 
-  bool CheckZeroConstantOp(ge::NodePtr nodeZeros);
+  bool CheckZeroConstantOp(ge::NodePtr nodeZeros) const;
 
   bool CheckSelectOp(ge::NodePtr nodeSelect, ge::NodePtr nodeEqual);
 
@@ -83,8 +81,8 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
   bool CheckSumOp(ge::NodePtr nodeSum, ge::NodePtr nodeEqual);
 
   ge::NodePtr FindNodeInRecordMap(const map<string, ge::NodePtr>& recordMap, string key);
-  Status RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node);
-  Status RemoveOutputEdges(ge::NodePtr node);
+  Status RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node) const;
+  Status RemoveOutputEdges(ge::NodePtr node) const;
   const std::string CONSTANT = "Const";
   const string FUSED_OP_TYPE = "MaximumGrad/MinimumGrad";
 };

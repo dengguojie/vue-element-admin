@@ -28,8 +28,8 @@
 namespace fe {
 class ArgMaxWithKFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
 
  private:
   const string FUSED_OP_TYPE = "ArgMaxWithKD";

@@ -67,31 +67,31 @@ std::vector<int> compute_kernel(int input_size, int output_size){
   int res0 = 0;
 
   int ceil_mode = 1;
-  
-  if (input_size % output_size == 0){
+
+  if (input_size % output_size == 0) {
     kernel_size = stride_size = input_size / output_size;
     padding_size = 0;
     return std::vector<int>{0, kernel_size, stride_size, padding_size, ceil_mode};
   } else {
-    for(kernel_size=(input_size / output_size + 1);kernel_size<=(input_size / output_size + 2);kernel_size++){
-      for(stride_size=(input_size / output_size);stride_size<=(input_size / output_size + 1);stride_size++){
+    for (kernel_size = (input_size / output_size + 1); kernel_size <= (input_size / output_size + 2); kernel_size++) {
+      for (stride_size = (input_size / output_size); stride_size <= (input_size / output_size + 1); stride_size++) {
         res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
-        if (res0 == output_size){
+        if (res0 == output_size) {
           return std::vector<int>{1, kernel_size, stride_size, padding_size, ceil_mode};
         }
       }
     }
     while (padding_size >= 0) {
-      for(kernel_size=padding_size + 1;kernel_size<=input_size + 2 * padding_size;kernel_size++){
-        for(stride_size=1;stride_size<=kernel_size;stride_size++){
+      for (kernel_size = padding_size + 1; kernel_size <= input_size + 2 * padding_size; kernel_size++) {
+        for (stride_size = 1; stride_size <= kernel_size; stride_size++) {
           res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
-          if (res0 == output_size){
+          if (res0 == output_size) {
             return std::vector<int>{2, kernel_size, stride_size, padding_size, ceil_mode};
           }
         }
       }
       padding_size++;
-      if (padding_size >= 10){
+      if (padding_size >= 10) {
         break;
       }
     }

@@ -49,7 +49,7 @@ Status CheckAllFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_in
   return SUCCESS;
 }
 
-vector<FusionPattern*> AReduceAllFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> AReduceAllFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceAllFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -60,7 +60,7 @@ vector<FusionPattern*> AReduceAllFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceAllFusionPass fusion begin.");
   ge::NodePtr allNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(allNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -99,10 +99,10 @@ Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   std::vector<int64_t> const_data;
-  int32_t* const_data_ptr = (int32_t*)data.GetData();
+  const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(data.GetData());
   size_t const_data_size = data.GetSize() / sizeof(int32_t);
   for (size_t i = 0; i < const_data_size; ++i) {
-    const_data.push_back((int32_t)((*(const_data_ptr + i))));
+    const_data.push_back(*(const_data_ptr + i));
   }
 
   if (const_data_size == 0) {

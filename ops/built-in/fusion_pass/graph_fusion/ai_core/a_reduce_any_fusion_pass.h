@@ -29,8 +29,8 @@ namespace fe {
 
 class AReduceAnyFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);

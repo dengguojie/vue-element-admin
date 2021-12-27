@@ -21,20 +21,20 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_SQUARE_SUM_MAXIMUM_RSQRT_MUL_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_SQUARE_SUM_MAXIMUM_RSQRT_MUL_FUSION_PASS_H_
 
-#include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 #include <string>
 #include <vector>
+#include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class AASquareSumMaximumRsqrtMulFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status CheckPeerAllInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum);
-  Status IsMatch(ge::NodePtr& squareNode, ge::NodePtr& sumNode, ge::NodePtr& maximumNode, ge::NodePtr& rsqrtNode,
-                 ge::NodePtr& mulNode);
+  Status CheckPeerAllInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum) const;
+  Status IsMatch(const ge::NodePtr& squareNode, const ge::NodePtr& sumNode, const ge::NodePtr& maximumNode,
+                 const ge::NodePtr& rsqrtNode, const ge::NodePtr& mulNode) const;
   const string FUSED_OP_TYPE = "L2Normalize";
 };
 

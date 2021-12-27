@@ -44,12 +44,12 @@ namespace fe {
 
 class AReduceMaxFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  Status CheckMaxFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, Operator& op);
+  Status CheckMaxFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info, const Operator& op) const;
   const string FUSED_OP_TYPE = "ReduceMax";
 };
 }  // namespace fe

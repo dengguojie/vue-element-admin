@@ -20,7 +20,7 @@
 #include <string>
 
 namespace fe {
-static const std::string NEED_RE_PRECOMPILE = "need_re_precompile";
+const std::string NEED_RE_PRECOMPILE = "need_re_precompile";
 } // namespace fe
 #endif //OPS_BUILT_IN_FUSION_PASS_COMMON_AICORE_UTIL_ATTR_DEFINE_H_
 

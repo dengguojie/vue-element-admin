@@ -26,10 +26,10 @@
 namespace fe {
 class LogSoftmaxFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  std::vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
  private:
-  bool CheckISUsePattern(int64_t inputH, int64_t inputW, int64_t inputC);
+  bool CheckISUsePattern(int64_t inputW, int64_t inputC) const;
   const string FUSED_OP_TYPE = "TransposeD_LogSoftmaxV2";
 };
 

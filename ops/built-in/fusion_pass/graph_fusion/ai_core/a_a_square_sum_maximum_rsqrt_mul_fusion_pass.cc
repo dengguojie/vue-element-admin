@@ -65,7 +65,7 @@ static const string L2_NORMALIZE_ATTR_AXIS = "axis";
                  mul
 */
 
-vector<FusionPattern*> AASquareSumMaximumRsqrtMulFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> AASquareSumMaximumRsqrtMulFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AASquareSumMaximumRsqrtMulFusionPass pattern begin");
   vector<FusionPattern*> patterns;
 
@@ -93,7 +93,7 @@ vector<FusionPattern*> AASquareSumMaximumRsqrtMulFusionPass::DefinePatterns() {
 }
 
 Status AASquareSumMaximumRsqrtMulFusionPass::CheckPeerAllInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor,
-                                                                       const size_t& expectedNum) {
+                                                                       const size_t& expectedNum) const {
   FUSION_PASS_CHECK(outputAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                    "outputAnchor must not be null"),
                     return PARAM_INVALID);
@@ -103,9 +103,9 @@ Status AASquareSumMaximumRsqrtMulFusionPass::CheckPeerAllInDataAnchors(const ge:
   return FAILED;
 }
 
-Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(ge::NodePtr& squareNode, ge::NodePtr& sumNode,
-                                                     ge::NodePtr& maximumNode, ge::NodePtr& rsqrtNode,
-                                                     ge::NodePtr& mulNode) {
+Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(const ge::NodePtr& squareNode, const ge::NodePtr& sumNode,
+                                                     const ge::NodePtr& maximumNode, const ge::NodePtr& rsqrtNode,
+                                                     const ge::NodePtr& mulNode) const {
   FUSION_PASS_CHECK(squareNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                    "squareNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -219,7 +219,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(ge::NodePtr& squareNode, ge
 }
 
 Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                                    vector<ge::NodePtr>& fusionNodes) {
+                                                    std::vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AASquareSumMaximumRsqrtMulFusionPass fusion begin");
   ge::NodePtr squareNode = GetNodeFromMapping(PATTERN_SQUARE, mapping);
   ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_SUM, mapping);
@@ -283,7 +283,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   size_t sizeTotal = axis_w->GetData().GetSize();
   ge::DataType axisType = axis_w->GetTensorDesc().GetDataType();
   if (axisType == ge::DT_INT32) {
-    const int32_t* const_data_ptr = (int32_t*)(axis_w->GetData().GetData());
+    const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(axis_w->GetData().GetData());
     FUSION_PASS_CHECK(const_data_ptr == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
@@ -291,14 +291,14 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
 
     std::vector<int32_t> const_data;
     for (size_t i = 0; i < size; ++i) {
-      int32_t tmp = (int32_t)((*(const_data_ptr + i)));
+      int32_t tmp = *(const_data_ptr + i);
       const_data.push_back(tmp);
 
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s const data int32 proto %d", mulNode->GetOpDesc()->GetName().c_str(), tmp);
     }
     ge::AttrUtils::SetListInt(mulNode->GetOpDesc(), ge::L2_NORMALIZE_ATTR_AXIS, const_data);
   } else if (axisType == ge::DT_INT64) {
-    const int64_t* const_data_ptr = (int64_t*)(axis_w->GetData().GetData());
+    const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(axis_w->GetData().GetData());
     FUSION_PASS_CHECK(const_data_ptr == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
@@ -306,9 +306,9 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
 
     std::vector<int64_t> const_data;
     for (size_t i = 0; i < size; ++i) {
-      int64_t tmp = (int64_t)((*(const_data_ptr + i)));
+      int64_t tmp = *(const_data_ptr + i);
       const_data.push_back(tmp);
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s const data int64 proto %d", mulNode->GetOpDesc()->GetName().c_str(), tmp);
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s const data int64 proto %lld", mulNode->GetOpDesc()->GetName().c_str(), tmp);
     }
     ge::AttrUtils::SetListInt(mulNode->GetOpDesc(), ge::L2_NORMALIZE_ATTR_AXIS, const_data);
   }

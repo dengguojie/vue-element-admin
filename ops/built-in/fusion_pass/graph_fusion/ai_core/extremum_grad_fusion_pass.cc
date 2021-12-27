@@ -83,18 +83,13 @@ static const int NAME_SCOPE_BACK_INDEX = 2;
 
 static const string STREAM_LABEL = "_stream_label";
 
-ExtremumGradFusionPass::ExtremumGradFusionPass() {
-}
-
-ExtremumGradFusionPass::~ExtremumGradFusionPass() {
-}
-
-vector<FusionPattern*> ExtremumGradFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> ExtremumGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   return patterns;
 }
 
-Status ExtremumGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+Status ExtremumGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                      std::vector<ge::NodePtr>& fusionNodes) {
   return SUCCESS;
 }
 
@@ -137,7 +132,7 @@ Status ExtremumGradFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePt
  * Check imply type
  *
  */
-bool ExtremumGradFusionPass::CheckImplyType() {
+bool ExtremumGradFusionPass::CheckImplyType() const {
   domi::ImplyType greaterEqualImplyType = domi::OpRegistry::Instance()->GetImplyType(GREATER_EQUAL);
   domi::ImplyType lessEqualImplyType = domi::OpRegistry::Instance()->GetImplyType(LESS_EQUAL);
   if (greaterEqualImplyType != domi::ImplyType::TVM && lessEqualImplyType != domi::ImplyType::TVM) {
@@ -151,7 +146,7 @@ bool ExtremumGradFusionPass::CheckImplyType() {
 /*
  * Check nameA & nameB have same scope or not
  */
-bool ExtremumGradFusionPass::CheckNameScope(const string& nameA, const string& nameB) {
+bool ExtremumGradFusionPass::CheckNameScope(const string& nameA, const string& nameB) const {
   vector<string> nameVecA = ge::StringUtils::Split(nameA, '/');
   vector<string> nameVecB = ge::StringUtils::Split(nameB, '/');
 
@@ -165,7 +160,7 @@ bool ExtremumGradFusionPass::CheckNameScope(const string& nameA, const string& n
   return nameVecA == nameVecB;
 }
 
-bool ExtremumGradFusionPass::CheckZeroConstantOp(ge::NodePtr nodeZeros) {
+bool ExtremumGradFusionPass::CheckZeroConstantOp(ge::NodePtr nodeZeros) const {
   if (nodeZeros == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "nodeZeros is nullptr");
     return false;
@@ -348,7 +343,7 @@ bool ExtremumGradFusionPass::MatchDy(ge::NodePtr nodeSelect, map<string, ge::Nod
   }
 
   // Step3: Check nodeSelect's validity (3 input anchor, 1 output anchor)
-  if (CheckSelectOp(nodeSelect, nodeEqual) == false) {
+  if (!CheckSelectOp(nodeSelect, nodeEqual)) {
     return false;
   }
 
@@ -418,7 +413,7 @@ bool ExtremumGradFusionPass::MatchDy(ge::NodePtr nodeSelect, map<string, ge::Nod
   return true;
 }
 
-bool ExtremumGradFusionPass::CheckEqualOp(ge::NodePtr nodeEqual) {
+bool ExtremumGradFusionPass::CheckEqualOp(ge::NodePtr nodeEqual) const {
   if (nodeEqual == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "node is null");
     return false;
@@ -458,7 +453,7 @@ Status ExtremumGradFusionPass::RunOnePatternFusion(ge::ComputeGraph& graph, ge::
   map<string, ge::NodePtr> recordMap;
   // Step1: check nodeEqual's validity, two input data anchor, one output data
   // anchor
-  if (CheckEqualOp(nodeEqual) == false) {
+  if (!CheckEqualOp(nodeEqual)) {
     return NOT_CHANGED;
   }
 
@@ -693,7 +688,7 @@ Status ExtremumGradFusionPass::DoFusion(ge::ComputeGraph& graph, const map<strin
   return SUCCESS;
 }
 
-Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node) {
+Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node) const {
   if (node == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[node] must not be null.");
     return fe::PARAM_INVALID;
@@ -740,7 +735,7 @@ Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::Nod
   return SUCCESS;
 }
 
-Status ExtremumGradFusionPass::RemoveOutputEdges(ge::NodePtr node) {
+Status ExtremumGradFusionPass::RemoveOutputEdges(ge::NodePtr node) const {
   if (node == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[node] must not be null.");
     return fe::PARAM_INVALID;
@@ -920,7 +915,7 @@ ge::NodePtr ExtremumGradFusionPass::CreateExtremumGradNode(ge::ComputeGraph& gra
 }
 
 Status ExtremumGradFusionPass::SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, ge::OpDescPtr selectOpDesc,
-                                                     ge::OpDescPtr extreGradOpDesc) {
+                                                     ge::OpDescPtr extreGradOpDesc) const {
   if (equalOpDesc == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[equalOpDesc] must not be null.");
     return fe::PARAM_INVALID;
@@ -988,7 +983,7 @@ Status ExtremumGradFusionPass::SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, 
 
 Status ExtremumGradFusionPass::AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, ge::NodePtr nodeEqual,
                                             ge::NodePtr extreGradNode, ge::NodePtr outputDxNode,
-                                            ge::NodePtr outputDyNode) {
+                                            ge::NodePtr outputDyNode) const {
   if (nodeEqual == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[nodeEqual] must not be null.");
     return fe::PARAM_INVALID;
@@ -1017,8 +1012,9 @@ Status ExtremumGradFusionPass::AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, 
     auto dstAnchor = extreGradNode->GetInDataAnchor(inAnchorIndex);
     Status replaceEdgeDstRes = ReplaceEdgeDst(srcAnchor, inputAnchor, dstAnchor);
     if (replaceEdgeDstRes != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace equal_inputAnchors[%d] to extreGradNode_inputAnchors[%d] failed",
-              inAnchorIndex - EQUAL_TO_EXTREMUM_START, inAnchorIndex);
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Replace equal_inputAnchors[%d] to extreGradNode_inputAnchors[%d] failed",
+                                     inAnchorIndex - EQUAL_TO_EXTREMUM_START, inAnchorIndex);
       return replaceEdgeDstRes;
     }
 
@@ -1074,7 +1070,7 @@ Status ExtremumGradFusionPass::AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, 
 }
 
 Status ExtremumGradFusionPass::ReplaceEdgeDst(ge::OutDataAnchorPtr src, ge::InDataAnchorPtr dst,
-                                              ge::InDataAnchorPtr newDst) {
+                                              ge::InDataAnchorPtr newDst) const {
   if (ge::GraphUtils::RemoveEdge(src, dst) != ge::GRAPH_SUCCESS ||
       ge::GraphUtils::AddEdge(src, newDst) != ge::GRAPH_SUCCESS) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace edge dst Failed.");
@@ -1084,7 +1080,7 @@ Status ExtremumGradFusionPass::ReplaceEdgeDst(ge::OutDataAnchorPtr src, ge::InDa
 }
 
 Status ExtremumGradFusionPass::ReplaceEdgeSrc(ge::OutDataAnchorPtr src, ge::OutDataAnchorPtr newSrc,
-                                              ge::InDataAnchorPtr dst) {
+                                              ge::InDataAnchorPtr dst) const {
   if (ge::GraphUtils::RemoveEdge(src, dst) != ge::GRAPH_SUCCESS ||
       ge::GraphUtils::AddEdge(newSrc, dst) != ge::GRAPH_SUCCESS) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace edge src Failed.");

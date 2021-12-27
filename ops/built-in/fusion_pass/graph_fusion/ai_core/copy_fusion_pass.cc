@@ -44,7 +44,7 @@ using namespace ge;
 namespace fe {
 static const string PATTERN_COPY = "Copy";
 
-vector<FusionPattern*> CopyFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> CopyFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("CopyFusion");
@@ -59,7 +59,7 @@ vector<FusionPattern*> CopyFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status CopyFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status CopyFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) {
   // Get copy node and copy node description.
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into COPYPass");
   ge::NodePtr copyNode = GetNodeFromMapping(PATTERN_COPY, mapping);

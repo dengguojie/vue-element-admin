@@ -42,7 +42,7 @@ namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeCombinedNonMaxSuppression";
 static const string FUSED_NODE = "CombinedNonMaxSuppression";
 
-vector<FusionPattern*> CombinedNonMaxSuppressionFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> CombinedNonMaxSuppressionFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("CombinedNonMaxSuppressionFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
@@ -53,7 +53,7 @@ vector<FusionPattern*> CombinedNonMaxSuppressionFusionPass::DefinePatterns() {
 }
 
 Status CombinedNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                                   vector<ge::NodePtr>& newNodes) {
+                                                   std::vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define CombinedNonMaxSuppressionFusionPass fusion begin.");
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fused_node == nullptr,

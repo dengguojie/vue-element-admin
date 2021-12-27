@@ -37,7 +37,7 @@ Status AssitHelp(const int32_t n, vector<int64_t> shape, Dtype& output1) {
 }
 
 Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info,
-                                                  const Operator& op) {
+                                                  const Operator& op) const {
   bool keep_dims = false;
   const string keep_dims_name = "keep_dims";
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
@@ -58,7 +58,7 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, v
   return SUCCESS;
 }
 
-vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceSumFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -69,7 +69,7 @@ vector<FusionPattern*> AReduceSumFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceSumFusionPass fusion begin.");
   ge::NodePtr sumNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -100,10 +100,10 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   std::vector<int64_t> const_data;
-  int32_t* const_data_ptr = (int32_t*)data.GetData();
+  const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(data.GetData());
   size_t const_data_size = data.GetSize() / sizeof(int32_t);
   for (size_t i = 0; i < const_data_size; ++i) {
-    const_data.push_back((int32_t)((*(const_data_ptr + i))));
+    const_data.push_back(*(const_data_ptr + i));
   }
 
   int axis_value = axis_input.GetShape().GetDim(0);

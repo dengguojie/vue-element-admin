@@ -40,7 +40,7 @@ static const char* FUSED_NODE = "LogSoftmaxV2";
 static const std::string PATTERN_FUSEDNODE = "LogSoftmax";
 static const vector<vector<int>> SHAPE = {{2000, 29}};
 
-bool LogSoftmaxFusionPass::CheckISUsePattern(int64_t inputH, int64_t inputW, int64_t inputC) {
+bool LogSoftmaxFusionPass::CheckISUsePattern(int64_t inputW, int64_t inputC) const {
   PlatformInfo platform_info;
   OptionalInfo optional_info;
   FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
@@ -55,7 +55,7 @@ bool LogSoftmaxFusionPass::CheckISUsePattern(int64_t inputH, int64_t inputW, int
   return false;
 }
 
-vector<FusionPattern*> LogSoftmaxFusionPass::DefinePatterns() {
+std::vector<FusionPattern*> LogSoftmaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("LogSoftmaxFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
@@ -65,12 +65,12 @@ vector<FusionPattern*> LogSoftmaxFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter LogSoftmaxFusionPass.");
   ge::NodePtr logsoftmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  
+
   FUSION_PASS_CHECK(logsoftmaxNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logsoftmax node is null."),
-                    return PARAM_INVALID);           
+                    return PARAM_INVALID);
   ge::OpDescPtr logsoftmaxOpDesc = logsoftmaxNode->GetOpDesc();
   FUSION_PASS_CHECK(logsoftmaxOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logsoftmax is null."),
                     return PARAM_INVALID);
@@ -97,7 +97,7 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   } else {
     return NOT_CHANGED;
   }
-  isUsePattern = CheckISUsePattern(inputH, inputW, inputC);
+  isUsePattern = CheckISUsePattern(inputW, inputC);
   if (axes[0] == 2 && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
     ge::GeShape assitShape(inputDimInfo);
@@ -125,7 +125,7 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                       return PARAM_INVALID);
     ge::NodePtr preNode = preAnchorPtr0->GetOwnerNode();
     FUSION_PASS_CHECK(preNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preNode is null."),
-                      return PARAM_INVALID); 
+                      return PARAM_INVALID);
 
     // creat a transposeD node
     std::shared_ptr<ge::OpDesc> transposeDDesc = nullptr;
