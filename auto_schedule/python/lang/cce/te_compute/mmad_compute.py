@@ -44,21 +44,19 @@ def matmul(tensor_a,
 
     tensor_b : second tensor b with the same type and shape with a
 
-              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
-              must be 32*16.
-              If A is transpose , then AShape classification matrix must be
-              32*16 in gm/L1,then it is 16*32 in L0A.
-              If B is transpose , then BShape classification matrix must be
-              16*32 in gm/L1,then it is 32*16 in L0B.
+    If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+    must be 32*16.
+    If A is transpose , then AShape classification matrix must be
+    32*16 in gm/L1,then it is 16*32 in L0A.
+    If B is transpose , then BShape classification matrix must be
+    16*32 in gm/L1,then it is 32*16 in L0B.
 
     trans_a : if True, a needs to be transposed
 
     trans_b : if True, b needs to be transposed
 
-    is_fractal: If type is bool, a and b's format both be fractal or ND,
-                default is ND;
-                If type is list, len must be 2, [0] is is_fractal_a,
-                [1] is is_fractal_b
+    is_fractal: If type is bool, a and b's format both be fractal or ND, default is ND;
+    If type is list, len must be 2, [0] is is_fractal_a, [1] is is_fractal_b
 
     alpha_num: scalar used for multiplication
 
@@ -68,38 +66,35 @@ def matmul(tensor_a,
 
     tensor_bias :the bias with used to init L0C for tensor c
 
-    quantize_params: quantization parameters,
-            not None means enable quantization, it is dictionary structure
+    quantize_params: quantization parameters, not None means enable quantization, it is dictionary structure
 
-        quantize_alg: quantize mode,
-            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+    quantize_alg: quantize mode, support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
 
-        scale_mode_a: tensor_a inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_b: tensor_b inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_out: out tensor quantization mode,
-                support 'SCALAR' and 'VECTOR'
+    scale_mode_a: tensor_a inbound quantization mode, support 'SCALAR' and 'VECTOR'
+    scale_mode_b: tensor_b inbound quantization mode, support 'SCALAR' and 'VECTOR'
+    scale_mode_out: out tensor quantization mode, support 'SCALAR' and 'VECTOR'
 
-        sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
 
-        scale_q_a: scale placeholder for tensor_a inbound quantization
-        offset_q_a: offset placeholder for tensor_a inbound quantization
-        scale_q_b: scale placeholder for tensor_b inbound quantization
-        offset_q_b: offset placeholder for tensor_b inbound quantization
+    scale_q_a: scale placeholder for tensor_a inbound quantization
+    offset_q_a: offset placeholder for tensor_a inbound quantization
+    scale_q_b: scale placeholder for tensor_b inbound quantization
+    offset_q_b: offset placeholder for tensor_b inbound quantization
 
-        scale_drq: scale placeholder for requantization or dequantization
-        offset_drq: scale placeholder for requantization or dequantization
+    scale_drq: scale placeholder for requantization or dequantization
+    offset_drq: scale placeholder for requantization or dequantization
     out_format: output format
     attrs:
-        offset_x: the offset for fmap
-        offset_w: the offset for w
+
+    offset_x: the offset for fmap
+    offset_w: the offset for w
 
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
+    attrs = {} if not attrs else attrs
     warnings.warn("te.lang.cce.te_compute.mmad_compute is expired, "
         "please replace it with the func tbe.dsl.compute.mmad_compute",
         DeprecationWarning)

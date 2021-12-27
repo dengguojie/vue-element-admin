@@ -751,7 +751,7 @@ class ScheduleAgent:
     def _start_attach(self, factor_list, tensor, parent, split_mode):
         """
         get info of scope_attach.
-        
+
         Parameters:
 
         factor_list: info of factor.

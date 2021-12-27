@@ -149,7 +149,6 @@ class CubeTilingOp:
         False: do not match
 
         """
-        pass
 
     @abstractmethod
     def get_repo_tiling(self):
@@ -160,7 +159,6 @@ class CubeTilingOp:
         -------
         tiling: shape and tiling retrieved from repository
         """
-        pass
 
     @abstractmethod
     def get_costmodel_tiling(self, shape):
@@ -175,7 +173,6 @@ class CubeTilingOp:
         -------
         tiling: tiling retrieved by cost model
         """
-        pass
 
     @abstractmethod
     def get_tiling_range(self, tiling_in, shape_info):
@@ -192,7 +189,6 @@ class CubeTilingOp:
         -------
         list, range covered for tiling_in
         """
-        pass
 
     @abstractmethod
     def assembly_case(self, tiling_strategy, covered, cnt):
@@ -207,7 +203,6 @@ class CubeTilingOp:
         -------
         tiling_case, range covered for tiling
         """
-        pass
 
     @staticmethod
     def get_default_range(tgt_area):
@@ -874,7 +869,7 @@ class TilingSelection:
         for batch_v2 mode, calc covered space of cost_model
         """
         while cost_cases:
-            for i in range(len(cost_cases)):
+            for _ in range(len(cost_cases)):
                 cut_range = cost_cases.popleft()
                 cost_seed = self.op.get_costmodel_tiling(sum(cut_range) // 2)
                 seed_range = self.op.get_batch_range(cost_seed['tiling'],
@@ -914,16 +909,17 @@ class TilingSelection:
         tiling_selections = {}
         cost_cases = deque()
         lower_bound = batch_range[0]
+        covered = {}
         for i, seed in enumerate(candidates[:-1]):
-            lower_covered, upper_covered = seed[0]
-            if lower_covered > lower_bound:
-                cost_cases.append((lower_bound, lower_covered - 1))
-                lower_bound = lower_covered
-            upper_covered = min(upper_covered, candidates[i + 1][2] - 1)
+            covered["lower_covered"], covered["upper_covered"] = seed[0]
+            if covered.get("lower_covered") > lower_bound:
+                cost_cases.append((lower_bound, covered.get("lower_covered") - 1))
+                lower_bound = covered.get("lower_covered")
+            covered["upper_covered"] = min(covered.get("upper_covered"), candidates[i + 1][2] - 1)
             seed_cnt = next(self.seed_cnt)
-            tiling_selections[seed_cnt] = [seed[1], (lower_bound, upper_covered)]
+            tiling_selections[seed_cnt] = [seed[1], (lower_bound, covered.get("upper_covered"))]
             repo_seeds[seed_cnt] = seed[2]
-            lower_bound = upper_covered + 1
+            lower_bound = covered.get("upper_covered") + 1
             if lower_bound > batch_range[1]:
                 break
         else:
@@ -1032,15 +1028,15 @@ class TilingSelection:
         cost_seed, cost_cases = cost_info
         seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
         if isinstance(seed_range[0], list):
-            is_overlap_other, covered_area_other = _cal_overlap(cut_range, seed_range[0])
+            is_overlap, covered_area = _cal_overlap(cut_range, seed_range[0])
             _, covered_area_self = _cal_overlap(cut_range, seed_range[1])
             gen_rects = _cut_rectangle(cut_range, seed_range[0], seed_range[1])
             cost_cases.extend(gen_rects)
-            if is_overlap_other:
+            if is_overlap:
                 cur_seed_cnt = next(self.seed_cnt)
                 cost_tilings.append(
-                    self.op.assembly_case(cost_seed['tiling'], covered_area_other, cur_seed_cnt))
-                tiling_range[cur_seed_cnt] = covered_area_other
+                    self.op.assembly_case(cost_seed['tiling'], covered_area, cur_seed_cnt))
+                tiling_range[cur_seed_cnt] = covered_area
             cur_seed_cnt = next(self.seed_cnt)
             cost_tilings.append(
                 self.op.assembly_case(cost_seed['tiling'], covered_area_self, cur_seed_cnt))
@@ -1090,8 +1086,8 @@ class TilingSelection:
                 cut_range = cost_cases.popleft()
                 conv2d_situation = self.op.op_type in ("conv2d", "conv2d_bp_input", "conv2d_bp_filter") \
                                    and len(cut_range) == NHW_RANGE_LEN
-                conv3d_situation = (self.op.op_type in ("conv3d_backprop_input", "convolution_3d", "conv3d_bp_filter") and
-                                   len(cut_range) == NDHW_RANGE_LEN)
+                conv3d_situation = self.op.op_type in ("conv3d_backprop_input", "convolution_3d", "conv3d_bp_filter") \
+                                   and len(cut_range) == NDHW_RANGE_LEN
                 seed_shape = tuple(cut_range[1::2])
                 if conv2d_situation:
                     seed_shape = (cut_range[0], cut_range[3], cut_range[5])

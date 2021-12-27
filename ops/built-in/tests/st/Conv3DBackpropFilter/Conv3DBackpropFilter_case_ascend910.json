@@ -2,7 +2,7 @@
 	{
 		"case_name": "Test_Conv3DBackpropFilter_VALID",
 		"op": "Conv3DBackpropFilter",
-		"input_desc":  [
+		"input_desc": [
 			{
 				"format": "NDHWC",
 				"ori_format": "NDHWC", 

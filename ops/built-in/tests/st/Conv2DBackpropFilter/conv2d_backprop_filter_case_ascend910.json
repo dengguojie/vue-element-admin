@@ -3,7 +3,7 @@
     "op": "Conv2DBackpropFilter",
     "case_name" : "test_conv2d_backprop_filter_dynamic_nchw_same_fNCHW",
     "calc_expect_func_file" : "test_conv2d_backprop_filter_golden.py:calc_expect_func",
-    "input_desc":  [
+    "input_desc": [
       {
         "format": "NCHW",
         "ori_format": "NCHW",

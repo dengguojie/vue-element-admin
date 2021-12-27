@@ -2,7 +2,7 @@
 	{
 		"case_name": "Test_Conv3DBackpropInput_VALID",
 		"op": "Conv3DBackpropInput",
-		"input_desc":  [
+		"input_desc": [
 			{
 				"format": "ND",
 				"ori_format": "ND", 
