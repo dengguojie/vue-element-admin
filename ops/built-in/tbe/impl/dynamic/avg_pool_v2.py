@@ -15,6 +15,7 @@
 """
 avg_pool_v2
 """
+from typing import Union
 import tbe.dsl as tbe_base
 from tbe import tvm
 from tbe.dsl import auto_schedule
@@ -32,7 +33,6 @@ from impl.util.util_conv2d_dynamic import check_input_range
 from impl.util.util_conv2d_dynamic import check_range_l1_size
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_conv2d_dynamic import check_range_value
-from typing import Union
 
 
 # 'pylint: disable=too-few-public-methods
@@ -291,6 +291,7 @@ def check_hw_is_dynamic(input_shape):
 
     return False
 
+
 def check_avg_pool_v2_range(x, ksize, strides, padding, pads):
     """
     check if dynamic input range is supported
@@ -323,15 +324,16 @@ def check_avg_pool_v2_range(x, ksize, strides, padding, pads):
     up_check = check_range_l1_size(x, kh, kw, strides, correct_pads)
     if not up_check and not low_check:
         return []
-    
+
     type_info = []
     if up_check:
         type_info.append(up_check)
     if low_check:
         type_info.append(low_check)
-    
+
     check_result = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": type_info}}]
     return check_result
+
 
 @tbe_register.register_param_generalization("AvgPoolV2")
 def avg_pool_v2_generalization(x: dict, weight: dict, bias: dict, y: dict, ksize: Union[tuple, list],
@@ -367,20 +369,20 @@ def avg_pool_v2_generalization(x: dict, weight: dict, bias: dict, y: dict, ksize
     if generalize_config.get("mode") not in support_mode:
         error_manager_cube.raise_err_specific_user("avg_pool_v2", "invalid generalize mode {}, only support {}".format(
             str(generalize_config.get("mode")), str(support_mode)))
-    
+
     # unknow_rank inputs ori_shape is [-2], others' shape length is 4
     unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
     if unknow_rank:
         error_manager_cube.raise_err_specific_user("avg_pool_v2", "not support unknow_rank under mode {}".format(
-            generalize_config["mode"]))
-    
+            generalize_config.get("mode")))
+
     # check if range of inputs is supported or not
     check_result = check_avg_pool_v2_range(x, ksize, strides, padding, pads)
     if check_result:
         return check_result
-    else:
-        return [x, weight, bias, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
-            offset_x, kernel_name]
+    return [x, weight, bias, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
+        offset_x, kernel_name]
+
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
