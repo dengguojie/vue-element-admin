@@ -1736,6 +1736,7 @@ cube-conv2d-python:
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_factory.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
+    unrelease:
   llt:
     ut_check: true
     st_check: false
