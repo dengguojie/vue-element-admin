@@ -15,8 +15,6 @@
 """
 dynamic sync_batch_norm_gather_stats_with_counts
 """
-import collections
-
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -25,12 +23,11 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=too-many-branches,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument,invalid-name
 def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
                                                      invert_std_all,
                                                      count_all,
@@ -140,11 +137,24 @@ def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
 
 
 @register_operator("SyncBatchNormGatherStatsWithCounts")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def sync_batch_norm_gather_stats_with_counts(mean_all, invert_std_all, count_all, mean_broadcast, count_sum, running_var, invert_std, running_var_update,
-                                             momentum=0.01, epsilon=0.00001, kernel_name="sync_batch_norm_gather_stats_with_counts", impl_mode=OpImplMode.HIGH_PERFORMANCE):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument,invalid-name
+def sync_batch_norm_gather_stats_with_counts(mean_all,
+                                             invert_std_all,
+                                             count_all,
+                                             mean_broadcast,
+                                             count_sum,
+                                             running_var,
+                                             invert_std,
+                                             running_var_update,
+                                             momentum=0.01,
+                                             epsilon=0.00001,
+                                             kernel_name="sync_batch_norm_gather_stats_with_counts",
+                                             impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -206,31 +216,41 @@ def sync_batch_norm_gather_stats_with_counts(mean_all, invert_std_all, count_all
 
     shape = mean_all["shape"]
     shape_len = len(shape)
-    axes = [0,]
+    axes = [0, ]
     axes = shape_util.axis_check(shape_len, axes)
     input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
     keepdims = True
 
     schedules = []
     tensors = []
-    ins = classify([mean_all, invert_std_all, count_all, mean_broadcast, count_sum, running_var, input_axis], OpPatternMode.REDUCE,
-                   {"keepdims": keepdims is True})
+    ins = classify([mean_all, invert_std_all, count_all, mean_broadcast, count_sum, running_var, input_axis],
+                   OpPatternMode.REDUCE, {"keepdims": keepdims is True})
     for (_mean_all, _invert_std_all, _count_all, _mean_broadcast, _count_sum, _running_var, _axes) in ins:
         with tbe.compute():
             # not support 5HD
             is_5hdc = False
-            [shape_mean_all, shape_invert_std_all, shape_count_all, shape_mean_broadcast, shape_count_sum, shape_running_var] =\
-                shape_util.variable_shape([_mean_all, _invert_std_all, _count_all, _mean_broadcast, _count_sum, _running_var, _axes], op_mode="reduce")[:6]
+            [shape_mean_all, shape_invert_std_all, shape_count_all, shape_mean_broadcast, shape_count_sum,
+             shape_running_var] = shape_util.variable_shape([_mean_all, _invert_std_all, _count_all, _mean_broadcast,
+                                                             _count_sum, _running_var, _axes], op_mode="reduce")[:6]
             data_mean_all = tvm.placeholder(shape_mean_all, name="data_mean_all", dtype=dtype_mean_all_lower)
-            data_invert_std_all = tvm.placeholder(shape_invert_std_all, name="data_invert_std_all", dtype=dtype_invert_std_all_lower)
+            data_invert_std_all = tvm.placeholder(shape_invert_std_all,
+                                                  name="data_invert_std_all",
+                                                  dtype=dtype_invert_std_all_lower)
             data_count_all = tvm.placeholder(shape_count_all, name="data_count_all", dtype=dtype_count_all_lower)
-            data_mean_broadcast = tvm.placeholder(shape_mean_broadcast, name="data_mean_broadcast", dtype=dtype_mean_broadcast_lower)
+            data_mean_broadcast = tvm.placeholder(shape_mean_broadcast,
+                                                  name="data_mean_broadcast",
+                                                  dtype=dtype_mean_broadcast_lower)
             data_count_sum = tvm.placeholder(shape_count_sum, name="data_count_sum", dtype=dtype_count_sum_lower)
-            data_running_var = tvm.placeholder(shape_running_var, name="data_running_var", dtype=dtype_running_var_lower)
-            res = sync_batch_norm_gather_stats_with_counts_compute(data_mean_all, data_invert_std_all, data_count_all, data_mean_broadcast, data_count_sum,
+            data_running_var = tvm.placeholder(shape_running_var,
+                                               name="data_running_var",
+                                               dtype=dtype_running_var_lower)
+            res = sync_batch_norm_gather_stats_with_counts_compute(data_mean_all, data_invert_std_all, data_count_all,
+                                                                   data_mean_broadcast, data_count_sum,
                                                                    data_running_var, invert_std, running_var_update,
-                                                                   _axes.get("value"), momentum, epsilon, impl_mode=impl_mode, is_5hdc=is_5hdc)
-            tensors.append([data_mean_all, data_invert_std_all, data_count_all, data_mean_broadcast, data_count_sum, data_running_var] + res)
+                                                                   _axes.get("value"), momentum, epsilon,
+                                                                   impl_mode=impl_mode, is_5hdc=is_5hdc)
+            tensors.append([data_mean_all, data_invert_std_all, data_count_all, data_mean_broadcast, data_count_sum,
+                            data_running_var] + res)
 
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

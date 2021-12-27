@@ -144,4 +144,3 @@ def reduce_log_sum_exp(x, axes, y, keep_dims=False,
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-    

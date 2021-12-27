@@ -45,7 +45,7 @@ TEST_F(hard_max_fusion_test, hard_max_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool find_hard_max = true;
 
@@ -75,7 +75,7 @@ TEST_F(hard_max_fusion_test, hard_max_fusion_test_2) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool find_hard_max = true;
 
@@ -105,7 +105,7 @@ TEST_F(hard_max_fusion_test, hard_max_fusion_test_3) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool find_hard_max = true;
 
@@ -135,7 +135,7 @@ TEST_F(hard_max_fusion_test, hard_max_fusion_test_4) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("HardMaxPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool find_hard_max = true;
 

@@ -26,6 +26,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
 @register_operator_compute("SyncBNTrainingUpdate", op_mode="dynamic", support_fusion=True)
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument,invalid-name
 def sync_bn_training_update_compute(mean, running_mean, momentum, kernel_name="sync_bn_training_update"):
     """
     calculating data's sync_bn_training_update, running_mean_update = mean * momentum + running_mean * (1 - momentum)
@@ -49,10 +51,17 @@ def sync_bn_training_update_compute(mean, running_mean, momentum, kernel_name="s
 
 
 #register op
+
 @register_operator("SyncBNTrainingUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def sync_bn_training_update(mean, running_mean, running_mean_update, momentum=0.01, kernel_name="sync_bn_training_update"):
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument,invalid-name
+def sync_bn_training_update(mean,
+                            running_mean,
+                            running_mean_update,
+                            momentum=0.01,
+                            kernel_name="sync_bn_training_update"):
     """
     algorithm: sync_bn_training_update
     calculating data's sync_bn_training_update, running_mean_update = mean * momentum + running_mean * (1 - momentum)

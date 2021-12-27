@@ -25,12 +25,11 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=too-many-branches,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name
 def reduce_mean_with_count_compute(x,
                                    count,
                                    count_sum,
@@ -70,7 +69,8 @@ def reduce_mean_with_count_compute(x,
         calc_dtype = "float32"
     elif dtype == "float16":
         cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-        if not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
+        if (not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and
+            not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")):
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
             calc_dtype = "float16"
@@ -166,7 +166,8 @@ def reduce_mean_with_count(x, count, count_sum, y, axes=None, keep_dims=False,
         with tbe.compute():
             # not support 5HD
             is_5hdc = False
-            [shape_x, shape_count, shape_count_sum] = shape_util.variable_shape([_x, _count, _count_sum, _axes], op_mode="reduce")[:3]
+            [shape_x, shape_count, shape_count_sum] = \
+                shape_util.variable_shape([_x, _count, _count_sum, _axes], op_mode="reduce")[:3]
             data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x_lower)
             data_count = tvm.placeholder(shape_count, name="data_count", dtype=dtype_count_lower)
             data_count_sum = tvm.placeholder(shape_count_sum, name="data_count_sum", dtype=dtype_count_sum_lower)

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ static const std::string PATTERN_PADV3D = "PadV3D";
 static const std::string PATTERN_POOLING = "Pooling";
 
 vector<FusionPattern*> Padv3dPoolingFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
+  vector < FusionPattern* > patterns;
   FusionPattern *pattern =
       new (std::nothrow) FusionPattern("Padv3dPoolingFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 

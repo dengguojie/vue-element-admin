@@ -30,8 +30,8 @@ from impl.util.platform_adapter import register_operator_compute
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local,too-many-arguments
 @register_operator_compute("ReduceLogSum", op_mode="dynamic", support_fusion=True)
 def reduce_log_sum_compute(x, axes, y, keep_dims=False,
-                               impl_mode="high_performance",
-                               kernel_name="reduce_log_sum"):
+                           impl_mode="high_performance",
+                           kernel_name="reduce_log_sum"):
     """
     reduce_log_sum compute
 
@@ -80,8 +80,8 @@ def reduce_log_sum_compute(x, axes, y, keep_dims=False,
                             para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
 def reduce_log_sum(x, axes, y, keep_dims=False,
-                       impl_mode="high_performance",
-                       kernel_name="reduce_log_sum"):
+                   impl_mode="high_performance",
+                   kernel_name="reduce_log_sum"):
     """reduce a tensor on a certain axes based on sum.
 
     Parameters:
@@ -143,4 +143,3 @@ def reduce_log_sum(x, axes, y, keep_dims=False,
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-    

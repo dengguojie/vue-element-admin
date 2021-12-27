@@ -40,6 +40,8 @@
 
 using namespace ge;
 namespace fe {
+static const int64_t W_INDEX = 2;
+static const int64_t C_INDEX = 3;
 static const std::string CONSTANTOP = "Constant";
 static const char* FUSED_NODE = "DeformableOffsets";
 static const std::string PATTERN_FUSEDNODE = "DeformableOffsets";
@@ -48,7 +50,8 @@ vector<FusionPattern*> DeformableOffsetsFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DeformableOffsetsFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -63,17 +66,17 @@ Status MakeHelperTensorDFM(const vector<int64_t>& offsets_shape, const vector<in
   float* helper_tensor = &grid_base;
 
   int64_t H_OUT = offsets_shape[1];
-  int64_t W_OUT = offsets_shape[2];
+  int64_t W_OUT = offsets_shape[W_INDEX];
   int64_t K_H = kernel_sizes[0];
   int64_t K_W = kernel_sizes[1];
 
   int64_t stride_h = strides[1];
-  int64_t stride_w = strides[2];
+  int64_t stride_w = strides[W_INDEX];
   int64_t dilation_h = dilations[1];
-  int64_t dilation_w = dilations[2];
-  int64_t group = offsets_shape[3] / (3 * K_H * K_W);
+  int64_t dilation_w = dilations[W_INDEX];
+  int64_t group = offsets_shape[C_INDEX] / (C_INDEX * K_H * K_W);
   int64_t pad_top = pads[0];
-  int64_t pad_left = pads[2];
+  int64_t pad_left = pads[W_INDEX];
   int64_t h_index = 0;
   int64_t w_index = 0;
 
@@ -82,10 +85,10 @@ Status MakeHelperTensorDFM(const vector<int64_t>& offsets_shape, const vector<in
       for (int64_t g = 0; g < group; g++) {
         for (int64_t k_h = 0; k_h < K_H; k_h++) {
           for (int64_t k_w = 0; k_w < K_W; k_w++) {
-            w_index = h * W_OUT * 3 * group * K_H * K_W + w * 3 * group * K_H * K_W + 0 * group * K_H * K_W +
-                      g * K_H * K_W + k_h * K_W + k_w;
-            h_index = h * W_OUT * 3 * group * K_H * K_W + w * 3 * group * K_H * K_W + 1 * group * K_H * K_W +
-                      g * K_H * K_W + k_h * K_W + k_w;
+            w_index = h * W_OUT * C_INDEX * group * K_H * K_W + w * C_INDEX * group * K_H * K_W +
+                      0 * group * K_H * K_W + g * K_H * K_W + k_h * K_W + k_w;
+            h_index = h * W_OUT * C_INDEX * group * K_H * K_W + w * C_INDEX * group * K_H * K_W +
+                      1 * group * K_H * K_W + g * K_H * K_W + k_h * K_W + k_w;
             float w_val = (float)(w * stride_w - pad_left + k_w * dilation_w);
             float h_val = (float)(h * stride_h - pad_top + k_h * dilation_h);
             helper_tensor[w_index] = w_val;
@@ -103,12 +106,14 @@ Status DeformableOffsetsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   // get node
   ge::NodePtr deformableOffsetsNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(deformableOffsetsNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get DeformableOffsets Node Failed, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "Get DeformableOffsets Node Failed, fusion failed."),
                     return PARAM_INVALID);
   // get desc
   ge::OpDescPtr deformableOffsetsDesc = deformableOffsetsNode->GetOpDesc();
   FUSION_PASS_CHECK(deformableOffsetsDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DeformableOffsets's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "DeformableOffsets's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   // get op
   Operator deformableOffsetsOp = OpDescUtils::CreateOperatorFromNode(deformableOffsetsNode);
@@ -147,7 +152,7 @@ Status DeformableOffsetsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   helper_shape[0] = 1;
   ge::GeTensorPtr helpMatrixPtr = nullptr;
-  int64_t matrixSize = offsets_shape[1] * offsets_shape[2] * offsets_shape[3];
+  int64_t matrixSize = offsets_shape[1] * offsets_shape[W_INDEX] * offsets_shape[C_INDEX];
   unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
   auto retMem = memset_s(inputAssit.get(), matrixSize, 0, matrixSize);
   FUSION_PASS_CHECK(retMem != EOK, OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to operate memset_s."), return NOT_CHANGED);
@@ -172,7 +177,7 @@ Status DeformableOffsetsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   ge::NodePtr const_node = graph.AddNode(const_ptr);
   FUSION_PASS_CHECK(const_node == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(deformableOffsetsNode->AddLinkFrom(2, const_node) != ge::GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(deformableOffsetsNode->AddLinkFrom(W_INDEX, const_node) != ge::GRAPH_SUCCESS,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Fail to link const node with DeformableOffsets node."),
                     return NOT_CHANGED);
   auto constInputNodes = OpDescUtils::GetConstInputs(deformableOffsetsNode);
