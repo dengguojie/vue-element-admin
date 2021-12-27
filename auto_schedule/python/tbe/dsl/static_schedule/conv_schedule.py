@@ -4466,8 +4466,8 @@ class CceConvOp:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], c_slice_axis)
                 else:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], bido)
-        
-        def _handle_reluv2_buffer_align():
+
+        def _handle_reluv2_buffer_align(tiling):
             """
             conv + reluv2 fusion mask tensor buffer align for static shape
             """
@@ -4481,9 +4481,15 @@ class CceConvOp:
                     and "bit" in sch[res_mask_u8.op.input_tensors[0]].op.tag
             if valid:
                 mask_tensor = res_mask_u8.op.input_tensors[0]
-                sch[mask_tensor].storage_align(sch[mask_tensor].op.axis[1],
+                mask_tensor_align_axis = sch[mask_tensor].op.axis[1]
+                # output_mad_res_shape: [G, batch, cout1_opt, howo_16align, cout0]
+                # CUB_matrix: [nc_factor, mc_factor, m0, n0]
+                # when CUB m_len equals howo_align, storage align at batch axis, else storage align at cout1 axis
+                if ConvParam.dim_map["output_mad_res_shape"][3] == tiling["CUB_matrix"][1]*tiling["CUB_matrix"][2]:
+                    mask_tensor_align_axis = sch[mask_tensor].op.axis[0]
+                sch[mask_tensor].storage_align(mask_tensor_align_axis,
                                                DMA_COPY_BLOCK * UINT1_BIT_ALIGN, 0)
-        
+
         def _handle_var_range():
             """
             set var_range for dynamic ops
@@ -5818,7 +5824,7 @@ class CceConvOp:
         _pragma_for_convbn()
         _handle_bias_align_init_compute_at()
         _handle_bias_compute_at()
-        _handle_reluv2_buffer_align()
+        _handle_reluv2_buffer_align(tiling)
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():
