@@ -60,26 +60,25 @@ namespace fe {
 
         void assist_matrix_gen(vector<float> data, uint16_t *output);
 
-        void set_node_tensor_desc(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims,
+        void set_node_tensor_desc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &dims,
                                const ge::DataType &dtype,
                                const ge::Format &format) const;
 
         int64_t get_grid_size(const vector<int64_t> output_size);
-        float get_step_size(int64_t s, bool align_corners);
+        float get_step_size(int64_t s, bool align_corners) const;
 
-        Status create_batch_mat_mul_weight_node(ge::NodePtr &matmul_node,
-                                           vector<int64_t> &weight_dims,
+        Status create_batch_mat_mul_weight_node(const vector<int64_t> &weight_dims,
                                            ge::GeTensorPtr &weight_ptr,
                                            bool is_assist);
 
-        Status remove_nodes(ge::NodePtr &data_node, ge::ComputeGraph &graph);
+        Status remove_nodes(ge::NodePtr &data_node, ge::ComputeGraph &graph) const;
 
         ge::NodePtr add_batch_matmul_node(ge::NodePtr affine_node,
                                        ge::ComputeGraph &graph,
                                        vector<ge::NodePtr> &new_nodes,
                                        bool &fail_status);
 
-        ge::NodePtr add_new_node(ge::ComputeGraph &graph, ge::OpDescPtr &op_desc,
+        ge::NodePtr add_new_node(ge::ComputeGraph &graph, const ge::OpDescPtr &op_desc,
                                vector<ge::NodePtr> &new_nodes, bool &fail_status);
     };
 } // namespace fe

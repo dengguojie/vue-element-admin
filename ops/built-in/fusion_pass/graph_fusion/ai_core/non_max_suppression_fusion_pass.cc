@@ -44,7 +44,7 @@ namespace fe {
     {
         vector<FusionPattern*> patterns;
         FusionPattern* pattern = (new(std::nothrow) FusionPattern("NonMaxSuppressionV6Fusion"));
-        FUSION_PASS_CHECK(pattern == nullptr, 
+        FUSION_PASS_CHECK(pattern == nullptr,
                           OP_LOGE("NonMaxSuppressionPass",  "new pattern error"),
                           return patterns);
         pattern->AddOpDesc(PATTERN_FUSEDNODE, {"NonMaxSuppressionV6"})
@@ -53,8 +53,8 @@ namespace fe {
         return patterns;
     }
     Status NonMaxSuppressionV6Pass::SetConstDesc(vector<int64_t> &tensorShape,
-                                               ge::GeTensorDesc &tensorDesc,
-                                               ge::GeTensorDesc &desDesc) const {
+        ge::GeTensorDesc &tensorDesc,
+        const ge::GeTensorDesc &desDesc) const {
         // 定义辅助矩阵输入idx shape
         ge::GeShape tenShapes(tensorShape);
         tensorDesc.SetOriginFormat(desDesc.GetOriginFormat());
@@ -74,7 +74,7 @@ namespace fe {
         }
         return dimNum;
     }
-    Status AssistGen(vector<float> data, uint16_t *output) {
+    Status AssistGen(vector<float> data, uint16_t* const output) {
         if (output == nullptr) {
             OP_LOGE("NonMaxSuppression", "output pointer is null!");
             return FAILED;
@@ -88,7 +88,7 @@ namespace fe {
         return SUCCESS;
     }
 
-    void AssistIndexGen(vector<int64_t> &shape, vector<float> &index_id) 
+    void AssistIndexGen(vector<int64_t> &shape, vector<float> &index_id)
     {
         const int64_t batchLen = shape[0];
         const int64_t classLen = shape[1];
@@ -109,10 +109,10 @@ namespace fe {
         }
     }
 
-    Status NonMaxSuppressionV6Pass::IdxValueConstNode(vector<int64_t> &IdxValueTensorShape, 
-                                                      ge::GeTensorDesc &inputDesc1, 
-                                                      ge::GeTensorPtr &assitIndexValuePtr, 
-                                                      ge::GeTensorDesc &IdxValueTensorDesc) const 
+    Status NonMaxSuppressionV6Pass::IdxValueConstNode(vector<int64_t> &IdxValueTensorShape,
+        const ge::GeTensorDesc &inputDesc1,
+        ge::GeTensorPtr &assitIndexValuePtr,
+        ge::GeTensorDesc &IdxValueTensorDesc) const
     {
         int64_t IdxValueDimNum = GetNmsDims(IdxValueTensorShape);
         vector<float> index_id(IdxValueDimNum);
@@ -120,29 +120,28 @@ namespace fe {
         Status ret = SetConstDesc(IdxValueTensorShape, IdxValueTensorDesc, inputDesc1);
         unique_ptr<uint16_t[]> IdxValueAssit(new (std::nothrow) uint16_t[IdxValueDimNum]());
         FUSION_PASS_CHECK(IdxValueAssit.get() == nullptr,
-                          OP_LOGE("NonMaxSuppressionPass", "IdxValueAssit is NULL"), 
-                          return PARAM_INVALID);
+            OP_LOGE("NonMaxSuppressionPass", "IdxValueAssit is NULL"),
+            return PARAM_INVALID);
 
         ret = NnSet(IdxValueDimNum, UINT_NUM_ZERO, *reinterpret_cast<uint16_t *>(IdxValueAssit.get()));
-        FUSION_PASS_CHECK(ret != SUCCESS, 
-                          OP_LOGE("NonMaxSuppressionPass", "NnSet failed."), 
-                          return ret);
+        FUSION_PASS_CHECK(ret != SUCCESS,
+            OP_LOGE("NonMaxSuppressionPass", "NnSet failed."),
+            return ret);
         ret = AssistGen(index_id, IdxValueAssit.get());
         FUSION_PASS_MAKE_SHARED((assitIndexValuePtr = std::make_shared<ge::GeTensor>(IdxValueTensorDesc,
-                                                                                    reinterpret_cast<uint8_t *>(IdxValueAssit.get()),
-                                                                                    IdxValueDimNum * sizeof(uint16_t))),
-                                assitIndexValuePtr = nullptr;
-                                return PARAM_INVALID);
+            reinterpret_cast<uint8_t *>(IdxValueAssit.get()),
+            IdxValueDimNum * sizeof(uint16_t))),
+            assitIndexValuePtr = nullptr;
+            return PARAM_INVALID);
         return SUCCESS;
     }
 
-    bool NonMaxSuppressionV6Pass::GetConstValue(const Operator& op, const Tensor& const_tensor,
-                                                const DataType& dtype, std::vector<int32_t>& const_data)
+    bool NonMaxSuppressionV6Pass::GetConstValue(const Tensor &const_tensor,
+        const DataType &dtype, std::vector<int32_t>& const_data)
     {
-        size_t size = 0;
         if (dtype == ge::DT_INT64) {
-            int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
-            size = const_tensor.GetSize() / sizeof(int64_t);
+            const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(const_tensor.GetData());
+            size_t size = const_tensor.GetSize() / sizeof(int64_t);
             for (size_t i = 0; i < size; ++i) {
                 const_data.push_back((static_cast<int32_t>(*(const_data_ptr + i))));
                 OP_LOGD("NonMaxSuppressionPass", "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
@@ -172,8 +171,9 @@ namespace fe {
                 OP_LOGE("NonMaxSuppressionPass", "Get constValue failed of [max_output_size]");
                 return GRAPH_FAILED;
             }
-            DataType dtype = op.GetInputDesc("max_output_size").GetDataType();
-            GetConstValue(op, maxOuputSizeTensor, dtype, sizeTensorList);
+            const char* max_output_size = "max_output_size";
+            DataType dtype = op.GetInputDescByName(max_output_size).GetDataType();
+            GetConstValue(maxOuputSizeTensor, dtype, sizeTensorList);
             // update op input origin type
             int index = fuseDesc->GetInputIndexByName("max_output_size");
             GeTensorDescPtr output_tensor_desc = fuseDesc->MutableInputDesc(index);
@@ -186,7 +186,7 @@ namespace fe {
 
         ge::GeTensorPtr assitIndexValuePtr = nullptr;
         ge::GeTensorDesc IdxValueTensorDesc(GeShape(indexShape), inputFormat, ge::DT_FLOAT16);
-        ge::GeTensorDesc inputDesc1= fuseDesc->GetInputDesc(0);
+        ge::GeTensorDesc inputDesc1 = fuseDesc->GetInputDesc(0);
         auto ret = IdxValueConstNode(indexShape, inputDesc1, assitIndexValuePtr, IdxValueTensorDesc);
         FUSION_PASS_CHECK(ret != SUCCESS,
                           OP_LOGE("NonMaxSuppressionPass", "generate const value of idx fail"),

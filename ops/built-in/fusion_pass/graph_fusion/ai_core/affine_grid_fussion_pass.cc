@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+/*!
+ * \file affine_grid_fussion_pass.cc
+ * \brief
+ */
 #include "affine_grid_fussion_pass.h"
 
 #include <algorithm>
@@ -43,7 +47,8 @@ namespace {
     const int H_INDEX = 2;
     const int W_INDEX = 3;
     const int D_INDEX = 4;
-
+    const int DIMS_NCHW = 4;
+    const int DIMS_NCDHW = 5;
 } // namespace
 
 namespace fe {
@@ -51,10 +56,10 @@ namespace fe {
     // get grid total size
     int64_t AffineGridFusionPass::get_grid_size(const vector<int64_t> output_size) {
         int64_t size = 0;
-        if (output_size.size() == 4) {
-            size = output_size[0] * output_size[2] * output_size[3] * 3;
-        } else if (output_size.size() == 5) {
-            size = output_size[0] * output_size[2] * output_size[3] * output_size[4] * 4;
+        if (output_size.size() == DIMS_NCHW) {
+            size = output_size[BATCH_INDEX] * output_size[H_INDEX] * output_size[W_INDEX] * W_INDEX;
+        } else if (output_size.size() == DIMS_NCDHW) {
+            size = output_size[BATCH_INDEX] * output_size[H_INDEX] * output_size[W_INDEX] * output_size[D_INDEX] * D_INDEX;
         } else {
             return 0;
         }
@@ -62,9 +67,9 @@ namespace fe {
     }
 
     // get grid step
-    float AffineGridFusionPass::get_step_size(int64_t s, bool align_corners) {
+    float AffineGridFusionPass::get_step_size(int64_t s, bool align_corners) const {
         if (s == 1) {
-            throw "division by zero condition";
+            throw std::invalid_argument("division by zero condition");
             return 0.0;
         }
         float step_size = 0;
@@ -78,7 +83,7 @@ namespace fe {
 
     // generate grid line
     void AffineGridFusionPass::grid_linspace(int64_t num_step, bool align_corners,
-                                            vector<float> &grid_line) {
+        vector<float> &grid_line) {
         if (num_step <= 1) {
             grid_line.push_back(0.0);
             return;
@@ -97,22 +102,22 @@ namespace fe {
 
     // generate 5d grid const data
     void AffineGridFusionPass::gen_assist_vector_5d(const vector<int64_t> output_size,
-                                                  vector<float> &grid,
-                                                  bool align_corners) {
+        vector<float> &grid,
+        bool align_corners) {
         vector<float> grid_x;
         vector<float> grid_y;
         vector<float> grid_z;
-        grid_linspace(output_size[4], align_corners, grid_x);
-        grid_linspace(output_size[3], align_corners, grid_y);
-        grid_linspace(output_size[2], align_corners, grid_z);
+        grid_linspace(output_size[D_INDEX], align_corners, grid_x);
+        grid_linspace(output_size[W_INDEX], align_corners, grid_y);
+        grid_linspace(output_size[H_INDEX], align_corners, grid_z);
 
-        int64_t temp_size = output_size[2] * output_size[3] * output_size[4] * 4;
+        int64_t temp_size = output_size[H_INDEX] * output_size[W_INDEX] * output_size[D_INDEX] * D_INDEX;
         vector<float> grid_temp(temp_size, 0.0);
 
         int64_t index = 0;
-        for (int64_t i = 0; i < output_size[2]; i++) {
-            for (int64_t j = 0; j < output_size[3]; j++) {
-                for (int64_t k = 0; k < output_size[4]; k++) {
+        for (int64_t i = 0; i < output_size[H_INDEX]; i++) {
+            for (int64_t j = 0; j < output_size[W_INDEX]; j++) {
+                for (int64_t k = 0; k < output_size[D_INDEX]; k++) {
                     grid_temp[index++] = grid_x[k];
                     grid_temp[index++] = grid_y[j];
                     grid_temp[index++] = grid_z[i];
@@ -120,53 +125,50 @@ namespace fe {
                 }
             }
         }
-        int64_t offset = 0;
-        for (int64_t i = 0; i < output_size[0]; i++) {
-            offset = temp_size * i;
+        for (int64_t i = 0; i < output_size[BATCH_INDEX]; i++) {
+            int64_t offset = temp_size * i;
             copy(grid_temp.begin(), grid_temp.end(), &grid[offset]);
         }
     }
 
     // generate 4d grid const data
     void AffineGridFusionPass::gen_assist_vector_4d(const vector<int64_t> output_size,
-                                                  vector<float> &grid,
-                                                  bool align_corners) {
+        vector<float> &grid,
+        bool align_corners) {
         // get grid line
         vector<float> grid_x;
         vector<float> grid_y;
-        grid_linspace(output_size[3], align_corners, grid_x);
-        grid_linspace(output_size[2], align_corners, grid_y);
+        grid_linspace(output_size[W_INDEX], align_corners, grid_x);
+        grid_linspace(output_size[H_INDEX], align_corners, grid_y);
 
-        int64_t temp_size = output_size[2] * output_size[3] * 3;
+        int64_t temp_size = output_size[H_INDEX] * output_size[W_INDEX] * W_INDEX;
         vector<float> grid_temp(temp_size, 0.0);
 
         int64_t index = 0;
-        for (int64_t i = 0; i < output_size[2]; i++) {
-            for (int64_t j = 0; j < output_size[3]; j++) {
+        for (int64_t i = 0; i < output_size[H_INDEX]; i++) {
+            for (int64_t j = 0; j < output_size[W_INDEX]; j++) {
                 grid_temp[index++] = grid_x[j];
                 grid_temp[index++] = grid_y[i];
                 grid_temp[index++] = 1;
             }
         }
-        int64_t offset = 0;
-        for (int64_t i = 0; i < output_size[0]; i++) {
-            offset = temp_size * i;
+        for (int64_t i = 0; i < output_size[BATCH_INDEX]; i++) {
+            int64_t offset = temp_size * i;
             copy(grid_temp.begin(), grid_temp.end(), &grid[offset]);
         }
     }
 
     // get output size from const node
     Status AffineGridFusionPass::get_node_const_value(const Tensor &const_tensor,
-                                                 const DataType &dtype,
-                                                 std::vector<int64_t> &const_data) {
-        size_t size = 0;
+        const DataType &dtype,
+        std::vector<int64_t> &const_data) {
         if (dtype == ge::DT_INT32) {
-            int32_t *const_data_ptr = (int32_t *)const_tensor.GetData();
+            const int32_t *const_data_ptr = reinterpret_cast<const int32_t*>(const_tensor.GetData());
             if (const_data_ptr == nullptr) {
                 OP_LOGE(FUSED_OP_TYPE.c_str(), "const_data_ptr is null, get output_size failed.");
                 return FAILED;
             }
-            size = const_tensor.GetSize() / sizeof(int32_t);
+            size_t size = const_tensor.GetSize() / sizeof(int32_t);
             for (size_t i = 0; i < size; ++i) {
                 const_data.push_back((static_cast<int64_t>(*(const_data_ptr + i))));
             }
@@ -178,7 +180,7 @@ namespace fe {
     }
 
     void AffineGridFusionPass::assist_matrix_gen(vector<float> data,
-                                               uint16_t *output) {
+        uint16_t* const output) {
         if (output == nullptr) {
             OP_LOGE("batchMatmul", "output pointer is null!");
             return;
@@ -193,8 +195,7 @@ namespace fe {
     }
 
     Status AffineGridFusionPass::create_batch_mat_mul_weight_node(
-        ge::NodePtr &matmul_node, vector<int64_t> &weight_dims,
-        ge::GeTensorPtr &weight_ptr, bool is_assist) {
+        const vector<int64_t> &weight_dims, ge::GeTensorPtr &weight_ptr, bool is_assist) {
         int64_t size = std::accumulate(weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int64_t>());
         OP_LOGI(FUSED_OP_TYPE.c_str(), "calculate weight size. %d", size);
 
@@ -208,17 +209,17 @@ namespace fe {
 
         if (is_assist) {
             int64_t n = this->get_grid_size(this->output_size_vector);
-            if(n == 0){
+            if (n == 0) {
                 OP_LOGE(FUSED_OP_TYPE.c_str(), "get grid size failed.");
                 return FAILED;
             }
             vector<float> grid(n, 0.0);
-            if (this->output_size_vector.size() == 4) {
+            if (this->output_size_vector.size() == DIMS_NCHW) {
                 this->gen_assist_vector_4d(this->output_size_vector, grid,
-                                         this->align_corner);
-            } else if(this->output_size_vector.size() == 5){
+                this->align_corner);
+            } else if (this->output_size_vector.size() == DIMS_NCDHW) {
                 this->gen_assist_vector_5d(this->output_size_vector, grid,
-                                         this->align_corner);
+                this->align_corner);
             } else {
                 OP_LOGE(FUSED_OP_TYPE.c_str(), "output size not supported.");
                 return FAILED;
@@ -239,18 +240,18 @@ namespace fe {
 
     // init graph shape
     Status AffineGridFusionPass::init_graph_shape(vector<int64_t> &output_size,
-                                              vector<int64_t> &assist_shape,
-                                              vector<int64_t> &bmm_output_shape) {
+        vector<int64_t> &assist_shape,
+        vector<int64_t> &bmm_output_shape) {
         size_t size = output_size.size();
         assist_shape.push_back(output_size[BATCH_INDEX]);
         bmm_output_shape.push_back(output_size[BATCH_INDEX]);
-        if (size == 4) {
+        if (size == DIMS_NCHW) {
             // 4d
             assist_shape.push_back(output_size[H_INDEX] * output_size[W_INDEX]);
             assist_shape.push_back(W_INDEX);
             bmm_output_shape.push_back(output_size[H_INDEX] * output_size[W_INDEX]);
             bmm_output_shape.push_back(H_INDEX);
-        } else if(size == 5){
+        } else if (size == DIMS_NCDHW) {
             // 5d
             assist_shape.push_back(output_size[H_INDEX] * output_size[W_INDEX] *
                                    output_size[D_INDEX]);
@@ -266,7 +267,7 @@ namespace fe {
     }
 
     Status AffineGridFusionPass::remove_nodes(ge::NodePtr &data_node,
-                                             ge::ComputeGraph &graph) {
+        ge::ComputeGraph &graph) const {
         for (auto in_anchor : data_node->GetAllInDataAnchors()) {
             if (in_anchor != nullptr) {
                 in_anchor->UnlinkAll();
@@ -284,13 +285,13 @@ namespace fe {
     }
 
     ge::NodePtr AffineGridFusionPass::add_new_node(ge::ComputeGraph &graph,
-                                                 ge::OpDescPtr &op_desc,
-                                                 vector<ge::NodePtr> &new_nodes,
-                                                 bool &fail_status) {
+        const ge::OpDescPtr &op_desc,
+        vector<ge::NodePtr> &new_nodes,
+        bool &fail_status) {
         ge::NodePtr node = graph.AddNode(op_desc);
         if (!node) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                    node->GetName().c_str());
+                    op_desc->GetName().c_str());
             fail_status = true;
         }
         new_nodes.push_back(node);
@@ -298,9 +299,9 @@ namespace fe {
     }
 
     void AffineGridFusionPass::set_node_tensor_desc(ge::GeTensorDesc &tensorDesc,
-                                                 vector<int64_t> &dims,
-                                                 const ge::DataType &dtype,
-                                                 const ge::Format &format) const {
+        const vector<int64_t> &dims,
+        const ge::DataType &dtype,
+        const ge::Format &format) const {
         ge::GeShape shape(dims);
         tensorDesc.SetShape(shape);
         tensorDesc.SetDataType(dtype);
@@ -314,7 +315,7 @@ namespace fe {
     // get node info from fused node
     Status AffineGridFusionPass::get_fuse_node_info(ge::NodePtr node) {
         ge::OpDescPtr node_desc = node->GetOpDesc();
-
+        
         // get theta shape
         ge::GeTensorDesc input_desc = node->GetOpDesc()->GetInputDesc(0);
         DataType input_dtype = input_desc.GetDataType();
@@ -326,31 +327,36 @@ namespace fe {
 
         ge::Tensor ouputSizeTensor;
         Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
+        AscendString op_name;
+        graphStatus status = op.GetName(op_name);
+        if (status != GRAPH_SUCCESS) return FAILED;
+
+        const char* output_size = "output_size";
 
         if (node_desc->MutableInputDesc(
-                node_desc->GetInputIndexByName("output_size")) != nullptr) {
-            if (op.GetInputConstData("output_size", ouputSizeTensor) != GRAPH_SUCCESS) {
+                node_desc->GetInputIndexByName(output_size)) != nullptr) {
+            if (op.GetInputConstData(output_size, ouputSizeTensor) != GRAPH_SUCCESS) {
                 OP_LOGE("AffineGridFusionPass", "Get constValue failed of [output_size]");
                 return FAILED;
             }
         }
-        DataType dtype = op.GetInputDesc("output_size").GetDataType();
+        const DataType dtype =  op.GetInputDescByName(output_size).GetDataType();
 
         // get output size
         if (get_node_const_value(ouputSizeTensor, dtype, this->output_size_vector) == FAILED) {
-            OP_LOGE(op.GetName().c_str(), "get const node value failed!");
+            OP_LOGE(op_name.GetString(), "get const node value failed!");
             return FAILED;
         }
 
         if (init_graph_shape(this->output_size_vector, this->assist_shape,
-                       this->bmm_output_shape) == FAILED) {
-            OP_LOGE(op.GetName().c_str(), "init graph shape failed!");
+            this->bmm_output_shape) == FAILED) {
+            OP_LOGE(op_name.GetString(), "init graph shape failed!");
             return FAILED;
         }
-        
+
         // get attr align_corners
         if (op.GetAttr("align_corners", this->align_corner) != ge::GRAPH_SUCCESS) {
-            OP_LOGE(op.GetName().c_str(), "GetOpAttr align_corners failed!");
+            OP_LOGE(op_name.GetString(), "GetOpAttr align_corners failed!");
             return FAILED;
         }
         return SUCCESS;
@@ -362,7 +368,7 @@ namespace fe {
         vector<ge::NodePtr> &new_nodes, bool &fail_status) {
         // create matmul desc
         ge::OpDescPtr matmul_op_desc = nullptr;
-        FUSION_PASS_MAKE_SHARED((matmul_op_desc = 
+        FUSION_PASS_MAKE_SHARED((matmul_op_desc =
                 std::make_shared<ge::OpDesc>(affine_node->GetName() + "affineBatchMatmul","BatchMatMul")),
             return nullptr);
 
@@ -378,21 +384,21 @@ namespace fe {
         // create matmul node
         ge::NodePtr matmul_node =
             this->add_new_node(graph, matmul_op_desc, new_nodes, fail_status);
-        FUSION_PASS_CHECK(matmul_node == nullptr, 
+        FUSION_PASS_CHECK(matmul_node == nullptr,
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "matmul_node is null, fusion failed."),
                           return nullptr);
 
         ge::GeTensorPtr assit_ptr = nullptr;
         ge::GeTensorPtr theta_ptr = nullptr;
 
-        if ((this->create_batch_mat_mul_weight_node(matmul_node, this->assist_shape, assit_ptr,
-                                          true)) == FAILED) {
+        if ((this->create_batch_mat_mul_weight_node(this->assist_shape, assit_ptr,
+            true)) == FAILED) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "create assist batch matmul weight failed.");
             return nullptr;
         }
 
-        if ((this->create_batch_mat_mul_weight_node(matmul_node, this->theta_shape, theta_ptr,
-                                          false)) == FAILED) {
+        if ((this->create_batch_mat_mul_weight_node(this->theta_shape, theta_ptr,
+            false)) == FAILED) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "create assist batch matmul weight failed.");
             return nullptr;
         }
@@ -410,15 +416,15 @@ namespace fe {
 
         // input Edge to bmm node
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(affine_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                matmul_node->GetInDataAnchor(1)) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add input Edge to bmm node."), return nullptr);
+            matmul_node->GetInDataAnchor(1)) != SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Add input Edge to bmm node."), return nullptr);
 
         // output Edge
         for (auto in_anchor_ptr :
              affine_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
             in_anchor_ptr->UnlinkAll();
             FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), in_anchor_ptr) != SUCCESS,
-                            OP_LOGE(FUSED_OP_TYPE.c_str(), "Add input Edge to bmm node."), return nullptr);
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Add input Edge to bmm node."), return nullptr);
         }
 
         return matmul_node;
@@ -439,14 +445,14 @@ namespace fe {
     }
 
     Status AffineGridFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
-                                        vector<ge::NodePtr> &new_node) {
+        vector<ge::NodePtr> &new_node) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AffineGridFusionPass fusion begin.");
         ge::NodePtr affine_node =
             this->GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
-        FUSION_PASS_CHECK(affine_node == nullptr, 
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "affine_node is null, fusion failed."),
-                          return PARAM_INVALID);
+        FUSION_PASS_CHECK(affine_node == nullptr,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "affine_node is null, fusion failed."),
+            return PARAM_INVALID);
 
         if (this->get_fuse_node_info(affine_node) == FAILED) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "get fuse node info failed.");
@@ -459,7 +465,7 @@ namespace fe {
             this->add_batch_matmul_node(affine_node, graph, new_node, is_failure);
         if (is_failure || batch_matmul_node == nullptr) {
             OP_LOGE(FUSED_OP_TYPE.c_str(),
-                    "BatchMatMulNode:check failed, fusion failed.");
+            "BatchMatMulNode:check failed, fusion failed.");
             return FAILED;
         }
         // unlink all input of grad_node
@@ -471,7 +477,7 @@ namespace fe {
         // remove affine_node from graph
         if (graph.RemoveNode(affine_node) != ge::GRAPH_SUCCESS) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed",
-                    affine_node->GetName().c_str());
+            affine_node->GetName().c_str());
             return FAILED;
         }
         return SUCCESS;

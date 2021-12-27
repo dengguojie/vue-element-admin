@@ -31,18 +31,18 @@ namespace fe {
         protected:
             vector<FusionPattern *> DefinePatterns() override;
             Status Fusion(ge::ComputeGraph &graph,
-                          Mapping &mapping,
-                          vector<ge::NodePtr> &fusion_nodes) override;
+                Mapping &mapping,
+                vector<ge::NodePtr> &fusion_nodes) override;
 
             Status SetConstDesc(vector<int64_t> &tensorShape,
-                                ge::GeTensorDesc &tensorDesc, 
-                                ge::GeTensorDesc &desDesc) const;
+                ge::GeTensorDesc &tensorDesc,
+                const ge::GeTensorDesc &desDesc) const;
             Status IdxValueConstNode(vector<int64_t> &OnValueTensorShape,
-                                     ge::GeTensorDesc &inputDesc1, 
-                                     ge::GeTensorPtr &assitOnValuePtr, 
-                                     ge::GeTensorDesc &OnValueTensorDesc) const;
-            bool GetConstValue(const Operator &op, const Tensor &const_tensor, const DataType &dtype,
-                       std::vector<int32_t> &const_data);
+                const ge::GeTensorDesc &inputDesc1,
+                ge::GeTensorPtr &assitOnValuePtr,
+                ge::GeTensorDesc &OnValueTensorDesc) const;
+            bool GetConstValue(const Tensor &const_tensor, const DataType &dtype,
+                std::vector<int32_t> &const_data);
         private:
             static const std::string PATTERN_FUSEDNODE;
     };

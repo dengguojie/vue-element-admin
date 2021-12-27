@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file arg_max_grad_fusion_pass.cpp
+ * \file arg_max_grad_fusion_pass.cc
  * \brief
  */
 #include "arg_max_grad_fusion_pass.h"
@@ -47,20 +47,22 @@ static const int32_t INT_NUM_ZERO = 0;
 static const string PATTERN_ARGMAXGRAD = "ArgMaxGrad";
 static const std::string CONSTANTOP = "Constant";
 static const char* ARGMAXGRAD = "ArgMaxGrad";
+static const int32_t DIM_ONE = 1;
+static const int32_t DIM_TWO = 2;
 
 /* Generating auxiliary matrix */
 template <typename Dtype>
-Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32_t dim_axis_value, 
-                         const int32_t first_dim_size, const int32_t last_dim_size,
-                         const int32_t last_first_axis_value, const int32_t last_second_axis_value, Dtype& output) {
+Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32_t dim_axis_value,
+    const int32_t first_dim_size, const int32_t last_dim_size,
+    const int32_t last_first_axis_value, const int32_t last_second_axis_value, Dtype& output) {
     int32_t each_block_size = 0;
     int32_t each_block_byte_num = 0;
     Dtype *outbuf = &output;
     Dtype *p = nullptr;
 
     /* proc the last dim */
-    if (shape_len == dim + 1) {
-        /* Generate a single row matrix, generate each row like:0 1 2 3...*/
+    if (shape_len == dim + DIM_ONE) {
+        /* Generate a single row matrix, generate each row like:0 1 2 3... */
         p = outbuf;
         for (int32_t i = 0; i < last_first_axis_value; i++) {
             p[i] = i;
@@ -77,10 +79,10 @@ Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32
                 if (EOK != memcpy_s(p, i * each_block_byte_num, outbuf, i * each_block_byte_num)) {
                     return FAILED;
                 }
-				
+
                 i += i;
             } else {
-                if (EOK != memcpy_s(p, (sum_row_num - i) * each_block_byte_num, 
+                if (EOK != memcpy_s(p, (sum_row_num - i) * each_block_byte_num,
                                     outbuf, (sum_row_num - i) * each_block_byte_num)) {
                     return FAILED;
                 }
@@ -88,9 +90,9 @@ Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32
             }
         }
     }
-  
+
     /* proc the last second dim */
-    else if (shape_len == dim + 2) {
+    else if (shape_len == dim + DIM_TWO) {
         /* Generates a single matrix element */
         for (int32_t i = 0; i < last_second_axis_value; i++) {
             p = outbuf + i * last_first_axis_value;
@@ -110,7 +112,7 @@ Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32
                 }
                 i += i;
             } else {
-                if (EOK != memcpy_s(p, (first_dim_size - i) * each_block_byte_num, 
+                if (EOK != memcpy_s(p, (first_dim_size - i) * each_block_byte_num,
                                     outbuf, (first_dim_size - i) * each_block_byte_num)) {
                     return FAILED;
                 }
@@ -118,7 +120,7 @@ Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32
             }
         }
     }
-  
+
     /* Fill in by cell */
     else {
         /* Generating cell block */
@@ -140,7 +142,7 @@ Status assist_int32_help(const int32_t dim, const int32_t shape_len, const int32
                 }
                 i += i;
             } else {
-                if (EOK != memcpy_s(p, (first_dim_size - i) * each_block_byte_num, 
+                if (EOK != memcpy_s(p, (first_dim_size - i) * each_block_byte_num,
                                     outbuf, (first_dim_size - i) * each_block_byte_num)) {
                     return FAILED;
                 }
@@ -224,7 +226,7 @@ Status ArgMaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
     /* create assist matrix data */
     int32_t dim = attr_dim;
-    if (((dim < 0) && (dim < (0 - shape_len))) || 
+    if (((dim < 0) && (dim < (0 - shape_len))) ||
         ((dim > 0) && (dim >= shape_len))) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "ArgMaxGradFusionPass dim should be in range:-shape_len, shape_len).");
         return NOT_CHANGED;
@@ -233,17 +235,17 @@ Status ArgMaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     if (dim < 0) {
         dim = dim + shape_len;
     }
-    int32_t dim_axis_value = InputVarShape.GetDim(dim); 
+    int32_t dim_axis_value = InputVarShape.GetDim(dim);
     int32_t first_dim_size = 1;
     int32_t last_dim_size = 1;
-    int32_t last_first_axis_value = InputVarShape.GetDim(shape_len - 1);
+    int32_t last_first_axis_value = InputVarShape.GetDim(shape_len - DIM_ONE);
     int32_t last_second_axis_value = 1;
 
-    if (shape_len > 1) {
-        last_second_axis_value = InputVarShape.GetDim(shape_len - 2);
-    } 
+    if (shape_len > DIM_ONE) {
+        last_second_axis_value = InputVarShape.GetDim(shape_len - DIM_TWO);
+    }
 
-    if (dim < shape_len - 1) {
+    if (dim < shape_len - DIM_ONE) {
         int32_t i = 0;
         while (i < dim) {
             first_dim_size = first_dim_size * InputVarShape.GetDim(i);
@@ -257,7 +259,7 @@ Status ArgMaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         }
     } else {
         int32_t i = 0;
-        while (i < shape_len - 1) {
+        while (i < shape_len - DIM_ONE) {
             first_dim_size = first_dim_size * InputVarShape.GetDim(i);
             i++;
         }
