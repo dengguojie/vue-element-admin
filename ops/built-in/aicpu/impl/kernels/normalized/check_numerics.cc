@@ -17,14 +17,14 @@
 
 #include "check_numerics.h"
 
-#include <unsupported/Eigen/CXX11/Tensor>
+#include <securec.h>
+#include "unsupported/Eigen/CXX11/Tensor"
 
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "status.h"
 #include "utils/kernel_util.h"
-#include <securec.h>
 
 namespace {
 const std::uint32_t kCheckNumericsInputNum{1};

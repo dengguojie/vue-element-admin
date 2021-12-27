@@ -25,6 +25,7 @@ namespace {
 const char *kCaseCondition = "CaseCondition";
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
+const uint32_t kElementNumbers = 3;
 
 template <typename T>
 void CaseCondition(const T i, const T j, const T k, int32_t *output_data) {
@@ -64,7 +65,7 @@ uint32_t CaseConditionCpuKernel::Check(const Tensor *x, const Tensor *output) {
 
   // x[0] is i, x[1] is j, x[2] is k
   KERNEL_CHECK_FALSE(
-      (IsVector(x->GetTensorShape()->GetDimSizes()) && x->NumElements() == 3),
+      (IsVector(x->GetTensorShape()->GetDimSizes()) && x->NumElements() == kElementNumbers),
       KERNEL_STATUS_PARAM_INVALID, "Input[x] must be a vector with shape=[3]")
 
   DataType output_type = output->GetDataType();

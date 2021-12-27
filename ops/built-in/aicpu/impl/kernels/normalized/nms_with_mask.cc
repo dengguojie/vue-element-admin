@@ -24,7 +24,7 @@ const int32_t kOutputNum = 3;
 const int kColNum5 = 5;
 const int kColNum8 = 8;
 const char *kNMSWithMask = "NMSWithMask";
-} // namespace
+}  // namespace
 
 namespace aicpu {
 uint32_t NMSWithMaskCpuKernel::Compute(CpuKernelContext &ctx) {
@@ -32,8 +32,7 @@ uint32_t NMSWithMaskCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "NMSWithMask check input or output is failed");
   AttrValue *iou_threshold = ctx.GetAttr("iou_threshold");
-  KERNEL_CHECK_FALSE((iou_threshold != nullptr),
-                     KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_FALSE((iou_threshold != nullptr), KERNEL_STATUS_PARAM_INVALID,
                      "Get attr [iou_threshold] failed.");
   iou_value_ = iou_threshold->GetFloat();
 
@@ -83,7 +82,9 @@ uint32_t NMSWithMaskCpuKernel::DoCompute(CpuKernelContext &ctx) {
   const auto comp = [input, box_size](const size_t a, const size_t b) {
     const size_t index_a = a * box_size + 4;
     const size_t index_b = b * box_size + 4;
-    if (input[index_b] == input[index_a]) { return a < b; };
+    if (input[index_b] == input[index_a]) {
+      return a < b;
+    };
     return input[index_b] < input[index_a];
   };
   std::vector<int> order(num_input_);
@@ -120,23 +121,25 @@ uint32_t NMSWithMaskCpuKernel::DoCompute(CpuKernelContext &ctx) {
       auto h = std::max(static_cast<T>(0), yy2 - yy1);
       auto inter = w * h;
       auto ovr = inter / (areas[i] + areas[j] - inter);
-      if (static_cast<float>(ovr) > iou_value_) { sel_boxes[j] = 1; }
+      if (static_cast<float>(ovr) > iou_value_) {
+        sel_boxes[j] = 1;
+      }
     }
   }
 
   for (int k = 0; k < num_input_; ++k) {
     for (int j = 0; j < box_size_; ++j) {
-        if (k < num_to_keep) {
-          output[k * kColNum5 + j] = input[sel_idx[k] * box_size_ + j];
-          sel_boxes[k] = true;
-        } else {
-          output[k * kColNum5 + j] = static_cast<T>(0);
-          sel_boxes[k] = false;
-        }
+      if (k < num_to_keep) {
+        output[k * kColNum5 + j] = input[sel_idx[k] * box_size_ + j];
+        sel_boxes[k] = true;
+      } else {
+        output[k * kColNum5 + j] = static_cast<T>(0);
+        sel_boxes[k] = false;
+      }
     }
   }
 
   return KERNEL_STATUS_OK;
 }
 REGISTER_CPU_KERNEL(kNMSWithMask, NMSWithMaskCpuKernel);
-} // namespace aicpu
+}  // namespace aicpu
