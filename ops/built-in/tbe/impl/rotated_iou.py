@@ -64,13 +64,16 @@ class RotatedIou(object):
     The class for RotatedIou.
     """
     # 'pylint:disable=too-many-arguments
-    def __init__(self, boxes, query_boxes, iou, trans, mode, is_cross, kernel_name):
+    def __init__(self, boxes, query_boxes, iou, trans, mode, is_cross, v_threshold, e_threshold, kernel_name):
         """
         class init
         """
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.trans = trans
         self.kernel_name = kernel_name
+        self.v_threshold = v_threshold
+        self.e_threshold = e_threshold
+        
         check_res = self.paras_check(boxes, query_boxes, iou, mode, is_cross, kernel_name)
         self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3],
         # Calculate concurrent number on boxes(input_1) dimension
@@ -387,10 +390,10 @@ class RotatedIou(object):
 
         self.direct_AC_AD.set_as(self.AC_x * self.AD_y - self.AC_y * self.AD_x)
         self.direct_BC_BD.set_as(self.BC_x * self.BD_y - self.BC_y * self.BD_x)
-        with self.tik_instance.if_scope(self.direct_AC_AD * self.direct_BC_BD < 0):
+        with self.tik_instance.if_scope(self.direct_AC_AD * self.direct_BC_BD < self.e_threshold):
             self.direct_CA_CB.set_as(self.AC_x * self.BC_y - self.AC_y * self.BC_x)
             self.direct_DA_DB.set_as(self.AD_x * self.BD_y - self.AD_y * self.BD_x)
-            with self.tik_instance.if_scope(self.direct_CA_CB * self.direct_DA_DB < 0):
+            with self.tik_instance.if_scope(self.direct_CA_CB * self.direct_DA_DB < self.e_threshold):
                 # func: x = ((x1-x2) * (x3*y4-x4*y3) - (x3-x4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))
                 # func: y = ((y1-y2) * (x3*y4-x4*y3) - (y3-y4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))
                 self.tmp_1.set_as(self.b1_x1 * self.b1_y2 - self.b1_y1 * self.b1_x2)
@@ -516,9 +519,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b1_x1 - self.b2_x1)
         self.AP_y.set_as(self.b1_y1 - self.b2_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b1_x1)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b1_y1)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -526,9 +531,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b1_x2 - self.b2_x1)
         self.AP_y.set_as(self.b1_y2 - self.b2_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b1_x2)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b1_y2)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -536,9 +543,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b1_x3 - self.b2_x1)
         self.AP_y.set_as(self.b1_y3 - self.b2_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b1_x3)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b1_y3)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -546,9 +555,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b1_x4 - self.b2_x1)
         self.AP_y.set_as(self.b1_y4 - self.b2_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b1_x4)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b1_y4)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -567,9 +578,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b2_x1 - self.b1_x1)
         self.AP_y.set_as(self.b2_y1 - self.b1_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b2_x1)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y1)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -577,9 +590,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b2_x2 - self.b1_x1)
         self.AP_y.set_as(self.b2_y2 - self.b1_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b2_x2)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y2)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -587,9 +602,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b2_x3 - self.b1_x1)
         self.AP_y.set_as(self.b2_y3 - self.b1_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(
+                tik.all(self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b2_x3)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y3)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -597,9 +614,11 @@ class RotatedIou(object):
         self.AP_x.set_as(self.b2_x4 - self.b1_x1)
         self.AP_y.set_as(self.b2_y4 - self.b1_y1)
         self.AP_AB.set_as(self.AP_x * self.AB_x + self.AP_y * self.AB_y)
-        with self.tik_instance.if_scope(tik.all(self.AP_AB >= 0, self.AP_AB <= self.AB_AB)):
+        with self.tik_instance.if_scope(
+            tik.all(self.AP_AB >= self.v_threshold, self.AP_AB + self.v_threshold <= self.AB_AB)):
             self.AP_AD.set_as(self.AP_x * self.AD_x + self.AP_y * self.AD_y)
-            with self.tik_instance.if_scope(tik.all(self.AP_AD >= 0, self.AP_AD <= self.AD_AD)):
+            with self.tik_instance.if_scope(tik.all(
+                self.AP_AD >= self.v_threshold, self.AP_AD + self.v_threshold <= self.AD_AD)):
                 self.corners_ub[self.corners_num].set_as(self.b2_x4)
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y4)
                 self.corners_num.set_as(self.corners_num + 1)
@@ -1030,11 +1049,15 @@ class RotatedIou(object):
                             overlap.set_as(self.value / 2)
                         with self.tik_instance.else_scope():
                             overlap.set_as(-1 * self.value / 2)
-                        self.overlap_ub[b2_idx].set_as(overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
+                        with self.tik_instance.if_scope(b1_area + b2_area - overlap > 0):
+                            self.overlap_ub[b2_idx].set_as(
+                                overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
                     with self.tik_instance.if_scope(self.corners_num > 3):
                         self.sum_area_of_triangles(b2_idx)
                         overlap.set_as(self.value / 2)
-                        self.overlap_ub[b2_idx].set_as(overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
+                        with self.tik_instance.if_scope(b1_area + b2_area - overlap > 0):
+                            self.overlap_ub[b2_idx].set_as(
+                                overlap / (b1_area + b2_area - overlap + Constant.EPSILON))
                 self.tik_instance.data_move(
                     self.iou_gm[self.k * (task_idx * self.b1_batch + b1_idx + current_batch * self.n)],
                     self.overlap_ub, 0, 1, self.mov_repeats, 0, 0)
@@ -1059,9 +1082,9 @@ class RotatedIou(object):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True, kernel_name="rotated_iou"):
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True, v_threshold=0, e_threshold=0, kernel_name="rotated_iou"):
     """
     Function: compute the rotated boxes's iou.
     Modify : 2021-12-01
@@ -1088,6 +1111,6 @@ def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True,
         the name of the operator
     ----------
     """
-    op_obj = RotatedIou(boxes, query_boxes, iou, trans, mode, is_cross, kernel_name)
+    op_obj = RotatedIou(boxes, query_boxes, iou, trans, mode, is_cross, v_threshold, e_threshold, kernel_name)
 
     return op_obj.compute()

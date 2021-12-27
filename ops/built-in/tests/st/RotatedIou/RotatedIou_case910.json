@@ -45,19 +45,26 @@
         "name": "trans",
         "value": false,
         "type": "bool"
-        
       },
       {
         "name": "mode",
         "value": "iou",
         "type": "string"
-        
       },
       {
         "name": "is_cross",
         "value": true,
         "type": "bool"
-        
+      },
+      {
+        "name": "v_threshold",
+        "value": 0.0,
+        "type": "float"
+      },
+      {
+        "name": "e_threshold",
+        "value": 0.0,
+        "type": "float"
       }
     ],
     "case_name": "test_RotatedIou_000"
@@ -103,19 +110,26 @@
         "name": "trans",
         "value": true,
         "type": "bool"
-        
       },
       {
         "name": "mode",
         "value": "iou",
         "type": "string"
-        
       },
       {
         "name": "is_cross",
         "value": true,
         "type": "bool"
-        
+      },
+      {
+        "name": "v_threshold",
+        "value": 0.0,
+        "type": "float"
+      },
+      {
+        "name": "e_threshold",
+        "value": 0.0,
+        "type": "float"
       }
     ],
     "case_name": "test_RotatedIou_001"
