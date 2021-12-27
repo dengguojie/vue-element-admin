@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,8 +154,10 @@ Status TrilFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
   // multiples of dims
   int64_t dimNums = 1;
-  int64_t dimsInput = trilInputShape.GetDimNum() - 1;
-  int64_t dimsInput1 = trilInputShape.GetDimNum() - 2;
+  int64_t first_offset = 1;
+  int64_t second_offset = 2;
+  int64_t dimsInput = trilInputShape.GetDimNum() - first_offset;
+  int64_t dimsInput1 = trilInputShape.GetDimNum() - second_offset;
   for (size_t j = 0; j < trilInputShape.GetDimNum(); ++j) {
     dimNums = trilInputShape.GetDim(j) * dimNums;
   }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -189,8 +189,10 @@ Status TriuFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<
 
   // multiples of dims
   int64_t dimNums = 1;
-  int64_t dimsInput = triuInputShape.GetDimNum() - 1;
-  int64_t dimsInput1 = triuInputShape.GetDimNum() - 2;
+  int64_t first_offset = 1;
+  int64_t second_offset = 2;
+  int64_t dimsInput = triuInputShape.GetDimNum() - first_offset;
+  int64_t dimsInput1 = triuInputShape.GetDimNum() - second_offset;
   for (size_t j = 0; j < triuInputShape.GetDimNum(); ++j) {
     if (PatternFusionUtil::IsUnknownShape(triuInputShape.GetDim(j))) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "TriuFusionPass cannot be applied for unknown shape.");
@@ -202,14 +204,11 @@ Status TriuFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<
   // get the last dims of input shape
   int64_t dimNums1 = triuInputShape.GetDim(dimsInput);
   int64_t dimNums2 = triuInputShape.GetDim(dimsInput1);
-
   if (PatternFusionUtil::IsUnknownShape(dimNums1) || PatternFusionUtil::IsUnknownShape(dimNums2)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "TriuFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-
   vector<int64_t> dimInfo = triuInputShape.GetDims();
-
   Format assitMatrixFormat = triuInputTensor.GetFormat();
 
   ge::GeTensorPtr assitPtr = nullptr;
@@ -220,7 +219,6 @@ Status TriuFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<
                       return PARAM_INVALID);
     Status ret = NnSet(dimNums, FLOAT_NUM_ZERO, *reinterpret_cast<float *>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
-
     ret = AssitHelp(dimNums, dimNums1, dimNums2, *inputAssit.get(), diagonal);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
 
@@ -244,10 +242,8 @@ Status TriuFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<
 
     Status ret = NnSet(dimNums, INT_NUM_ZERO, *reinterpret_cast<int32_t *>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
-
     ret = AssitHelp(dimNums, dimNums1, dimNums2, *inputAssit.get(), diagonal);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return NOT_CHANGED);
-
     // define the shape of auxiliary matrix
     ge::GeShape assitShape = triuInputShape;
     tensorDesc.SetShape(assitShape);

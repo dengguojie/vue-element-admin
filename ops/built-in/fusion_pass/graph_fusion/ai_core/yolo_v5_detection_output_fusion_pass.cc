@@ -46,6 +46,7 @@ static const char YOLOV5[] = "YoloV5DetectionOutput";
 static const char YOLOV5_D[] = "YoloV5DetectionOutputD";
 uint32_t YOLOV5_DEFAULT_N = 10;
 uint32_t YOLOV5_PARAM_NUM_PER_YOLO = 3;
+uint32_t TIMES = 2;
 
 Status YoloV5GenerateWIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1, const int32_t outLength) {
   if (outLength < h * w) {
@@ -94,7 +95,7 @@ vector<FusionPattern*> YoloV5DetectionOutputPass::DefinePatterns() {
 }
 
 Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                           vector<ge::NodePtr>& fusionNodes) {
+                                         vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloV5DetectionOutputPass");
   // diag node
   ge::NodePtr yolov5VNode = GetNodeFromMapping(PATTERN_YOLOV5, mapping);
@@ -113,7 +114,7 @@ Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   uint32_t yolov5_input_num = YOLOV5_DEFAULT_N;
   ge::AttrUtils::GetInt(yolov5Desc, "N", yolov5_input_num);
   uint32_t yolo_num = (yolov5_input_num - 1) / YOLOV5_PARAM_NUM_PER_YOLO;
-  vector<ge::GeTensorPtr> weights(yolo_num * 2);
+  vector<ge::GeTensorPtr> weights(yolo_num * TIMES);
   for (uint32_t i = 0; i < yolo_num; i++) {
     ge::InDataAnchorPtr yolov5AnchorPtr = yolov5VNode->GetInDataAnchor(i);
     FUSION_PASS_CHECK(yolov5AnchorPtr == nullptr,
@@ -138,17 +139,19 @@ Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
     ge::GeShape diagInputShape = regionAnchorPtr.GetShape();
 
     // GESHAPE->vector
+    int32_t h_index = 2;
+    int32_t w_index = 3;
     vector<int64_t> dimInfo = diagInputShape.GetDims();
     FUSION_PASS_CHECK(dimInfo.size() < 4,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "unexpected diagInputShape Dim. Dim(%lu) less then 4",
                               dimInfo.size()),
                       return FAILED);
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV5DetectionOutputPass dimInfo%d:%d,%d,%d,%d", i, dimInfo[0], dimInfo[1],
-            dimInfo[2], dimInfo[3]);
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV5DetectionOutputPass dimInfo%d:%d,%d,%d,%d",
+            i, dimInfo[0], dimInfo[1], dimInfo[h_index], dimInfo[w_index]);
 
-    if (PatternFusionUtil::IsUnknownShape(dimInfo[2]) ||
-        PatternFusionUtil::IsUnknownShape(dimInfo[3])) {
+    if (PatternFusionUtil::IsUnknownShape(dimInfo[h_index]) ||
+        PatternFusionUtil::IsUnknownShape(dimInfo[w_index])) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
       "YoloV5DetectionOutputPass cannot be applied for unknown shape.");
       return FAILED;
@@ -156,28 +159,27 @@ Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
     ge::GeTensorPtr assitPtrW = nullptr;
     ge::GeTensorPtr assitPtrH = nullptr;
-
-    unique_ptr<uint16_t[]> inputAssitW(new (std::nothrow) uint16_t[dimInfo[2] * dimInfo[3]]());
+    unique_ptr<uint16_t[]> inputAssitW(new (std::nothrow) uint16_t[dimInfo[h_index] * dimInfo[w_index]]());
     FUSION_PASS_CHECK(inputAssitW.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "inputAssitW%d is NULL", i),
                       return PARAM_INVALID);
-    unique_ptr<uint16_t[]> inputAssitH(new (std::nothrow) uint16_t[dimInfo[2] * dimInfo[3]]());
+    unique_ptr<uint16_t[]> inputAssitH(new (std::nothrow) uint16_t[dimInfo[h_index] * dimInfo[w_index]]());
     FUSION_PASS_CHECK(inputAssitH.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "inputAssitH%d is NULL", i),
                       return PARAM_INVALID);
 
-    int32_t outLength = dimInfo[2] * dimInfo[3];
-    Status ret = YoloV5GenerateWIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitW.get(), outLength);
+    int32_t outLength = dimInfo[h_index] * dimInfo[w_index];
+    Status ret = YoloV5GenerateWIndexFP16V2(dimInfo[h_index], dimInfo[w_index], inputAssitW.get(), outLength);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex%d failed.", i),
                       return NOT_CHANGED);
-    ret = YoloV5GenerateHIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitH.get(), outLength);
+    ret = YoloV5GenerateHIndexFP16V2(dimInfo[h_index], dimInfo[w_index], inputAssitH.get(), outLength);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex%d failed.", i),
                       return NOT_CHANGED);
 
     // define the shape of auxiliary matrix
     vector<int64_t> assitDimInfo;
-    assitDimInfo.push_back(dimInfo[2]);
-    assitDimInfo.push_back(dimInfo[3]);
+    assitDimInfo.push_back(dimInfo[h_index]);
+    assitDimInfo.push_back(dimInfo[w_index]);
     assitDimInfo.push_back(1);
     assitDimInfo.push_back(1);
 
@@ -193,12 +195,12 @@ Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
     FUSION_PASS_MAKE_SHARED(
         (assitPtrW = std::make_shared<ge::GeTensor>(tensorDescW, reinterpret_cast<uint8_t*>(inputAssitW.get()),
-                                                    dimInfo[2] * dimInfo[3] * sizeof(uint16_t))),
+                                                    dimInfo[h_index] * dimInfo[w_index] * sizeof(uint16_t))),
         assitPtrW = nullptr;
         return PARAM_INVALID);
     FUSION_PASS_MAKE_SHARED(
         (assitPtrH = std::make_shared<ge::GeTensor>(tensorDescH, reinterpret_cast<uint8_t*>(inputAssitH.get()),
-                                                    dimInfo[2] * dimInfo[3] * sizeof(uint16_t))),
+                                                    dimInfo[h_index] * dimInfo[w_index] * sizeof(uint16_t))),
         assitPtrH = nullptr;
         return PARAM_INVALID);
     weights[i] = assitPtrW;
@@ -206,12 +208,12 @@ Status YoloV5DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   }
   ge::OpDescUtils::SetWeights(yolov5VNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(yolov5VNode);
-  FUSION_PASS_CHECK(constInputNodes.size() < yolo_num * 2,
+  FUSION_PASS_CHECK(constInputNodes.size() < yolo_num * TIMES,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "unexpected const inputs num. num(%lu) less then %u",
-                            constInputNodes.size(), yolo_num * 2),
+                            constInputNodes.size(), yolo_num * TIMES),
                     return FAILED);
-  for (uint32_t i = 0; i < yolo_num * 2; i++) {
+  for (uint32_t i = 0; i < yolo_num * TIMES; i++) {
     NodePtr constInput = constInputNodes[i];
     constInput->GetOpDesc()->SetType("Const");
   }
