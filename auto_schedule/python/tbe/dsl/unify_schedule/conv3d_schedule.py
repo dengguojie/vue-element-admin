@@ -29,44 +29,20 @@ from .constants import Pattern
 @register_schedule(pattern=Pattern.CONV3D)
 def schedule(outs, tiling_case):
     """
-    schedule for conv2d dynamic shape
+    schedule for conv3d dynamic shape
     """
+    outs_list = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+    op_info = get_op_info(outs_list)
+    sch = tvm.create_schedule(
+        [res.op for res in outs_list if res not in op_info['tensor_map']])
+    sch.tiling_key = tiling_case['key']
+    dynamic_para = {
+        "var_range": tiling_case['var_range'],
+        "tiling": tiling_case['tiling_strategy']
+    }
 
-    return Conv3dSchedule(outs, tiling_case).do_schedule()
+    cce_conv_op = CceConv3dOp(tbe_platform_info.scope_ubuf, need_tensorize=True,
+                              need_pragma=True)
+    cce_conv_op.do_schedule(outs_list[0], outs_list, [sch], dynamic_para=dynamic_para)
 
-
-class Conv3dSchedule:
-    """
-    Conv3dSchedule
-    """
-
-    def __init__(self, outs, tiling_case):
-        self._outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-
-        self._schedule = None
-        self._tiling_case = tiling_case
-
-        self._scope = "local.UB"
-        self._cce_conv_op = CceConv3dOp(tbe_platform_info.scope_ubuf, need_tensorize=True,
-                                        need_pragma=True)
-
-    def do_schedule(self):
-        """
-        do schedule
-        """
-
-        op_info = get_op_info(self._outs)
-        self._var_range = self._tiling_case['var_range']
-
-        self._schedule = tvm.create_schedule(
-            [res.op for res in self._outs if res not in op_info['tensor_map']])
-        self._schedule.tiling_key = self._tiling_case['key']
-        self._tiling_strategy = self._tiling_case['tiling_strategy']
-        dynamic_para = {
-            "var_range": self._var_range,
-            "tiling": self._tiling_strategy
-        }
-        self._cce_conv_op.do_schedule(self._outs[0], self._outs, [self._schedule],
-                                      dynamic_para=dynamic_para)
-
-        return self._schedule
+    return sch

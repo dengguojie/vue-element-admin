@@ -20,7 +20,7 @@ CceConv3dBackpropInputOp
 from tbe.dsl.static_schedule import conv3d_backprop_input_general_schedule
 
 
-class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
+class CceConv3dBackpropInputOp:
     """
     conv3d backprop input
 
@@ -42,7 +42,7 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
         self._res_tensor = None
         self._spec_node_list = None
 
-    def schedule(self, res, spec_node_list, sch_list, tiling_case=None, var_range=None):
+    def schedule(self, res, spec_node_list, sch_list, dynamic_para=None):
         """
         auto_schedule for cce AI-CORE.
 
@@ -54,15 +54,18 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
 
         sch_list: use sch_list[0] to return conv schedule
 
-        tiling_case: fix tiling for dynamic shape, None by default
+        dynamic_para: tiling and range for dynamic shape, None by default
 
-        var_range: var range for dynamic shape, None by default
-    
         Returns
         -------
         True for success, False for no schedule
         """
         self._res_tensor = res
         self._spec_node_list = spec_node_list
+        tiling_case = None
+        var_range = None
+        if dynamic_para is not None:
+            tiling_case = dynamic_para.get('tiling')
+            var_range = dynamic_para.get('var_range')
         sch = conv3d_backprop_input_general_schedule.general_schedule(res, sch_list, tiling_case, var_range)
         return sch

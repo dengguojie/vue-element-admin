@@ -36,7 +36,6 @@ from tbe.common.register import register_param_generalization
 # [strides_batch, strides_depth, strides_height,
 #  strides_width, strides_channel]
 STRIDE_LENGTH = 5
-
 DILATION_LENGTH = 5
 PADS_LENGTH = 6
 # NDHWC or NCDHW

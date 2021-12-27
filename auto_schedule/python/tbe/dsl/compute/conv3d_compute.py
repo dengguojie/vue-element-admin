@@ -57,7 +57,7 @@ _DILATION_MAX = 255
 _FMAP_DTYPE = ('float16')
 _W_DTYPE = ('float16')
 _RES_DTYPE = ('float16', 'float32')
-class Conv3DParam(object):
+class Conv3DParam:
     """
     ConvParam
     """
@@ -137,7 +137,7 @@ def _cube_3d_compute(fmap,
     fmap_h = fmap_shape[3]
     fmap_w = fmap_shape[4]
     fmap_c0 = fmap_shape[5]
-    filter_cout, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
+    _, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
     pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right = pads
     stride_d, stride_h, stride_w = stride_dhw
     dilation_d, dilation_h, dilation_w = dilation_dhw
@@ -160,7 +160,7 @@ def _cube_3d_compute(fmap,
         and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
         and width_out < 2 \
         and height_out != 1 \
-        and not _TENSOR_MAP["l0a_load2d_flag"]:
+        and not _TENSOR_MAP.get("l0a_load2d_flag"):
         pad_right += stride_w
         pads[5] += stride_w
         width_out += 1
@@ -697,7 +697,7 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
     return c_col
 
 
-def _bias_add(in_tensor0, in_tensor1, attrs={}):
+def _bias_add(in_tensor0, in_tensor1, attrs=None):
     """
     calculate conv res + bias in UB
     Parameters
@@ -774,7 +774,7 @@ def _handle_res_c(res, conv_shape):
     -------
     res_c tensor
     """
-    if _TENSOR_MAP["flag_load3d_special_case"]:
+    if _TENSOR_MAP.get("flag_load3d_special_case"):
         conv_shape[2] //= 2
         res_c = tvm.compute(conv_shape,
                             lambda batch, cout1, howo, cout0:
@@ -889,7 +889,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
 
     h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_dilated_h) // stride_dhw[1] + 1
-    w_out = (fmap_w + (pad_w[0] + pad_w[1]) - filter_dilated_w) // stride_dhw[2] + 1
     d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_dilated_d) // stride_dhw[0] + 1
 
     load2d_pass_flag = ((filter_dilated_d == 1) and (filter_dilated_h == 1) and (filter_dilated_w == 1) and
@@ -908,7 +907,7 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                    pad_w[0] + pad_w[1]) // stride_dhw[2] + 1
     w_in = block_size_m // point_per_w + 2
     tmp = ((w_in - 1) * stride_dhw[1] + filter_dilated_h) * fmap_w
-    max_feature_map_l1 = block_size_k * tmp * m_bit_ratio[w_dtype]
+    max_feature_map_l1 = block_size_k * tmp * m_bit_ratio.get(w_dtype)
 
     if max_feature_map_l1 > l1_buffer_size:
         dict_args = {

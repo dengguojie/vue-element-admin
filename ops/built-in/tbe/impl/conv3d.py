@@ -360,7 +360,7 @@ def _conv3d_compute(shape_fm,
 
 def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
-    algorithm: Check the input params of conv3d
+    algorithm: Check the input dtype of conv3d
 
     Parameters
     ----------

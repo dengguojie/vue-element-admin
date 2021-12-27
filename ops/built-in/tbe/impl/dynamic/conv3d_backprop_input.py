@@ -39,7 +39,6 @@ _CONV_BACKPROP_PAD_SHAPE_DIM = 6
 _STRIDES_SHAPE_DIM = 5
 # the dim of dilations in conv_backprop must be 5
 _DILATIONS_SHAPE_DIM = 5
-
 # fmapH, fmapW must be in [1,4096]
 _FMAP_HW_MIN = 1
 _FMAP_HW_MAX = 4096
