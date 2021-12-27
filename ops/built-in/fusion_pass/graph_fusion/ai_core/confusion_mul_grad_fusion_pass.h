@@ -34,7 +34,7 @@ class MulGradFusionPass : public PatternFusionBasePass {
 
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  Status CheckPeerMul1InDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum);
+  Status CheckPeerMul1InDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum) const;
   const string FUSED_OP_TYPE = "ConfusionMulGrad";
 };
 }  // namespace fe

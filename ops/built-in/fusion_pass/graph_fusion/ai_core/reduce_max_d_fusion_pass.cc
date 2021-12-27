@@ -216,7 +216,6 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   newNodes.push_back(minNewNode);
   newNodes.push_back(minLastNode);
   // copy attr
-  // float keepdims;
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minNewNode->GetOpDesc(), KEEPDIMS, keepdims),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set keepdims attr failed"), return FAILED);

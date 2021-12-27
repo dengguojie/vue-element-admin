@@ -47,7 +47,7 @@ class FusedBatchNorm3DGradFusionPass : public FusedBatchNormGradFusionPass {
             BATCHNORMGRAD_ATTR_TRAINING = "is_training";
             STREAM_LABEL = "_stream_label";
         }
-        ~FusedBatchNorm3DGradFusionPass() {
+        ~FusedBatchNorm3DGradFusionPass() final {
         }
 };
 }  // namespace fe

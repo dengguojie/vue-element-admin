@@ -64,13 +64,14 @@ class BatchnormFusionPass : public PatternFusionBasePass {
   Status AddTensorDescForBn(const ge::OpDescPtr& bnOpdesc, const ge::GeTensorDesc& inputTensor,
                             const ge::GeTensorDesc& scaleTensor, const ge::GeTensorDesc& offsetTensor,
                             const ge::GeTensorDesc& meanTensor, const ge::GeTensorDesc& varianceTensor,
-                            const ge::GeTensorDesc& bnOutTensor);
-  Status CheckInputTensorValid(const ge::GeTensorDesc& tensorDesc, const int64_t& kernelNum);
-  Status CheckInputTypeValid(const ge::NodePtr& originalNode, const ge::NodePtr& inputNode, const string& expectOpType);
-  Status CheckPeerInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum);
+                            const ge::GeTensorDesc& bnOutTensor) const;
+  Status CheckInputTensorValid(const ge::GeTensorDesc& tensorDesc, const int64_t& kernelNum) const;
+  Status CheckInputTypeValid(const ge::NodePtr& originalNode, const ge::NodePtr& inputNode,
+                             const string& expectOpType) const;
+  Status CheckPeerInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum) const;
   int64_t GetKernelNumOfOutputOfConv3D(const ge::NodePtr& conv);
   Status RemoveSmalleNodes(ge::ComputeGraph& graph, const ge::NodePtr& addNode, const ge::NodePtr& mulNode1,
-                           const ge::NodePtr& mulNode2, const ge::NodePtr& mulNode3, const ge::NodePtr& subNode);
+                           const ge::NodePtr& mulNode2, const ge::NodePtr& mulNode3, const ge::NodePtr& subNode) const;
   const string FUSED_OP_TYPE = "BatchNorm";
 };
 

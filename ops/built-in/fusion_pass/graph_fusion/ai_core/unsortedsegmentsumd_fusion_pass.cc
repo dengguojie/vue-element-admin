@@ -37,7 +37,8 @@
 
 using namespace ge;
 namespace fe {
-
+static const int32_t PAD_DIM_SIZE_EIGHT = 8;
+static const int32_t PAD_DIM_SIZE_SIXTEEN = 16;
 static const string PATTERN_UNSORTED_SEGMENT_SUM = "UnsortedSegmentSumD";
 static const string PATTERNUNSORTEDSEGMENT_SUM = "UnsortedSegmentSumD";
 
@@ -100,9 +101,9 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   ge::DataType input_dtype = input_desc.GetDataType();
   int pad_dim_size = 0;
   if (input_dtype == DT_FLOAT) {
-    pad_dim_size = 8;
+    pad_dim_size = PAD_DIM_SIZE_EIGHT;
   } else if (input_dtype == DT_FLOAT16) {
-    pad_dim_size = 16;
+    pad_dim_size = PAD_DIM_SIZE_SIXTEEN;
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "UnsortedSegmentSumD dtype is not in (float32, float16), no need change");
     return NOT_CHANGED;

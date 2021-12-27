@@ -30,6 +30,8 @@
 
 namespace fe {
 static const int32_t INT_NUM_FIVE = 5;
+static const int32_t INPUT_IDX_TWO = 2;
+static const int32_t INPUT_IDX_FOUR = 4;
 static const string PATTERN_BATCHNORMGRAD = "batchNormGrad";
 static const string PATTERN_INPUTS1 = "input1";
 static const string PATTERN_INPUTS2 = "input2";
@@ -109,14 +111,14 @@ Status BatchNormGradBnInferGradFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
                                      newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(2);
+  ge::GeTensorDesc input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(INPUT_IDX_TWO);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc(input_tensor3) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input scale failed.",
                                      newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc input_tensor5 = batchNormGradNode->GetOpDesc()->GetInputDesc(4);
+  ge::GeTensorDesc input_tensor5 = batchNormGradNode->GetOpDesc()->GetInputDesc(INPUT_IDX_FOUR);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc(input_tensor5) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(

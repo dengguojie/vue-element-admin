@@ -80,6 +80,7 @@ static const string CONV3D = "Conv3D";
 static const int32_t NDHWC_DIM_C = 4;
 static const int32_t NCDHW_DIM_C = 1;
 static const string BATCHNORM = "BatchNorm";
+static const int32_t DIM_SIZE_FIVE = 5;
 
 vector<FusionPattern*> BatchnormFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -130,7 +131,7 @@ vector<FusionPattern*> BatchnormFusionPass::DefinePatterns() {
 int64_t BatchnormFusionPass::GetKernelNumOfOutputOfConv3D(const ge::NodePtr& conv) {
   auto outputDesc = conv->GetOpDesc()->GetOutputDesc(0);
   auto dims = outputDesc.GetShape().GetDims();
-  if (dims.size() < 5) {
+  if (dims.size() < DIM_SIZE_FIVE) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimNum of %s which is %ld is less than 5",
                                    conv->GetName().c_str(), dims.size());
     return 0;
@@ -149,7 +150,7 @@ int64_t BatchnormFusionPass::GetKernelNumOfOutputOfConv3D(const ge::NodePtr& con
 }
 
 Status BatchnormFusionPass::CheckInputTypeValid(const ge::NodePtr& originalNode, const ge::NodePtr& inputNode,
-                                                const string& expectOpType) {
+                                                const string& expectOpType) const {
   FUSION_PASS_CHECK(inputNode->GetType() != expectOpType,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Match failed! Input of %s is not %s. It is %s, name %s",
                             originalNode->GetName().c_str(), expectOpType.c_str(), inputNode->GetType().c_str(),
@@ -158,7 +159,7 @@ Status BatchnormFusionPass::CheckInputTypeValid(const ge::NodePtr& originalNode,
   return SUCCESS;
 }
 
-Status BatchnormFusionPass::CheckInputTensorValid(const ge::GeTensorDesc& tensorDesc, const int64_t& kernelNum) {
+Status BatchnormFusionPass::CheckInputTensorValid(const ge::GeTensorDesc& tensorDesc, const int64_t& kernelNum) const {
   auto dims = tensorDesc.GetShape().GetDims();
   if (dims.size() != 1 || dims.at(0) != kernelNum) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Match failed! Dims is %u and dims[0] is %lu and kernel num is% lu", dims.size(),
@@ -168,7 +169,7 @@ Status BatchnormFusionPass::CheckInputTensorValid(const ge::GeTensorDesc& tensor
   return SUCCESS;
 }
 Status BatchnormFusionPass::CheckPeerInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor,
-                                                   const size_t& expectedNum) {
+                                                   const size_t& expectedNum) const {
   FUSION_PASS_CHECK(outputAnchor == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAnchor must not be null"),
                     return PARAM_INVALID);
@@ -180,7 +181,7 @@ Status BatchnormFusionPass::CheckPeerInDataAnchors(const ge::OutDataAnchorPtr& o
 
 Status BatchnormFusionPass::RemoveSmalleNodes(ge::ComputeGraph& graph, const ge::NodePtr& addNode,
                                               const ge::NodePtr& mulNode1, const ge::NodePtr& mulNode2,
-                                              const ge::NodePtr& mulNode3, const ge::NodePtr& subNode) {
+                                              const ge::NodePtr& mulNode3, const ge::NodePtr& subNode) const {
   FUSION_PASS_CHECK(
       graph.RemoveNode(addNode) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove node %s failed.", addNode->GetName().c_str()),
@@ -212,7 +213,7 @@ Status BatchnormFusionPass::AddTensorDescForBn(const ge::OpDescPtr& bnOpdesc, co
                                                const ge::GeTensorDesc& scaleTensor,
                                                const ge::GeTensorDesc& offsetTensor, const ge::GeTensorDesc& meanTensor,
                                                const ge::GeTensorDesc& varianceTensor,
-                                               const ge::GeTensorDesc& bnOutTensor) {
+                                               const ge::GeTensorDesc& bnOutTensor) const {
   FUSION_PASS_CHECK(bnOpdesc->AddInputDesc(inputTensor) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input0 of bn failed."), return FAILED);
   FUSION_PASS_CHECK(bnOpdesc->AddInputDesc("scale", scaleTensor) != SUCCESS,
@@ -412,7 +413,7 @@ Status BatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "size of peer in anchor of add is 0"), return FAILED);
   ge::GeTensorDesc bnOutTensor = addNode->GetOpDesc()->GetOutputDesc(0);
 
-  /* 3. Add new Opdesc of BatchNorm*/
+  /* 3. Add new Opdesc of BatchNorm */
   std::shared_ptr<ge::OpDesc> bnOpdesc = nullptr;
   std::string bnNodeName = addNode->GetName() + "_" + "batchnorm";
   bnOpdesc = std::make_shared<ge::OpDesc>(bnNodeName, BATCHNORM);
@@ -461,7 +462,7 @@ Status BatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outAnchorOfMean, mulNode2->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mean edge failed."), return FAILED);
 
-  /* remove variance from mul node 2 and Add it to batchnorm*/
+  /* remove variance from mul node 2 and Add it to batchnorm */
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outAnchorOfVariance, bnNode->GetInDataAnchor(4)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add variance edge failed."), return FAILED);
 

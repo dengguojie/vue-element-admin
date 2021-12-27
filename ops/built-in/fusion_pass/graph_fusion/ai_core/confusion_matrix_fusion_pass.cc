@@ -36,6 +36,10 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
+static const int32_t OUT_TYPE_TWO = 2;
+static const int32_t OUT_TYPE_THREE = 3;
+static const int32_t OUT_TYPE_FOUR = 4;
+static const int32_t INPUT_IDX_TWO = 2;
 static const char* CAST = "Cast";
 static const char* SPARSETENSORDENSEADD = "SparseTensorDenseAdd";
 static const char* TRANSPOSE = "Transpose";
@@ -129,7 +133,7 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::OutDataAnchorPtr newInAnchorPtr2 = sparseNode->GetInDataAnchor(1)->GetPeerOutAnchor();
   ge::GraphUtils::AddEdge(newInAnchorPtr0, confusionMatrixNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(newInAnchorPtr1, confusionMatrixNode->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(newInAnchorPtr2, confusionMatrixNode->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(newInAnchorPtr2, confusionMatrixNode->GetInDataAnchor(INPUT_IDX_TWO));
 
   for (auto inDataAnchor : sparseNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(sparseNode->GetOutDataAnchor(0), inDataAnchor),
@@ -141,7 +145,7 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   }
 
   ge::OpDescPtr confusionMatrixDesc = confusionMatrixNode->GetOpDesc();
-  ge::InDataAnchorPtr tointAnchorPtr = sparseNode->GetInDataAnchor(2);
+  ge::InDataAnchorPtr tointAnchorPtr = sparseNode->GetInDataAnchor(INPUT_IDX_TWO);
   ge::OutDataAnchorPtr constAnchorPtr = tointAnchorPtr->GetPeerOutAnchor();
   ge::NodePtr constNode = constAnchorPtr->GetOwnerNode();
   ge::ConstGeTensorPtr constTensor = nullptr;
@@ -155,16 +159,16 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
     OP_LOGW(FUSED_OP_TYPE.c_str(), "labels and predictions dtype should be same.");
     return NOT_CHANGED;
   }
-  outtype = confusionMatrixOp->GetInputDesc(2).GetDataType();
+  outtype = confusionMatrixOp->GetInputDesc(INPUT_IDX_TWO).GetDataType();
   if (outtype == 0) {
     outtype_str = "float32";
   } else if (outtype == 1) {
     outtype_str = "float16";
-  } else if (outtype == 2) {
+  } else if (outtype == OUT_TYPE_TWO) {
     outtype_str = "int8";
-  } else if (outtype == 4) {
+  } else if (outtype == OUT_TYPE_FOUR) {
     outtype_str = "uint8";
-  } else if (outtype == 3) {
+  } else if (outtype == OUT_TYPE_THREE) {
     outtype_str = "int32";
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Output_dtype can not support this dtype.");

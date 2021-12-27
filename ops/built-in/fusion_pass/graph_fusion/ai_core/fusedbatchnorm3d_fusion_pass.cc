@@ -41,5 +41,4 @@
 
 namespace fe {
 REGISTER_PASS("FusedBatchnorm3DFusionPass", BUILT_IN_GRAPH_PASS, FusedBatchnorm3DFusionPass);
-
 }  // namespace fe

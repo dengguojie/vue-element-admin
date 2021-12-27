@@ -79,7 +79,7 @@ vector<FusionPattern*> MulGradFusionPass::DefinePatterns() {
 }
 
 Status MulGradFusionPass::CheckPeerMul1InDataAnchors(const ge::OutDataAnchorPtr& outputAnchor,
-                                                     const size_t& expectedNum) {
+                                                     const size_t& expectedNum) const {
   FUSION_PASS_CHECK(outputAnchor == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAnchor must not be null"),
                     return PARAM_INVALID);

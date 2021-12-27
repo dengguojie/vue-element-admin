@@ -29,6 +29,7 @@
 
 using namespace std;
 
+namespace fe {
 bool HasUnKnowDimShape(const ge::NodePtr& node_ptr) {
   FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return false);
 
@@ -139,7 +140,7 @@ bool GetIntConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_
                                 std::vector<int64_t>& const_data) {
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
+    const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(const_tensor.GetData());
     if (const_data_ptr == nullptr) {
       OP_LOGW(op.GetName().c_str(), "const_data_ptr is null");
       return false;
@@ -150,7 +151,7 @@ bool GetIntConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_
       OP_LOGD(op.GetName().c_str(), "const type is int32 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
     }
   } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
+    const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(const_tensor.GetData());
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
@@ -180,3 +181,4 @@ bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name, s
   OP_LOGD(op.GetName().c_str(), "end to get const value for input name(%s)", const_name.c_str());
   return true;
 }
+}  // namespace fe

@@ -38,7 +38,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "GatherV2";
 static const char CAST[] = "Cast";
 
@@ -126,7 +125,6 @@ Status ConstToAttrGatherV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Gatherv2 Not Supported."),
                     return NOT_CHANGED);
 
-  // PatternFusionUtil patternFusionUtil;
   if (domi::OpRegistry::Instance()->GetImplyType(fusedDesc->GetType()) == domi::ImplyType::CCE) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fusion Op %s is CCE, no need to fusion.", fusedNode->GetName().c_str());
     return NOT_CHANGED;

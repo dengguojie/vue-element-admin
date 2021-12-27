@@ -42,7 +42,7 @@ static const char MIND[] = "ReduceMinD";
 static const char MINDLAST[] = "ReduceMinD";
 static const char KEEPDIMS[] = "keep_dims";
 
-/*MinD*/
+/* MinD */
 static const std::string AXIS = "axes";
 vector<FusionPattern*> ReduceMinDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -210,7 +210,6 @@ Status ReduceMinDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   newNodes.push_back(minLastNode);
 
   // copy attr
-  // float keepdims;
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minNewNode->GetOpDesc(), KEEPDIMS, keepdims),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[name=%s]: Set attr %s failed",
                                                    minNewNode->GetName().c_str(), KEEPDIMS),

@@ -37,7 +37,7 @@ namespace fe {
             STREAM_LABEL = "_stream_label";
             FUSED_OP_TYPE = "BN3DTrainingReduce_BN3DTrainingUpdate";
         }
-        ~FusedBatchnorm3DFusionPass() {
+        ~FusedBatchnorm3DFusionPass() final {
         }
 };
 }  // namespace fe
