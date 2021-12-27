@@ -746,5 +746,65 @@
     ],
     "attr": [],
     "case_name": "test_Mul_023"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          128,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          128,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+	"ori_shape": [
+          -1,
+          1
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          128,
+          1
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          -1,
+          1
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_025"
   }
 ]

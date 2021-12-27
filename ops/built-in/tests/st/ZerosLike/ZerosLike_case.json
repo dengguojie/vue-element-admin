@@ -256,5 +256,50 @@
     ],
     "attr": [],
     "case_name": "test_ZerosLike_005"
+  },
+  {
+    "op": "ZerosLike",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          128,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          128,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          1
+        ],
+	"ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ZerosLike_006"
   }
 ]
