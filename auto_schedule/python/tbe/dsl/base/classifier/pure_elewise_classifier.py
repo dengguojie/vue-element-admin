@@ -41,10 +41,10 @@ class PureElewiseClassifier:
         :param ins:
         """
         self.ins = ins
+        self.dim_length = max(len(_ins["shape"]) for _ins in self.ins)
         self.is_unknown_rank = self._check_update_unknown_rank()
         operation.get_context().add("_unknown_rank", self.is_unknown_rank)
         self.shapes = [x["shape"] for x in self.ins]
-        self.dim_length = len(self.shapes[0])
 
     def classify(self):
         """
@@ -63,8 +63,8 @@ class PureElewiseClassifier:
                     dict_args["errCode"] = "E90001"
                     dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2,)"
                     raise RuntimeError(dict_args, get_error_message(dict_args))
-                _in["shape"] = [-1]
-                _in["range"] = [(1, None)]
+                _in["shape"] = [-1] * self.dim_length
+                _in["range"] = [(1, None)] * self.dim_length
                 is_unknown_rank = True
         return is_unknown_rank
 
@@ -122,7 +122,7 @@ class EmptyMode:
         generate input
         :return:
         """
-        return {"shape": (0, ),
+        return {"shape": (0,),
                 "range": [(0, 0)],
                 "support_broadcast": True,
                 "mode": EMPTY,
