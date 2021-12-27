@@ -34,7 +34,7 @@ namespace {
 static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_ELEM_1[] = "elemwise1";
-static vector<string> elem_typelist = {"FusedMulAdd", "Add", "Div", "Relu"};
+static vector<string> elem_typelist = {"FusedMulAdd", "Add", "Div", "Relu", "ReluGrad"};
 static vector<string> elem1_typelist = {"Add", "Relu", "FusedMulAdd"};
 }  // namespace
 
