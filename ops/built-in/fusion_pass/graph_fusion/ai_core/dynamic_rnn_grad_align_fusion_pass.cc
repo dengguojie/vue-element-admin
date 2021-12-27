@@ -447,9 +447,7 @@ Status DynamicRNNGradAlignFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradN
   vector<ge::NodePtr> basic_lstm_cell_state_grad_nodes = resultNode[0];
   vector<ge::NodePtr> matmul_nodes = resultNode[1];
   vector<ge::NodePtr> split_nodes = resultNode[2];
-  vector<ge::NodePtr> reshape_nodes = {};
-
-  reshape_nodes = resultNode[3];
+  vector<ge::NodePtr> reshape_nodes = resultNode[3];
 
   // c dy dh dc i j f o tanct
   for (int64_t i = 0; i < num_split_x; i++) {
@@ -1074,9 +1072,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGr
                           failStatus = true;
                           return nullptr);
   // input
-  ge::GeTensorDesc inputTensorDescH = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]);  // h
-
-  inputTensorDescH = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]);
+  ge::GeTensorDesc inputTensorDescH = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]);
   splitDesc->AddInputDesc("input_h", inputTensorDescH);
   vector<int64_t> outputDims;
 
