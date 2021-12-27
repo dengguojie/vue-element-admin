@@ -1410,7 +1410,6 @@ def get_class_tensor(tik_instance, class_ub, class_num, len_per_class, start_cla
     tik_func_vector(tik_instance, class_ub, start_class, len_per_class)
     with tik_instance.for_range(1, class_num) as _class_idx:
         dst_offset = _class_idx * len_per_class
-        # get ub_class_all[n] = ub_class_all[n-1] + 1
         src_offset = (_class_idx - 1) * len_per_class
         _repeat_time = len_per_class // 128
         _repeat_tail = len_per_class % 128

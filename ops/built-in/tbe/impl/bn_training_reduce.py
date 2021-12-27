@@ -30,8 +30,8 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,redefined-builtin,too-many-statements
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,redefined-builtin,too-many-statements
 def get_op_support_info(x, sum, square_sum,
                        kernel_name="bn_training_reduce"):
     """
@@ -48,8 +48,8 @@ def get_op_support_info(x, sum, square_sum,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin, too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin, too-many-locals
 def op_select_format(x, sum, square_sum,
                      kernel_name="bn_training_reduce"):
     """
@@ -190,7 +190,7 @@ def _reduce_compute_nd(x, sum):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-locals,unused-variable
 @tvm.register_func("tvm.intrin.cce.bn_reduce_sum")
 def bn_reduce_sum(stmt_op):
     """
@@ -326,7 +326,7 @@ def bn_reduce_sum(stmt_op):
     return ir_builder.get()
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 @tvm.register_func("tvm.intrin.cce.binary_reduce_output_reversed")
 def binary_reduce_output(stmt_op):
     """Move reduce results to two destinations"""
@@ -422,7 +422,7 @@ def binary_reduce_output(stmt_op):
     return ir_builder.get()
 
 
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches
 def bn_training_reduce_schedule_nd(res, core_num=None):
     """bn_training_reduce schedule method"""
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
@@ -650,4 +650,3 @@ def bn_training_reduce(x, sum, square_sum,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-
