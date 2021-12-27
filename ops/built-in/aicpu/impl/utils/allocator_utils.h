@@ -26,10 +26,10 @@
 namespace aicpu {
 class AICPU_VISIBILITY CpuKernelAllocatorUtils {
  public:
-  static uint32_t ParamCheck(const std::vector<int64_t> &dims, void *data_ptr,
+  static uint32_t ParamCheck(const std::vector<int64_t> &dims, const void *data_ptr,
                              Tensor *&outputResultTensor);
   static uint32_t UpdateOutputDataTensor(const std::vector<int64_t> &dims,
-                                         DataType type, void *data_ptr,
+                                         DataType type, const void *data_ptr,
                                          int64_t input_data_size,
                                          Tensor *&outputResultTensor);
   static uint32_t CheckOutputDataPtr(const uint64_t data_ptr);

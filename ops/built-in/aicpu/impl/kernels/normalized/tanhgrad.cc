@@ -97,9 +97,9 @@ uint32_t TanhGradCpuKernel::TanhGradCompute(CpuKernelContext &ctx) {
   ctx.Output(0)->GetTensorShape()->SetDimSizes(
       ctx.Input(0)->GetTensorShape()->GetDimSizes());
   uint32_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
-  T *input_y = (T *)(ctx.Input(0)->GetData());
-  T *input_dy = (T *)(ctx.Input(1)->GetData());
-  T *output = (T *)(ctx.Output(0)->GetData());
+  T *input_y = static_cast<T *>(ctx.Input(0)->GetData());
+  T *input_dy = static_cast<T *>(ctx.Input(1)->GetData());
+  T *output = static_cast<T *>(ctx.Output(0)->GetData());
   bool muilt_core_flag = false;
   DataType input_type{ctx.Output(0)->GetDataType()};
   // Determine whether to enable multi-core parallel computing

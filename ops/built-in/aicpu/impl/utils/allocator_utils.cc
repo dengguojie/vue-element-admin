@@ -27,8 +27,8 @@ namespace {
 
 namespace aicpu {
 uint32_t CpuKernelAllocatorUtils::ParamCheck(
-  const std::vector<int64_t> &dims, void *data_ptr,
-  Tensor *&outputResultTensor) {
+    const std::vector<int64_t> &dims, const void *data_ptr,
+    Tensor *&outputResultTensor) {
   if (dims.empty()) {
     KERNEL_LOG_ERROR("UpdateOutputDataTensor dims size == 0.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -41,7 +41,7 @@ uint32_t CpuKernelAllocatorUtils::ParamCheck(
 }
 
 uint32_t CpuKernelAllocatorUtils::UpdateOutputDataTensor(
-    const std::vector<int64_t> &dims, DataType type, void *data_ptr,
+    const std::vector<int64_t> &dims, DataType type, const void *data_ptr,
     int64_t input_data_size, Tensor *&outputResultTensor) {
   uint32_t check_ret = ParamCheck(dims, &data_ptr, outputResultTensor);
   if (check_ret != KERNEL_STATUS_OK) {
@@ -67,7 +67,7 @@ uint32_t CpuKernelAllocatorUtils::UpdateOutputDataTensor(
   void *output_shape_ptr = malloc(shape_buff_size);
   KERNEL_CHECK_NULLPTR(output_shape_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "malloc error, size[%ld]!", shape_buff_size);
-  
+
   int32_t ret = memcpy_s(output_shape_ptr, shape_buff_size, dims.data(),
                          shape_buff_size);
   if (ret != EOK) {
@@ -143,7 +143,7 @@ int64_t CpuKernelAllocatorUtils::GetInputDataSize(
 uint32_t CpuKernelAllocatorUtils::CheckOutputDataPtr(const uint64_t data_ptr) {
   auto find_data_ptr = g_allocated_ptr.find(data_ptr);
   if ((find_data_ptr == g_allocated_ptr.end())) {
-    KERNEL_LOG_ERROR("CheckOutputDataPtr invalid [%lu].",data_ptr);
+    KERNEL_LOG_ERROR("CheckOutputDataPtr invalid [%lu].", data_ptr);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -157,9 +157,9 @@ uint32_t CpuKernelAllocatorUtils::DeleteOutputDataPtr(const uint64_t data_ptr) {
     free(reinterpret_cast<void*>(data_ptr));
     g_allocated_ptr.erase(find_data_ptr);
   } else {
-    KERNEL_LOG_EVENT("DeleteOutputDataPtr invalid [%lu].",data_ptr);
+    KERNEL_LOG_EVENT("DeleteOutputDataPtr invalid [%lu].", data_ptr);
   }
-  
+
   return KERNEL_STATUS_OK;
 }
 }  // namespace aicpu
