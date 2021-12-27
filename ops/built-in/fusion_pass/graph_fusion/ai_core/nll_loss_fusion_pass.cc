@@ -17,12 +17,10 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
-#include "fp16_t.hpp"
-#include "graph/debug/ge_attr_define.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
-#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "common/util/platform_info.h"
 
 using namespace ge;
@@ -150,7 +148,7 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 }
 
 bool NLLLossFusionPass::IsFusionPassEnable(ge::NodePtr nll_loss_node, string reduction, string aic_version,
-                                           bool is_unknown_shape) {
+                                           bool is_unknown_shape) const {
   // support reduction
   if (reduction != "mean") {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "reduction is not mean.");
