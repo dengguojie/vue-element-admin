@@ -15,6 +15,7 @@
 """
 reduce_std_v2_update
 """
+import operator as op
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator_compute
@@ -25,9 +26,8 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpPatternMode
 
-import operator as op
 
-# pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
+# 'pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments,too-many-branches
 @register_operator_compute("reduce_std_v2_update", op_mode="dynamic", support_fusion=True)
 def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel_name="reduce_std_v2_update"):
     """
@@ -95,15 +95,15 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
 
     var = tbe.reduce_sum(var_muls, axis=dim, keepdims=keepdim)
 
-    if(if_std):
+    if if_std:
         std = tbe.vsqrt(var, impl_mode="high_precision")
         if std.dtype != x_type:
             std = tbe.cast_to(std, x_type)
         return std
-    else:
-        if var.dtype != x_type:
-            var = tbe.cast_to(var, x_type)
-        return var
+
+    if var.dtype != x_type:
+        var = tbe.cast_to(var, x_type)
+    return var
 
 
 @register_operator("ReduceStdV2Update")
@@ -149,7 +149,7 @@ def reduce_std_v2_update(x, mean, output_var, dim, if_std=False, unbiased=True, 
     shape_mean = mean.get("shape")
     para_check.check_shape(shape_mean, param_name="mean")
 
-    if(not op.eq(shape_x, shape_mean)):
+    if not op.eq(shape_x, shape_mean):
         raise RuntimeError("the x and mean should have the same shape.")
 
     x["rel_pos_to_reduce"] = "before"

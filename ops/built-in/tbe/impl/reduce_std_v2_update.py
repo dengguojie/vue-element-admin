@@ -15,15 +15,16 @@
 """
 reduce_std_v2_update
 """
+import operator as op
 import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_to_list
 from tbe.common.utils import axis_check
 from te.platform import fusion_manager
-import operator as op
 
-# pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
+
+# 'pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
 @fusion_manager.fusion_manager.register("reduce_std_v2_update")
 def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel_name="reduce_std_v2_update"):
     """
@@ -66,7 +67,7 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
     x_sub = tbe.vsub(x, mean)
     var_mul = tbe.vmul(x_sub, x_sub)
 
-    if(unbiased):
+    if unbiased:
         cof_unbiased = (reduce_ele - 1.0) ** (-1)
         var_muls = tbe.vmuls(var_mul, cof_unbiased)
     else:
@@ -74,15 +75,15 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
 
     var = tbe.reduce_sum(var_muls, axis=dim, keepdims=keepdim)
 
-    if(if_std):
+    if if_std:
         std = tbe.vsqrt(var, impl_mode="high_precision")
         if std.dtype != x_type:
             std = tbe.cast_to(std, x_type)
         return std
-    else:
-        if var.dtype != x_type:
-            var = tbe.cast_to(var, x_type)
-        return var
+    
+    if var.dtype != x_type:
+        var = tbe.cast_to(var, x_type)
+    return var
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -127,7 +128,7 @@ def reduce_std_v2_update(x, mean, output_var, dim, if_std=False, unbiased=True, 
     shape_mean = mean.get("shape")
     para_check.check_shape(shape_mean, param_name="mean")
 
-    if(not op.eq(shape_x, shape_mean)):
+    if not op.eq(shape_x, shape_mean):
         raise RuntimeError("the x and mean should have the same shape.")
 
     dim = list(dim)
@@ -135,7 +136,7 @@ def reduce_std_v2_update(x, mean, output_var, dim, if_std=False, unbiased=True, 
     dim = axis_check(len(shape_x), dim)
 
     data_x = tvm.placeholder(shape_x, dtype=x.get("dtype"), name="data_x")
-    data_mean = tvm.placeholder(shape_mean, dtype=mean.get("dtype"), name="data_mean") 
+    data_mean = tvm.placeholder(shape_mean, dtype=mean.get("dtype"), name="data_mean")
 
     res = reduce_std_v2_update_compute(data_x, data_mean, dim, if_std, unbiased, keepdim, kernel_name)
 
