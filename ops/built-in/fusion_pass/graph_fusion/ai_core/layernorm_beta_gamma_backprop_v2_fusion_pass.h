@@ -34,7 +34,7 @@ struct PassRemoveEdge {
 // Match result.
 struct LayerNormMatchResult {
   ge::NodePtr layerNormBetaGammaBackpropPtr;
-  std::vector<NodePtr> castNodeVec;
+  std::vector<ge::NodePtr> castNodeVec;
 };
 
 class LayerNormBetaGammaBackpropV2FusionPass : public PatternFusionBasePass {
@@ -44,10 +44,11 @@ class LayerNormBetaGammaBackpropV2FusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& newNodes) override;
 
  private:
-  Status MatchPass(ge::ComputeGraph& graph, std::vector<LayerNormMatchResult>& passMatchResultVec);
-  Status GetAllLayerNormBetaGammaBackpropV2Nodes(ge::ComputeGraph& graph, std::vector<NodePtr>& batchNormNodeVec);
-  Status MatchLayerNormBetaGammaBackpropV2Node(ge::NodePtr bnNodePtr, LayerNormMatchResult& matchResult);
-  Status FusionGraphWithPass(ge::ComputeGraph& graph, LayerNormMatchResult& matchResult);
+  Status MatchPass(const ge::ComputeGraph& graph, std::vector<LayerNormMatchResult>& passMatchResultVec);
+  Status GetAllLayerNormBetaGammaBackpropV2Nodes(const ge::ComputeGraph& graph,
+                                                 std::vector<ge::NodePtr>& batchNormNodeVec);
+  Status MatchLayerNormBetaGammaBackpropV2Node(const ge::NodePtr lnNodePtr, LayerNormMatchResult& matchResult);
+  Status FusionGraphWithPass(ge::ComputeGraph& graph, const LayerNormMatchResult& matchResult);
   const string FUSED_OP_TYPE = "LayerNormBetaGammaBackpropV2";
 };
 }  // namespace fe

@@ -54,13 +54,13 @@ vector<FusionPattern*> ReduceMeanVarianceFusionPass::DefinePatterns() {
              |          |                             |            |
              |   squared_difference    ----->         | -- mul     |
              |          |                             |        \   |
-             |          |                             |           add
+             |          |                             |           sub
              |          |                             |            |
          output_0    output_1                      output_0     output_1
   */
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReduceMeanVarianceFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, 
+  FUSION_PASS_CHECK(pattern == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_MEAN0, {MEAN})
@@ -83,13 +83,13 @@ Status ReduceMeanVarianceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   ge::NodePtr squared0_node = GetNodeFromMapping(PATTERN_SQUAREDDIFFERENCE0, mapping);
   ge::NodePtr mean1_node = GetNodeFromMapping(PATTERN_MEAN1, mapping);
 
-  FUSION_PASS_CHECK(mean0_node == nullptr, 
+  FUSION_PASS_CHECK(mean0_node == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mean0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(squared0_node == nullptr, 
+  FUSION_PASS_CHECK(squared0_node == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "squared0_node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mean1_node == nullptr, 
+  FUSION_PASS_CHECK(mean1_node == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mean1_node is null, fusion failed."),
                     return PARAM_INVALID);
 
@@ -97,7 +97,6 @@ Status ReduceMeanVarianceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   std::string mean0_input_name = mean0_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string squared0_input0_name = squared0_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string squared0_input1_name = squared0_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
-  
   if ((strcmp(mean0_input_name.c_str(), squared0_input0_name.c_str()) != 0) &&
       (strcmp(mean0_input_name.c_str(), squared0_input1_name.c_str()) != 0)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "mean0_input and squared0_input are not same, not change");
@@ -147,7 +146,7 @@ Status ReduceMeanVarianceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   FUSION_PASS_MAKE_SHARED((mean_var_desc = std::make_shared<ge::OpDesc>(mean0_node->GetName() +
                           "/" + REDUCEMEANVARIANCE, REDUCEMEANVARIANCE)),
                           return FAILED);
-  FUSION_PASS_CHECK(mean_var_desc == nullptr, 
+  FUSION_PASS_CHECK(mean_var_desc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mean_var_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
@@ -225,7 +224,7 @@ Status ReduceMeanVarianceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   // add attr
   Operator op_mean_var = ge::OpDescUtils::CreateOperatorFromNode(mean_var_node);
   op_mean_var.SetAttr("axes", axes0);
-  op_mean_var.SetAttr("keep_dims", keep_dims0);// set node type
+  op_mean_var.SetAttr("keep_dims", keep_dims0);
 
   mean_var_node->GetOpDesc()->SetType(REDUCEMEANVARIANCE);
   mul_node->GetOpDesc()->SetType("Mul");
@@ -294,8 +293,6 @@ Status ReduceMeanVarianceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge2 failed."),
                       return FAILED);
   }
-
-
 
   // delete fused nodes
   FUSION_PASS_CHECK(graph.RemoveNode(mean0_node) != SUCCESS,

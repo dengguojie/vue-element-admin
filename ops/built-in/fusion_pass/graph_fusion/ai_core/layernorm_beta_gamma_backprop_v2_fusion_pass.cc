@@ -15,15 +15,18 @@
  */
 
 /*!
- * \file layernorm_beta_gamma_backprop_fusion_pass.cpp
- * \brief clip fusion pass(min --> max)
+ * \file layernorm_beta_gamma_backprop_v2_fusion_pass.cpp
+ * \brief clip fusion pass(Remove cast node)
  */
+#include "layernorm_beta_gamma_backprop_v2_fusion_pass.h"
+
 #include <iostream>
 #include <vector>
 #include <map>
 #include <memory>
 #include <fstream>
 #include <sstream>
+
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -32,20 +35,21 @@
 #include "error_util.h"
 #include "register/graph_optimizer/fusion_common/graph_pass_util.h"
 #include "pattern_fusion_util.h"
-#include "layernorm_beta_gamma_backprop_v2_fusion_pass.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "register/graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
+using namespace ge;
 namespace fe {
 static const string PASS_OP_TYPE_LAYERNORM_BETA_GAMMA_BACKPROP = "LayerNormBetaGammaBackpropV2";
 static const string PASS_OP_TYPE_CAST = "Cast";
+static const int CAST_NUM = 2;
 
 vector<FusionPattern*> LayerNormBetaGammaBackpropV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   return patterns;
 }
 
-Status LayerNormBetaGammaBackpropV2FusionPass::Run(ge::ComputeGraph& graph) {
+Status LayerNormBetaGammaBackpropV2FusionPass::Run(ge::ComputeGraph &graph) {
   vector<LayerNormMatchResult> passMatchResultVec;
   fe::Status status = MatchPass(graph, passMatchResultVec);
   if (status != SUCCESS) {
@@ -84,8 +88,8 @@ Status LayerNormBetaGammaBackpropV2FusionPass::Run(ge::ComputeGraph& graph) {
   return SUCCESS;
 }
 
-Status LayerNormBetaGammaBackpropV2FusionPass::MatchPass(ge::ComputeGraph& graph,
-                                                       vector<LayerNormMatchResult>& passMatchResultVec) {
+Status LayerNormBetaGammaBackpropV2FusionPass::MatchPass(const ge::ComputeGraph &graph,
+                                                         vector <LayerNormMatchResult> &passMatchResultVec) {
   vector<NodePtr> layerNormBetaGammaBackpropNodeVec;
   Status status = GetAllLayerNormBetaGammaBackpropV2Nodes(graph, layerNormBetaGammaBackpropNodeVec);
   if (status != SUCCESS) {
@@ -108,7 +112,7 @@ Status LayerNormBetaGammaBackpropV2FusionPass::MatchPass(ge::ComputeGraph& graph
 }
 
 Status LayerNormBetaGammaBackpropV2FusionPass::GetAllLayerNormBetaGammaBackpropV2Nodes(
-    ge::ComputeGraph& graph, vector<NodePtr>& layerNormBetaGammaBackpropNodeVec) {
+    const ge::ComputeGraph& graph, vector<NodePtr>& layerNormBetaGammaBackpropNodeVec) {
   for (NodePtr node : graph.GetDirectNode()) {
     if (node->GetType() == PASS_OP_TYPE_LAYERNORM_BETA_GAMMA_BACKPROP) {
       layerNormBetaGammaBackpropNodeVec.push_back(node);
@@ -117,8 +121,9 @@ Status LayerNormBetaGammaBackpropV2FusionPass::GetAllLayerNormBetaGammaBackpropV
   return SUCCESS;
 }
 
-Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2Node(NodePtr lnNodePtr,
-                                                                                 LayerNormMatchResult& matchResult) {
+Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2Node(const NodePtr lnNodePtr,
+                                                                                     LayerNormMatchResult
+                                                                                     &matchResult) {
   // LayerNormBetaGammaBackpropV2 node has epsilon attr
   OpDescPtr lnOpDescPtr = lnNodePtr->GetOpDesc();
   if (!ge::AttrUtils::HasAttr(lnOpDescPtr, "shape_gamma")) {
@@ -127,17 +132,17 @@ Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2
   }
 
   // ln have 2 input
-  if (lnNodePtr->GetAllInDataAnchors().size() != 2) {
+  if (lnNodePtr->GetAllInDataAnchors().size() != CAST_NUM) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The LayerNormBetaGammaBackpropV2 node must have 2 input anchor.");
     return FAILED;
   }
 
   // ln have 2 output
-  if (lnNodePtr->GetAllOutDataAnchors().size() != 2) {
+  if (lnNodePtr->GetAllOutDataAnchors().size() != CAST_NUM) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The LayerNormBetaGammaBackpropV2 node must have 2 output anchor.");
     return FAILED;
   }
-  
+
   ge::GeTensorDesc inputDesc = lnOpDescPtr->GetInputDesc(0);
   if (inputDesc.GetDataType() != DT_FLOAT16) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The LayerNormBetaGammaBackpropV2 node's inputDesc[0] should be float16.");
@@ -151,7 +156,7 @@ Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2
     }
   }
 
-  if (matchResult.castNodeVec.size() != 2) {
+  if (matchResult.castNodeVec.size() != CAST_NUM) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The LayerNormBetaGammaBackpropV2 node's output  must be 2 Cast node.");
     return FAILED;
   }
@@ -164,10 +169,11 @@ Status LayerNormBetaGammaBackpropV2FusionPass::MatchLayerNormBetaGammaBackpropV2
   return SUCCESS;
 }
 
-Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGraph& graph,
-                                                                 LayerNormMatchResult& matchResult) {
+Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGraph &graph,
+                                                                   const LayerNormMatchResult &matchResult) {
   NodePtr lnNodePtr = matchResult.layerNormBetaGammaBackpropPtr;
-  FUSION_PASS_CHECK(lnNodePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "lnNodePtr is null, fusion failed."),
+  FUSION_PASS_CHECK(lnNodePtr == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "lnNodePtr is null, fusion failed."),
                     return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Begin to fusion pass, the name of LayerNormBetaGammaBackpropV2 is [%s].",
           lnNodePtr->GetName().c_str());
@@ -176,7 +182,8 @@ Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGr
   int index = 0;
   for (NodePtr castNode : matchResult.castNodeVec) {
     FUSION_PASS_CHECK(graph.RemoveNode(castNode) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast node[%s] failed.", castNode->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove cast node[%s] failed.",
+                                                     castNode->GetName().c_str()),
                       return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove cast node[%s].", castNode->GetName().c_str());
     ge::GeTensorDesc tensorDesc = layerNormBetaGammaDesc->GetOutputDesc(index);
@@ -188,8 +195,11 @@ Status LayerNormBetaGammaBackpropV2FusionPass::FusionGraphWithPass(ge::ComputeGr
   return SUCCESS;
 }
 
-Status LayerNormBetaGammaBackpropV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                                    vector<ge::NodePtr>& newNodes) {
+Status LayerNormBetaGammaBackpropV2FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
+                                                      vector <ge::NodePtr> &newNodes) {
+  (void) graph;
+  (void) mapping;
+  (void) newNodes;
   return SUCCESS;
 }
 
