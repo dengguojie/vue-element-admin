@@ -288,6 +288,15 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/norm/norm_schedule.py":[
         "norm"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_tilingcase.py":[
+        "gather"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_schedule.py":[
+        "gather"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_schedule_zero.py":[
+        "gather"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_tilingcase.py":[
         "transpose"
     ],

@@ -10,7 +10,7 @@ from tbe.dsl import classify
 
 
 @register_operator("gather")
-def dsl_dync_gather(params, indices, output, kernel_name="dsl_dync_vadd"):
+def dsl_dynamic_gather(params, indices, output, kernel_name="dsl_dynamic_gather"):
 
 
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -33,7 +33,7 @@ def dsl_dync_gather(params, indices, output, kernel_name="dsl_dync_vadd"):
         config = {"name": kernel_name, "tensor_list": tensors}
         tbe.dsl.build(schedules, config)
 
-ut_case = OpUT("gather", "gather.test_gather_impl", "dsl_dync_gather")
+ut_case = OpUT("gather", "gather.test_dynamic_gather_impl", "dsl_dynamic_gather")
 
 case1 = {
     "params": [{

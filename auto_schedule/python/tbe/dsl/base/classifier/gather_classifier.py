@@ -64,6 +64,8 @@ class GatherClassifier:
         self.axis = ins[2]
         if isinstance(ins[2], dict):
             self.axis = self._get_axis_in_const() if self.is_static else ins[2]
+        else:
+            self.axis = ins[2] + len(self.indices_shape) if ins[2] < 0 else ins[2]
 
         self.batch_dims = ins[3] + len(self.indices_shape) if ins[3] < 0 else ins[3]
 
@@ -98,7 +100,7 @@ class GatherClassifier:
         get const axis value
         :return:
         """
-        axis = self.axis["value"] if isinstance(self.axis["value"], int) else self.axis["value"][0]
+        axis = self.axis["const_value"] if isinstance(self.axis["const_value"], int) else self.axis["const_value"][0]
         return axis + len(self.params_shape) if axis < 0 else axis
 
     def _check_zero_shape(self):

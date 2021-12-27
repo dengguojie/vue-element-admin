@@ -154,6 +154,21 @@ class GatherSchedule(Schedule):
 
         self._fake_schedule = False
 
+        # define init value
+        self._coexisting_quantity_gather = None
+        self._coexisting_quantity_indices = None
+        self._indices_ub_tensor = None
+        self._params_inner_tensor = None
+        self._removd_pad_tensor = None
+        self._gather_ub_tensor = None
+        self._align_factor = None
+        self.tensor_space = None
+        self._params_storage_bound = None
+        self._gather_emit_at_axis = None
+        self._gather_align_axis = None
+        self._remove_pad_emit_at_axis = None
+        self._res_emit_at_axis = None
+
     def do_schedule(self):
         """
         schedule body
@@ -204,7 +219,7 @@ class GatherSchedule(Schedule):
         visited_tensors = set()
 
         self.__dfs_sub_graph(self._out_tensor, visited_tensors)
-        byte_len = [DTYPE_BYTE_MAPPING[dtype] for dtype in self._dtypes]
+        byte_len = [DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes]
         self._max_dtype_bytes = max(byte_len)
 
         # params gm and indices gm by name
@@ -214,8 +229,8 @@ class GatherSchedule(Schedule):
             elif one_input_tensor.name == self._indices_name:
                 self._indices_gm_tensor = one_input_tensor
 
-        self._params_dtype_size = DTYPE_BYTE_MAPPING[self._params_gm_tensor.dtype]
-        self._indices_dtype_size = DTYPE_BYTE_MAPPING[self._indices_gm_tensor.dtype]
+        self._params_dtype_size = DTYPE_BYTE_MAPPING.get(self._params_gm_tensor.dtype)
+        self._indices_dtype_size = DTYPE_BYTE_MAPPING.get(self._indices_gm_tensor.dtype)
 
     def _cal_storage_bound(self):
         self._coexisting_quantity_gather = int(BLOCK_SIZE_BYTE / self._indices_dtype_size)
@@ -229,13 +244,13 @@ class GatherSchedule(Schedule):
     def _do_cache_read(self):
         # indcies
         self._indices_ub_tensor = self._schedule.cache_read(self._indices_gm_tensor, self._scope,
-                                                            self._in_out_map[self._indices_gm_tensor])
+                                                            self._in_out_map.get(self._indices_gm_tensor))
 
         # params in ub or l1
         if self._store_area > 0:
             self._params_inner_tensor = self._schedule.cache_read(self._params_gm_tensor,
-                                                                  PARAMS_SCOPE[self._store_area],
-                                                                  self._in_out_map[self._params_gm_tensor])
+                                                                  PARAMS_SCOPE.get(self._store_area),
+                                                                  self._in_out_map.get(self._params_gm_tensor))
 
     def _cal_cache_write(self):
         self._cache_write_tensor = self._out_tensor
@@ -293,7 +308,7 @@ class GatherSchedule(Schedule):
         funcs = {TilingStrategy.DYNAMIC: self._calc_tiling_dynamic,
                  TilingStrategy.STATIC: self._calc_tiling_static}
 
-        funcs[self._tiling_strategy]()
+        funcs.get(self._tiling_strategy)()
 
     def _calc_tiling_dynamic(self):
         res = self._out_tensor
@@ -345,14 +360,14 @@ class GatherSchedule(Schedule):
             "ub_factor": "int"}
 
         tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
-        const_tiling_key = tiling_data["tiling_key"]
-        self._const_block_axis = tiling_data["block_axis"]
-        self._const_block_factor = tiling_data["block_factor"]
-        self._const_ub_axis = tiling_data["ub_axis"]
-        self._const_ub_factor = tiling_data["ub_factor"]
+        const_tiling_key = tiling_data.get("tiling_key")
+        self._const_block_axis = tiling_data.get("block_axis")
+        self._const_block_factor = tiling_data.get("block_factor")
+        self._const_ub_axis = tiling_data.get("ub_axis")
+        self._const_ub_factor = tiling_data.get("ub_factor")
 
         if operation.get_context().get(GatherCompileInfo.STATIC_SUCCESS) or const_tiling_key != self._tiling_key:
-            operation.get_context().get_current_compute().get_current_schedule()\
+            operation.get_context().get_current_compute().get_current_schedule() \
                 .add(GatherCompileInfo.FAKE_SCHEDULE, True)
             self._fake_schedule = True
         else:
@@ -361,19 +376,19 @@ class GatherSchedule(Schedule):
     def _do_tiling(self):
         funcs = {TilingStrategy.DYNAMIC: self._do_tiling_dynamic,
                  TilingStrategy.STATIC: self._do_tiling_static, }
-        funcs[self._tiling_strategy]()
+        funcs.get(self._tiling_strategy)()
 
     def _do_tiling_dynamic(self):
         b_idx = self._tiling_case["block_tiling_axis"]
         u_idx = self._tiling_case["ub_tiling_axis"]
         b_o, b_i = self._schedule[self._out_tensor].split(self._out_tensor.op.axis[b_idx],
-                                                          factor=self._block_tiling_vars[b_idx])
+                                                          factor=self._block_tiling_vars.get(b_idx))
 
         if b_idx == u_idx:
-            u_o, u_i = self._schedule[self._out_tensor].split(b_i, factor=self._ub_tiling_vars[u_idx])
+            u_o, u_i = self._schedule[self._out_tensor].split(b_i, factor=self._ub_tiling_vars.get(u_idx))
         else:
             u_o, u_i = self._schedule[self._out_tensor].split(self._out_tensor.op.axis[u_idx],
-                                                              factor=self._ub_tiling_vars[u_idx])
+                                                              factor=self._ub_tiling_vars.get(u_idx))
 
         self._block_bind_axis = b_o
         self._compute_at_axis = u_o
@@ -474,7 +489,7 @@ class GatherSchedule(Schedule):
             self._emit_insn_map[self._params_inner_tensor] = [self._params_inner_tensor.op.axis[0], "dma_copy"]
         elif self._store_area == 2:
             self._emit_insn_map[self._params_inner_tensor] = [self._params_inner_tensor.op.axis[0], "dma_copy",
-                                                              dict(mem_align=1)]
+                                                              {"mem_align": 1}]
 
         # gather ub
         if self._store_area == 1:
@@ -483,7 +498,7 @@ class GatherSchedule(Schedule):
             else:
                 self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy"]
         elif self._store_area == 2:
-            self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy", dict(mem_align=1)]
+            self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy", {"mem_align": 1}]
         else:
             self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy"]
 
@@ -493,9 +508,9 @@ class GatherSchedule(Schedule):
 
         # res
         if self._is_db:
-            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy", dict(no_overlap=0)]
+            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy"]
         else:
-            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy", dict(no_overlap=2)]
+            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy", {"no_overlap": 2}]
 
     def _do_emit_insn(self):
         for tensor_i, param in self._emit_insn_map.items():

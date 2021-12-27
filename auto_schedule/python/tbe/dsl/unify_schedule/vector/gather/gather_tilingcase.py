@@ -43,6 +43,7 @@ REMOVE_PAD_DTYPE = {
     "int8": 64, "uint8": 64, "int16": 160, "uint16": 160, "float16": 160, "int32": 168, "uint32": 168, "float": 168,
     "float32": 168, "int64": 168, "uint64": 168}
 
+
 class GatherCompileInfo:
     """
     Built-in Compile info keys
@@ -78,6 +79,9 @@ class TilingStrategy(Enum):
 
 
 class GatherComputation(Computation):
+    """
+    GatherComputation
+    """
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
@@ -134,7 +138,7 @@ class GatherComputation(Computation):
         # skip large params
         params_shape = operation.get_context().get_current_compute().get("_params_shape")
         # abs is intended to get min params shape(assume -1 dims value is 1)
-        params_total_size = abs(reduce(lambda x, y: x * y, params_shape)) * DTYPE_BYTE_MAPPING[out_dtype]
+        params_total_size = abs(reduce(lambda x, y: x * y, params_shape)) * DTYPE_BYTE_MAPPING.get(out_dtype)
 
         total_ub_size = util.get_ub_size()
         total_l1_size = util.get_l1_size()
@@ -229,7 +233,7 @@ class GatherComputation(Computation):
                 })
 
             if out.dtype in REMOVE_PAD_DTYPE.keys() and (isinstance(shape[-1], Var) or (
-                    isinstance(shape[-1], int) and shape[-1] <= REMOVE_PAD_DTYPE[out_dtype])):
+                    isinstance(shape[-1], int) and shape[-1] <= REMOVE_PAD_DTYPE.get(out_dtype))):
                 # remove pad schedule
                 # base_key + 7010
                 cases.append({
@@ -335,7 +339,7 @@ def _pre_build(schedules_list):
             if special_pattern not in tensor_sizes.keys():
                 tensor_sizes[special_pattern] = [params_num, indices_num]
 
-        base_info = [max(cpt_cores), min(cpt_ub_size), min(cpt_l1_size), max(cpt_gather_type),max(cpt_params_dtype),
+        base_info = [max(cpt_cores), min(cpt_ub_size), min(cpt_l1_size), max(cpt_gather_type), max(cpt_params_dtype),
                      max(cpt_indices_dtype)]
         operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 

@@ -121,7 +121,7 @@ class GatherScheduleZeroShape(Schedule):
         visited_tensors = set()
 
         self.__dfs_sub_graph(self._out_tensor, visited_tensors)
-        self._max_dtype_bytes = max(DTYPE_BYTE_MAPPING[dtype] for dtype in self._dtypes)
+        self._max_dtype_bytes = max(DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes)
 
         # params gm and indices gm by name
         for one_input_tensor in self._input_tensors:
@@ -130,7 +130,7 @@ class GatherScheduleZeroShape(Schedule):
             elif one_input_tensor.name == self._indices_name:
                 self._indices_gm_tensor = one_input_tensor
 
-        self._params_dtype_size = DTYPE_BYTE_MAPPING[self._params_gm_tensor.dtype]
+        self._params_dtype_size = DTYPE_BYTE_MAPPING.get(self._params_gm_tensor.dtype)
 
     def _cal_storage_bound(self):
         pass
