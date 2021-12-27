@@ -1383,7 +1383,7 @@ class Conv2dSchedule:
 
         self._im2col_dma.inline_al1_im2coldma(sch, al1, fmap_row_major)
         self._im2col_dma.align_al1_im2col(sch, al1_im2col, self._block_k0)
-        self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag)
+        self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag, self._l0a_load2d.flag)
 
         self._strided_write.process_strided_write(sch, self._res)
         # inline input_nd
