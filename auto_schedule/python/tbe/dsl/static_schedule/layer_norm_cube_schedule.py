@@ -164,6 +164,29 @@ def _get_tiling(res):
     return tiling
 
 
+def _calc_split_para(tiling):
+    """
+    calc para for axis split
+
+    Parameters
+    ----------
+    tiling : containing all tiling information, dict
+
+    Returns
+    -------
+    split para for axis, dict
+    """
+    split_para_dict = {}
+    n_l0c_factor, m_l0c_factor, m_l0c_block_factor = tiling.get("CL0_matrix")[:3]
+    n_ub_factor, m_ub_factor, m_ub_block_factor = tiling.get("CUB_matrix")[:3]
+    split_para_dict['n_l0c_factor'] = n_l0c_factor
+    split_para_dict['m_l0c_factor'] = m_l0c_factor
+    split_para_dict['n_ub_parts'] = n_l0c_factor // n_ub_factor
+    split_para_dict['m_ub_parts'] = m_l0c_factor // m_ub_factor
+    split_para_dict['block_m_ub_parts'] = m_l0c_block_factor // m_ub_block_factor
+    return split_para_dict
+
+
 class CceLayerNormCubeOp:
     """
     CceLayerNormCubeOp: schedule definition of layernorm
@@ -193,33 +216,11 @@ class CceLayerNormCubeOp:
         self._res = None
         self._batch = False
 
-    def _calc_split_para(self, tiling):
-        """
-        calc para for axis split
-
-        Parameters
-        ----------
-        tiling : containing all tiling information, dict
-
-        Returns
-        -------
-        split para for axis, dict
-        """
-        split_para_dict = {}
-        n_l0c_factor, m_l0c_factor, m_l0c_block_factor = tiling.get("CL0_matrix")[:3]
-        n_ub_factor, m_ub_factor, m_ub_block_factor = tiling.get("CUB_matrix")[:3]
-        split_para_dict['n_l0c_factor'] = n_l0c_factor
-        split_para_dict['m_l0c_factor'] = m_l0c_factor
-        split_para_dict['n_ub_parts'] = n_l0c_factor // n_ub_factor
-        split_para_dict['m_ub_parts'] = m_l0c_factor // m_ub_factor
-        split_para_dict['block_m_ub_parts'] = m_l0c_block_factor // m_ub_block_factor
-        return split_para_dict
-
     def _split_l0c_and_ub(self, tiling):
         """
         split m, n based ub and l0c unit
         """
-        split_para_dict = self._calc_split_para(tiling)
+        split_para_dict = _calc_split_para(tiling)
         n_outer, n_inner = self._sch[self._res].split(
             self._res.op.axis[-4], factor=split_para_dict.get("n_l0c_factor"))
         m_outer, m_inner = self._sch[self._res].split(

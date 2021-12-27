@@ -20,25 +20,24 @@ gemm_compute
 import warnings
 from tbe.dsl.compute.gemm_compute import gemm as gemm_tbe
 
+
 def gemm(tensor_a, tensor_b, para_dict):
     """
     algorithm: gemm and matmul
-    for gemm:
-        calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
-    for matmul:
-        caculating matrix multiplication with bias, C = A*B + bias
+    for gemm: calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
+    for matmul: caculating matrix multiplication with bias, C = A*B + bias
 
     Parameters:
     tensor_a: the first tensor a
 
     tensor_b: second tensor b with the same type and shape with a
 
-              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
-              must be 32*16.
-              If A is transpose , then AShape classification matrix must be
-              32*16 in gm/L1,then it is 16*32 in L0A.
-              If B is transpose , then BShape classification matrix must be
-              16*32 in gm/L1,then it is 32*16 in L0B.
+    If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+    must be 32*16.
+    If A is transpose , then AShape classification matrix must be
+    32*16 in gm/L1,then it is 16*32 in L0A.
+    If B is transpose , then BShape classification matrix must be
+    16*32 in gm/L1,then it is 32*16 in L0B.
 
     para_dict:
 

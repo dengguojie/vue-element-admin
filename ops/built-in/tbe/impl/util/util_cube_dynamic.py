@@ -420,7 +420,6 @@ class CubeParaProcess:
         """
 
         def _check_range(in_range, dim):
-            
             if in_range:
                 if not isinstance(in_range, (tuple, list)):
                     err_man.raise_err_specific_user(self.op_type, "type of range must be tuple or list.")

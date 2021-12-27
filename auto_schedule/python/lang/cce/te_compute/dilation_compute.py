@@ -18,7 +18,7 @@
 dilation compute
 """
 import warnings
-
+from tbe.dsl.compute.dilation_compute import dilation_compute as dilation_compute_tbe
 
 def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     """
@@ -31,5 +31,5 @@ def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     warnings.warn("te.lang.cce.te_compute.dilation_compute is expired, "
         "please replace it with the func tbe.dsl.compute.dilation_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.dilation_compute import dilation_compute
-    return dilation_compute(tensor_x, dilations, pads, padding_value)
+
+    return dilation_compute_tbe(tensor_x, dilations, pads, padding_value)
