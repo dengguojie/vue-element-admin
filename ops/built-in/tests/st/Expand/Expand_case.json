@@ -40,5 +40,47 @@
       }
     ],
     "case_name": "test_Expand_000"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "bool"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "case_name": "test_Expand_001"
   }
 ]

@@ -166,5 +166,61 @@
 				"type":"list_int"
 			}
 		]
+	},
+    {
+		"case_name":"Test_ExpandD_004",
+		"op":"ExpandD",
+		"input_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"bool"
+				],
+				"shape":[
+					3,
+					1,
+					2
+				],
+				"value_range":[
+					[
+						0,
+						1
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format":[
+					"ND"
+				],
+				"type":[
+					"bool"
+				],
+				"shape":[
+					1,
+					3,
+					2,
+					2
+				]
+			}
+		],
+		"attr":[
+			{
+				"name":"shape",
+				"value":[
+					1,
+					3,
+					2,
+					1
+				],
+				"type":"list_int"
+			}
+		]
 	}
 ]

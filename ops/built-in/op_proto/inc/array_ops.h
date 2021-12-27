@@ -1273,7 +1273,7 @@ REG_OP(SortV2)
 * @par Inputs:
 * One inputs, including:
 * @li x: A Tensor. Must be one of the following types:
-*     float16, float32, int32, int8 ,uint8. \n
+*     float16, float32, int32, int8, uint8, bool. \n
 * @li shape: A Tensor to specify the shape that the input tensor expanded to. \n
 
 * @par Outputs:
@@ -1284,9 +1284,9 @@ REG_OP(SortV2)
 */
 
 REG_OP(Expand)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8, DT_BOOL}))
     .INPUT(shape, TensorType({DT_INT16, DT_INT32, DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8, DT_BOOL}))
     .OP_END_FACTORY_REG(Expand)
 
 /**
@@ -1372,7 +1372,7 @@ REG_OP(NonZeroWithValueShape)
 * @par Inputs:
 * One inputs, including:
 * x: A Tensor. Must be one of the following types:
-*     float16, float32, int32, int8 ,uint8. \n
+*     float16, float32, int32, int8, uint8, bool. \n
 
 * @par Attributes:
 * shape: A required listInt to specify the shape that the input tensor expanded to. \n
@@ -1386,8 +1386,8 @@ REG_OP(NonZeroWithValueShape)
 */
 
 REG_OP(ExpandD)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8, DT_BOOL}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8, DT_BOOL}))
     .REQUIRED_ATTR(shape, ListInt)
     .OP_END_FACTORY_REG(ExpandD)
 
