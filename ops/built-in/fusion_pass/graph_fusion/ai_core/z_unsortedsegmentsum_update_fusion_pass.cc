@@ -30,6 +30,7 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
+static const int32_t NUM_SEGMENTS_IDX = 2;
 vector<FusionPattern*> ZUnsortedSegmentSumUpdateFusionPass::DefinePatterns() {
     vector<FusionPattern*> patterns;
     FusionPattern* pattern = new (std::nothrow) FusionPattern("UnsortedSegmentSumUpdatePattern");
@@ -44,8 +45,8 @@ vector<FusionPattern*> ZUnsortedSegmentSumUpdateFusionPass::DefinePatterns() {
 // to change unsortedsegmentsumd node to unsortedsegmentsum node when check supported
 // partly realize the static2dynamic process of unsortedsegmentsum
 Status ZUnsortedSegmentSumUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
-                                          Mapping& mapping,
-                                          vector<ge::NodePtr>& fusionNodes) {
+                                                   Mapping& mapping,
+                                                   vector<ge::NodePtr>& fusionNodes) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "ZUnsortedSegmentSumUpdateFusionPass is running.");
     ge::NodePtr unsortedSegmentSumdNode = GetNodeFromMapping("UnsortedSegmentSumD", mapping);
     if (unsortedSegmentSumdNode == nullptr) {
@@ -88,13 +89,13 @@ Status ZUnsortedSegmentSumUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
     OP_LOGD(FUSED_OP_TYPE.c_str(), "is_segment_supported=%d.", isSegmentSupported);
 
     if (!isSegmentSupported) {
-        auto anchor = unsortedSegmentSumdNode->GetInDataAnchor(2);
+        auto anchor = unsortedSegmentSumdNode->GetInDataAnchor(NUM_SEGMENTS_IDX);
         anchor->UnlinkAll();
         if (graph.RemoveNode(constNode) != SUCCESS) {
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove const node");
             return FAILED;
         }
-        if (ge::NodeUtils::RemoveInputAnchor(unsortedSegmentSumdNode, 2) != SUCCESS) {
+        if (ge::NodeUtils::RemoveInputAnchor(unsortedSegmentSumdNode, NUM_SEGMENTS_IDX) != SUCCESS) {
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to remove input anchor");
             return FAILED;
         }
