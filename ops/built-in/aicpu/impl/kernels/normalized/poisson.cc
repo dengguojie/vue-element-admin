@@ -52,18 +52,18 @@ uint32_t PoissonCpuKernel::PoissonCompute(CpuKernelContext &ctx) {
   srand(final_seed);
 
   for(uint32_t j = 0; j < input_x->NumElements(); j++){
-    long k=0;
-    double p=1.0;
+    T k=(T)0;
+    T p=(T)1.0;
     T r=*(x+j);
-    double l=exp(-r);
+    T l=exp(-r);
     
     while(p>=l)
     {
-      double u = (double)rand() / RAND_MAX;
+      T u = (T)rand() / RAND_MAX;
       p *= u;
-      k++;
+      k+=(T)1;
     }
-      *(y + j) = (T)(k-1);
+      *(y + j) = (T)(k-(T)1);
   }
   return KERNEL_STATUS_OK;
 }
