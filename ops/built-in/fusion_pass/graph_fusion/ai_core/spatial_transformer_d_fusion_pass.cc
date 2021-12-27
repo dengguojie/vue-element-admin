@@ -41,10 +41,11 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
+constexpr int64_t NCHW_DIM_NUM = 4;
 static const string PATTERN_SPATIAL_TRANSFORMER_D = "SpatialTransformerD";
 static const char* SPATIAL_TRANSFORMER_D = "SpatialTransformerD";
 
-Status SpatialTransformerDPass::StnWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) {
+Status SpatialTransformerDPass::StnWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) const {
   for (int32_t i = 0; i < h; ++i) {
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
@@ -57,7 +58,7 @@ Status SpatialTransformerDPass::StnWIndexFP16(const int32_t h, const int32_t w, 
   return SUCCESS;
 }
 
-Status SpatialTransformerDPass::StnHIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) {
+Status SpatialTransformerDPass::StnHIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) const {
   for (int32_t i = 0; i < h; ++i) {
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
@@ -70,7 +71,7 @@ Status SpatialTransformerDPass::StnHIndexFP16(const int32_t h, const int32_t w, 
   return SUCCESS;
 }
 
-Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, ge::OpDescPtr& thisOpDesc) {
+Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, const ge::OpDescPtr& thisOpDesc) {
   OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD StnPre Add Const layer");
   vector<int64_t> size;
   ge::AttrUtils::GetListInt(thisOpDesc, "size", size);
@@ -136,10 +137,12 @@ Status SpatialTransformerDPass::MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const
   ge::GeTensorDesc formerInputDesc0 = formerOpDesc->GetInputDesc(0);
 
   vector<int64_t> shapeDims = formerInputDesc0.GetOriginShape().GetDims();
-  FUSION_PASS_CHECK(shapeDims.empty(), OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), 
-                                               "SpatialTransformerD input shape is NULL."), return FAILED);
-  FUSION_PASS_CHECK(shapeDims.size() < 4, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), 
-                                                  "SpatialTransformerD input 0 format must be NC0HWC1"), return FAILED);
+  FUSION_PASS_CHECK(shapeDims.empty(),
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "SpatialTransformerD input shape is NULL."),
+                    return FAILED);
+  FUSION_PASS_CHECK(shapeDims.size() < NCHW_DIM_NUM,
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "SpatialTransformerD input 0 format must be NC0HWC1"),
+                    return FAILED);
 
   vector<int64_t> output_size;
   vector<float> default_theta;
@@ -344,8 +347,9 @@ Status SpatialTransformerDPass::TbeFusion(ge::ComputeGraph& graph, Mapping& mapp
 
   ge::OpDescPtr stnPreOp;
   ge::NodePtr stnPreNode;
-  FUSION_PASS_MAKE_SHARED((stnPreOp = 
-    std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_pre", "StnPre")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED(
+    (stnPreOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_pre", "StnPre")),
+    return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnPreLayer(stnPreOp, spatialTransformerDOpDesc, oriInAnchorPtr1 != nullptr),
                     OP_LOGW(TBE_FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return NOT_CHANGED);
@@ -366,8 +370,8 @@ Status SpatialTransformerDPass::TbeFusion(ge::ComputeGraph& graph, Mapping& mapp
 
   ge::OpDescPtr stnComputeOp;
   ge::NodePtr stnComputeNode;
-  FUSION_PASS_MAKE_SHARED((stnComputeOp = 
-    std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_compute", "StnCompute")),
+  FUSION_PASS_MAKE_SHARED(
+    (stnComputeOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_compute", "StnCompute")),
     return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnComputeLayer(stnComputeOp, stnPreOp, spatialTransformerDOpDesc),
@@ -578,10 +582,10 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
   if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(
-    platform_info, opti_compilation_info) != SUCCESS) {
-    OP_LOGW("Fail to get platform info.");
+      platform_info, opti_compilation_info) != SUCCESS) {
+      OP_LOGW("Fail to get platform info.");
   }
-  OP_LOGD("SpatialTransformerPass", "Get opti_compilation_info.soc_version[%s].", 
+  OP_LOGD("SpatialTransformerPass", "Get opti_compilation_info.soc_version[%s].",
           opti_compilation_info.soc_version.c_str());
 
   if (opti_compilation_info.soc_version == "SD3403" || opti_compilation_info.soc_version == "Hi3796CV300CS") {

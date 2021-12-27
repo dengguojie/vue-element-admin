@@ -41,7 +41,7 @@ using namespace std;
 using namespace ge;
 namespace fe {
 static const string PATTERN_ARGMAXV2 = "ArgMaxV2";
-static const string DTYPE = "dtype";
+static const char* DTYPE = "dtype";
 static const string ARGMAXV2 = "ArgMaxV2";
 static const int64_t COMP = 2147483648;
 
@@ -78,7 +78,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   Tensor const_data;
   if (op_argmaxv2.GetInputConstData("dimension", const_data) == GRAPH_SUCCESS) {
     int64_t aixs_const_val = 0;
-    auto aixs_tensor_desc = op_argmaxv2.GetInputDesc("dimension");
+    auto aixs_tensor_desc = op_argmaxv2.GetInputDescByName("dimension");
     DataType input_axis_dtype = aixs_tensor_desc.GetDataType();
     uint8_t* const_data_ptr = const_data.GetData();
     bool flag = true;
@@ -146,7 +146,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   op_argmaxv2.SetAttr(DTYPE, types1);
   FUSION_PASS_CHECK(op_argmaxv2.GetAttr(DTYPE, types1) == ge::GRAPH_FAILED,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get attr %s to node %s failed.",
-                    DTYPE.c_str(), in_op_desc_ptr->GetName().c_str()),
+                    DTYPE, in_op_desc_ptr->GetName().c_str()),
                     return NOT_CHANGED);
   // MutableInputDesc Support modification
   in_op_desc_ptr->MutableOutputDesc(0)->SetDataType(ge::DT_INT32);

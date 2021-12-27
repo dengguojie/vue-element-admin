@@ -32,9 +32,9 @@ class SpatialTransformerDPass : public PatternFusionBasePass {
   Status AicpuFusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes);
 
  private:
-  Status StnPreAddConst(ge::NodePtr& thisNode, ge::OpDescPtr& thisOpDesc);
-  Status StnHIndexFP16(const int32_t h, const int32_t w, uint16_t* output1);
-  Status StnWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1);
+  Status StnPreAddConst(ge::NodePtr& thisNode, const ge::OpDescPtr& thisOpDesc);
+  Status StnHIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) const;
+  Status StnWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) const;
   Status MakeStnComputeLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& bottomOpDesc,
                              const ge::OpDescPtr& formerOpDesc);
   Status MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& formerOpDesc, bool hasInput1);

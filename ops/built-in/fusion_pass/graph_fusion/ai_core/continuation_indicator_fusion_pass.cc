@@ -19,16 +19,16 @@
  * \brief for caffe (ContinuationIndicator)
  */
 #include "continuation_indicator_fusion_pass.h"
-#include <string>
-#include <vector>
-#include "graph/utils/op_desc_utils.h"
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"
-#include "op_log.h"
-#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-#include "pattern_fusion_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "op_log.h"
+#include "pattern_fusion_util.h"
+#include <string>
+#include <vector>
 
 namespace fe {
   static const int64_t INVALID_NUM = 0;
@@ -67,9 +67,9 @@ Status ContinuationIndicatorFusionPass::CreatConstNode(ge::ComputeGraph& graph, 
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Get output data ptr failed.");
     return FAILED;
   }
-  for(int64_t t = 0; t < time_step; ++t) {
+  for (int64_t t = 0; t < time_step; ++t) {
     for (int64_t b = 0; b < batch_size; ++b) {
-      output_res_ptr[t*batch_size+b] = (t==0 ? 0 : 1);
+      output_res_ptr[t * batch_size + b] = (t == 0 ? 0 : 1);
     }
   }
   // set const node
