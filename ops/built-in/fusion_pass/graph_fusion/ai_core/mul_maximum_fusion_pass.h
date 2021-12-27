@@ -26,7 +26,6 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-
 class MulMaximumFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
@@ -37,6 +36,5 @@ class MulMaximumFusionPass : public PatternFusionBasePass {
   Status CheckPeerMulInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor, const size_t& expectedNum);
   const string FUSED_OP_TYPE = "LeakyRelu";
 };
-
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_MAXIMUM_FUSION_PASS_H_

@@ -97,7 +97,6 @@ class TbeFusionPassUtil {
    */
   static bool IsEmptyTensor(const ge::GeTensorDesc& tensor_desc);
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_FUSION_PASS_UTIL_H_

@@ -19,10 +19,8 @@
  * \brief confusionTranspose fusion pass(Transpose-Reshape --> confusionTranspose)
  */
 #include "reshape_transpose_fusion_pass.h"
-
 #include <iostream>
 #include <map>
-
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
@@ -34,7 +32,8 @@
 #include "pattern_fusion_util.h"
 
 namespace fe {
-
+const int32_t CLEAR_OUTPUT_INDEX_TWO = 2;
+const int32_t RESHAPE_DIM_UNIT = 16;
 static const char PATTERN_TRANSPOSE[] = "FusedNodeTranspose";
 static const char PATTERN_RESHAPE[] = "FusedNodeReshape";
 static const string FUSION_OP_TYPE = "ConfusionTransposeD";
@@ -45,8 +44,8 @@ vector<FusionPattern*> ReshapeTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReshapeTransposeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_TRANSPOSE, {OP_TRANSPOSE_D})
       .AddOpDesc(PATTERN_RESHAPE, {OP_RESHAPE})
@@ -81,7 +80,7 @@ bool ReshapeTransposeFusionPass::CheckTransposeInfo(const ge::NodePtr nodePtr) {
                               "divisible by 16, but actually is [%ld].", nodePtr->GetName().c_str(),
                               transposeDimInfo.size(), transposeDimInfo[0]),
                       return false);
-  } else if (transposeDimInfo.size() >= 2) {
+  } else if (transposeDimInfo.size() >= CLEAR_OUTPUT_INDEX_TWO) {
     FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 1]) ||
                         PatternFusionUtil::IsUnknownShape(transposeDimInfo[transposeDimInfo.size() - 2]),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape."),
@@ -126,16 +125,16 @@ bool ReshapeTransposeFusionPass::ReLinkEdge(const ge::NodePtr& removeNode, const
 Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Start to ReshapeTransposeFusionPass.");
   ge::NodePtr transNode = GetNodeFromMapping(PATTERN_TRANSPOSE, mapping);
-  FUSION_PASS_CHECK(transNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeNode is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(transNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "TransposeNode is null, fusion failed."), return PARAM_INVALID);
   ge::NodePtr reshapeNode = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
-  FUSION_PASS_CHECK(reshapeNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshapeNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "ReshapeNode is null, fusion failed."), return PARAM_INVALID);
   ge::OpDescPtr reshapeDesc = reshapeNode->GetOpDesc();
   FUSION_PASS_CHECK(reshapeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReshapeNode's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
-  if (reshapeNode->GetAllInDataAnchors().size() != 2) {
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "ReshapeNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
+  if (reshapeNode->GetAllInDataAnchors().size() != CLEAR_OUTPUT_INDEX_TWO) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The Reshape node should only have 2 input anchor.");
     return NOT_CHANGED;
   }
@@ -170,24 +169,25 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       OP_LOGI(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
-    if (reshapeDimInfo[0] % 16 != 0) {
+    if (reshapeDimInfo[0] % RESHAPE_DIM_UNIT != 0) {
       OP_LOGI(FUSED_OP_TYPE.c_str(),
               "Node[%s]'s dimsize is [%zu], last one dimension should be divisible by 16, but actually is [%ld].",
               reshapeNode->GetName().c_str(), reshapeDimInfo.size(), reshapeDimInfo[0]);
       return NOT_CHANGED;
     }
-  } else if (reshapeDimInfo.size() >= 2) {
+  } else if (reshapeDimInfo.size() >= CLEAR_OUTPUT_INDEX_TWO) {
     if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 1]) ||
-        PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 2])) {
+        PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - CLEAR_OUTPUT_INDEX_TWO])) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "ReshapeTransposeFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
-    if (reshapeDimInfo[reshapeDimInfo.size() - 1] % 16 != 0 || reshapeDimInfo[reshapeDimInfo.size() - 2] % 16 != 0) {
+    if (reshapeDimInfo[reshapeDimInfo.size() - 1] % RESHAPE_DIM_UNIT != 0 || reshapeDimInfo[
+        reshapeDimInfo.size() - 2] % RESHAPE_DIM_UNIT != 0) {
       OP_LOGI(
           FUSED_OP_TYPE.c_str(),
           "Node[%s]'s dimsize is [%zu], last two dimension should be divisible by 16, but actually is [%ld] and [%ld].",
-          reshapeNode->GetName().c_str(), reshapeDimInfo.size(), reshapeDimInfo[reshapeDimInfo.size() - 2],
-          reshapeDimInfo[reshapeDimInfo.size() - 1]);
+          reshapeNode->GetName().c_str(), reshapeDimInfo.size(), reshapeDimInfo[reshapeDimInfo.size() -
+          CLEAR_OUTPUT_INDEX_TWO], reshapeDimInfo[reshapeDimInfo.size() - 1]);
       return NOT_CHANGED;
     }
   } else {

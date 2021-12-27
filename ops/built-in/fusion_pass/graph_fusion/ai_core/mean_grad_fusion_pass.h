@@ -22,9 +22,7 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MEAN_GRAD_FUSION_PASS_H_
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
-
 namespace fe {
-
 class MeanGradFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
@@ -35,7 +33,5 @@ class MeanGradFusionPass : public PatternFusionBasePass {
   Status RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodePtr node);
   const string FUSED_OP_TYPE = "MeanGrad";
 };
-
 }  // namespace fe
-
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MEAN_GRAD_FUSION_PASS_H_

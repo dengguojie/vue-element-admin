@@ -20,7 +20,6 @@
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONCAT_V2D_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONCAT_V2D_FUSION_PASS_H_
-
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
@@ -28,7 +27,6 @@ class Concatv2dFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
-
  private:
   bool CheckConcatValid(const ge::NodePtr& node, const ge::Format format, const ge::GeShape shape,
                         const int32_t dimNum);
@@ -37,7 +35,5 @@ class Concatv2dFusionPass : public PatternFusionBasePass {
                       vector<ge::NodePtr>& concatNodes);
   const string FUSED_OP_TYPE = "ConcatV2D";
 };
-
 }  // namespace fe
-
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONCAT_V2D_FUSION_PASS_H_

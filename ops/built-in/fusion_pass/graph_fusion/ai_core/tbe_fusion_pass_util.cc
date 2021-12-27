@@ -261,7 +261,7 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
                     OP_LOGI("UpdateAttrIsInputConst", "The node(%s) have attr is_input_const, will not update again.",
                             fuse_op.GetName().c_str()),
                     return true);
-  OP_LOGI("UpdateAttrIsInputConst", "will update the node(%s) attr(is_input_const).", fuse_op.GetName().c_str());
+  OP_LOGI("UpdateAttrIsInputConst", "will update the node(%s) attr(is_input_const).", TbeGetName(fuse_op).c_str());
   auto input_size = fuse_desc->GetInputsSize();
   FUSION_PASS_CHECK(
       input_size < 1,

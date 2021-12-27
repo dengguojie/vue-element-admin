@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
-
 namespace fe {
 class ReshapeTransposeFusionPass : public PatternFusionBasePass {
  protected:
@@ -36,7 +35,6 @@ class ReshapeTransposeFusionPass : public PatternFusionBasePass {
   bool CheckTransposeInfo(const ge::NodePtr nodePtr);
   bool ReLinkEdge(const ge::NodePtr& removeNode, const ge::NodePtr mainNode);
 };
-
 } // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_RESHAPE_TRANSPOSE_FUSION_PASS_H_

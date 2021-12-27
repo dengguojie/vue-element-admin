@@ -39,6 +39,8 @@
 
 using namespace ge;
 namespace fe {
+const float MUL1_EXP_DIFFERENCE_VALUE = 0.5;
+const float DIV0_ASTRICT = 0.00001;
 static const char* DIV = "RealDiv";
 static const char* ADD = "Add";
 static const char* MUL = "Mul";
@@ -69,8 +71,8 @@ case1: mul0 has const input       | case2:mul1 has const input
 vector<FusionPattern*> GeluONNXFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("GeluONNXFusionPass");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."), return patterns);
   pattern1->AddOpDesc(PATTERN_DIV0, {DIV})
       .AddOpDesc(PATTERN_ERF0, {ERF})
       .AddOpDesc(PATTERN_ADD0, {ADD})
@@ -83,8 +85,8 @@ vector<FusionPattern*> GeluONNXFusionPass::DefinePatterns() {
   patterns.push_back(pattern1);
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("GeluONNXFusionPass");
-  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "new a pattern object failed."), return patterns);
   pattern2->AddOpDesc(PATTERN_INPUT)
       .AddOpDesc(PATTERN_DIV0, {DIV})
       .AddOpDesc(PATTERN_ERF0, {ERF})
@@ -149,16 +151,16 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::NodePtr add0_node = GetNodeFromMapping(PATTERN_ADD0, mapping);
   ge::NodePtr mul0_node = GetNodeFromMapping(PATTERN_MUL0, mapping);
   ge::NodePtr mul1_node = GetNodeFromMapping(PATTERN_MUL1, mapping);
-  FUSION_PASS_CHECK(div0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "div0_node is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(erf0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "erf0_node is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(add0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add0_node is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul0_node is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(mul1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul1_node is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(div0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "div0_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(erf0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "erf0_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add0_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(mul0_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul0_node is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(mul1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "mul1_node is null, fusion failed."), return PARAM_INVALID);
 
   // check input and output link relation
   FUSION_PASS_CHECK(div0_node->GetInDataNodes().size() != 2,
@@ -200,7 +202,7 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(div0_node, div0_exp),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_DIV0.c_str()),
                     return NOT_CHANGED);
-  if (std::fabs(div0_exp - div0_const_input) > 0.00001) {
+  if (std::fabs(div0_exp - div0_const_input) > DIV0_ASTRICT) {
       OP_LOGW("Gelu", "the exp of div0 is %f, which should be equal to 1.41421, not change", div0_exp);
       return NOT_CHANGED;
   }
@@ -219,7 +221,7 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     FUSION_PASS_CHECK(SUCCESS != status_mul0,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_MUL0.c_str()),
                     return NOT_CHANGED);
-    if (std::fabs(mul0_exp - 0.5) > std::numeric_limits<float>::epsilon()) {
+    if (std::fabs(mul0_exp - MUL1_EXP_DIFFERENCE_VALUE) > std::numeric_limits<float>::epsilon()) {
       OP_LOGW("Gelu", "the exp of mul0 is %f, which should be equal to 0.5, not change", mul0_exp);
       return NOT_CHANGED;
     }
@@ -227,7 +229,7 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     FUSION_PASS_CHECK(SUCCESS != status_mul1,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_MUL1.c_str()),
                     return NOT_CHANGED);
-    if (std::fabs(mul1_exp - 0.5) > std::numeric_limits<float>::epsilon()) {
+    if (std::fabs(mul1_exp - MUL1_EXP_DIFFERENCE_VALUE) > std::numeric_limits<float>::epsilon()) {
       OP_LOGW("Gelu", "the exp of mul1 is %f, which should be equal to 0.5, not change", mul1_exp);
       return NOT_CHANGED;
     }
@@ -235,13 +237,13 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> gelu_desc = nullptr;
   gelu_desc = std::make_shared<ge::OpDesc>(mul1_node->GetName() + "/" + GELU, GELU);
-  FUSION_PASS_CHECK(gelu_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "gelu_desc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(gelu_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "gelu_desc is null, fusion failed."), return PARAM_INVALID);
 
   // add input
   ge::GeTensorDesc input_desc = div0_node->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(gelu_desc->AddInputDesc(input_desc) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(gelu_desc->AddInputDesc(input_desc) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(
+                    FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
 
   // add output
   ge::GeTensorDesc output_desc = mul1_node->GetOpDesc()->GetOutputDesc(0);
@@ -255,7 +257,8 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // connect input edge
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(div0_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             gelu_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                            "Add edge between node %s. and node %s failed.",
                             div0_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             gelu_node->GetName().c_str()),
                     return FAILED);
@@ -263,9 +266,11 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // connect output edge
   for (auto &inDataAnchor : mul1_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(mul1_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Remove out data edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(gelu_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Add out data edge failed."), return FAILED);
   }
 
   // set node type
@@ -276,16 +281,16 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   gelu_node->GetOpDesc()->UpdateOutputName(output_name_id);
 
   // delete fused nodes
-  FUSION_PASS_CHECK(graph.RemoveNode(div0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove div0_node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(erf0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove erf0_node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(add0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove add0_node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul0_node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(mul1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove mul1_node failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(div0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove div0_node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(erf0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove erf0_node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(add0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove add0_node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(mul0_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul0_node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(mul1_node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Remove mul1_node failed."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "GeluONNXFusionPass graph fusion success!");
   return SUCCESS;

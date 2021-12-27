@@ -22,7 +22,6 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADD_FUSION_PASS_H_
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
-
 namespace fe {
 class MulAddFusionPass : public PatternFusionBasePass {
  protected:
@@ -32,7 +31,6 @@ class MulAddFusionPass : public PatternFusionBasePass {
  private:
   const string FUSED_OP_TYPE = "FusedMulAdd";
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MUL_ADD_FUSION_PASS_H_

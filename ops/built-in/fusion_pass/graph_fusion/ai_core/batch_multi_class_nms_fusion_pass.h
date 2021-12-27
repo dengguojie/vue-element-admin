@@ -20,7 +20,6 @@
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MULTI_CLASS_NMS_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MULTI_CLASS_NMS_FUSION_PASS_H_
-
 #include <vector>
 #include <string>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
@@ -31,7 +30,6 @@ class BatchMultiClassNonMaxSuppressionFusionPass : public PatternFusionBasePass 
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
-
  private:
   vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
   bool CheckTransposeBeforeSlice(const ge::NodePtr& checkNode);

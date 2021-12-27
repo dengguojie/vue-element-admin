@@ -28,12 +28,10 @@ class GeluONNXFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
-
  private:
   const string FUSED_OP_TYPE = "Gelu";
   bool mulConstNodeType = false;
 };
-
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_GELU_FUSION_PASS_H_

@@ -29,6 +29,9 @@
 #include "fusedbatchnorminfgrad_fusion_pass.h"
 
 namespace fe {
+const int32_t OUT_ANCHOR_INDEX_THREE = 3;
+const int32_t CLEAR_OUTPUT_INDEX_TWO = 2;
+const int32_t OUT_ANCHOR_INDEX = 4;
 static const string PATTERN_BATCHNORMGRAD = "batchNormGrad";
 static const string PATTERN_INPUTS1 = "input1";
 static const string PATTERN_INPUTS2 = "input2";
@@ -96,13 +99,13 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input grads failed.", newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(2);
+  ge::GeTensorDesc input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(CLEAR_OUTPUT_INDEX_TWO);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc(input_tensor3) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input scale failed.", newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc input_tensor5 = batchNormGradNode->GetOpDesc()->GetInputDesc(4);
+  ge::GeTensorDesc input_tensor5 = batchNormGradNode->GetOpDesc()->GetInputDesc(OUT_ANCHOR_INDEX);
   FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor5) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input batch_variance failed.",
                             newOpName.c_str()),
@@ -139,13 +142,13 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x failed.", newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc update_input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(3);
+  ge::GeTensorDesc update_input_tensor3 = batchNormGradNode->GetOpDesc()->GetInputDesc(OUT_ANCHOR_INDEX_THREE);
   FUSION_PASS_CHECK(
       newOpdesc2->AddInputDesc(update_input_tensor3) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input batch_mean failed.", newOpName.c_str()),
       return FAILED);
 
-  ge::GeTensorDesc update_input_tensor4 = batchNormGradNode->GetOpDesc()->GetInputDesc(4);
+  ge::GeTensorDesc update_input_tensor4 = batchNormGradNode->GetOpDesc()->GetInputDesc(OUT_ANCHOR_INDEX);
   FUSION_PASS_CHECK(newOpdesc2->AddInputDesc(update_input_tensor4) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input batch_variance failed.",
                             newOpName.c_str()),
@@ -158,7 +161,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                             newOpName.c_str()),
                     return FAILED);
 
-  ge::GeTensorDesc update_tensor2 = batchNormGradNode->GetOpDesc()->GetOutputDesc(2);
+  ge::GeTensorDesc update_tensor2 = batchNormGradNode->GetOpDesc()->GetOutputDesc(CLEAR_OUTPUT_INDEX_TWO);
   FUSION_PASS_CHECK(newOpdesc2->AddOutputDesc(update_tensor2) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output diff_offset failed.",
                             newOpName.c_str()),
@@ -204,7 +207,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
 
-  for (auto inDataAnchor : batchNormGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors()) {
+  for (auto inDataAnchor : batchNormGradNode->GetOutDataAnchor(CLEAR_OUTPUT_INDEX_TWO)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(batchNormGradNode->GetOutDataAnchor(2), inDataAnchor) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(newNode2->GetOutDataAnchor(1), inDataAnchor) != SUCCESS,
