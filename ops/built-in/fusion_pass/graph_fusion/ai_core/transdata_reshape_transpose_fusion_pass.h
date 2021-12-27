@@ -42,11 +42,11 @@ class TransdataReshapeTransposeFusionPass : public PatternFusionBasePass {
                    ge::NodePtr &reformat_node2, ge::NodePtr &transdata_node2, ge::NodePtr &transpose_node,
                    ge::ComputeGraph &graph);
 
-  bool UnLinkDataEdges(const ge::NodePtr &transdata_node1, ge::NodePtr &reformat_node1,
-                       const ge::NodePtr &reshape_node, ge::NodePtr &reformat_node2,
+  bool UnLinkDataEdges(const ge::NodePtr &transdata_node1, const ge::NodePtr &reformat_node1,
+                       const ge::NodePtr &reshape_node, const ge::NodePtr &reformat_node2,
                        ge::ComputeGraph &graph);
 
-  bool RelinkControlEdges(const ge::NodePtr &src_node, ge::NodePtr &dst_node) const;
+  bool RelinkControlEdges(const ge::NodePtr &src_node, const ge::NodePtr &dst_node) const;
 
   const string FUSED_OP_TYPE = "TransdataReshapeTransposeFusionPass";
 };
