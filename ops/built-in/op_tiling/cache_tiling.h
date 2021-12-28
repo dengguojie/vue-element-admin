@@ -38,6 +38,10 @@
 namespace optiling {
 
 struct BatchmatmulParas {
+  int32_t m_32 = 1;
+  int32_t k_32 = 1;
+  int32_t n_32 = 1;
+  int32_t batch_32 = 1;
   int64_t m = 1;
   int64_t k = 1;
   int64_t n = 1;
@@ -48,110 +52,133 @@ struct BatchmatmulParas {
   std::string format_a;
   std::string format_b;
   bool used_aligned_pattern = false;
+  bool binary_mode_flag = false;
+  bool b_have_batch = false;
+  bool bias_flag = false;
+  bool nd_flag = false;
+  bool trans_a_flag = false;
+  bool trans_b_flag = false;
+  float fused_double_operand_num = 0;
+  float aub_double_num = 0;
+  float bub_double_num = 0;
+  uint32_t core_num = 32;
+  bool ubdb_flag = false;
+  bool at_l1_flag = true;
+  bool cub_reused_flag = false;
 };
 
 struct L2Status {
-  int64_t batch = 1;
-  int64_t m = 1;
-  int64_t k = 1;
-  int64_t n = 1;
-  int64_t batch_dim = 1;
-  int64_t m_dim = 1;
-  int64_t n_dim = 1;
+  int32_t batch = 1;
+  int32_t m = 1;
+  int32_t k = 1;
+  int32_t n = 1;
+  int32_t batch_dim = 1;
+  int32_t m_dim = 1;
+  int32_t n_dim = 1;
 };
 
 struct BlockDimCalculator {
-  int64_t batch = 1;
-  int64_t m = 1;
-  int64_t k = 1;
-  int64_t n = 1;
-  int64_t k_num = 1;
-  int64_t k_bytes = 1;
-  int64_t n_dim_factor = 1;
-  int64_t batch_dim_factor = 1;
-  int64_t m_dim_factor = 1;
-  int64_t min_load_size = 1;
-  int64_t core_use = 1;
-  int64_t i_idx = 0;
-  int64_t j_idx = 0;
-  int64_t batch_dim_cnt = 0;
-  int64_t m_dim_cnt = 0;
-  int64_t n_dim_cnt = 0;
-  int64_t ori_amat_size = 0;
-  int64_t ori_bmat_size = 0;
-  int64_t amat_size = 0;
-  int64_t bmat_size = 0;
-  int64_t tmp_amat_size = 0;
-  int64_t tmp_bmat_size = 0;
-  int64_t tmp_load_size = 0;
-  int64_t total_load_size = 0;
-  int64_t* batch_dim_array;
-  int64_t* m_dim_array;
-  int64_t* n_dim_array;
-  int64_t tmp_value = 0;
-  int64_t final_value = 0;
+  int32_t batch = 1;
+  int32_t m = 1;
+  int32_t k = 1;
+  int32_t n = 1;
+  int32_t k_num = 1;
+  int32_t k_bytes = 1;
+  int32_t n_dim_factor = 1;
+  int32_t batch_dim_factor = 1;
+  int32_t m_dim_factor = 1;
+  int32_t min_load_size = 1;
+  int32_t core_use = 1;
+  int32_t i_idx = 0;
+  int32_t j_idx = 0;
+  int32_t batch_dim_cnt = 0;
+  int32_t m_dim_cnt = 0;
+  int32_t n_dim_cnt = 0;
+  int32_t ori_amat_size = 0;
+  int32_t ori_bmat_size = 0;
+  int32_t amat_size = 0;
+  int32_t bmat_size = 0;
+  int32_t tmp_amat_size = 0;
+  int32_t tmp_bmat_size = 0;
+  int32_t tmp_load_size = 0;
+  int32_t total_load_size = 0;
+  int32_t* batch_dim_array;
+  int32_t* m_dim_array;
+  int32_t* n_dim_array;
+  int32_t tmp_value = 0;
+  int32_t final_value = 0;
   bool final_blocking_flag = false;
 };
 
 struct L0Status {
-  int64_t m_l0 = 1;
-  int64_t n_l0 = 1;
-  int64_t k_l0 = 1;
-  int64_t db_l0a = 1;
-  int64_t db_l0b = 1;
-  int64_t db_l0c = 1;
-  int64_t db_cub = 1;
-  int64_t final_ml0 = 0;
-  int64_t final_kl0 = 0;
-  int64_t final_nl0 = 0;
-  int64_t final_load_size = LONG_LONG_MAX;
-  int64_t final_l0c_use = 0;
-  int64_t final_mul = 0;
-  int64_t final_mte1Loop = LONG_LONG_MAX;
-  int64_t max_mk = 1;
-  int64_t max_nk = 1;
-  int64_t max_mn = 1;
-  int64_t max_axis_idx = 0;
-  int64_t max_axis_num = 0;
-  int64_t max_axis_pnt = 1;
+  int32_t m_l0 = 1;
+  int32_t n_l0 = 1;
+  int32_t k_l0 = 1;
+  int32_t db_l0a = 1;
+  int32_t db_l0b = 1;
+  int32_t db_l0c = 1;
+  int32_t db_cub = 1;
+  int32_t final_ml0 = 0;
+  int32_t final_kl0 = 0;
+  int32_t final_nl0 = 0;
+  int32_t final_load_size = INT_MAX;
+  float final_l0c_use = 0;
+  int32_t final_mul = 0;
+  int32_t final_mte1Loop = INT_MAX;
+  int32_t max_mk = 1;
+  int32_t max_nk = 1;
+  int32_t max_mn = 1;
+  int32_t max_axis_idx = 0;
+  int32_t max_axis_num = 0;
+  int32_t max_axis_pnt = 1;
   void SetInitLoadStatus()
   {
     final_ml0 = 0;
     final_kl0 = 0;
     final_nl0 = 0;
-    final_load_size = LLONG_MAX;
+    final_load_size = INT_MAX;
     final_l0c_use = 0;
     final_mul = 0;
-    final_mte1Loop = LLONG_MAX;
+    final_mte1Loop = INT_MAX;
   }
 };
 
+struct L0Factors {
+  int32_t final_ml0 = 0;
+  int32_t final_kl0 = 0;
+  int32_t final_nl0 = 0;
+  int32_t final_load_size = INT_MAX;
+  float final_l0c_use = 0;
+  int32_t final_mul = 0;
+  int32_t final_mte1Loop = INT_MAX;
+};
+
 struct MKNParasCombo {
-  int64_t parasCombo[9];
+  int32_t parasCombo[9];
 };
 
 struct L1Status {
-  int64_t kal1_16 = 1;
-  int64_t kbl1_16 = 1;
-  int64_t m_al1 = 1;
-  int64_t n_bl1 = 1;
-  int64_t db_al1 = 1;
-  int64_t db_bl1 = 1;
-  int64_t al1_size = 0;
-  int64_t bl1_size = 0;
-  int64_t al1_times = 1;
-  int64_t bl1_times = 1;
-  int64_t all_times = 1;
-  int64_t load_size = 0;
-  int64_t max_m_al1 = 1;
-  int64_t max_n_bl1 = 1;
-  int64_t max_k_al1 = 1;
-  int64_t max_k_bl1 = 1;
+  int32_t kal1_16 = 1;
+  int32_t kbl1_16 = 1;
+  int32_t m_al1 = 1;
+  int32_t n_bl1 = 1;
+  int32_t db_al1 = 1;
+  int32_t db_bl1 = 1;
+  int32_t al1_size = 0;
+  int32_t bl1_size = 0;
+  int32_t al1_times = 1;
+  int32_t bl1_times = 1;
+  int32_t all_times = 1;
+  int32_t load_size = 0;
+  int32_t max_m_al1 = 1;
+  int32_t max_n_bl1 = 1;
+  int32_t max_k_al1 = 1;
+  int32_t max_k_bl1 = 1;
   bool both_full_load = false;
   bool al1_full_load = false;
   bool bl1_full_load = false;
-  void SetStatus(int64_t kal1_16_input, int64_t kbl1_16_input, int64_t m_al1_input, int64_t n_bl1_input,
-                 int64_t db_al1_input, int64_t db_bl1_input)
+  void SetStatus(int32_t kal1_16_input, int32_t kbl1_16_input, int32_t m_al1_input, int32_t n_bl1_input,
+                 int32_t db_al1_input, int32_t db_bl1_input)
   {
     this->kal1_16 = kal1_16_input;
     this->kbl1_16 = kbl1_16_input;
@@ -163,86 +190,114 @@ struct L1Status {
 };
 
 struct UbStatus {
-  int64_t k_aub = 1;
-  int64_t m_aub = 1;
-  int64_t db_aub = 1;
-  int64_t n_cub = 1;
-  int64_t db_cub = 1;
+  int32_t k_aub = 1;
+  int32_t m_aub = 1;
+  int32_t db_aub = 1;
+  int32_t k_bub = 1;
+  int32_t n_bub = 1;
+  int32_t db_bub = 1;
+  int32_t n_cub = 1;
+  int32_t db_cub = 1;
+  int32_t max_dma_size = 0;
+  int32_t min_dma_size = 0;
+  int32_t min_load_size = 0;
+  int32_t aub_size = 0;
+  int32_t bub_size = 0;
+  int32_t cub_size = 0;
+  int32_t aub_multi_flag = 0;
+  int32_t bub_multi_flag = 0;
+  int32_t a_align_value = 1;
+  int32_t b_align_value = 1;
+  int32_t aub_bank_size = 0;
+  int32_t bub_bank_size = 0;
+  int32_t aub_align_bound = 0;
+  int32_t bub_align_bound = 0;
 };
 
 class Tiling {
 public:
-  std::map<std::string, std::vector<int64_t>> mParam;
-  std::map<std::string, std::map<std::string, int64_t>> mPingpongBuff;
-  std::map<std::string, int64_t> pingpong;
   std::string tiling_id;
-  int64_t n_cub = 1;
-  int64_t db_cub = 1;
-  int64_t m_l0 = 1;
-  int64_t k_l0 = 1;
-  int64_t n_l0 = 1;
-  int64_t batch_dim = 1;
-  int64_t n_dim = 1;
-  int64_t m_dim = 1;
-  int64_t kal1_16 = 1;
-  int64_t kbl1_16 = 1;
-  int64_t m_al1 = 1;
-  int64_t n_bl1 = 1;
-  int64_t db_al1 = 1;
-  int64_t db_bl1 = 1;
-  int64_t k_aub = 1;
-  int64_t m_aub = 1;
-  int64_t db_aub = 1;
-  int64_t k_org_dim = 1;
-  int64_t db_l0c = 1;
+  int32_t n_cub = 1;
+  int32_t db_cub = 1;
+  int32_t m_l0 = 1;
+  int32_t k_l0 = 1;
+  int32_t n_l0 = 1;
+  int32_t batch_dim = 1;
+  int32_t n_dim = 1;
+  int32_t m_dim = 1;
+  int32_t kal1_16 = 1;
+  int32_t kbl1_16 = 1;
+  int32_t m_al1 = 1;
+  int32_t n_bl1 = 1;
+  int32_t db_al1 = 1;
+  int32_t db_bl1 = 1;
+  int32_t k_aub = 1;
+  int32_t m_aub = 1;
+  int32_t db_aub = 1;
+  int32_t k_bub = 1;
+  int32_t n_bub = 1;
+  int32_t db_bub = 1;
+  int32_t k_org_dim = 1;
+  int32_t db_l0c = 1;
+  int32_t aub_multi_flag = 0;
+  int32_t bub_multi_flag = 0;
+  int32_t a_align_value = 1;
+  int32_t b_align_value = 1;
+  int32_t aub_align_bound = 0;
+  int32_t bub_align_bound = 0;
+  int32_t min_kl1_cmp_kl0 = 0;
+  int32_t al1_attach_flag = 0;
+  int32_t bl1_attach_flag = 0;
+  int32_t abkl1_attach_flag = 0;
+  bool al1_full_load = false;
+  bool bl1_full_load = false;
   Tiling() = default;
-  void SetDoubleBufferParams(bool minKl1CmpKl0, std::map<std::string, int64_t> dbFlag);
   void SetParams(const L2Status& l2Status, const L0Status& l0Status, const L1Status& l1Status,
-                 const UbStatus& ubStatus);
+                 const UbStatus& ubStatus, const BatchmatmulParas& params);
   void SetAttachFlag();
-  void GetTilingId();
+  void GetTilingId(const BatchmatmulParas& params);
   ~Tiling() = default;
 };
 
-void GetFactors(int64_t* cnt, int64_t* factorList, const int64_t& num,
-                const int64_t& maxNum);
-void GetTwoFactors(int64_t* res, const int64_t& base, const int64_t& dim,
-                   const int64_t& maxNum);
-void GetNearestFactor(const int64_t& base, int64_t& factor);
-void BL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int64_t& n0);
-void AL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int64_t& m0);
+void GetFactors(int32_t* cnt, int32_t* factorList, const int32_t& num,
+                const int32_t& maxNum);
+void GetTwoFactors(int32_t* res, const int32_t& base, const int32_t& dim,
+                   const int32_t& maxNum);
+void GetNearestFactor(const int32_t& base, int32_t& factor);
+void BL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& n0);
+void AL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& m0);
 void NeitherFullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator,
-                          const int64_t nFactorTwoCandidates[][2], const int64_t mFactorTwoCandidates[][2],
-                          const int64_t& nFactor, const int64_t& mFactor);
-int64_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status,
-                    const int64_t& coreNum);
-void CheckUbDb(L0Status& l0Status);
-int64_t GetLoadSize(const L2Status& l2Status, const L0Status& l0Status);
-MKNParasCombo GetParasCombo(const int64_t& index, const int64_t& blockValue);
+                          const int32_t nFactorTwoCandidates[][2], const int32_t mFactorTwoCandidates[][2],
+                          const int32_t& nFactor, const int32_t& mFactor);
+int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status,
+                    const int32_t& coreNum);
+
+int32_t GetLoadSize(const L2Status& l2Status, const L0Status& l0Status);
+MKNParasCombo GetParasCombo(const int32_t& index, const int32_t& blockValue);
 void GetFinalMkn(L0Status& l0Status, const L2Status& l2Status);
-void GetL0StatusFromParasCombo(L0Status& l0Status, int64_t* parasCombo);
-void SetResFactors(int64_t* resFactors, const L0Status& l0Status);
-void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status,
-                      int64_t parasCombo[9]);
-void GetL0Factors(const std::string& op_type, const L2Status& l2Status, const int64_t& blockValue,
+void GetL0StatusFromParasCombo(L0Status& l0Status, int32_t* parasCombo);
+void SetResFactors(L0Factors* resFactors, const L0Status& l0Status);
+void GetL0FactorsCand(L0Factors *resFactors, const L2Status &l2Status, L0Status &l0Status,
+                      int32_t *parasCombo);
+void GetL0Factors(const std::string& op_type, const L2Status& l2Status, const int32_t& blockValue,
                   L0Status& l0Status);
-int64_t GetL1Size(const L1Status& l1Status, const L0Status& l0Status);
+int32_t GetL1Size(const L1Status& l1Status, const L0Status& l0Status);
 void CheckSpecialTemplate(const std::string& op_type, const L2Status& l2Status, const L0Status& l0Status,
                           L1Status& l1Status);
 void L1StatusBothFullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
-                          int64_t res[][7]);
+                          int32_t res[][7]);
 void L1StatusAl1FullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
-                         int64_t res[][7]);
+                         int32_t res[][7]);
 void L1StatusBl1FullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
-                         int64_t res[][7]);
+                         int32_t res[][7]);
 void NeitherFullLoadDb(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
-                       const int64_t& kbl1Db);
+                       const int32_t& kbl1Db);
 void NeitherFullLoadMN(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
                        const BatchmatmulParas& params);
 void NeitherFullLoadK(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
                       const BatchmatmulParas& params);
 void L1StatusNeitherFullLoad(const L2Status& l2Status, const BatchmatmulParas& params,
-                             const L0Status& l0Status, L1Status& l1Status, int64_t res[][7]);
+                             const L0Status& l0Status, L1Status& l1Status, int32_t res[][7]);
 void GetL1Factors(const std::string& op_type, const BatchmatmulParas& params, const L2Status& l2Status,
                   const L0Status& l0Status, L1Status& l1Status);
 void GetUbFactors(const std::string& op_type, const L0Status& l0Status, UbStatus& ubStatus);

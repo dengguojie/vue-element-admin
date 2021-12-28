@@ -27,6 +27,7 @@ from tbe import tvm
 from tbe.common import buildcfg
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import get_op_compute
+from tbe.common.context import op_context
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils import log
 from tbe.common.rl_bank import bank_manager
@@ -192,7 +193,9 @@ class Builder:
         self._traverse_context()
         self._traverse_schedules()
         self._call_tvm_build()
-        self._handle_compile_info()
+        op_context = operation.get_context()
+        if op_context.get("_use_cache_tiling") is None or not op_context.get("_use_cache_tiling"): 
+            self._handle_compile_info()
         self._handle_addition()
 
     def _normalize_schedules(self):

@@ -707,10 +707,12 @@ def _get_real_trans(format_a: str, format_b: str, trans_a: bool, trans_b: bool) 
     return [trans_a, trans_b]
 
 
-def _get_none_range_flag(input_x1: dict, input_x2: dict) -> bool:
+def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
     """
     config if none in range
     """
+    if bias:
+        return False
     if (input_x1.get("range") and input_x2.get("range")):
         for dim_range in input_x1.get("range"):
             if not dim_range or None in dim_range:
@@ -722,9 +724,18 @@ def _get_none_range_flag(input_x1: dict, input_x2: dict) -> bool:
         return True
     return False
 
+def _check_ND_in_ND_out(input_x1, input_x2, output_z):
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    format_out = output_z.get("format")
+    return format_a == "ND" and format_b == "ND" and format_out == "ND"
 
-def _define_cache_tiling_var(input_x1: dict, input_x2: dict) -> None:
-    if _get_none_range_flag(input_x1, input_x2):
+def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z: dict) -> None:
+    if get_none_range_flag(input_x1, input_x2, bias):
+        if _check_ND_in_ND_out(input_x1, input_x2, output_z):
+            operation.var("m")
+            operation.var("k")
+            operation.var("n")
         operation.var("batch_single_core")
         operation.var("m_single_core")
         operation.var("n_single_core")
@@ -744,7 +755,19 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict) -> None:
         operation.var("kal1_16")
         operation.var("kbl1_16")
         operation.var("kl1_times")
-
+        if _check_ND_in_ND_out(input_x1, input_x2, output_z):
+            operation.var("m_aub")
+            operation.var("n_bub")
+            operation.var("k_aub")
+            operation.var("k_bub")
+            operation.var("multi_n_ub_l1")
+            operation.var("multi_m_ub_l1")
+            operation.var("multi_k_aub_l1")
+            operation.var("multi_k_bub_l1")
+            operation.var("a_align_value")
+            operation.var("b_align_value")
+            operation.var("aub_align_bound")
+            operation.var("bub_align_bound")
 
 def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: dict, output_z: dict, trans_a: bool,
                          trans_b: bool, offset_x: int, kernel_name: str, op_type: str = "BatchMatMulV2"):
@@ -799,7 +822,8 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
     n_var = operation.var(n_var_name, n_range)
-
+    if "Ascend910" in soc_version:
+        _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
     if op_type in ("BatchMatMulV2", "BatchMatMul"):
         batch_var = operation.var("batch", batch_range)
         shape_x1 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
@@ -828,9 +852,6 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     if format_b != "ND":
         shape_x2 = shape_x2 + [BLOCK_CUBE, BLOCK_CUBE]
 
-    if "Ascend910" in soc_version:
-        _define_cache_tiling_var(input_x1, input_x2)
-
     tensor_x1 = tvm.placeholder(shape_x1, name="tensor_a", dtype=dtype_in)
     tensor_x2 = tvm.placeholder(shape_x2, name="tensor_b", dtype=dtype_in)
     tensor_bias = _get_bias_tensor(bias, format_b, n_var)
@@ -841,8 +862,10 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         "trans_b": trans_b,
         "format_a": format_a,
         "format_b": format_b,
+        "format_out": output_z.get("format"),
         "dst_dtype": dtype_out,
         "tensor_c": tensor_bias,
+        "cache_tiling_flag": get_none_range_flag(input_x1, input_x2, bias),
         "kernel_name": kernel_name
     }
     op_res = tbe.gemm(tensor_x1, tensor_x2, para_dict)
@@ -979,9 +1002,9 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         "tensor_list": tensor_list,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
-    if _get_none_range_flag(input_x1, input_x2):
+    if get_none_range_flag(input_x1, input_x2, bias):
         config.get("build_args")["predicate_realize_bound"] = False
-        config.get("build_args")["sync_mode"] = 8
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
+        config.get("build_args")["double_buffer_no_tail"] = False
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")

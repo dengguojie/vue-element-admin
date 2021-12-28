@@ -87,6 +87,7 @@ class GEMMComputeParam:
     batch_b = False
     format_a = "Fractal_NZ"
     format_b = "Fractal_NZ"
+    format_out = "Fractal_NZ"
     m_var_name = None
     k_var_name = None
     n_var_name = None
@@ -216,6 +217,7 @@ class GEMMCompute(FormatCompute):
         self.trans_b = para_dict.get("trans_b", False)
         self.format_a = para_dict.get("format_a", "ND")
         self.format_b = para_dict.get("format_b", "ND")
+        self.cache_tiling_flag = para_dict.get("cache_tiling_flag", False)
         self.offset_x, self.offset_w = self._get_offset_info(para_dict, tensor_a.dtype, tensor_b.dtype)
         self.tensor_bias = None
         self.tensor_c = para_dict.get("tensor_c")
@@ -323,7 +325,7 @@ class GEMMCompute(FormatCompute):
         GEMMComputeParam.block_reduce = self.block_reduce
 
         # This self.ops_format means format_a in this scenario.
-        n_shape_dynamic_flag = isinstance(n1_shape, tvm.expr.Var)
+        n_shape_dynamic_flag = isinstance(n1_shape, tvm.expr.Var) or isinstance(n1_shape, tvm.expr.Expr)
         tail_block = GEMMComputeParam.check_tail_block(
             n_shape, self.ops_data_flow_mode,
             self.format_out,
@@ -334,6 +336,7 @@ class GEMMCompute(FormatCompute):
         fused_double_operand_num = 1 if self.format_out == "ND" else 0
         GEMMComputeParam.format_a = self.format_a
         GEMMComputeParam.format_b = self.format_b
+        GEMMComputeParam.format_out = self.format_out
         GEMMComputeParam.m_var_name = "m_ori" if self.format_a == "ND" else "m"
         GEMMComputeParam.k_var_name = "k_ori" if self.format_a == "ND" else "k"
         GEMMComputeParam.n_var_name = "n_ori" if self.format_b == "ND" else "n"
@@ -591,10 +594,10 @@ class GEMMCompute(FormatCompute):
         attrs_dict["shape"] = c_gm_shape
         # not_align flag is used for nd out
         not_align = (not self.align_a) or (not self.align_b)
-        not_align = not_align and (self.format_out == "ND")
+        # current cachetiling scenes both m/k/n axis is mutiply of 16
+        not_align = not_align and (self.format_out == "ND") and not self.cache_tiling_flag
         a_shape_len = len(self.tensor_a.shape)
         b_shape_len = len(self.tensor_b.shape)
-
         have_batch = len(c_gm_shape) in (3, 5)
 
         if not_align:
@@ -876,6 +879,8 @@ class GEMMCompute(FormatCompute):
             self.align_b = is_align
         not_need_align = is_align or (self.mmad_mode in ("gemv", "gevm"))
         not_need_align = False if in_dynamic() else not_need_align
+        # current cachetiling scenes both m/k/n axis is mutiply of 16
+        not_need_align = True if self.cache_tiling_flag else not_need_align
         use_aligned_pattern = not_need_align or (not need_check_align)
         if in_dynamic():
             tensor_normalize_ub = self._do_aligned_shape_for_dynamic(
@@ -1591,7 +1596,7 @@ class GEMMCompute(FormatCompute):
             attrs_dict = self._get_attrs_dict(tensor_alpha_c_add_beta_bias)
             c_gm_shape = self._get_out_shape(tensor_alpha_c_add_beta_bias)
             attrs_dict["shape"] = c_gm_shape
-            if attrs_dict['shape'][-1] % self.block_in != 0:
+            if not self.cache_tiling_flag and attrs_dict['shape'][-1] % self.block_in != 0:
                 tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias, output_shape=c_gm_shape, tensor_name="tensor_c_gm", res_tag=self._get_ops_tag(), attrs_dict=attrs_dict)
             else:
                 tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias)

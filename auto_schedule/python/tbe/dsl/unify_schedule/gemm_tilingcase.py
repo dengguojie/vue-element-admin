@@ -38,6 +38,7 @@ from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
+from tbe.dsl.base.operation import get_context
 
 from .cube_tilingcase import CubeTilingOp
 from .cube_tilingcase import MAX_RANGE
@@ -540,6 +541,9 @@ def _generate_aligned_tilingcase(tiling_cases):
             "The compiled kernel number exceeds 10000."
         )
     for tiling in tiling_cases:
+        # cache_tiling doesn't modify tilingkey
+        if tiling["tiling_strategy"].get("attach_at_flag"):
+            return tiling_cases
         aligned_tiling = copy.deepcopy(tiling)
         # The general tilingkey is '1xxxx' and adding this offset makes it '2xxxx'
         aligned_tiling["key"] = aligned_tiling["key"] + ALIGNED_TILING_ID_OFFSET
@@ -571,11 +575,12 @@ class MatmulTiling(CubeTilingOp):
         self.format_b = GEMMComputeParam.format_b
         self.bias_flag = self.tiling_info["bias_flag"]
         self.none_range_area = self.tiling_info["none_range_area"]
-        self.use_cache_tiling = self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and\
-                                self.none_range_area and "Ascend910" in tbe_platform_info.get_soc_spec("SOC_VERSION")
+        self.use_cache_tiling = not self.bias_flag and self.none_range_area and "Ascend910"\
+                                in tbe_platform_info.get_soc_spec("SOC_VERSION")
 
         if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             self.use_cache_tiling = False
+        get_context().add("_use_cache_tiling", self.use_cache_tiling)
         self._get_calc_info()
         self.key = ("A_shape", "B_shape")
         self.op_type = "matmul"
@@ -646,8 +651,7 @@ class MatmulTiling(CubeTilingOp):
         tiling.get("tiling")["attach_same_to_static"] = False
         return tiling
 
-    @staticmethod
-    def get_cache_tiling():
+    def get_cache_tiling(self):
         '''
         according to size in l1, generate 9 kind of templates, each subdivided into 132 different
         templates as follows templates according to size in l1 sub template
@@ -666,15 +670,30 @@ class MatmulTiling(CubeTilingOp):
         ----------
         cache_tiling_all: list, include 132 different tiling templates
         '''
+        # add compile_info
+        info_dict = self.tiling_info
+        bias_flag = info_dict.get("bias_flag")
+        nd_flag = True if GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND" else False
+        add_compile_info("binary_mode_flag", True)
+        add_compile_info("binary_attrs", {"bias_flag": bias_flag,
+                                          "nd_flag": nd_flag})
+        # get cache_tiling
         cache_tiling_all = {}
-        al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0 = (
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
+        bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag) = (
             [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [0, 1])
-        l1_choice = list(
-            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
+            [0, 1], [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD], 
+            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD])
+        if nd_flag:
+            l1_choice = list(
+                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
+                        bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag))
+        else:
+            l1_choice = list(
+                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
         for choice in l1_choice:
             cache_tiling = {
                 'block_dim': [-1, -1, -1, 1],
@@ -682,13 +701,13 @@ class MatmulTiling(CubeTilingOp):
                 'BL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
                 'CL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
                 'CUB_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-                'BUB_shape': None,
+                'BUB_shape': [-1, -1, 1, 1],
                 'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
-                'AUB_shape': [],
+                'AUB_shape': [-1, -1, 1, 1],
                 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
                 'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
                 'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
-                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_OFF, 'BUB_pbuffer': utils.DB_OFF,
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_ON, 'BUB_pbuffer': utils.DB_ON,
                 'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
                 'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
                 'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
@@ -696,37 +715,32 @@ class MatmulTiling(CubeTilingOp):
                 'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
                 'bl0_attach_flag': utils.ATTACH_LESS,
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1}
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
             }
 
             # if bl1 attach at l0c, nbl1, should be 1
             if choice[5] == utils.ATTACH_LESS:
                 cache_tiling.get("BL1_shape")[1] = 1
-            # if full load in l1 buffer, there is no need to open double buffer
-            if choice[5] == utils.ATTACH_FULL_LOAD and choice[1] == utils.DB_ON:
-                continue
-            # al1 full load
-            if choice[4] == utils.ATTACH_FULL_LOAD:
-                invalid_choice = choice[0] == utils.DB_ON or (
-                    choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
-                    choice[3] != 0) or (choice[5] == 2 and choice[3] != 1)
-                if invalid_choice:
-                    continue
-
-            # al1 attach at c_ddr
-            if choice[4] == utils.ATTACH_EQUAL:
-                invalid_choice = (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
-                                  choice[3] != 0) or (choice[5] == utils.ATTACH_LESS and choice[3] != 1)
-                if invalid_choice:
-                    continue
-
             # al1 attach at l0c
             if choice[4] == utils.ATTACH_LESS:
                 # if al1 attach at l0c, mal1 should be 1
                 cache_tiling.get('AL1_shape')[1] = 1
-                # if full load in l1 buffer, there is no need to open double buffer
-                if (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 2):
-                    continue
+
+            # al1 full load
+            invalid_choice = (choice[4] == utils.ATTACH_FULL_LOAD) and (
+                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 0) or
+                (choice[5] == 2 and choice[3] != 1))
+
+            # al1 attach at c_ddr
+            invalid_choice = invalid_choice or (choice[4] == utils.ATTACH_EQUAL and (
+                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+                choice[3] != 0) or (choice[5] == utils.ATTACH_LESS and choice[3] != 1)))
+
+            # if al1 attach at l0c and full load in l1 buffer, there is no need to open double buffer
+            invalid_choice = invalid_choice or (choice[4] == utils.ATTACH_LESS and
+                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 2))
+            if invalid_choice:
+                continue
 
             cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = choice[0]
             cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = choice[1]
@@ -735,6 +749,10 @@ class MatmulTiling(CubeTilingOp):
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
             cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
+            if nd_flag:
+                cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
+                cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
+                cache_tiling["schedule_pattern"] = "Aligned"
             name = int(''.join([str(i) for i in choice]))
             cache_tiling_all[name] = [[], cache_tiling, []]
 
@@ -1278,7 +1296,7 @@ class MatmulTiling(CubeTilingOp):
         return True means use default tiling, else not
         """
 
-        # cache tiling not support format ND and use bias yet
+        # cache tiling not support use bias yet
         if self.use_cache_tiling:
             return False
 

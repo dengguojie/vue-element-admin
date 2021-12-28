@@ -27,6 +27,7 @@ from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
+from impl.dynamic.batch_matmul_v2 import get_none_range_flag
 
 
 # General limitation of the size for input shape: 2**32 - 1
@@ -278,4 +279,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
         "tensor_list": tensor_list,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
+    if get_none_range_flag(input_x1, input_x2, bias):
+        config["build_args"]["predicate_realize_bound"] = False
+        config["build_args"]["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)

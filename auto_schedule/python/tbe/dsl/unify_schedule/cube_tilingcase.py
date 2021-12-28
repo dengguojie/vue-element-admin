@@ -330,7 +330,7 @@ class TilingSelection:
                                                 case['tiling_strategy']['BUB_shape'][0])
             elif (self.op.op_type in ("matmul", "batch_matmul") and
                 -1 in case['tiling_strategy']['block_dim']):
-                tiling_blockdim[case['key']] = 32
+                tiling_blockdim["CORE_NUM"] = tbe_platform_info.get_soc_spec("CORE_NUM")
             else:
                 tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
                                                 int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
@@ -345,7 +345,7 @@ class TilingSelection:
         Parameters
         ----------
         target_area: tuple, target area to be covered
-
+        
         Returns
         -------
         tilings_cases: list, calculated tilings
@@ -647,9 +647,8 @@ class TilingSelection:
 
         tiling_cases = []
         if self.op.use_cache_tiling:
-            template_candidates = self.op.get_cache_tiling()
-            cache_tiling = [self.op.assembly_case(v[2], v[1], v[0], k) for k, v in template_candidates.items()]
-            tiling_cases = cache_tiling
+            cache_tiling_candidates = self.op.get_cache_tiling()
+            tiling_cases = [self.op.assembly_case(v[2], v[1], v[0], k) for k, v in cache_tiling_candidates.items()]
 
         if self.op.none_range_area:
             tiling_cases += self._calc_gear_repo_none_range(target_area)
@@ -1287,6 +1286,9 @@ class TilingUtils:
     ATTACH_EQUAL = 1
     ATTACH_LESS = 2
     ATTACH_LARGE = 3
+    ABUB_FULL_LOAD = 2
+    ABUB_INNER_FULL_LOAD = 1
+    ABUB_NOT_FULL_LOAD = 0
     NHW_MAX = 4096
 
     @staticmethod

@@ -29,6 +29,8 @@ def side_effects(*args):
 
 # batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name
 matmul_case = [
+    #(((1, None), ), (1, None), (1, None), (1, None), "float16", "float16", "ND", False, False, False, False,"unrange_nd_dynamic_batch_matmul_v2"),
+    (((1, None), ), (1, None), (1, None), (1, None), "float16", "float16", "NZ", False, False, False, False,"unrange_nz_dynamic_batch_matmul_v2"),
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, False, "dynamic_batch_matmul_v2_succcase0"),
     # TODO: temporarily block util the base package is updated, which is newer than 0713
     #(((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", True, True, True, True, "dynamic_batch_matmul_v2_succcase1"),
