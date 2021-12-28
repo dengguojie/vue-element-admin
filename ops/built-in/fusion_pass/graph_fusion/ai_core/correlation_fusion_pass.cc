@@ -18,6 +18,8 @@
  * \file correlation_fusion_pass.cpp
  * \brief
  */
+#include "correlation_fusion_pass.h"
+
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -25,8 +27,6 @@
 #include <string>
 #include <map>
 #include <sstream>
-
-#include "correlation_fusion_pass.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
@@ -36,7 +36,6 @@
 using namespace std;
 using namespace ge;
 namespace fe {
-
 static const char *FUSED_NODE = "Correlation";
 static const std::string PATTERN_FUSED_NODE = "Correlation";
 static const std::string PASS_NAME = "CorrelationFusionPass";
@@ -90,18 +89,22 @@ static Status generate_split_node_for_filter(ComputeGraph &graph, OpDescPtr conv
   GeShape input_shape = input_desc.GetShape();
   Format format = input_desc.GetFormat();
   GeShape split_out_shape = input_shape;
+  int32_t dim_0 = 0;
+  int32_t dim_1 = 1;
+  int32_t dim_2 = 2;
+  int32_t dim_3 = 3;
 
   slice_desc = std::make_shared<ge::OpDesc>(conv_op_name+"_filter_split", "SplitD");
   AttrUtils::SetInt(slice_desc, "num_split", groups);
   if (format == FORMAT_NCHW) {
     AttrUtils::SetInt(slice_desc, "split_dim", 0);
-    split_out_shape.SetDim(0, 1);
+    split_out_shape.SetDim(dim_0, dim_1);
   } else if (format == FORMAT_NHWC) {
     AttrUtils::SetInt(slice_desc, "split_dim", 0);
-    split_out_shape.SetDim(0, 1);
+    split_out_shape.SetDim(dim_0, dim_1);
   } else if (format == FORMAT_HWCN) {
     AttrUtils::SetInt(slice_desc, "split_dim", 3);
-    split_out_shape.SetDim(3, 1);
+    split_out_shape.SetDim(dim_3, dim_1);
   }
 
   split_out_desc = input_desc;
@@ -116,11 +119,11 @@ static Status generate_split_node_for_filter(ComputeGraph &graph, OpDescPtr conv
   return SUCCESS;
 }
 
-static Status generate_new_conv_nodes(ComputeGraph &graph, OpDescPtr conv_desc, 
-                                      std::map < string, uint32_t > &input_names, 
-                                      int groups, const GeTensorDesc &split_out_desc_x, 
-                                      const GeTensorDesc &split_out_desc_filter, 
-                                      vector<NodePtr> &new_conv_nodes, 
+static Status generate_new_conv_nodes(ComputeGraph &graph, OpDescPtr conv_desc,
+                                      std::map <string, uint32_t> &input_names,
+                                      int groups, const GeTensorDesc &split_out_desc_x,
+                                      const GeTensorDesc &split_out_desc_filter,
+                                      vector<NodePtr> &new_conv_nodes,
                                       GeTensorDesc &new_conv_out_desc)
 {
   string conv_op_name = conv_desc->GetName();
@@ -159,7 +162,7 @@ static Status generate_new_conv_nodes(ComputeGraph &graph, OpDescPtr conv_desc,
 }
 
 static Status generate_concat_node(ComputeGraph &graph, OpDescPtr conv_desc, int64_t groups,
-                                   GeTensorDesc &new_conv_out_desc, GeTensorDesc &concat_out_desc, 
+                                   GeTensorDesc &new_conv_out_desc, GeTensorDesc &concat_out_desc,
                                    NodePtr &concat_node)
 {
   string conv_op_name = conv_desc->GetName();
@@ -174,9 +177,9 @@ static Status generate_concat_node(ComputeGraph &graph, OpDescPtr conv_desc, int
   return SUCCESS;
 }
 
-vector<FusionPattern *> CorrelationFusionPass::DefinePatterns() 
+vector<FusionPattern *> CorrelationFusionPass::DefinePatterns()
 {
-  vector < FusionPattern * > patterns;
+  vector < FusionPattern *> patterns;
   FusionPattern *pattern = new(std::nothrow) FusionPattern("CorrelationFusionPass");
   if (pattern == nullptr) {
     OP_LOGE(PASS_NAME.c_str(), "new a pattern object failed.");
@@ -184,11 +187,11 @@ vector<FusionPattern *> CorrelationFusionPass::DefinePatterns()
   }
   pattern->AddOpDesc(PATTERN_FUSED_NODE, {FUSED_NODE}).SetOutput(PATTERN_FUSED_NODE);
   patterns.push_back(pattern);
-  
+
   return patterns;
 }
 
-Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) 
+Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes)
 {
   // get the NodePtr of Correlation
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSED_NODE, mapping);
@@ -229,27 +232,31 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
   int32_t ic = 0;
   int32_t kn = 0;
   int32_t kc = 0;
+  int32_t dim_0 = 0;
+  int32_t dim_1 = 1;
+  int32_t dim_2 = 2;
+  int32_t dim_3 = 3;
   if (x_format == FORMAT_NCHW) {
-    in = x_shape.GetDim(0);
-    ic = x_shape.GetDim(1);
+    in = x_shape.GetDim(dim_0);
+    ic = x_shape.GetDim(dim_1);
   } else if (x_format == FORMAT_NHWC) {
-    in = x_shape.GetDim(0);
-    ic = x_shape.GetDim(3);
+    in = x_shape.GetDim(dim_0);
+    ic = x_shape.GetDim(dim_3);
   } else {
-    OP_LOGE(PASS_NAME.c_str(), "Node:%s's input x format should be NCHW/NHWC, fusion failed.", 
+    OP_LOGE(PASS_NAME.c_str(), "Node:%s's input x format should be NCHW/NHWC, fusion failed.",
             fused_node->GetName().c_str());
     return PARAM_INVALID;
   }
 
   if (k_format == FORMAT_NCHW) {
-    kn = k_shape.GetDim(0);
-    kc = k_shape.GetDim(1);
+    kn = k_shape.GetDim(dim_0);
+    kc = k_shape.GetDim(dim_1);
   } else if (k_format == FORMAT_NHWC) {
-    kn = k_shape.GetDim(0);
-    kc = k_shape.GetDim(3);
+    kn = k_shape.GetDim(dim_0);
+    kc = k_shape.GetDim(dim_3);
   } else if (k_format == FORMAT_HWCN) {
-    kn = k_shape.GetDim(3);
-    kc = k_shape.GetDim(2);
+    kn = k_shape.GetDim(dim_3);
+    kc = k_shape.GetDim(dim_2);
   } else {
     OP_LOGE(PASS_NAME.c_str(), "Node:%s's input filter format should be NCHW/NHWC/HWCN, fusion failed.",
             fused_node->GetName().c_str());
@@ -270,7 +277,7 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     kc_revised = ic;
     yn_revised = kn;
     yc_revised = int(kc / ic);
-  } else if(groups == ic) {
+  } else if (groups == ic) {
     in_revised = 1;
     ic_revised = in * ic;
     kn_revised = kn * kc;
@@ -278,7 +285,7 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     yn_revised = kn;
     yc_revised = kc;
   } else {
-    OP_LOGE(PASS_NAME.c_str(), "Node:%s's attr groups is not valid, fusion failed.", 
+    OP_LOGE(PASS_NAME.c_str(), "Node:%s's attr groups is not valid, fusion failed.",
             fused_node->GetName().c_str());
     return PARAM_INVALID;
   }
@@ -290,40 +297,40 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
 
   // update x shape
   if (x_format == FORMAT_NCHW) {
-    x_shape_revised.SetDim(0, in_revised);
-    x_shape_revised.SetDim(1, ic_revised);
+    x_shape_revised.SetDim(dim_0, in_revised);
+    x_shape_revised.SetDim(dim_1, ic_revised);
   } else if (x_format == FORMAT_NHWC) {
-    x_shape_revised.SetDim(0, in_revised);
-    x_shape_revised.SetDim(3, ic_revised);
+    x_shape_revised.SetDim(dim_0, in_revised);
+    x_shape_revised.SetDim(dim_3, ic_revised);
   }
 
   // update filter shape
   if (k_format == FORMAT_NCHW) {
-    k_shape_revised.SetDim(0, kn_revised);
-    k_shape_revised.SetDim(1, kc_revised);
+    k_shape_revised.SetDim(dim_0, kn_revised);
+    k_shape_revised.SetDim(dim_1, kc_revised);
   } else if (k_format == FORMAT_NHWC) {
-    k_shape_revised.SetDim(0, kn_revised);
-    k_shape_revised.SetDim(3, kc_revised);
+    k_shape_revised.SetDim(dim_0, kn_revised);
+    k_shape_revised.SetDim(dim_3, kc_revised);
   } else if (k_format == FORMAT_HWCN) {
-    k_shape_revised.SetDim(3, kn_revised);
-    k_shape_revised.SetDim(2, kc_revised);
+    k_shape_revised.SetDim(dim_3, kn_revised);
+    k_shape_revised.SetDim(dim_2, kc_revised);
   }
 
   // update y shape
   if (y_format == FORMAT_NCHW) {
-    y_shape_revised.SetDim(0, yn_revised);
-    y_shape_revised.SetDim(1, yc_revised);
+    y_shape_revised.SetDim(dim_0, yn_revised);
+    y_shape_revised.SetDim(dim_1, yc_revised);
 
-    y_shape_revised_before_reshape.SetDim(0, 1);
-    y_shape_revised_before_reshape.SetDim(1, yn_revised * yc_revised);
+    y_shape_revised_before_reshape.SetDim(dim_0, dim_1);
+    y_shape_revised_before_reshape.SetDim(dim_1, yn_revised * yc_revised);
   } else if (y_format == FORMAT_NHWC) {
-    y_shape_revised.SetDim(0, yn_revised);
-    y_shape_revised.SetDim(3, yc_revised);
+    y_shape_revised.SetDim(dim_0, yn_revised);
+    y_shape_revised.SetDim(dim_3, yc_revised);
 
-    y_shape_revised_before_reshape.SetDim(0, 1);
-    y_shape_revised_before_reshape.SetDim(3, yn_revised * yc_revised);
+    y_shape_revised_before_reshape.SetDim(dim_0, dim_1);
+    y_shape_revised_before_reshape.SetDim(dim_3, yn_revised * yc_revised);
   } else {
-    OP_LOGE(PASS_NAME.c_str(), "Node:%s's output y format should be NCHW/NHWC, fusion failed.", 
+    OP_LOGE(PASS_NAME.c_str(), "Node:%s's output y format should be NCHW/NHWC, fusion failed.",
             fused_node->GetName().c_str());
     return PARAM_INVALID;
   }
@@ -345,14 +352,14 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     GeTensorDesc split_out_desc_x, split_out_desc_filter;
 
     if (SUCCESS != generate_split_node_for_x(graph, fused_desc, kn, split_node_x, split_out_desc_x)) {
-      OP_LOGE(PASS_NAME.c_str(), "Generate split node for x fail [for fusion node:%s]", \
-        fused_node->GetName().c_str());
+      OP_LOGE(PASS_NAME.c_str(), "Generate split node for x fail [for fusion node:%s]",
+              fused_node->GetName().c_str());
       return FAILED;
     }
-    if (SUCCESS != generate_split_node_for_filter(graph, fused_desc, kn, split_node_filter, 
+    if (SUCCESS != generate_split_node_for_filter(graph, fused_desc, kn, split_node_filter,
         split_out_desc_filter)) {
-      OP_LOGE(PASS_NAME.c_str(), "Generate split node for filter fail [for fusion node:%s]", \
-        fused_node->GetName().c_str());
+      OP_LOGE(PASS_NAME.c_str(), "Generate split node for filter fail [for fusion node:%s]",
+              fused_node->GetName().c_str());
       return FAILED;
     }
 
@@ -360,17 +367,17 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     GeTensorDesc new_conv_out_desc = y_tensor_desc;
     ge::GeShape new_conv_out_shape = y_shape_revised;
     if (y_format == FORMAT_NCHW) {
-      new_conv_out_shape.SetDim(0, 1);
-      new_conv_out_shape.SetDim(1, 1);
+      new_conv_out_shape.SetDim(dim_0, dim_1);
+      new_conv_out_shape.SetDim(dim_1, dim_1);
     } else if (y_format == FORMAT_NHWC) {
-      new_conv_out_shape.SetDim(0, 1);
-      new_conv_out_shape.SetDim(3, 1);
+      new_conv_out_shape.SetDim(dim_0, dim_1);
+      new_conv_out_shape.SetDim(dim_3, dim_1);
     }
     new_conv_out_desc.SetOriginShape(new_conv_out_shape);
     new_conv_out_desc.SetShape(new_conv_out_shape);
-    if (SUCCESS != generate_new_conv_nodes(graph, fused_desc, input_names, kn, split_out_desc_x, 
+    if (SUCCESS != generate_new_conv_nodes(graph, fused_desc, input_names, kn, split_out_desc_x,
         split_out_desc_filter, new_conv_nodes, new_conv_out_desc)) {
-      OP_LOGE(PASS_NAME.c_str(), "Generate new conv nodes fail [for fusion node:%s]", 
+      OP_LOGE(PASS_NAME.c_str(), "Generate new conv nodes fail [for fusion node:%s]",
               fused_node->GetName().c_str());
       return FAILED;
     }
@@ -386,19 +393,19 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     }
 
     // add edges from input x of Correction to split_node_x
-    if (SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(), 
+    if (SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
         split_node_x->GetInDataAnchor(0))) {
-      OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's x to node:%s's input[0] failed.", 
+      OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's x to node:%s's input[0] failed.",
               fused_node->GetName().c_str(), split_node_x->GetName().c_str());
       return FAILED;
     }
-    OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's x to node:%s's input[0].", 
+    OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's x to node:%s's input[0].",
             fused_node->GetName().c_str(), split_node_x->GetName().c_str());
 
     // add edges from input filter of Correction to split_node_filter
-    if (SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(), 
+    if (SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
         split_node_filter->GetInDataAnchor(0))) {
-      OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's filter to node:%s's input[0] failed.", 
+      OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's filter to node:%s's input[0] failed.",
               fused_node->GetName().c_str(), split_node_filter->GetName().c_str());
       return FAILED;
     }
@@ -408,9 +415,9 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // add edges from split_node_x to new_conv_nodes's input 0
     idx = 0;
     for (NodePtr conv_node : new_conv_nodes) {
-      if (SUCCESS != ge::GraphUtils::AddEdge(split_node_x->GetOutDataAnchor(idx), 
+      if (SUCCESS != ge::GraphUtils::AddEdge(split_node_x->GetOutDataAnchor(idx),
           conv_node->GetInDataAnchor(0))) {
-        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0] failed.", 
+        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0] failed.",
                 split_node_x->GetName().c_str(), conv_node->GetName().c_str());
         return FAILED;
       }
@@ -422,13 +429,13 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // add edges from split_node_filter to new_conv_nodes's input 1
     idx = 0;
     for (NodePtr conv_node : new_conv_nodes) {
-      if (SUCCESS != ge::GraphUtils::AddEdge(split_node_filter->GetOutDataAnchor(idx), 
+      if (SUCCESS != ge::GraphUtils::AddEdge(split_node_filter->GetOutDataAnchor(idx),
           conv_node->GetInDataAnchor(1))) {
-        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[1] failed.", 
+        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[1] failed.",
                 split_node_filter->GetName().c_str(), conv_node->GetName().c_str());
         return FAILED;
       }
-      OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[1].", 
+      OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[1].",
               split_node_filter->GetName().c_str(), conv_node->GetName().c_str());
       idx++;
     }
@@ -436,13 +443,13 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // add edges from new_conv_nodes to concat_node
     idx = 0;
     for (NodePtr conv_node : new_conv_nodes) {
-      if (SUCCESS != ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0), 
+      if (SUCCESS != ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0),
           concat_node->GetInDataAnchor(idx))) {
-        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0] failed.", 
+        OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0] failed.",
                 conv_node->GetName().c_str(), concat_node->GetName().c_str());
         return FAILED;
       }
-      OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0].", 
+      OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's input[0].",
               conv_node->GetName().c_str(), concat_node->GetName().c_str());
       idx++;
     }
@@ -452,11 +459,11 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
       for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
         in_anchor_ptr->UnlinkAll();
         if (SUCCESS != ge::GraphUtils::AddEdge(concat_node->GetOutDataAnchor(0), in_anchor_ptr)) {
-          OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's output[0] failed.", 
+          OP_LOGE(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's output[0] failed.",
                   concat_node->GetName().c_str(), fused_node->GetName().c_str());
           return FAILED;
         }
-        OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's output[0].", 
+        OP_LOGD(PASS_NAME.c_str(), "Add edge from node:%s's output[0] to node:%s's output[0].",
                 concat_node->GetName().c_str(), fused_node->GetName().c_str());
       }
     }
@@ -504,21 +511,21 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // switch the pos of x and filter
     // link input x to Conv2D input 0
     if (SUCCESS != ge::GraphUtils::AddEdge(x_peer, fused_node->GetInDataAnchor(0))) {
-      OP_LOGE(PASS_NAME.c_str(), "Add edge from x to fusion node:%s's input[0] failed.", 
+      OP_LOGE(PASS_NAME.c_str(), "Add edge from x to fusion node:%s's input[0] failed.",
               fused_node->GetName().c_str());
       return FAILED;
     }
-    OP_LOGD(PASS_NAME.c_str(), "Add edge from x to fusion node:%s's input[0].", 
+    OP_LOGD(PASS_NAME.c_str(), "Add edge from x to fusion node:%s's input[0].",
             fused_node->GetName().c_str());
 
     // link input filter to Conv2D input 1
     if (SUCCESS != ge::GraphUtils::AddEdge(k_peer, fused_node->GetInDataAnchor(1))) {
-      OP_LOGE(PASS_NAME.c_str(), "Add edge from filter to fusion node:%s's input[1] failed.", 
+      OP_LOGE(PASS_NAME.c_str(), "Add edge from filter to fusion node:%s's input[1] failed.",
               fused_node->GetName().c_str());
       return FAILED;
     }
 
-    OP_LOGD(PASS_NAME.c_str(), "Add edge from filter to fusion node:%s's input[1].", 
+    OP_LOGD(PASS_NAME.c_str(), "Add edge from filter to fusion node:%s's input[1].",
             fused_node->GetName().c_str());
 
     // set type as Conv2D
@@ -552,9 +559,9 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
       reshape_out_tensor_desc.SetOriginShape(y_shape_revised);
 
       ge::NodePtr reshape_node = nullptr;
-      if (generate_reshape_node(graph, y_tensor_desc, reshape_out_tensor_desc, 
-                              y_shape_revised, reshape_node, "reshape", fused_node->GetName()) != SUCCESS) {
-        OP_LOGE(PASS_NAME.c_str(), "Fail to generate reshape node for fusion node:%s's", 
+      if (generate_reshape_node(graph, y_tensor_desc, reshape_out_tensor_desc,
+                                y_shape_revised, reshape_node, "reshape", fused_node->GetName()) != SUCCESS) {
+        OP_LOGE(PASS_NAME.c_str(), "Fail to generate reshape node for fusion node:%s's",
                 fused_node->GetName().c_str());
         return FAILED;
       }
@@ -568,11 +575,11 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
           in_anchor_ptr->UnlinkAll();
           if (SUCCESS != ge::GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), in_anchor_ptr)) {
             OP_LOGE(PASS_NAME.c_str(), 
-                    "Add edge from reshape node:%s's output[0] to fusion node:%s's output[0] failed.", 
+                    "Add edge from reshape node:%s's output[0] to fusion node:%s's output[0] failed.",
                     reshape_node->GetName().c_str(), fused_node->GetName().c_str());
             return FAILED;
           }
-          OP_LOGD(PASS_NAME.c_str(), "Add edge from reshape node:%s's output[0] to fusion node:%s's output[0].", 
+          OP_LOGD(PASS_NAME.c_str(), "Add edge from reshape node:%s's output[0] to fusion node:%s's output[0].",
                   reshape_node->GetName().c_str(), fused_node->GetName().c_str());
         }
       }
@@ -580,11 +587,11 @@ Status CorrelationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
       // connect the output 0 of fused_node to input of reshape_node
       if (SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetOutDataAnchor(0),
                                              reshape_node->GetInDataAnchor(0))) {
-        OP_LOGE(PASS_NAME.c_str(), "Add edge from fused node:%s's output[0] to reshape node:%s's input[0] failed.", 
+        OP_LOGE(PASS_NAME.c_str(), "Add edge from fused node:%s's output[0] to reshape node:%s's input[0] failed.",
                 fused_node->GetName().c_str(), reshape_node->GetName().c_str());
         return FAILED;
       }
-      OP_LOGD(PASS_NAME.c_str(), "Add edge from fused node:%s's output[0] to reshape node:%s's input[0].", 
+      OP_LOGD(PASS_NAME.c_str(), "Add edge from fused node:%s's output[0] to reshape node:%s's input[0].",
               fused_node->GetName().c_str(), reshape_node->GetName().c_str());
 
       // add nodes in newNodes
