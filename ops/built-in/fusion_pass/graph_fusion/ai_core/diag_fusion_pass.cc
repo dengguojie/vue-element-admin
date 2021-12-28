@@ -229,7 +229,7 @@ Status DiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     // define the shape of auxiliary matrix
     vector<int64_t> assitDimInfo;
     const size_t repeat_times = 2;
-    for (size_t i = 0; i < 2; ++i) {
+    for (size_t i = 0; i < repeat_times; ++i) {
       for (size_t j = 0; j < dimInfo.size(); ++j) {
         assitDimInfo.push_back(dimInfo[j]);
       }
