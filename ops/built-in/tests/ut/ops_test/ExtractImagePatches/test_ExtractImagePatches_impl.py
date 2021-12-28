@@ -16,6 +16,8 @@ ExtractImagePatches ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+from tbe.common.platform.platform_info import set_current_compile_soc_info
+from impl.extract_image_patches import extract_image_patches
 
 ut_case = OpUT("ExtractImagePatches", "impl.extract_image_patches", "extract_image_patches")
 
@@ -412,6 +414,13 @@ ut_case.add_precision_case(
             precision_info.PrecisionStandard(0.001, 0.001)
     })
 
+def test_static_1951(test_arg):   
+    set_current_compile_soc_info("Ascend710")
+    extract_image_patches({"shape": (1, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 16, 16, 16), "ori_format": "NHWC"},
+                          {"shape": (1, 16, 16, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 16, 16, 64), "ori_format": "NHWC"},
+                          (1, 2, 2, 1), (1, 1, 1, 1), (1, 3, 3, 1), "SAME")
+    set_current_compile_soc_info(test_arg)
+ut_case.add_cust_test_func(test_func=test_static_1951)
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)

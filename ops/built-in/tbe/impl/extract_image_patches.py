@@ -266,8 +266,14 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
             wkspace_dict = {"workspace": {"num": num, "size": total_size}}
             write_code(wkspace_dict, kernel_name)
 
+
     new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
-    with new_config:
-        tvm.build(sch, [data_input, output_res, workspace_res], "cce", name=kernel_name)
-        if fmap_c % align_block_size != 0:
+    if fmap_c % align_block_size == 0:
+        tensor_list = [data_input, output_res]
+        with new_config:
+            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+    else:
+        tensor_list = [data_input, output_res, workspace_res]
+        with new_config:
+            tvm.build(sch, tensor_list, "cce", name=kernel_name)
             _write_workspace_info([workspace_res], kernel_name)
