@@ -5,7 +5,7 @@
 		"input_desc": [
 			{
 				"format": "NDHWC",
-				"ori_format": "NDHWC", 
+				"ori_format": "NDHWC",
 				"type": "float16",
 				"shape": [2, 128, 128, 128, 32],
 				"ori_shape": [2, 128, 128, 128, 32],
@@ -15,7 +15,7 @@
 			},
 			{
 				"format": "NDHWC",
-				"ori_format": "NDHWC", 
+				"ori_format": "NDHWC",
 				"type": "float16",
 				"shape": [2, 63, 63, 63, 4],
 				"ori_shape": [2, 63, 63, 63, 4],
@@ -27,7 +27,7 @@
 		"output_desc": [
 			{
 				"format": "DHWCN",
-				"ori_format": "DHWCN", 
+				"ori_format": "DHWCN",
 				"type": "float32",
 				"shape": [3, 3, 3, 32, 4],
 				"ori_shape": [3, 3, 3, 32, 4],
@@ -73,7 +73,7 @@
 		"input_desc": [
 			{
 				"format": "NDHWC",
-				"ori_format": "NDHWC", 
+				"ori_format": "NDHWC",
 				"type": "float16",
 				"shape": [2, 128, 128, 128, 32],
 				"ori_shape": [2, 128, 128, 128, 32],
@@ -83,7 +83,7 @@
 			},
 			{
 				"format": "NDHWC",
-				"ori_format": "NDHWC", 
+				"ori_format": "NDHWC",
 				"type": "float16",
 				"shape": [2, 128, 128, 128, 4],
 				"ori_shape": [2, 128, 128, 128, 4],
@@ -95,7 +95,7 @@
 		"output_desc": [
 			{
 				"format": "DHWCN",
-				"ori_format": "DHWCN", 
+				"ori_format": "DHWCN",
 				"type": "float32",
 				"shape": [3, 3, 3, 32, 4],
 				"ori_shape": [3, 3, 3, 32, 4],

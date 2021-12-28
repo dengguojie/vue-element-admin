@@ -27,7 +27,6 @@ from functools import reduce
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import get_context
-from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import register_tiling_case
@@ -55,6 +54,7 @@ D_LEN = 400
 VALID_TILING_NUM = 32
 N_BASE = 2
 BIT_RATIO_DICT = {"float32": 4, "float16": 2}
+
 
 def _parse_fuzz_build_range(info_list):
     """
@@ -100,8 +100,8 @@ def _parse_fuzz_build_range(info_list):
                 for axis_range in input_range:
                     invalid = (not isinstance(axis_range, list)) \
                               or len(axis_range) != 2 \
-                              or axis_range[0] < 1 \
-                              or axis_range[0] > axis_range[1]
+                              or axis_range[0] > axis_range[1] \
+                              or axis_range[0] < 1
                     if invalid:
                         raise RuntimeError("invalid range {}".format(str(axis_range)))
                 range_list.append(input_range)
@@ -119,7 +119,7 @@ def gen_support_info(range_x):
     Parameters
     ----------
     range_x: list
-         input x range
+    -   input x range
 
     Returns
     -------
@@ -144,7 +144,7 @@ def gen_support_info(range_x):
     range_valid[x_format.find("W")] = list(range_x[3])
     range_valid[x_format.find("C")] = [ori_shape[x_format.find("C")]] * 2
     tensor_info["range"] = range_valid
-    item["tensor"].append(tensor_info)
+    item.get("tensor").append(tensor_info)
     inputs.append(item)
     support_info["inputs"] = inputs
     return support_info
@@ -157,14 +157,14 @@ def add_covered_shape_range(compile_info):
     Parameters
     ----------
     compile_info: dict
-        tiling range info
+    -   tiling range info
 
     Returns
     -------
     info_list: dict
-        support info and compile info pair
+    -   support info and compile info pair
     max_kernel_id: int
-        last kernel id
+    -   last kernel id
     """
     id_list = list(compile_info["block_dim"].keys())
     id_list.sort()
@@ -197,45 +197,45 @@ def build_pointcut_conv3d(func, *args, **kwargs):
     Notice
     ------
     kernel_info: dict with support info and compile info
-        {
-            "supportInfo": {
-                "inputs": [{
-                    "index": 0,
-                    "tensor": [{
-                    "range": [
-                        [1, 1],
-                        [8, 15],
-                        [32, 63],
-                        [32, 63],
-                        [64, 64]
-                    ],
-                    "shape": [-1, -1, -1, -1, 64]
-                    }]
-                }]
-            },
-            "compileInfo": {
-                "_pattern": "conv3d",
-                "tiling_type": "dynamic_tiling",
-                "repo_seeds": {},
-                "repo_range": {},
-                "cost_range": {},
-                "block_dim": {
-                    1: 32
-                },
-                "_vars": {
-                    0: ["batch_n", "fmap_d", "d_out", "fmap_h", "h_out", "fmap_w", "w_out"]
-                }
-            }
-        }
+    -   {
+    -       "supportInfo": {
+    -           "inputs": [{
+    -               "index": 0,
+    -               "tensor": [{
+    -               "range": [
+    -                   [1, 1],
+    -                   [8, 15],
+    -                   [32, 63],
+    -                   [32, 63],
+    -                   [64, 64]
+    -               ],
+    -               "shape": [-1, -1, -1, -1, 64]
+    -               }]
+    -           }]
+    -       },
+    -       "compileInfo": {
+    -           "_pattern": "conv3d",
+    -           "tiling_type": "dynamic_tiling",
+    -           "repo_seeds": {},
+    -           "repo_range": {},
+    -           "cost_range": {},
+    -           "block_dim": {
+    -               1: 32
+    -           },
+    -           "_vars": {
+    -               0: ["batch_n", "fmap_d", "d_out", "fmap_h", "h_out", "fmap_w", "w_out"]
+    -           }
+    -       }
+    -   }
 
     Parameters
     ----------
     func: funtions
-        build process
+    -   build process
     args: list
-        function input args
+    -   function input args
     kwargs: dict
-        function input args and value
+    -   function input args and value
 
     Returns
     -------
@@ -267,7 +267,6 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
     tiling_cases = []
     all_compile_info = {}
     for tgt in tgt_list:
-        new_info = copy.deepcopy(conv_info)
         tiling_op = Conv3dTiling(conv_info, Conv3DParam.var_map)
         selector = TilingSelection(tiling_op, max_kernel_id)
         tiling_cases += selector.calc_tiling(tgt, var_names)
@@ -293,13 +292,13 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
             if all_compile_info:
                 for key, value in current_info.items():
                     if isinstance(all_compile_info.get(key), dict) and isinstance(value, dict):
-                        new_item = all_compile_info[key]
+                        new_item = all_compile_info.get(key)
                         new_item.update(value)
                         all_compile_info[key] = new_item
-                        add_compile_info(key, all_compile_info[key])
+                        add_compile_info(key, all_compile_info.get(key))
             else:
                 all_compile_info = current_info
-        group_dict = Conv3DParam._TENSOR_MAP["group_dict"]
+        group_dict = Conv3DParam._TENSOR_MAP.get("group_dict")
         fmap_cin1_g = utils.icd(group_dict["cin_ori"], conv_info.get("a_shape")[-1])
         add_compile_info("fmap_c1", fmap_cin1_g)
     return tiling_cases
@@ -362,7 +361,7 @@ def calc_conv3d(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    var_names = ('batch_n','fmap_d', 'fmap_h', 'fmap_w')
+    var_names = ('batch_n', 'fmap_d', 'fmap_h', 'fmap_w')
     tgt_list = []
     tgt_area = {}
     conv_info = Conv3DParam.tiling_info_dict
@@ -384,6 +383,9 @@ def calc_conv3d(outs, option=None):
 
 
 class Conv3dTiling(CubeTilingOp):
+    """
+    conv3d tiling class
+    """
     def __init__(self, tiling_info, var_map):
         super().__init__(tiling_info, var_map)
         self.a_info = tiling_info['a_shape']
@@ -462,14 +464,14 @@ class Conv3dTiling(CubeTilingOp):
             device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if (self.a_info[0] > 1) and (device_core_num > 1):
                 if self.a_info[0] <= device_core_num:
-                    tiling["block_dim"][0] = self.a_info[0]
+                    tiling.get("block_dim")[0] = self.a_info[0]
                 else:
                     for i in range(device_core_num, 0, -1):
                         if self.a_info[0] % i == 0:
                             break
-                    tiling["block_dim"][0] = i
+                    tiling.get("block_dim")[0] = i
             else:
-                tiling["block_dim"][0] = 1
+                tiling.get("block_dim")[0] = 1
 
         _, _, _, filter_h, filter_w, _ = self.b_info
         tiling = {}
@@ -482,7 +484,7 @@ class Conv3dTiling(CubeTilingOp):
         tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, utils.FP16_K, 1, 1]
         tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
         tiling["CUB_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
-        tiling["AUB_shape"] = tiling["AL1_shape"]
+        tiling["AUB_shape"] = tiling.get("AL1_shape")
         tiling["BUB_shape"] = None
         tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
                                             'BL1_pbuffer': 1,
@@ -501,6 +503,18 @@ class Conv3dTiling(CubeTilingOp):
         return tiling
 
     def schedule_handle(self, block_dims, tiling):
+        """
+        schedule handle
+
+        Parameters
+        ----------
+        block_dims: block dim
+        tiling: tiling info
+
+        Returns
+        -------
+        the min of block_dims and al1_factor
+        """
         # calculate the actual block_dim_m in the dynamic batch
         out_img_shape = self._get_output_h(self.a_info[3])*self._get_output_w(self.a_info[4])
         c_tiling_factor = tiling['CL0_matrix'][1]*tiling['CL0_matrix'][2]
@@ -514,36 +528,36 @@ class Conv3dTiling(CubeTilingOp):
 
         return tvm.min(block_dims, al1_factor)
 
-    def assembly_case(self, tiling, coverage, cnt):
+    def assembly_case(self, tiling_strategy, covered, cnt):
         var_range = OrderedDict()
         if 'batch_n' in self.var_map:
-            var_range['batch_n'] = (coverage[0], coverage[1])
+            var_range['batch_n'] = (covered[0], covered[1])
 
         if 'fmap_d' in self.var_map:
-            var_range['fmap_d'] = (coverage[2], coverage[3])
+            var_range['fmap_d'] = (covered[2], covered[3])
             var_range['d_out'] = (self._get_output_d(var_range['fmap_d'][0]),
                                self._get_output_d(var_range['fmap_d'][1]))
 
         if 'fmap_h' in self.var_map:
-            var_range['fmap_h'] = (coverage[4], coverage[5])
+            var_range['fmap_h'] = (covered[4], covered[5])
             var_range['h_out'] = (self._get_output_h(var_range['fmap_h'][0]),
                                self._get_output_h(var_range['fmap_h'][1]))
 
         if 'fmap_w' in self.var_map:
-            var_range['fmap_w'] = (coverage[6], coverage[7])
+            var_range['fmap_w'] = (covered[6], covered[7])
             var_range['w_out'] = (self._get_output_w(var_range['fmap_w'][0]),
                                self._get_output_w(var_range['fmap_w'][1]))
 
-        block_dim_multi = tiling["BUB_shape"][0] if tiling["BUB_shape"] else 1
+        block_dim_multi = tiling_strategy["BUB_shape"][0] if tiling_strategy["BUB_shape"] else 1
         block_dims = block_dim_multi *\
-            reduce(lambda x, y: x * y, tiling["block_dim"])
+            reduce(lambda x, y: x * y, tiling_strategy["block_dim"])
         if 'fmap_h' not in self.var_map and 'fmap_w' not in self.var_map:
-            new_block_dims = copy.deepcopy(tiling['block_dim'])
-            new_tiling = copy.deepcopy(tiling)
+            new_block_dims = copy.deepcopy(tiling_strategy['block_dim'])
+            new_tiling = copy.deepcopy(tiling_strategy)
             new_block_dims[2] = int(self.schedule_handle(new_block_dims[2], new_tiling))
             block_dims = block_dim_multi *\
                 reduce(lambda x, y: x * y, new_block_dims)
-        if tiling["AL0_matrix"][2] == VALID_TILING_NUM:
+        if tiling_strategy["AL0_matrix"][2] == VALID_TILING_NUM:
             batch_size = self.a_info[0]
             device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if 'batch_n' in self.var_map:
@@ -560,7 +574,7 @@ class Conv3dTiling(CubeTilingOp):
                 block_dims = 1
 
         correct_range_flag = Conv3DParam.dynamic_para.get("correct_range_flag")
-        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range,
+        return {"key": cnt, "tiling_strategy": tiling_strategy, "var_range": var_range,
                 "block_dim": block_dims, "correct_range_flag": correct_range_flag}
 
     def _get_calc_info(self):
@@ -658,7 +672,7 @@ class Conv3dTiling(CubeTilingOp):
         """
 
         # shape info
-        d_i, h_i, w_i = current_size, current_size, current_size
+        w_i = current_size
         out_w = self._get_output_w(w_i)
 
         pad_lis = [self.padf, self.padb, self.padu, self.padd, self.padl, self.padr]
@@ -747,15 +761,13 @@ class Conv3dTiling(CubeTilingOp):
 
         return cub_bound * tensor_num <= tbe_platform_info.get_soc_spec("UB_SIZE")
 
-    def _check_tiling_match_d(self, tiling, current_size):
+    def _check_tiling_match_d(self, current_size):
         """
 
         check whether this tiling matches the shape d
 
         Parameters
         ----------
-        tiling : dict, result of tiling fetch
-
         current_size : int, size of [d, h, w]
 
         Returns
@@ -768,11 +780,11 @@ class Conv3dTiling(CubeTilingOp):
 
         return pad_front == 0 and pad_back == 0
 
-    def get_batch_range(self, batch):
+    def get_batch_range(self, paras):
         """
         get batch covering range
         """
-
+        batch = paras
         if "batch_n" in self.var_map:
             core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if batch >= core_num:
@@ -783,7 +795,7 @@ class Conv3dTiling(CubeTilingOp):
             return N_BASE ** batch_log, N_BASE ** (int(batch_log + 1))
         return batch, batch
 
-    def get_tiling_range(self, tiling_in, a_shape):
+    def get_tiling_range(self, tiling_in, shape_info):
         """
         get the covered area of a tiling
 
@@ -791,7 +803,7 @@ class Conv3dTiling(CubeTilingOp):
         ----------
         tiling_in : dict, result of tiling fetch
 
-        a_shape : list, size of fmap_shape
+        shape_info : list, size of fmap_shape
 
         Returns
         -------
@@ -799,14 +811,14 @@ class Conv3dTiling(CubeTilingOp):
         """
 
         tiling = self._preprocess_tiling(tiling_in)
-        fmap_n, fmap_d, _, fmap_h, fmap_w, _ = a_shape
+        fmap_n, fmap_d, _, fmap_h, fmap_w, _ = shape_info
         if not tiling["AL1_shape"]:
             # fully load in AL1, covering lower region
             return [1, fmap_n, 1, fmap_d, 1, fmap_h, 1, fmap_w]
         n_range_min, n_range_max = self.get_batch_range(fmap_n)
         perf_range = [n_range_min, n_range_max]
         # get min value
-        di_min, hi_min, wi_min = 1, 1, 1
+        hi_min, wi_min = 1, 1
         if self.pad_mode != "VAR":
             di_min = max(self.k_d - self.padf - self.padb, 1)
             hi_min = max(self.k_h - self.padu - self.padd, 1)
@@ -841,13 +853,13 @@ class Conv3dTiling(CubeTilingOp):
         if tiling.get('AL0_matrix') and tiling.get('AL0_matrix')[-1] != 1:
             cur_d_size = fmap_d
             # searching down-ward for d_min
-            while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
+            while self._check_tiling_match_d([cur_d_size, fmap_h, fmap_w]):
                 perf_di_min = cur_d_size
                 cur_d_size = cur_d_size - D_DELTA
 
             # searching up-ward for d_max
             cur_d_size = fmap_d
-            while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
+            while self._check_tiling_match_d([cur_d_size, fmap_h, fmap_w]):
                 perf_di_max = cur_d_size
                 cur_d_size = cur_d_size + D_DELTA
 
