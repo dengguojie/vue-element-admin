@@ -27,7 +27,6 @@ from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import get_context
-from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_te_var
@@ -36,7 +35,6 @@ from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import get_context as op_get_context
 from tbe.dsl.compute.conv3d_backprop_input_compute import DynamicConv3dBpInputParams
 from tbe.tvm.expr import Expr
-from tbe.tvm.intrin import abs as tvm_abs
 
 from .cube_tilingcase import CubeTilingOp
 from .cube_tilingcase import TilingSelection
@@ -131,7 +129,7 @@ def gen_support_info(range_x):
     Parameters
     ----------
     range_x: list
-         input x range
+    input x range
 
     Returns
     -------
@@ -180,14 +178,14 @@ def add_covered_shape_range(compile_info):
     Parameters
     ----------
     compile_info: dict
-        tiling range info
+    tiling range info
 
     Returns
     -------
     info_list: dict
-        support info and compile info pair
+    support info and compile info pair
     max_kernel_id: int
-        last kernel id
+    last kernel id
     """
     id_list = list(compile_info["block_dim"].keys())
     id_list.sort()
@@ -316,10 +314,10 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
             if all_compile_info:
                 for key, value in current_info.items():
                     if isinstance(all_compile_info.get(key), dict) and isinstance(value, dict):
-                        new_item = all_compile_info[key]
+                        new_item = all_compile_info.get(key)
                         new_item.update(value)
                         all_compile_info[key] = new_item
-                        add_compile_info(key, all_compile_info[key])
+                        add_compile_info(key, new_item)
             else:
                 all_compile_info = current_info
         add_compile_info("dedy_c1", conv_info.get("ori_cout"))
@@ -409,6 +407,9 @@ def calc_conv3dbp_input(outs, option=None):
 
 
 class Conv3dBpInputTiling(CubeTilingOp):
+    """
+    the conv3d backprop input tiling case
+    """
     def __init__(self, tiling_info, var_map):
         super().__init__(tiling_info, None, var_map)
         self.a_info = self.tiling_info["a_shape"]
@@ -421,7 +422,8 @@ class Conv3dBpInputTiling(CubeTilingOp):
         self.key = "C_shape"
         self.op_type = "conv3d_backprop_input"
 
-    def _get_d_factor(self, tiling, stride_d, kernel_d, dedy_d):
+    @staticmethod
+    def get_d_factor(tiling, stride_d, kernel_d, dedy_d):
         """
         get d_factor value
 
@@ -502,7 +504,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             t_w = self._get_dedy_w(dedx_w, self.stride_w)
             if (t_d == tiling_mess["A_shape"][1] and t_h == tiling_mess["A_shape"][3] and
                 t_w == tiling_mess["A_shape"][4] and
-                self._check_exceed_ub_buffer(tiling_mess.get("tiling"), dedx_d, dedx_h, dedx_w)):
+                self._check_exceed_ub_buffer(tiling_mess.get("tiling"), dedx_d, dedx_h)):
                 res_list.append(tiling_mess)
         return res_list
 
@@ -555,7 +557,8 @@ class Conv3dBpInputTiling(CubeTilingOp):
 
         return tiling
 
-    def get_batch_range(self, batch, paras):
+    @staticmethod
+    def get_batch_range(batch, paras):
         """
         get batch covering range
         """
@@ -613,7 +616,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             return wi_min, wi_max
         return fmap_w, fmap_w
 
-    def get_d_range(self, fmap_h, fmap_w_min, fmap_w_max, fmap_d, tiling, paras):
+    def get_d_range(self, fmap_h, fmap_w_min, fmap_d, tiling, paras):
         """
         get d covering range
         """
@@ -680,7 +683,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
                               BIT_RATIO_DICT.get(self.c_type))
                 tiling_k_aub = tiling_in.get("AUB_shape")[0] // (self.b_info[3] * self.b_info[4])
                 dy_d = self._get_dedy_d(d_o, self.stride_d)
-                d_factor = self._get_d_factor(tiling_in, self.stride_d, self.k_d, dy_d)
+                d_factor = self.get_d_factor(tiling_in, self.stride_d, self.k_d, dy_d)
                 m_aub_max = ((tbe_platform_info.get_soc_spec("UB_SIZE") - cub_buffer) //
                              BIT_RATIO_DICT.get(self.a_type) //
                              tiling_in.get("manual_pingpong_buffer").get("AUB_pbuffer") //
@@ -691,7 +694,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
                     return w_range
             return w_range_max
 
-        tiling = self._preprocess_tiling(tiling_in, c_shape)
+        tiling = self._preprocess_tiling(tiling_in)
         n_o, d_o, h_o, w_o, _ = c_shape
 
         paras = {
@@ -710,7 +713,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
 
         w_range_min, w_range_max = self.get_w_range(h_o, w_o, d_o, tiling, paras)
 
-        d_range_min, d_range_max = self.get_d_range(h_o, w_range_min, w_range_max, d_o, tiling, paras)
+        d_range_min, d_range_max = self.get_d_range(h_o, w_range_min, d_o, tiling, paras)
 
         w_range_max = _modify_max_range()
 
@@ -811,7 +814,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         # defaut value 16
         k0_size = tbe_platform.CUBE_MKN[self.a_type]["mac"][1]
         k_al1 = self.k_h * self.k_w * k0_size
-        aub_fusion_flag = DynamicConv3dBpInputParams.tiling_info_dict["fused_coefficient"][0]
+        aub_fusion_flag = DynamicConv3dBpInputParams.tiling_info_dict.get("fused_coefficient")[0]
 
         if self.stride_h > 1 or self.stride_w > 1 or aub_fusion_flag:
             tiling["AUB_shape"] = [k_al1, 1, 1, 1]
@@ -861,8 +864,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             tiling = self.get_default_tiling()
             return {"tiling": tiling, "A_shape": self.a_info,
                     "B_shape": self.b_info, "C_shape": self.c_info}
-        else:
-            return tiling_in
+        return tiling_in
 
     def _get_calc_info(self):
         self._convert_type(self.a_info, self.b_info, self.c_info)
@@ -883,7 +885,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             self.pad_mode = "VAR"
         self.padh, self.padt, self.padu, self.padd, self.padl, self.padr = self.tiling_info["pad"]
 
-    def _preprocess_tiling(self, tiling_in, c_shape):
+    def _preprocess_tiling(self, tiling_in):
         """
         preprocess tiling for get tiling range
         """
@@ -914,7 +916,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         """
 
         # shape info
-        out_w, out_h = current_size_w, current_size_h
+        out_w, _ = current_size_w, current_size_h
         w_i = self._get_dedy_w(out_w, stride_w=1)
 
         # M axis theorically loading length in al0
@@ -946,7 +948,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             al1_bound = self._get_al1_bound(tiling, w_o, h_o)
             # get d
             dy_d = self._get_dedy_d(d_o, self.stride_d)
-            d_factor = self._get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
+            d_factor = self.get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
             # fmap size in L1 (d * M * K * db * 2byte)
             fmap_l1_size = (d_factor * al1_bound * tiling["AL1_shape"][0] *
                             utils.FP16_K * tiling["manual_pingpong_buffer"]["AL1_pbuffer"] *
@@ -977,18 +979,18 @@ class Conv3dBpInputTiling(CubeTilingOp):
                               tiling["manual_pingpong_buffer"]["BL1_pbuffer"] * utils.FP16_SIZE)
         return fmap_l1_size + filter_l1_size <= utils.L1BUFFER
 
-    def _check_exceed_ub_buffer(self, tiling, current_d, current_w, current_h):
+    def _check_exceed_ub_buffer(self, tiling, current_d, current_w):
         # shape info
         if self.stride_w == 1 and self.stride_h == 1:
             return True
-        w_o, h_o, d_o = current_w, current_h, current_d
+        w_o, d_o = current_w, current_d
         dy_d = self._get_dedy_d(d_o, self.stride_d)
         dy_w = self._get_dedy_w(w_o, self.stride_w)
         aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
         aub_tiling_k_factor = aub_tiling_k // (self.k_h * self.k_w * utils.CUBE_SIZE)
         aub_tiling_m_factor = aub_tiling_m
 
-        d_factor = self._get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
+        d_factor = self.get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
 
         dedy_ub_size = ((d_factor * aub_tiling_k_factor * dy_w * utils.CUBE_SIZE * utils.FP16_SIZE *
                         (utils.icd(aub_tiling_m_factor, self.stride_h))) *
@@ -1031,7 +1033,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             return False
 
         if self.stride_h > 1 or self.stride_w > 1:
-            if not self._check_exceed_ub_buffer(tiling, current_d, current_w, current_h):
+            if not self._check_exceed_ub_buffer(tiling, current_d, current_w):
                 return False
 
         return True

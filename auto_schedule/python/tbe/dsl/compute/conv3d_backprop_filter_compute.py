@@ -30,8 +30,6 @@ from tbe.dsl.compute import cube_util
 from tbe.common.platform import platform_info as tbe_platform_info
 
 from tbe.tvm.expr import Var
-from tbe.tvm.expr import IntImm
-from tbe.tvm.tensor import Tensor
 
 # for load3d_special_case, fmap width must be in [1,63]
 _FMAP_W_MAX = 63
@@ -43,6 +41,7 @@ _DYNAMIC_BATCH = 0X0001
 _DYNAMIC_DEPTH = 0X0002
 _DYNAMIC_HEIGHT = 0X0004
 _DYNAMIC_WIDTH = 0X0008
+
 
 def _check_shape_rule(shape, dim, name):
     """
@@ -200,9 +199,9 @@ class Conv3dBackpropFilter:
         self._kernel_name = kernel_name
 
         # 6hd shape
-        # [N, DO, GRADS_C1, HO, WO, GRADS_C0]
+        # N, DO, GRADS_C1, HO, WO, GRADS_C0
         self.shape_grads_6hd = cube_util.shape_to_list(self.grads.shape)
-        # [N, D, C1, H, W, C0]
+        # N, D, C1, H, W, C0
         self.shape_x_6hd = cube_util.shape_to_list(self.fmap.shape)
 
         self.shape_list['grads_6hd'] = self.shape_grads_6hd
@@ -284,7 +283,8 @@ class Conv3dBackpropFilter:
             mode |= _DYNAMIC_WIDTH
         return mode
 
-    def _get_var_map(self):
+    @staticmethod
+    def _get_var_map():
         var_names = ["batch_n", "dedy_d", "dedy_h", "dedy_w", "fmap_d", "fmap_h", "fmap_w"]
         return {v: get_te_var(v).get_bound() for v in var_names if get_te_var(v)}
 
@@ -397,11 +397,11 @@ class Conv3dBackpropFilter:
                     "conv3d_backprop_filter", "grads_depth",
                     str(grads_depth), str(computed_grads_depth))
 
-            if (dilation_kernel_depth > fmap_depth_after_pad):
+            if dilation_kernel_depth > fmap_depth_after_pad:
                 cube_err.raise_err_specific("conv3d_backprop_filter",
                     "depth of filter cannot exceed that of x.")
 
-            if (pad_front >= dilation_kernel_depth or pad_back >= dilation_kernel_depth):
+            if pad_front >= dilation_kernel_depth or pad_back >= dilation_kernel_depth:
                 cube_err.raise_err_specific("conv3d",
                     "pad in front/back should less than depth of filter.")
 
@@ -568,8 +568,6 @@ class Conv3dBackpropFilter:
         real_g = self.group_dict['real_g']
         fmap_channel1_g = self.group_dict['cin1_g']
         grads_channel_g = self.group_dict['cout_g']
-        cin_ori = self.group_dict['cin_ori']
-        cout_ori = self.group_dict['cout_ori']
 
         if self.flag_load3d_special_case:
             dilation_w = self.dilation[4]
@@ -578,7 +576,7 @@ class Conv3dBackpropFilter:
             # add a blank line
             grads_width = grads_width * 2
             self.shape_grads_6hd[-2] = grads_width
-            
+
         # align to 16
         hw_ori = grads_height * grads_width
         hw_mad_1 = (hw_ori + _BLOCK_SIZE - 1) // _BLOCK_SIZE
@@ -714,8 +712,8 @@ class Conv3dBackpropFilter:
             """
             do coordinate calculation
             """
-            grads_depth = self.shape_list['grads_6hd'][1]
-            grads_width = self.shape_list['grads_6hd'][4]
+            grads_depth = self.shape_list.get('grads_6hd')[1]
+            grads_width = self.shape_list.get('grads_6hd')[4]
 
             batch_indices, grads_c1_indices, hw_indices, grads_c0_indices \
                 = indices
@@ -782,7 +780,7 @@ class Conv3dBackpropFilter:
 
             """
             _, kernel_depth, _, _, kernel_width = self.weight_shape
-            _, _, fmap_c1, fmap_height, fmap_width, _ = self.shape_list['fmap_6hd']
+            _, _, _, fmap_height, fmap_width, _ = self.shape_list.get('fmap_6hd')
 
             (g_indices, batch_indices, hw_fuse_indices, fmap_c1_indices, kernel_height_indices,
              kernel_width_indices, fmap_c0_indices) = indices
@@ -857,10 +855,10 @@ class Conv3dBackpropFilter:
 
             """
             pad_front = self.pad[0]
-            fmap_depth = self.shape_list['fmap_6hd'][1]
-            fmap_width = self.shape_list['fmap_6hd'][4]
-            fmap_channel_1 = self.shape_list['fmap_6hd'][2]
-            grads_depth = self.shape_list['grads_6hd'][1]
+            fmap_depth = self.shape_list.get('fmap_6hd')[1]
+            fmap_width = self.shape_list.get('fmap_6hd')[4]
+            fmap_channel_1 = self.shape_list.get('fmap_6hd')[2]
+            grads_depth = self.shape_list.get('grads_6hd')[1]
             stride_depth = self.stride[0]
             batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices = indices
             batch_size_index = batch_indices // grads_depth
@@ -927,7 +925,7 @@ class Conv3dBackpropFilter:
 
             """
 
-            _, _, hw_fuse, _, kernel_height, kernel_width, _ = self.shape_list['fmap_original_matrix']
+            _, _, hw_fuse, _, kernel_height, kernel_width, _ = self.shape_list.get('fmap_original_matrix')
 
             group_index, n_vm_index, hw_mad_1_indices, fkk_indices, \
                 fmap_c0_indices, hw_mad_0_indices = indices
@@ -988,7 +986,7 @@ class Conv3dBackpropFilter:
         None
         """
 
-        batch_size, grads_depth, _, grads_height, grads_width, _ = self.shape_list['grads_6hd']
+        batch_size, grads_depth, _, grads_height, grads_width, _ = self.shape_list.get('grads_6hd')
         hw_fuse = grads_height * grads_width
 
         batch_axis = tvm.reduce_axis((0, batch_size * grads_depth),
@@ -1094,12 +1092,12 @@ def conv3d_dw(x,
     filter_size : 5-D shape, specifies the filter sizes
 
     para_dict : dict of parameters
-        strides : 3-D shape, specifies in depth, height and width dimension
-        pads : 6-D shape, specifies in up/down/left/right dimension
-        dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
-        res_dtype : the output data type
-        kernel_name : conv3d_backprop_filter_cce by default
-        group_dict : group of parameters
+    strides : 3-D shape, specifies in depth, height and width dimension
+    pads : 6-D shape, specifies in up/down/left/right dimension
+    dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
+    res_dtype : the output data type
+    kernel_name : conv3d_backprop_filter_cce by default
+    group_dict : group of parameters
 
     Returns
     -------
@@ -1124,7 +1122,9 @@ def conv3d_dw(x,
 
 
 class DynamicConv3dBpFilterParams:
-
+    """
+    the Conv3dBpFilterParams of dynamic
+    """
     dynamic_mode = None
     tiling_info_dict = {}
     var_map = {}

@@ -88,12 +88,12 @@ def _get_var_map(out_backprop):
                              (tvm.tensor.Tensor, para_check.NONE_TYPE), (list, tuple),
                              (list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), str, str, dict, dict, dict)
-def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
+def _conv3d_backprop_input_compute(filters,
                                    out_backprop, bias, filter_sizes,
                                    input_sizes, strides, padding,
                                    dilations, res_dtype="float16",
                                    kernel_name="conv3d_backprop_input_cce",
-                                   group_dict=None, var_map={}, para_dict=None):
+                                   group_dict=None, var_map=None, para_dict=None):
     """
     DSL interface of conv3d backprop input
 
@@ -244,9 +244,9 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
             return
         w_value = dedy_w_upper * stride_w
 
-        aub_dedy_size_min = dedy_w_upper * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
-        aub_filling_size_min = w_value * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
-        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT[res_dtype]
+        aub_dedy_size_min = dedy_w_upper * _BLOCK_SIZE * _BIT_RATIO_DICT.get("float16")
+        aub_filling_size_min = w_value * _BLOCK_SIZE * _BIT_RATIO_DICT.get("float16")
+        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT.get(res_dtype)
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
         if (aub_dedy_size_min * (var_map.get("fused_num", 0) + 1) + aub_filling_size_min + cub_size_min) > ub_size:
@@ -476,12 +476,12 @@ def conv3d_dx(filter,
     input_size : shape of dE/dX, [N, D, H, W, C]
 
     para_dict : dict of parameters
-        strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
-        pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
-        dilations : [1, 1, 1, 1, 1] by default
-        res_dtype : dE/dX data type, "float16" by default
-        kernel_name : conv3d_backprop_input_cce by default
-        group_dict : group of parameters
+    strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
+    pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
+    dilations : [1, 1, 1, 1, 1] by default
+    res_dtype : dE/dX data type, "float16" by default
+    kernel_name : conv3d_backprop_input_cce by default
+    group_dict : group of parameters
 
     Returns
     ----------
@@ -528,7 +528,7 @@ def conv3d_dx(filter,
                                           group_dict, var_map=var_map,
                                           para_dict=para_dict)
 
-class DynamicConv3dBpInputParams: # pylint: disable=R0903
+class DynamicConv3dBpInputParams:
     """
     Dynamic Conv3dBpInput Params
     """

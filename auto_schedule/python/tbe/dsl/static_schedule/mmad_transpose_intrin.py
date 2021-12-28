@@ -17,10 +17,9 @@
 """
 matmul confusion_transpose_d intrinsic functions
 """
-from te import tvm
-
 from tbe.dsl.instrinsic.cce_emitinsn_params import cceEmitParamsIns
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
+from te import tvm
 from te.platform import cce_util
 from .util import ceil
 
