@@ -99,7 +99,7 @@ def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
     return op_cal_info_in_json
 
 
-def base_op_select_format(src_fp16_flag: bool) -> tuple:
+def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: str = "") -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
@@ -111,6 +111,9 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     # The order from left to right is input1, input2, input3(bias), output
     base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"),
                            ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
+
+    base_case_bias_fp32_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"),
+                                    ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
 
     base_case_fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"),
                                     ("int8", "ND"), ("float", "FRACTAL_NZ"))]
@@ -138,10 +141,17 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
     # Construct scenario list for static
     if src_fp16_flag:
-        full_case_scenario_list = base_case_scenario + base_case_fp32_out_scenario + \
-            nd_case_scenario + nd_fp32out_scenario
+        if bias_fp32_flag and impl_mode == "keep_bias_fp32":
+            full_case_scenario_list = base_case_bias_fp32_scenario + base_case_fp32_out_scenario + \
+                nd_case_scenario + nd_fp32out_scenario
+        else:
+            full_case_scenario_list = base_case_scenario + base_case_fp32_out_scenario + \
+                nd_case_scenario + nd_fp32out_scenario
     else:
-        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
+        if bias_fp32_flag and impl_mode == "keep_bias_fp32":
+            full_case_scenario_list = base_case_bias_fp32_scenario + base_quant_case_scenario + quant_case_scenario
+        else:
+            full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
     return dyn_case_scenario_list, full_case_scenario_list
 
 
@@ -154,7 +164,11 @@ def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: 
     # BatchMatMulV1 does not support offset_w
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    scenario_combinations, _ = base_op_select_format(src_fp16_flag)
+    bias_fp32_flag = False
+    if bias:
+        bias_dtype = bias.get("dtype", "float16")
+        bias_fp32_flag = (bias_dtype == "float32")
+    scenario_combinations, _ = base_op_select_format(src_fp16_flag, bias_fp32_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)

@@ -47,7 +47,16 @@ def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: 
     # BatchMatMulV1 does not support offset_w
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
+    bias_fp32_flag = False
+    if bias:
+        bias_dtype = bias.get("dtype", "float16")
+        bias_fp32_flag = (bias_dtype == "float32")
+    context = op_context.get_context()
+    if context:
+        impl_mode_dict = context.get_addition("op_impl_mode_dict")
+        if impl_mode_dict:
+            impl_mode = impl_mode_dict.get("MatMul", impl_mode_dict.get("MatMulV2", ""))
+    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag, bias_fp32_flag, impl_mode=impl_mode)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
