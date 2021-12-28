@@ -38,9 +38,10 @@
 
 using namespace ge;
 namespace fe {
-
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_THREE = 3;
+static const int32_t INT_NUM_FOUR = 4;
 static const char* FUSED_NODE = "Normalize";
-
 static const std::string PATTERN_FUSEDNODE = "Normalize";
 
 vector<FusionPattern*> NormalizeFusionPass::DefinePatterns() {
@@ -108,7 +109,7 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   unsigned int shapeSize = input_shape_vector.size();
  
   FUSION_PASS_CHECK(
-    shapeSize != 4 && shapeSize != 2,
+    shapeSize != INT_NUM_FOUR && shapeSize != INT_NUM_TWO,
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
       "Node %s's Only Support 4 dim and 2 dim", fusedNode->GetName().c_str()),
     return PARAM_INVALID);
@@ -122,18 +123,18 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     unsigned int outH = 1;
     unsigned int outW = 1;
     if (data_format == ge::FORMAT_NCHW) {
-      if (shapeSize != 2) {
-        outH = input_shape_vector[2];
-        outW = input_shape_vector[3];
+      if (shapeSize != INT_NUM_TWO) {
+        outH = input_shape_vector[INT_NUM_TWO];
+        outW = input_shape_vector[INT_NUM_THREE];
       }
       output_shape_vector.push_back(input_shape_vector[0]);
       output_shape_vector.push_back(1);
       output_shape_vector.push_back(outH);
       output_shape_vector.push_back(outW);
     } else if (data_format == ge::FORMAT_NHWC) {
-      if (shapeSize != 2) {
+      if (shapeSize != INT_NUM_TWO) {
         outH = input_shape_vector[1];
-        outW = input_shape_vector[2];
+        outW = input_shape_vector[INT_NUM_TWO];
       }
       output_shape_vector.push_back(input_shape_vector[0]);
       output_shape_vector.push_back(outH);
@@ -191,13 +192,14 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   // connect the output 0 of NormalizeSum to input 2 of NormalizeScale
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(normalizeSumNode->GetOutDataAnchor(0), normalizeScaleNode->GetInDataAnchor(2)),
+      SUCCESS != ge::GraphUtils::AddEdge(normalizeSumNode->GetOutDataAnchor(0),
+                                         normalizeScaleNode->GetInDataAnchor(INT_NUM_TWO)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d] failed.",
-              normalizeSumNode->GetName().c_str(), 0, normalizeScaleNode->GetName().c_str(), 2),
+              normalizeSumNode->GetName().c_str(), 0, normalizeScaleNode->GetName().c_str(), INT_NUM_TWO),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d].",
-          normalizeSumNode->GetName().c_str(), 0, normalizeScaleNode->GetName().c_str(), 2);
+          normalizeSumNode->GetName().c_str(), 0, normalizeScaleNode->GetName().c_str(), INT_NUM_TWO);
 
   // connect the output 0 of NormalizeScale to output 0 of Normalize
   if (fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {

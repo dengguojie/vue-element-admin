@@ -40,7 +40,9 @@
 
 using namespace ge;
 namespace fe {
-
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_PAD = 15;
+static const int32_t INT_NUM_CIN = 16;
 static const char* FUSED_NODE = "RNN";
 static const std::string PATTERN_FUSEDNODE = "RNN";
 
@@ -69,7 +71,7 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedDesc is null, fusion failed.");
                     failStatus = true, return outputTensorDesc);
   // inputTensorDesc:x_static
-  ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(2);
+  ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(INT_NUM_TWO);
   DataType dataType = inputTensorDesc.GetDataType();
 
   // add innerproduct desc
@@ -101,8 +103,8 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
   }
   int32_t wshInputSize = inputWTensorDesc.GetShape().GetDim(1);
   int32_t wshNumOutput = inputWTensorDesc.GetShape().GetDim(0);
-  int32_t destWshInputSize = (wshInputSize + 15) / 16 * 16;
-  int32_t destWshNumOutput = (wshNumOutput + 15) / 16 * 16;
+  int32_t destWshInputSize = (wshInputSize + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
+  int32_t destWshNumOutput = (wshNumOutput + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
   std::vector<int64_t> inputWDims;
   inputWDims.push_back(destWshNumOutput);
   inputWDims.push_back(destWshInputSize);
@@ -172,17 +174,17 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
   ge::GeTensorDesc inputTensorDesc0 = fusedDesc->GetInputDesc(0);
   ge::GeShape shape0 = inputTensorDesc0.GetShape();
   int64_t batchDim = shape0.GetDim(1);
-  int64_t inputSizeDim = shape0.GetDim(2);
+  int64_t inputSizeDim = shape0.GetDim(INT_NUM_TWO);
   vector<int64_t> oriShapeDims0;
   oriShapeDims0.push_back(1);
   oriShapeDims0.push_back(batchDim);
   oriShapeDims0.push_back(inputSizeDim);
   GeShape ori_shape_input_0(oriShapeDims0);
   vector<int64_t> shapeDims0;
-  shapeDims0.push_back((inputSizeDim + 15) / 16);
-  shapeDims0.push_back((batchDim + 15) / 16);
-  shapeDims0.push_back(16);
-  shapeDims0.push_back(16);
+  shapeDims0.push_back((inputSizeDim + INT_NUM_PAD) / INT_NUM_CIN);
+  shapeDims0.push_back((batchDim + INT_NUM_PAD) / INT_NUM_CIN);
+  shapeDims0.push_back(INT_NUM_CIN);
+  shapeDims0.push_back(INT_NUM_CIN);
   GeShape shape_input_0(shapeDims0);
   ge::GeTensorDesc xInputTensorDesc =
       ge::GeTensorDesc(shape_input_0, ge::FORMAT_FRACTAL_NZ, inputTensorDesc0.GetDataType());
@@ -191,7 +193,7 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
 
   ge::GeTensorDesc inputContTensorDesc = fusedDesc->GetInputDesc(1);
   ge::GeShape shape1 = inputContTensorDesc.GetShape();
-  vector<int64_t> shapeDims1 = {(shape1.GetDim(1) + 15) / 16 * 16};
+  vector<int64_t> shapeDims1 = {(shape1.GetDim(1) + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN};
   ge::GeShape shapeInputCont(shapeDims1);
   inputContTensorDesc.SetShape(shapeInputCont);
   inputContTensorDesc.SetOriginShape(shapeInputCont);
@@ -199,8 +201,8 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
   DataType dataType = biashTensorDesc.GetDataType();
   int32_t numOutputDim = biashTensorDesc.GetShape().GetDim(0);
   std::vector<int64_t> dimsHShape;
-  int32_t hDim1 = (batchDim + 15) / 16 * 16;
-  int32_t hDim2 = (numOutputDim + 15) / 16 * 16;
+  int32_t hDim1 = (batchDim + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
+  int32_t hDim2 = (numOutputDim + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
   dimsHShape.push_back(hDim1);
   dimsHShape.push_back(hDim2);
   ge::GeShape inputHShape(dimsHShape);
@@ -211,7 +213,7 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
   ge::GeTensorDesc hTensorDesc = ge::GeTensorDesc(inputHShape, ge::FORMAT_ND, dataType);
   hTensorDesc.SetOriginFormat(ge::FORMAT_ND);
   hTensorDesc.SetOriginShape(inputHOriginShape);
-  ge::TensorUtils::SetRealDimCnt(hTensorDesc, 2);
+  ge::TensorUtils::SetRealDimCnt(hTensorDesc, INT_NUM_TWO);
 
   std::vector<int64_t> dimsHShapeH;
   dimsHShapeH.push_back(1);
@@ -229,8 +231,8 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
 
   int32_t wxhRow = wxhTensorDesc.GetShape().GetDim(0);
   int32_t wxhCol = wxhTensorDesc.GetShape().GetDim(1);
-  int32_t destWxhRow = (wxhRow + 15) / 16 * 16;
-  int32_t destWxhCol = (wxhCol + 15) / 16 * 16;
+  int32_t destWxhRow = (wxhRow + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
+  int32_t destWxhCol = (wxhCol + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
   std::vector<int64_t> dimsInputWxhDim;
   dimsInputWxhDim.push_back(destWxhRow);
   dimsInputWxhDim.push_back(destWxhCol);
@@ -246,8 +248,8 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
 
   int32_t whohhRow = whohhTensorDesc.GetShape().GetDim(0);
   int32_t whohhCol = whohhTensorDesc.GetShape().GetDim(1);
-  int32_t destWhohhRow = (whohhRow + 15) / 16 * 16;
-  int32_t destWhohhCol = (whohhCol + 15) / 16 * 16;
+  int32_t destWhohhRow = (whohhRow + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
+  int32_t destWhohhCol = (whohhCol + INT_NUM_PAD) / INT_NUM_CIN * INT_NUM_CIN;
   std::vector<int64_t> dimsInputWhohhDim;
   dimsInputWhohhDim.push_back(destWhohhRow);
   dimsInputWhohhDim.push_back(destWhohhCol);
@@ -367,16 +369,15 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // handle x_static
   bool has_static = false;
   bool failStatus = false;
-  if (fusedDesc->MutableInputDesc(2) != nullptr) {
+  if (fusedDesc->MutableInputDesc(INT_NUM_TWO) != nullptr) {
     has_static = true;
   }
 
   if (has_static) {
-    ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-    bool expose_hidden = false;
-    ge::AttrUtils::GetBool(fusedDesc, "expose_hidden", expose_hidden);
+    bool new_expose_hidden = false;
+    ge::AttrUtils::GetBool(fusedDesc, "expose_hidden", new_expose_hidden);
     ge::GeTensorDesc inputWTensorDesc;
-    if (expose_hidden) {
+    if (new_expose_hidden) {
       inputWTensorDesc = fusedDesc->GetInputDesc("w_sh");
     } else {
       inputWTensorDesc = fusedDesc->GetInputDesc(5);
@@ -389,7 +390,9 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
 
     // x_static->innerproduct
     outInnerProductTensorDesc = ProcessStatic(fusedNode, num_output, innerproductNode, graph, newNodes, failStatus);
-    FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessStatic:check failed, fusion failed."),
+    FUSION_PASS_CHECK(failStatus,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "ProcessStatic:check failed, fusion failed."),
                       return PARAM_INVALID);
   }
 
@@ -466,9 +469,8 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   ge::GeTensorDesc biashTensorDesc = fusedDesc->GetInputDesc("bias_h");
   ge::GeTensorDesc wxhTensorDesc = fusedDesc->GetInputDesc("w_xh");
   ge::GeTensorDesc whohhTensorDesc = fusedDesc->GetInputDesc("w_hh");
-
   if (PatternFusionUtil::IsUnknownShape(inputTensorDesc0.GetShape().GetDim(1)) ||
-      PatternFusionUtil::IsUnknownShape(inputTensorDesc0.GetShape().GetDim(2)) ||
+      PatternFusionUtil::IsUnknownShape(inputTensorDesc0.GetShape().GetDim(INT_NUM_TWO)) ||
       PatternFusionUtil::IsUnknownShape(inputContTensorDesc.GetShape().GetDim(1)) ||
       PatternFusionUtil::IsUnknownShape(biashTensorDesc.GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(wxhTensorDesc.GetShape().GetDim(0)) ||
@@ -535,7 +537,7 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   if (has_static) {
     // edge for innerproduct
     FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
+        SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(INT_NUM_TWO)->GetPeerOutAnchor(),
                                            innerproductNode->GetInDataAnchor(0)),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
           "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",

@@ -39,7 +39,7 @@
 
 using namespace ge;
 namespace fe {
-
+static const int32_t NUM_SPLIT = 63;
 static const char* FUSED_NODE = "Split";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeSplit";
 /*
@@ -72,8 +72,8 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   // build attr infos
   std::vector<PassAttrInfo> splitAttrInfo;
   std::string fusionOpType = "SplitD";
-  PassAttrInfo split_dim = {0, "split_dim", "SetInt"};
-  splitAttrInfo.push_back(split_dim);
+  PassAttrInfo split_dim_0 = {0, "split_dim", "SetInt"};
+  splitAttrInfo.push_back(split_dim_0);
 
   // get node
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
@@ -106,8 +106,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::AttrUtils::GetInt(fuse_desc1, "num_split", num_split);
   ge::GeTensorDesc SplitInputTensor = fuse_desc1->GetInputDesc("x");
   ge::GeShape input_shape = SplitInputTensor.GetShape();
-
-  if (IsUnknownShape(input_shape.GetDims()) && num_split > 63) {
+  if (IsUnknownShape(input_shape.GetDims()) && num_split > NUM_SPLIT) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
@@ -128,19 +127,19 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
 
   // A maximum of 63 tensors are supported in mini mode.
   ge::AttrUtils::GetInt(fusedDesc, "num_split", num_split);
-  FUSION_PASS_CHECK(num_split <= 63,
+  FUSION_PASS_CHECK(num_split <= NUM_SPLIT,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of num_split of SplitD node is less than 63."),
                     return SUCCESS);
 
-  if (num_split > 63) {
+  if (num_split > NUM_SPLIT) {
     size_t nodes_num;
-    size_t nodes_num1 = num_split % 63;
+    size_t nodes_num1 = num_split % NUM_SPLIT;
     if (nodes_num1 == 0) {
-      nodes_num = num_split / 63;
+      nodes_num = num_split / NUM_SPLIT;
     } else {
-      nodes_num = num_split / 63 + 1;
+      nodes_num = num_split / NUM_SPLIT + 1;
     }
-    size_t last_node_num_split = num_split - (63 * (nodes_num - 1));
+    size_t last_node_num_split = num_split - (NUM_SPLIT * (nodes_num - 1));
 
     ge::AttrUtils::GetInt(fusedDesc, "num_split", num_split);
 
@@ -165,14 +164,14 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     for (size_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
         int64_t size = 0;
-        for (size_t m = 0; m < 63; m++) {
-          size += size_splits[63 * i + m];
+        for (size_t m = 0; m < NUM_SPLIT; m++) {
+          size += size_splits[NUM_SPLIT * i + m];
         }
         size_splits_new.push_back(size);
       } else {
         int64_t size = 0;
         for (size_t m = 0; m < last_node_num_split; m++) {
-          size += size_splits[63 * i + m];
+          size += size_splits[NUM_SPLIT * i + m];
         }
         size_splits_new.push_back(size);
       }
@@ -222,7 +221,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
         ge::OpDescPtr SplitDDesc = AttrUtils::CopyOpDesc(fusedDesc);
         SplitDDesc->SetName(SplitDDesc->GetName() + "/SplitVD" + to_string(i));
         SplitDDesc->SetType("SplitVD");
-        for (size_t c = num_split - 1; c >= 63; c--) {
+        for (size_t c = num_split - 1; c >= NUM_SPLIT; c--) {
           OpDescUtils::ClearOutputDesc(SplitDDesc, c);
         }
         ge::NodePtr splitd_node = graph.AddNode(SplitDDesc);
@@ -233,16 +232,16 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
         newNodes.push_back(splitd_node);
 
         vector<int64_t> size_splits_new2;
-        for (size_t n = 0; n < 63; n++) {
-          size_splits_new2.push_back(size_splits[63 * i + n]);
+        for (size_t n = 0; n < NUM_SPLIT; n++) {
+          size_splits_new2.push_back(size_splits[NUM_SPLIT * i + n]);
         }
 
         ge::AttrUtils::SetInt(splitd_node->GetOpDesc(), "split_dim", split_dim);
-        ge::AttrUtils::SetInt(splitd_node->GetOpDesc(), "num_split", 63);
+        ge::AttrUtils::SetInt(splitd_node->GetOpDesc(), "num_split", NUM_SPLIT);
         ge::AttrUtils::SetListInt(splitd_node->GetOpDesc(), "size_splits", size_splits_new2);
 
         SplitDDesc->UpdateInputDesc(0, outputDesc[i]);
-        for (int64_t h = 0; h < 63; h++) {
+        for (int64_t h = 0; h < NUM_SPLIT; h++) {
           ge::GeTensorDesc SplitDOutputTensor_2 = SplitDDesc->GetOutputDesc(h);
           ge::GeShape SplitDOutputShape_2 = SplitDOutputTensor_2.GetShape();
           SplitDOutputShape_2.SetDim(split_dim, size_splits_new2[h]);
@@ -257,10 +256,10 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                     splitd_base_node->GetName().c_str(), i, splitd_node->GetName().c_str(), i),
             return FAILED);
 
-        for (size_t m = 0; m < 63; m++) {
-          for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(63 * i + m)->GetPeerInDataAnchors()) {
+        for (size_t m = 0; m < NUM_SPLIT; m++) {
+          for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(NUM_SPLIT * i + m)->GetPeerInDataAnchors()) {
             FUSION_PASS_CHECK(
-                SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i + m), inAnchorPtr),
+                SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(NUM_SPLIT * i + m), inAnchorPtr),
                 VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitd_node->GetOutDataAnchor(m), inAnchorPtr),
                               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
@@ -284,7 +283,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
 
           vector<int64_t> size_splits_new3;
           for (size_t n = 0; n < last_node_num_split; n++) {
-            size_splits_new3.push_back(size_splits[63 * i + n]);
+            size_splits_new3.push_back(size_splits[NUM_SPLIT * i + n]);
           }
 
           ge::AttrUtils::SetInt(last_splitd_node->GetOpDesc(), "split_dim", split_dim);
@@ -308,9 +307,10 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                             return FAILED);
 
           for (size_t m = 0; m < last_node_num_split; m++) {
-            for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(63 * i + m)->GetPeerInDataAnchors()) {
+            for (InDataAnchorPtr inAnchorPtr :
+              fused_node->GetOutDataAnchor(NUM_SPLIT * i + m)->GetPeerInDataAnchors()) {
               FUSION_PASS_CHECK(
-                  SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i + m), inAnchorPtr),
+                  SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(NUM_SPLIT * i + m), inAnchorPtr),
                   VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
               FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_splitd_node->GetOutDataAnchor(m), inAnchorPtr),
                                 VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."),
@@ -318,8 +318,9 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
             }
           }
         } else {
-          for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(63 * i)->GetPeerInDataAnchors()) {
-            FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(63 * i), inAnchorPtr),
+          for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(NUM_SPLIT * i)->GetPeerInDataAnchors()) {
+            FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(NUM_SPLIT * i),
+                                inAnchorPtr),
                               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."),
                               return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(splitd_base_node->GetOutDataAnchor(i), inAnchorPtr),

@@ -40,7 +40,6 @@ using namespace ge;
 using namespace std;
 
 namespace fe {
-
 // node type
 static const string PRELU_NODE = "PRelu";
 static const string RELU_NODE = "Relu";
@@ -253,5 +252,4 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 }
 
 REGISTER_PASS("PReluAbsFusionPass", BUILT_IN_GRAPH_PASS, PReluAbsFusionPass);
-
 }  // namespace fe

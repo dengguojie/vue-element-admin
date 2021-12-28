@@ -38,6 +38,9 @@
 
 using namespace ge;
 namespace fe {
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_THREE = 3;
+static const int32_t INT_NUM_FOUR = 4;
 static const char* PADD = "Pad";
 static const char* MAXPOOL = "MaxPool";
 static const std::string PATTERN_PADD = "FusedNodePadD";
@@ -105,7 +108,7 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get const value of paddings failed"),
                     return NOT_CHANGED);
   std::vector<std::vector<int64_t>> paddings;
-  for (size_t i = 1; i < pad_value.size(); i += 2) {
+  for (size_t i = 1; i < pad_value.size(); i += INT_NUM_TWO) {
     vector<int64_t> one_value;
     one_value.push_back(pad_value[i - 1]);
     one_value.push_back(pad_value[i]);
@@ -135,21 +138,21 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     OP_LOGI(FUSED_OP_TYPE.c_str(), "input format is not match.");
     return NOT_CHANGED;
   }
-  if (paddings.size() != 4) {
+  if (paddings.size() != INT_NUM_FOUR) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of paddings is not match.");
     return NOT_CHANGED;
   }
-  for (int i = 0; i < 4; i++) {
-    if (paddings[i].size() != 2) {
+  for (int i = 0; i < INT_NUM_FOUR; i++) {
+    if (paddings[i].size() != INT_NUM_TWO) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of paddings[%d] is not match.", i);
       return NOT_CHANGED;
     }
   }
-  if (ksize.size() != 4) {
+  if (ksize.size() != INT_NUM_FOUR) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of ksize is not match.");
     return NOT_CHANGED;
   }
-  if (strides.size() != 4) {
+  if (strides.size() != INT_NUM_FOUR) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of strides is not match.");
     return NOT_CHANGED;
   }
@@ -159,15 +162,16 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   }
 
   if (input_format == FORMAT_NHWC) {
-    if ((paddings[0][0] != 0) || (paddings[0][1] != 0) || (paddings[3][0] != 0) || (paddings[3][1] != 0)) {
+    if ((paddings[0][0] != 0) || (paddings[0][1] != 0) ||
+        (paddings[INT_NUM_THREE][0] != 0) || (paddings[INT_NUM_THREE][1] != 0)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the values of paddings are not match.");
       return NOT_CHANGED;
     }
-    if ((ksize[0] != 1) || (ksize[3] != 1)) {
+    if ((ksize[0] != 1) || (ksize[INT_NUM_THREE] != 1)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the values of ksize are not match.");
       return NOT_CHANGED;
     }
-    if ((strides[0] != 1) || (strides[3] != 1)) {
+    if ((strides[0] != 1) || (strides[INT_NUM_THREE] != 1)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the values of strides are not match.");
       return NOT_CHANGED;
     }
@@ -207,10 +211,10 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   std::vector<int32_t> window;
   if (input_format == FORMAT_NHWC) {
     window.push_back(ksize[1]);
-    window.push_back(ksize[2]);
+    window.push_back(ksize[INT_NUM_TWO]);
   } else {
-    window.push_back(ksize[2]);
-    window.push_back(ksize[3]);
+    window.push_back(ksize[INT_NUM_TWO]);
+    window.push_back(ksize[INT_NUM_THREE]);
   }
   op_pool.SetAttr("window", window);
 
@@ -218,10 +222,10 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   std::vector<int32_t> stride;
   if (input_format == FORMAT_NHWC) {
     stride.push_back(strides[1]);
-    stride.push_back(strides[2]);
+    stride.push_back(strides[INT_NUM_TWO]);
   } else {
-    stride.push_back(strides[2]);
-    stride.push_back(strides[3]);
+    stride.push_back(strides[INT_NUM_TWO]);
+    stride.push_back(strides[INT_NUM_THREE]);
   }
   op_pool.SetAttr("stride", stride);
 
@@ -230,13 +234,13 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   if (input_format == FORMAT_NHWC) {
     pad.push_back(paddings[1][0]);
     pad.push_back(paddings[1][1]);
-    pad.push_back(paddings[2][0]);
-    pad.push_back(paddings[2][1]);
+    pad.push_back(paddings[INT_NUM_TWO][0]);
+    pad.push_back(paddings[INT_NUM_TWO][1]);
   } else {
-    pad.push_back(paddings[2][0]);
-    pad.push_back(paddings[2][1]);
-    pad.push_back(paddings[3][0]);
-    pad.push_back(paddings[3][1]);
+    pad.push_back(paddings[INT_NUM_TWO][0]);
+    pad.push_back(paddings[INT_NUM_TWO][1]);
+    pad.push_back(paddings[INT_NUM_THREE][0]);
+    pad.push_back(paddings[INT_NUM_THREE][1]);
   }
   op_pool.SetAttr("pad", pad);
 

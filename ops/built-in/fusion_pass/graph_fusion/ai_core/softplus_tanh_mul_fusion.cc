@@ -36,6 +36,7 @@
 
 
 namespace fe {
+    static const int32_t INT_NUM_TWO = 2;
     static const string PATTERN_SOFTPLUS = "softplus";
     static const string PATTERN_TANH = "tanh";
     static const string PATTERN_MUL = "mul";
@@ -95,7 +96,7 @@ namespace fe {
 
       // softplus and tanh input size must be 1, mul input size must be 2
       if (softPlusNode->GetInAllNodes().size() != 1 || tanhNode->GetInAllNodes().size() != 1 ||
-          mulNode->GetInAllNodes().size() != 2) {
+          mulNode->GetInAllNodes().size() != INT_NUM_TWO) {
         OP_LOGI("The softplus or tanh node input size is not 1 or mul node input size is not 2");
         return NOT_CHANGED;
       }

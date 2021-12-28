@@ -42,7 +42,12 @@ namespace fe {
 static const char PATTERN_PRIORBOX[] = "PriorBox";
 static const char PRIORBOX[] = "PriorBox";
 static const float FLOAT_NUM_ZERO = 0;
+static const float FLOAT_NUM_TWO = 2;
 static const uint16_t UINT_NUM_ZERO = 0;
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_THREE = 3;
+static const int32_t INT_NUM_FOUR = 4;
+static const int32_t INT_NUM_FIVE = 5;
 
 Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* output) {
   if (output == nullptr) {
@@ -50,14 +55,14 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
     return FAILED;
   }
   GE_CHECK_POSITIVE_SIZE_RANGE(dimInfo.size());
-  if (dimInfo.size() < 4) {
+  if (dimInfo.size() < INT_NUM_FOUR) {
     VECTOR_FUSION_INNER_ERR_REPORT("PriorBoxDV2", "PriorBoxPass output dim size must greater than 3!");
     return FAILED;
   }
   int64_t nInput = dimInfo[0];
   int64_t cInput = dimInfo[1];
-  int64_t hInput = dimInfo[2];
-  int64_t wInput = dimInfo[3];
+  int64_t hInput = dimInfo[INT_NUM_TWO];
+  int64_t wInput = dimInfo[INT_NUM_THREE];
 
   int64_t nOutput = nInput;
   int64_t cOutput = cInput;
@@ -74,6 +79,7 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
         for (int64_t h = 0; h < hOutput; h++) {
           outOffsetPoint = n * cOutput * hOutput * wOutput + c * hOutput * wOutput + h * wOutput + w;
           fp16_t tmp;
+          tmp.val = 0;
           tmp = data[h + offset];
           output[outOffsetPoint] = tmp.val;
         }
@@ -102,7 +108,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
                                   vector<float>& variance, vector<float>& aspect_ratios, float offset, bool clip,
                                   int64_t prior_num, vector<float>& output) {
   // Output data's size
-  int dim = layer_h * layer_w * prior_num * 4;
+  int dim = layer_h * layer_w * prior_num * INT_NUM_FOUR;
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Data size is %d = layer_width[%d] * layer_height[%d] * priornum[%d] * 4 points.", dim,
           layer_w, layer_h, prior_num);
@@ -113,64 +119,63 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
       // Using each point in the feature map as a center point,
       // the default offset is 0.5, can be thought to a little offset
       // here map the center point to the orignal
-      float center_x = (w + offset) * step_w;
-      float center_y = (h + offset) * step_h;
-
-      float box_width = 0.0;
-      float box_height = 0.0;
       for (unsigned int s = 0; s < min_size.size(); ++s) {
+        float center_x = (w + offset) * step_w;
+        float center_y = (h + offset) * step_h;
         int min_value = min_size[s];
         // first prior: aspect_ratio = 1, size = min_size
-        box_width = box_height = min_value;
+        float box_width_0 = min_value;
+        float box_height_0 = min_value;
         // min_size can determine the normalized square box.
         // xmin
-        float point_x_min = (center_x - box_width / 2.) / img_w;
+        float point_x_min_0 = (center_x - box_width_0 / FLOAT_NUM_TWO) / img_w;
         // ymin
-        float point_y_min = (center_y - box_height / 2.) / img_h;
+        float point_y_min_0 = (center_y - box_height_0 / FLOAT_NUM_TWO) / img_h;
         // xmax
-        float point_x_max = (center_x + box_width / 2.) / img_w;
+        float point_x_max_0 = (center_x + box_width_0 / FLOAT_NUM_TWO) / img_w;
         // ymax
-        float point_y_max = (center_y + box_height / 2.) / img_h;
-        output.push_back(point_x_min);
-        output.push_back(point_y_min);
-        output.push_back(point_x_max);
-        output.push_back(point_y_max);
+        float point_y_max_0 = (center_y + box_height_0 / FLOAT_NUM_TWO) / img_h;
+        output.push_back(point_x_min_0);
+        output.push_back(point_y_min_0);
+        output.push_back(point_x_max_0);
+        output.push_back(point_y_max_0);
 
         if (max_size.size() > 0) {
           int max_value = max_size[s];
           // second prior: aspect_ratio = 1, size = sqrt(min_size * max_size)
-          box_width = box_height = sqrt(min_value * max_value);
+          float box_width_1 = sqrt(min_value * max_value);
+          float box_height_1 = sqrt(min_value * max_value);
           // xmin
-          float point_x_min = (center_x - box_width / 2.) / img_w;
+          float point_x_min_1 = (center_x - box_width_1 / FLOAT_NUM_TWO) / img_w;
           // ymin
-          float point_y_min = (center_y - box_height / 2.) / img_h;
+          float point_y_min_1 = (center_y - box_height_1 / FLOAT_NUM_TWO) / img_h;
           // xmax
-          float point_x_max = (center_x + box_width / 2.) / img_w;
+          float point_x_max_1 = (center_x + box_width_1 / FLOAT_NUM_TWO) / img_w;
           // ymax
-          float point_y_max = (center_y + box_height / 2.) / img_h;
-          output.push_back(point_x_min);
-          output.push_back(point_y_min);
-          output.push_back(point_x_max);
-          output.push_back(point_y_max);
+          float point_y_max_1 = (center_y + box_height_1 / FLOAT_NUM_TWO) / img_h;
+          output.push_back(point_x_min_1);
+          output.push_back(point_y_min_1);
+          output.push_back(point_x_max_1);
+          output.push_back(point_y_max_1);
         }
         // rest of priors
         for (unsigned int r = 0; r < aspect_ratios.size(); ++r) {
           float ar = aspect_ratios[r];
           // by definition, aspect_ratio and min_size codetermine the rectangle box
-          box_width = min_value * sqrt(ar);
-          box_height = min_value / sqrt(ar);
+          float box_width_2 = min_value * sqrt(ar);
+          float box_height_2 = min_value / sqrt(ar);
           // xmin
-          float point_x_min = (center_x - box_width / 2.) / img_w;
+          float point_x_min_2 = (center_x - box_width_2 / FLOAT_NUM_TWO) / img_w;
           // ymin
-          float point_y_min = (center_y - box_height / 2.) / img_h;
+          float point_y_min_2 = (center_y - box_height_2 / FLOAT_NUM_TWO) / img_h;
           // xmax
-          float point_x_max = (center_x + box_width / 2.) / img_w;
+          float point_x_max_2 = (center_x + box_width_2 / FLOAT_NUM_TWO) / img_w;
           // ymax
-          float point_y_max = (center_y + box_height / 2.) / img_h;
-          output.push_back(point_x_min);
-          output.push_back(point_y_min);
-          output.push_back(point_x_max);
-          output.push_back(point_y_max);
+          float point_y_max_2 = (center_y + box_height_2 / FLOAT_NUM_TWO) / img_h;
+          output.push_back(point_x_min_2);
+          output.push_back(point_y_min_2);
+          output.push_back(point_x_max_2);
+          output.push_back(point_y_max_2);
         }
       }
     }
@@ -180,7 +185,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
   // clip the prior's coordidate such that it is within [0, 1]
   if (clip) {
     for (int d = 0; d < dim; ++d) {
-      output[d] = std::min<float>(std::max<float>(output[d], 0.), 1.);
+      output[d] = std::min<float>(std::max<float>(output[d], FLOAT_NUM_ZERO), 1.);
     }
   }
 
@@ -190,7 +195,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
     for (int i = 0; i < dim; ++i)
       output.push_back(variance[0]);
   } else {
-    if (variance.size() != 4) {
+    if (variance.size() != INT_NUM_FOUR) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass variance dim size must be 1 or 4!");
       return FAILED;
     }
@@ -198,7 +203,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
     for (int h = 0; h < layer_h; ++h) {
       for (int w = 0; w < layer_w; ++w) {
         for (int i = 0; i < prior_num; ++i) {
-          for (int j = 0; j < 4; ++j) {
+          for (int j = 0; j < INT_NUM_FOUR; ++j) {
             output.push_back(variance[j]);
             ++count;
           }
@@ -230,12 +235,12 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
 
   // GESHAPE to vector
   vector<int64_t> dimInfo = diagInputShape.GetDims();
-  if (dimInfo.size() == 4) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d", dimInfo[0], dimInfo[1], dimInfo[2],
-            dimInfo[3]);
-  } else if (dimInfo.size() == 5) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d,%d", dimInfo[0], dimInfo[1], dimInfo[2],
-            dimInfo[3], dimInfo[4]);
+  if (dimInfo.size() == INT_NUM_FOUR) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d", dimInfo[0], dimInfo[1],
+            dimInfo[INT_NUM_TWO], dimInfo[INT_NUM_THREE]);
+  } else if (dimInfo.size() == INT_NUM_FIVE) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d,%d", dimInfo[0], dimInfo[1],
+            dimInfo[INT_NUM_TWO], dimInfo[INT_NUM_THREE], dimInfo[INT_NUM_FOUR]);
   } else {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dim size must be 4 or 5!");
     return FAILED;
@@ -247,12 +252,12 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   ge::GeShape imgInputShape = imgInputTensor.GetShape();
   // get dims
   vector<int64_t> imgDimInfo = imgInputShape.GetDims();
-  if (imgDimInfo.size() == 4) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1], imgDimInfo[2],
-            imgDimInfo[3]);
-  } else if (imgDimInfo.size() == 5) {
+  if (imgDimInfo.size() == INT_NUM_FOUR) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1],
+            imgDimInfo[INT_NUM_TWO], imgDimInfo[INT_NUM_THREE]);
+  } else if (imgDimInfo.size() == INT_NUM_FIVE) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1],
-            imgDimInfo[2], imgDimInfo[3], imgDimInfo[4]);
+            imgDimInfo[INT_NUM_TWO], imgDimInfo[INT_NUM_THREE], imgDimInfo[INT_NUM_FOUR]);
   } else {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dim size must be 4 or 5!");
     return FAILED;
@@ -277,13 +282,13 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_h", img_h);
   int64_t img_w = 0;
   ge::AttrUtils::GetInt(fusedNode->GetOpDesc(), "img_w", img_w);
-  float step_w = 0.0;
+  float step_w = FLOAT_NUM_ZERO;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_w", step_w);
-  float step_h = 0.0;
+  float step_h = FLOAT_NUM_ZERO;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "step_h", step_h);
   bool clip = false;
   ge::AttrUtils::GetBool(fusedNode->GetOpDesc(), "clip", clip);
-  float offset = 0.0;
+  float offset = FLOAT_NUM_ZERO;
   ge::AttrUtils::GetFloat(fusedNode->GetOpDesc(), "offset", offset);
 
   GE_CHECK_POSITIVE_SIZE_RANGE(aspect_ratio.size());
@@ -320,22 +325,22 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   }
 
   // set layer width and height
-  int64_t layer_width = dimInfo[3];
-  int64_t layer_height = dimInfo[2];
+  int64_t layer_width = dimInfo[INT_NUM_THREE];
+  int64_t layer_height = dimInfo[INT_NUM_TWO];
   if (PatternFusionUtil::IsUnknownShape(layer_width) || PatternFusionUtil::IsUnknownShape(layer_height)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
     return FAILED;
   }
-  float step_w_size = 0.0;
-  float step_h_size = 0.0;
+  float step_w_size = FLOAT_NUM_ZERO;
+  float step_h_size = FLOAT_NUM_ZERO;
   // set image width and height
   int64_t img_width = 0;
   int64_t img_height = 0;
   // If img_w and img_h is none in attribute, set width and height from img's dims
   if (img_h == 0 || img_w == 0) {
     // The width and height of input
-    img_width = imgDimInfo[3];
-    img_height = imgDimInfo[2];
+    img_width = imgDimInfo[INT_NUM_THREE];
+    img_height = imgDimInfo[INT_NUM_TWO];
     if (PatternFusionUtil::IsUnknownShape(img_width) || PatternFusionUtil::IsUnknownShape(img_height)) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
       return FAILED;
@@ -371,18 +376,18 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   // output dims
   vector<int64_t> outputDims = boxOutTensorDesc.GetShape().GetDims();
 
-  if (outputDims.size() < 4) {
+  if (outputDims.size() < INT_NUM_FOUR) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dim size must greater than 3!");
     return FAILED;
   }
-  for (size_t i = 0; i <= 3; i++) {
+  for (size_t i = 0; i <= INT_NUM_THREE; i++) {
     auto dim = outputDims[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
       return FAILED;
     }
   }
-  int64_t dimNums = outputDims[0] * outputDims[1] * outputDims[2] * outputDims[3];
+  int64_t dimNums = outputDims[0] * outputDims[1] * outputDims[INT_NUM_TWO] * outputDims[INT_NUM_THREE];
 
   ge::GeTensorPtr assitPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Input type is FP16.");

@@ -46,7 +46,10 @@ namespace fe {
 static const uint16_t UINT_NUM_ZERO = 0;
 static const int8_t INT8_NUM_ZERO = 0;
 static const int8_t INT8_NUM_ONE = 1;
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_THREE = 3;
 static const int32_t INT_NUM_FOUR = 4;
+static const int32_t MAX_STRIDE = 63;
 static const string PATTERN_AVGPOOL = "AvgPool";
 static const std::string CONSTANTOP = "Const";
 static const char* AVGPOOL = "AvgPool";
@@ -83,11 +86,11 @@ Status GenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, ve
 
   for (int m = 0; m < shape[0]; m++) {
     for (int n = 0; n < shape[1]; n++) {
-      for (int64_t i = 0; i < shape[2]; i++) {
-        for (int64_t j = 0; j < shape[3]; j++) {
-          for (int k = 0; k < shape[4]; k++) {
+      for (int64_t i = 0; i < shape[INT_NUM_TWO]; i++) {
+        for (int64_t j = 0; j < shape[INT_NUM_THREE]; j++) {
+          for (int k = 0; k < shape[INT_NUM_FOUR]; k++) {
             h_start = i * stride[0] - pad[0];
-            w_start = j * stride[1] - pad[2];
+            w_start = j * stride[1] - pad[INT_NUM_TWO];
             h_end = min(h_start + window[0], dimH);
             w_end = min(w_start + window[1], dimW);
             h_start = max(h_start, static_cast<int64_t>(0));
@@ -97,8 +100,9 @@ Status GenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, ve
             fp16_t out_val;
             out_val.val = 0;
             out_val = (float)area;
-            output[m * (shape[1] * shape[2] * shape[3] * shape[4]) + n * (shape[2] * shape[3] * shape[4]) +
-                   i * (shape[3] * shape[4]) + j * shape[4] + k] = out_val.val;
+            output[m * (shape[1] * shape[INT_NUM_TWO] * shape[INT_NUM_THREE] * shape[INT_NUM_FOUR]) +
+                   n * (shape[INT_NUM_TWO] * shape[INT_NUM_THREE] * shape[INT_NUM_FOUR]) +
+                   i * (shape[INT_NUM_THREE] * shape[INT_NUM_FOUR]) + j * shape[INT_NUM_FOUR] + k] = out_val.val;
           }
         }
       }
@@ -114,11 +118,11 @@ Status GenerateFilterFP16Dynamic(const vector<int64_t> shape, const float areaFa
   area_factor = static_cast<float>(areaFactor);
   for (int64_t i = 0; i < shape[0]; i++) {
     for (int64_t j = 0; j < shape[1]; j++) {
-      for (int64_t k = 0; k < shape[2]; k++) {
-        for (int64_t l = 0; l < shape[3]; l++) {
+      for (int64_t k = 0; k < shape[INT_NUM_TWO]; k++) {
+        for (int64_t l = 0; l < shape[INT_NUM_THREE]; l++) {
           if (k == l) {
-            output[i * (shape[1] * shape[2] * shape[3]) + j * (shape[2] * shape[3]) + k * shape[3] + l] =
-                                                                                                      area_factor.val;
+            output[i * (shape[1] * shape[INT_NUM_TWO] * shape[INT_NUM_THREE]) +
+                   j * (shape[INT_NUM_TWO] * shape[INT_NUM_THREE]) + k * shape[INT_NUM_THREE] + l] = area_factor.val;
           }
         }
       }
@@ -153,13 +157,13 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
     if (inputOriginFormat == FORMAT_NHWC) {
       mulN = dimMul[0];
       mulH = dimMul[1];
-      mulW = dimMul[2];
-      mulC = dimMul[3];
+      mulW = dimMul[INT_NUM_TWO];
+      mulC = dimMul[INT_NUM_THREE];
     }
     else if (inputOriginFormat == FORMAT_NCHW) {
       mulN = dimMul[0];
-      mulH = dimMul[2];
-      mulW = dimMul[3];
+      mulH = dimMul[INT_NUM_TWO];
+      mulW = dimMul[INT_NUM_THREE];
       mulC = dimMul[1];
     }
     else {
@@ -245,10 +249,8 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   int64_t padBottom = 0;
   int64_t padLeft = 0;
   int64_t padRight = 0;
-  vector<int64_t> pad;
-  vector<int64_t> dilation;
-  pad = {0, 0, 0, 0};
-  dilation = {1, 1};
+  vector<int64_t> pad = {0, 0, 0, 0};
+  vector<int64_t> dilation = {1, 1};
 
   ge::OpDescPtr mulOp = mulNode->GetOpDesc();
   ge::GeTensorDesc inputDesc0 = mulOp->GetInputDesc(0);
@@ -258,16 +260,16 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   if (dimOut.size() != 0) {
     if (inputDesc0OriginFormat == FORMAT_NHWC) {
       outputH = dimOut[1];
-      outputW = dimOut[2];
-      outputC = dimOut[3];
+      outputW = dimOut[INT_NUM_TWO];
+      outputC = dimOut[INT_NUM_THREE];
       dimH = dimInfo[1];
-      dimW = dimInfo[2];
+      dimW = dimInfo[INT_NUM_TWO];
     } else {
-      outputH = dimOut[2];
-      outputW = dimOut[3];
+      outputH = dimOut[INT_NUM_TWO];
+      outputW = dimOut[INT_NUM_THREE];
       outputC = dimOut[1];
-      dimH = dimInfo[2];
-      dimW = dimInfo[3];
+      dimH = dimInfo[INT_NUM_TWO];
+      dimW = dimInfo[INT_NUM_THREE];
     }
   } else {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimOut is null, please check!");
@@ -276,9 +278,9 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   outputC1 = (outputC + outputC0 - 1) / outputC0;
   padRow = (outputH - 1) * stride[0] + ((ksize[0] - 1) * dilation[0] + 1) - dimH;
   padCol = (outputW - 1) * stride[1] + ((ksize[1] - 1) * dilation[1] + 1) - dimW;
-  padTop = padRow / 2;
+  padTop = padRow / INT_NUM_TWO;
   padBottom = padRow - padTop;
-  padLeft = padCol / 2;
+  padLeft = padCol / INT_NUM_TWO;
   padRight = padCol - padLeft;
   padTop = max(padTop, static_cast<int64_t>(0));
   padBottom = max(padBottom, static_cast<int64_t>(0));
@@ -383,7 +385,7 @@ Status AvgPoolFusionPass::GetWeightOfConvAvgpool(const std::string& opName, cons
                                                  std::unique_ptr<int32_t[]>& weightInt8OutParam) {
   // get weight_int8
   int64_t min = 0;
-  int64_t div = 4;
+  int64_t div = INT_NUM_FOUR;
   std::vector<int64_t> filterDims4D;
   size_t sizeOfFilter = filterDims.size();
   for (uint32_t i = 0; i <= INDEX_FILTER_W; i++) {
@@ -513,7 +515,7 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   ret = biasPtr->SetData(reinterpret_cast<uint8_t*>(biasDataTemp.get()), co * sizeof(int32_t));
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "set bias data failed!"), return ret);
 
-  FUSION_PASS_CHECK(PatternFusionUtil::SetWeightByIndex(poolingNode, biasPtr, 2, graph) != SUCCESS,
+  FUSION_PASS_CHECK(PatternFusionUtil::SetWeightByIndex(poolingNode, biasPtr, INT_NUM_TWO, graph) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(poolingNode->GetName().c_str(),
                     "Fail to add bias const node for pooling node."),
                     return FAILED);
@@ -521,7 +523,7 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   // update the bias outputDesc of biasOpDesc
   ge::GeTensorDesc inputDesc0 = poolingOp->GetInputDesc(0);
   ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
-  int biasInputIndex = 2;
+  int biasInputIndex = INT_NUM_TWO;
   auto biasPeerOutAnchor = poolingNode->GetInDataAnchor(biasInputIndex)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(biasPeerOutAnchor == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "biasPeerOutAnchor is null, fusion failed."),
@@ -550,7 +552,7 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   biasDesc.SetOriginShape(biasShape);
   biasDesc.SetOriginDataType(ge::DT_INT32);
   biasDesc.SetDataType(ge::DT_INT32);
-  FUSION_PASS_CHECK(poolingOp->UpdateInputDesc(2, biasDesc) != ge::GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(poolingOp->UpdateInputDesc(INT_NUM_TWO, biasDesc) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "update bias input desc of ConvNode[%s] not success.",
                             poolingNode->GetName().c_str()),
@@ -574,7 +576,7 @@ Status AvgPoolFusionPass::UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePt
                     return PARAM_INVALID);
   const_data[0] = area_factor * const_data[0];
   OP_LOGD(FUSED_OP_TYPE.c_str(), "const_data is %f", const_data[0]);
-  const_ptr->SetData(reinterpret_cast<uint8_t*>(const_data), 2 * sizeof(float));
+  const_ptr->SetData(reinterpret_cast<uint8_t*>(const_data), INT_NUM_TWO * sizeof(float));
   return SUCCESS;
 }
 
@@ -666,7 +668,7 @@ Status AvgPoolFusionPass::CreateNewRequantHostCpuOp(const string &op_type, const
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Avg quant node is nullptr."),
                     return PARAM_INVALID);
   new_nodes.emplace_back(requant_node);
-  //2. Add edges between dequant_node and new_host_cpu_op
+  // 2. Add edges between dequant_node and new_host_cpu_op
   ge::InDataAnchorPtr dequant_input_anchor = dequant_node->GetInDataAnchor(AVGQUANT_INDEX_OF_DEQUANT_OP);
   ge::OutDataAnchorPtr dequant_scale_peer_out_anchor = dequant_input_anchor->GetPeerOutAnchor();
   FUSION_PASS_CHECK(dequant_scale_peer_out_anchor == nullptr,
@@ -728,13 +730,13 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (std::find(dimInfo.begin(),dimInfo.end(), -1) != dimInfo.end() || isFuzzBuild) {
     isDynamic = true;
   }
-  if (dimInfo.size() == 4) {
+  if (dimInfo.size() == INT_NUM_FOUR) {
     if (inputOriginFormat == FORMAT_NHWC) {
-      inputC = dimInfo[3];
-      output_w = out_dimInfo[2];
+      inputC = dimInfo[INT_NUM_THREE];
+      output_w = out_dimInfo[INT_NUM_TWO];
     } else if (inputOriginFormat == FORMAT_NCHW) {
       inputC = dimInfo[1];
-      output_w = out_dimInfo[3];
+      output_w = out_dimInfo[INT_NUM_THREE];
     }
     if (PatternFusionUtil::IsUnknownShape(inputC)) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
@@ -764,19 +766,19 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (dataFormat == "NHWC") {
     if (ksize.size() == INT_NUM_FOUR and strides.size() == INT_NUM_FOUR) {
       ksizeH = ksize[1];
-      ksizeW = ksize[2];
+      ksizeW = ksize[INT_NUM_TWO];
       stridesH = strides[1];
-      stridesW = strides[2];
+      stridesW = strides[INT_NUM_TWO];
     } else {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is incorrect, please check!");
       return NOT_CHANGED;
     }
   } else if (dataFormat == "NCHW") {
     if (ksize.size() == INT_NUM_FOUR and strides.size() == INT_NUM_FOUR) {
-      ksizeH = ksize[2];
-      ksizeW = ksize[3];
-      stridesH = strides[2];
-      stridesW = strides[3];
+      ksizeH = ksize[INT_NUM_TWO];
+      ksizeW = ksize[INT_NUM_THREE];
+      stridesH = strides[INT_NUM_TWO];
+      stridesW = strides[INT_NUM_THREE];
     } else {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is incorrect, please check!");
       return NOT_CHANGED;
@@ -801,7 +803,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
-  if(stridesH > 63 || stridesW > 63) {
+  if(stridesH > MAX_STRIDE || stridesW > MAX_STRIDE) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
     return NOT_CHANGED;
   }
@@ -890,10 +892,10 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       // judge input dims for unknown shape
       ge::GeTensorDesc input_desc = dequantNode->GetOpDesc()->GetOutputDesc(0);
       vector<int64_t> dimMul = input_desc.GetShape().GetDims();
-      int64_t mulC = 0;
       if (dimMul.size() != 0) {
+        int64_t mulC = 0;
         if (inputOriginFormat == FORMAT_NHWC) {
-          mulC = dimMul[3];
+          mulC = dimMul[INT_NUM_THREE];
         }
         else if (inputOriginFormat == FORMAT_NCHW) {
           mulC = dimMul[1];
@@ -911,7 +913,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
       ge::GeShape outputShape = inputDesc0.GetOriginShape();
       vector<int64_t> dimOut = outputShape.GetDims();
-      for (size_t i = 1; i <= 3; i++) {
+      for (size_t i = 1; i <= INT_NUM_THREE; i++) {
         auto dim = dimOut[i];
         if (PatternFusionUtil::IsUnknownShape(dim)) {
           OP_LOGD(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
@@ -922,7 +924,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else if (padding == "VALID") {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "padding is VALID");
-      /*Create host cpu op*/
+      // Create host cpu op
       FUSION_PASS_CHECK(
         CreateNewRequantHostCpuOp("RequantAvgPoolHostCpuOp", dequantNode, hostCpuNode, graph, fusionNodes) != SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add RequantAvgPoolHostCpuOp failed."), return ret);
@@ -971,7 +973,6 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     ret = DoBiasOptimizeAvgpool(graph, avgPoolNode, fusionNodes, ksizeH, ksizeW, inputC);
     FUSION_PASS_CHECK(ret != SUCCESS,
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
-
   } else {  // fp16
     ge::GeTensorPtr assitPtr = nullptr;
     int64_t matrixSize = inputC * ksizeH * ksizeW;
@@ -1014,10 +1015,10 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
         ge::GeShape mulShape = input_desc.GetShape();
         vector<int64_t> dimMul = mulShape.GetDims();
-        int64_t mulC = 0;
         if (dimMul.size() != 0) {
+          int64_t mulC = 0;
           if (inputOriginFormat == FORMAT_NHWC) {
-            mulC = dimMul[3];
+            mulC = dimMul[INT_NUM_THREE];
           }
           else if (inputOriginFormat == FORMAT_NCHW) {
             mulC = dimMul[1];
@@ -1036,7 +1037,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
         ge::GeShape outputShape = inputDesc0.GetOriginShape();
         vector<int64_t> dimOut = outputShape.GetDims();
-        for (size_t i = 1; i <= 3; i++) {
+        for (size_t i = 1; i <= INT_NUM_THREE; i++) {
           auto dim = dimOut[i];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),

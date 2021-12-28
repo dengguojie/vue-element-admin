@@ -39,7 +39,6 @@
 #include "scanpqcodes_fusion_pass.h"
 
 namespace fe {
-
 static const std::string PATTERN_SCAN_PQ_CODES = "ScanPQCodes";
 static const std::string PATTERN_TOPK_PQ_DISTANCE = "TopKPQDistance";
 static const std::string OP_TYPE_SCAN_PQ_CODES = "ScanPQCodes";
@@ -50,6 +49,7 @@ static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 static const uint32_t SCANPQ_INPUT_SIZE = 5;
+static const int32_t INT_NUM_TWO = 2;
 
 /*!
  * @brief Define ScanPQCodes -> TopKPQDistance pattern.
@@ -103,7 +103,7 @@ Status ScanPQCodesFusionPass::SplitScanPQCodesNode(ge::ComputeGraph& graph, ge::
   // Set attribute of AICore flag.
   ge::AttrUtils::SetStr(scanPQCodesDescAic, ATTR_OP_SPECIFIED_ENGINE_NAME, "AIcoreEngine");
   ge::AttrUtils::SetStr(scanPQCodesDescAic, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "AIcoreEngine");
-  ge::AttrUtils::SetInt(scanPQCodesDescAic, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(scanPQCodesDescAic, ATTR_SPLIT_COUNT, (int64_t)INT_NUM_TWO);
   ge::AttrUtils::SetInt(scanPQCodesDescAic, ATTR_SPLIT_INDEX, 0);
 
   scanPQCodesNodeAicore = graph.AddNode(scanPQCodesDescAic);
@@ -119,7 +119,7 @@ Status ScanPQCodesFusionPass::SplitScanPQCodesNode(ge::ComputeGraph& graph, ge::
   // Set attribute of VectorCore flag.
   ge::AttrUtils::SetStr(scanPQCodesDescVec, ATTR_OP_SPECIFIED_ENGINE_NAME, "VectorEngine");
   ge::AttrUtils::SetStr(scanPQCodesDescVec, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "VectorEngine");
-  ge::AttrUtils::SetInt(scanPQCodesDescVec, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(scanPQCodesDescVec, ATTR_SPLIT_COUNT, (int64_t)INT_NUM_TWO);
   ge::AttrUtils::SetInt(scanPQCodesDescVec, ATTR_SPLIT_INDEX, (int64_t)1);
   ge::AttrUtils::SetStr(scanPQCodesDescVec, ATTR_NAME_STREAM_LABEL, "VectorEngine");
 
@@ -187,13 +187,13 @@ Status ScanPQCodesFusionPass::CreateNewTopKPQDistanceNode(ge::ComputeGraph& grap
   for (auto inputDesc : topKPQDistanceNodeDesc->GetAllInputsDesc()) {
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(newScanPQCodesNodes[0]->GetOutDataAnchor(index),
-                                fusedTopKPQDistanceNode->GetInDataAnchor(index * 2)) != ge::GRAPH_SUCCESS,
+                                fusedTopKPQDistanceNode->GetInDataAnchor(index * INT_NUM_TWO)) != ge::GRAPH_SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "add input edge between %s and %s %d th failed.",
                 newScanPQCodesNodes[0]->GetName().c_str(), fusedTopKPQDistanceNode->GetName().c_str(), index),
         return NOT_CHANGED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(newScanPQCodesNodes[1]->GetOutDataAnchor(index),
-                                fusedTopKPQDistanceNode->GetInDataAnchor(index * 2 + 1)) != ge::GRAPH_SUCCESS,
+                                fusedTopKPQDistanceNode->GetInDataAnchor(index * INT_NUM_TWO + 1)) != ge::GRAPH_SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "add input edge between %s and %s %d th failed.",
                 newScanPQCodesNodes[1]->GetName().c_str(), fusedTopKPQDistanceNode->GetName().c_str(), index),
         return NOT_CHANGED);

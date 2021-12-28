@@ -39,10 +39,9 @@
 static const int64_t C0 = 6002 * 8;
 static const int64_t C1 = 8;
 static const int64_t C2 = 8;
-
+static const int32_t INT_NUM_TWO = 2;
 using namespace ge;
 namespace fe {
-
 static const char* FUSED_NODE = "RpnProposalsD";
 static const std::string PATTERN_FUSEDNODE = "RpnProposals";
 
@@ -91,7 +90,7 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   scoreFilterPreSortDesc->SetType("ScoreFilterPreSort");
   rpnProposalPostProcessingDesc->SetType("RpnProposalPostProcessing");
 
-  if (rpnProposalPostProcessingDesc->GetInputsSize() != 2) {
+  if (rpnProposalPostProcessingDesc->GetInputsSize() != INT_NUM_TWO) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
             rpnProposalPostProcessingDesc->GetInputsSize());
     return NOT_CHANGED;

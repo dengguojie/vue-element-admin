@@ -41,6 +41,10 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
+static const int64_t INT_NUM_TWO = 2;
+static const int64_t INT_NUM_THREE = 3;
+static const int64_t INT_NUM_FOUR = 4;
+static const int64_t INT_LESS_C0 = 15;
 static const string PATTERN_SPP = "SPP";
 static const char* SPP = "SPP";
 
@@ -48,21 +52,21 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
                                  int64_t poolMethod) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make pooling layer");
   vector<int64_t> shapeDims = inputDesc.GetOriginShape().GetDims();
-  if (shapeDims.empty() || shapeDims.size() < 4) {
+  if (shapeDims.empty() || shapeDims.size() < INT_NUM_FOUR) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "SPP input shapedims is less than 4");
     return PARAM_INVALID;
   }
-  for (size_t i = 1; i <= 3; i++) {
+  for (size_t i = 1; i <= INT_NUM_THREE; i++) {
     auto dim = shapeDims[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
       return FAILED;
     }
   }
-  int64_t num_bins = pow(2, hyramidLevel);
+  int64_t num_bins = pow(INT_NUM_TWO, hyramidLevel);
   bool globalPooling = (hyramidLevel == 0) ? true : false;
-  int64_t bottomH = shapeDims[2];
-  int64_t bottomW = shapeDims[3];
+  int64_t bottomH = shapeDims[INT_NUM_TWO];
+  int64_t bottomW = shapeDims[INT_NUM_THREE];
   int64_t windowH = bottomH;
   int64_t windowW = bottomW;
   int64_t strideH = 1;
@@ -77,14 +81,14 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
   if (!globalPooling) {
     windowH = ceil(bottomH / static_cast<double>(num_bins));
     int64_t remainderH = windowH * num_bins - bottomH;
-    padT = (remainderH + 1) / 2;
-    padB = (remainderH + 1) / 2;
+    padT = (remainderH + 1) / INT_NUM_TWO;
+    padB = (remainderH + 1) / INT_NUM_TWO;
     strideH = windowH;
 
     windowW = ceil(bottomW / static_cast<double>(num_bins));
     int64_t remainderW = windowW * num_bins - bottomW;
-    padL = (remainderW + 1) / 2;
-    padR = (remainderW + 1) / 2;
+    padL = (remainderW + 1) / INT_NUM_TWO;
+    padR = (remainderW + 1) / INT_NUM_TWO;
     strideW = windowW;
   }
 
@@ -111,11 +115,11 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
   ge::GeTensorDesc poolingInputDesc;
   vector<int64_t> inputShape;
   int64_t c0 = 16;
-  int64_t c1 = (shapeDims[1] + 15) / c0;
+  int64_t c1 = (shapeDims[1] + INT_LESS_C0) / c0;
   inputShape.push_back(shapeDims[0]);
   inputShape.push_back(c1);
-  inputShape.push_back(shapeDims[2]);
-  inputShape.push_back(shapeDims[3]);
+  inputShape.push_back(shapeDims[INT_NUM_TWO]);
+  inputShape.push_back(shapeDims[INT_NUM_THREE]);
   inputShape.push_back(c0);
   poolingInputDesc.SetShape(ge::GeShape(inputShape));
   poolingInputDesc.SetFormat(ge::FORMAT_NC1HWC0);
@@ -158,10 +162,10 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
   for (uint64_t i = 0; i < bottomSize; i++) {
     ge::GeTensorDesc bottomOutputDesc = fatherOp[i]->GetOutputDesc(0);
     vector<int64_t> shapeDims = bottomOutputDesc.GetOriginShape().GetDims();
-    FUSION_PASS_CHECK(shapeDims.size() < 4,
+    FUSION_PASS_CHECK(shapeDims.size() < INT_NUM_FOUR,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPP output shape dims is less than 4."),
                       return PARAM_INVALID;);
-    for (size_t i = 1; i <= 3; i++) {
+    for (size_t i = 1; i <= INT_NUM_THREE; i++) {
       auto dim = shapeDims[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
@@ -169,11 +173,11 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
       }
     }
     batchNum = shapeDims[0];
-    totalDimNum += shapeDims[1] * shapeDims[2] * shapeDims[3];
+    totalDimNum += shapeDims[1] * shapeDims[INT_NUM_TWO] * shapeDims[INT_NUM_THREE];
     ge::GeTensorDesc inputDesc;
     vector<int64_t> inputShapeDims;
     inputShapeDims.push_back(shapeDims[0]);
-    inputShapeDims.push_back(shapeDims[1] * shapeDims[2] * shapeDims[3]);
+    inputShapeDims.push_back(shapeDims[1] * shapeDims[INT_NUM_TWO] * shapeDims[INT_NUM_THREE]);
     inputShapeDims.push_back(1);
     inputShapeDims.push_back(1);
     inputDesc.SetShape(ge::GeShape(inputShapeDims));

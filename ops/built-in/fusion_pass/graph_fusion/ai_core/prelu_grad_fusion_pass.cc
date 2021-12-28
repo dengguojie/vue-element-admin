@@ -26,7 +26,7 @@
 
 using namespace ge;
 namespace fe {
-
+static const int32_t INT_NUM_TWO = 2;
 static const char* FUSED_NODE = "PReluGrad";
 static const std::string PATTERN_FUSEDNODE = "PReluGrad";
 
@@ -115,7 +115,7 @@ ge::NodePtr PReluGradFusionPass::AddReduceNode(ge::NodePtr prelugradNode, ge::No
 
   // compute axes and set attr
   ge::GeTensorDesc tensor_input = prelugradNoneNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc weight_input = prelugradNoneNode->GetOpDesc()->GetInputDesc(2);
+  ge::GeTensorDesc weight_input = prelugradNoneNode->GetOpDesc()->GetInputDesc(INT_NUM_TWO);
   vector<int64_t> tensor_info = tensor_input.GetShape().GetDims();
   vector<int64_t> weight_info = weight_input.GetShape().GetDims();
   size_t tensor_size = tensor_input.GetShape().GetDimNum();
@@ -167,7 +167,7 @@ Status PReluGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prelugrad's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   ge::GeTensorDesc tensor_input = prelugradNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc weight_input = prelugradNode->GetOpDesc()->GetInputDesc(2);
+  ge::GeTensorDesc weight_input = prelugradNode->GetOpDesc()->GetInputDesc(INT_NUM_TWO);
   size_t tensor_size = tensor_input.GetShape().GetDimNum();
   size_t axis_size = weight_input.GetShape().GetDimNum();
   if (axis_size == 1 || axis_size != tensor_size - 1) {

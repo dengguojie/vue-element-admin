@@ -45,6 +45,7 @@ namespace fe {
 // the name of tf op
 static const float FLOAT_NUM_ZERO = 0;
 static const int32_t INT_NUM_ZERO = 0;
+static const int32_t INT_NUM_TWO = 2;
 static const uint16_t UINT_NUM_ZERO = 0;
 static const int8_t INT8_NUM_ZERO = 0;
 static const uint8_t UINT8_NUM_ZERO = 0;
@@ -154,7 +155,7 @@ Status MatrixDiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // multiples of dims
   int64_t dimNums = 1;
   int64_t dimsInput = matrixdiagpartInputShape.GetDimNum() - 1;
-  int64_t dimsInput1 = matrixdiagpartInputShape.GetDimNum() - 2;
+  int64_t dimsInput1 = matrixdiagpartInputShape.GetDimNum() - INT_NUM_TWO;
   for (size_t j = 0; j < matrixdiagpartInputShape.GetDimNum(); ++j) {
     if (PatternFusionUtil::IsUnknownShape(matrixdiagpartInputShape.GetDim(j))) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -167,7 +168,6 @@ Status MatrixDiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // get the last dims of input shape
   int64_t dimNums1 = matrixdiagpartInputShape.GetDim(dimsInput);
   int64_t dimNums2 = matrixdiagpartInputShape.GetDim(dimsInput1);
-
   if (PatternFusionUtil::IsUnknownShape(dimNums1) ||
       PatternFusionUtil::IsUnknownShape(dimNums2)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
