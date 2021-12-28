@@ -1342,6 +1342,8 @@ class Conv2dSchedule:
             """
             if self._lx_fusion.l1_fusion_type == BREADTH_L1_FUSION:
                 return self._lx_fusion.align_al1_lxfusion(sch, al1)
+            if self._l0a_load2d.flag:
+                return self._l0a_load2d.align_al1_load2d(sch, al1)
             return None
 
         def align_row_major():

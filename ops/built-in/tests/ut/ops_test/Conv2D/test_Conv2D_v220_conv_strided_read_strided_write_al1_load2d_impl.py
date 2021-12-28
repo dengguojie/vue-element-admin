@@ -6,30 +6,10 @@ from tbe.common.context import op_context
 from te import platform as cceconf
 from te import tvm
 from topi import generic
-import unittest
+from op_test_frame.ut import OpUT
 
-# _, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag = i
-v220_strided_conv_case = [
-    # strided read
-    ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),  # default
-    ("conv_sread", "float32", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),  # float32
-    ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (3, 1), 1, False),  # strideh_opti
-    ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),  # al1_load2d
+ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
-    # strided write
-    ("conv_swrite", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
-    ("conv_swrite", "float32", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
-
-    # strided read +conv+ strided write
-    ("conv_sread_swrite", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
-]
-v220_al1_load2d_case = [
-    ("conv2d", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),
-    # ("conv2d", "float32", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),  # float32
-    ("conv2d", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
-]
-
-pass
 
 def conv_v220_fusion_case(dataflow,
                           conv_type,
@@ -162,28 +142,48 @@ def run_testcase(config_dict):
                               cout_real=cout_real)
 
 
-class TestV220Conv(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pass
+def test_v220_conv_strided_rw_ut(test_arg):
+    print('utmark:strided_rw')
+    # _, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag = i
+    v220_strided_conv_case = [
+        # strided read
+        ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),  # default
+        ("conv_sread", "float32", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),  # float32
+        ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (3, 1), 1, False),  # strideh_opti
+        ("conv_sread", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),  # al1_load2d
+        # strided write
+        ("conv_swrite", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("conv_swrite", "float32", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        # strided read +conv+ strided write
+        ("conv_sread_swrite", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+    ]
+    cceconf.te_set_version('Ascend920A')
+    with op_context.OpContext():
+        run_testcase(v220_strided_conv_case)
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
 
-    def setUp(self):
-        pass
+def test_v220_conv_al1_load2d_ut(test_arg):
+    print('utmark:al1_load2d')
+    v220_al1_load2d_case = [
+        ("conv2d", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),
+        # ("conv2d", "float32", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),  # float32
+        ("conv2d", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
+    ]
 
-    def tearDown(self):
-        pass
+    cceconf.te_set_version('Ascend920A')
+    with op_context.OpContext():
+        run_testcase(v220_al1_load2d_case)
 
-    def test_ut(self):
-        cceconf.te_set_version('Ascend920A')
-        with op_context.OpContext():
-            run_testcase(v220_strided_conv_case)
-            run_testcase(v220_al1_load2d_case)
 
-pass
+print("====> adding Conv2D v220 conv strided_RW ut testcases start")
+ut_case.add_cust_test_func("Ascend920A", test_func=test_v220_conv_strided_rw_ut)
+print("====> adding Conv2D v220 conv strided_RW ut testcases end")
+
+
+print("====> adding Conv2D v220 conv al1_load2d ut testcases start")
+ut_case.add_cust_test_func("Ascend920A", test_func=test_v220_conv_al1_load2d_ut)
+print("====> adding Conv2D v220 conv al1_load2d ut testcases end")
 
 if __name__ == '__main__':
-    unittest.main() 
+    ut_case.run("Ascend920A")
+    exit(0)

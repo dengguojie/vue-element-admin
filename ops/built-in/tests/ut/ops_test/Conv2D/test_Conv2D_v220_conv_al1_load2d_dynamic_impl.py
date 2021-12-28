@@ -1,5 +1,4 @@
 import tbe
-import unittest
 from impl.util.platform_adapter import operation
 from impl.dynamic.conv2d import conv2d_fusion_compute
 from impl.dynamic.leaky_relu import leaky_relu_compute
@@ -8,16 +7,9 @@ from te import platform as cceconf
 from te import tvm
 from te.utils.cce import auto_schedule
 from tbe.dsl.unify_schedule.build import build
+from op_test_frame.ut import OpUT
 
-v220_al1_load2d_case = [
-    ("conv2d", "float16", (-1, 24, 28, 28), (64, 24, 1, 1),
-        [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 1, False),
-    # ("conv2d", "float32", (-1, 24, 28, 28), (64, 24, 1, 1),
-    #     [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 1, False),  # float32
-    ("conv2d", "float16", (-1, 24, 28, 28), (64, 24, 1, 1),
-        [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
-]
-pass
+ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
 
 def conv_v220_dynamic_fusion_case(dataflow,
@@ -179,28 +171,26 @@ def run_testcase(config_dict):
                                                   cout_real=cout_real)
 
 
-class TestV220Conv(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pass
-
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test_ut(self):
-        cceconf.te_set_version('Ascend920A')
+def test_conv2d_v220_conv_al1_load2d_dynamic_ut(test_arg):
+    print('utmark:al1_load2d_dynamic')
+    v220_al1_load2d_case = [
+        ("conv2d", "float16", (-1, 24, 28, 28), (64, 24, 1, 1),
+            [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 1, False),
+        # ("conv2d", "float32", (-1, 24, 28, 28), (64, 24, 1, 1),
+        #     [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 1, False),  # float32
+        ("conv2d", "float16", (-1, 24, 28, 28), (64, 24, 1, 1),
+            [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
+    ]
+    cceconf.te_set_version('Ascend920A')
+    with op_context.OpContext():
         run_testcase(v220_al1_load2d_case)
 
-pass
-pass
+
+print("====> adding Conv2D v220 conv al1_load2d dynamic ut testcases start")
+ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_v220_conv_al1_load2d_dynamic_ut)
+print("====> adding Conv2D v220 conv al1_load2d dynamic ut testcases end")
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    ut_case.run("Ascend920A")
+    exit(0)
