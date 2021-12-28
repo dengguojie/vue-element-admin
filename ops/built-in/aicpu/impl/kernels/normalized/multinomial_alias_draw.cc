@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
+const uint32_t REMAINDER = 10000;
+const double RANDOMDIVISOR = 10000.0;
 const char *kMultinomialAliasDraw = "MultinomialAliasDraw";
 
 #define MULTINOMIAL_ALIAS_DRAW_COMPUTE_CASE(DTYPE, TYPE, CTX)          \
@@ -82,7 +84,7 @@ uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawParamCheck(
   int64_t data_q_num = ctx.Input(0)->NumElements();
   int64_t data_j_num = ctx.Input(1)->NumElements();
   KERNEL_CHECK_FALSE((data_q_num == data_j_num), KERNEL_STATUS_PARAM_INVALID,
-                    "The input data number of j need be equal to data number q.")
+                     "The input data number of j need be equal to data number q.")
   KERNEL_LOG_DEBUG(
       "MultinomialAliasDrawCpuKernel[%s], input0: size[%llu];"
       "input1: size[%llu], output: size[%llu]",
@@ -99,12 +101,12 @@ uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawCompute(
   auto j_x = reinterpret_cast<int64_t *>(ctx.Input(1)->GetData());
   int num_samples = ctx.GetAttr("num_samples")->GetInt();
   AttrValue *attr_seed_ = ctx.GetAttr("seed");
-  int attr_seed = (attr_seed_ == nullptr) ? -1 : (attr_seed_->GetInt());
+  int attr_seed = (attr_seed_ == nullptr) ? 0 : (attr_seed_->GetInt());
   auto out_y = reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
   srand(attr_seed);
   for (int i = 0; i < num_samples; i++) {
     int t = rand() % data_num;
-    double r = (rand() % 10000) / 10000.0;
+    double r = (rand() % REMAINDER) / RANDOMDIVISOR;
     if (r < *(q_x + t)) {
       *(out_y + i) = t;
     } else

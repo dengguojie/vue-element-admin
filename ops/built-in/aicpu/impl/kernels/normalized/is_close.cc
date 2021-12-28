@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
 const float rtol_ = 1e-05;
 const float atol_ = 1e-08;
+const uint32_t CPUNUM = 2;
 const char *kIsClose = "IsClose";
 
 const int64_t kParallelDataNum = 2 * 1024;
@@ -100,7 +101,7 @@ uint32_t IsCloseCpuKernel::IsCloseCompute(CpuKernelContext &ctx) {
   int64_t input1_elements_nums = input1_tensor->NumElements();
 
   bool noNeedBcast = (input0_shape == input1_shape) ||
-                     (input0_elements_nums == 1) || 
+                     (input0_elements_nums == 1) ||
                      (input1_elements_nums == 1);
   if (noNeedBcast) {
     return NoBcastCompute<T>(ctx);
@@ -126,12 +127,12 @@ uint32_t IsCloseCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   BcastShapeType type =
       input0_elements_nums == input1_elements_nums
           ? BcastShapeType::SAME_SHAPE
-          : (input0_elements_nums == 1 ?  BcastShapeType::X_ONE_ELEMENT 
+          : (input0_elements_nums == 1 ? BcastShapeType::X_ONE_ELEMENT
           : BcastShapeType::Y_ONE_ELEMENT);
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num =
-        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - CPUNUM);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
       max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
@@ -164,7 +165,7 @@ uint32_t IsCloseCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num =
-        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - CPUNUM);
 
     if (data_num <= kParallelDataNumMid) {
       max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ uint32_t ExponentialCpuKernel::Compute(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR(
         "Exponential kernel data type need be same, input_data_dtype is [%s], "
         "output_data_type is [%s]. Support data_types: DT_FLOAT16, DT_FLOAT, DT_DOUBLE.",
-         DTypeStr(data_type).c_str(), DTypeStr(output->GetDataType()).c_str());
+        DTypeStr(data_type).c_str(), DTypeStr(output->GetDataType()).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -81,7 +81,6 @@ uint32_t ExponentialCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t ExponentialCpuKernel::ExponentialCompute(CpuKernelContext &ctx) {
-
   auto input_x = ctx.Input(0);
   auto output_tensor = ctx.Output(0);
 

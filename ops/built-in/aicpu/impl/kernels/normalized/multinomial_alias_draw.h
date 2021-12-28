@@ -18,7 +18,6 @@
 #define AICPU_KERNELS_NORMALIZED_MULTINOMIAL_ALIAS_DRAW_H_
 
 #include "cpu_kernel.h"
-#include <cstdlib>
 
 namespace aicpu {
 class MultinomialAliasDrawCpuKernel : public CpuKernel {

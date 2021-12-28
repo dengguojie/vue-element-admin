@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
+const uint32_t ATTRRDEFAULT = 2;
 const char *kCombinations = "Combinations";
 
 #define COMBINATIONS_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
@@ -84,7 +85,7 @@ uint32_t CombinationsCpuKernel::CombinationsParamCheck(CpuKernelContext &ctx) {
       ctx.GetOpType().c_str(), input->GetDataSize(), output->GetDataSize());
   int32_t input_num = ctx.Input(0)->NumElements();
   AttrValue *r_ = ctx.GetAttr("r");
-  auto r = (r_ == nullptr) ? 2 : (r_->GetInt());
+  auto r = (r_ == nullptr) ? ATTRRDEFAULT : (r_->GetInt());
   KERNEL_CHECK_FALSE(
       (r >= 1), KERNEL_STATUS_PARAM_INVALID,
       "The value of r must be greater than or equal to 1, but got: [%d]", r);
@@ -105,7 +106,7 @@ uint32_t CombinationsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE(inputShape->GetDims() == 1, KERNEL_STATUS_PARAM_INVALID,
                      "Input must be 1D.")
   AttrValue *r_ = ctx.GetAttr("r");
-  auto r = (r_ == nullptr) ? 2 : (r_->GetInt());
+  auto r = (r_ == nullptr) ? ATTRRDEFAULT : (r_->GetInt());
   KERNEL_LOG_DEBUG("%s Attr[r] value[%d]", kCombinations, r);
   AttrValue *with_replacement_ = ctx.GetAttr("with_replacement");
   auto with_replacement =

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,33 +35,32 @@ const char *kPoisson = "Poisson";
       return result;                                          \
     }                                                         \
     break;                                                    \
-  }		
+  }
 }
 
 namespace aicpu {
 template <typename T>
 uint32_t PoissonCpuKernel::PoissonCompute(CpuKernelContext &ctx) {
   auto input_x = ctx.Input(0);
-  auto x= reinterpret_cast<T *>(ctx.Input(0)->GetData());
+  auto x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  int64_t final_seed=0;
+  int64_t final_seed = 0;
   auto attr_seed = ctx.GetAttr("seed");
   if (attr_seed != nullptr) {
     final_seed = attr_seed->GetInt();
   }
   srand(final_seed);
 
-  for(uint32_t j = 0; j < input_x->NumElements(); j++){
-    T k=(T)0;
-    T p=(T)1.0;
-    T r=*(x+j);
-    T l=exp(-r);
-    
-    while(p>=l)
-    {
+  for (uint32_t j = 0; j < input_x->NumElements(); j++) {
+    T k = (T)0;
+    T p = (T)1.0;
+    T r = *(x+j);
+    T l = exp(-r);
+
+    while (p >= l) {
       T u = (T)rand() / RAND_MAX;
       p *= u;
-      k+=(T)1;
+      k += (T)1;
     }
       *(y + j) = (T)(k-(T)1);
   }
@@ -70,7 +69,7 @@ uint32_t PoissonCpuKernel::PoissonCompute(CpuKernelContext &ctx) {
 
 uint32_t PoissonCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-		                  "Poisson Check input and output failed.");
+                      "Poisson Check input and output failed.");
   KERNEL_HANDLE_ERROR(PoissonParamCheck(ctx), "Poissonon check params failed.");
   auto data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
@@ -99,4 +98,4 @@ uint32_t PoissonCpuKernel::PoissonParamCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 REGISTER_CPU_KERNEL(kPoisson, PoissonCpuKernel);
-}  //namespace aicpu
+}  // namespace aicpu
