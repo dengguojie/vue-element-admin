@@ -47,19 +47,13 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         y's Tensor(shape=(16, 16, 16), "ND")
     """
     input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                           datatype="float16,float32,float16,float32,float16,float32,\
-                                                     float16,float32",
-                                           format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
-                                                   FRACTAL_NZ,FRACTAL_NZ",
-                                           unknownshape_format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
-                                                                FRACTAL_NZ,FRACTAL_NZ")
+                                           datatype="float16,float32",
+                                           format="ND,ND",
+                                           unknownshape_format="ND,ND")
     output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                            datatype="float16,float32,float16,float32,float16,float32,\
-                                                      float16,float32",
-                                            format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
-                                                    FRACTAL_NZ,FRACTAL_NZ",
-                                            unknownshape_format="ND,ND,NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0,\
-                                                                 FRACTAL_NZ,FRACTAL_NZ")
+                                            datatype="float16,float32",
+                                            format="ND,ND",
+                                            unknownshape_format="ND,ND")
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
