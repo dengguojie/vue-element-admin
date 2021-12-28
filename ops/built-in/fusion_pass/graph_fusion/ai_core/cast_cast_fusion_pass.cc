@@ -95,7 +95,8 @@ Status CastCastFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vec
         return NOT_CHANGED;
     }
     if (ReLinkControlAnchor(castNode1, castNode2) != SUCCESS) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "process %s and %s control link failed", castNode1->GetName().c_str(), castNode2->GetName().c_str());
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "process %s and %s control link failed",
+                castNode1->GetName().c_str(), castNode2->GetName().c_str());
         return FAILED;
     }
     ge::GeTensorDesc cast1InputDesc = castNode1->GetOpDesc()->GetInputDesc(0).Clone();
@@ -119,9 +120,11 @@ Status CastCastFusionPass::ReLinkControlAnchor(ge::NodePtr castNode1, ge::NodePt
     if (cast1InControlAnchorPtr != nullptr && cast2InControlAnchorPtr != nullptr) {
         for (OutControlAnchorPtr outControlAnchorPtr : cast1InControlAnchorPtr->GetPeerOutControlAnchors()) {
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(outControlAnchorPtr, cast1InControlAnchorPtr),
-                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove input control edge failed"), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                               "remove input control edge failed"), return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outControlAnchorPtr, cast2InControlAnchorPtr),
-                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input control edge failed"), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                               "add input control edge failed"), return FAILED);
         }
     }
     return SUCCESS;

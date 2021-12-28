@@ -75,7 +75,8 @@ vector<FusionPattern*> BatchNormBnInferFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                          vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchNormBnInferFusionPass fusion begin");
   ge::NodePtr batchNormNode = GetNodeFromMapping(PATTERN_BATCHNORM, mapping);
 
@@ -84,7 +85,8 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                     return PARAM_INVALID);
   bool is_traing = true;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(batchNormNode->GetOpDesc(), IS_TRAING, is_traing),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get is_traing attr failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get is_traing attr failed."),
+                    return FAILED);
 
   FUSION_PASS_CHECK(is_traing, OP_LOGI(FUSED_OP_TYPE.c_str(), "is_traing is true, no need fusion."),
                     return NOT_CHANGED);
@@ -173,7 +175,8 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                       OP_LOGW(FUSED_OP_TYPE.c_str(), "Get epsilon attr failed."), return NOT_CHANGED);
 
     FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(newNode->GetOpDesc(), EPSILON, epsilon),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set epsilon attr failed"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set epsilon attr failed"),
+                      return FAILED);
 
     // copy output edge
     for (auto inDataAnchor : batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
@@ -187,7 +190,8 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 
     if (batchNormNode->GetOutControlAnchor()) {
       for (auto inControlAnchor : batchNormNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(batchNormNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
+        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(batchNormNode->GetOutControlAnchor(),
+                                                     inControlAnchor) != SUCCESS,
                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."),
                           return FAILED);
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(newNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
@@ -200,42 +204,43 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                               newNode->GetInDataAnchor(0)) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                              "Add edge between node %s. and node %s failed.",
-                              batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
+                          "Add edge between node %s. and node %s failed.",
+                          batchNormNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          newNode->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                               newNode->GetInDataAnchor(1)) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                              "Add edge between node %s. and node %s failed.",
-                              batchNormNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
+                          "Add edge between node %s. and node %s failed.",
+                          batchNormNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          newNode->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
                                               newNode->GetInDataAnchor(2)) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                              "Add edge between node %s. and node %s failed.",
-                              batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
+                          "Add edge between node %s. and node %s failed.",
+                          batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          newNode->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(3)->GetPeerOutAnchor(),
                                               newNode->GetInDataAnchor(3)) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                              "Add edge between node %s. and node %s failed.",
-                              batchNormNode->GetInDataAnchor(3)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
+                          "Add edge between node %s. and node %s failed.",
+                          batchNormNode->GetInDataAnchor(3)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          newNode->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
                                               newNode->GetInDataAnchor(4)) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                              "Add edge between node %s. and node %s failed.",
-                              batchNormNode->GetInDataAnchor(4)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              newNode->GetName().c_str()),
+                          "Add edge between node %s. and node %s failed.",
+                          batchNormNode->GetInDataAnchor(4)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          newNode->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(batchNormNode->GetOutControlAnchor(), newNode->GetInControlAnchor()) != SUCCESS,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add control edge between node %s. and node %s failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                       "Add control edge between node %s. and node %s failed.",
                 batchNormNode->GetName().c_str(), newNode->GetName().c_str()),
         return FAILED);
 
@@ -261,14 +266,16 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeTensorDesc input_tensor_mean = batchNormNode->GetOpDesc()->GetInputDesc(INPUT_IDX_3);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc("mean", input_tensor_mean) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input mean failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "Op[%s]: add the input desc for the input mean failed.",
       newOpName.c_str()),
       return FAILED);
 
   ge::GeTensorDesc input_tensor_variance = batchNormNode->GetOpDesc()->GetInputDesc(INPUT_IDX_4);
   FUSION_PASS_CHECK(
       newOpdesc->AddInputDesc("variance", input_tensor_variance) != SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input variance failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "Op[%s]: add the input desc for the input variance failed.",
       newOpName.c_str()),
       return FAILED);
 
@@ -284,7 +291,8 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                     "inputAssit is NULL"),
                     return PARAM_INVALID);
   Status ret = NnSet(1, FLOAT_NUM_ONE, *reinterpret_cast<float*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
   ge::GeTensorDesc tensorDesc(ge::GeShape(), ge::FORMAT_ND, ge::DT_FLOAT);
   tensorDesc.SetShape(assistShape);
