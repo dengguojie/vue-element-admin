@@ -577,7 +577,7 @@ class MaxpoolGrad:
         grad_sel_ub = self.ub_b
         temp_zero = self.tik_instance.Tensor("float16", (Constant.MASK128_VALUE,),
                                              name="temp_zero", scope=tik.scope_ubuf)
-        self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
+        self._vector_dup(temp_zero, 0, (Constant.MASK128_VALUE,), self.scalar_zero_fp16, "float16")
 
         # vsel
         with self.tik_instance.for_range(0, grad_shape_0) as mask_index:
@@ -1379,7 +1379,7 @@ class MaxpoolGrad:
             offset_gm_inside.set_as(self.offset_gm)
 
             # init col2img after every looph
-            self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape,
+            self._vector_dup(col2img_fp32_ub, 0, col2img_ub_shape,
                              self.scalar_zero, "float32")
 
             with self.tik_instance.for_range(0, cut_wo_nums, thread_num=1) as cut_wo_nums_index:
@@ -1648,7 +1648,7 @@ class MaxpoolGrad:
                                                  self.scalar_zero,
                                                  col2img_fp32_ub.dtype)
                         with self.tik_instance.else_scope():
-                            self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape,
+                            self._vector_dup(col2img_fp32_ub, 0, col2img_ub_shape,
                                              self.scalar_zero, col2img_fp32_ub.dtype)
                     with self.tik_instance.else_scope():
                         with self.tik_instance.if_scope(self.kh > self.stride_h):
@@ -1857,7 +1857,7 @@ class MaxpoolGrad:
                                             Constant.C0 + each_process_wi * Constant.C0 * index_s],
                             0, 1, overlap_burst // 8, 0, 0)
                 with self.tik_instance.if_scope(self.kw <= self.stride_w):
-                    self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape,
+                    self._vector_dup(col2img_fp32_ub, 0, col2img_ub_shape,
                                      self.scalar_zero, col2img_fp32_ub.dtype)
 
             with self.tik_instance.if_scope(mov_len_h > 0):
