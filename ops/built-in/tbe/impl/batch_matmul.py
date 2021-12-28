@@ -165,8 +165,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         shape_len = shape_len_a
     else:
         shape_len = shape_len_b
-    inp_src_dtype = src_dtype.lower()
-    k_block_size = tbe_platform.BLOCK_REDUCE
 
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
@@ -614,10 +612,10 @@ def batch_matmul(input_x, input_y, bias=None, output_z=None, trans_a=False,
     ------
     None
     """
-    shape_a = input_x.get("ori_shape") 
-    shape_b = input_y.get("ori_shape") 
-    shape_a_length = len(shape_a) 
-    shape_b_length = len(shape_b) 
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
+    shape_a_length = len(shape_a)
+    shape_b_length = len(shape_b)
     if shape_a is not None:
         if shape_a_length < 2:
             shape_a = list(shape_a)
@@ -628,26 +626,26 @@ def batch_matmul(input_x, input_y, bias=None, output_z=None, trans_a=False,
             shape_b = list(shape_b)
             shape_b.append(1)
 
-    shape_bias = () 
+    shape_bias = ()
     if bias is not None and bool(bias):
         shape_bias = bias.get("shape")
         shape_bias = list(shape_bias)
         if input_x.get("format") == "FRACTAL_NZ":
             shape_bias = _get_bias(shape_bias)
 
-    src_dtype = input_x.get("dtype").lower() 
+    src_dtype = input_x.get("dtype").lower()
 
-    shape_a = list(shape_a) 
-    shape_b = list(shape_b) 
+    shape_a = list(shape_a)
+    shape_b = list(shape_b)
     if input_x.get("format") == "FRACTAL_NZ":
         shape_a = _get_input_shape(shape_a)
         shape_b = _get_input_shape(shape_b)
 
-    para_check.check_shape(shape_a, param_name="input_x") 
-    para_check.check_shape(shape_b, param_name="input_y") 
+    para_check.check_shape(shape_a, param_name="input_x")
+    para_check.check_shape(shape_b, param_name="input_y")
 
-    trans_a_local = trans_a 
-    trans_b_local = trans_b 
+    trans_a_local = trans_a
+    trans_b_local = trans_b
 
     if input_x.get("format") == "FRACTAL_NZ":
         batch_axis = shape_a[:(len(shape_a) - 2)]
@@ -668,10 +666,10 @@ def batch_matmul(input_x, input_y, bias=None, output_z=None, trans_a=False,
     _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a_local, trans_b_local)
     inp_src_dtype = src_dtype.lower()
 
-    m_shape = shape_a[len(shape_a) - 2] 
-    km_shape = shape_a[len(shape_a) - 1] 
-    kn_shape = shape_b[len(shape_b) - 2] 
-    n_shape = shape_b[len(shape_b) - 1] 
+    m_shape = shape_a[len(shape_a) - 2]
+    km_shape = shape_a[len(shape_a) - 1]
+    kn_shape = shape_b[len(shape_b) - 2]
+    n_shape = shape_b[len(shape_b) - 1]
 
     block_reduce = tbe_platform.CUBE_MKN[inp_src_dtype]["mac"][1]
 

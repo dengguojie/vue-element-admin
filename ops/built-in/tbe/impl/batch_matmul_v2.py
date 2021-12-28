@@ -166,7 +166,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         shape_len = shape_len_a
     else:
         shape_len = shape_len_b
-    inp_src_dtype = src_dtype.lower()
 
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
@@ -730,7 +729,7 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
     else:
         shape_b_dup = (shape_b[len(shape_b) - 2], shape_b[len(shape_b) - 1])
         format_b = "ND"
-    
+
     if support_l0c2out:
         shape_a_dup = input_x.get("shape")[-4:]
         shape_b_dup = input_y.get("shape")[-4:]

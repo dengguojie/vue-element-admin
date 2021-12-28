@@ -517,8 +517,8 @@ def mat_mul_compute_self(input_x1,
     -------
     None
     """
-    format_a = input_x1.op.attrs["format"].value 
-    format_b = input_x2.op.attrs["format"].value 
+    format_a = input_x1.op.attrs["format"].value
+    format_b = input_x2.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ':
         trans_a_local = not trans_a
     else:
@@ -529,7 +529,7 @@ def mat_mul_compute_self(input_x1,
     else:
         trans_b_local = trans_b
 
-    dst_dtype = output_y.get("dtype").lower() 
+    dst_dtype = output_y.get("dtype").lower()
 
     if offset_w is not None:
         error_manager_vector.raise_err_specific_reson("mat_mul",
@@ -709,10 +709,10 @@ def mat_mul(input_x1,
     -------
     None
     """
-    shape_a = input_x1.get("ori_shape") 
-    shape_b = input_x2.get("ori_shape") 
-    shape_a_length = len(shape_a) 
-    shape_b_length = len(shape_b) 
+    shape_a = input_x1.get("ori_shape")
+    shape_b = input_x2.get("ori_shape")
+    shape_a_length = len(shape_a)
+    shape_b_length = len(shape_b)
 
     # if ori_shape is invalid use shape
     if shape_a is not None and shape_a_length < 2:
@@ -722,24 +722,24 @@ def mat_mul(input_x1,
     if shape_b is not None and shape_b_length < 2:
         shape_b = input_x2.get("shape")
 
-    shape_a = list(shape_a) 
-    shape_b = list(shape_b) 
+    shape_a = list(shape_a)
+    shape_b = list(shape_b)
 
     if input_x1.get("format") == "FRACTAL_NZ":
         shape_a = _align_shape_a(shape_a, trans_a)
         shape_b = _align_shape_b(shape_b, trans_b)
 
-    para_check.check_shape(shape_a, param_name="input_x1") 
-    para_check.check_shape(shape_b, param_name="input_x2") 
+    para_check.check_shape(shape_a, param_name="input_x1")
+    para_check.check_shape(shape_b, param_name="input_x2")
 
-    align_shape_bias = () 
-    ori_shape_bias = () 
+    align_shape_bias = ()
+    ori_shape_bias = ()
     if bias is not None and bool(bias):
         align_shape_bias, ori_shape_bias = _get_bias(bias.get("shape"), bias.get("ori_shape"))
 
-    src_dtype = input_x1.get("dtype").lower() 
+    src_dtype = input_x1.get("dtype").lower()
 
-    target_type = ["float32", "int32"] 
+    target_type = ["float32", "int32"]
     if src_dtype in target_type and not tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT"):
         if (trans_b and shape_b[0] == 1) or (not trans_b and shape_b[1] == 1):
             _matmul_vector_one(shape_a, shape_b, src_dtype, trans_a, trans_b,
@@ -759,21 +759,21 @@ def mat_mul(input_x1,
         _shape_check_quantification(shape_a, shape_b, trans_a, trans_b,
                                     input_x1.get("format"))
 
-    shape_a_temp = input_x1.get("shape") 
-    shape_b_temp = input_x2.get("shape") 
-    tensor_bias = None 
-    format_a = input_x1.get("format") 
-    format_b = input_x2.get("format") 
-    tensor_a = tvm.placeholder(shape_a_temp, name='tensor_a', 
-                               attrs={'format': format_a, 
-                                      'ori_shape': input_x1.get("ori_shape")}, 
-                               dtype=src_dtype) 
-    tensor_b = tvm.placeholder(shape_b_temp, name='tensor_b', 
-                               attrs={'format': format_b, 
-                                      'ori_shape': input_x2.get("ori_shape")}, 
-                               dtype=src_dtype) 
-    shape_bias_length = len(align_shape_bias) 
-    if shape_bias_length > 0: 
+    shape_a_temp = input_x1.get("shape")
+    shape_b_temp = input_x2.get("shape")
+    tensor_bias = None
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    tensor_a = tvm.placeholder(shape_a_temp, name='tensor_a',
+                               attrs={'format': format_a,
+                                      'ori_shape': input_x1.get("ori_shape")},
+                               dtype=src_dtype)
+    tensor_b = tvm.placeholder(shape_b_temp, name='tensor_b',
+                               attrs={'format': format_b,
+                                      'ori_shape': input_x2.get("ori_shape")},
+                               dtype=src_dtype)
+    shape_bias_length = len(align_shape_bias)
+    if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(align_shape_bias, name='tensor_bias',
                                       dtype=bias_dtype, attrs={'ori_shape': ori_shape_bias})
@@ -784,19 +784,19 @@ def mat_mul(input_x1,
         error_manager_vector.raise_err_specific_reson(
             "mat_mul", "offset_w must be None!")
 
-    result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w, 
+    result = mat_mul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
                                   output_y,
                                   trans_a, trans_b, offset_x, kernel_name, impl_mode)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(result)
 
-    tensor_list = [tensor_a, tensor_b, result] 
+    tensor_list = [tensor_a, tensor_b, result]
     if shape_bias_length > 0:
         tensor_list = [tensor_a, tensor_b, tensor_bias, result]
 
     config = {"print_ir": False,
               "name": kernel_name,
-              "tensor_list": tensor_list} 
+              "tensor_list": tensor_list}
 
     tbe.build(schedule, config)

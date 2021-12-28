@@ -66,6 +66,7 @@ class GemmScheduleV2:
         self.dynamic_para = dynamic_para
         self.trans_a = False
         self.trans_b = False
+        self.fuse_num = 0
 
     @staticmethod
     def get_al1_bound(tiling, tensor_map):
@@ -98,7 +99,7 @@ class GemmScheduleV2:
         n_factors = util.int_ceil_div(bl1_parts, tiling["block_dim"][1])
         n_bound = n_factors * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][3]
         return k_bound * n_bound
-    
+
     def _init_tiling_input(self, tensor_map):
         """
         init the input of tiling
@@ -121,7 +122,6 @@ class GemmScheduleV2:
         # b_shape dim: K1*k0, n1, 1, 1, n0
         b_shape = [l0b_shape[-4] * l0b_shape[-1], l0b_shape[-3], 1, 1, l0b_shape[-2]]
 
-        
         trans_flag = 1
         if self.trans_a:
             trans_flag += 1
@@ -130,13 +130,14 @@ class GemmScheduleV2:
 
         return a_shape, b_shape, trans_flag
 
-    def _get_tiling_matmul(self, kernel_name, tensor_map):
+    def _get_tiling_matmul(self, tensor_map):
         """
         get tiling of matmul
         """
+        kernel_name = tensor_map.get("c_l0c").op.attrs["kernel_name"]
         a_shape, b_shape, trans_flag = self._init_tiling_input(tensor_map)
         fixpipe_flag = util.get_fixpipe_flag(tensor_map)
-        fuse_num = util.get_fused_num(tensor_map)
+        self.fuse_num = util.get_fused_num(tensor_map)
         info_dict = {
                 "op_type": "matmul",
                 "A_shape": a_shape,
@@ -158,11 +159,11 @@ class GemmScheduleV2:
                 "dilationW": 1,
                 "group": 1,
                 "bias_flag": tensor_map.get("bias_bt") is not None,
-                "fused_double_operand_num": fuse_num,
+                "fused_double_operand_num": self.fuse_num,
                 "kernel_name": kernel_name.value
             }
         tiling = get_tiling(info_dict)
-        return tiling, fuse_num
+        return tiling
 
     def _mem_process(self, tiling, tensor_map):
         al1_bound = self.get_al1_bound(tiling, tensor_map)
@@ -199,71 +200,62 @@ class GemmScheduleV2:
         sch_list: list of schedule
         """
         sch = self.sch
-        res = self.res
         tensor_map = {}
 
         # get all tensor of the compute
-        all_tensor, leaf_tensor = util.get_all_tensors(res)
+        all_tensor, leaf_tensor = util.get_all_tensors(self.res)
 
         # set scope for simple a*b=c
         tensor_map = util.set_matmul_scope(all_tensor, sch, tensor_map)
         # if modify output fusion, please modify this function
         tensor_map = util.set_out_scope(all_tensor, leaf_tensor, sch, tensor_map)
-
-        # get ND and UB flag
-        is_nd = (len(res.shape) in (2, 3))
-        handle_ub = tensor_map.get("ub_eltwise")
         print_ir_matmul("after set scope", sch)
         if in_dynamic():
             tiling = self.dynamic_para["tiling_strategy"]
         else:
-            kernel_name = tensor_map["c_l0c"].op.attrs["kernel_name"]
-            tiling, fuse_num = self._get_tiling_matmul(kernel_name, tensor_map)
-            tiling = util.check_tiling(tiling, fuse_num, tensor_map, handle_ub)
-
-        # get tensor
-        a_l0a, b_l0b, c_l0c, c_gm = (
-            tensor_map["a_l0a"],
-            tensor_map["b_l0b"],
-            tensor_map["c_l0c"],
-            tensor_map["c_gm"]
-        )
+            tiling = self._get_tiling_matmul(tensor_map)
+            tiling = util.check_tiling(tiling, tensor_map)
 
         # get factor and parts from tiling
-        l0c_factor_nz, ub_parts_nz, al1_parts, bl1_parts = util.get_aicore_factor(tiling, tensor_map)
-        l0c_factor_nd = [tiling["CL0_matrix"][0]*tiling["CL0_matrix"][3],
-                         tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
-        l0c_factor = l0c_factor_nd if is_nd else l0c_factor_nz
+        l0c_factor, ub_factor_parts, al1_parts, bl1_parts = util.get_aicore_factor(tiling, tensor_map)
+        if len(self.res.shape) in (util.MATMUL_LEN_ND, util.BATCH_MATMUL_LEN_ND):
+            l0c_factor = [
+                tiling["CL0_matrix"][0]*tiling["CL0_matrix"][3],
+                tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]
+            ]
         # split l0c, al1, bl1
-        l1_m_axis, l1_n_axis = util.split_mn_l0c_l1(c_gm, sch, l0c_factor, al1_parts, bl1_parts, is_nd)
+        l1_m_axis, l1_n_axis = util.split_mn_l0c_l1(self.res, sch, l0c_factor, al1_parts, bl1_parts)
         # split upon block
-        batch_inner = util.split_mn_block(c_gm, sch, tiling, l1_m_axis, l1_n_axis)
+        batch_inner = util.split_mn_block(self.res, sch, tiling, l1_m_axis, l1_n_axis)
         # reorder m and n of l1 upon minimun memory
-        if util.reorder_l1_mn_axis(sch, tiling, al1_parts[1], bl1_parts[1]):
-            sch[c_gm].reorder(l1_m_axis[0], l1_n_axis[0])
+        if util.reorder_l1_mn_axis(tiling, al1_parts[1], bl1_parts[1]):
+            sch[self.res].reorder(l1_m_axis[0], l1_n_axis[0])
         # split when need hanble ub
-        ub_factor = [tiling["CUB_matrix"][0]*tiling["CUB_matrix"][3],
-                     tiling["CUB_matrix"][1]*tiling["CUB_matrix"][2]]
-        ub_factor_parts = ub_factor if is_nd else ub_parts_nz
-        c_gm_emit_axis, fixpipe_axis = util.split_ub(c_gm, sch, l1_m_axis, l1_n_axis,
-                                                     ub_factor_parts, is_nd, handle_ub)
+        if len(self.res.shape) in (util.MATMUL_LEN_ND, util.BATCH_MATMUL_LEN_ND):
+            ub_factor_parts = [
+                tiling["CUB_matrix"][0]*tiling["CUB_matrix"][3],
+                tiling["CUB_matrix"][1]*tiling["CUB_matrix"][2]
+            ]
+        if tensor_map.get("ub_eltwise") is None:
+            ub_factor_parts = None
+        c_gm_emit_axis, fixpipe_axis = util.split_ub(self.res, sch, l1_m_axis, l1_n_axis, ub_factor_parts)
         # attach tensor of l0c and bias, c_slice_axis is l1_m_axis[1]
-        sch[c_l0c].compute_at(sch[c_gm], l1_m_axis[1])
-        util.do_buffer_align(sch, a_l0a, b_l0b, c_l0c, self.trans_a, self.trans_b)
+        sch[tensor_map.get("c_l0c")].compute_at(sch[self.res], l1_m_axis[1])
+        util.do_buffer_align(sch, tensor_map, self.trans_a, self.trans_b)
         util.attach_of_ub(sch, tensor_map, fixpipe_axis)
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
         util.attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, batch_inner)
-        k_axis = util.split_k(c_l0c, sch, tiling["AL0_matrix"][1], al1_parts[0], bl1_parts[0])
+        k_axis = util.split_k(tensor_map.get("c_l0c"), sch, tiling["AL0_matrix"][1], al1_parts[0], bl1_parts[0])
         # attach of l0a and l0b tensor
-        sch[a_l0a].compute_at(sch[c_l0c], k_axis[2])
-        sch[b_l0b].compute_at(sch[c_l0c], k_axis[2])
+        sch[tensor_map.get("a_l0a")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
+        sch[tensor_map.get("b_l0b")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
         # attch of l1 tensor, l1_attch_axis = l1a_k_axis, l1b_k_axis, l1a_m_axis, l1b_n_axis
         l1_attch_axis = [k_axis[0], k_axis[1], l1_m_axis[0], l1_n_axis[0]]
         util.attach_of_l1(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts)
         # double buffer function
         util.double_buffer_func(sch, tensor_map, tiling)
         # emit_insn function, emit_axis is for l0c and res emit_insn
-        util.emit_insn_func(sch, tensor_map, tiling, k_axis, c_gm_emit_axis, is_nd)
+        util.emit_insn_func(sch, tensor_map, k_axis, c_gm_emit_axis)
         print_ir_matmul("final IR", sch)
 
         # dynamic tensor
