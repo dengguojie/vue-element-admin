@@ -20,6 +20,7 @@ dilation compute
 import warnings
 from tbe.dsl.compute.dilation_compute import dilation_compute as dilation_compute_tbe
 
+
 def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     """
     dilation_compute
