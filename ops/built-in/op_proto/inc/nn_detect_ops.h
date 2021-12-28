@@ -1179,6 +1179,8 @@ REG_OP(SPP)
 * the index of the input feature map, "x1", "y1", "x2", or "y2" must be
 * greater than or equal to "0.0".
 * roi_max_num must be less than or equal to 6000 and must be divided by 16.
+* The input data of the rois cannot exceed the width and height range of the x,
+* otherwise, the accuracy of the output result may not be as expected.
 *@li roi_actual_num: A  optional tensor of type int32, with shape [batch, 8], specifying
 * the number of ROIs per batch . \n
 
