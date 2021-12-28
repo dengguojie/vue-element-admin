@@ -15,16 +15,17 @@
  */
 
 /*
- LSTMP   ->    DATA_WX  DATA_WR
+ LSTMP   ->   DATA_WX   DATA_WR
                   \       /
                    \     /
-                    \   /
-                    Concat    DATA_PROJECT
+                   Concat    DATA_PROJECT
+                      |           |
                       |           |
                    Transpose    Transpose
                        \          /
                         \        /
-                        DynamicRNNV3
+                      DynamicRNNV3
+                            |
                             |
                           Slice  
 */
@@ -110,23 +111,25 @@ Status LSTMPFusionPass::CreateConstNode(ge::ComputeGraph&graph, ge::OpDescPtr& f
   FUSION_PASS_CHECK(const_desc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
                     return FAILED);
-  
-  int len = fused_desc->GetInputDesc("x").GetShape().GetDims().at(1);
+
+  int s_val = fused_desc->GetInputDesc("wr").GetShape().GetDims().at(1);
+  int b_val = fused_desc->GetInputDesc("x").GetShape().GetDims().at(0);
+
   DataType dataType = fused_desc->GetInputDesc("x").GetDataType();
-  std::vector<int64_t>dims = {len};
+  std::vector<int64_t>dims = {s_val, b_val, 16};
   ge::GeShape shape(dims);
   ge::GeTensorDesc desc(shape, ge::FORMAT_ND, dataType);
   ge::GeTensorPtr tensor_ptr = nullptr;
   if (dataType == ge::DT_FLOAT16) {
-    std::vector<uint16_t> val(len, 1);
+    std::vector<uint16_t> val(s_val * b_val * 16, 1);
     FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()), len * sizeof(uint16_t))),
+                               desc, reinterpret_cast<uint8_t*>(val.data()), s_val * b_val * 16 * sizeof(uint16_t))),
                             tensor_ptr = nullptr;
                             return PARAM_INVALID);
   } else if (dataType == ge::DT_FLOAT) {
-    std::vector<float> val(len, 1);
+    std::vector<float> val(s_val * b_val * 16, 1);
     FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()), len * sizeof(float))),
+                               desc, reinterpret_cast<uint8_t*>(val.data()), s_val * b_val * 16 * sizeof(float))),
                             tensor_ptr = nullptr;
                             return PARAM_INVALID);
   } else {
@@ -196,31 +199,41 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, ge::OpDescP
 
   auto x_desc = fused_desc->GetInputDesc("x").Clone();
   auto dims_x = x_desc.GetShape().GetDims();
-  std::vector<int64_t> dims_x_trans = {dims_x[1], dims_x[0], dims_x[2]};
+
+  int batch_size = dims_x[0];
+  int num_step = dims_x[1];
+  int input_size = dims_x[2];
+
+  std::vector<int64_t> dims_x_trans = {num_step, batch_size, input_size};
   x_desc.SetShape(ge::GeShape(dims_x_trans));
   x_desc.SetOriginShape(ge::GeShape(dims_x_trans));
   dynamic_desc->AddInputDesc("x", x_desc);
 
   std::vector<ge::GeTensorPtr> wTensorPtrs;
-  Status retW = ProcessLSTMWxh(fused_node, wTensorPtrs);
+  Status retW = ProcessLSTMWxr(fused_node, wTensorPtrs);
   FUSION_PASS_CHECK(retW != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process w fail."), return FAILED);
   dynamic_desc->AddInputDesc("w", wTensorPtrs[0]->GetTensorDesc());
 
-  auto input_b_desc = fused_desc->GetInputDesc("bias");
-  dynamic_desc->AddInputDesc("bias", input_b_desc);
+  std::vector<ge::GeTensorPtr> bTensorPtrs;
+  Status retB = ProcessLSTMb(fused_node, bTensorPtrs);
+  FUSION_PASS_CHECK(retB != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process b fail."), return FAILED);
+  dynamic_desc->AddInputDesc("b", bTensorPtrs[0]->GetTensorDesc());
 
   auto input_wp = fused_desc->GetInputDesc("project").Clone();
   auto dims_wp = input_wp.GetShape().GetDims();
+
   FUSION_PASS_CHECK(dims_wp.size() != 2,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input wp dim_num should be 2, cur is[%d]", (int)dims_wp.size()),
                     return FAILED);
-  std::vector<int64_t> dims_project = {dims_wp[1], dims_wp[0]};
+  int state = dims_wp[0];
+  int hidden_size = dims_wp[1];
+  std::vector<int64_t> dims_project = {hidden_size, state};
   input_wp.SetShape(ge::GeShape(dims_project));
   input_wp.SetOriginShape(ge::GeShape(dims_project));
   dynamic_desc->AddInputDesc("project", input_wp);
 
   auto input_mask_desc = fused_desc->GetInputDesc("x").Clone();
-  std::vector<int64_t> dims = {x_desc.GetShape().GetDims().at(1)};
+  std::vector<int64_t> dims = {state, batch_size, 16};
   input_mask_desc.SetShape(ge::GeShape(dims));
   input_mask_desc.SetOriginShape(ge::GeShape(dims));
   dynamic_desc->AddInputDesc("real_mask", input_mask_desc);
@@ -236,14 +249,8 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, ge::OpDescP
   auto outputx_desc = x_desc.Clone();
   auto outputh_desc = outputx_desc.Clone();
   auto outputc_desc = outputx_desc.Clone();
-
-  int seq = dims_x_trans[0];
-  int batch = dims_x_trans[1];
-  auto dims_wr = fused_desc->GetInputDesc("wr").GetShape().GetDims();
-  int hidden = dims_wr[0] / 4;
-  int state = dims_wr[1];
-
-  std::vector<int64_t> dims_y = {seq, batch, state};
+ 
+  std::vector<int64_t> dims_y = {num_step, batch_size, state};
   outputx_desc.SetShape(ge::GeShape(dims_y));
   outputx_desc.SetOriginShape(ge::GeShape(dims_y));
   dynamic_desc->AddOutputDesc("y", outputx_desc);
@@ -252,7 +259,7 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, ge::OpDescP
   outputh_desc.SetOriginShape(ge::GeShape(dims_y));
   dynamic_desc->AddOutputDesc("output_h", outputh_desc);
 
-  std::vector<int64_t> dims_c = {seq, batch, hidden};
+  std::vector<int64_t> dims_c = {num_step, batch_size, hidden_size};
   outputc_desc.SetShape(ge::GeShape(dims_c));
   outputc_desc.SetOriginShape(ge::GeShape(dims_c));
   dynamic_desc->AddOutputDesc("output_c", outputc_desc);
@@ -273,6 +280,14 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, ge::OpDescP
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(wForward_node->GetOutDataAnchor(0), new_node->GetInDataAnchor(1)),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add forward dynamicRnn edge to fusion node w failed."),
   return FAILED);
+
+  //connect bias
+  ge::OpDescPtr bDescForward = ge::OpDescUtils::CreateConstOp(bTensorPtrs[0]);
+  ge::NodePtr bForward_node = graph.AddNode(bDescForward);
+  FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(bForward_node->GetOutDataAnchor(0), new_node->GetInDataAnchor(2)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias input edge to fusion node  failed."),
+        return FAILED);
 
   return SUCCESS;
 }
@@ -300,50 +315,50 @@ static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rT
   int32_t targetCol = wCol + rCol;
   int32_t weightSize = targetCol * wRow;
 
-  // the wx + wh matrix
-  unique_ptr<T[]> wxhMergeData(new (std::nothrow) T[weightSize]());
-  FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "wxhMergeData is NULL"), return FAILED);
+  // the wx + wr matrix
+  unique_ptr<T[]> wxrMergeData(new (std::nothrow) T[weightSize]());
+  FUSION_PASS_CHECK(wxrMergeData.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "wxrMergeData is NULL"), return FAILED);
   T *wxData = (T *)wTensorPtr->GetData().data();
-  T *whData = (T *)rTensorPtr->GetData().data();
+  T *wrData = (T *)rTensorPtr->GetData().data();
   FUSION_PASS_CHECK(wxData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "wxData is NULL"), return FAILED);
-  FUSION_PASS_CHECK(whData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "whData is NULL"), return FAILED);
+  FUSION_PASS_CHECK(wrData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "wrData is NULL"), return FAILED);
 
-  auto retMem = memset_s(wxhMergeData.get(), weightSize, 0, weightSize);
+  auto retMem = memset_s(wxrMergeData.get(), weightSize, 0, weightSize);
   FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "Failed to operate memset_s function!"), return FAILED);
   
   int32_t wx_start_size = start_size[0];
-  int32_t wh_start_size = start_size[1];
+  int32_t wr_start_size = start_size[1];
 
   // wx transpose, assign to merge data
-  T *dstWeight = wxhMergeData.get();
+  T *dstWeight = wxrMergeData.get();
   for (int32_t i = 0; i < wRow * wCol; ++i) {
     *(dstWeight + i / wCol + wRow * (i % wCol)) = *(wxData + i + wx_start_size);
   }
 
-  // wh transpose, assign to merge data
+  // wr transpose, assign to merge data
   for (int32_t i = 0; i < rRow * rCol; ++i) {
-    *(dstWeight + wRow * wCol + i / rCol + rRow * (i % rCol)) = *(whData + i + wh_start_size);
+    *(dstWeight + wRow * wCol + i / rCol + rRow * (i % rCol)) = *(wrData + i + wr_start_size);
   }
 
-  // swap 1, 3
   int32_t beginSize = wRow / 4;
   for (int32_t col = 0; col < targetCol; ++col) {
     for (int32_t row = 0; row < beginSize; ++row) {
-      T tmp = *(dstWeight + col * wRow + beginSize * 1 + row);
-      dstWeight[col * wRow + beginSize * 1 + row] = dstWeight[col * wRow + beginSize * 3 + row];
-      dstWeight[col * wRow + beginSize * 3 + row] = tmp;
+      T tmp = *(dstWeight + col * wRow + beginSize + row);
+      dstWeight[col * wRow + beginSize + row] = dstWeight[col * wRow + beginSize * 2 + row];
+      dstWeight[col * wRow + beginSize * 2 + row] = tmp;
     }
   }
+
   ge::GeTensorPtr dstTensorPtr = nullptr;
   FUSION_PASS_MAKE_SHARED((dstTensorPtr = std::make_shared<ge::GeTensor>(
-                               tensorDesc, reinterpret_cast<uint8_t *>(wxhMergeData.get()), weightSize * sizeof(T))),
+                               tensorDesc, reinterpret_cast<uint8_t *>(wxrMergeData.get()), weightSize * sizeof(T))),
                            return FAILED);
   tensorPtr.push_back(dstTensorPtr);
 
   return SUCCESS;
 }
 
-Status LSTMPFusionPass::ProcessLSTMWxh(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr) {
+Status LSTMPFusionPass::ProcessLSTMWxr(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "has enter process onnx lstm W");
   ge::InDataAnchorPtr inputWxAnchorPtr0 = fused_node->GetInDataAnchor(INPUT_INDEX["wx"]);
   ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
@@ -375,7 +390,6 @@ Status LSTMPFusionPass::ProcessLSTMWxh(ge::NodePtr fused_node, vector<ge::GeTens
 
   int32_t hiddenSize = rRow / 4;
 
-  // wxRow == whRow
   ge::GeTensorDesc weightTensorDesc;
   std::vector<int64_t> dimsIn = {wCol + rCol, wRow};
   SetTensorDescription(weightTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
@@ -390,6 +404,76 @@ Status LSTMPFusionPass::ProcessLSTMWxh(ge::NodePtr fused_node, vector<ge::GeTens
   } else if (dataType == ge::DT_FLOAT) {
     ret = SetWeightTensorData<float>(wTensorPtr, rTensorPtr, inputDims,
                                      weightTensorDesc, start_size, tensorPtr);
+  } else {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fused_node->GetName().c_str());
+    return FAILED;
+  }
+  
+  return ret;
+}
+
+template <class T>
+static Status SetBiasTensorData(ge::GeTensorPtr bTensorPtr, int32_t biasLen,
+                                ge::GeTensorDesc tensorDesc, vector<ge::GeTensorPtr> &tensorPtr) {
+  // the wx + wr matrix
+  unique_ptr<T[]> bData(new (std::nothrow) T[biasLen]());
+  FUSION_PASS_CHECK(bData.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "bData is NULL"), return FAILED);
+  T *oriBData = (T *)bTensorPtr->GetData().data();
+  FUSION_PASS_CHECK(oriBData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "oriBData is NULL"), return FAILED);
+
+  auto retMem = memset_s(bData.get(), biasLen, 0, biasLen);
+  FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_NODE, "Failed to operate memset_s function!"), return FAILED);
+
+  T *dstWeight = bData.get();
+  for (int32_t i = 0; i < biasLen; ++i) {
+    *(dstWeight + i) = *(oriBData + i);
+  }
+  int32_t beginSize = biasLen / 4;
+
+  for (int32_t row = 0; row < beginSize; ++row) {
+    T tmp = *(dstWeight + beginSize + row);
+    dstWeight[beginSize + row] = dstWeight[beginSize * 2 + row];
+    dstWeight[beginSize * 2 + row] = tmp;
+  }
+
+  ge::GeTensorPtr dstTensorPtr = nullptr;
+  FUSION_PASS_MAKE_SHARED((dstTensorPtr = std::make_shared<ge::GeTensor>(
+                               tensorDesc, reinterpret_cast<uint8_t *>(bData.get()), biasLen * sizeof(T))),
+                           return FAILED);
+  tensorPtr.push_back(dstTensorPtr);
+
+  return SUCCESS;
+}
+
+Status LSTMPFusionPass::ProcessLSTMb(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr) {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "has enter process onnx lstm bias");
+  ge::InDataAnchorPtr inputBiasAnchorPtr0 = fused_node->GetInDataAnchor(INPUT_INDEX["bias"]);
+  ge::OutDataAnchorPtr constBiasAnchorPtr0 = inputBiasAnchorPtr0->GetPeerOutAnchor();
+  ge::NodePtr inputBNode = constBiasAnchorPtr0->GetOwnerNode();
+  vector<ge::GeTensorPtr> Bias = ge::OpDescUtils::MutableWeights(inputBNode);
+  FUSION_PASS_CHECK(Bias.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsW is null, fusion failed."),
+                    return FAILED);
+  ge::GeTensorPtr bTensorPtr = Bias[0];
+
+  ge::GeTensorDesc bConstTensorDesc = bTensorPtr->GetTensorDesc();
+
+  ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
+  DataType dataType = fusedDesc->GetInputDesc(0).GetDataType();
+  int32_t biasLen = bConstTensorDesc.GetShape().GetDim(0);
+ 
+  FUSION_PASS_CHECK(biasLen == 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias len can not 0"), return FAILED);
+
+  ge::GeTensorDesc biasTensorDesc;
+  std::vector<int64_t> dimsIn = {biasLen};
+  SetTensorDescription(biasTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
+
+  Status ret = SUCCESS;
+
+  std::vector<int32_t> start_size = {0, 0};
+  if (dataType == ge::DT_FLOAT16) {
+    ret = SetBiasTensorData<uint16_t>(bTensorPtr, biasLen, biasTensorDesc, tensorPtr);
+  } else if (dataType == ge::DT_FLOAT) {
+    ret = SetBiasTensorData<float>(bTensorPtr, biasLen, biasTensorDesc, tensorPtr);
   } else {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fused_node->GetName().c_str());
     return FAILED;
@@ -419,10 +503,7 @@ Status LSTMPFusionPass::AddEdgeForInput(ge::ComputeGraph& graph, ge::NodePtr& fu
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add trans_x edge to fusion node failed."),
         return FAILED);
 
-  FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(INPUT_INDEX["bias"])->GetPeerOutAnchor(), dynamicv3_node->GetInDataAnchor(2)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add bias input edge to fusion node  failed."),
-        return FAILED);
+
 
   ge::NodePtr trans_wp = nullptr;
   std::vector<int32_t> perm_p = {1, 0};

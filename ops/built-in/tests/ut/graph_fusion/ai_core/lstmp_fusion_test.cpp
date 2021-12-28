@@ -58,7 +58,7 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_1) {
     ge::TensorDesc tensorDescWX(shape_wx, FORMAT_HWCN, DT_FLOAT);
 
     Tensor wx_tensor;
-    float * wx_tensor_value = new float[64*16];
+    float *wx_tensor_value = new float[64*16];
     wx_tensor.SetTensorDesc(tensorDescWX);
     wx_tensor.SetData((uint8_t*)wx_tensor_value, 64*16*sizeof(float));
     wxData.set_attr_value(wx_tensor);
@@ -72,12 +72,17 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_1) {
 
     wrData.set_attr_value(wx_tensor);
     wrData.update_output_desc_y(tensorDescWR);
-    
-    auto bData = op::Data("bData");
+
+    auto bData = op::Const("bData");
     std::vector<int64_t> dims_b{64,};
     ge::Shape shape_b(dims_b);
     ge::TensorDesc tensorDescB(shape_b, FORMAT_ND, DT_FLOAT);
-    bData.update_input_desc_x(tensorDescB);
+
+    Tensor b_tensor;
+    float *b_tensor_value = new float[64];
+    b_tensor.SetTensorDesc(tensorDescB);
+    b_tensor.SetData((uint8_t*)b_tensor_value, 64*sizeof(float));
+    bData.set_attr_value(b_tensor);
     bData.update_output_desc_y(tensorDescB);
 
     auto wpData = op::Data("wpData");
@@ -130,11 +135,11 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_2) {
     ge::TensorDesc tensorDescWX(shape_wx, FORMAT_HWCN, DT_FLOAT);
 
     Tensor wx_tensor;
-    float * wx_tensor_value = new float[64*16];
+    float *wx_tensor_value = new float[64*16];
     wx_tensor.SetTensorDesc(tensorDescWX);
     wx_tensor.SetData((uint8_t*)wx_tensor_value, 64*16*sizeof(float));
-    wxData.set_attr_value(wx_tensor);
 
+    wxData.set_attr_value(wx_tensor);
     wxData.update_output_desc_y(tensorDescWX);
 
     auto wrData = op::Const("wrData");
@@ -144,12 +149,17 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_2) {
 
     wrData.set_attr_value(wx_tensor);
     wrData.update_output_desc_y(tensorDescWR);
-    
-    auto bData = op::Data("bData");
+
+    auto bData = op::Const("bData");
     std::vector<int64_t> dims_b{64,};
     ge::Shape shape_b(dims_b);
     ge::TensorDesc tensorDescB(shape_b, FORMAT_ND, DT_FLOAT);
-    bData.update_input_desc_x(tensorDescB);
+
+    Tensor b_tensor;
+    float *b_tensor_value = new float[64];
+    b_tensor.SetTensorDesc(tensorDescB);
+    b_tensor.SetData((uint8_t*)b_tensor_value, 64*sizeof(float));
+    bData.set_attr_value(b_tensor);
     bData.update_output_desc_y(tensorDescB);
 
     auto wpData = op::Data("wpData");

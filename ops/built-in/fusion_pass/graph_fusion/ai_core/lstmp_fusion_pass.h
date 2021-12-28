@@ -29,7 +29,8 @@ class LSTMPFusionPass : public PatternFusionBasePass {
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
  private:
-  Status ProcessLSTMWxh(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMWxr(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMb(ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr);
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
   Status CreateConcatNode(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
