@@ -402,7 +402,7 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
 
   int64_t nnei = 0;
   if (op.GetAttr("sel_a", sel_a) == GRAPH_SUCCESS) {
-    nnei = std::accumulate(sel_a.begin(), sel_a.end(), 1, std::multiplies<int>());
+    nnei = std::accumulate(sel_a.begin(), sel_a.end(), 0);
   }
   int64_t splitCount = 0;
   int64_t splitIndex = 0;

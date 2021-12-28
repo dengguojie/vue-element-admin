@@ -631,6 +631,19 @@ class NonZero:
                                 value_align_tensor[8 - remain].set_as(self.data_value_out[b_idx, n_idx])
                                 remain.set_as(remain - 1)
 
+                    with self.tik_instance.if_scope(remain > 0):
+                        with self.tik_instance.for_range(0, self.core_loop) as b_idx:
+                            next_num_blk.set_as(self.shape_out[b_idx, 0])
+
+                            with self.tik_instance.if_scope(next_num_blk < remain):
+                                loop_size.set_as(next_num_blk)
+                            with self.tik_instance.else_scope():
+                                loop_size.set_as(remain)
+                            with self.tik_instance.for_range(0, loop_size) as n_idx:
+                                with self.tik_instance.if_scope(remain > 0):
+                                    row_align_tensor[8 - remain].set_as(self.data_out[b_idx, 1, n_idx])
+                                    remain.set_as(remain - 1)
+
                     out_gm_offset = self.offset_gm
                     self._data_move(self.res_gm[0, out_gm_offset], row_align_tensor, 1)
                     self._data_move(self.res_gm[1, out_gm_offset], col_align_tensor, 1)

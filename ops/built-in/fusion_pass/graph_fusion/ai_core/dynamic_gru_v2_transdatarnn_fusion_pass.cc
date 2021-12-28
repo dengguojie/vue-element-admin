@@ -38,7 +38,12 @@ using namespace ge;
 namespace fe {
 static const char *FUSED_NODE = "DynamicGRUV2";
 static const std::string PATTERN_FUSEDNODE = "DynamicGRUV2";
-
+static const int64_t biasHiddenIndex = 4;
+static const int64_t biasIndex = 3;
+static const int64_t weightIndex = 2;
+static const int64_t fzDim = 16;
+static const int64_t splitSize = 3;
+static const int64_t dimTwo = 2;
 vector<FusionPattern *> DynamicGRUV2TransFusionPass::DefinePatterns()
 {
   vector<FusionPattern *> patterns;
@@ -71,34 +76,33 @@ Status DynamicGRUV2TransFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &map
                             "fusedNode OpDesc is null, fusion failed."),
   return PARAM_INVALID);
 
-  int64_t input_x = fusedDesc->GetInputDesc(0).GetOriginShape().GetDim(2);
-  int64_t hidden_size = fusedDesc->GetInputDesc(2).GetOriginShape().GetDim(0);
-
-  if (input_x % 16 == 0 && hidden_size % 16 == 0) {
+  int64_t input_x = fusedDesc->GetInputDesc(0).GetOriginShape().GetDim(dimTwo);
+  int64_t hidden_size = fusedDesc->GetInputDesc(weightIndex).GetOriginShape().GetDim(0);
+  if (input_x % fzDim == 0 && hidden_size % fzDim == 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "dynamic_gru_v2 do not need transdatarnn.");
     return NOT_CHANGED;
   }
 
-  int64_t inputAlign = (input_x + 15) / 16;
-  int64_t hiddenAlign = (hidden_size + 15) / 16;
+  int64_t inputAlign = (input_x + fzDim - 1) / fzDim;
+  int64_t hiddenAlign = (hidden_size + fzDim - 1) / fzDim;
 
-  vector<int64_t> weightInputDim{inputAlign, 3 * hiddenAlign, 16, 16};
-  vector<int64_t> weightHiddenDim{hiddenAlign, 3 * hiddenAlign, 16, 16};
-  vector<int64_t> biasDim{3 * hiddenAlign * 16};
+  vector<int64_t> weightInputDim{inputAlign, splitSize * hiddenAlign, fzDim, fzDim};
+  vector<int64_t> weightHiddenDim{hiddenAlign, splitSize * hiddenAlign, fzDim, fzDim};
+  vector<int64_t> biasDim{splitSize * hiddenAlign * fzDim};
 
   ge::GeTensorDesc weightInputDesc = fusedDesc->GetInputDesc(1);
   weightInputDesc.SetShape(ge::GeShape(weightInputDim));
   weightInputDesc.SetFormat(ge::FORMAT_FRACTAL_ZN_RNN);
   fusedDesc->UpdateInputDesc("weight_input", weightInputDesc);
 
-  ge::GeTensorDesc weightHiddenDesc = fusedDesc->GetInputDesc(2);
+  ge::GeTensorDesc weightHiddenDesc = fusedDesc->GetInputDesc(weightIndex);
   weightHiddenDesc.SetShape(ge::GeShape(weightHiddenDim));
   weightHiddenDesc.SetFormat(ge::FORMAT_FRACTAL_ZN_RNN);
   fusedDesc->UpdateInputDesc("weight_hidden", weightHiddenDesc);
 
   bool hasInputBias = fusedDesc->MutableInputDesc("bias_input") != nullptr;
   if (hasInputBias) {
-    ge::GeTensorDesc biasInputDesc = fusedDesc->GetInputDesc(3);
+    ge::GeTensorDesc biasInputDesc = fusedDesc->GetInputDesc(biasIndex);
     biasInputDesc.SetShape(ge::GeShape(biasDim));
     biasInputDesc.SetFormat(ge::FORMAT_ND_RNN_BIAS);
     fusedDesc->UpdateInputDesc("bias_input", biasInputDesc);
@@ -106,7 +110,7 @@ Status DynamicGRUV2TransFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &map
 
   bool hasHiddenBias = fusedDesc->MutableInputDesc("bias_hidden") != nullptr;
   if (hasHiddenBias) {
-    ge::GeTensorDesc biasHiddenDesc = fusedDesc->GetInputDesc(4);
+    ge::GeTensorDesc biasHiddenDesc = fusedDesc->GetInputDesc(biasHiddenIndex);
     biasHiddenDesc.SetShape(ge::GeShape(biasDim));
     biasHiddenDesc.SetFormat(ge::FORMAT_ND_RNN_BIAS);
     fusedDesc->UpdateInputDesc("bias_hidden", biasHiddenDesc);
