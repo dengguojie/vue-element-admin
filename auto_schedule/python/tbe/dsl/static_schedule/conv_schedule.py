@@ -5411,7 +5411,7 @@ class CceConvOp:
         axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
         self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
         if not self._dynamic_flag:
-            set_overload_flag(self.overload_flag, self._schedule[res], noi)
+            set_overload_flag(self.overload_flag, self._schedule[res], bido)
 
         # ========= handle conv + Pooling fusion========
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:

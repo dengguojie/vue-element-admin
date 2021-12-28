@@ -51,6 +51,37 @@ def test_conv2d_fuzzbuild_generalization_01():
         }, (1, 1, 1, 1), (-1, -1, -1, -1), (1, 1, 1, 1), 1, 'NCHW', 0, 'conv2d_fuzz_build_generalization']
     conv2d_generalization(*input_list)
 
+
+def dsl_cpu_test_int8():
+    fmap = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_fomat":"NCHW"})
+    weight = tvm.placeholder((4, 2, 16, 32), name="weight", dtype="int8", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_fomat":"NCHW"})
+    bias_tensor = None
+    strides = [1, 1, 1, 1]
+    pads = [0, 0, 0, 0]
+    dilations = [1, 1, 1, 1]
+    conv_res = conv2d_compute(fmap, weight, bias_tensor, None, None, strides, pads, dilations, offset_x=0)
+    tensor_list = [fmap, weight, conv_res]
+    sch = tvm.create_schedule(conv_res.op)
+    fadd = tvm.build(sch, tensor_list, "c", "llvm", name="fadd")
+    ctx = tvm.cpu(0)
+
+
+def dsl_cpu_test_fp16():
+    fmap = tvm.placeholder((1, 2, 8, 8, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_fomat":"NCHW"})
+    weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_fomat":"NCHW"})
+    bias_tensor = None
+    strides = [1, 1, 1, 1]
+    pads = [0, 0, 0, 0]
+    dilations = [1, 1, 1, 1]
+    conv_res = conv2d_compute(fmap, weight, bias_tensor, None, None, strides, pads, dilations, offset_x=0)
+    tensor_list = [fmap, weight, conv_res]
+    sch = tvm.create_schedule(conv_res.op)
+    fadd = tvm.build(sch, tensor_list, "c", "llvm", name="fadd")
+    ctx = tvm.cpu(0)
+
 if __name__ == "__main__":
     test_conv2d_fuzzbuild_generalization()
     test_conv2d_fuzzbuild_generalization_01()
+    dsl_cpu_test_int8()
+    dsl_cpu_test_fp16()
+    exit(0)
