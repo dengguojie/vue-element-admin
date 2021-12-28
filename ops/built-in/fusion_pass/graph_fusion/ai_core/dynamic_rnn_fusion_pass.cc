@@ -28,7 +28,10 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "DynamicRNN";
 static const std::string PATTERN_FUSEDNODE = "DynamicRNN";
-
+static const int64_t concatNodeIndex = 2;
+static const int64_t concatNodeNums = 3;
+static const int64_t inputShapeDim = 2;
+static const int64_t numSplit = 2;
 vector<FusionPattern*> DynamicRNNFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -144,7 +147,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge:
   ge::AttrUtils::SetInt(splitDesc, "num_split", 2);
   vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
 
-  tensorDims[splitDim] = tensorDims[splitDim] / 2;
+  tensorDims[splitDim] = tensorDims[splitDim] / numSplit;
 
   ge::GeShape tensorShape(tensorDims);
   tensorDesc.SetShape(tensorShape);
@@ -162,7 +165,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateConcatDesc(ge::OpDescPtr concatDesc, g
   concatDesc->AddOutputDesc(tensorDesc);
   vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
 
-  tensorDims[concatDim] = tensorDims[concatDim] / 2;
+  tensorDims[concatDim] = tensorDims[concatDim] / numSplit;
 
   ge::GeShape tensorShape(tensorDims);
   tensorDesc.SetShape(tensorShape);
@@ -181,10 +184,10 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
                                                   bool has_seq, bool has_h0, bool has_c0) {
   // for inputs
   vector<int64_t> tensorXDims = dynamicRNNDesc->GetInputDesc(0).GetShape().GetDims();
-  int64_t inputSize = tensorXDims[2];
+  int64_t inputSize = tensorXDims[inputShapeDim];
   ge::AttrUtils::SetInt(RNNDesc, "input_size", inputSize);
   vector<int64_t> tensorOutputDims = dynamicRNNDesc->GetOutputDesc(0).GetShape().GetDims();
-  int64_t hiddenSize = tensorOutputDims[2];
+  int64_t hiddenSize = tensorOutputDims[inputShapeDim];
   ge::AttrUtils::SetInt(RNNDesc, "hidden_size", hiddenSize);
 
   // update x
@@ -194,7 +197,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   // update w
   ge::GeTensorDesc tensorWDesc = dynamicRNNDesc->GetInputDesc("w").Clone();
   vector<int64_t> tensorWDims = tensorWDesc.GetShape().GetDims();
-  tensorWDims[0] = tensorWDims[0] / 2;
+  tensorWDims[0] = tensorWDims[0] / numSplit;
   ge::GeShape tensorWShape(tensorWDims);
   tensorWDesc.SetShape(tensorWShape);
   tensorWDesc.SetOriginShape(tensorWShape);
@@ -203,7 +206,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   // update b
   ge::GeTensorDesc tensorBDesc = dynamicRNNDesc->GetInputDesc("b").Clone();
   vector<int64_t> tensorBDims = tensorBDesc.GetShape().GetDims();
-  tensorBDims[0] = tensorBDims[0] / 2;
+  tensorBDims[0] = tensorBDims[0] / numSplit;
   ge::GeShape tensorBShape(tensorBDims);
   tensorBDesc.SetShape(tensorBShape);
   tensorBDesc.SetOriginShape(tensorBShape);
@@ -219,7 +222,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   if (has_h0) {
     ge::GeTensorDesc tensorHDesc = dynamicRNNDesc->GetInputDesc("init_h").Clone();
     vector<int64_t> tensorHDims = tensorHDesc.GetShape().GetDims();
-    tensorHDims[0] = tensorHDims[0] / 2;
+    tensorHDims[0] = tensorHDims[0] / numSplit;
     ge::GeShape tensorHShape(tensorHDims);
     tensorHDesc.SetShape(tensorHShape);
     tensorHDesc.SetOriginShape(tensorHShape);
@@ -230,7 +233,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   if (has_c0) {
     ge::GeTensorDesc tensorCDesc = dynamicRNNDesc->GetInputDesc("init_c").Clone();
     vector<int64_t> tensorCDims = tensorCDesc.GetShape().GetDims();
-    tensorCDims[0] = tensorCDims[0] / 2;
+    tensorCDims[0] = tensorCDims[0] / numSplit;
     ge::GeShape tensorCShape(tensorCDims);
     tensorCDesc.SetShape(tensorCShape);
     tensorCDesc.SetOriginShape(tensorCShape);
@@ -243,7 +246,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
 
   ge::GeTensorDesc tensorYDesc = dynamicRNNDesc->GetOutputDesc("y").Clone();
   vector<int64_t> tensorYDims = tensorYDesc.GetShape().GetDims();
-  tensorYDims[2] = tensorYDims[2] / 2;
+  tensorYDims[inputShapeDim] = tensorYDims[inputShapeDim] / numSplit;
   ge::GeShape tensorYShape(tensorYDims);
   tensorYDesc.SetShape(tensorYShape);
   tensorYDesc.SetOriginShape(tensorYShape);
@@ -339,12 +342,12 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   auto biasTensorDesc = dynamicRNNDesc->MutableInputDesc("b");
   biasTensorDesc->SetFormat(ge::FORMAT_ND);
   biasTensorDesc->SetOriginFormat(ge::FORMAT_ND);
-  
+
   vector<int64_t> tensorXDims = dynamicRNNDesc->GetInputDesc(0).GetShape().GetDims();
-  int64_t inputSize = tensorXDims[2];
+  int64_t inputSize = tensorXDims[inputShapeDim];
   ge::AttrUtils::SetInt(dynamicRNNDesc, "input_size", inputSize);
   vector<int64_t> tensorYDims = dynamicRNNDesc->GetOutputDesc(0).GetShape().GetDims();
-  int64_t hiddenSize = tensorYDims[2];
+  int64_t hiddenSize = tensorYDims[inputShapeDim];
   ge::AttrUtils::SetInt(dynamicRNNDesc, "hidden_size", hiddenSize);
 
   // check attr_direction
@@ -449,8 +452,8 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNDesc->GetName() + "/concat_" + concatNodes[index], "ConcatD")),
                             return INTERNAL_ERROR);
-    if (index < 3) {
-      concatDesc = CreateConcatDesc(concatDesc, dynamicRNNDesc, concatNodes[index], 2);
+    if (index < concatNodeNums) {
+      concatDesc = CreateConcatDesc(concatDesc, dynamicRNNDesc, concatNodes[index], concatNodeIndex);
     } else {
       concatDesc = CreateConcatDesc(concatDesc, dynamicRNNDesc, concatNodes[index], 0);
     }

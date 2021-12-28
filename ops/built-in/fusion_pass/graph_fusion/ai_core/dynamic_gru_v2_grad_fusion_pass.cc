@@ -153,8 +153,6 @@ void DynamicGRUV2GradFusionPass::AddHiddenGradNodeEdge(map<std::string, ge::Node
       inAnchorPtr->UnlinkAll();
       ge::GraphUtils::AddEdge(hiddenGradNode->GetOutDataAnchor(HIDDENGRAD_OUTPUT_INDEX["dh_prev"]), inAnchorPtr);
     }
-    // fake connect the last cell
-
   }
 
   ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["dy"])->GetPeerOutAnchor(),

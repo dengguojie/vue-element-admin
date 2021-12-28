@@ -17,7 +17,7 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  void GetNodeInfo(ge::NodePtr node);
+  void GetNodeInfo(ge::NodePtr dynamicGRUGradNode);
   void AddInputNodeDesc(ge::OpDescPtr opDesc, const std::string& name, const vector<int64_t>& dims,
                         const ge::Format& format, const vector<int64_t>& originDims, const ge::Format& originFormat,
                         const ge::DataType& dtype);

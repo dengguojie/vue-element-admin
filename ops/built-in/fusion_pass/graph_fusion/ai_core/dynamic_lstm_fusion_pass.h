@@ -47,7 +47,7 @@ private:
     Status ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodePtr &innerproductNode, ge::ComputeGraph &graph, 
         vector<ge::NodePtr> &newNodes, const InputIndexInfo &inputIndexInfo);
     ge::GeTensorPtr ProcessLSTMWxh(ge::NodePtr fusedNode, bool &failStatus, const InputIndexInfo &inputIndexInfo);
-    Status AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, const ge::OpDescPtr &formerOpdesc,
+    Status AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, const ge::OpDescPtr &formerOpDesc,
         const ge::GeTensorDesc &wxhTensorDesc, const InputIndexInfo &inputIndexInfo, bool expose_hidden, ge::GeTensorDesc &staticTensorDesc,
         int32_t outputSize);
     const string FUSED_OP_TYPE = "DynamicLSTMV2";
