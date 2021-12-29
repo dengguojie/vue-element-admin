@@ -18,6 +18,8 @@
 
 #include "acl/acl.h"
 
+extern aclrtStream g_stream;
+
 #define SUCCESS 0
 #define FAILED 1
 

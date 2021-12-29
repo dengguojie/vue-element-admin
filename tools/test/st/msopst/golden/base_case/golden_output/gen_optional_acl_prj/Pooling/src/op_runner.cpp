@@ -19,6 +19,7 @@ using namespace std;
 bool g_isDevice = false;
 const size_t DEFAULT_WHITE_COUNT = 10;
 const size_t DEFAULT_PRECISION_COUNT = 4;
+aclrtStream g_stream = nullptr;
 
 OpRunner::OpRunner(OpTestDesc *opDesc) : opDesc_(opDesc)
 {
@@ -331,10 +332,11 @@ bool OpRunner::RunOp()
         INFO_LOG("Copy input[%zu] success.", i);
     }
 
-    aclrtStream stream = nullptr;
-    IF_NOT_SUCCESS_RETURN_FALSE(aclrtCreateStream(&stream),
-        "Failed to create stream.", GetRecentErrMsg());
-    INFO_LOG("Create stream success.");
+    if (g_stream == nullptr) {
+        IF_NOT_SUCCESS_RETURN_FALSE(aclrtCreateStream(&g_stream),
+            "Failed to create stream.", GetRecentErrMsg());
+        INFO_LOG("Create stream success.");
+    }
 
     auto ret = aclopExecuteV2(opDesc_->opType.c_str(),
                               numInputs_,
@@ -344,7 +346,7 @@ bool OpRunner::RunOp()
                               opDesc_->outputDesc.data(),
                               outputBuffers_.data(),
                               opDesc_->opAttr,
-                              stream);
+                              g_stream);
     if (ret == ACL_ERROR_OP_TYPE_NOT_MATCH || ret == ACL_ERROR_OP_INPUT_NOT_MATCH ||
         ret == ACL_ERROR_OP_OUTPUT_NOT_MATCH || ret == ACL_ERROR_OP_ATTR_NOT_MATCH) {
         ERROR_LOG("[%s] op with the given description is not compiled. Please run atc first", opDesc_->opType.c_str());
@@ -356,7 +358,7 @@ bool OpRunner::RunOp()
     }
     INFO_LOG("Execute %s success.", opDesc_->opType.c_str());
 
-    IF_NOT_SUCCESS_RETURN_FALSE(aclrtSynchronizeStream(stream),
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtSynchronizeStream(g_stream),
         "Failed to synchronize stream.", GetRecentErrMsg());
     INFO_LOG("Synchronize stream success.");
 
@@ -372,8 +374,6 @@ bool OpRunner::RunOp()
         INFO_LOG("Copy output[%zu] success.", i);
     }
 
-    IF_NOT_SUCCESS_RETURN_FALSE(aclrtDestroyStream(stream),
-        "Failed to Destroy Stream.", GetRecentErrMsg());
     return true;
 }
 

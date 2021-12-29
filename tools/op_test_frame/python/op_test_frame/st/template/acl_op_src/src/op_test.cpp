@@ -105,7 +105,6 @@ int UnitTest::Run()
 
     std::cout << "[PASSED] " << (runCount_ - failedCount_) << " tests."<<std::endl;
     std::cout << "[FAILED] " << failedCount_ << " tests." << std::endl;
-    (void)aclFinalize();
     return 0;
 }
 

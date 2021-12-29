@@ -8,8 +8,17 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 #include "op_test.h"
+#include "acl/acl.h"
+#include "common.h"
 
 int main(int argc, char *argv[])
 {
-    return OpTest::UnitTest::GetInstance().Run();
+    int ret =  OpTest::UnitTest::GetInstance().Run();
+    if (aclrtDestroyStream(g_stream) != ACL_SUCCESS) {
+        ERROR_LOG("aclrtDestroyStream failed.");
+    }
+    if (aclFinalize() != ACL_SUCCESS) {
+        ERROR_LOG("aclFinalize failed.");
+    }
+    return ret;
 }
