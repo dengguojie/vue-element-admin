@@ -19,13 +19,13 @@ conv2d backprop input general compute.
 """
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
 from tbe.tvm.intrin import abs as tvm_abs
 
 
-class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
+class DeConvPattern(cube_util.CubeDslPattern):
     """
     class of convolution back propagation
 
@@ -55,7 +55,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
     fusion_para_map = None
     dedy = None
 
-    def __init__(  # pylint: disable=R0913
+    def __init__(
         self,
         kernel_sizes,
         strides,
@@ -98,7 +98,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self.load3d_special_multiply = 1
         self.impl_mode = impl_mode
 
-    def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
+    def generate_a(self, dy_ddr):
         """
         generate dy_col tensor for mad
 
@@ -335,10 +335,10 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             dy_filling_l1 = tvm.compute(
                 dy_l1_shape_6d_cut,
                 lambda g_idx, batch_idx, cout1_g_idx, ho_idx, wo_idx, cout0_idx:
-                    dy_filling[batch_idx, 
+                    dy_filling[batch_idx,
                                cout1_g_idx + g_idx * self._cou1_g,
                                ho_idx - shape_up_modify,
-                               wo_idx - shape_left_modify, 
+                               wo_idx - shape_left_modify,
                                cout0_idx],
                 name="dy_l1_6d_cut",
                 tag="dy_l1_6d_cut",
@@ -450,13 +450,13 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 _kernel_elem_func(indices, kernels), name="w_col", tag="inverse_trans_dma"
             )
         else:
-            w_k1, kernel_cout1, kernel_cout0, w_k0 = cube_util.shape_to_list(kernels.shape)
+            w_k1, _, kernel_cout0, w_k0 = cube_util.shape_to_list(kernels.shape)
             kernel_h, kernel_w = self._kernel_h, self._kernel_w
             if w_k1 % (kernel_h * kernel_w) != 0:
-                dict_args = dict()
-                dict_args["errCode"] = "E60108"
-                dict_args["reason"] = "w_k1 could not be divided by kernel_h*kernel_w"
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                error_manager_cube.raise_err_specific(
+                    "Conv2dBackpropInputD",
+                    "w_k1 could not be divided by kernel_h*kernel_w"
+                    )
 
             shape_w_l0b = (self._real_g,
                            self._cou1_g*kernel_h*kernel_w,
@@ -471,6 +471,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                     kernel_cout0,
                     w_k0
                 )
+
             def __kernel_2_l0_compute(indices, kernels):
                 if kernels.dtype == "float32":
                     _, block_k0, block_n0 = tbe_platform.CUBE_MKN[kernels.dtype]["mac"]
@@ -503,8 +504,9 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
 
         return w_col
 
-    def generate_c(  # pylint: disable=R0914,R0913
-        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0
+    def generate_c(
+        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode="",
+        bias_table_flag=False
     ):
         """
         generate dx_ddr
@@ -527,10 +529,10 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         """
 
         def _add_bias_in_ub(in_tensor0, in_tensor1):
+            block_dim = tbe_platform.CUBE_MKN.get(in_tensor0.dtype).get("mac")[2]
             c_add_vector = tvm.compute(
                 in_tensor0.shape,
-                lambda *indice: in_tensor0(*indice) + in_tensor1(indice[1] * tbe_platform.CUBE_MKN[
-                    in_tensor0.dtype]["mac"][2] + indice[3]),
+                lambda *indice: in_tensor0(*indice) + in_tensor1(indice[1] * block_dim + indice[3]),
                 name="bias_add_vector")
             return c_add_vector
 

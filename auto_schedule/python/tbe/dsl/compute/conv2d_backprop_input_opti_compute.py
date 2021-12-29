@@ -19,6 +19,7 @@ conv2d_backprop_input_opti_compute
 """
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.util import int_ceil_div
@@ -29,7 +30,7 @@ from tbe.tvm import api as tvm
 BRC_STANDARD_BLOCK_SIZE = 16
 
 
-class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R0902
+class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
     """
     class of convolution back propagation for kernelsize1 pattern
 
@@ -61,7 +62,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
     fusion_para = {}
     dedy = None
 
-    def __init__(  # pylint:disable=R0913,W0613
+    def __init__(
         self,
         kernel_size,
         strides,
@@ -80,19 +81,19 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         _, _, kernel_h, kernel_w = kernel_size
         stride_h, stride_w = strides
         if not (kernel_h == 1 and kernel_w == 1):
-            dict_args = dict()
-            dict_args["errCode"] = "E60000"
-            dict_args["param_name"] = "kernel_h] and [kernel_w"
-            dict_args["expected_value"] = "1] and [1"
-            dict_args["input_value"] = "%d] and [%d" % (kernel_h, kernel_w)
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_input_params_not_expected(
+                "Conv2DBackpropInputD",
+                "kernel_h] and [kernel_w",
+                "1] and [1",
+                 "%d] and [%d" % (kernel_h, kernel_w)
+            )
 
         if not (kernel_h <= stride_h and kernel_w <= stride_w):
-            dict_args = dict()
-            dict_args["errCode"] = "E60108"
-            dict_args["reason"] = "not match stride HW[{}, {}],kernel HW[{}, {}]".format(stride_h,
-                                    stride_w, kernel_h, kernel_w)
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_specific(
+                "Conv2DBackpropInputD",
+                "not match stride HW[{}, {}],kernel HW[{}, {}]".format(
+                    stride_h, stride_w, kernel_h, kernel_w)
+            )
 
         self._m0 = tbe_platform.CUBE_MKN["float16"]["mac"][0]
         self._output_shape = output_shape
@@ -119,7 +120,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         self.pooling_mode = pooling_mode
         self.impl_mode = impl_mode
 
-    def _get_dilate_tensor(  # pylint:disable=R0913,R0914
+    def _get_dilate_tensor(
         self,
         raw_tensor,
         out_shape_h,
@@ -195,7 +196,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
             dilate_tensor_res = dilate_tensor
         return dilate_tensor_res
 
-    def generate_a(self, dedy):  # pylint:disable=R0914
+    def generate_a(self, dedy):
         """
         generate dedy_col_fractal tensor for mad
 
@@ -258,7 +259,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 name=dedy.name + "_col"
             )
 
-            def __im2col_fractal_indices(indices,  # pylint: disable=R0914
+            def __im2col_fractal_indices(indices,
                                          dedy_tensor_l1):
                 """
                 calculate im2col_fractal tvm lambda function
@@ -276,7 +277,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                                       l1_hw_index,
                                       l0_co0_index))
 
-            def __im2col_fractal_indices_dynamic(indices,  # pylint: disable=R0914
+            def __im2col_fractal_indices_dynamic(indices,
                                                  dedy_tensor_l1):
                 """
                 calculate im2col_fractal tvm lambda function
@@ -330,7 +331,8 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         """
 
         if kernels.dtype == "int8":
-            _, _, ci0_dim, k0_dim = list(i.value for i in kernels.shape)
+            _, _, ci0_dim, k0_dim = [i.value for i in kernels.shape]
+
             def _bl1_elem_func(*index):
                 return kernels(*index)
 
@@ -354,7 +356,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 attrs={"kernel_hw": (self._kernel_h, self._kernel_w)}
             )
         elif kernels.dtype == "float32":
-            k1_dim, co1_dim, co0_dim, k0_dim = list(i.value for i in kernels.shape)
+            k1_dim, co1_dim, co0_dim, k0_dim = [i.value for i in kernels.shape]
             shape = (k1_dim, co1_dim, co0_dim, k0_dim)
 
             def _bl1_elem_func(*index):
@@ -381,7 +383,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 name=kernels.name + "_B_l0b"
             )
         else:
-            k1_dim, co1_dim, co0_dim, k0_dim = list(i.value for i in kernels.shape)
+            k1_dim, co1_dim, co0_dim, k0_dim = [i.value for i in kernels.shape]
             shape = (k1_dim, co1_dim, co0_dim, k0_dim)
 
             def _bl1_elem_func(*index):
@@ -415,8 +417,9 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         return b_l0
 
     def generate_c(
-        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0
-    ):  # pylint:disable=R0914,R0913
+        self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode="",
+        bias_table_flag=False
+    ):
         """
         generate img_c
 
@@ -445,9 +448,9 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 name="bias_add_vector")
             return c_add_vector
 
-        def _inner_generate_mmad_bt(matrix_a, matrix_b, bias):  # pylint:disable=R0914
+        def _inner_generate_mmad_bt(matrix_a, matrix_b, bias):
             g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
-            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = list(i.value for i in matrix_b.shape)
+            g_extend_dim, _, co1_dim, co0_dim, _ = [i.value for i in matrix_b.shape]
             shape_c = (g_extend_dim, n_dim, co1_dim, hw_dim * m0_dim, co0_dim)
             k0_axis = tvm.reduce_axis([0, k0_dim], name="k0")
             k1_axis = tvm.reduce_axis([0, k1_dim], name="k1")
@@ -476,14 +479,14 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
             )
             return mmad
 
-        def _inner_generate_mmad(matrix_a, matrix_b):  # pylint:disable=R0914
+        def _inner_generate_mmad(matrix_a, matrix_b):
             g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
-            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = list(i.value for i in matrix_b.shape)
+            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = [i.value for i in matrix_b.shape]
             if bk1_dim != k1_dim or bk0_dim != k0_dim:
-                dict_args = dict()
-                dict_args["errCode"] = "E60108"
-                dict_args["reason"] = "invaild shape bk1_dim"
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                error_manager_cube.raise_err_specific(
+                    "Conv2DBackpropInputD",
+                    "invaild shape bk1_dim"
+                )
 
             shape_c = (g_extend_dim, n_dim, co1_dim, hw_dim * m0_dim, co0_dim)
             k0_axis = tvm.reduce_axis([0, k0_dim], name="k0")
@@ -565,10 +568,10 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
             not (batch_dx_img == batch_l0c and
                 c0_dx_img == co0_l0c and
                 c1_dx_img <= group_l0c * co1_l0c)):
-            dict_args = dict()
-            dict_args["errCode"] = "E60108"
-            dict_args["reason"] = "ouput shape illegal"
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_specific(
+                "Conv2DBackpropInputD",
+                "ouput shape illegal"
+            )
         ub_dx_shape = [batch_dx_img, c1_dx_img, m_l0c, c0_dx_img]
         res_c_dtype = self.output_dtype
         if tensor_a.dtype == "int8" and tensor_b.dtype == "int8":
@@ -601,7 +604,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 img_c = tvm.compute(
                     output_shape,
                     lambda n, c1, hw, c0: res_c(c1 // self._dx_c1_extend, n,
-                        c1 % self._dx_c1_extend, hw, c0).astype(res_c_dtype),  # pylint: disable=W0108
+                        c1 % self._dx_c1_extend, hw, c0).astype(res_c_dtype),
                     tag="conv2d_backprop_input_opti",
                     name=res_c.name + "_img",
                     attrs={
@@ -648,7 +651,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
 
             img_c = tvm.compute(
                 output_shape,
-                lambda n, c1, hw, c0: res_cub(n, c1, hw, c0),  # pylint: disable=W0108
+                lambda n, c1, hw, c0: res_cub(n, c1, hw, c0),
                 tag="conv2d_backprop_input_opti",
                 name=res_cub.name + "_img",
                 attrs={
