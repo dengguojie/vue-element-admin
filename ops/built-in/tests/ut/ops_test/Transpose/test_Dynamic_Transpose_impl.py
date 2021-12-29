@@ -105,6 +105,7 @@ def test_get_ub_core_for_cov(test_arg):
     from impl.dynamic.transpose import get_core_num
     from impl.dynamic.transpose import _static_scenario_goto_old_version 
     from impl.dynamic.transpose import check_supported
+    from impl.dynamic.transpose import Transpose 
     get_ub_size()
     get_core_num()
     shape_hit = [1, 128, 128, 3]
@@ -118,6 +119,12 @@ def test_get_ub_core_for_cov(test_arg):
     res, _ = check_supported(input_x, perm, output_y)
     if res:
         raise Exception("1, 128, 128, 3 is in black list, should return False")
+
+    class mocker(object):
+        def __init__(self):
+            self.x_dtype="int8"
+    m = mocker()
+    Transpose._move_data_s8(m, "abc")
     
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
