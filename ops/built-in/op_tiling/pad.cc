@@ -28,38 +28,38 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
-namespace{
-  constexpr int64_t CUT_LEN =3;
-  constexpr int64_t DST_LEN = 2;
-  constexpr int64_t PADDING_FACTOR = 2;
-  constexpr int64_t DTYPE_RATE_INDEX = 2;
-  constexpr int64_t OUTPUT_SIZE_INDEX = 3;
-  constexpr int64_t BEGIN_MASK_INDEX = 4;
-  constexpr int64_t END_MASK_INDEX = 5;
-  constexpr int64_t ELLIPSIS_MASK_INDEX = 6;
-  constexpr int64_t AXIS_MASK_INDEX = 7;
-  constexpr int64_t SHRINK_AXIS_INDEX = 8;
-  constexpr int64_t SHAPE_DIM_INDEX_2 = 2;
-  constexpr int64_t SHAPE_DIM_INDEX_3 = 3;
-  constexpr int64_t SHAPE_DIM_INDEX_4 = 4;
-  constexpr int64_t SHAPE_DIM_INDEX_5 = 5;
-  constexpr int64_t SHAPE_DIM_INDEX_6 = 6;
-  constexpr int64_t SHAPE_DIM_INDEX_7 = 7;
-  constexpr int64_t TILING_PADDING_INDEX_2 = 2;
-  constexpr int64_t TILING_PADDING_INDEX_3 = 3;
-  constexpr int64_t TILING_PADDING_INDEX_4 = 4;
-  constexpr int64_t TILING_PADDING_INDEX_5 = 5;
-  constexpr int64_t TILING_PADDING_INDEX_6 = 6;
-  constexpr int64_t TILING_PADDING_INDEX_7 = 7;
-  constexpr int64_t TILING_PADDING_INDEX_8 = 8;
-  constexpr int64_t TILING_PADDING_INDEX_9 = 9;
-  constexpr int64_t TILING_PADDING_INDEX_10 = 10;
-  constexpr int64_t TILING_PADDING_INDEX_11 = 11;
-  constexpr int64_t TILING_PADDING_INDEX_12 = 12;
-  constexpr int64_t TILING_PADDING_INDEX_13 = 13;
-  constexpr int64_t TILING_PADDING_INDEX_14 = 14;
-  constexpr int64_t TILING_PADDING_INDEX_15 = 15;
-}
+namespace {
+constexpr int64_t CUT_LEN = 3;
+constexpr int64_t DST_LEN = 2;
+constexpr int64_t PADDING_FACTOR = 2;
+constexpr int64_t DTYPE_RATE_INDEX = 2;
+constexpr int64_t OUTPUT_SIZE_INDEX = 3;
+constexpr int64_t BEGIN_MASK_INDEX = 4;
+constexpr int64_t END_MASK_INDEX = 5;
+constexpr int64_t ELLIPSIS_MASK_INDEX = 6;
+constexpr int64_t AXIS_MASK_INDEX = 7;
+constexpr int64_t SHRINK_AXIS_INDEX = 8;
+constexpr int64_t SHAPE_DIM_INDEX_2 = 2;
+constexpr int64_t SHAPE_DIM_INDEX_3 = 3;
+constexpr int64_t SHAPE_DIM_INDEX_4 = 4;
+constexpr int64_t SHAPE_DIM_INDEX_5 = 5;
+constexpr int64_t SHAPE_DIM_INDEX_6 = 6;
+constexpr int64_t SHAPE_DIM_INDEX_7 = 7;
+constexpr int64_t TILING_PADDING_INDEX_2 = 2;
+constexpr int64_t TILING_PADDING_INDEX_3 = 3;
+constexpr int64_t TILING_PADDING_INDEX_4 = 4;
+constexpr int64_t TILING_PADDING_INDEX_5 = 5;
+constexpr int64_t TILING_PADDING_INDEX_6 = 6;
+constexpr int64_t TILING_PADDING_INDEX_7 = 7;
+constexpr int64_t TILING_PADDING_INDEX_8 = 8;
+constexpr int64_t TILING_PADDING_INDEX_9 = 9;
+constexpr int64_t TILING_PADDING_INDEX_10 = 10;
+constexpr int64_t TILING_PADDING_INDEX_11 = 11;
+constexpr int64_t TILING_PADDING_INDEX_12 = 12;
+constexpr int64_t TILING_PADDING_INDEX_13 = 13;
+constexpr int64_t TILING_PADDING_INDEX_14 = 14;
+constexpr int64_t TILING_PADDING_INDEX_15 = 15;
+}  // namespace
 
 namespace optiling {
 
@@ -303,11 +303,9 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
   }
 
   OP_LOGI(compile_params.op_type, "original information shape:%s begin:%s end:%s stride:%s",
-          ops::to_string(slice_params_output.input).c_str(),
-          ops::to_string(slice_params_output.begin_list).c_str(),
+          ops::to_string(slice_params_output.input).c_str(), ops::to_string(slice_params_output.begin_list).c_str(),
           ops::to_string(slice_params_output.end_list).c_str(),
           ops::to_string(slice_params_output.stride_list).c_str());
-
 
   // input_shape is not change, it will be used in calc padding.
   std::vector<int64_t> input_shape = slice_params_output.input;
@@ -346,8 +344,7 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
   slice_params_output.input = input_params.input_shape;
 
   OP_LOGI(compile_params.op_type, "after infershape shape:%s begin:%s end:%s stride:%s",
-          ops::to_string(slice_params_output.input).c_str(),
-          ops::to_string(slice_params_output.begin_list).c_str(),
+          ops::to_string(slice_params_output.input).c_str(), ops::to_string(slice_params_output.begin_list).c_str(),
           ops::to_string(slice_params_output.end_list).c_str(),
           ops::to_string(slice_params_output.stride_list).c_str());
 
@@ -442,7 +439,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   auto last_dim_output =
       tiling_params.tiling_input_dim_7 + tiling_params.tiling_pading_70 + tiling_params.tiling_pading_71;
   OP_LOGD(compile_params.op_type, "tiling_two_max_output_size=%ld. ", compile_params.tiling_two_max_output_size);
-  if (last_dim_output < compile_params.tiling_two_max_output_size) {
+  if (static_cast<uint64_t>(last_dim_output) < compile_params.tiling_two_max_output_size) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
     if (shape_len == DST_LEN && (tiling_params.tiling_pading_60 + tiling_params.tiling_pading_61 == 0)) {

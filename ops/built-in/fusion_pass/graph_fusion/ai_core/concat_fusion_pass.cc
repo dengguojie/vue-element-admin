@@ -42,7 +42,7 @@ namespace fe {
 static const char* FUSED_NODE = "Concat";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeConcat";
 
-void ConcatFusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) const {
+void ConcatFusionPass::UpdateInputName(const ge::OpDescPtr& input_desc_ptr) const {
   auto input_count = input_desc_ptr->GetAllInputsSize();
   map<string, uint32_t> name_index_map;
   string name = "x";
@@ -176,7 +176,7 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
     for (int64_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
-        int64_t inputs_num = fusedDesc->GetInputsSize();
+        int64_t inputs_num1 = fusedDesc->GetInputsSize();
         ge::OpDescPtr ConcatdDesc = AttrUtils::CopyOpDesc(fusedDesc);
         ConcatdDesc->SetName(ConcatdDesc->GetName() + "/ConcatD" + to_string(i));
         ConcatdDesc->SetType("ConcatD");
@@ -184,14 +184,14 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         ge::AttrUtils::SetInt(ConcatdDesc, "concat_dim", concat_dim_1);
 
         if (i == 0) {
-          for (int64_t a = inputs_num - 1; a >= max_inputs; a--) {
+          for (int64_t a = inputs_num1 - 1; a >= max_inputs; a--) {
             RemoveInputDesc(ConcatdDesc, a);
           }
         } else {
           for (int64_t a = i * max_inputs - 1; a >= 0; a--) {
             RemoveInputDesc(ConcatdDesc, a);
           }
-          for (int64_t a = inputs_num - (max_inputs * i + 1); a >= max_inputs; a--) {
+          for (int64_t a = inputs_num1 - (max_inputs * i + 1); a >= max_inputs; a--) {
             RemoveInputDesc(ConcatdDesc, a);
           }
         }
@@ -258,12 +258,12 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
               return FAILED);
         }
       } else {
-        int64_t inputs_num = fusedDesc->GetInputsSize();
+        int64_t inputs_num1 = fusedDesc->GetInputsSize();
         ge::OpDescPtr LastConcatDDesc = AttrUtils::CopyOpDesc(fusedDesc);
         LastConcatDDesc->SetName(LastConcatDDesc->GetName() + "/ConcatD" + to_string(nodes_num - 1));
         LastConcatDDesc->SetType("ConcatD");
 
-        for (int64_t b = inputs_num - last_node_inputs_num - 1; b >= 0; b--) {
+        for (int64_t b = inputs_num1 - last_node_inputs_num - 1; b >= 0; b--) {
           RemoveInputDesc(LastConcatDDesc, b);
         }
         ge::NodePtr last_concatd_node = graph.AddNode(LastConcatDDesc);

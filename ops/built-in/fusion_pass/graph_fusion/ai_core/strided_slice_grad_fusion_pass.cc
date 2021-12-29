@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -118,12 +119,9 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
     return FAILED;
   }
 
-  for (auto value : strides_value) {
-    if (value != 1) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "StridedSliceGrad has no 1 value, graph not changed.");
-
-      return NOT_CHANGED;
-    }
+  if (std::any_of(strides_value.begin(), strides_value.end(), [](int value) { return value != 1; })) {
+    OP_LOGI(FUSED_OP_TYPE, "StridedSliceGrad has no 1 value, graph not changed.");
+    return NOT_CHANGED;
   }
 
   Tensor const_tensor0;

@@ -102,9 +102,9 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varSize = 0 is not support"),
-                  return);
+                  return );
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "indicesSize = 0 is not support"),
-                  return);
+                  return );
   OP_TILING_CHECK(varDataEachBlock == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varDataEachBlock = 0 is not support"), return );
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
@@ -158,8 +158,8 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
     }
     runParams.each_core_last_num =
         runParams.each_core_compute_num - runParams.each_core_loop_num * runParams.each_core_loop_compute_num;
-    runParams.last_core_compute_num = var_first_shape * var_num - runParams.each_core_compute_num * \
-	                              (runParams.coreNum - 1);
+    runParams.last_core_compute_num =
+        var_first_shape * var_num - runParams.each_core_compute_num * (runParams.coreNum - 1);
     runParams.last_core_loop_num = (runParams.last_core_compute_num * dtype_bytes_size) / halfUbSize;
     if (runParams.last_core_loop_num != 0) {
       runParams.last_core_loop_compute_num = runParams.last_core_compute_num / runParams.last_core_loop_num;
@@ -232,19 +232,17 @@ bool CheckScatterUpdateTensorShape(const std::string& opType, const GeShape& var
 
   for (size_t i = 0; i < indicesShape.GetDimNum(); i++) {
     OP_TILING_CHECK(
-      updatesShape.GetDim(i) != indicesShape.GetDim(i),
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to indicesShape[%zu].",
-                                      i, i),
-      return false);
+        updatesShape.GetDim(i) != indicesShape.GetDim(i),
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to indicesShape[%zu].", i, i),
+        return false);
   }
 
   for (size_t j = 1; j < varShape.GetDimNum(); j++) {
     int64_t index = j + indicesShape.GetDimNum() - 1;
     OP_TILING_CHECK(
-      updatesShape.GetDim(index) != varShape.GetDim(j),
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to varShape[%zu].",
-                                      index, j),
-      return false);
+        updatesShape.GetDim(index) != varShape.GetDim(j),
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to varShape[%zu].", index, j),
+        return false);
   }
   return true;
 }

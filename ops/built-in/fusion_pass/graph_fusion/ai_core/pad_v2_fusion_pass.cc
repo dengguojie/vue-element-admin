@@ -48,25 +48,25 @@ bool PadV2FusionPass::GetConstValue(const Operator& op, const Tensor& const_tens
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
     const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(const_tensor.GetData());
-    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(TbeGetName(op), "Get const data failed."), return false);
     if (const_data_ptr == nullptr) {
-      VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "const_data_ptr is null");
+      VECTOR_FUSION_INNER_ERR_REPORT(TbeGetName(op), "const_data_ptr is null");
     }
     size = const_tensor.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int32_t)((*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
+      OP_LOGD(TbeGetName(op), "const data int32 fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
     }
   } else if (dtype == ge::DT_INT64) {
     const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(const_tensor.GetData());
-    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(TbeGetName(op), "Get const data failed."), return false);
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
+      OP_LOGD(TbeGetName(op), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
     }
   } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "not support this type");
+    VECTOR_FUSION_INNER_ERR_REPORT(TbeGetName(op), "not support this type");
     return false;
   }
   return true;
@@ -102,8 +102,8 @@ Status PadV2FusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr&
 
   std::vector<int64_t> pad_value;
   if (!GetConstValue(op, const_tensor, dtype, pad_value)) {
+    VECTOR_FUSION_INNER_ERR_REPORT(TbeGetName(op), "Get Const Value failed ");
     return GRAPH_FAILED;
-    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "Get Const Value failed ");
   };
 
   vector<vector<int64_t>> paddings;

@@ -42,7 +42,7 @@ namespace fe {
 static const char* FUSED_NODE = "ConcatV2";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeConcatV2";
 
-void ConcatExt2FusionPass::UpdateInputName(ge::OpDescPtr& input_desc_ptr) const {
+void ConcatExt2FusionPass::UpdateInputName(const ge::OpDescPtr& input_desc_ptr) const {
   auto input_count = input_desc_ptr->GetAllInputsSize();
   map<string, uint32_t> name_index_map;
   string name = "x";
@@ -165,10 +165,10 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
 
     ge::NodePtr concatext2_base_node = graph.AddNode(ConcatExt2BaseDesc);
-    FUSION_PASS_CHECK(concatext2_base_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "concatext2_base_node is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        concatext2_base_node == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concatext2_base_node is null, fusion failed."),
+        return PARAM_INVALID);
     fusionNodes.push_back(concatext2_base_node);
     ge::AttrUtils::SetInt(concatext2_base_node->GetOpDesc(), "N", nodes_num);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
