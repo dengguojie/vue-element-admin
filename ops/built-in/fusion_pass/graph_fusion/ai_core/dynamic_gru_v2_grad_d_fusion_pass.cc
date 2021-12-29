@@ -1154,13 +1154,9 @@ vector<ge::NodePtr> DynamicGRUV2GradDFusionPass::BuildWhileNodes(ge::ComputeGrap
 
   auto graphNodes = cond_graph->GetAllNodes();
   auto bodyNodes = body_graph->GetAllNodes();
-  vector<ge::NodePtr> result = {};
-  for (const NodePtr& node : graphNodes) {
-    result.push_back(node);
-  }
-  for (const NodePtr& node : bodyNodes) {
-    result.push_back(node);
-  }
+  vector<ge::NodePtr> result;
+  std::copy(graphNodes.begin(), graphNodes.end(), std::back_inserter(result));
+  std::copy(bodyNodes.begin(), bodyNodes.end(), std::back_inserter(result));
   result.push_back(whileNode);
   return result;
 }
