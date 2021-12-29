@@ -1965,22 +1965,18 @@ class GemmSchedule(object):
         is_from_repository = not self._get_zero_tiling(tiling_res)
         return tiling_res, is_from_repository
 
-    def _handle_env(self, env_name, default_value):
-        env_value = os.environ.get(env_name, default_value)
-        if env_value in ("False", "FALSE", False):
-            env_value = False
-        elif env_value in ("True", "TRUE", True):
-            env_value = True
-        else:
-            env_value = default_value
+    def _handle_bool_env(self, env_name, default_value):
+        str_env = str(os.environ.get(env_name, None)).lower()
+        if str_env not in ('true', 'false'):
+            return default_value
 
-        return env_value
+        return str_env == 'true'
 
     def _get_tiling_after_cmp(self, info_dict, new_fused_num):
         tiling_res = None
         current_tiling_type = get_tiling_type()
-        repeat_tune_mode = self._handle_env("REPEAT_TUNE", False)
-        enable_tune_bank = self._handle_env("ENABLE_TUNE_BANK", True)
+        repeat_tune_mode = self._handle_bool_env("REPEAT_TUNE", False)
+        enable_tune_bank = self._handle_bool_env("ENABLE_TUNE_BANK", True)
         if current_tiling_type == "auto_tiling" and (not repeat_tune_mode) and enable_tune_bank:
             tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
             if is_from_repository:
@@ -2310,7 +2306,6 @@ class GemmSchedule(object):
                 if (tensor == c_ub_fract) or (tensor == self.root_tensor):
                     continue
                 sch_agent.same_attach(tensor, c_ub_fract)
-
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2337,7 +2332,6 @@ class GemmSchedule(object):
 
     def _cl0_process(self, c_ub_tiling_shape):
         self._print_debug("-------debug info in cl0_process-------")
-        sch_agent = self.sch_agent
 
         cl0_tiling_nc, cl0_tiling_mc = self.cl0_tiling_nc, self.cl0_tiling_mc
         cl0_tiling_m0, cl0_tiling_n0 = self.cl0_tiling_m0, self.cl0_tiling_n0
@@ -2455,7 +2449,6 @@ class GemmSchedule(object):
         not_need_process = not_need_process and self.have_batch_a
         if not_need_process:
             return
-        sch_agent = self.sch_agent
         al0_tiling_ma, al0_tiling_ka = self.al0_tiling_ma, self.al0_tiling_ka
         al0_tiling_m0, al0_tiling_k0 = self.al0_tiling_m0, self.al0_tiling_k0
         cl0_tiling_nc, cl0_tiling_mc = self.cl0_tiling_nc, self.cl0_tiling_mc
@@ -2622,8 +2615,6 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-        elif status_ori == Compare.EQUAL:
-            pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(b_l0b, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
@@ -2775,7 +2766,8 @@ class GemmSchedule(object):
 
     def _bl1_process(self):
         self.bl1_attach_status = "full_load"
-        not_need_bl1_process = self.tiling.get("BL1_shape") in (None, []) and (not self.is_dynamic)
+        is_bypass = self.tiling.get("BL1_shape") is None
+        not_need_bl1_process = is_bypass and (not self.is_dynamic)
         not_need_bl1_process = not_need_bl1_process and (not self.have_batch_b)
         if not_need_bl1_process:
             return
@@ -2880,8 +2872,6 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-        elif status_ori == Compare.EQUAL:
-            pass
         elif status == Compare.EQUAL:
             self.bl1_attach_status = self.c_l0c_attach_status
             if self.cache_tiling:
@@ -3035,7 +3025,6 @@ class GemmSchedule(object):
             status_ori = Compare.compare(tiling_ori_aub, a_ub_ori_shape)
             status_l1 = Compare.compare(tiling_ori_aub_with_l1, tiling_ori_al1)
             status_l0c = Compare.compare(aub_tiling_shape_with_lc0, cl0_tiling_shape)
-
         self._print_debug([tiling_ori_aub, a_ub_ori_shape], "tiling_ori_aub with a_ub_ori_shape")
         self._print_debug([tiling_ori_aub_with_l1, tiling_ori_al1], "tiling_ori_aub_with_l1 with tiling_ori_al1")
         self._print_debug([aub_tiling_shape_with_lc0, cl0_tiling_shape], "aub_tiling_shape_with_lc0 cl0_tiling_shape")
