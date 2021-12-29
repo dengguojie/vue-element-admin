@@ -80,15 +80,15 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
 
   ge::GeShape softmaxInputShape = softmaxInputOpDesc.GetShape();
   vector<int64_t> dimInfo = softmaxInputShape.GetDims();
-  vector<int64_t> axes;
+  vector<int64_t> axes_val;
   int64_t inputC = 0;
   int64_t inputH = 0;
   int64_t inputW = 0;
   bool isUsePattern = false;
-  ge::AttrUtils::GetListInt(logsoftmaxOpDesc, "axes", axes);
-  FUSION_PASS_CHECK(axes.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "axes is null, please check!"), return FAILED);
-  if (axes[0] < 0) {
-    axes[0] = axes[0] + dimInfo.size();
+  ge::AttrUtils::GetListInt(logsoftmaxOpDesc, "axes", axes_val);
+  FUSION_PASS_CHECK(axes_val.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "axes is null, please check!"), return FAILED);
+  if (axes_val[0] < 0) {
+    axes_val[0] = axes_val[0] + dimInfo.size();
   }
   if (dimInfo.size() == 3) {
     inputH = dimInfo[0];
@@ -98,7 +98,7 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
     return NOT_CHANGED;
   }
   isUsePattern = CheckISUsePattern(inputW, inputC);
-  if (axes[0] == 2 && isUsePattern) {
+  if (axes_val[0] == 2 && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
     ge::GeShape assitShape(inputDimInfo);
     ge::GeShape assitShapeOrigin(inputDimInfo);
@@ -111,8 +111,8 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
     ret = logsoftmaxOpDesc->UpdateOutputDesc(0, softmaxOutputOpDesc);
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc failed."), return FAILED);
 
-    vector<int64_t> axes = {1};
-    FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(logsoftmaxNode->GetOpDesc(), "axes", axes),
+    vector<int64_t> axes_set = {1};
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(logsoftmaxNode->GetOpDesc(), "axes", axes_set),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "Set axes attr failed."), return FAILED);
 
     ge::InDataAnchorPtr softmaxAnchorPtr0 = logsoftmaxNode->GetInDataAnchor(0);

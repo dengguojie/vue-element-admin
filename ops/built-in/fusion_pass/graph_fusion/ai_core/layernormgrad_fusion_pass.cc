@@ -45,7 +45,7 @@ static const char *FUSED_NODE = "LayerNormGrad";
 static const std::string PATTERN_FUSEDNODE = "LayerNormGrad";
 
 vector<FusionPattern *> LayerNormGradFusionPass::DefinePatterns() {
-  vector < FusionPattern * > patterns;
+  vector<FusionPattern*> patterns;
 
   FusionPattern *pattern = new(std::nothrow) FusionPattern("LayerNormGradFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),

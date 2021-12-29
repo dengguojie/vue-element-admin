@@ -162,6 +162,7 @@ Status PassThroughSecondFusionPass::RemoveWeightNode(ge::ComputeGraph& graph, ge
     FUSION_PASS_CHECK(SUCCESS != RemoveThisNode(graph, curNode),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove bottomNode failed."), return FAILED);
     curNode = bottomNode;
+    nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(curNode);
   }
   FUSION_PASS_CHECK(SUCCESS != UnlinkEdge(curNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Unlink Weight Node Edge failed."),
                     return FAILED);

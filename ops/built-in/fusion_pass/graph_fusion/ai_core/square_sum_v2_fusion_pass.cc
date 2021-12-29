@@ -111,11 +111,10 @@ Status SquareSumV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     }
   }
 
-  int32_t index;
   int32_t multi = dims[dims.size() - 1];
 
   for (std::vector<int64_t>::iterator it = dims.end() - 2; it >= dims.begin(); --it) {
-    index = it - dims.begin();
+    int32_t index = it - dims.begin();
     if ((std::find(axis_temp.begin(), axis_temp.end(), index) != axis_temp.end()) ==
         (std::find(axis_temp.begin(), axis_temp.end(), index + 1) != axis_temp.end())) {
       multi *= *it;

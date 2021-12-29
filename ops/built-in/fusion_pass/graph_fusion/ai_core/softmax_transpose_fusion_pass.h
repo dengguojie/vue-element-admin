@@ -53,7 +53,7 @@ class softmaxTransFusionPass : public PatternFusionBasePass {
    * @param newNodePtr: new node
    * @return SUCCESS/FAILED
    */
-  Status SetAttrValueForNewNode(const ge::OpDescPtr& psroiOpDescPtr, ge::OpDescPtr& newOpDescPtr, int64_t shapeLens);
+  Status SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr, int64_t shapeSize);
 
   /**
    * Get new input attrs for OpDescPtr
@@ -63,7 +63,7 @@ class softmaxTransFusionPass : public PatternFusionBasePass {
    * @return SUCCESS/FAILED
    */
 
-  Status SetAttrValue(const ge::OpDescPtr& OpDescPtr, int64_t shapeLens, int32_t transfer);
+  Status SetAttrValue(const ge::OpDescPtr& OpDescPtr, int64_t shapeSize, int32_t transfer);
   const string FUSED_OP_TYPE = "TransposeD_SoftmaxV2_TransposeD";
 };
 }  // namespace fe

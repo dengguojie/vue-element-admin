@@ -57,7 +57,7 @@ Status PoolingGenerateFilterFP16(const int64_t size, const float areaFactor, uin
   t.val = areaFactor;
   fp16_t tmp2;
   tmp2.val = 0;
-  tmp2 = (float)areaFactor;
+  tmp2 = static_cast<float>(areaFactor);
   for (int i = 0; i < size; i++) {
     output[i] = tmp2.val;
   }
@@ -69,10 +69,8 @@ Status IsPadZero(vector<int64_t> pad, bool& flag) {
     return FAILED;
   }
   flag = true;
-  for (auto i : pad) {
-    if (i != 0) {
-      flag = false;
-    }
+  if (std::any_of(pad.begin(), pad.end(), [](int64_t val) {return val != 0;})) {
+    flag = false;
   }
   return SUCCESS;
 }
@@ -102,7 +100,7 @@ Status PoolingGenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> win
             }
             fp16_t out_val;
             out_val.val = 0;
-            out_val = (float)area;
+            out_val = static_cast<float>(area);
             output[m * (shape[1] * shape[2] * shape[3] * shape[4]) + n * (shape[2] * shape[3] * shape[4]) +
                    i * (shape[3] * shape[4]) + j * shape[4] + k] = out_val.val;
           }
@@ -384,7 +382,7 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   // get offsetA from poolingOp
   int32_t offsetA = 0;
   (void)ge::AttrUtils::GetInt(poolingOp, ATTR_OFFSET_X, offsetA);
-  offsetA = (int8_t)(offsetA);
+  offsetA = static_cast<int8_t>(offsetA);
 
   /* Get pooling Weight filter */
   vector<ge::GeTensorPtr> weights_pooling = ge::OpDescUtils::MutableWeights(poolingNode);

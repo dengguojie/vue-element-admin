@@ -62,10 +62,8 @@ Status PermuteFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                     return PARAM_INVALID);
   ge::GeTensorDesc permuteInputOpDesc = permuteOpDesc->GetInputDesc(0);
   ge::GeTensorDesc permuteOutputOpDesc = permuteOpDesc->GetOutputDesc(0);
-  ge::Format inputFormat = permuteInputOpDesc.GetFormat();
-  ge::Format outputFormat = permuteOutputOpDesc.GetFormat();
-  inputFormat = FORMAT_ND;
-  outputFormat = FORMAT_ND;
+  ge::Format inputFormat = FORMAT_ND;
+  ge::Format outputFormat = FORMAT_ND;
   permuteOutputOpDesc.SetOriginFormat(outputFormat);
   permuteOutputOpDesc.SetFormat(outputFormat);
   permuteOpDesc->UpdateOutputDesc(0, permuteOutputOpDesc);

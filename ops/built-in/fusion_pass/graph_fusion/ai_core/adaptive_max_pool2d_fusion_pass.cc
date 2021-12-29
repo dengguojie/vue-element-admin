@@ -134,7 +134,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     in_size_h = shape.GetDim(2);
     in_size_w = shape.GetDim(3);
     data_format = "NCHW";
-  } else if (input_format == ge::FORMAT_NCHW){
+  } else if (input_format == ge::FORMAT_ND){
     in_size_h = shape.GetDim(1);
     in_size_w = shape.GetDim(2);
     data_format = "ND";

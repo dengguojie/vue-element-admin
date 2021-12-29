@@ -32,12 +32,9 @@ Status AReduceMaxFusionPass::CheckMaxFussionOrNot(vector<int64_t> tensor_info, v
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "can't get keep_dims attr.");
   }
-
-  for (auto& input_shape_value : tensor_info) {
-    if (input_shape_value < 0 && !keep_dims) {
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process and not keep dim, shouldn't delete.");
-      return FAILED;
-    }
+  if (!keep_dims && std::any_of(tensor_info.begin(), tensor_info.end(), [](int64_t val) {return val < 0;})) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process and not keep dim, shouldn't delete.");
+    return FAILED;   
   }
   for (size_t i = 0; i < axis_info.size(); ++i) {
     if (axis_info[i] > tensor_info.size()) {

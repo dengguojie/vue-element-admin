@@ -955,12 +955,12 @@ Status ExtremumGradFusionPass::SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, 
   // Extract attr "T" from select node
   if (ge::AttrUtils::HasAttr(selectOpDesc, ATTR_DATA_TYPE)) {
     ge::DataType selectDataType;
-    if (ge::AttrUtils::GetDataType(selectOpDesc, ATTR_DATA_TYPE, selectDataType) == false) {
+    if (!ge::AttrUtils::GetDataType(selectOpDesc, ATTR_DATA_TYPE, selectDataType)) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get datatype from select node failed");
       return FAILED;
     }
 
-    if (ge::AttrUtils::SetDataType(extreGradOpDesc, ATTR_DATA_TYPE, selectDataType) == false) {
+    if (!ge::AttrUtils::SetDataType(extreGradOpDesc, ATTR_DATA_TYPE, selectDataType)) {
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set datatype to extremum_grad node failed");
       return FAILED;
     }
@@ -969,12 +969,12 @@ Status ExtremumGradFusionPass::SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, 
     return FAILED;
   }
   // Init "grad_x", "grad_y" attr to ExtremumGrad OP
-  if (ge::AttrUtils::SetBool(extreGradOpDesc, ATTR_GRAD_X, false) == false) {
+  if (!ge::AttrUtils::SetBool(extreGradOpDesc, ATTR_GRAD_X, false)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set Grad_X to extremum_grad node failed");
     return FAILED;
   }
 
-  if (ge::AttrUtils::SetBool(extreGradOpDesc, ATTR_GRAD_Y, false) == false) {
+  if (!ge::AttrUtils::SetBool(extreGradOpDesc, ATTR_GRAD_Y, false)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set Grad_Y to extremum_grad node failed");
     return FAILED;
   }
