@@ -26,6 +26,7 @@ from datetime import datetime
 from multiprocessing import Pool
 from functools import reduce
 import coverage
+import signal
 
 from sch_test_frame.common import logger
 from sch_test_frame.ut import ut_loader
@@ -147,8 +148,13 @@ class RunUTCaseFileArgs:  # pylint: disable=too-many-instance-attributes,too-few
         self.dump_model_dir = dump_model_dir
 
 
+def rece_signal(signum, frame):
+    raise RuntimeError("Receive signal: %s!" % str(signum))
+
+
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
+    signal.signal(signal.SIGSEGV, rece_signal)
         
     res = True
     if run_arg.cov_report:
