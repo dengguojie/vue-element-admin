@@ -20,7 +20,6 @@ mmad_compute
 from __future__ import absolute_import
 
 from functools import reduce as functools_reduce
-from functools import wraps
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
@@ -36,6 +35,7 @@ from tbe.dsl.compute import util as compute_util
 import topi
 import tbe
 
+
 def _elecnt_of_shape(shape):
     """
     calculate reduce shape
@@ -48,6 +48,7 @@ def _elecnt_of_shape(shape):
 SHAPE_SIZE_LIMIT = 2**31 - 1
 FORMAT_DYNAMIC_THRESHOLD = 1 * 1
 BATCH_MATMUL_LENGTH = 5
+
 
 def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 tensor_bias, trans_a, trans_b, format_a, format_b, dst_dtype,
@@ -275,7 +276,8 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             if km_shape % (tbe_platform.BLOCK_IN) != 0:
                 dict_args = {
                     'errCode': 'E61001',
-                    'reason': "for fractal gevm input,K should be multiple of {}.".format(tbe_platform.BLOCK_IN * k_block_size)
+                    'reason': "for fractal gevm input,K should be multiple of {}.".format(
+                        tbe_platform.BLOCK_IN * k_block_size)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
@@ -376,7 +378,8 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             if kn_shape % (tbe_platform.BLOCK_IN*tbe_platform.BLOCK_IN) != 0:
                 dict_args = {
                     'errCode': 'E61001',
-                    'reason': "input shape K should be multiple of {}.".format(tbe_platform.BLOCK_IN * tbe_platform.BLOCK_IN)
+                    'reason': "input shape K should be multiple of {}.".format(
+                        tbe_platform.BLOCK_IN * tbe_platform.BLOCK_IN)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         elif km_shape % k_block_size != 0:
@@ -811,7 +814,7 @@ def _get_batch_dims(attrs):
     if batch_a or batch_b:
         batch_a, batch_b, batch_l0c = broadcast_shapes(batch_a, batch_b)
     else:
-        batch_l0c = list()
+        batch_l0c = []
 
     return batch_a, batch_b, batch_out, batch_l0c
 
@@ -828,6 +831,7 @@ def _broadcast_mad(tensor_a, tensor_b, batch_dims, mad_para):
         tensor_c: the tensor of a*b
     """
     out_shape, offset_x, out_dtype, k_dim = mad_para
+
     def _batch_l0(input_tensor, indices, k1, k0, para_name):
         batch_l0_dim = batch_dims[0] if para_name == "A" else batch_dims[1]
         batch_l0c_dim = batch_dims[3]
@@ -843,7 +847,7 @@ def _broadcast_mad(tensor_a, tensor_b, batch_dims, mad_para):
                                 indices[0] // batch_l0c_dim[3] // batch_l0c_dim[2] % batch_l0c_dim[1],
                                 indices[0] // batch_l0c_dim[3] % batch_l0c_dim[2],
                                 indices[0] % batch_l0c_dim[3]]
-        batch_index =0
+        batch_index = 0
         for index, elem in enumerate(list(zip(batch_l0_dim, batch_l0c_dim))):
             if elem[0] == elem[1]:
                 if index == len(batch_l0_dim) - 1:
@@ -896,6 +900,7 @@ def _get_nz_out(tensor_c_ub, batch_dims, kernel_name, tag, out_para):
     if batch_dims[3] and batch_dims[2] != batch_dims[3]:
         tensor_c_gm = tbe.dsl.reduce_sum(tensor_c_gm, axis=0, keepdims=False)
     return tensor_c_gm
+
 
 @source_info_decorator()
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
@@ -1137,7 +1142,6 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     is_fractal_b = format_b != "ND"
     is_fractal_out = is_fractal_a and is_fractal_b
     is_fractal_out = is_fractal_out or format_out == "FRACTAL_NZ"
-    is_frac_nz_out = format_out == "FRACTAL_NZ"
 
     if tensor_bias is not None:
         if quantize_params is None and not is_fusion_mode:
@@ -1484,15 +1488,16 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             a_fract_shape, lambda i, j, k, l:
                             tensor_a_ub[i*block_in + k, j*block_reduce + l],
                             name='tensor_a_ub_fract')
+
                         def get_a_l1_tensor(a_ub_fract, a_l1_shape):
                             if a_ub_fract.shape[-2].value == 1:
                                 a_l1 = tvm.compute(
-                                    a_l1_shape,lambda i, j, k, l:
+                                    a_l1_shape, lambda i, j, k, l:
                                     a_ub_fract[0, j, 0, l],
                                     name='tensor_a_l1')
                             else:
                                 a_l1 = tvm.compute(
-                                    a_l1_shape,lambda i, j, k, l:
+                                    a_l1_shape, lambda i, j, k, l:
                                     a_ub_fract[i, j, k, l],
                                     name='tensor_a_l1')
                             return a_l1
@@ -1541,6 +1546,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             a_fract_shape, lambda i, j, k, l:
                             tensor_a_ub[j*block_reduce + k, i*block_in + l],
                             name='tensor_a_ub_fract')
+
                         def get_a_l1_tensor(a_ub_fract, a_l1_shape):
                             if a_ub_fract.shape[-1].value == 1:
                                 a_l1 = tvm.compute(
@@ -2016,6 +2022,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             tensor_a_ub[batch, j*block_reduce + k,
                                         i*block_in + l],
                             name='tensor_a_ub_fract')
+
                         def get_a_l1_tensor(a_ub_fract, a_l1_shape):
                             if a_ub_fract.shape[-1].value == 1:
                                 a_l1 = tvm.compute(
@@ -2033,11 +2040,11 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
                         if block_in != tbe_platform.BLOCK_VECTOR:
-                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
-                                batch, i, j, l, k]
+                            def lambda_func(batch, i, j, k, l):
+                                return tensor_a_l1[batch, i, j, l, k]
                         else:
-                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
-                                batch, i, j, k, l]
+                            def lambda_func(batch, i, j, k, l):
+                                return tensor_a_l1[batch, i, j, k, l]
                         tensor_a_l0a = tvm.compute(
                             tensor_a_l0a_shape, lambda_func, name='tensor_a_l0a')
                     else:
@@ -2051,11 +2058,11 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
                         if block_in != tbe_platform.BLOCK_VECTOR:
-                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
-                                batch, j, i, l, k]
+                            def lambda_func(batch, i, j, k, l):
+                                return tensor_a_l1[batch, j, i, l, k]
                         else:
-                            def lambda_func(batch, i, j, k, l): return tensor_a_l1[
-                                batch, j, i, k, l]
+                            def lambda_func(batch, i, j, k, l):
+                                return tensor_a_l1[batch, j, i, k, l]
                         tensor_a_l0a = tvm.compute(
                             tensor_a_l0a_shape, lambda_func, name='tensor_a_l0a')
 
@@ -2682,7 +2689,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             name='tensor_b_l0b')
 
             # define reduce
-            orig_shape = [int(m_shape), int(n_shape), int(block_in),int(block_in)]
+            orig_shape = [int(m_shape), int(n_shape), int(block_in), int(block_in)]
             orig_shape[-2] = block_out
             out_shape_ori = [int(n_shape*block_out), int(m_shape*block_in)]
             if tensor_b_length in (3, 5):
@@ -2699,7 +2706,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                      (tensor_a_l0a[reduce_kb, nb, np, reduce_kp] - offset_x)
                     ).astype(out_dtype), axis=[reduce_kb, reduce_kp]),
                 name='tensor_c',
-                tag= 'broadcast_mad')
+                tag='broadcast_mad')
             else:
                 tensor_c = tvm.compute(
                     (m_shape, n_shape, block_in, block_in),
@@ -2716,7 +2723,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 # bias shape only support [m,1]
                 if tensor_bias.dtype == 'float16' and l0c_support_fp32 == 1:
                     tensor_bias_l0c = tvm.compute(
-                        tensor_c.shape, lambda *indices:#orig_shape
+                        tensor_c.shape, lambda *indices:
                         topi.cast(tensor_bias_ub[indices[-4]*block_in + indices[-1], 0],
                                   dtype='float32'),
                         name='tensor_bias_l0c')
@@ -3773,11 +3780,13 @@ def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
 
     return m_factor, n_factor
 
+
 def _get_value(shape_object):
     """
     get the value of shape_object when having attr "value"
     """
     return shape_object.value if hasattr(shape_object, "value") else shape_object
+
 
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                              str, float, float, str, (type(None), tvm.tensor.Tensor),
@@ -3837,7 +3846,8 @@ def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R09
     if remainder * km_shape > FORMAT_DYNAMIC_THRESHOLD:
         return "NC1HWC0"
 
-    n_shape, kn_shape, vn_shape = _get_n_k_value(tensor_b, trans_b)
+    # n_shape, kn_shape, vn_shape
+    n_shape, kn_shape, _ = _get_n_k_value(tensor_b, trans_b)
     kn_shape = (kn_shape + frac_k_size - 1) // frac_k_size * frac_k_size
     n_shape = (n_shape + frac_n_size - 1) // frac_n_size * frac_n_size
 
@@ -3959,6 +3969,7 @@ def _matmul_cv_split(tensor_a,
 
     return res
 
+
 class MatMulComputeParam:
     """
     be used by gemm_tilingcase
@@ -3975,8 +3986,10 @@ class MatMulComputeParam:
     block_in = tbe_platform.BLOCK_IN
     block_out = tbe_platform.BLOCK_OUT
     block_reduce = tbe_platform.BLOCK_REDUCE
+
     def __init__(self) -> None:
         pass
+
 
 class MatMulCompute:
     """
@@ -4140,18 +4153,20 @@ class MatMulCompute:
         get a shape's format nc1hwc0 inorder to get tiling
         """
         if MatMulComputeParam.batch_a:
-            return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
+            a_5hd_shape = [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
         else:
-            return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
+            a_5hd_shape = [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
+        return a_5hd_shape
 
     def _get_b_shape_in_nc1hwc0(self, tensor_b_l0b):
         """
         get b shape's format nc1hwc0 inorder to get tiling
         """
         if MatMulComputeParam.batch_b:
-            return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
+            b_5hd_shape = [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
         else:
-            return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+            b_5hd_shape = [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+        return b_5hd_shape
 
     def _al1_trans_nd2nz(self):
         """
@@ -4365,7 +4380,7 @@ class MatMulCompute:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
-                        lambda *indices: self.tensor_b(*indices[:-4], indices[-3], 
+                        lambda *indices: self.tensor_b(*indices[:-4], indices[-3],
                                                        indices[-4], indices[-1], indices[-2]),
                         name="tensor_b_matrix",
                         attrs={"transpose_b": "true"})
@@ -4482,7 +4497,8 @@ class MatMulCompute:
             self.origin_n_shape = _get_value(self.tensor_b.shape[-3]) * _get_value(self.tensor_b.shape[-2])
         else:
             # FRACTAL_NZ output
-            ori_format_b = self.tensor_b.op.attrs["ori_format"].value if "ori_format" in self.tensor_b.op.attrs else "NCHW"
+            ori_format_b = self.tensor_b.op.attrs["ori_format"].value \
+                if "ori_format" in self.tensor_b.op.attrs else "NCHW"
             n_index = ori_format_b.find('N')
             if n_index < 0:
                 error_manager_cube.raise_err_specific("FullyConnection", "origin format of input2 is illegal")
@@ -4505,7 +4521,8 @@ class MatMulCompute:
 
         # matrix A
         if self.format_a == "FRACTAL_NZ":
-            # trans [(batch), K, M, 16, 16/32], not trans [(batch), M, K, 16, 16/32]
+            # trans is [(batch), K, M, 16, 16/32]
+            # not trans is [(batch), M, K, 16, 16/32]
             self.m_shape = _get_value(self.tensor_a.shape[-3]) if self.trans_a else _get_value(self.tensor_a.shape[-4])
             self.km_shape = _get_value(self.tensor_a.shape[-4]) if self.trans_a else _get_value(self.tensor_a.shape[-3])
             if in_dynamic():
@@ -4525,7 +4542,8 @@ class MatMulCompute:
 
         # matrix B
         if self.format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
-            # trans [(batch), N, K, 16, 16/32], not trans [(batch), K, N, 16, 16/32]
+            # trans is [(batch), N, K, 16, 16/32]
+            # not trans is [(batch), K, N, 16, 16/32]
             self.kn_shape = _get_value(self.tensor_b.shape[-3]) if self.trans_b else _get_value(self.tensor_b.shape[-4])
             self.n_shape = _get_value(self.tensor_b.shape[-4]) if self.trans_b else _get_value(self.tensor_b.shape[-3])
             if in_dynamic():
