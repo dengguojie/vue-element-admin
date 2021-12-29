@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file diag_part_fusion_pass.h
+ * \file dynamic_rnn_grad_fusion_pass.h
  * \brief DynamicRNNGrad fusion pass(DynamicRNNGrad --> LSTMIInputGrad & LSTMWeightGrad(Split&Concat&Matmul&Reduce))
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DYNAMIC_RNN_GRAD_FUSION_PASS_H_
@@ -30,17 +30,17 @@ class DynamicRNNGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  Status AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
-                                                           vector<ge::NodePtr>& newNodes, bool& failStatus,
-                                                            vector<vector<ge::NodePtr>> resultNode, ge::NodePtr lstmSplitC,
-                                                            ge::NodePtr lstmSplitDy, ge::NodePtr lstmSplitI,
-                                                             ge::NodePtr lstmSplitJ, ge::NodePtr lstmSplitF,
-                                                             ge::NodePtr lstmSplitO, ge::NodePtr lstmSplitTanh,
-                                                             ge::NodePtr lstmXConcatD, ge::NodePtr& lstmGageConcatD);
+  Status AddEdgeForCell(ge::NodePtr dynamicRNNGradNode,
+                        vector<ge::NodePtr>& newNodes, bool& failStatus,
+                        vector<vector<ge::NodePtr>> resultNode, ge::NodePtr lstmSplitC,
+                        ge::NodePtr lstmSplitDy, ge::NodePtr lstmSplitI,
+                        ge::NodePtr lstmSplitJ, ge::NodePtr lstmSplitF,
+                        ge::NodePtr lstmSplitO, ge::NodePtr lstmSplitTanh,
+                        ge::NodePtr lstmXConcatD, ge::NodePtr& lstmGageConcatD);
 
   vector<vector<ge::NodePtr>> AddTLoopNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
-                                                                   vector<ge::NodePtr>& newNodes, bool& failStatus);
-  
+                                           vector<ge::NodePtr>& newNodes, bool& failStatus);
+
   ge::NodePtr AddLSTMInputGradNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
                                    vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddSplitNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
