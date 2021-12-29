@@ -18,7 +18,6 @@ util_conv3d
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import tbe_platform
 
-BIAS_LENGTH = 1
 DYNAMIC_DIM_VAL = -1
 _BLOCK_SIZE = 16
 
@@ -108,16 +107,6 @@ def check_bias(bias, res_dtype):
     -------
     None
     """
-    bias_shape = bias.get("ori_shape")
-    if len(bias_shape) != BIAS_LENGTH:
-        dict_args = {
-            'errCode': 'E60006',
-            'param_name': 'bias',
-            'expected_length': '1',
-            'length': '{}'.format(len(bias_shape))
-        }
-        raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
     bias_dtype = bias.get("dtype").lower()
     if bias_dtype != res_dtype:
         dict_args = {
