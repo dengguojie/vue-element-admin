@@ -81,14 +81,13 @@ vector<FusionPattern*> ProdVirialSeAFusionPass::DefinePatterns() {
  */
 Status ProdVirialSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into ProdVirialSeA fusion pass");
-  std::cout << "Enter into ProdVirialSeA fusion pass" << std::endl;
 
   ge::NodePtr virialNode = GetNodeFromMapping(PATTERN_PRODVIRIALSEA, mapping);
   FUSION_PASS_CHECK(virialNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get ProdVirialSeA Node"),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get ProdVirialSeA Node"),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSplitInitInfo(FUSED_OP_TYPE, virialNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get ProdVirialSeA Node"),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to check {split_count, split_index}"),
                     return NOT_CHANGED);
 
   ge::NodePtr virialNodeAic = nullptr;
@@ -102,17 +101,15 @@ Status ProdVirialSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   ge::NodePtr addVirialNode = nullptr;
   vector<ge::NodePtr> virialNodes = {virialNode, virialNodeAic, virialNodeVec};
-  std::string addVirialNodeName = virialNode->GetName() + "/Add/virial";
   FUSION_PASS_CHECK(DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(FUSED_OP_TYPE, graph, addVirialNode,
-                                                                      addVirialNodeName, virialNodes, 0) != SUCCESS,
+                                                                      virialNodes, 0) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Add(virial) node"),
                     return FAILED);
   newNodes.push_back(addVirialNode);
 
   ge::NodePtr addAtomVirialNode = nullptr;
-  std::string addAtomVirialNodeName = virialNode->GetName() + "/Add/atom_virial";
   FUSION_PASS_CHECK(DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(FUSED_OP_TYPE, graph, addAtomVirialNode,
-                                                                      addAtomVirialNodeName, virialNodes, 1) != SUCCESS,
+                                                                      virialNodes, 1) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Add(atom_virial) node"),
                     return FAILED);
   newNodes.push_back(addAtomVirialNode);
@@ -136,7 +133,6 @@ Status ProdVirialSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to clear ProdVirialSeA node"),
                     return FAILED);
 
-  std::cout << "End to ProdVirialSeA fusion pass" << std::endl;
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to ProdVirialSeA fusion pass");
   return SUCCESS;
 }

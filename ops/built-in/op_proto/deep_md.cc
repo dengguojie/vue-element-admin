@@ -338,6 +338,7 @@ IMPLEMT_COMMON_INFERFUNC(ProdVirialSeAInferShape) {
 COMMON_INFER_FUNC_REG(ProdVirialSeA, ProdVirialSeAInferShape);
 VERIFY_FUNC_REG(ProdVirialSeA, ProdVirialSeAVerify);
 // --------------------------ProdVirialSeA END---------------------
+
 // --------------------------ProdEnvMatA Begin---------------------
 IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
   AscendString opName;
@@ -488,6 +489,7 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
 COMMON_INFER_FUNC_REG(ProdEnvMatA, ProdEnvMatAInferShape);
 VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------ProdEnvMatA END---------------------
+
 // --------------------------TabulateFusionGrad Begin---------------------
 IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
   AscendString opName;

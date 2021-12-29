@@ -131,23 +131,19 @@ TEST_F(ProdVirialSeAProtoTest, ProdVirialSeAInferShapeTest_1) {
 }
 
 TEST_F(ProdVirialSeAProtoTest, ProdVirialSeAInferShapeTest_2) {
-  int32_t nframes = 1;
-  int32_t nloc = -1;
   int32_t n_a_sel = 138;
   int32_t n_r_sel = 0;
-  int32_t nnei = n_a_sel + n_r_sel;
-  int32_t nall = -1;
   int32_t natomsSize = 4;
 
   ge::op::ProdVirialSeA op;
-  op.UpdateInputDesc("net_deriv", create_desc_shape_range({nframes, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {nframes, -1},
-                                                          ge::FORMAT_ND, {{nframes, nframes}, {1, -1}}));
-  op.UpdateInputDesc("in_deriv", create_desc_shape_range({nframes, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {nframes, -1},
-                                                         ge::FORMAT_ND, {{nframes, nframes}, {1, -1}}));
-  op.UpdateInputDesc("rij", create_desc_shape_range({nframes, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {nframes, -1},
-                                                    ge::FORMAT_ND, {{nframes, nframes}, {1, -1}}));
-  op.UpdateInputDesc("nlist", create_desc_shape_range({nframes, -1}, ge::DT_INT32, ge::FORMAT_ND, {nframes, -1},
-                                                      ge::FORMAT_ND, {{nframes, nframes}, {1, -1}}));
+  op.UpdateInputDesc("net_deriv", create_desc_shape_range({-1, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {-1, -1},
+                                                          ge::FORMAT_ND, {{0, -1}, {0, -1}}));
+  op.UpdateInputDesc("in_deriv", create_desc_shape_range({-1, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {-1, -1},
+                                                         ge::FORMAT_ND, {{0, -1}, {0, -1}}));
+  op.UpdateInputDesc("rij", create_desc_shape_range({-1, -1}, ge::DT_FLOAT, ge::FORMAT_ND, {-1, -1},
+                                                    ge::FORMAT_ND, {{0, -1}, {0, -1}}));
+  op.UpdateInputDesc("nlist", create_desc_shape_range({-1, -1}, ge::DT_INT32, ge::FORMAT_ND, {-1, -1},
+                                                      ge::FORMAT_ND, {{0, -1}, {0, -1}}));
   op.UpdateInputDesc("natoms", create_desc_shape_range({natomsSize}, ge::DT_INT32, ge::FORMAT_ND, {natomsSize},
                                                        ge::FORMAT_ND, {{natomsSize, natomsSize}}));
   op.SetAttr("n_a_sel", n_a_sel);
@@ -162,7 +158,7 @@ TEST_F(ProdVirialSeAProtoTest, ProdVirialSeAInferShapeTest_2) {
     auto output_desc = op.GetOutputDescByName("virial");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {nframes, 9};
+    std::vector<int64_t> expected_output_shape = {-1, 9};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   }
 
@@ -170,10 +166,10 @@ TEST_F(ProdVirialSeAProtoTest, ProdVirialSeAInferShapeTest_2) {
     auto output_desc = op.GetOutputDescByName("atom_virial");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {nframes, -1};
+    std::vector<int64_t> expected_output_shape = {-1, -1};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
-    std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{nframes, nframes}, {0, -1}};
+    std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{0, -1}, {0, -1}};
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
     output_desc.GetShapeRange(output_shape_range);
     EXPECT_EQ(output_shape_range, expected_output_shape_range);

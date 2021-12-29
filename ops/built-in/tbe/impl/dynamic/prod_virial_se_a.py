@@ -23,6 +23,7 @@ from impl.util.platform_adapter import tik
 from impl import constant_util as constant
 
 
+# 'pylint: disable=too-few-public-methods
 class ProdVirialSeA:
     """
     ProdVirialSeA op implement
@@ -39,10 +40,8 @@ class ProdVirialSeA:
         self.nlist_dtype = nlist.get("dtype").lower()
         self.natoms_dtype = natoms.get("dtype").lower()
 
-        net_deriv_shape = net_deriv.get("shape")
         natoms_shape = natoms.get("shape")
 
-        self.nframes = net_deriv_shape[0]
         self.nnei = nnei
         self.split_count = split_count
         self.split_index = split_index
@@ -58,12 +57,13 @@ class ProdVirialSeA:
                                              scope=tik.scope_gm)
         self.natoms_gm = self.tik_inst.Tensor(self.natoms_dtype, (natoms_shape[0],), name="natoms_gm",
                                               scope=tik.scope_gm)
-        self.virial_gm = self.tik_inst.Tensor(self.op_data_type, (self.nframes * 9,), name="virial_gm",
+        self.virial_gm = self.tik_inst.Tensor(self.op_data_type, (constant.SHAPE_SIZE_LIMIT,), name="virial_gm",
                                               scope=tik.scope_gm, is_atomic_add=True)
         self.atom_virial_gm = self.tik_inst.Tensor(self.op_data_type, (constant.SHAPE_SIZE_LIMIT,),
                                                    name="atom_virial_gm", scope=tik.scope_gm, is_atomic_add=True)
         self.tiling_ub = None
 
+        self.nframes = self.tik_inst.Scalar(dtype="int64", name="nframes")
         self.nnei_per_frame = self.tik_inst.Scalar(dtype="int64", name="nnei_per_frame")
         self.nall = self.tik_inst.Scalar(dtype="int64", name="nall")
         self.rep_times_offset = self.tik_inst.Scalar(dtype="int64", name="rep_times_offset")
@@ -79,14 +79,15 @@ class ProdVirialSeA:
         """
         Get runtime tiling parameters from tiling.
         """
-        self.nnei_per_frame.set_as(self.tiling_ub[0])
-        self.nall.set_as(self.tiling_ub[1])
-        self.rep_times_offset.set_as(self.tiling_ub[2])
-        self.nei_rep_times.set_as(self.tiling_ub[3])
-        self.pre_core_num.set_as(self.tiling_ub[4])
-        self.post_core_num.set_as(self.tiling_ub[5])
-        self.nei_rep_times_pre_core.set_as(self.tiling_ub[6])
-        self.nei_rep_times_post_core.set_as(self.tiling_ub[7])
+        self.nframes.set_as(self.tiling_ub[0])
+        self.nnei_per_frame.set_as(self.tiling_ub[1])
+        self.nall.set_as(self.tiling_ub[2])
+        self.rep_times_offset.set_as(self.tiling_ub[3])
+        self.nei_rep_times.set_as(self.tiling_ub[4])
+        self.pre_core_num.set_as(self.tiling_ub[5])
+        self.post_core_num.set_as(self.tiling_ub[6])
+        self.nei_rep_times_pre_core.set_as(self.tiling_ub[7])
+        self.nei_rep_times_post_core.set_as(self.tiling_ub[8])
 
     def _init_ub_data_fp32(self):
         """
@@ -110,6 +111,7 @@ class ProdVirialSeA:
 
         return net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, j_idx0, j_idx1, j_idx2, j_idx3
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _compute_virial_fp32(self, ub_tuple, kk, nei_start, nnei_ub):
         """
         Support shape/datatype:
@@ -250,8 +252,8 @@ class ProdVirialSeA:
                 nnei_start.set_as(self.rep_times_offset + self.pre_core_num + block_i * self.nei_rep_times_post_core)
                 nnei_end.set_as(nnei_start + self.nei_rep_times_post_core)
 
-            with self.tik_inst.if_scope(self.nnei_per_frame % ProdVirialSeA.NNEI_UB == 0 and
-                                        self.nei_rep_times >= self.ai_core_num * 2):
+            with self.tik_inst.if_scope(tik.all(self.nnei_per_frame % ProdVirialSeA.NNEI_UB == 0,
+                                                self.nei_rep_times >= self.ai_core_num * 2)):
                 with self.tik_inst.for_range(nnei_start, nnei_end, thread_num=2) as nn:
                     ub_tuple = self._init_ub_data_fp32()
                     kk_scalar = self.tik_inst.Scalar(dtype="int32")
@@ -278,6 +280,7 @@ class ProdVirialSeA:
                                config=opt_config)
 
 
+# 'pylint: disable=too-many-locals,too-many-arguments
 def _check_params(net_deriv, in_deriv, rij, nlist, natoms, virial, atom_virial, n_a_sel, n_r_sel, split_count,
                   split_index, kernel_name):
     net_deriv_dtype = net_deriv.get("dtype").lower()
@@ -340,6 +343,7 @@ def _check_params(net_deriv, in_deriv, rij, nlist, natoms, virial, atom_virial, 
         error_manager_vector.raise_err_specific_reson(kernel_name, rule)
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator("ProdVirialSeA")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

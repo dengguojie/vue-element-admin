@@ -55,28 +55,26 @@ class DeepMdFusionPassUtil {
    * @param fusedOpType
    * @param graph
    * @param addNode
-   * @param addNodeName
    * @param preNodes
    * @param preNodeOutputIdx
    * @return status
    */
   static Status CreateAddNodeAfterSplitNode(const std::string& fusedOpType, ge::ComputeGraph& graph,
-                                            ge::NodePtr& addNode, const std::string& addNodeName,
-                                            vector<ge::NodePtr>& preNodes, const uint32_t& preNodeOutputIdx);
+                                            ge::NodePtr& addNode, vector<ge::NodePtr>& preNodes,
+                                            const uint32_t& preNodeOutputIdx);
 
   /**
    * Create ConcatD node.
    * @param fusedOpType
    * @param graph
    * @param concatNode
-   * @param concatNodeName
    * @param preNodes
    * @param preNodeOutputIdx
    * @return status
    */
   static Status CreateConcatNodeAfterSplitNode(const std::string& fusedOpType, ge::ComputeGraph& graph,
-                                               ge::NodePtr& concatNode, const std::string& concatNodeName,
-                                               const vector<ge::NodePtr>& preNodes, const uint32_t& preNodeOutputIdx,
+                                               ge::NodePtr& concatNode, const vector<ge::NodePtr>& preNodes,
+                                               const uint32_t& preNodeOutputIdx,
                                                const vector<int32_t>& concatAttrs);
 
   /**

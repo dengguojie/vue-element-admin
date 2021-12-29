@@ -138,18 +138,15 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_01) {
 
 TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_02) {
   std::string testCaseName = "prodvirialsea_fusion_test_02";
-  int32_t nframes = 1;
-  int32_t nloc = -1;
-  int32_t nall = -1;
   int32_t n_a_sel = 138;
   int32_t n_r_sel = 0;
-  int32_t nnei = n_a_sel + n_r_sel;
+  int32_t natomsSize = 4;
 
-  auto netDeriv = CreateDataNode("net_deriv", {nframes, -1}, FORMAT_ND, DT_FLOAT);
-  auto inDeriv = CreateDataNode("in_deriv", {nframes, -1}, FORMAT_ND, DT_FLOAT);
-  auto rij = CreateDataNode("rij", {nframes, -1}, FORMAT_ND, DT_FLOAT);
-  auto nlist = CreateDataNode("nlist", {nframes, -1}, FORMAT_ND, DT_INT32);
-  auto natoms = CreateDataNode("natoms", {4}, FORMAT_ND, DT_INT32);
+  auto netDeriv = CreateDataNode("net_deriv", {-1, -1}, FORMAT_ND, DT_FLOAT);
+  auto inDeriv = CreateDataNode("in_deriv", {-1, -1}, FORMAT_ND, DT_FLOAT);
+  auto rij = CreateDataNode("rij", {-1, -1}, FORMAT_ND, DT_FLOAT);
+  auto nlist = CreateDataNode("nlist", {-1, -1}, FORMAT_ND, DT_INT32);
+  auto natoms = CreateDataNode("natoms", {natomsSize}, FORMAT_ND, DT_INT32);
 
   std::string virialOpName = "ProdVirialSeA_02";
   auto virialOp = ProdVirialSeA(virialOpName.c_str());
@@ -160,8 +157,8 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_02) {
       .set_input_natoms(natoms)
       .set_attr_n_a_sel(n_a_sel)
       .set_attr_n_r_sel(n_r_sel);
-  virialOp.update_output_desc_virial(SimpleTensorDesc("virial", {nframes, 9}, FORMAT_ND, DT_FLOAT));
-  virialOp.update_output_desc_atom_virial(SimpleTensorDesc("atom_virial", {nframes, nall * 9}, FORMAT_ND, DT_FLOAT));
+  virialOp.update_output_desc_virial(SimpleTensorDesc("virial", {-1, 9}, FORMAT_ND, DT_FLOAT));
+  virialOp.update_output_desc_atom_virial(SimpleTensorDesc("atom_virial", {-1, -1}, FORMAT_ND, DT_FLOAT));
 
   std::vector<Operator> inputs{netDeriv, inDeriv, rij, nlist, natoms};
   std::vector<Operator> outputs{virialOp};

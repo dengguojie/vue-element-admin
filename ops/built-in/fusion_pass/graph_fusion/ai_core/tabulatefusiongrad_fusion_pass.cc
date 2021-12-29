@@ -162,19 +162,17 @@ Status TabulateFusionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   vector<int32_t> concatAttrs{concatDim, concatN};
 
   ge::NodePtr concatDyDemXNode = nullptr;
-  std::string concatDyDemXNodeName = fusedNode->GetName() + "/Concat/dy_dem_x";
   vector<ge::NodePtr> tabulateNodes = {fusedNode, nodeAic, nodeVec};
   FUSION_PASS_CHECK(
-      DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(FUSED_OP_TYPE, graph, concatDyDemXNode, concatDyDemXNodeName,
-                                                           tabulateNodes, 0, concatAttrs) != SUCCESS,
+      DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(FUSED_OP_TYPE, graph, concatDyDemXNode, tabulateNodes, 0,
+                                                           concatAttrs) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Concat(dy_dem_x) node"), return FAILED);
   newNodes.push_back(concatDyDemXNode);
 
   ge::NodePtr concatDyDemNode = nullptr;
-  std::string concatDyDemNodeName = fusedNode->GetName() + "/Concat/dy_dem";
   FUSION_PASS_CHECK(
-      DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(FUSED_OP_TYPE, graph, concatDyDemNode, concatDyDemNodeName,
-                                                           tabulateNodes, 1, concatAttrs) != SUCCESS,
+      DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(FUSED_OP_TYPE, graph, concatDyDemNode, tabulateNodes, 1,
+                                                           concatAttrs) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Concat(dy_dem) node"), return FAILED);
   newNodes.push_back(concatDyDemNode);
 

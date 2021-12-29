@@ -124,34 +124,11 @@ void RunSimpleTest(const int64_t& runIndex, const int64_t& nframes, const int64_
 }
 
 TEST_F(ProdVirialSeATiling, prod_virial_se_a_tiling_001) {
-  // std::map<std::string, std::string> tilings = {
-  //     "1 1 1 1 1 1 ",     "1 1 1 1 2 2 ",     "1 1 1 1 3 3 ",     "1 1 1 1 4 4 ",     "1 1 1 1 5 5 ",
-  //     "1 1 1 1 6 6 ",     "1 1 1 1 7 7 ",     "1 1 1 1 8 8 ",     "2 1 1 1 5 9 ",     "2 2 1 1 5 10 ",
-  //     "2 1 1 1 6 11 ",    "2 2 1 1 6 12 ",    "2 1 1 1 7 13 ",    "2 2 1 1 7 14 ",    "2 1 1 1 8 15 ",
-  //     "2 2 1 1 8 16 ",    "3 2 1 1 6 17 ",    "3 3 1 1 6 18 ",    "3 1 1 1 7 19 ",    "3 2 1 1 7 20 ",
-  //     "3 3 1 1 7 21 ",    "3 1 1 1 8 22 ",    "3 2 1 1 8 23 ",    "3 3 1 1 8 24 ",    "4 1 1 1 7 25 ",
-  // };
-  // size_t testIdx = 0
-  // for (size_t nframes = 0; nframes < 5; ++nframes) {
-  //   for (size_t nloc = 0; nloc < 64; ++nloc) {
-  //     for (size_t nASel = 0; nASel < 64; ++nASel) {
-  //       for (size_t nRSel = 0; nRSel < 1; ++nRSel) {
-  //         size_t nnei = nASel + nRSel;
-  //         for (size_t nall = 0; nall < 64; ++nall) {
-  //           RunSimpleTest(testIdx, nframes, nloc, nnei, nall, 1, 0, 8, tilings[testIdx]);
-  //           RunSimpleTest(testIdx, nframes, nloc, nnei, nall, 2, 0, 8, tilings[testIdx]);
-  //           RunSimpleTest(testIdx, nframes, nloc, nnei, nall, 2, 1, 7, tilings[testIdx]);
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
+  RunSimpleTest(0, 1, 12288, 138, 28328, 1, 0, 8, "1 1695744 28328 0 6624 0 8 828 828 ");
+  RunSimpleTest(1, 1, 12288, 138, 28328, 2, 0, 8, "1 1695744 28328 0 3536 0 8 442 442 ");
+  RunSimpleTest(2, 1, 12288, 138, 28328, 2, 1, 7, "1 1695744 28328 3536 3088 1 6 442 441 ");
 
-  RunSimpleTest(0, 1, 12288, 138, 28328, 1, 0, 8, "1695744 28328 0 6624 0 8 828 828 ");
-  RunSimpleTest(1, 1, 12288, 138, 28328, 2, 0, 8, "1695744 28328 0 3536 0 8 442 442 ");
-  RunSimpleTest(2, 1, 12288, 138, 28328, 2, 1, 7, "1695744 28328 3536 3088 1 6 442 441 ");
-
-  RunSimpleTest(10, 1, 6144, 1800, 19000, 1, 0, 8, "11059200 19000 0 43200 0 8 5400 5400 ");
-  RunSimpleTest(11, 1, 6144, 1800, 19000, 2, 0, 8, "11059200 19000 0 23040 0 8 2880 2880 ");
-  RunSimpleTest(12, 1, 6144, 1800, 19000, 2, 1, 7, "11059200 19000 23040 20160 0 7 2880 2880 ");
+  RunSimpleTest(10, 1, 6144, 1800, 19000, 1, 0, 8, "1 11059200 19000 0 43200 0 8 5400 5400 ");
+  RunSimpleTest(11, 1, 6144, 1800, 19000, 2, 0, 8, "1 11059200 19000 0 23040 0 8 2880 2880 ");
+  RunSimpleTest(12, 1, 6144, 1800, 19000, 2, 1, 7, "1 11059200 19000 23040 20160 0 7 2880 2880 ");
 }

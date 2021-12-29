@@ -38,6 +38,7 @@ constexpr int64_t CUSTOM_AICORE_NUM = 8;
 constexpr int64_t CUSTOM_VECTORCORE_NUM = 7;
 
 struct ProdVirialSeAParams {
+  int64_t nframes;
   int64_t nneiPerFrame;
   int64_t nall;
   int64_t repTimesOffset;
@@ -147,6 +148,7 @@ bool CheckProdVirialSeAShapeInfo(const std::string& opType, const TeOpParas& opP
 }
 
 void InitProdVirialSeAParams(ProdVirialSeAParams& params) {
+  params.nframes = 0;
   params.nneiPerFrame = 0;
   params.nall = 0;
   params.repTimesOffset = 0;
@@ -158,6 +160,7 @@ void InitProdVirialSeAParams(ProdVirialSeAParams& params) {
 }
 
 void SetProdVirialSeAParams(const ProdVirialSeAParams& runParams, OpRunInfo& runInfo) {
+  ByteBufferPut(runInfo.tiling_data, runParams.nframes);
   ByteBufferPut(runInfo.tiling_data, runParams.nneiPerFrame);
   ByteBufferPut(runInfo.tiling_data, runParams.nall);
   ByteBufferPut(runInfo.tiling_data, runParams.repTimesOffset);
@@ -169,6 +172,7 @@ void SetProdVirialSeAParams(const ProdVirialSeAParams& runParams, OpRunInfo& run
 }
 
 void PrintProdVirialSeAParams(const std::string& opType, const ProdVirialSeAParams& runParams) {
+  OP_LOGD(opType.c_str(), "nframes=%d", runParams.nframes);
   OP_LOGD(opType.c_str(), "nneiPerFrame=%d", runParams.nneiPerFrame);
   OP_LOGD(opType.c_str(), "nall=%d", runParams.nall);
   OP_LOGD(opType.c_str(), "repTimesOffset=%d", runParams.repTimesOffset);
@@ -225,6 +229,7 @@ bool ProdVirialSeATiling(const std::string& opType, const TeOpParas& opParas, co
 
   ProdVirialSeAParams runParams;
   InitProdVirialSeAParams(runParams);
+  runParams.nframes = nframes;
   runParams.nneiPerFrame = nneiPerFrame;
   runParams.nall = nall;
   runParams.repTimesOffset = repTimesOffset;

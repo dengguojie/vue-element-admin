@@ -121,8 +121,7 @@ Status DeepMdFusionPassUtil::SplitNodeToAICoreAndVectorCore(const std::string& f
 }
 
 Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fusedOpType, ge::ComputeGraph& graph,
-                                                         ge::NodePtr& addNode, const std::string& addNodeName,
-                                                         vector<ge::NodePtr>& preNodes,
+                                                         ge::NodePtr& addNode, vector<ge::NodePtr>& preNodes,
                                                          const uint32_t& preNodeOutputIdx) {
   OP_LOGD(fusedOpType.c_str(), "Enter into create Add node");
   FUSION_PASS_CHECK(preNodes.size() != 3 || preNodes[0] == nullptr || preNodes[1] == nullptr || preNodes[2] == nullptr,
@@ -132,9 +131,12 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
   FUSION_PASS_CHECK(fusedOpDesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to get OpDesc of fused node"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(preNodeOutputIdx < 0 || preNodeOutputIdx >= fusedOpDesc->GetAllOutputsDescSize(),
+  FUSION_PASS_CHECK(preNodeOutputIdx >= fusedOpDesc->GetAllOutputsDescSize(),
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodeOutputIdx"),
                     return PARAM_INVALID);
+
+  std::string addNodeName = preNodes[0]->GetName() + "/Add/"+ fusedOpDesc->GetOutputNameByIndex(preNodeOutputIdx);
+  OP_LOGD(fusedOpType.c_str(), "Name for new Add node is: %s", addNodeName);
 
   ge::OpDescPtr opDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(opDesc = std::make_shared<ge::OpDesc>(addNodeName, "Add"), return INTERNAL_ERROR);
@@ -171,7 +173,7 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
 }
 
 Status DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(const std::string& fusedOpType, ge::ComputeGraph& graph,
-                                                            ge::NodePtr& concatNode, const std::string& concatNodeName,
+                                                            ge::NodePtr& concatNode,
                                                             const vector<ge::NodePtr>& preNodes,
                                                             const uint32_t& preNodeOutputIdx,
                                                             const vector<int32_t>& concatAttrs) {
@@ -180,16 +182,19 @@ Status DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(const std::string& f
   FUSION_PASS_CHECK(preNodes.size() != 3 || preNodes[0] == nullptr || preNodes[1] == nullptr || preNodes[2] == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodes"),
                     return PARAM_INVALID);
-  ge::OpDescPtr fusedOpDesc = preNodes[0]->GetOpDesc();
-  FUSION_PASS_CHECK(fusedOpDesc == nullptr,
+  FUSION_PASS_CHECK(preNodes[0]->GetOpDesc() == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to get OpDesc of fused node"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(preNodeOutputIdx < 0 || preNodeOutputIdx >= fusedOpDesc->GetAllOutputsDescSize(),
+  ge::OpDescPtr fusedOpDesc = preNodes[0]->GetOpDesc();
+  FUSION_PASS_CHECK(preNodeOutputIdx >= fusedOpDesc->GetAllOutputsDescSize(),
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodeOutputIdx"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(concatAttrs.size() < 2 || concatAttrs[0] < 0 || concatAttrs[1] < 1,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check ConcatD attrs"),
                     return PARAM_INVALID);
+
+  std::string concatNodeName = preNodes[0]->GetName() + "/Concat/"+ fusedOpDesc->GetOutputNameByIndex(preNodeOutputIdx);
+  OP_LOGD(fusedOpType.c_str(), "Name for new ConcatD node is: %s", concatNodeName);
 
   ge::OpDescPtr concatDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(concatDesc = std::make_shared<ge::OpDesc>(concatNodeName, "ConcatD"), return INTERNAL_ERROR);
@@ -245,7 +250,7 @@ Status DeepMdFusionPassUtil::ClearFusedNode(const std::string& fusedOpType, ge::
     }
   }
 
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS,
                     OP_LOGE(fusedOpType.c_str(), "Failed to remove node[%s].", nodeName.c_str()), return FAILED);
 
   OP_LOGD(fusedOpType.c_str(), "End to clear fused node");
