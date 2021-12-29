@@ -239,7 +239,7 @@ static void TilingFactor(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, con
   }
 }
 
-static bool IfBlock(const MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const CompileInfoParams& compile_info,
+static bool IfBlock(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const CompileInfoParams& compile_info,
                     const int32_t& ho_outer, const int32_t& ho_inner) {
   if (ho_inner <= 1) {
     return false;
@@ -247,6 +247,10 @@ static bool IfBlock(const MaxPoolGradWithArgmaxV2TilingParams& tiling_params, co
   if (compile_info.stride_h >= compile_info.kh) {
     return true;
   }
+
+  // avoid tiling_params.each_process_ho being zero
+  TilingFactor(tiling_params, compile_info);
+  
   int32_t overlap_num = ceil((compile_info.kh - compile_info.stride_h) * 1.0 / compile_info.stride_h);
   int32_t times = ceil(ho_inner * 1.0 / tiling_params.each_process_ho);
   int32_t overlaps = overlap_num * times;
