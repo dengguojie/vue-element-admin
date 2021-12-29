@@ -39,9 +39,7 @@ using namespace ge;
 namespace fe {
     const std::string HardMaxPass::PATTERN_FUSEDNODE = "HardMax";
     const int64_t SCALAR_SHAPE_SIZE = 1;
-    const int32_t ON_VALUE_DATA = 1;
-    const int32_t OFF_VALUE_DATA = 0;
-    const uint16_t UINT_NUM_ZERO = 0;
+    const fp16_t UINT_NUM_ZERO = 0;
 
 vector<FusionPattern *> HardMaxPass::DefinePatterns()
 {
@@ -147,56 +145,61 @@ int64_t GetDimN(const vector<int64_t> &shapes)
     return dim_num;
 }
 
-Status AssistDataGen(int32_t data, uint16_t *output)
-{
-    if (output == nullptr) {
-        VECTOR_FUSION_INNER_ERR_REPORT("Output",
-            "output pointer is null!");
-        return FAILED;
-        }
-    output[0] = data;
+Status HardMaxPass::NnSets(const fp16_t beta, const int32_t k, fp16_t &output1) const {
+    fp16_t *output = &output1;
+    for (int32_t i = 0; i < k; ++i) {
+        output[i] = beta;
+    }
     return SUCCESS;
 }
 
 Status HardMaxPass::OnValueConstNode(vector<int64_t> &on_value_tensor_shape,
     const ge::GeTensorDesc &input_desc_one, ge::GeTensorPtr &assit_on_value_ptr,
-    int32_t on_value, ge::GeTensorDesc &on_value_tensor_desc) const
+    ge::GeTensorDesc &on_value_tensor_desc) const
 {
     int64_t on_value_dim_num = GetDimN(on_value_tensor_shape);
     Status ret = SetConstDesc(on_value_tensor_shape, on_value_tensor_desc, input_desc_one);
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
         "Set ConstDesc failed."), return ret);
-    unique_ptr<uint16_t[]> on_value_assit(new (std::nothrow) uint16_t[on_value_dim_num]());
+    unique_ptr<fp16_t[]> on_value_assit(new (std::nothrow) fp16_t[on_value_dim_num]());
     FUSION_PASS_CHECK(on_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "on_value_assit is NULL"), return PARAM_INVALID);
-    ret = NnSet(on_value_dim_num, UINT_NUM_ZERO, *reinterpret_cast<uint16_t *>(on_value_assit.get()));
+    ret = NnSets(UINT_NUM_ZERO, on_value_dim_num, *reinterpret_cast<fp16_t *>(on_value_assit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
         "NnSet failed."), return ret);
-    AssistDataGen(on_value, on_value_assit.get());
+    fp16_t on_value = 1.0;
+    fp16_t *output = on_value_assit.get();
+    if (output == nullptr) {VECTOR_FUSION_INNER_ERR_REPORT("Output",
+            "output pointer is null!"); return FAILED;}
+    output[0] = on_value;
     FUSION_PASS_MAKE_SHARED((assit_on_value_ptr = std::make_shared<ge::GeTensor>(on_value_tensor_desc,
-        reinterpret_cast<uint8_t *>(on_value_assit.get()), on_value_dim_num * sizeof(uint16_t))),
+        reinterpret_cast<uint8_t *>(on_value_assit.get()), on_value_dim_num * sizeof(fp16_t))),
         assit_on_value_ptr = nullptr; return PARAM_INVALID);
     return SUCCESS;
 }
 
 Status HardMaxPass::OffValueConstNode(vector<int64_t> &off_value_tensor_shape,
     const ge::GeTensorDesc &input_desc_one, ge::GeTensorPtr &assit_off_value_ptr,
-    int32_t off_value, ge::GeTensorDesc &off_value_tensor_desc) const
+    ge::GeTensorDesc &off_value_tensor_desc) const
 {
     int64_t off_value_dim_num = GetDimN(off_value_tensor_shape);
     auto res = SetConstDesc(off_value_tensor_shape, off_value_tensor_desc, input_desc_one);
     FUSION_PASS_CHECK(res != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                           "Set ConstDesc fail"), return FAILED);
-    unique_ptr<uint16_t[]> off_value_assit(new (std::nothrow) uint16_t[off_value_dim_num]());
+    unique_ptr<fp16_t[]> off_value_assit(new (std::nothrow) fp16_t[off_value_dim_num]());
     FUSION_PASS_CHECK(off_value_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "off_value_assit is NULL"),
         return PARAM_INVALID);
-    auto result = NnSet(off_value_dim_num, UINT_NUM_ZERO, *reinterpret_cast<uint16_t *>(off_value_assit.get()));
+    auto result = NnSets(UINT_NUM_ZERO, off_value_dim_num, *reinterpret_cast<fp16_t *>(off_value_assit.get()));
     FUSION_PASS_CHECK(result != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "NnSet failed."), return result);
-    AssistDataGen(off_value, off_value_assit.get());
+    fp16_t off_value = 0.0;
+    fp16_t *output = off_value_assit.get();
+    if (output == nullptr) {VECTOR_FUSION_INNER_ERR_REPORT("Output",
+            "output pointer is null!"); return FAILED;}
+    output[0] = off_value;
     FUSION_PASS_MAKE_SHARED((assit_off_value_ptr = std::make_shared<ge::GeTensor>(off_value_tensor_desc,
-        reinterpret_cast<uint8_t *>(off_value_assit.get()), off_value_dim_num * sizeof(uint16_t))),
+        reinterpret_cast<uint8_t *>(off_value_assit.get()), off_value_dim_num * sizeof(fp16_t))),
         assit_off_value_ptr = nullptr;
         return PARAM_INVALID);
     return SUCCESS;
@@ -238,6 +241,7 @@ Status HardMaxPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
     vector<ge::NodePtr> &fusion_nodes)
 {
     ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+    ge::DataType data_type = fused_node->GetOpDesc()->GetInputDesc(0).GetDataType();
     FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "Fusion GetNode Error"), return PARAM_INVALID);
     ge::NodePtr one_hot_d_node;
@@ -267,17 +271,15 @@ Status HardMaxPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
     vector<int64_t> on_and_off_shape;
     on_and_off_shape.push_back(SCALAR_SHAPE_SIZE);
     ge::GeTensorPtr assit_on_value_ptr = nullptr;
-    ge::GeTensorDesc on_value_tensor_desc(GeShape(on_and_off_shape), ge::FORMAT_ND, ge::DT_INT32);
-    ge::GeTensorDesc input_desc_one(GeShape(on_and_off_shape), ge::FORMAT_ND, ge::DT_INT32);
-    int32_t on_value = ON_VALUE_DATA;
-    ret = OnValueConstNode(on_and_off_shape, input_desc_one, assit_on_value_ptr, on_value,
+    ge::GeTensorDesc on_value_tensor_desc(GeShape(on_and_off_shape), ge::FORMAT_ND, data_type);
+    ge::GeTensorDesc input_desc_one(GeShape(on_and_off_shape), ge::FORMAT_ND, data_type);
+    ret = OnValueConstNode(on_and_off_shape, input_desc_one, assit_on_value_ptr,
                            on_value_tensor_desc);
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "Creat OnValueConstNode fail"), return FAILED);
     ge::GeTensorPtr assit_off_value_ptr = nullptr;
-    ge::GeTensorDesc off_value_tensor_desc(GeShape(on_and_off_shape), ge::FORMAT_ND, ge::DT_INT32);
-    int32_t off_value = OFF_VALUE_DATA;
-    ret = OffValueConstNode(on_and_off_shape, input_desc_one, assit_off_value_ptr, off_value,
+    ge::GeTensorDesc off_value_tensor_desc(GeShape(on_and_off_shape), ge::FORMAT_ND, data_type);
+    ret = OffValueConstNode(on_and_off_shape, input_desc_one, assit_off_value_ptr,
                             off_value_tensor_desc);
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT("HardMaxPass",
                       "Creat OffValueConstNode fail"), return FAILED);

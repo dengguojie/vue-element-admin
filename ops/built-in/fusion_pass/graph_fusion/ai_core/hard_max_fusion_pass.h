@@ -18,6 +18,7 @@
 #define HARD_MAX_FUSION_PASS_H
 #include <string>
 #include <vector>
+#include "fp16_t.hpp"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 #include "graph/tensor.h"
@@ -33,10 +34,11 @@ protected:
 		ge::NodePtr &new_node, int64_t depth, int64_t dim);
 	Status SetConstDesc(vector<int64_t> &tensor_shape, ge::GeTensorDesc &tensor_desc,
 		const ge::GeTensorDesc &des_desc)const;
+	Status NnSets(const fp16_t alpha, const int32_t n, fp16_t &output1) const;
 	Status OnValueConstNode(vector<int64_t> &on_value_tensor_shape, const ge::GeTensorDesc &input_desc_one,
-		ge::GeTensorPtr &assit_on_value_ptr, int32_t on_value, ge::GeTensorDesc &on_value_tensor_desc)const;
+		ge::GeTensorPtr &assit_on_value_ptr, ge::GeTensorDesc &on_value_tensor_desc)const;
 	Status OffValueConstNode(vector<int64_t> &off_value_tensor_shape, const ge::GeTensorDesc &input_desc_one,
-		ge::GeTensorPtr &assit_off_value_ptr, int32_t off_value, ge::GeTensorDesc &off_value_tensor_desc)const;
+		ge::GeTensorPtr &assit_off_value_ptr, ge::GeTensorDesc &off_value_tensor_desc)const;
 	Status AddEdgeToOneHotDForOut(ge::NodePtr &fused_node, ge::NodePtr &one_hot_d_node)const;
 	Status RemoveFusedNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node)const;
 
