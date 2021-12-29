@@ -63,6 +63,7 @@ FIXPIPE_SCOPE_MAP = {
     "quant_scale_1": "local.FB3"
 }
 
+
 def _ceil_div(dividend, divisor):
     """
     do division and round up to an integer
@@ -103,7 +104,7 @@ def _get_precision_mode(op_type):
     return ""
 
 
-class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
+class CceConv2dBackpropFilterOp:
     """
     CceConv2dBackpropFilterOp: schedule definition of conv2d_backprop_filter
 
@@ -143,9 +144,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self.c0_size = tbe_platform.C0_SIZE
         self.l0b_dma_flag = False
         self.tensor_map = {}
+        self.var_map = {}
 
-    def schedule(self,  # pylint: disable=R0914,R0915
-                 res, spec_node_list, sch_list, dynamic_para=None):
+    def schedule(self, res, spec_node_list, sch_list, dynamic_para=None):
         """
         schedule definition of conv2d_backprop_filter
 
@@ -179,7 +180,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     return "dynamic_hw"
             return None
 
-        def _tiling_shape_check(): # pylint: disable=R0915
+        def _tiling_shape_check():
             """
             do tiling shape paramters general check
 
@@ -192,7 +193,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             cl0_matrix = tiling.get("CL0_matrix")
             if al1_shape:
                 if (al1_shape[0] // self.c0_size) % al0_matrix[1] != 0:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64006"
                     dict_args['param_1'] = "AL1_shape(AL1_shape[0]//C0)"
                     dict_args['param_2'] = "AL0_matrix(ALO_matrix[1])"
@@ -200,7 +201,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     dict_args['value_2'] = str(al0_matrix[1])
                     error_manager_util.raise_runtime_error(dict_args)
                 if al1_shape[1] < 1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64007"
                     dict_args['axis_name'] = "m"
                     dict_args['param_name'] = "AL1_shape[1]"
@@ -209,7 +210,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if bl1_shape:
                 if (bl1_shape[0] // self.c0_size) % bl0_matrix[0] != 0:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64006"
                     dict_args['param_1'] = "BL1_shape(BL1_shape[0]//C0)"
                     dict_args['param_2'] = "BL0_matrix(BL0_matrix[0])"
@@ -217,7 +218,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     dict_args['value_2'] = str(bl0_matrix[0])
                     error_manager_util.raise_runtime_error(dict_args)
                 if bl1_shape[1] < 1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64007"
                     dict_args['axis_name'] = "n"
                     dict_args['param_name'] = "BL1_shape[1]"
@@ -226,7 +227,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if al0_matrix:
                 if al0_matrix[0] != cl0_matrix[1]:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64008"
                     dict_args['axis_name'] = 'm_axis'
                     dict_args['param_1'] = "AL0_matrix"
@@ -237,7 +238,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if bl0_matrix:
                 if bl0_matrix[1] != cl0_matrix[0]:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64008"
                     dict_args['axis_name'] = 'n_axis'
                     dict_args['param_1'] = "BL0_matrix"
@@ -248,7 +249,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             if al0_matrix and bl0_matrix:
                 if al0_matrix[1] != bl0_matrix[0]:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args['errCode'] = "E64008"
                     dict_args['axis_name'] = 'k_axis'
                     dict_args['param_1'] = "AL0_matrix"
@@ -274,14 +275,14 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             cub_matrix = tiling.get("CUB_matrix")
             if (not self.cube_vector_split
                 and (cl0_matrix[0] % cub_matrix[0] != 0 or cl0_matrix[1] != cub_matrix[1])):
-                dict_args = dict()
+                dict_args = {}
                 dict_args['errCode'] = "E64009"
                 error_manager_util.raise_runtime_error(dict_args)
             # blockIdx must be positive int
             dim_i = 0
             for dim_x in block_cout:
                 if dim_x < 1:
-                    dict_args = dict()
+                    dict_args = {}
                     dict_args["errCode"] = "E64004"
                     dict_args["param_name"] = "tiling.block_dim"
                     dict_args["axis_rule"] = "positive int"
@@ -291,7 +292,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 dim_i = dim_i + 1
 
             def _gen_dict_args(name, value):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E64010"
                 dict_args["buffer_name"] = name
                 dict_args["value"] = str(value)
@@ -505,7 +506,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 print("l1_2_l0_tiling_nparts", l1_2_l0_tiling_nparts)
                 print("dw_k", dw_k)
 
-            tiling_parts_dict = dict()
+            tiling_parts_dict = {}
             tiling_parts_dict["dw_tiling_factor"] = dw_tiling_factor
             tiling_parts_dict["dw_tiling_nparts"] = dw_tiling_nparts
             tiling_parts_dict["dw_ub_tiling_factor"] = dw_ub_tiling_factor
@@ -751,7 +752,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             achieve emit_insn
 
             """
-            setfmatrix_dict = dict()
+            setfmatrix_dict = {}
             setfmatrix_dict["conv_kernel_h"] = kernel_height
             setfmatrix_dict["conv_kernel_w"] = kernel_width
             setfmatrix_dict["conv_padding_top"] = pad_up
@@ -780,7 +781,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             if self.cube_vector_split and _get_precision_mode("conv2d_backprop_filter") == "high_performance":
                 mad_dict["hf32"] = 1
 
-            setfmatrix_dict_0 = dict()
+            setfmatrix_dict_0 = {}
             setfmatrix_dict_0["conv_kernel_h"] = kernel_height
             setfmatrix_dict_0["conv_kernel_w"] = kernel_width
             setfmatrix_dict_0["conv_padding_top"] = pad_up
@@ -882,7 +883,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             for fixpipe_l1_mem in self.tensor_map.get("fixpipe_l1", []):
                 sch[fixpipe_l1_mem].emit_insn(fixpipe_l1_mem.op.axis[0], "dma_copy")
             if self.tensor_map.get("fixpipe_l1_eltwise") is not None:
-                fixpipe_l1_eltwise = self.tensor_map["fixpipe_l1_eltwise"]
+                fixpipe_l1_eltwise = self.tensor_map.get("fixpipe_l1_eltwise")
                 sch[fixpipe_l1_eltwise].emit_insn(fixpipe_l1_eltwise.op.axis[0], "dma_copy")
             for fixpipe_fb_mem in self.tensor_map.get("fixpipe_fb", {}).values():
                 sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
@@ -1026,7 +1027,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         # support NZ2ND transdata
         # dw_ddr -> dw_res_trans
         sch = sch_list[0]
-        dw_res_trans = None # pylint: disable=too-many-statements
+        dw_res_trans = None
         dw_trans_flag = False
         fmap_trans_flag = False
         grads_trans_flag = False
@@ -1138,13 +1139,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     return CUBE_DIM
                 elif width_grads % CUBE_DIM == 0:
                     return width_grads
-                else:
-                    kbl1_before = width_grads // CUBE_DIM
-                    # if kbl1_before is not factor of K, it needs to recalculate
-                    c_k1 = _ceil_div(hw_pad_1, CUBE_DIM)
-                    k_npart = _ceil_div(c_k1, kbl1_before)
-                    kbl1 = c_k1 // k_npart * CUBE_DIM
-                    return kbl1
+
+                kbl1_before = width_grads // CUBE_DIM
+                # if kbl1_before is not factor of K, it needs to recalculate
+                c_k1 = _ceil_div(hw_pad_1, CUBE_DIM)
+                k_npart = _ceil_div(c_k1, kbl1_before)
+                kbl1 = c_k1 // k_npart * CUBE_DIM
+                return kbl1
 
             def _cal_bl1size():
                 """
@@ -1168,7 +1169,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             block_batch = _get_factors(batch_grads, self._corenum)
             out_dtype = dw_cc.dtype.lower()
-            if nbl0 * mal0 * CUBE_DIM * CUBE_DIM * BIT_RATIO_DICT.get(out_dtype, 4) * OPEN_DOUBLE_BUFFER < self._loc_size:
+            if nbl0 * mal0 * CUBE_DIM * CUBE_DIM * BIT_RATIO_DICT.get(out_dtype, 4) * OPEN_DOUBLE_BUFFER \
+                < self._loc_size:
                 cl0_pbuffer = 2
             else:
                 cl0_pbuffer = 1
@@ -1242,6 +1244,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         dynamic_l0a_attach, dynamic_l0b_attach, dynamic_al1_attach, \
         dynamic_bl1_attach \
             = _get_attach_flag()
+
         def _flag_all_one():
             # special supporting for a unique case, there are 2 conditions:
             # (1) height & weight of x/output_backprop/filter are all 1
@@ -1280,7 +1283,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             w_one_flag = tiling.get("w_one_flag")
             sch.set_var_value(self.var_map["w_one_flag"], w_one_flag)
             sch.set_var_range(self.var_map["w_one_flag"], w_one_flag, w_one_flag)
-            flag_w_one_case = True if w_one_flag == 2 else False
+            flag_w_one_case = w_one_flag == 2
             if flag_w_one_case:
                 width_grads *= 2
                 grads_shape[3] = width_grads
@@ -1499,8 +1502,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
             # reorder according to requirments of mmad EmitInsn
             sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
-                                g_multicore,
-                                c_grads_multicore, c_fmap_multicore, g_axis,
+                                g_multicore, c_grads_multicore,
+                                c_fmap_multicore, g_axis,
                                 c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at,
                                 c_grads_l1_at,
                                 c_fmap_mad_at, c_grads_mad_at,
@@ -1654,8 +1657,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         hw_mad_1_l1_at, grads_l1_tiling_factor_k)
                 elif tiling.get("BL1_shape"):
                     # only fmap needs tiling in L1
-                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
-                        hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
+                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
                 else:
@@ -1664,16 +1666,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                         hw_mad_1_mad_at, nparts=fmap_l1_tiling_nparts[0])
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
-                al1_at_axis = hw_mad_1_l1_out_at
-                bl1_at_axis = hw_mad_1_l1_in_at
+                al1_at_axis, bl1_at_axis = hw_mad_1_l1_out_at, hw_mad_1_l1_in_at
             # split dw_cc.op.axis[0](N1), factor is one MMAD
             fkk_mad_at, fkk_mad_insn \
                 = sch[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
 
             # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
-            lc_mad_at, lc_mad_insn \
-                = sch[dw_cc].split(sch[dw_cc].op.axis[3],
-                                dw_tiling_factor[1] * CUBE_DIM)
+            lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[3],dw_tiling_factor[1] * CUBE_DIM)
             sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                                batch_insn_o, hw_mad_1_l1_out_at,
                                hw_mad_1_l1_in_at, hw_mad_1_mad_at,
@@ -1690,6 +1689,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             al1_at_axis, bl1_at_axis, hw_mad_1_mad_at, batch_insn_o, \
             hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, batch_insn \
                 = _dw_cc_split()
+
         # #############################multi core#############################
         def _bind_core():
             fused_multi_core = \
@@ -1909,7 +1909,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     # hw need both multi-core offset and k_axis offset
                     return "tile_h_dw_cc"
 
-                elif dynamic_bl1_attach == "dw_ddr":
+                if dynamic_bl1_attach == "dw_ddr":
                     # hw only need multi_core offset
                     return "tile_h_dw_ddr"
 
@@ -1985,9 +1985,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 hi_min, hi_extent, wi_min, wi_extent = \
                     _set_tile_params(ho_len, tile_mode)
 
-                if "tile_h" in tile_mode:
-                    hi_min, hi_extent = hi_min, hi_extent
-                else:
+                if "tile_h" not in tile_mode:
                     hi_min, hi_extent = None, None
                 sch[fmap_l1].buffer_tile((None, None), (None, None), (None, None),
                                         (hi_min, hi_extent),

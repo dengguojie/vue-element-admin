@@ -66,7 +66,7 @@ def _check_shape_rule(shape, dim, formats, name, allow_zero=False):
 
     """
     if len(shape) != dim:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E64003"
         dict_args["param_name"] = name
         dict_args["format"] = formats
@@ -83,7 +83,7 @@ def _check_shape_rule(shape, dim, formats, name, allow_zero=False):
             check_zero = (dim_x <= 0)
             axis_rule = "int and > 0"
         if (not isinstance(dim_x, int)) or check_zero:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E64004"
             dict_args["param_name"] = name
             dict_args["axis_rule"] = axis_rule
@@ -124,7 +124,7 @@ def _check_attr_rule(attr, dim, attr_limit, formats, name):
     attr_min = attr_limit[0]
     attr_max = attr_limit[1]
     if len(attr) != dim:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E64003"
         dict_args["param_name"] = name
         dict_args["format"] = formats
@@ -149,7 +149,7 @@ def _check_variable_range(variable, minimum, maximum, name):
     """
     if (not isinstance(variable, int)) or variable < minimum \
             or variable > maximum:
-        dict_args = dict()
+        dict_args = {}
         dict_args['errCode'] = "E64001"
         dict_args['range'] = "[{},{}]".format(minimum, maximum)
         dict_args['attr_name'] = name
@@ -165,7 +165,7 @@ def _check_addressing_rule(shape, byte_count, limit, name):
     # product of all dimension
     product = reduce(lambda x, y: x * y, shape[:])
     if product*byte_count > limit:
-        dict_args = dict()
+        dict_args = {}
         dict_args['errCode'] = "E60020"
         dict_args['attr_name'] = name
         error_manager_util.raise_runtime_error(dict_args)
@@ -176,7 +176,7 @@ def check_shape_equal(x, y, param_name1, param_name2):
     check shape dim equal
     """
     if x != y:
-        dict_args = dict()
+        dict_args = {}
         dict_args['errCode'] = "E64002"
         dict_args['param1'] = param_name1
         dict_args['param2'] = param_name2
@@ -184,7 +184,7 @@ def check_shape_equal(x, y, param_name1, param_name2):
         error_manager_util.raise_runtime_error(dict_args)
 
 
-class Conv2dBackpropFilter:  # pylint: disable=R0902
+class Conv2dBackpropFilter:
     """
     Conv2dBackpropFilter: compute definition of conv2d_backprop_filter
 
@@ -210,7 +210,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
     """
 
-    def __init__(self, input_x, out_backprop,  # pylint: disable=R0913, R0914
+    def __init__(self, input_x, out_backprop,
                  filter_sizes, strides, padding, dilations, groups,
                  res_dtype="float32",
                  kernel_name="conv2d_backprop_filter_cce"):
@@ -256,6 +256,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.dilation = list(dilations)
         self.group = groups
         self.kernel_name = kernel_name
+        self.group_dict = {}
 
         self.optag = "conv2d_backprop_filter"
 
@@ -343,14 +344,14 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         }
         return dynamic_para
 
-    def _deconv_dw_input_check_1(self):  # pylint: disable=R0915
+    def _deconv_dw_input_check_1(self):
         """
         do input parameters check part1
 
         """
         # check of data type
         if self.fmap_dtype != self.grads_dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60038"
             dict_args["desc"] = "The fmap data type is not same as the out_backprop data type."
             error_manager_util.raise_runtime_error(dict_args)
@@ -358,7 +359,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.c0_size = tbe_platform.CUBE_MKN.get(self.fmap_dtype).get("mac")[1]
         if not tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
                 self.res_dtype != "float16":
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60005"
             dict_args["param_name"] = "y"
             dict_args["expected_dtype_list"] = "float16 for lhisi"
@@ -366,7 +367,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             error_manager_util.raise_runtime_error(dict_args)
         if tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
                 self.res_dtype != "float32":
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60005"
             dict_args["param_name"] = "y"
             dict_args["expected_dtype_list"] = "float32"
@@ -384,7 +385,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         # pad: pad_top, pad_bottom, pad_left, pad_right
         fmap_height_after_pad = self.shape_x_5hd[2] + self.pad[0] + self.pad[1]
-        fmap_width_after_pad = self.shape_x_5hd[3] + self.pad[2] + self.pad[3]
 
         weight_shape_n = _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE
         weight_shape_c = _ceil_div(self.group * self.weight_shape[1], BLOCK_SIZE) * BLOCK_SIZE
@@ -517,7 +517,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                             "[strideH, strideW]", "stride")
         return True
 
-    def _deconv_dw_input_check_2(self):  # pylint: disable=R0914, R0915
+    def _deconv_dw_input_check_2(self):
         """
         do input parameters check part2
 
@@ -534,7 +534,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             dilation_min = 1
             dilation_max = 255
             if dilationn != 1 or dilationc != 1:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E60023"
                 dict_args["dilation_n"] = str(dilationn)
                 dict_args["dilation_c"] = str(dilationc)
@@ -561,12 +561,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             computed_grads_height = (fmap_height - dilation_kernel_height + \
                                     pad_top + pad_bottom)//stride_height + 1
             if computed_grads_height != grads_height:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E60024"
                 error_manager_util.raise_runtime_error(dict_args)
             fmap_height_after_pad = fmap_height + pad_top + pad_bottom
             if dilation_kernel_height > fmap_height_after_pad:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E60014"
                 dict_args["h_of_x"] = str(fmap_height_after_pad)
                 dict_args["h_of_filter"] = str(dilation_kernel_height)
@@ -577,12 +577,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             computed_grads_width = (fmap_width - dilation_kernel_width + \
                                     pad_left + pad_right)//stride_width + 1
             if computed_grads_width != grads_width:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E60025"
                 error_manager_util.raise_runtime_error(dict_args)
             fmap_width_after_pad = fmap_width + pad_left + pad_right
             if dilation_kernel_width > fmap_width_after_pad:
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E60015"
                 dict_args["w_of_x"] = str(fmap_width_after_pad)
                 dict_args["w_of_filter"] = str(dilation_kernel_width)
@@ -695,7 +695,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self._deconv_dw_compute()
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
 
-    def _deconv_dw_compute(self):  # pylint: disable=R0914
+    def _deconv_dw_compute(self):
         """
         complete compute definition
 
@@ -739,8 +739,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         real_g = group_dict.get("real_g")
         fmap_c1_g = group_dict.get("cin1_g")
         grads_channel_g = group_dict.get("cout_g")
-        cin_ori = group_dict.get("cin_ori")
-        cout_ori = group_dict.get("cout_ori")
 
         # align to 16
         hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) \
@@ -1117,7 +1115,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         None
         """
 
-        def __fmap_2_matrix_compute(indices,  # pylint:disable=R0913,R0914
+        def __fmap_2_matrix_compute(indices,
                                     fmap, kernel_width,
                                     pad_left=0, pad_right=0, pad_top=0,
                                     strideh=1, stridew=1, dilationh=1,
@@ -1253,8 +1251,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         None
         """
 
-        def __fmap_2_fractal_compute(  # pylint:disable=R0913,R0914
-                indices, fmap_2_col_matrix):
+        def __fmap_2_fractal_compute(indices, fmap_2_col_matrix):
             """
             do coordinate calculation
 
@@ -1370,7 +1367,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                             name='famp_2_fractal',
                             tag='famp_2_fractal')
 
-    def _mad(self, mad_shape, grads, fmap):  # pylint: disable=R0913,R0914
+    def _mad(self, mad_shape, grads, fmap):
         """
         calculate mad result tensor
         Parameters
