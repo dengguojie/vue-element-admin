@@ -45,7 +45,8 @@ if __name__ == '__main__':
     cce_conf.te_set_version("Ascend710")
     vals = {("tik.vextract", "float16"): False,
             ("tik.vextract", "float32"): False,
-            ("tik.vdiv", "float32"): True
+            ("tik.vdiv", "float32"): True,
+            ("tik.vgatherb"): True
             }
     def side_effects(*args):
         return vals[args]

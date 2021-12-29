@@ -28,7 +28,7 @@ static const string FUSED_NODE = "ReduceMean";
 Status AReduceMeanFusionPass::CheckMeanFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info,
                                                     const Operator& op) {
   bool keep_dims = false;
-  const string keep_dims_name = "keep_dims";
+  const char* keep_dims_name = "keep_dims";
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "can't get keep_dims attr.");
   }

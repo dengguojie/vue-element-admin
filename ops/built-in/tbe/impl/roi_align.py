@@ -3272,7 +3272,8 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
         n_bust = 2
     else:
         n_bust = 1
-    l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+    # only v300 support vgatherb 
+    l1_size = 0 if tbe_platform.api_check_support("tik.vgatherb") else tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
     if roisn_dict:
         roisn_ub = tik_instance.Tensor(roisn_dtype, [1, 16], \
                                        name="roisn_ub", scope=tbe_platform.scope_ubuf)

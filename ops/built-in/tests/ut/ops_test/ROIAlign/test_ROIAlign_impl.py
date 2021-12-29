@@ -337,7 +337,8 @@ ut_case.add_cust_test_func(test_func=roi_align_v200_004)
 ut_case.add_cust_test_func(test_func=roi_align_v200_005)
 ut_case.run("Ascend910A")
 vals = {("tik.vextract", "float16"): False,
-        ("tik.vextract", "float32"): False}
+        ("tik.vextract", "float32"): False,
+        ("tik.vgatherb"): True}
 def side_effects(*args):
     return vals[args]
 with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMock(side_effect=side_effects)):

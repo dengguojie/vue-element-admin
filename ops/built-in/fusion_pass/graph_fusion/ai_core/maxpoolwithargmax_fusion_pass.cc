@@ -125,12 +125,12 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   // get input ksize
   std::vector<int64_t> ksizeList;
   if (op.GetAttr("ksize", ksizeList) != ge::GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "GetOpAttr ksizeList failed!");
+    OP_LOGW(TbeGetName(op).c_str(), "GetOpAttr ksizeList failed!");
     return NOT_CHANGED;
   }
 
   if (ksizeList.size() != DIM_SIZE4) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "length of ksize must be equal to"
             "the length of shape!");
     return NOT_CHANGED;
@@ -139,25 +139,25 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   // get input strides
   std::vector<int64_t> stridesList;
   if (op.GetAttr("strides", stridesList) != ge::GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "GetOpAttr stridesList failed!");
+    OP_LOGW(TbeGetName(op).c_str(), "GetOpAttr stridesList failed!");
     return NOT_CHANGED;
   }
 
   if (stridesList.size() != DIM_SIZE4) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "length of strides must be equal to"
             "the length of shape!");
     return NOT_CHANGED;
   }
   if ((ksizeList[0] != 1) || (ksizeList[3] != 1) || (stridesList[0] != 1) || (stridesList[3] != 1)) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "MaxPoolWithArgmax only supports pooling "
             "across width/height, and other ksize "
             "dimension should be one");
     return NOT_CHANGED;
   }
   if ((ksizeList[1] * ksizeList[2]) > KSIZE_MAX) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "invalid window params, window_h*window_w "
             "should be <= 255");
     return NOT_CHANGED;
@@ -165,12 +165,12 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   // get input paddingMode
   std::string paddingMode;
   if (op.GetAttr("padding", paddingMode) != ge::GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "GetOpAttr padding failed!");
+    OP_LOGW(TbeGetName(op).c_str(), "GetOpAttr padding failed!");
     return NOT_CHANGED;
   }
 
   if (paddingMode != "SAME" && paddingMode != "VALID") {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "MaxPoolWithArgmax can only support"
             "SAME or VALID padding mode!");
     return NOT_CHANGED;
