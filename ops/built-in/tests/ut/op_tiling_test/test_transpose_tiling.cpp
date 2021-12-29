@@ -2288,3 +2288,31 @@ TEST_F(TransposeTilingTest, scenario_10) {
   std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
   run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
 }
+
+TEST_F(TransposeTilingTest, scenario_all_one) {
+  vector<int64_t> inShape;
+  vector<int64_t> outShape;
+  inShape.push_back(1);
+  inShape.push_back(1);
+  outShape.push_back(1);
+  outShape.push_back(1);
+  vector<int64_t> perm = {1, 0};
+  std::string data_dtype = "float16";
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
+}
+
+TEST_F(TransposeTilingTest, scenario_large_burstlen_core_gt_axis) {
+  vector<int64_t> inShape;
+  vector<int64_t> outShape;
+  inShape.push_back(2);
+  inShape.push_back(4);
+  inShape.push_back(4096);
+  outShape.push_back(4);
+  outShape.push_back(2);
+  outShape.push_back(4096);
+  vector<int64_t> perm = {1, 0, 2};
+  std::string data_dtype = "float16";
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
+}

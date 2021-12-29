@@ -184,7 +184,10 @@ def _static_scenario_goto_old_version(shape, core_num):
                          #MTCNNPNET
                          [1, 157, 2, 283], [1, 157, 283, 2],
                          #RCNN
-                         [25, 64, 512], [64, 25, 512]
+                         [25, 64, 512], [64, 25, 512],
+                         #IMAGE_SEG
+                         [1, 256, 256, 9], [1, 256, 9, 256],
+                         [4, 4, 64, 114], [4, 4, 128, 228], [2, 4, 64, 114], [2, 4, 128, 228]
                       ]
     shape_t = list(shape)
     if shape_t in black_list_shape:

@@ -1042,7 +1042,7 @@ static void CalcOutShape(ShapeInfo& shapeInfo) {
 }
 
 static bool IsAllOne(const ShapeInfo& shapeInfo) {
-  return std::all_of(shapeInfo.inShape.begin(), shapeInfo.inShape.end(), [](const int64_t& item) { return item == 1; });
+  return std::all_of(shapeInfo.inShape.begin(), shapeInfo.inShape.begin() + shapeInfo.dim, [](const int64_t& item) { return item == 1; });
 }
 
 /*
@@ -2545,7 +2545,12 @@ static void CalcMte2LoopNum(const CompilerInfo& compilerInfo, const ShapeInfo& s
   }
   for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
     InfoPerCoreLastAxisNT& info = runtimeInfo.infoPerCoreLastAxisNT[i];
-    if (info.num <= 1) {
+    if (info.num < 1) {
+      continue;
+    }
+    if (info.num == 1) {
+      info.aggregateLoopUnit = 1;
+      info.aggregateLoopNum = 1;
       continue;
     }
     info.aggregateLoopUnit = compilerInfo.ubSizeCouldUse / shapeInfo.lastAxisBurstLen;
