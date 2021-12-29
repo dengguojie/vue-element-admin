@@ -2333,12 +2333,8 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
   } else if (!has_offsets && has_size) {
     for (size_t i = 0; i < dimNum; ++i) {
       if (input_size[i] == -1) {
-        if (shape_dims[i] == -1) {
-          outputList.push_back(-1);
-          ranges[i].first = 0;
-        } else {
-          outputList.push_back(shape_dims[i]);
-        }
+        outputList.push_back(-1);
+        ranges[i].first = 0;
       } else {
         outputList.push_back(input_size[i]);
         ranges[i].first = input_size[i];
