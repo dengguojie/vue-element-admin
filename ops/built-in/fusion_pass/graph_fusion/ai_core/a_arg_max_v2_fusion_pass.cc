@@ -115,8 +115,8 @@ Status AArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   Tensor const_datab;
   if (op_argmaxv2a.GetInputConstData("dimension", const_dataa) == GRAPH_SUCCESS &&
       op_argmaxv2b.GetInputConstData("dimension", const_datab) == GRAPH_SUCCESS) {
-    auto aixs_tensor_desca = op_argmaxv2a.GetInputDesc("dimension");
-    auto aixs_tensor_descb = op_argmaxv2b.GetInputDesc("dimension");
+    auto aixs_tensor_desca = op_argmaxv2a.GetInputDescByName("dimension");
+    auto aixs_tensor_descb = op_argmaxv2b.GetInputDescByName("dimension");
     uint8_t* const_dataa_ptr = const_dataa.GetData();
     uint8_t* const_datab_ptr = const_datab.GetData();
     DataType input_axis_dtypea = aixs_tensor_desca.GetDataType();

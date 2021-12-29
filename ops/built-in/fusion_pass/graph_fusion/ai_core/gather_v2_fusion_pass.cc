@@ -40,7 +40,6 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "GatherV2";
 static const char CAST[] = "Cast";
-
 static const std::string PATTERN_FUSEDNODE = "FusedNodeGatherV2";
 
 vector<FusionPattern*> ConstToAttrGatherV2Pass::DefinePatterns() {

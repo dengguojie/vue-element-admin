@@ -241,7 +241,7 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       return NOT_CHANGED;
     }
   }
-  DataType dtype = op_add0.GetInputDesc("x1").GetDataType();
+  DataType dtype = op_add0.GetInputDescByName("x1").GetDataType();
   std::vector<float> add0_vec;
   const uint8_t* add0_data = add0_const.GetData();
   if (add0_data == nullptr) {
@@ -249,10 +249,10 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     return GRAPH_FAILED;
   }
   if (dtype == ge::DT_FLOAT) {
-    float value = (*((float*)add0_data));
+    float value = (*(reinterpret_cast<const float*>(add0_data)));
     add0_vec.push_back(value);
   } else if (dtype == ge::DT_FLOAT16) {
-    float value = (*((fp16_t*)add0_data)).toFloat();
+    float value = (*(const_cast<fp16_t*>(reinterpret_cast<const fp16_t*>(add0_data)))).toFloat();
     add0_vec.push_back(value);
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "add0_node type is not float or fp16, not change");

@@ -50,7 +50,8 @@ bool IsUnknownRankShape(const std::vector<int64_t>& shape);
  * @param [out] const_value const int values in const input
  * @return true:success, false:failed.
  */
-bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name, std::vector<int64_t>& const_value);
+bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
+                      std::vector<int64_t>& const_value);
 }  // namespace fe
 
 #endif  // TBE_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_OPS_PASS_UTIL_H_

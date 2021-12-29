@@ -91,11 +91,11 @@ bool HasUnKnowShape(const ge::NodePtr& node_ptr) {
 }
 
 void ClearOpInferDepends(const ge::NodePtr& node_ptr) {
-  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return );
+  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return);
 
   auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return );
+  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return);
 
   vector<string> dummyVec;
   op_desc->SetOpInferDepends(dummyVec);
@@ -142,43 +142,44 @@ bool GetIntConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_
   if (dtype == ge::DT_INT32) {
     const int32_t* const_data_ptr = reinterpret_cast<const int32_t*>(const_tensor.GetData());
     if (const_data_ptr == nullptr) {
-      OP_LOGW(op.GetName().c_str(), "const_data_ptr is null");
+      OP_LOGW(TbeGetName(op), "const_data_ptr is null");
       return false;
     }
     size = const_tensor.GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int32_t)((*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const type is int32 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
+      OP_LOGD(TbeGetName(op), "const type is int32 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
     }
   } else if (dtype == ge::DT_INT64) {
     const int64_t* const_data_ptr = reinterpret_cast<const int64_t*>(const_tensor.GetData());
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const type is int64 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
+      OP_LOGD(TbeGetName(op), "const type is int64 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
     }
   } else {
-    OP_LOGW(op.GetName().c_str(), "do not support get int value for this type %d", dtype);
+    OP_LOGW(TbeGetName(op), "do not support get int value for this type %d", dtype);
     return false;
   }
   return true;
 }
 
-bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name, std::vector<int64_t>& const_value) {
+bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
+                      std::vector<int64_t>& const_value) {
   ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-  OP_LOGD(op.GetName().c_str(), "begin to get const value for input name(%s)", const_name.c_str());
+  OP_LOGD(TbeGetName(op), "begin to get const value for input name(%s)", const_name.c_str());
   ge::Tensor const_tensor;
-  if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name, const_tensor)) {
-    OP_LOGW(op.GetName().c_str(), "get const tensor of name(%s) from op failed", const_name.c_str());
+  if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name.c_str(), const_tensor)) {
+    OP_LOGW(TbeGetName(op), "get const tensor of name(%s) from op failed", const_name.c_str());
     return false;
   }
-  ge::DataType dtype = op.GetInputDesc(const_name).GetDataType();
+  ge::DataType dtype = op.GetInputDescByName(const_name.c_str()).GetDataType();
 
   if (!GetIntConstValueFromTensor(op, const_tensor, dtype, const_value)) {
-    OP_LOGW(op.GetName().c_str(), "get const Value of name(%s) from tensor failed", const_name.c_str());
+    OP_LOGW(TbeGetName(op), "get const Value of name(%s) from tensor failed", const_name.c_str());
     return false;
   }
-  OP_LOGD(op.GetName().c_str(), "end to get const value for input name(%s)", const_name.c_str());
+  OP_LOGD(TbeGetName(op), "end to get const value for input name(%s)", const_name.c_str());
   return true;
 }
 }  // namespace fe
