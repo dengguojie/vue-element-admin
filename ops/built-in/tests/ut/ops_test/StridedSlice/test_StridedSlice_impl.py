@@ -154,9 +154,20 @@ def test_op_check_supported_3(test_arg):
     if check_supported(shape, begin, end, strides, output, 0, 0, 0, 0, 1) == False:
         raise Exception("Failed to call check_supported in stridedslice.")
 
+def test_op_check_supported_4(test_arg):
+    from impl.strided_slice import check_supported
+    shape = {'ori_shape': (8, 8, 16), 'shape': (8, 8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    begin = {'ori_shape': (3,), 'shape': (3,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'int64', "const_value": (0, 0, 0)}
+    end = {'ori_shape': (3,), 'shape': (3,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'int64', "const_value": (1, 1, 1)}
+    strides = {'ori_shape': (3,), 'shape': (3,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'int64', "const_value": (1, 1, 1)}
+    output = {'ori_shape': (8, 16), 'shape': (8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    if check_supported(shape, begin, end, strides, output, 0, 0, 0, 0, 1) == True:
+        raise Exception("Failed to call check_supported in stridedslice.")
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_2)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_3)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_4)
 
 
 if __name__ == "__main__":

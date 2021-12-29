@@ -65,6 +65,11 @@ def check_supported(input_x,
     if not strides_value:
         return False, "strides is not const."
 
+    begin_value = begin.get("const_value")
+    end_value = end.get("const_value")
+    if begin_value or end_value:
+        return False, "begin/end is const."
+
     for i in strides_value:
         if i != 1:
             return False, "strides has not 1 value."
