@@ -9694,7 +9694,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   CHECK_OP_FUNC(!GetFilterValues(filter_desc, filter_value), return GRAPH_FAILED, "get filter_value fail.");
   OutputTuple y_infer_info(y_desc, is_input_size_const);
   // dynamic shape scene
-  if (!is_input_size_const) {
+  if (!is_input_size_const || is_dynamic) {
     CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, x_desc, y_infer_info),
                   return GRAPH_FAILED, "infer out shape and range fail.");
     GeShape &out_shape = y_desc->MutableShape();
