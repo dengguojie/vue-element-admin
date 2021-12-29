@@ -43,7 +43,7 @@ namespace fe {
 static const string PATTERN_ARGMAX1 = "ArgMax1";
 static const string PATTERN_ARGMAX2 = "ArgMax2";
 static const string PATTERN_EQUAL = "Equal";
-static const string DTYPE = "dtype";
+static const char* DTYPE = "dtype";
 static const string ARGMAXV2 = "ArgMaxV2";
 static const string EQUAL = "Equal";
 static const int64_t COMP = 2147483648;
