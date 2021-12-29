@@ -20,6 +20,7 @@
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
+#include "common/util/platform_info.h"
 
 namespace fe {
 static const string PATTERN_FC_MATMUL = "FullyConnection/MatMul/BatchMatmul";     // desc name
@@ -204,38 +205,25 @@ bool CheckPreNodeIsFcNode(const ge::NodePtr& reluNode) {
   return false;
 }
 
-bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(const BufferFusionMapping &mapping){
+bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(const vector<ge::NodePtr> &reluNodes) {
   // check matmul dequant gelu quant pass
-  vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
-  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
-  vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
-  vector<ge::NodePtr> quantNodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
-  if (!dequantNodes.empty() && !quantNodes.empty() && !reluNodes.empty() && elemWiseNodes.empty()) {
-    for (const auto &reluNode: reluNodes) {
-      bool is_quant_flag = false;
-      for (auto out_anchor: reluNode->GetAllOutDataAnchors()) {
-        for (auto next_in_anchor: out_anchor->GetPeerInDataAnchors()) {
-          ge::NodePtr nextNode = next_in_anchor->GetOwnerNode();
-          if (nextNode == nullptr || nextNode->GetType() != "AscendQuant") {
-            if (nextNode == nullptr) {
-              OP_LOGD(FUSED_OP_TYPE.c_str(),
-                      "elemwise node connect to nullptr, skip this node!");
-            } else {
-              OP_LOGD(FUSED_OP_TYPE.c_str(),
-                      "elemwise node connect to type[%s], is not supported for this ub fusion pass, skip this node!",
-                      nextNode->GetType().c_str());
-            }
-            continue;
-          }
-          is_quant_flag = true;
-        }
-      }
-      if (!is_quant_flag || reluNode->GetType() != "Gelu") {
-        return false;
-      }
+  for (const auto &reluNode : reluNodes) {
+    if (reluNode->GetType() != "Gelu") {
+      return true;
     }
   }
-  return true;
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return true);
+  const auto &instrinsicScatterVcmp = platformInfo.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vcmp"];
+  bool supportFP32Flag =
+      find(instrinsicScatterVcmp.begin(), instrinsicScatterVcmp.end(), "float32") != instrinsicScatterVcmp.end();
+  if (!supportFP32Flag) {
+    return true;
+  }
+  return false;
 }
 
 Status TbeFullyconnectionElemwiseFusionPass::CheckDynamicMode(vector<ge::NodePtr>& matmulNodes,
@@ -294,6 +282,9 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
   vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
+  vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+  vector<ge::NodePtr> quantNodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
+
   // check whether the fc/matmul/batchmatmul op
   for (const auto &fcNode : fcNodes) {
     if (find(matmulWhiteList.begin(), matmulWhiteList.end(), fcNode->GetType()) == matmulWhiteList.end()) {
@@ -306,12 +297,15 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   }
 
   // check whether the matmul/dequant/gelu/quant/fusion
-  bool isMatmulDequantGeluQuant = !CheckMatmulDequantGeluQuantFusion(mapping);
-  FUSION_PASS_CHECK(
-      FusionReturn(isMatmulDequantGeluQuant, fusionNodes) == SUCCESS,
-      OP_LOGD(FUSED_OP_TYPE.c_str(),
-              "Eltwise op type is not supported for matmul dequant gelu quant ub fusion pass, skip fusion."),
-      return SUCCESS);
+  bool isdequantElemwiseQuant = !dequantNodes.empty() && !quantNodes.empty() && !reluNodes.empty() && elemWiseNodes.empty();
+  if (isdequantElemwiseQuant) {
+    bool elemwiseisGelu = CheckMatmulDequantGeluQuantFusion(reluNodes);
+    FUSION_PASS_CHECK(
+        FusionReturn(elemwiseisGelu, fusionNodes) == SUCCESS,
+        OP_LOGD(FUSED_OP_TYPE.c_str(),
+                "Eltwise op type is not supported for matmul dequant gelu quant ub fusion pass, skip fusion."),
+        return SUCCESS);
+  }
 
   // check whether the relu/leakyrelu op
   for (const auto &reluNode : reluNodes) {
