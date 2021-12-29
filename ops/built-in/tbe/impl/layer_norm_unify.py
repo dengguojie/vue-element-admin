@@ -26,6 +26,25 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import classify
 
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant.
+    """
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    # Maximum number of surviving nodes for special cases, such as size of reduce axis is 768 or 1024
+    TOTAL_WIDTH_0 = 7.9
+    # Maximum number of surviving nodes for common cases
+    TOTAL_WIDTH_1 = 10
+    # used by TOTAL_WIDTH_0
+    SPECIAL_REDUCE_AXES = [768, 1024]
+    # UB buffer alignment number
+    UB_ALIGN_FACTOR = 128
+    # minimum alignment number
+    MIN_ALIGN_FACTOR = 16
+
+
 # 'pylint: disable = unused-argument
 # 'pylint: disable=too-many-arguments,too-many-locals
 def set_range(input_x, input_gamma, input_beta):
@@ -48,22 +67,70 @@ def set_range(input_x, input_gamma, input_beta):
     return input_x, input_gamma, input_beta
 
 
-def is_special_cases(shape_x, shape_gamma, shape_beta):
-    """
-    Judge whether it is a special case
-    """
-    white_list_x = [[4, 300, 257, 12], [8, 512, 128], [8, 512, 4096],
-    [64, 50, 768], [8, 50, 768], [50, 8, 768], [12, 512, 4096]]
-    white_list_gamma = [[12], [128], [4096], [768]]
-    white_list_beta = [[12], [128], [4096], [768]]
-    shape_x = list(shape_x)
-    shape_gamma = list(shape_gamma)
-    shape_beta = list(shape_beta)
+def _is_in_white_list(shape_x, shape_gamma, shape_beta):
+    # Rules that besides the func:_is_unsupported_or_single_core
+    # reserved for future
+    white_list_x = []
+    white_list_gamma = []
+    white_list_beta = []
 
     if shape_x in white_list_x and shape_gamma in white_list_gamma and shape_beta in white_list_beta:
         return True
 
     return False
+
+
+# 'pylint: disable = unused-argument
+def _is_unsupported_or_single_core(shape_x, shape_gamma, shape_beta):
+    # Scenes that reduce_multi_schedule unsupported or unable to enable multi-core
+    # last dim
+    last_dim = -1
+    size_reduce_axis = shape_x[last_dim]
+    is_last_axis_align = size_reduce_axis % Constant.MIN_ALIGN_FACTOR
+    # Scenes with misaligned reduce axes
+    if is_last_axis_align:
+        return True
+
+    total_width = Constant.TOTAL_WIDTH_0 if size_reduce_axis in Constant.SPECIAL_REDUCE_AXES \
+        else Constant.TOTAL_WIDTH_1
+    # Bytes of fp16
+    bytes_size = 2
+    total_size = Constant.UB_SIZE // bytes_size
+    max_ub_count = int(total_size / total_width)
+    max_ub_count = int(max_ub_count // Constant.UB_ALIGN_FACTOR) * Constant.UB_ALIGN_FACTOR
+    limit_ub_count = size_reduce_axis
+    # Scenes with size of reduce axes exceed the UB size
+    if limit_ub_count > max_ub_count:
+        return True
+
+    res_size = max_ub_count // limit_ub_count
+    # Ensure that the result after reduce exceeds 1 block
+    if res_size < Constant.MIN_ALIGN_FACTOR:
+        return True
+
+    # Penultimate two-dimensional
+    penultimate_two_dims = -2
+    if len(shape_x) > 1:
+        pre_reduce = 1
+        for dim in shape_x[:last_dim]:
+            pre_reduce *= dim
+        if shape_x[penultimate_two_dims] != 1 and shape_x[penultimate_two_dims] % Constant.MIN_ALIGN_FACTOR and \
+                pre_reduce > Constant.MIN_ALIGN_FACTOR:
+            return True
+
+    return False
+
+
+def is_special_cases(shape_x, shape_gamma, shape_beta):
+    """
+    Judge whether it is a special case
+    """
+    shape_x = list(shape_x)
+    shape_gamma = list(shape_gamma)
+    shape_beta = list(shape_beta)
+
+    return _is_unsupported_or_single_core(shape_x, shape_gamma, shape_beta) or _is_in_white_list(shape_x, shape_gamma,
+                                                                                                 shape_beta)
 
 
 def layer_norm_compute(input_x,
@@ -82,16 +149,21 @@ def layer_norm_compute(input_x,
 
     Parameters
     ----------
-    input_x: TVM tensor
-        the placeholder of x input data
-    input_gamma: TVM tensor
-        the placeholder of gamma input data
-    input_beta: TVM tensor
-        the placeholder of beta input data
-    output_data: dict
-        shape and dtype of output
-    reduce_axis: list
-      the reduce axis
+    input_x : dict
+        shape and dtype of input x, only support float16, float32
+    input_gamma: dict
+        shape and dtype of input gamma, only support float16, float32
+    input_beta: dict
+        shape and dtype of input beta, only support float16, float32
+    output_y: dict
+        shape and dtype of output, only support float16, float32
+    output_mean: dict
+        shape and dtype of output, only support float16, float32
+    output_variance: dict
+        shape and dtype of output, only support float16, float32
+    reduce_axis: int
+      The first normalization dimension: normalization will be
+      performed along dimensions `begin_norm_axis : rank(inputs)`
     begin_params_axis: int
       The first parameter (beta, gamma) dimension: scale
       and centering parameters will have dimensions
@@ -100,26 +172,26 @@ def layer_norm_compute(input_x,
     epsilon: float,
       Minimum positive number greater than 0
     kernel_name: str
-        cce kernel name, default value is "cce_layernorm"
+        cce kernel name, default value is "layer_norm"
+    impl_mode: str
+        high_precision or high_performance for inference, default value is "high_performance".
 
     Returns
     -------
     res_tuple: tuple
-        (mean, variance, result)
+        (mean, variance, res)
     """
     shape_x = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
-    input_x1 = input_x
     cast_dtype = dtype
     cast_dtype_precision = dtype
     is_cast = False
     is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and is_support_vexp and impl_mode == "high_performance":
+    if dtype == "float16" and is_support_vexp and impl_mode != "keep_fp16":
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
-        input_x1 = tbe.cast_to(input_x1, "float32")
         input_gamma = tbe.cast_to(input_gamma, "float32")
         input_beta = tbe.cast_to(input_beta, "float32")
         is_cast = True
@@ -144,41 +216,41 @@ def layer_norm_compute(input_x,
 
     # DSL description of the variance calculation process
     mean_variance_broadcast = tbe.broadcast(mean, shape_x)
-    variance_sub = tbe.vsub(input_x1, mean_variance_broadcast)
+    variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
     variance_mul = tbe.vmul(variance_sub, variance_sub)
     variance_muls = tbe.vmuls(variance_mul, mean_cof)
     variance = tbe.reduce_sum(variance_muls, axis=reduce_axis, keepdims=True)
     if is_cast:
         variance_16 = tbe.cast_to(variance, "float16")
         variance = tbe.cast_to(variance_16, "float32")
-    normalize_sub = variance_sub
+    norm_sub = variance_sub
 
     # DSL description of the normalize calculation process
-    if impl_mode == "high_performance" and is_support_vexp:
+    if is_support_vexp:
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
-        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
-        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
-        normalize_log = tbe.vlog(normalize_add)
-        normalize_log_mul = tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
-        normalize_exp = tbe.vexp(normalize_log_mul)
-        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
+        variance_norm_broadcast = tbe.broadcast(variance, shape_x)
+        norm_add = tbe.vadds(variance_norm_broadcast, epsilon)
+        norm_log = tbe.vlog(norm_add)
+        norm_log_mul = tbe.vmuls(norm_log, tvm.const(-0.5, dtype=cast_dtype))
+        norm_exp = tbe.vexp(norm_log_mul)
+        norm_mul = tbe.vmul(norm_sub, norm_exp)
     else:
-        tesor_one = tbe.broadcast(tvm.const(1, cast_dtype_precision), shape_x)
-        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
+        tensor_one = tbe.broadcast(tvm.const(1, cast_dtype_precision), shape_x)
+        variance_norm_broadcast = tbe.broadcast(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
-        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
-        normalize_sqrt = tbe.vsqrt(normalize_add, 0)
-        normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
-        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
+        norm_add = tbe.vadds(variance_norm_broadcast, epsilon)
+        norm_sqrt = tbe.vsqrt(norm_add, 0)
+        norm_rsqrt = tbe.vdiv(tensor_one, norm_sqrt)
+        norm_mul = tbe.vmul(norm_sub, norm_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
-        scale_mul = tbe.vmul(normalize_mul, input_gamma)
+        scale_mul = tbe.vmul(norm_mul, input_gamma)
         res = tbe.vadd(scale_mul, input_beta)
     else:
         gamma_broadcast = tbe.broadcast(input_gamma, shape_x)
         beta_broadcast = tbe.broadcast(input_beta, shape_x)
-        scale_mul = tbe.vmul(normalize_mul, gamma_broadcast)
+        scale_mul = tbe.vmul(norm_mul, gamma_broadcast)
         res = tbe.vadd(scale_mul, beta_broadcast)
 
     if is_cast:
@@ -221,6 +293,10 @@ def layer_norm(input_x,
         shape and dtype of input beta, only support float16, float32
     output_y: dict
         shape and dtype of output, only support float16, float32
+    output_mean: dict
+        shape and dtype of output, only support float16, float32
+    output_variance: dict
+        shape and dtype of output, only support float16, float32
     begin_norm_axis: int
       The first normalization dimension: normalization will be
       performed along dimensions `begin_norm_axis : rank(inputs)`
@@ -232,7 +308,9 @@ def layer_norm(input_x,
     epsilon: float,
       Minimum positive number greater than 0
     kernel_name: str
-        cce kernel name, default value is "layernorm"
+        cce kernel name, default value is "layer_norm"
+    impl_mode: str
+        high_precision or high_performance for inference, default value is "high_performance".
 
     Returns
     -------

@@ -157,6 +157,66 @@ case11 = {"params": [{"shape": (4, 300, 257, 12), "dtype": "float16", "format": 
          "format_expect": [],
          "support_expect": True}
 
+case12 = {"params": [{"shape": (8,512,4096), "dtype": "float16", "format": "ND", "ori_shape": (8,512,4096),"ori_format": "ND"},
+                    {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096,),"ori_format": "ND"},
+                    {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096,),"ori_format": "ND"},
+                    {"shape": (8,512,4096), "dtype": "float16", "format": "ND", "ori_shape": (8,512,4096),"ori_format": "ND"},
+                    {"shape": (8,512, 1), "dtype": "float16", "format": "ND", "ori_shape": (8,512, 1),"ori_format": "ND"},
+                    {"shape": (8,512, 1), "dtype": "float16", "format": "ND", "ori_shape": (8,512, 1),"ori_format": "ND"},
+                    2, -1],
+         "case_name": "layer_norm_12",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (64,50,768), "dtype": "float16", "format": "ND", "ori_shape": (64,50,768),"ori_format": "ND"},
+                    {"shape": (768,), "dtype": "float16", "format": "ND", "ori_shape": (768,),"ori_format": "ND"},
+                    {"shape": (768,), "dtype": "float16", "format": "ND", "ori_shape": (768,),"ori_format": "ND"},
+                    {"shape": (64,50,768), "dtype": "float16", "format": "ND", "ori_shape": (64,50,768),"ori_format": "ND"},
+                    {"shape": (64,50, 1), "dtype": "float16", "format": "ND", "ori_shape": (64,50, 1),"ori_format": "ND"},
+                    {"shape": (64,50, 1), "dtype": "float16", "format": "ND", "ori_shape": (64,50, 1),"ori_format": "ND"},
+                    2, -1],
+         "case_name": "layer_norm_13",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case14 = {"params": [{"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (768,), "dtype": "float16", "format": "ND", "ori_shape": (768,),"ori_format": "ND"},
+                    {"shape": (768,), "dtype": "float16", "format": "ND", "ori_shape": (768,),"ori_format": "ND"},
+                    {"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (50,8, 1), "dtype": "float16", "format": "ND", "ori_shape": (50,8, 1),"ori_format": "ND"},
+                    {"shape": (50,8, 1), "dtype": "float16", "format": "ND", "ori_shape": (50,8, 1),"ori_format": "ND"},
+                    2, -1],
+         "case_name": "layer_norm_14",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case15 = {"params": [{"shape": (2,16,76800), "dtype": "float16", "format": "ND", "ori_shape": (2,16,76800),"ori_format": "ND"},
+                    {"shape": (76800,), "dtype": "float16", "format": "ND", "ori_shape": (76800,),"ori_format": "ND"},
+                    {"shape": (76800,), "dtype": "float16", "format": "ND", "ori_shape": (76800,),"ori_format": "ND"},
+                    {"shape": (2,16,76800), "dtype": "float16", "format": "ND", "ori_shape": (2,16,76800),"ori_format": "ND"},
+                    {"shape": (2,16, 1), "dtype": "float16", "format": "ND", "ori_shape": (2,16, 1),"ori_format": "ND"},
+                    {"shape": (2,16, 1), "dtype": "float16", "format": "ND", "ori_shape": (2,16, 1),"ori_format": "ND"},
+                    2, -1],
+         "case_name": "layer_norm_15",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case16 = {"params": [{"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (50,8,768), "dtype": "float16", "format": "ND", "ori_shape": (50,8,768),"ori_format": "ND"},
+                    {"shape": (50,8, 1), "dtype": "float16", "format": "ND", "ori_shape": (50,8, 1),"ori_format": "ND"},
+                    {"shape": (50,8, 1), "dtype": "float16", "format": "ND", "ori_shape": (50,8, 1),"ori_format": "ND"},
+                    2, 0],
+         "case_name": "layer_norm_16",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
@@ -170,6 +230,11 @@ ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case16)
 
 # pylint: disable=unused-argument
 def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_params_axis):
