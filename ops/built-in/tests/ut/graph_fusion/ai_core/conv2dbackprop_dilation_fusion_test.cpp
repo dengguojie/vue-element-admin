@@ -264,3 +264,61 @@ TEST_F(conv2dbackprop_dilation_fusion_test, conv2dbackprop_dilation_fusion_test_
     EXPECT_EQ(findNode, true);
 }
 
+TEST_F(conv2dbackprop_dilation_fusion_test, conv2d_transpose_dilation_fusion_test_0) {
+    ge::Graph graph("conv2dbackprop_dilation_fusion_test_1");
+
+    auto dedw_shape = vector<int64_t>({512, 1, 1, 512});
+    ge::TensorDesc desc_dedw(ge::Shape(dedw_shape), FORMAT_NHWC, DT_FLOAT16);
+    auto dedy_shape = vector<int64_t>({2, 14, 14, 512});
+    ge::TensorDesc desc_dedy(ge::Shape(dedy_shape), FORMAT_NHWC, DT_FLOAT16);
+
+    auto data_dw = op::Data("data_dw").set_attr_index(0);
+    data_dw.update_input_desc_x(desc_dedw);
+    data_dw.update_output_desc_y(desc_dedw);
+
+    auto data_dy = op::Data("data_dy").set_attr_index(1);
+    data_dy.update_input_desc_x(desc_dedy);
+    data_dy.update_output_desc_y(desc_dedy);
+
+    auto conv2d_transpose_d = op::Conv2DTransposeD("Conv2DTransposeD")
+        .set_input_x(data_dy)
+        .set_input_filter(data_dw)
+        .set_attr_input_size({2,28, 28, 512})
+        .set_attr_strides({1, 2, 2,1})
+        .set_attr_pads({0, 0, 0, 0})
+        .set_attr_dilations({1, 1, 1, 1})
+        .set_attr_groups({1})
+        .set_attr_data_format("NHWC");
+    auto out_shape = ge::Shape({2,28, 28, 512});
+    ge::TensorDesc desc_out(ge::Shape(out_shape), FORMAT_NHWC, DT_FLOAT16);
+    conv2d_transpose_d.update_output_desc_y(desc_out);
+
+    auto relu_op = op::Relu("relu_op");
+    relu_op.set_input_x(conv2d_transpose_d);
+
+    std::vector<Operator> inputs{data_dw, data_dy};
+    std::vector<Operator> outputs{relu_op};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.ai_core_spec.cube_vector_split = true;
+    opti_compilation_info.soc_version = "Ascend920A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("Conv2DbpInputDilationFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+
+    bool findNode = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Dilation") {
+            findNode = true;
+        }
+    }
+    EXPECT_EQ(findNode, true);
+}

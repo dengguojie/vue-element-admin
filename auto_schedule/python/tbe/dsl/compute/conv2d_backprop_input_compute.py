@@ -22,6 +22,7 @@ from inspect import currentframe
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
+from tbe.common.context import op_context
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
@@ -84,6 +85,9 @@ BIT_RATIO_DICT = {
 # same as (2**63-1)
 DATA_SIZE_MAX = 9223372036854775807
 
+FIXPIPE_SUPPORT_OP_LIST = ["Conv2DBackpropInputD", "Deconvolution", "Conv2DTransposeD"]
+FIXPIPE_FUSION_FLAG = "in_fixpipe_fusion"
+SUPPORT_FIXPIPE_INTRINSIC = "Intrinsic_fix_pipe_l0c2out"
 
 class DeconvParam:
     """
@@ -149,6 +153,17 @@ def _check_variable_range(attr_value, attr_name, attr_min=None, attr_max=None):
         raise RuntimeError(args_dict,
                            error_manager_util.get_error_message(args_dict))
 
+def _get_fixpipe_fusion_flag():
+    context = op_context.get_context()
+    if context is None:
+        return False
+    op_infos = context.get_op_info()
+    for op_info in op_infos:
+        if op_info.op_type not in FIXPIPE_SUPPORT_OP_LIST:
+            continue
+        if FIXPIPE_FUSION_FLAG in op_info.extra_params:
+            return True
+    return False
 
 def _check_equal_rule(param_1, param_2, param_name1, param_name2):
     """
@@ -797,6 +812,12 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                                                "op_type": para_dict.get("op_type", "")}
     if pooling_mode is "AVG":
         DynamicConv2dBpInputParams.tiling_info_dict["fused_coefficient"] = [3, 0, 0]
+
+    support_fixpipe = tbe_platform.intrinsic_check_support(SUPPORT_FIXPIPE_INTRINSIC)
+    if not switch_to_general_scheme and support_fixpipe:
+        # (stride > 1 and has bias) or (in fixpipe fusion) can't use opti pattern
+        if ((strides[0] > 1 or strides[1] > 1) and bias_flag) or _get_fixpipe_fusion_flag():
+            switch_to_general_scheme = True
 
     if (filter_h == 1 and filter_w == 1 and cube_util.check_pad_zero(padding)
             and not switch_to_general_scheme):

@@ -20,6 +20,8 @@ from te import tvm
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
 from tbe.dsl import auto_schedule
+from impl.fix_pipe import fixpipe_compute
+from impl.fixpipe_op.fixpipe_conv2d_backprop_input import *
 
 ut_case = OpUT("Deconvolution", "impl.deconvolution", "deconvolution")
 
@@ -45,6 +47,7 @@ support_intrinsic_mix = {
     ("Intrinsic_data_move_ub2l1",) : True,
     ("Intrinsic_mmad", "f162f32",) : True,
     ("CUBE_VECTOR_SPLIT",) : True,
+    ("Intrinsic_fix_pipe_unit_list",): True,
 }
 
 def check_intrinsic_mock_mix(*args):
@@ -499,6 +502,76 @@ def test_split_deconvolution(test_arg):
         y = {"ori_shape": (1, 144, 48, 80), "dtype": "int8", "ori_format": "NCHW",  "shape": (1, 5, 48, 80, 32), "format":"NC1HWC0"}
         get_op_support_info(x, weight, bias, None, y, (1, 1), (0, 0, 0, 0))
 
+def test_fixpipe_nz2nd(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+            filter_frac = (18, 2, 16, 16)
+            out_shape_5hd = (16, 2, 2, 2, 16)
+            input_size = (16, 32, 4, 4)
+            input_size_nhwc = (input_size[0], input_size[2], input_size[3], input_size[1])
+            data_type = "float16"
+            with cce():
+                weight = tvm.placeholder(filter_frac, name="filter", dtype=data_type,
+                                        attrs={"ori_shape": (32, 32, 3, 3), "dtype":data_type, "ori_format": "NCHW"})
+                dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
+                                    attrs={"ori_shape": (16, 32, 2, 2), "dtype":data_type, "ori_format": "NCHW"})
+                y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW",
+                    "shape": input_size_nhwc, "format": "NHWC"}
+                out = deconvolution_compute(dedy, weight, None, None, y, (1, 1, 1, 1), (0, 0, 0, 0),
+                        dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", offset_x=0,
+                        kernel_name="deconvolution")
+                fixpie_op = FixpipeConv2dBackpropInput("conv2d_backprop_input", out, None, None, None, None, None, None, None, None, None, y, [], [], "")
+                res = fixpie_op.fixpipe_compute()
+                sch = auto_schedule(res)
+
+def test_fixpipe_eltwise(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+            filter_frac = (18, 2, 16, 16)
+            out_shape_5hd = (16, 2, 2, 2, 16)
+            input_size = (16, 32, 4, 4)
+            input_size_5hd = (16, 2, 4, 4, 16)
+            data_type = "float16"
+            with cce():
+                weight = tvm.placeholder(filter_frac, name="filter", dtype=data_type,
+                                        attrs={"ori_shape": (32, 32, 3, 3), "dtype":data_type, "ori_format": "NCHW"})
+                dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
+                                    attrs={"ori_shape": (16, 32, 2, 2), "dtype":data_type, "ori_format": "NCHW"})
+                eltwise_plh = tvm.placeholder((input_size[0], (input_size[1] + 15) // 16, input_size[2] * input_size[3], 16),
+                                                name="fixpipe_eltwise", dtype="float16",
+                                                attrs={"ori_format": "NCHW", "ori_shape": input_size})
+                y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW", "shape": input_size_5hd, "format": "NC1HWC0"}
+                out = deconvolution_compute(dedy, weight, None, None, y, (1, 1, 1, 1), (0, 0, 0, 0),
+                        dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", offset_x=0,
+                        kernel_name="deconvolution")
+                fixpie_op = FixpipeConv2dBackpropInput("conv2d_backprop_input", out, eltwise_plh, None, None, None, None, None, None, None, None, y, [], [], "ADD")
+                res = fixpie_op.fixpipe_compute()
+                sch = auto_schedule(res)
+
+def test_fixpipe_dequant(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+            filter_frac = (18, 2, 16, 16)
+            out_shape_5hd = (16, 2, 2, 2, 16)
+            input_size = (16, 32, 4, 4)
+            input_size_5hd = (16, 2, 4, 4, 16)
+            data_type = "float16"
+            with cce():
+                weight = tvm.placeholder(filter_frac, name="filter", dtype=data_type,
+                                        attrs={"ori_shape": (32, 32, 3, 3), "dtype":data_type, "ori_format": "NCHW"})
+                dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
+                                    attrs={"ori_shape": (16, 32, 2, 2), "dtype":data_type, "ori_format": "NCHW"})
+                bias = tvm.placeholder((32,), name="bias", dtype="float32",
+                                    attrs={"ori_shape": (32,), "dtype":data_type, "ori_format": "ND"})
+                y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW", "shape": input_size_5hd, "format": "NC1HWC0"}
+                deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
+                out = deconvolution_compute(dedy, weight, bias, None, y, (1, 1, 1, 1), (0, 0, 0, 0),
+                        dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", offset_x=0,
+                        kernel_name="deconvolution")
+                fixpie_op = FixpipeConv2dBackpropInput("conv2d_backprop_input", out, None, deq, None, None, None, None, None, None, None, y, [], [], "")
+                res = fixpie_op.fixpipe_compute()
+                sch = auto_schedule(res)
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_group_requant)
 ut_case.add_cust_test_func(test_func=test_op_compute_int8)
@@ -507,6 +580,9 @@ ut_case.add_cust_test_func(test_func=test_op_mix_case1_mock)
 ut_case.add_cust_test_func(test_func=test_op_mix_case2_mock)
 ut_case.add_cust_test_func(test_func=test_op_mix_case3_mock)
 ut_case.add_cust_test_func(test_func=test_op_mix_case4_mock)
+ut_case.add_cust_test_func(test_func=test_fixpipe_nz2nd)
+ut_case.add_cust_test_func(test_func=test_fixpipe_eltwise)
+ut_case.add_cust_test_func(test_func=test_fixpipe_dequant)
 
 
 if __name__ == "__main__":

@@ -85,6 +85,8 @@ FIXPIPE_SCOPE_MAP = {
 def get_op_type(x: Tensor):
     if x.op.tag == "gemm":
         return "matmul"
+    if x.op.tag == "conv2d_backprop_input":
+        return "conv2d_backprop_input"
     if len(x.op.input_tensors) == 1 and \
             x.op.input_tensors[0].name in ["mad1", "res_conv2d"]:
         return "conv2d"

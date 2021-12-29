@@ -1,0 +1,88 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+fixpipe process for conv2d fusion
+"""
+
+from tbe import tvm
+from impl.fixpipe_op.fixpipe_base import FixpipeBase
+
+
+class FixpipeConv2dBackpropInput(FixpipeBase):
+    """
+    Fixpipe for conv2d dx
+    """
+    def _get_c0_c1_index(self):
+        """
+        get c0 c1 index according to format
+        """
+        NC1MC0_C1_IDX = 1
+        NC1MC0_C0_IDX = -1
+        return NC1MC0_C0_IDX, NC1MC0_C1_IDX
+
+    def _get_input_dtype(self):
+        """
+        get fixpipe op input dtype (result type of mad1)
+        """
+        return self.x1.op.input_tensors[0].dtype
+
+    def _get_output_shape(self):
+        """
+        get output shape
+        """
+        shape = self.output.get("shape")
+        format = self.output.get("format")
+        out_shape = shape
+        if len(shape) == 5 and format == "NC1HWC0":
+            out_shape = [shape[0], shape[1], shape[2] * shape[3], shape[4]]
+        elif len(shape) == 4 and format == "NHWC":
+            out_shape = [shape[0], shape[1] * shape[2], shape[3]]
+        else:
+            raise RuntimeError("error output shape or format")
+
+        return out_shape
+
+    def fixpipe_reform(self, res):
+        """
+        shape or format transform for fixpipe_op
+        """
+        FIXPIPE_REFORM_TAG = "fixpipe_reform"
+        self.attrs["5HD_TRANS_NHWC"] = "False"
+        if self._is_nz2nd():
+            self.attrs["5HD_TRANS_NHWC"] = "True"
+            res_reform = tvm.compute(self.output_shape,
+                                     lambda n, hw, c: res(n, c // self.input_shape[-1],
+                                                          hw, c % self.input_shape[-1]),
+                                     name=FIXPIPE_REFORM_TAG,
+                                     tag=FIXPIPE_REFORM_TAG,
+                                     attrs=self.attrs)
+            return res_reform
+
+        if self._is_channel_merge() or self._is_channel_split():
+            res_reform = tvm.compute(self.output_shape,
+                                     lambda n, c1, hw, c0:
+                                     res(n, (c1 * self.output_shape[-1] + c0) // self.input_shape[-1],
+                                         hw, (c1 * self.output_shape[-1] + c0) % self.input_shape[-1]),
+                                     name=FIXPIPE_REFORM_TAG,
+                                     tag=FIXPIPE_REFORM_TAG,
+                                     attrs=self.attrs)
+            return res_reform
+
+        res_reform = tvm.compute(self.output_shape,
+                                 lambda *indice: res(*indice),
+                                 name=FIXPIPE_REFORM_TAG,
+                                 tag=FIXPIPE_REFORM_TAG,
+                                 attrs=self.attrs)
+        return res_reform

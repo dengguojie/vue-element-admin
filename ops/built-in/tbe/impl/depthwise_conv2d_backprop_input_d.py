@@ -16,6 +16,7 @@
 Depthwise conv2D backprop input for the computation of
 gradients of depthwise convolution with respect to the input.
 """
+from impl.util import util_deconv_comm
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_platform
@@ -300,6 +301,9 @@ def depthwise_conv2d_backprop_input_d(filter,
     _check_params(filter_shape, filter_dtype, "HWCK")
     _check_params(output_shape, output_dtype, "NCHW")
     _check_params(input_shape, input_dtype, "NCHW")
+
+    filter_shape_nchw = [filter_shape[3], filter_shape[2], filter_shape[0], filter_shape[1]]
+    
     para_check.check_shape(output_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
     para_check.check_shape(filter_shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM, param_name="filter")
     para_check.check_shape(input_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="input_grad")
@@ -315,15 +319,17 @@ def depthwise_conv2d_backprop_input_d(filter,
     # input parameters
     batch, channel_in, input_height, input_width = input_shape
     filter_height, filter_width, filter_c, filter_k = filter_shape
-    input_c1 = (channel_in + BLOCK_SIZE - 1) // BLOCK_SIZE
+    _, filter_ci0, _ = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
+    input_c1 = (channel_in + filter_ci0 - 1) // filter_ci0
     stride_h, stride_w = strides[dim_s_h], strides[dim_s_w]
     dilation_h, dilation_w = dilations[dim_d_h], dilations[dim_d_w]
     strides = (stride_h, stride_w)
     dilations = (1, 1, dilation_h, dilation_w)
 
     # output parameters
+    _, dout_c0, _ = tbe_platform.CUBE_MKN[output_dtype]["mac"]
     batch, output_channel, output_height, output_width = output_shape
-    output_c1 = (output_channel + BLOCK_SIZE - 1) // BLOCK_SIZE
+    output_c1 = (output_channel + dout_c0 - 1) // dout_c0
 
     dilated_filter_height = (filter_height - 1) * dilation_h + 1
     dilated_filter_width = (filter_width - 1) * dilation_w + 1
@@ -337,26 +343,18 @@ def depthwise_conv2d_backprop_input_d(filter,
     _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width)
     multi_k = output_channel // channel_in
     filter_size = [filter_c * filter_k, 1, filter_height, filter_width]
-    filter_shape = [input_c1 * filter_height * filter_width, multi_k, BLOCK_SIZE, BLOCK_SIZE]
+    filter_shape = [input_c1 * filter_height * filter_width, multi_k, BLOCK_SIZE, filter_ci0]
     filter_init = tvm.placeholder(filter_shape, dtype=filter_dtype, name='filter')
 
-    output_shape = [batch, output_c1, output_height, output_width, BLOCK_SIZE]
-    dout = tvm.placeholder(output_shape, dtype=output_dtype, name='dout')
+    group_dict = util_deconv_comm.calculate_group(
+        output_shape,
+        input_shape,
+        filter_shape_nchw,
+        channel_in,
+        filter_dtype,
+        filter_ori_format
+    )
 
-    input_shape = [batch, input_c1 * BLOCK_SIZE, input_height, input_width]
-    filter_size = [1, input_c1 * BLOCK_SIZE, filter_height, filter_width]
-    group_dict = {
-        "dx_c1_extend": 1,
-        "dx_c_ori": 1,
-        "dy_c1_extend": multi_k,
-        "dy_c_ori": multi_k,
-        "filter_batch_ori": multi_k,
-        "filter_c_ori": 1,
-        "filter_ori_format": "HWCN",
-        "g_extend": input_c1,
-        "groups": channel_in,
-        "multiple_extend": 16
-    }
     para_dict = {
         "strides": strides,
         "padding": pads,
@@ -365,6 +363,13 @@ def depthwise_conv2d_backprop_input_d(filter,
         "kernel_name": kernel_name,
         "group_dict": group_dict
     }
+
+    output_shape = [batch, output_c1, output_height, output_width, dout_c0]
+    dout = tvm.placeholder(output_shape, dtype=output_dtype, name='dout')
+
+    input_shape = [batch, input_c1 * dout_c0, input_height, input_width]
+    filter_size = [1, input_c1 * filter_ci0, filter_height, filter_width]
+
     dedx = tbe.conv2d_backprop_input_compute(
         filters=filter_init,
         out_backprop=dout,

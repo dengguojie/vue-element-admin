@@ -53,6 +53,11 @@ static const string kAttrOrgFmt = "origin_format";
 static const int kNum2 = 2;
 static const int kIndex2 = 2;
 static const int kIndex3 = 3;
+static const int kBiasAnchoridx = 3;
+static const string kIntrinsicUbToL1 = "Intrinsic_data_move_ub2l1";
+static const string kConv2dBackpropInputOpType = "Conv2DBackpropInputD";
+static const string kDeconvolutionOpType = "Deconvolution";
+static const string kConv2dTransposeOpType = "Conv2DTransposeD";
 
 #define CHECK_POSITION(position)                                                                      \
   {                                                                                                   \
@@ -69,7 +74,9 @@ vector<FusionPattern *> Conv2DbpInputDilationFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
-  pattern->AddOpDesc(PATTERN_CONV2DBACKPROPINPUT, {"Conv2DBackpropInputD"}).SetOutput(PATTERN_CONV2DBACKPROPINPUT);
+  pattern->AddOpDesc(PATTERN_CONV2DBACKPROPINPUT,
+                      {kConv2dBackpropInputOpType, kDeconvolutionOpType, kConv2dTransposeOpType}
+                     ).SetOutput(PATTERN_CONV2DBACKPROPINPUT);
 
   patterns.push_back(pattern);
 
@@ -388,8 +395,11 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return FAILED);
   bool cube_vector_split_flag = platform_info.ai_core_spec.cube_vector_split;
-  FUSION_PASS_CHECK(!cube_vector_split_flag,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Not cube vector split, Dilation is not required."),
+  const auto &intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
+  bool support_ub_dilation_flag = (intrinsic_map.find(kIntrinsicUbToL1) != intrinsic_map.end());
+  FUSION_PASS_CHECK(!cube_vector_split_flag || support_ub_dilation_flag,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(),
+                      "This platform support dilation in ub, dilation op is not required."),
                     return NOT_CHANGED);
 
   ge::NodePtr conv2dbp_input_node = GetNodeFromMapping(PATTERN_CONV2DBACKPROPINPUT, mapping);
@@ -400,6 +410,15 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   int filter_anchor = 0;
   int out_bp_anchor = 1;
   int y_anchor = 0;
+  auto conv2dbp_input_op_desc = conv2dbp_input_node->GetOpDesc();
+  string op_type = conv2dbp_input_op_desc->GetType();
+  bool is_support_bias = false;
+  if (op_type == kDeconvolutionOpType || op_type == kConv2dTransposeOpType) {
+    out_bp_anchor = 0;
+    filter_anchor = 1;
+    is_support_bias = true;
+  }
+
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(conv2dbp_input_node);
 
   // get attr
@@ -522,8 +541,13 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   // else conv2dbp_input -> Dilation
   if (filter_ori_shape[pos_filter_h] > 1 || filter_ori_shape[pos_filter_w] > 1) {
     pre_dilation = true;
+  } else if (is_support_bias) {
+    // if add bias table before back dilation will cause precision error.
+    // when has bias input, dx should use pre dilation
+    pre_dilation = (conv2dbp_input_op_desc->GetInputDescPtr(kBiasAnchoridx) != nullptr);
   }
-  for (unsigned int i = 0; i < strides.size(); ++i) {
+
+  for (size_t i = 0; i < strides.size(); ++i){
     if (strides[i] > kNum2 || (strides[i] > 1 and !pre_dilation)) {
       need_dilation_flag = true;
       break;
