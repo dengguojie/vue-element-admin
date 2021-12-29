@@ -237,18 +237,17 @@ bool TbeFusionPassUtil::GetConstIntData(const ge::Tensor& data, ge::DataType dat
   return true;
 }
 
-bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const std::string& name,
-                                        std::vector<int64_t>& values) {
+bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const char* name, std::vector<int64_t>& values) {
   ge::Tensor tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData(name, tensor)) {
-    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
-            name.c_str());
+    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", TbeGetName(op).c_str(),
+            name);
     return false;
   }
 
   if (!GetConstIntData(tensor, op.GetInputDesc(name).GetDataType(), values)) {
-    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
-            name.c_str());
+    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", TbeGetName(op).c_str(),
+            name);
     return false;
   }
 
@@ -262,14 +261,14 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
 
   FUSION_PASS_CHECK(!is_input_const.empty(),
                     OP_LOGI("UpdateAttrIsInputConst", "The node(%s) have attr is_input_const, will not update again.",
-                            fuse_op.GetName().c_str()),
+                            TbeGetName(fuse_op).c_str()),
                     return true);
   OP_LOGI("UpdateAttrIsInputConst", "will update the node(%s) attr(is_input_const).", TbeGetName(fuse_op).c_str());
   auto input_size = fuse_desc->GetInputsSize();
   FUSION_PASS_CHECK(
       input_size < 1,
       OP_LOGI("UpdateAttrIsInputConst", "The node(%s) have no input desc, will not update is_input_const.",
-              fuse_op.GetName().c_str()),
+              TbeGetName(fuse_op).c_str()),
       return true);
   for (size_t i = 0; i < input_size; i++) {
     auto peer_node = fuse_node->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode();
@@ -282,7 +281,7 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
     is_input_const.push_back(is_const);
   }
   fuse_desc->SetIsInputConst(is_input_const);
-  OP_LOGI("UpdateAttrIsInputConst", "update the node(%s) attr(is_input_const) end.", fuse_op.GetName().c_str());
+  OP_LOGI("UpdateAttrIsInputConst", "update the node(%s) attr(is_input_const) end.", TbeGetName(fuse_op).c_str());
   return true;
 }
 

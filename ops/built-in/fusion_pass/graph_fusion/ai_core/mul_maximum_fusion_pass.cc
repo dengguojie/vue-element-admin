@@ -92,8 +92,8 @@ Status MulMaximumFusionPass::IsMatch(const ge::NodePtr& mulNode, const ge::NodeP
   FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "maximumNode is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(CheckPeerMulInDataAnchors(mulNode->GetOutDataAnchor(0), 1) != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", mulNode->GetName().c_str()),
-                    return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input",
+                    mulNode->GetName().c_str()), return NOT_CHANGED);
 
   size_t maximum_in_nodes_size = ge::OpDescUtils::GetNonConstInputsSize(maximumNode);
   if (maximum_in_nodes_size != CLEAR_OUTPUT_INDEX_TWO) {

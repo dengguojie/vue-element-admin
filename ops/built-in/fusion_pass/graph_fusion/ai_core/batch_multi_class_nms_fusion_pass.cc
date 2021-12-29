@@ -60,7 +60,7 @@ vector<FusionPattern*> BatchMultiClassNonMaxSuppressionFusionPass::DefinePattern
 }
 
 bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(const ge::NodePtr& checkNode) {
-  auto checkOpType = checkNode->GetType();
+  const auto checkOpType = checkNode->GetType();
   FUSION_PASS_CHECK((checkOpType != "Slice") && (checkOpType != "SliceD"),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not Slice or SliceD, is %s", checkOpType.c_str()),
                     return false);
@@ -122,7 +122,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     AddTransposeBeforeNode(peerNode, 0, permScoreList, graph);
     if (peerOpType == "Slice") {
       Operator op = ge::OpDescUtils::CreateOperatorFromNode(peerNode);
-      DataType dtype = op.GetInputDesc("offsets").GetDataType();
+      DataType dtype = op.GetInputDescByName("offsets").GetDataType();
 
       vector<ge::GeTensorPtr> sliceTensorPtr = ge::OpDescUtils::MutableWeights(peerNode);
       FUSION_PASS_CHECK(sliceTensorPtr.size() < 2, OP_LOGW(FUSED_OP_TYPE.c_str(), "slice const num less then 2!"),

@@ -81,7 +81,7 @@ class TbeFusionPassUtil {
    * @param [out] values const int values
    * @return true:success, false:failed.
    */
-  static bool GetConstIntData(const ge::Operator& op, const std::string& name, std::vector<int64_t>& values);
+  static bool GetConstIntData(const ge::Operator& op, const char* name, std::vector<int64_t>& values);
 
   /**
    * update the attr is_input_const for one op node

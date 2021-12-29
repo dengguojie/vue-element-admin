@@ -77,7 +77,7 @@ bool Concatv2dFusionPass::CheckConcatValid(const ge::NodePtr& node, const ge::Fo
           ge::TypeUtils::FormatToSerialString(inputFormat).c_str(),
           ge::TypeUtils::FormatToSerialString(format).c_str());
 
-  ge::GeShape inputShape = node->GetOpDesc()->GetInputDesc(0).GetShape();
+  const ge::GeShape inputShape = node->GetOpDesc()->GetInputDesc(0).GetShape();
   int32_t index = 0;
   for (auto dim : inputShape.GetDims()) {
     if (index == dimNum) {
@@ -91,7 +91,7 @@ bool Concatv2dFusionPass::CheckConcatValid(const ge::NodePtr& node, const ge::Fo
                       return false);
     index++;
   }
-  uint32_t OutNodesSize = 1;
+  const uint32_t OutNodesSize = 1;
   FUSION_PASS_CHECK(node->GetOutAllNodes().size() != OutNodesSize,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "%s 's output should be 1, can't fuss.", node->GetName().c_str()),
                     return false);
@@ -99,13 +99,10 @@ bool Concatv2dFusionPass::CheckConcatValid(const ge::NodePtr& node, const ge::Fo
 }
 
 bool Concatv2dFusionPass::HasUnKnowInputShape(const std::vector<ge::NodePtr> &input_nodes) {
-  for (const auto& node : input_nodes) {
-    if (HasUnKnowShape(node)) {
-      return true;
-    }
-  }
-
-  return false;
+  bool res = false;
+  res = std::any_of(std::begin(input_nodes), std::end(input_nodes), \
+                      [](const ge::NodePtr& item){return HasUnKnowShape(item);});
+  return res;
 }
 
 Status Concatv2dFusionPass::PatternParse(ge::NodePtr concatv2dNode, vector<ge::NodePtr>& fusedInputNodes,

@@ -85,8 +85,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                     return NOT_CHANGED);
 
   // copy Opdesc
-  std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
-  newOpdesc = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName() + "_Infer", BNINFERGRAD);
+  std::shared_ptr<ge::OpDesc> newOpdesc = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName() + "_Infer", BNINFERGRAD);
 
   FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -117,14 +116,13 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output x_backprop failed.",
                             newOpName.c_str()),
                     return FAILED);
-
-  ge::NodePtr newNode = graph.AddNode(newOpdesc);
-  fusionNodes.push_back(newNode);
+  fusionNodes.push_back(graph.AddNode(graph.AddNode(newOpdesc)));
 
   // copy Opdesc
-  std::shared_ptr<ge::OpDesc> newOpdesc2 = nullptr;
-  newOpdesc2 = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName() + "_Update", BNUPDATEGRAD);
-
+  ge::NodePtr newNode = graph.AddNode(newOpdesc);
+  fusionNodes.push_back(newNode);
+  // copy Opdesc
+  std::shared_ptr<ge::OpDesc> newOpdesc2 = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName() + "_Update", BNUPDATEGRAD);
   FUSION_PASS_CHECK(newOpdesc2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc2 is null, fusion failed."),
                     return PARAM_INVALID);
 

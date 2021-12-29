@@ -103,12 +103,12 @@ Status SubSamplePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // create const node 
   int64_t size = label_size;
   unique_ptr<int32_t[]> data(new (std::nothrow) int32_t[size]());
-
   const int32_t init_value = 0;
   if (NnSet(size, init_value, *reinterpret_cast<int32_t *>(data.get())) != SUCCESS) {
       OP_LOGE("SubSamplePass", "NnSet data failed.");
       return FAILED;
   }
+
   // update assist data
   Status ret = assist_data_gen(shuffle_matrix, data.get());
   if (ret == FAILED) {

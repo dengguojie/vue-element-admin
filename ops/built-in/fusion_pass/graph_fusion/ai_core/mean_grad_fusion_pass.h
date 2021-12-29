@@ -29,8 +29,8 @@ class MeanGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status ParseParaFromConst(ge::NodePtr node, int32_t& param, int index);
-  Status RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodePtr node);
+  Status ParseParaFromConst(const ge::NodePtr node, int32_t& param, const int index);
+  Status RemoveConstOpInput(ge::ComputeGraph& graph, const ge::NodePtr node);
   const string FUSED_OP_TYPE = "MeanGrad";
 };
 }  // namespace fe

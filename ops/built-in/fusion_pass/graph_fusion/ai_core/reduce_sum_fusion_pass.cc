@@ -94,7 +94,8 @@ Status ConstToAttrReduceSumPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     return NOT_CHANGED;
   }
   ge::NodePtr fusion_node = nullptr;
-  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType, reduce_sumAttrInfo, fusion_node);
+  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fusedNode, fusionOpType,
+                                                      reduce_sumAttrInfo, fusion_node);
   if (ret != SUCCESS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "ReduceSum has input which is not a CONST, graph not changed.");
     return NOT_CHANGED;

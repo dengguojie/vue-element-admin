@@ -240,11 +240,11 @@ Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, const ge:
                     "node is nullptr."), return FAILED);
   for (auto inDataAnchor : node->GetAllInDataAnchors()) {
     int idx = inDataAnchor->GetIdx();
-    auto outDataAnchor = inDataAnchor->GetPeerOutAnchor();
+    const auto outDataAnchor = inDataAnchor->GetPeerOutAnchor();
     if (outDataAnchor == nullptr || outDataAnchor->GetOwnerNode() == nullptr) {
       continue;
     }
-    string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(outDataAnchor->GetOwnerNode());
+    const string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(outDataAnchor->GetOwnerNode());
     if (nodeType == "Constant" || nodeType == "Const") {
       Status ret;
       if (outDataAnchor->GetOwnerNode()->GetOutDataNodes().size() == 1) {

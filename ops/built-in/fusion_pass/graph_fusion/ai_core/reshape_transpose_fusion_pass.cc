@@ -102,7 +102,7 @@ bool ReshapeTransposeFusionPass::CheckTransposeInfo(const ge::NodePtr nodePtr) {
   return true;
 }
 
-bool ReshapeTransposeFusionPass::ReLinkEdge(const ge::NodePtr& removeNode, const ge::NodePtr mainNode) {
+bool ReshapeTransposeFusionPass::ReLinkEdge(const ge::NodePtr& removeNode, const ge::NodePtr mainNode) const {
   if (removeNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of removeNode is [%d].",
             removeNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
