@@ -245,7 +245,7 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   return SUCCESS;
 }
 
-Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr node) {
+Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr subNode) {
   FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "sum node is null"), return FAILED);
   vector<int32_t> axisValue;
   if (ge::AttrUtils::GetListInt(sumNode->GetOpDesc(), ATTR_NAME_CONST, axisValue) == false) {
@@ -253,7 +253,7 @@ Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr nod
     return FAILED;
   }
 
-  if (ge::AttrUtils::SetListInt(node->GetOpDesc(), AXIS, axisValue) == false) {
+  if (ge::AttrUtils::SetListInt(subNode->GetOpDesc(), AXIS, axisValue) == false) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set sub axis attribute error");
     return FAILED;
   }

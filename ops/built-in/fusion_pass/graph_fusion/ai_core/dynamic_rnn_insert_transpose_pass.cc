@@ -27,6 +27,8 @@ namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeDynamicRNN";
 static const string FUSED_NODE = "DynamicRNN";
 static const string FUSED_NODE_V2 = "DynamicRNNV2";
+static const int32_t DYNAMICRNN_INPUT_LENGTH = 8;
+static const size_t DYNAMICRNN_OUPUT0_SHAPE_LENGTH = 3;
 
 vector<FusionPattern*> DynamicRNNInsertTransposePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -55,7 +57,7 @@ Status DynamicRNNInsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping& m
     ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
     vector<int64_t> oriOutputShape = outputDesc.GetShape().GetDims();
 
-    if (oriOutputShape.size() < 3) {
+    if (oriOutputShape.size() < DYNAMICRNN_OUPUT0_SHAPE_LENGTH) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get output shape. shape less then 3!");
       return NOT_CHANGED;
     }
@@ -72,14 +74,9 @@ Status DynamicRNNInsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping& m
     outputDesc.SetOriginShape(outputShape);
     // update fused node output info
     auto opOutputDesc = fusedNode->GetOpDesc();
-    opOutputDesc->UpdateOutputDesc(0, outputDesc);
-    opOutputDesc->UpdateOutputDesc(1, outputDesc);
-    opOutputDesc->UpdateOutputDesc(2, outputDesc);
-    opOutputDesc->UpdateOutputDesc(3, outputDesc);
-    opOutputDesc->UpdateOutputDesc(4, outputDesc);
-    opOutputDesc->UpdateOutputDesc(5, outputDesc);
-    opOutputDesc->UpdateOutputDesc(6, outputDesc);
-    opOutputDesc->UpdateOutputDesc(7, outputDesc);
+    for (int32_t i = 0; i < DYNAMICRNN_INPUT_LENGTH; i++) {
+      opOutputDesc->UpdateOutputDesc(i, outputDesc);
+    }
     AddTransposeAfterNode(fusedNode, 0, permBoxesList, graph);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(fuseDesc, "time_major", true),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),

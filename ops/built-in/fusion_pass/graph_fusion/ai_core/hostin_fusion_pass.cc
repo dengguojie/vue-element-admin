@@ -117,8 +117,7 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
     inputType.push_back(ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(node));
     OP_LOGI(FUSED_OP_TYPE.c_str(), "dtype %s 1", ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(node).c_str());
   }
-  vector<string>::iterator temp;
-  temp = find(inputType.begin(), inputType.end(), "Const");
+  vector<string>::iterator temp = find(inputType.begin(), inputType.end(), "Const");
   if (temp == inputType.end()) {
     return NOT_CHANGED;
   } else {

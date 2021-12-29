@@ -54,13 +54,13 @@ namespace fe {
 
 class FusedBatchnormFusionPass : public PatternFusionBasePass {
     public:
-    FusedBatchnormFusionPass() {
-        FUSED_OP_TYPE = "BNTrainingReduce_BNTrainingUpdate";
-        PASS_OP_TYPE_BATCHNORM = "BatchNorm";
-        PASS_OP_TYPE_SUB = "Sub";
-        PASS_OP_TYPE_BNREDUCE = "BNTrainingReduce";
-        PASS_OP_TYPE_BNUPDATE = "BNTrainingUpdate";
-        STREAM_LABEL = "_stream_label";
+    FusedBatchnormFusionPass()
+        : FUSED_OP_TYPE("BNTrainingReduce_BNTrainingUpdate"),
+            PASS_OP_TYPE_BATCHNORM("BatchNorm"),
+            PASS_OP_TYPE_SUB("Sub"),
+            PASS_OP_TYPE_BNREDUCE("BNTrainingReduce"),
+            PASS_OP_TYPE_BNUPDATE("BNTrainingUpdate"),
+            STREAM_LABEL("_stream_label") {
     }
 
     ~FusedBatchnormFusionPass() override {

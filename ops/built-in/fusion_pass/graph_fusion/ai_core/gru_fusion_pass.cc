@@ -46,7 +46,8 @@ static const std::string PATTERN_FUSEDNODE = "CommonGRU";
 static const int BIAS_INPUT_INDEX = 3;
 static const int BIAS_SPLIT_GROUP = 2;
 static const int BIAS_CHANNEL_INDEX = 1;
-
+static const int64_t DIM_5HD_UNIT_SIZE = 16;
+static const int64_t DIM_5HD_DIV_FACTOR = 15;
 
 vector<FusionPattern*> GRUFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -74,7 +75,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."),
                     return PARAM_INVALID);
 
-  auto gruOp = ge::OperatorFactory::CreateOperator(fusedDesc->GetName() + "_splitD_layer", "DynamicGRUV2");
+  auto gruOp = ge::OperatorFactory::CreateOperator((fusedDesc->GetName() + "_splitD_layer").c_str(), "DynamicGRUV2");
   FUSION_PASS_CHECK(gruOp.IsEmpty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2 operator error"),
                     return FAILED);
@@ -469,18 +470,18 @@ void GRUFusionPass::ProcessNZFormat(std::vector<int64_t>& dims) {
   FUSION_PASS_CHECK(n < 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return);
   int64_t first = dims[n - 1];
   int64_t second = dims[n - 2];
-  dims[n - 1] = (second + 15) / 16;
-  dims[n - 2] = (first + 15) / 16;
-  dims.push_back(16);
-  dims.push_back(16);
+  dims[n - 1] = (second + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE;
+  dims[n - 2] = (first + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE;
+  dims.push_back(DIM_5HD_UNIT_SIZE);
+  dims.push_back(DIM_5HD_UNIT_SIZE);
 }
 
 void GRUFusionPass::ProcessZFormat(std::vector<int64_t>& dims) {
   for (auto& elem : dims) {
-    elem = (elem + 15) / 16;
+    elem = (elem + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE;
   }
-  dims.push_back(16);
-  dims.push_back(16);
+  dims.push_back(DIM_5HD_UNIT_SIZE);
+  dims.push_back(DIM_5HD_UNIT_SIZE);
 }
 
 REGISTER_PASS("GRUFusionPass", BUILT_IN_GRAPH_PASS, GRUFusionPass);

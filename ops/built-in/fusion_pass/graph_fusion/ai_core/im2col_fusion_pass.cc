@@ -38,7 +38,7 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "Im2col";
 static const std::string PATTERN_FUSEDNODE = "Im2col";
-
+static const size_t SHAPE_LEN_4D = 4;
 
 vector<FusionPattern*> Im2colFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -79,7 +79,7 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   int64_t outputH = 0;
   int64_t outputW = 0;
 
-  if (outDimInfo.size() == 4 && outputOriginFormat == ge::FORMAT_NCHW) {
+  if (outDimInfo.size() == SHAPE_LEN_4D && outputOriginFormat == ge::FORMAT_NCHW) {
     outputN = outDimInfo[0];
     outputC = outDimInfo[1];
     outputH = outDimInfo[2];

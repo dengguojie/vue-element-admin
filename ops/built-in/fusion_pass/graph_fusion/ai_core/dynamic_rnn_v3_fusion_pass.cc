@@ -56,7 +56,7 @@ vector<FusionPattern *> DynamicRNNV3FusionPass::DefinePatterns()
 }
 
 ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, ge::NodePtr fusedNode, bool &failStatus,
-                                                      int64_t batchSize, int64_t hiddenSize, int64_t stateSize){
+                                                      int64_t batchSize, int64_t stateSize){
   ge::OpDescPtr broadcast_op_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
       (broadcast_op_desc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "BroadCast", "BroadcastToD")),
@@ -90,9 +90,8 @@ ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, g
   return broadcast_node1;
 }
 
-ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fusedNode, bool &failStatus,
-                                                                 int64_t index, int64_t batchSize,
-                                                                 int64_t hiddenSize) {
+ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fusedNode, int64_t index,
+                                                                 int64_t batchSize, int64_t hiddenSize) {
   std::vector<int64_t> wcIn = {batchSize, hiddenSize};
   ge::GeShape wcShape(wcIn);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
@@ -138,8 +137,7 @@ ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fus
   return wcTensorPtr;
 }
 
-Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes)
-{
+Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "DynamicRNNV3 start fusion.");
 
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
@@ -150,12 +148,11 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
         "fusedDesc OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   int64_t batchSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(1);
-  int64_t hiddenSize = fusedDesc->GetInputDesc(1).GetShape().GetDim(1) / 4;
   int64_t stateSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0);
 
   bool failStatus = false;
 
-  AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, hiddenSize, stateSize);
+  AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, stateSize);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wco fail."),
                     return FAILED);
 

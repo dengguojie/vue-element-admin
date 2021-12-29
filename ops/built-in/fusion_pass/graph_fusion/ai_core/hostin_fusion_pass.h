@@ -52,7 +52,7 @@ class HostINFusionPass : public PatternFusionBasePass {
    * @param newNodePtr: new node
    * @return SUCCESS/FAILED
    */
-  Status SetAttrValueForNewNode(const ge::OpDescPtr& psroiOpDescPtr, ge::OpDescPtr& newOpDescPtr);
+  Status SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr);
 
   const string FUSED_OP_TYPE = "INInferV2D";
 };

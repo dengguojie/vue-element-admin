@@ -545,12 +545,13 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   }
   OP_LOGI(FUSED_OP_TYPE.c_str(), "The index of mul node's const input node is %d", constInputIndex);
   Tensor constTensor;
-  mulOp.GetInputConstData(matchResult.mulNodeVec[0]->GetOpDesc()->GetInputNameByIndex(constInputIndex), constTensor);
+  mulOp.GetInputConstData(matchResult.mulNodeVec[0]->GetOpDesc()->GetInputNameByIndex(constInputIndex).c_str(),
+                          constTensor);
   DataType constDataType = matchResult.mulNodeVec[0]->GetOpDesc()->GetInputDesc(constInputIndex).GetDataType();
   if (constTensor.GetData() != nullptr) {
     if (constDataType == ge::DT_FLOAT16) {
-      uint16_t* constDataPtr = (uint16_t*)constTensor.GetData();
-      uint16_t constData = (uint16_t)(*constDataPtr);
+      uint16_t* constDataPtr = reinterpret_cast<uint16_t*>(constTensor.GetData());
+      uint16_t constData = static_cast<uint16_t>(*constDataPtr);
       fp16_t constDataFp16(constData);
       float constDataFp32 = constDataFp16.toFloat();
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constDataFp32);
@@ -559,8 +560,8 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
     return FAILED;
       }
     } else {
-      float* constDataPtr = (float*)constTensor.GetData();
-      float constData = (float)(*constDataPtr);
+      float* constDataPtr = reinterpret_cast<float*>(constTensor.GetData());
+      float constData = static_cast<float>(*constDataPtr);
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constData);
       if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constData)) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");

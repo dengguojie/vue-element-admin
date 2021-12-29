@@ -34,10 +34,10 @@ protected:
     Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) override;
 
 private:
-    ge::GeTensorPtr ProcessDynamicRnnV3Wdate(ge::NodePtr fusedNode, bool &failStatus,
-                                             int64_t index, int64_t batchSize, int64_t hiddenSize);
+    ge::GeTensorPtr ProcessDynamicRnnV3Wdate(ge::NodePtr fusedNode, int64_t index, int64_t batchSize,
+                                             int64_t hiddenSize);
     ge::NodePtr AddBroadCastForCt(ge::ComputeGraph &graph, ge::NodePtr fusedNode, bool &failStatus,
-                                  int64_t batchSize, int64_t hiddenSize, int64_t stateSize);
+                                  int64_t batchSize, int64_t stateSize);
     const string FUSED_OP_TYPE = "DynamicRNNV3";
 };
 }  // namespace fe
