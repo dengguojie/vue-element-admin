@@ -191,7 +191,11 @@ static void TilingFactor(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, con
   }
   int32_t col2img_process_wi = one_seventh_ub_ele / (tiling_params.each_process_hi * C0);
   if (compile_info.kw > compile_info.stride_w) {
-    col2img_process_wo = (col2img_process_wi - compile_info.kw) / compile_info.stride_w + 1;
+    if (col2img_process_wi >= compile_info.kw){
+        col2img_process_wo = (col2img_process_wi - compile_info.kw) / compile_info.stride_w + 1;
+    } else {
+        col2img_process_wo = col2img_process_wi / compile_info.kw;
+    }
   } else {
     col2img_process_wo = col2img_process_wi / compile_info.stride_w;
   }

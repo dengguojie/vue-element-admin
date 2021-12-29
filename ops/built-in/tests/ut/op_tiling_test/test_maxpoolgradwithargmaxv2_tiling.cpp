@@ -599,3 +599,58 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_9) {
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "2 12 1 1 128 1 1 7 50 3 1 0 255 4 3 321 320 320 1 12 1 12 2 2 12 12 0 0 0 0 992 ");
 }
+
+// kernel size or stride too large
+TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_10) {
+    using namespace optiling;
+    std::string op_name = "MaxPoolGradWithArgmaxV2";
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+    std::string compileInfo =
+     "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"kh\": 2, \"kw\": 255, \"stride_h\": 61, "
+     "\"stride_w\": 1, \"pad_h\": 0, \"pad_w\": 0,\"dilation_h\": 1, \"dilation_w\": 1, \"ceil_mode\": 0}}";
+
+    std::vector<int64_t> input0{3, 4, 320, 320, 16};
+    std::vector<int64_t> input1{3, 4, 6, 66, 16};
+    std::vector<int64_t> input2{3, 4, 510, 26, 16};
+    std::vector<int64_t> output0{3, 4, 320, 320, 16};
+
+    TeOpTensor tensor_input0;
+    tensor_input0.shape = input0;
+    tensor_input0.dtype = "float16";
+    TeOpTensor tensor_input1;
+    tensor_input1.shape = input1;
+    tensor_input1.dtype = "float16";
+    TeOpTensor tensor_input2;
+    tensor_input2.shape = input2;
+    tensor_input2.dtype = "uint16";
+    TeOpTensor tensor_output0;
+    tensor_output0.shape = output0;
+    tensor_output0.dtype = "float16";
+
+    TeOpTensorArg tensor_input_arg0;
+    tensor_input_arg0.tensor.push_back(tensor_input0);
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_input_arg1;
+    tensor_input_arg1.tensor.push_back(tensor_input1);
+    tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_input_arg2;
+    tensor_input_arg2.tensor.push_back(tensor_input2);
+    tensor_input_arg2.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_output_arg0;
+    tensor_output_arg0.tensor.push_back(tensor_output0);
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
+
+    TeOpParas opParas;
+    opParas.inputs.push_back(tensor_input_arg0);
+    opParas.inputs.push_back(tensor_input_arg1);
+    opParas.inputs.push_back(tensor_input_arg2);
+    opParas.outputs.push_back(tensor_output_arg0);
+    opParas.op_type = op_name;
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_10";
+    OpRunInfo runInfo;
+    iter->second.tiling_func_(opParas, op_compile_info, runInfo);
+}
