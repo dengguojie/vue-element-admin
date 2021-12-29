@@ -2503,8 +2503,8 @@ def _check_param(x, depth, on_value, off_value):
     depth_dtype = depth.get("dtype").lower()
     on_value_dtype = on_value.get("dtype").lower()
     off_value_dtype = off_value.get("dtype").lower()
-    para_check.check_dtype(x_dtype, ["int32",])
-    para_check.check_dtype(depth_dtype, ["int32",])
+    para_check.check_dtype(x_dtype, ["int32"])
+    para_check.check_dtype(depth_dtype, ["int32"])
     para_check.check_dtype(on_value_dtype, ["int32", "float32", "float16"])
     para_check.check_dtype(off_value_dtype, ["int32", "float32", "float16"])
 

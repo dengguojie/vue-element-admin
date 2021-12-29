@@ -56,8 +56,8 @@ Status CheckProdFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_i
 vector<FusionPattern*> AReduceProdFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceProdFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                   "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -67,8 +67,8 @@ vector<FusionPattern*> AReduceProdFusionPass::DefinePatterns() {
 Status AReduceProdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceProdFusionPass fusion begin.");
   ge::NodePtr prodNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(prodNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "prodNode is null, fusion failed."),
+  FUSION_PASS_CHECK(prodNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prodNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   FUSION_PASS_CHECK(prodNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -131,8 +131,8 @@ Status AReduceProdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reduceprod edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(prodNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                   "Remove prodNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(prodNode) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove prodNode failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceProdFusionPass fusion end");

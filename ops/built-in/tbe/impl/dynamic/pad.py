@@ -34,7 +34,7 @@ class Constant:
     """
     # tiling param nums
     TILING_NUMS = 28
-    # 1 byte = 8 bit
+    # `1 byte = 8 bit'
     EIGHT_BIT = 8
     # bytes of one block
     BLOCK_BYTES = 32
@@ -1028,7 +1028,7 @@ class PadInit(OpBase):
                         self.tik_instance.data_move(self.output_gm[dst_offset],
                                                     origin_output_data_ub[_copy_idx * max_output_size], 0, 1,
                                                     burst_len, 0, 0)
-                    # is_last_output_algin = True
+
                     if not is_last_output_algin:
                         copy_tail_offset = self.tik_instance.Scalar(dtype="int64", name="copy_tail_offset")
                         copy_tail_offset.set_as(third_dim_output_num % 16)

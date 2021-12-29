@@ -24,6 +24,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.dynamic.unsorted_segment_sum import UnsortedSegmentSum
 from impl.dynamic.unsorted_segment_sum_no_atomic import UnsortedSegmentSumNoAtomoic
 
+
 # 'pylint: disable=unused-argument
 def check_supported(x, segment_ids, y, kernel_name="unsorted_segment_sum"):
     """
@@ -32,15 +33,8 @@ def check_supported(x, segment_ids, y, kernel_name="unsorted_segment_sum"):
     static shape x_shape ends with 1 or lens equals 1 not support
     temporary support x_dtype of "float32" in compilestatic process
     """
-    shapex = x.get("ori_shape")
-    shapeid = segment_ids.get("ori_shape")
-    shapey = y.get("ori_shape")
     id_dtype = segment_ids.get("dtype").lower()
     x_dtype = x.get("dtype").lower()
-    dynamic_x = True
-    dynamic_id = True
-    dynamic_seg = True
-    dynamic_y = True
 
     if id_dtype != "int32":
         reason = "the segment_ids's dytpe not equeal int32, segment_ids_dtype=%s" % id_dtype
@@ -51,11 +45,11 @@ def check_supported(x, segment_ids, y, kernel_name="unsorted_segment_sum"):
 
     return True, ""
 
+
 def op_select_format(x, segment_ids, y, kernel_name="unsorted_segment_sum"):
     """
     select format dynamically
     """
-    segment_ids_shape = list(segment_ids.get("ori_shape"))
     atomic_add = tbe_platform.api_check_support("tik.set_atomic_add")
     if not atomic_add:
         input0_dtype = "float16,int32"
@@ -84,8 +78,9 @@ def op_select_format(x, segment_ids, y, kernel_name="unsorted_segment_sum"):
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
-# pylint: disable=superfluous-parens
+
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
+# 'pylint: disable=superfluous-parens
 @register_operator("SegmentSum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

@@ -51,9 +51,10 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   std::shared_ptr<ge::OpDesc> beforeTransposeDesc = nullptr;
   std::string beforeTransposeName = fusedNode->GetName() + "_Input" + to_string(inputIndex) + "_TransposeBefore";
   beforeTransposeDesc = std::make_shared<ge::OpDesc>(beforeTransposeName, FUSED_TRANSPOSE_NODE);
-  FUSION_PASS_CHECK(beforeTransposeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      beforeTransposeDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."),
+      return FAILED);
   ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(inputIndex);
   FUSION_PASS_CHECK(beforeTransposeDesc->AddInputDesc("x", inputDesc) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
@@ -186,8 +187,9 @@ Status AddCastAfterNode(const ge::NodePtr& fused_node, const int64_t& output_ind
 
   // add edge cast output with other node input
   for (auto in_data_anchor : fused_node->GetOutDataAnchor(output_index)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(output_index), in_data_anchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "Remove edge failed."), return FAILED);
+    FUSION_PASS_CHECK(
+        ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(output_index), in_data_anchor) != SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "Remove edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), in_data_anchor) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(fuse_nodetype.c_str(), "Add edge failed."), return FAILED);
   }
@@ -235,7 +237,8 @@ bool TbeFusionPassUtil::GetConstIntData(const ge::Tensor& data, ge::DataType dat
   return true;
 }
 
-bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const std::string& name, std::vector<int64_t>& values) {
+bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const std::string& name,
+                                        std::vector<int64_t>& values) {
   ge::Tensor tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData(name, tensor)) {
     OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),

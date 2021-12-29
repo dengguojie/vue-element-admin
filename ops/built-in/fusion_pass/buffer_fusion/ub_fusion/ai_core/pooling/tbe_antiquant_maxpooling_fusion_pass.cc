@@ -72,7 +72,8 @@ vector<BufferFusionPattern*> AntiquantMaxpoolingFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status AntiquantMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+Status AntiquantMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
+                                                     vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do AntiquantMaxpooling!");
   fusion_nodes = GetMatchedNodes(mapping);
   SetSplitInfo(mapping, fusion_nodes);
@@ -81,7 +82,8 @@ Status AntiquantMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMapping& 
   return SUCCESS;
 }
 
-void AntiquantMaxpoolingFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr>& fusion_nodes) {
+void AntiquantMaxpoolingFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                 std::vector<ge::NodePtr>& fusion_nodes) {
   vector<ge::NodePtr> pool_nodes = GetMatchedNodesByDescName(PATTERN_MAXPOOLING, mapping);
   if (pool_nodes.empty()) {
     OP_LOGD(fused_op_type_.c_str(), "pool node not matched");

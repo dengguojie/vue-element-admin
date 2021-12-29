@@ -122,8 +122,9 @@ Status ContinuationIndicatorFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
   }
   // delete fused nodes
-  FUSION_PASS_CHECK(graph.RemoveNode(fusion_node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove fusion_node failed."),
-    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(fusion_node) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove fusion_node failed."),
+                    return FAILED);
   return SUCCESS;
 }
 REGISTER_PASS("ContinuationIndicatorFusionPass", BUILT_IN_GRAPH_PASS, ContinuationIndicatorFusionPass);

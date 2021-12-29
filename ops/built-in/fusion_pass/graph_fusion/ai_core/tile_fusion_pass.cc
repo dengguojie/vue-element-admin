@@ -88,7 +88,7 @@ Status ConstToAttrTilePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetInputConstData of multiples failed.");
     return false;
   }
-  DataType dtype = tileOp.GetInputDesc("multiples").GetDataType();
+  DataType dtype = tileOp.GetInputDescByName("multiples").GetDataType();
   std::vector<int64_t> const_data;
   size_t size = 0;
   if (dtype == ge::DT_INT32) {

@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpPatternMode
 
+
 # 'pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments
 # Analysis parameter dim
 def reduce_std_check_dim(axis_dim, shape_x, dim):
