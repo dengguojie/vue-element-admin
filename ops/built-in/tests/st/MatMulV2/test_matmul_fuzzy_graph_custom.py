@@ -103,6 +103,7 @@ def test_matmul_confusion_transpose_30_224_perm_invalid():
     except RuntimeError as e:
         print("test_matmul_confusion_transpose_30_224_perm_invalid success")
 
+
 def test_matmul_confusion_transpose_710():
     te_set_version("Ascend710")
     with cce():

@@ -160,10 +160,23 @@ Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, con
                         return NOT_CHANGED);
 
       if (nodeInfrontOfAdd->GetType() == "Reshape") {
+        ge::OpDescPtr input_tensor_op = nodeInfrontOfAdd->GetOpDesc();
+        auto input_tensor_0 = input_tensor_op->GetInputDesc(0);
+        std::vector<int64_t> input_size = input_tensor_0.GetShape().GetDims();
+        FUSION_PASS_CHECK(input_size.size() != 1, OP_LOGI(FUSED_OP_TYPE.c_str(),
+                          "Node Add:[%s]'s input size %zu is invalid.",
+                          nodeInfrontOfAdd->GetName().c_str(), input_size.size()),
+                          return NOT_CHANGED);
         /* This case, the BiasAdd is Add and the input of Add is Reshape,
          * we just get the first weight of reshape as the bias. */
         weights = ge::OpDescUtils::GetWeights(nodeInfrontOfAdd);
         const_input_nodes = GetConstOrDataInputs(nodeInfrontOfAdd);
+        FUSION_PASS_CHECK(const_input_nodes[0]->GetOpDesc()->GetOutputDesc(0).GetDataType() != ge::DT_FLOAT16 &&
+                          const_input_nodes[0]->GetOpDesc()->GetOutputDesc(0).GetDataType() != ge::DT_FLOAT,
+                          OP_LOGI(FUSED_OP_TYPE.c_str(), "Node Add:[%s]'s dtype %u is invalid.",
+                          nodeInfrontOfAdd->GetName().c_str(),
+                          const_input_nodes[0]->GetOpDesc()->GetOutputDesc(0).GetDataType()),
+                          return NOT_CHANGED);
       }
     } // for other cases, we just use the weight of BiasAdd
 

@@ -254,3 +254,88 @@ TEST_F(biasadd_conv_fusion_test, biasadd_conv_fusion_test_3) {
     delete[] const_add_tensor_value;
     delete[] conv_input_filter_tensor_value;
 }
+
+/* conv3d + reshape */
+TEST_F(biasadd_conv_fusion_test, biasadd_conv_fusion_test_4) {
+    ge::Graph graph("biasadd_conv_fusion_test_4");
+
+    auto leakyrelu_input_x_data = op::Data("leakyrelu_input_x_data");
+    std::vector<int64_t> dims_x{4, 16, 64, 64, 64};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_ND, DT_FLOAT);
+    leakyrelu_input_x_data.update_input_desc_x(tensorDescX);
+    leakyrelu_input_x_data.update_output_desc_y(tensorDescX);
+
+    auto resize_input_x_data = op::Data("resize_input_x_data");
+    std::vector<int64_t> dims_y{4, 4, 64, 4096};
+    ge::Shape shape_y(dims_y);
+    ge::TensorDesc tensorDescY(shape_y, FORMAT_NCHW, DT_FLOAT);
+    resize_input_x_data.update_input_desc_x(tensorDescY);
+    resize_input_x_data.update_output_desc_y(tensorDescY);
+
+    auto conv3d_filter_data = op::Const("conv3d_filter_data");
+
+    Tensor conv3d_filter_Tensor;
+    float *conv3d_filter_Tensor_value = new float[4 * 16];
+    for (int i = 0; i < 4 * 16; i++) {
+        *(conv3d_filter_Tensor_value + i) = 0.1;
+    }
+    conv3d_filter_Tensor.SetData((uint8_t *) conv3d_filter_Tensor_value, 4 * 16 * 4);
+
+    std::vector<int64_t> dims_filter{4, 16, 1, 1, 1};
+    ge::Shape shape_filter(dims_filter);
+    ge::TensorDesc tensorDescFilter(shape_filter, FORMAT_NCDHW, DT_FLOAT);
+    conv3d_filter_Tensor.SetTensorDesc(tensorDescFilter);
+    conv3d_filter_data.set_attr_value(conv3d_filter_Tensor);
+
+    auto reshape_resize_data = op::Const("reshape_resize_data");
+
+    Tensor reshape_resize_tensor;
+    int64_t *reshape_resize_tensor_value = new int64_t[5];
+    *(reshape_resize_tensor_value + 0) = 4;
+    *(reshape_resize_tensor_value + 1) = 4;
+    *(reshape_resize_tensor_value + 2) = 64;
+    *(reshape_resize_tensor_value + 3) = 64;
+    *(reshape_resize_tensor_value + 4) = 64;
+    reshape_resize_tensor.SetData((uint8_t *) reshape_resize_tensor_value, 5 * 8);
+
+    std::vector<int64_t> dims_reshape{4, 4, 64, 64, 64};
+    ge::Shape shape_reshape(dims_reshape);
+    ge::TensorDesc tensorDescReshape(shape_reshape, FORMAT_ND, DT_INT64);
+    reshape_resize_tensor.SetTensorDesc(tensorDescReshape);
+    reshape_resize_data.set_attr_value(reshape_resize_tensor);
+
+    auto conv_op = op::Conv3D("conv_1");
+    conv_op.set_input_x(leakyrelu_input_x_data)
+            .set_input_filter(conv3d_filter_data);
+    conv_op.set_attr_data_format("NCDHW");
+    conv_op.set_attr_strides({1, 1, 1, 1, 1});
+    conv_op.set_attr_pads({0, 0, 0, 0, 0, 0});
+
+    auto reshape_op = op::Reshape("reshape_op");
+    reshape_op.set_input_x(resize_input_x_data)
+               .set_input_shape(reshape_resize_data);
+
+    auto add_op = op::Add("add_op");
+    add_op.set_input_x1(conv_op)
+               .set_input_x2(reshape_op);
+
+    std::vector<Operator> inputs{leakyrelu_input_x_data, resize_input_x_data, conv3d_filter_data, reshape_resize_data};
+    std::vector<Operator> outputs{add_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("AABiasaddConvFusion", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    // compute_graph_ptr->Dump();
+    bool biasaddFlag = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Add") {
+            biasaddFlag = true;
+        }
+    }
+    EXPECT_EQ(biasaddFlag, true);
+
+    delete[] conv3d_filter_Tensor_value;
+    delete[] reshape_resize_tensor_value;
+}

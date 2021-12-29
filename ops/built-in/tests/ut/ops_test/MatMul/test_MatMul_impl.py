@@ -94,6 +94,7 @@ case5 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
