@@ -193,4 +193,3 @@ print("====> adding Conv2D v220 conv al1_load2d dynamic ut testcases end")
 
 if __name__ == '__main__':
     ut_case.run("Ascend920A")
-    exit(0)

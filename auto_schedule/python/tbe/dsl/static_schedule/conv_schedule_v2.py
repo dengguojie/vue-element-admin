@@ -332,14 +332,6 @@ class InputNd2Nz:
     def __init__(self, conv_param):
         self.flag = conv_param.input_nd_flag
 
-    def config_al1_nd2nz(self, sch, fmap_row_major, scope_al1):
-        """
-        Get the al1 tensor in nd2nz situation.
-        """
-        al1 = get_src_tensor(fmap_row_major)
-        sch[al1].set_scope(scope_al1)
-        return al1
-
     def inline_input_nd_dynamic(self, sch, tensor_map, dynamic_flag):
         """
         inline al1 in nd2nz dynamic situation (group = 1).
@@ -579,14 +571,6 @@ class DynamicShape:
         if self.hw_dynamic and tiling["A_overhead_opt_flag"]:
             err_man.raise_err_value_or_format_invalid(
                 "conv2d", 'tiling["A_overhead_opt_flag"]', "False", "when dynamic shape.")
-
-    def config_al1_dynamic(self, sch, tensor_map, scope_al1):
-        """
-        Get the al1 tensor in dynamic shape.
-        """
-        al1 = tensor_map["fmap_l1"]
-        sch[al1].set_scope(scope_al1)
-        return al1
 
     def disable_memory_reuse(self, sch, tensor_param):
         """
@@ -892,14 +876,6 @@ class StridehOpti:
         self.flag = conv_param.strideh_opti_flag
         self.stride_h_update = 1 if self.flag else conv_param.stride_h
 
-    def config_al1_strideh_opti(self, sch, tensor_map, scope_al1):
-        """
-        Get al1 in the strideh_opti situation.
-        """
-        al1 = tensor_map["fmap_l1"]
-        sch[al1].set_scope(scope_al1)
-        return al1
-
 
 class C04Opti:
     """
@@ -908,14 +884,6 @@ class C04Opti:
     def __init__(self, conv_param):
         self.mode = conv_param.v220_c04_mode
         self.flag = conv_param.v220_c04_mode != "disabled"
-
-    def config_al1_c04(self, sch, tensor_map, scope_al1):
-        """
-        Get al1 in C04 optimization.
-        """
-        al1 = tensor_map["fmap_l1_c04"]
-        sch[al1].set_scope(scope_al1)
-        return al1
 
 
 class Conv1dSplitw:
