@@ -21,7 +21,6 @@
 #include "scope_basic_lstm_cell_pass.h"
 
 #include "op_log.h"
-#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 static const char* const kScopeType = "BasicLSTMCell";

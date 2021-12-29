@@ -21,7 +21,6 @@
 #include "scope_dynamic_lstm_pass.h"
 
 #include "op_log.h"
-#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 static const char* const kScopeType = "DynamicRNN";

@@ -48,7 +48,7 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
                            const float scale_x, const float scale_b);
   void GetQuantScale(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
                      float &scale_x, float &scale_b);
-  void GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt, const std::string sub_type);
+  void GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt, const std::string& sub_type);
   void GenerateFusionResultForLTCRNN(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt);

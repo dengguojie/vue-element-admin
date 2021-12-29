@@ -15,7 +15,7 @@
 */
 #include "scope_dynamic_rnn_pass.h"
 #include <set>
-#include <cstring>
+#include "securec.h"
 #include "op_log.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/operator.h"
@@ -509,7 +509,11 @@ void ScopeDynamicRNNPass::GetQuantScale(const std::unordered_map<std::string, ge
       }
       uint64_t scale_deq = *reinterpret_cast<uint64_t*>(data.GetData());
       uint32_t scaleDeq = GET_DEQUANT_SCALE_DEQ(scale_deq);
-      std::memcpy(&scale_b, &scaleDeq, sizeof(float));
+      errno_t memcpy_ret = memcpy_s(&scale_b, sizeof(float), &scaleDeq, sizeof(float));
+      if (memcpy_ret != EOK) {
+        OP_LOGE("memcpy_s fail!");
+        return;
+      }
     }
   }
 }
@@ -668,7 +672,7 @@ std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<s
 }
 
 void ScopeDynamicRNNPass::GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt,
-                                                       const std::string sub_type) {
+                                                       const std::string& sub_type) {
   OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
   const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
 

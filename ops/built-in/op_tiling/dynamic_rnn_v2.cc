@@ -74,7 +74,7 @@ int32_t GetRnnV2LibItem(const std::string& opType, const nlohmann::json& opCompi
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, get tune_shape_list failed.");
     return -1;
   }
-  for (int64_t i = 0; i < tune_shape_list.size(); i++) {
+  for (uint64_t i = 0; i < tune_shape_list.size(); i++) {
     if (tune_shape_list[i].size() < DST_SHAPE_SIZE) {
       OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, No matching schedule is found.");
       return -1;

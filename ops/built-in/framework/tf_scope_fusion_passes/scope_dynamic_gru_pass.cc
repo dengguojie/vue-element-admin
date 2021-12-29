@@ -15,10 +15,7 @@
 */
 #include "scope_dynamic_gru_pass.h"
 
-#include <set>
-
 #include "op_log.h"
-#include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
 static const char* const kScopeType = "DynamicGRUV2";
