@@ -455,7 +455,7 @@ class CubeDslPattern:
                 lambda g_index, n_index, co1_index, m_index, co0_index: tvm.sum(
                     ((tensor_a(g_index, n_index, m_index // a_m0, axis_k1, m_index % a_m0, axis_k0) - offset_x) *
                     tensor_b(g_index, axis_k1, co1_index, co0_index, axis_k0)).astype(type_c) +
-                    tensor_bias(b_n0 * co1_index + co0_index),
+                    tensor_bias(g_index * b_n1 * b_n0 + co1_index * b_n0 + co0_index),
                     axis=[axis_k1, axis_k0]),
                 name="C",
                 tag="mad")

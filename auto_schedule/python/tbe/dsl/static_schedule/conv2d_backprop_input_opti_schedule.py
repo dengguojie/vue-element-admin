@@ -1342,6 +1342,8 @@ class Conv2dDxOptiSchedule:
         weight_l0 = tensor_mmad.op.input_tensors[1]
         weight_l1_ori = weight_l0.op.input_tensors[0]
         weight_l1 = weight_l1_ori.op.input_tensors[0]
+        input_fp32_flag = (a_l0a.dtype == "float32" and weight_l0.dtype == "float32")
+        self.dx_para.update_para_map("input_fp32_flag", input_fp32_flag)
 
         if weight_l1.op.input_tensors:
             if "NHWC_trans_FZ" in weight_l1.op.tag:
@@ -2501,7 +2503,14 @@ class Conv2dDxOptiSchedule:
                 FUSION_DX_REQUANT
             ):
                 if c_ub is not None:
-                    sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
+                    if tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub"):
+                        if c_ub.dtype == "float32" and a_l1.dtype == "float32":
+                            _, split_axis = sch[c_ub].split(c_ub.op.axis[-3], factor=2)
+                            sch[c_ub].emit_insn(split_axis, "fixpipe_op")
+                        else:
+                            sch[c_ub].emit_insn(c_ub.op.axis[0], "fixpipe_op")
+                    else:
+                        sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
             if DOUBLE_TENSOR_OUT:
                 sch[DOUBLE_TENSOR_OUT[0]].emit_insn(DOUBLE_TENSOR_OUT[0].op.axis[0], "dma_copy")
@@ -2510,7 +2519,7 @@ class Conv2dDxOptiSchedule:
             else:
                 if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
                     sch[c_gm].emit_insn(l0c_m_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
-                elif c_gm.dtype == "float32" and a_l1.dtype == "float32":
+                elif c_gm.dtype == "float32" and a_l1.dtype == "float32" and c_ub is None:
                     _, split_axis = sch[c_gm].split(l0c_n_inner_inner, factor=2)
                     sch[c_gm].emit_insn(split_axis, "dma_copy", {"layout_transform": "channel_split"})
                 else:
@@ -2813,7 +2822,13 @@ class Conv2dDxOptiSchedule:
         self._print_ir_conv("split with al1 and bl1 factor", sch)
 
         # attach tensor of CUB
-        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+        support_fixpipe = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out") or
+                            tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub"))
+        if self.dx_para.get_para_map("input_fp32_flag") and support_fixpipe:
+            l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
+                l0c_n_inner, nparts=max(l0c_ub_parts[0] // 2, 1)
+            )
+        elif self.dx_para.get_para_map("5HD_TRANS_NHWC"):
             l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
                 l0c_n_inner, factor=16
             )
@@ -2943,17 +2958,25 @@ class Conv2dDxOptiSchedule:
         if not l0c_multi_group_flag and not self.dx_para.get_para_map("no_need_use_ub_flag"):
             _buffer_tile_l0c_c1()
         # do buffer_tile or buffer_align for cub
-        if need_buffer_tile:
+        if need_buffer_tile and not self.dx_para.get_para_map("input_fp32_flag"):
             _do_buffer_tile()
             self._print_ir_conv("after_tile", sch)
         else:
             if c_ub is not None:
-                sch[c_ub].buffer_align(
-                    (1, 1),
-                    (1, 1),
-                    (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
-                    (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
-                )
+                if self.dx_para.get_para_map("input_fp32_flag"):
+                    sch[c_ub].buffer_align(
+                        (1, 1),
+                        (1, 1),
+                        (1, tbe_platform.CUBE_MKN["float32"]["mac"][0]),
+                        (1, tbe_platform.CUBE_MKN["float32"]["mac"][1])
+                    )
+                else:
+                    sch[c_ub].buffer_align(
+                        (1, 1),
+                        (1, 1),
+                        (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
+                        (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
+                    )
             if bias_add_vector_ub is not None and dilate_ub is None:
                 sch[bias_add_vector_ub].buffer_align(
                     (1, 1),

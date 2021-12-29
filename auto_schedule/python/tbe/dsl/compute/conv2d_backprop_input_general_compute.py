@@ -473,15 +473,20 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 )
             def __kernel_2_l0_compute(indices, kernels):
                 if kernels.dtype == "float32":
-                    g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
-                    hw = kernel_h * kernel_w
                     _, block_k0, block_n0 = tbe_platform.CUBE_MKN[kernels.dtype]["mac"]
-                    Cout_dim = kernel_cout0_idx + (w_k1_idx // hw) * block_k0
-                    Cin_dim = (g_idx * self._cin1_g + kernel_cin1_idx) * block_n0 + w_k0_idx
-                    fkk_index = Cin_dim // block_k0 * hw + (hw - 1) - w_k1_idx % hw
-                    cout1_index = Cout_dim // block_n0
-                    kernel_cout0_idx = Cout_dim % block_n0
-                    w_k0_idx = Cin_dim % block_k0
+                    new_cin1_g = self._cin1_g // 2
+                    new_cou1_g = self._cou1_g * 2
+                    old_cin0, new_cin0 = block_k0, block_n0
+                    old_cou0, new_cou0 = block_n0, block_k0
+                    hw = kernel_h * kernel_w
+
+                    g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
+                    cout_dim = (w_k1_idx // hw) * new_cou0 + kernel_cout0_idx
+                    cin_dim = kernel_cin1_idx * new_cin0 + w_k0_idx
+                    fkk_index = g_idx * self._cin1_g * hw + cin_dim // old_cin0 * hw + (hw - 1) - w_k1_idx % hw
+                    cout1_index = w_k1_idx // hw * new_cou0 // old_cou0
+                    kernel_cout0_idx = cout_dim % old_cou0
+                    w_k0_idx = cin_dim % old_cin0
                 else:
                     g_idx, w_k1_idx, kernel_cin1_idx, w_k0_idx, kernel_cout0_idx = indices
 
@@ -562,8 +567,6 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         # real dx shape
         _, dx_cin1, dx_h, dx_w, dx_cin0 = self._output_shape
         out_shape = (dx_batch, dx_cin1, dx_h * dx_w, dx_cin0)
-        if w_col.dtype == "float32":
-            out_shape_fp32 = (dx_batch, dx_cin1 * 2, dx_h * dx_w, dx_cin0 // 2)
         # float32->output_dtype
         output_dtype = self.output_dtype
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
@@ -574,10 +577,14 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 output_dtype = "bfloat16"
             if w_col.dtype == "float32":
                 dx_ddr = tvm.compute(
-                    out_shape_fp32,
-                    lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[dx_cin1_idx // self._cin1_g // 2,
-                        dx_batch_idx, dx_cin1_idx // 2 % self._cin1_g, dx_hw_idx, 8 * (dx_cin1_idx % 2) + dx_cin0_idx
-                    ].astype(output_dtype),
+                    out_shape,
+                    lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                        dx_col[(dx_cin1_idx * 8 + dx_cin0_idx) // dx_c0 // dx_c1,
+                               dx_batch_idx,
+                               (dx_cin1_idx * 8 + dx_cin0_idx) // dx_c0 % dx_c1,
+                               dx_hw_idx,
+                               (dx_cin1_idx * 8 + dx_cin0_idx) % dx_c0
+                        ].astype(output_dtype),
                     name="c_ddr",
                     tag="conv2d_backprop_input",
                     attrs={"output_shape": (dx_batch, dx_cin1 * 2, dx_h, dx_w, dx_cin0 // 2),

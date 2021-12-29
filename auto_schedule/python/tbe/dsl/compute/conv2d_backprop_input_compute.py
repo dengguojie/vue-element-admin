@@ -766,6 +766,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
 
     _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
+    if filters.dtype == "float32":
+        shape_dx = (dx_batch, ceil(dx_c, dx_k0), dx_h, dx_w, dx_k0)
 
     shape_dy = cube_util.shape_to_list(out_backprop.shape)
     g_extend = group_dict.get(cube_util.GroupDictKeys.g_extend)

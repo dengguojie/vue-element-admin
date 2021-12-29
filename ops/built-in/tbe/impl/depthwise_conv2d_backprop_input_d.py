@@ -303,7 +303,7 @@ def depthwise_conv2d_backprop_input_d(filter,
     _check_params(input_shape, input_dtype, "NCHW")
 
     filter_shape_nchw = [filter_shape[3], filter_shape[2], filter_shape[0], filter_shape[1]]
-    
+
     para_check.check_shape(output_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="out_backprop")
     para_check.check_shape(filter_shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM, param_name="filter")
     para_check.check_shape(input_shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM, param_name="input_grad")

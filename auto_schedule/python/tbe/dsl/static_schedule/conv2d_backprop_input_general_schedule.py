@@ -2522,7 +2522,7 @@ def general_schedule(
             else:
                 al1_h, al1_w = a_l1.shape[3], a_l1.shape[4]
                 al1_m = _ceil(al1_h * al1_w, cl0_tiling_m0) * cl0_tiling_m0
-                al1_c = cou1_g * al1_co0
+                al1_c = cou1_g * al1_co0 * cou1_g_factor
                 al1_bound = al1_c * al1_m
 
             return al1_bound, al1_h, al1_w
