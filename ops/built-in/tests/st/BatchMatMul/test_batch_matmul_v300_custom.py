@@ -54,7 +54,6 @@ def test_mock_cases():
             op_select_format_v2(*case2["params"])
 
 #ut_case.add_cust_test_func(test_func=test_mock_cases)
-
 if __name__ == "__main__":
     with op_context.OpContext():
         test_mock_cases()

@@ -18,7 +18,6 @@
 gemm_compute
 """
 import math
-from enum import Enum
 
 import tbe.common.platform as tbe_platform
 import tbe.common.utils as tbe_utils
@@ -32,6 +31,7 @@ from tbe.tvm.tensor import Tensor
 from tbe.dsl.compute.gemm_integrated_compute import gemm as gemm_integrated
 
 BATCH_MATMUL_LENGTH = 5
+
 
 def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
     tensor_a,
@@ -945,7 +945,7 @@ def check_batchmatmul_fuse(input_tensor):
         item = queue.pop(0)
         if len(item.shape) == BATCH_MATMUL_LENGTH and ("matmul" in item.op.tag) \
            and item.op.attrs["format"] == "FRACTAL_NZ":
-           return True
+            return True
 
         for child in item.op.input_tensors:
             if child not in visited:
@@ -1061,6 +1061,7 @@ def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
     )
     return tensor_normalize_ub
 
+
 def _check_shape_align(shape, factor):
     """
     Check that the shape is aligned
@@ -1079,17 +1080,18 @@ def _check_shape_align(shape, factor):
             break
     return is_align
 
+
 def _get_block(dtype):
     """
-        Get the number of elements in one block
-        1 block = 32 byte
+    Get the number of elements in one block
+    1 block = 32 byte
 
-        Input: None
-        ---------------------------------
-        Return:
-            block_reduce
-            block_in
-            block_out
+    Input: None
+    ---------------------------------
+    Return:
+        block_reduce
+        block_in
+        block_out
     """
     if dtype == "float16":
         block_reduce = tbe_platform.BLOCK_REDUCE
@@ -1174,6 +1176,7 @@ class GEMMComputeParam:
     tiling_info_dict = {}
     batch_a = False
     batch_b = False
+
     def __init__(self) -> None:
         pass
 
@@ -1221,27 +1224,27 @@ class GEMMCompute:
         quantize_params: quantization parameters,
                 not None means enable quantization, it is dictionary structure
 
-            quantize_alg: quantize mode,
-                support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+        quantize_alg: quantize mode,
+            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
 
-            scale_mode_a: tensor_a inbound quantization mode,
-                    support 'SCALAR' and 'VECTOR'
-            scale_mode_b: tensor_b inbound quantization mode,
-                    support 'SCALAR' and 'VECTOR'
-            scale_mode_out: out tensor quantization mode,
-                    support 'SCALAR' and 'VECTOR'
+        scale_mode_a: tensor_a inbound quantization mode,
+                support 'SCALAR' and 'VECTOR'
+        scale_mode_b: tensor_b inbound quantization mode,
+                support 'SCALAR' and 'VECTOR'
+        scale_mode_out: out tensor quantization mode,
+                support 'SCALAR' and 'VECTOR'
 
-            sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-            sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-            sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+        sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+        sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
 
-            scale_q_a: scale placeholder for tensor_a inbound quantization
-            offset_q_a: offset placeholder for tensor_a inbound quantization
-            scale_q_b: scale placeholder for tensor_b inbound quantization
-            offset_q_b: offset placeholder for tensor_b inbound quantization
+        scale_q_a: scale placeholder for tensor_a inbound quantization
+        offset_q_a: offset placeholder for tensor_a inbound quantization
+        scale_q_b: scale placeholder for tensor_b inbound quantization
+        offset_q_b: offset placeholder for tensor_b inbound quantization
 
-            scale_drq: scale placeholder for requantization or dequantization
-            offset_drq: scale placeholder for requantization or dequantization
+        scale_drq: scale placeholder for requantization or dequantization
+        offset_drq: scale placeholder for requantization or dequantization
 
         offset_a: the offset for tensor a
 
@@ -1427,6 +1430,7 @@ class GEMMCompute:
         Return: out_dtype
         """
         l0c_support_fp32 = tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32")
+
         def _out_dtype():
             if self.in_a_dtype == "float16" and self.in_b_dtype == "float16":
                 if self.dst_dtype not in ("float16", "float32"):
@@ -2156,7 +2160,7 @@ class GEMMCompute:
         if self.in_b_dtype == "int8":
             is_b_align = _check_shape_align(self.tensor_b.shape, 32)
             tensor_b_l1_shape = (self.kn_shape, self.n_shape, self.block_out, self.block_reduce)
-            tensor_b_ub_shape = (self.kn_shape *self. block_reduce, self.n_shape * self.block_out)
+            tensor_b_ub_shape = (self.kn_shape * self. block_reduce, self.n_shape * self.block_out)
             if is_b_align is False:
                 tensor_b_normalize_ub = _do_align(
                     self.tensor_b, gm_b_shape_normalize, "b", "int8"

@@ -18,6 +18,7 @@ def test_op_select_format_matmul_2(test_arg):
     op_select_format(x1, x2, bias, impl_mode="keep_bias_fp32")
 
 ut_case.add_cust_test_func(test_func=test_op_select_format_matmul_1)
+
 ut_case.add_cust_test_func(test_func=test_op_select_format_matmul_2)
 
 if __name__ == '__main__':

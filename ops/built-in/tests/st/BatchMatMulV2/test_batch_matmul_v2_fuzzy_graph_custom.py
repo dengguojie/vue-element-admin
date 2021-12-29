@@ -65,7 +65,6 @@ def test_batchmatmul_confusion_transpose_710():
         }
         cce_build_code(sch, config)
 
-
 if __name__ == '__main__':
     test_batch_matmul_generalization_range_check()
     test_batch_matmul_generalization_not_valid()

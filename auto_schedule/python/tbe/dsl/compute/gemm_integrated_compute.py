@@ -1104,7 +1104,7 @@ class GEMMCompute(FormatCompute):
             compute_params_gemv["block_in"] = self.block_in
             compute_params_gemv["block_reduce"] = self.block_reduce
             compute_params_gemv["tensor_name"] = "tensor_a_fract"
-            tensor_a_fract = self.compute_nd2Zz(tensor_a_normalize, compute_params_gemv)
+            tensor_a_fract = self.compute_nd2zz(tensor_a_normalize, compute_params_gemv)
             compute_params_gemv["trans"] = self.trans_a
             compute_params_gemv["mode_info"] = "nd_gemv"
             compute_params_gemv["format_info"] = {
@@ -1126,7 +1126,7 @@ class GEMMCompute(FormatCompute):
             "format_in_a_l1": "Zz",
             "format_in_a_ub": "nd"
         }
-        tensor_a_matrix = self.compute_nd2Zz_gevm(tensor_a_normalize, compute_params_gemv)
+        tensor_a_matrix = self.compute_nd2zz_gevm(tensor_a_normalize, compute_params_gemv)
 
         return tensor_a_matrix
 
@@ -1149,7 +1149,7 @@ class GEMMCompute(FormatCompute):
                     "format_in_a_l1": "Zz",
                     "format_in_a_ub": "Nz"
                 }
-                tensor_a_matrix = self.compute_Nz2Zz_int82fp32(tensor_a_normalize, compute_params_fractal)
+                tensor_a_matrix = self.compute_nz2zz_int82fp32(tensor_a_normalize, compute_params_fractal)
             else:
                 compute_params_fractal["mode_info"] = "Nz2Zz"
                 compute_params_fractal["format_info"] = {
@@ -1189,14 +1189,14 @@ class GEMMCompute(FormatCompute):
                 "format_in_a_l1": format_in_a_l1,
                 "format_in_a_ub": "nd"
             }
-            tensor_a_matrix = self.compute_nd2Zz(tensor_a_normalize, compute_params)
+            tensor_a_matrix = self.compute_nd2zz(tensor_a_normalize, compute_params)
         elif nd2Zz_vnchwconv_flag:
             compute_params["mode_info"] = "nd2Zz_vnchwconv"
             compute_params["format_info"] = {
                 "format_in_a_l1": "three_axis",
                 "format_in_a_ub": "nd"
             }
-            tensor_a_matrix = self.compute_nd2Zz_vnchwconv(tensor_a_normalize, compute_params)
+            tensor_a_matrix = self.compute_nd2zz_vnchwconv(tensor_a_normalize, compute_params)
         return tensor_a_matrix
 
     def _compute_b_matrix(self):
@@ -1256,7 +1256,7 @@ class GEMMCompute(FormatCompute):
         else:
             compute_params_gemv["tensor_name"] = "tensor_b_fract"
             compute_params_gemv["trans"] = False
-            tensor_b_fract = self.compute_nd2Zz(tensor_b_normalize, compute_params_gemv)
+            tensor_b_fract = self.compute_nd2zz(tensor_b_normalize, compute_params_gemv)
             compute_params_gemv["mode_info"] = "nd_gemv"
             compute_params_gemv["format_info"] = {
                 "format_in_b_l1": "Zz",
@@ -1277,7 +1277,7 @@ class GEMMCompute(FormatCompute):
                     "format_in_b_l1": "Zn",
                     "format_in_b_ub": "Zn"
                 }
-                tensor_b_matrix = self.compute_Zn2Zn_int82fp32(tensor_b_normalize, compute_params_fractal)
+                tensor_b_matrix = self.compute_zn2zn_int82fp32(tensor_b_normalize, compute_params_fractal)
             elif self.trans_b:
                 compute_params_fractal["mode_info"] = "Zn_trans"
                 compute_params_fractal["format_info"] = {
@@ -1328,14 +1328,14 @@ class GEMMCompute(FormatCompute):
                 "format_in_b_l1": format_in_b_l1,
                 "format_in_b_ub": "nd"
             }
-            tensor_b_matrix = self.compute_nd2Zn(tensor_b_normalize, compute_params)
+            tensor_b_matrix = self.compute_nd2zn(tensor_b_normalize, compute_params)
         elif nd2Zn_vnchwconv_flag:
             compute_params["mode_info"] = "nd2Zn_vnchwconv"
             compute_params["format_info"] = {
                 "format_in_b_l1": "three_axis",
                 "format_in_b_ub": "nd"
             }
-            tensor_b_matrix = self.compute_nd2Zn_vnchwconv(tensor_b_normalize, compute_params)
+            tensor_b_matrix = self.compute_nd2zn_vnchwconv(tensor_b_normalize, compute_params)
 
         return tensor_b_matrix
 
@@ -1561,7 +1561,7 @@ class GEMMCompute(FormatCompute):
             aligned_out_shapes = [self._get_value(i) for i in tensor_beta_bias.shape]
             aligned_out_shapes_len = len(aligned_out_shapes)
             if self.format_out == "ND":
-                tensor_alpha_c_add_beta_bias = self.tvm_compute_nd_add_Nz_to_nd(
+                tensor_alpha_c_add_beta_bias = self.tvm_compute_nd_add_nz_to_nd(
                     tensor_beta_bias,
                     tensor_alpha_c,
                     "tensor_c_add_bias_ub"
@@ -1569,7 +1569,7 @@ class GEMMCompute(FormatCompute):
                 cur_format_out = "ND"
             else:
                 if self.ops_data_flow_mode == "int82int32":
-                    tensor_alpha_c_add_beta_bias = self.tvm_compute_nd_add_Nz_to_Nz(
+                    tensor_alpha_c_add_beta_bias = self.tvm_compute_nd_add_nz_to_nz(
                         tensor_beta_bias,
                         tensor_alpha_c,
                         "tensor_c_add_bias_ub"
@@ -1597,9 +1597,9 @@ class GEMMCompute(FormatCompute):
             c_gm_shape = self._get_out_shape(tensor_alpha_c_add_beta_bias)
             attrs_dict["shape"] = c_gm_shape
             if not self.cache_tiling_flag and attrs_dict['shape'][-1] % self.block_in != 0:
-                tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias, output_shape=c_gm_shape, tensor_name="tensor_c_gm", res_tag=self._get_ops_tag(), attrs_dict=attrs_dict)
+                tensor_out_nd = self.compute_nz2nd(tensor_alpha_c_add_beta_bias, output_shape=c_gm_shape, tensor_name="tensor_c_gm", res_tag=self._get_ops_tag(), attrs_dict=attrs_dict)
             else:
-                tensor_out_nd = self.compute_Nz2nd(tensor_alpha_c_add_beta_bias)
+                tensor_out_nd = self.compute_nz2nd(tensor_alpha_c_add_beta_bias)
             return tensor_out_nd
         return tensor_alpha_c_add_beta_bias
 

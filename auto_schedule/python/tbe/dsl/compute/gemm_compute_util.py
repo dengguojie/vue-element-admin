@@ -23,6 +23,7 @@ from tbe.dsl.base.operation import in_dynamic
 from tbe.tvm import api as tvm
 from tbe.dsl.compute.util import int_ceil_div
 
+
 class FormatCompute(object):
     """
     the format compute for gemm
@@ -37,7 +38,7 @@ class FormatCompute(object):
         """
         return shape_object.value if hasattr(shape_object, "value") else shape_object
 
-    def _lambda_nd2Nz(self, ori_tensor, block_in, block_reduce):
+    def _lambda_nd2nz(self, ori_tensor, block_in, block_reduce):
         """
         the express of nd format trans to Nz format. support batch
         input args:
@@ -57,7 +58,8 @@ class FormatCompute(object):
                 block_in,
                 block_reduce
             )
-            lambda_expression = lambda batch, k1, n1, n0, k0: ori_tensor[batch, n1 * block_in + n0, k1 * block_reduce + k0]
+            lambda_expression = lambda batch, k1, n1, n0, k0: ori_tensor[batch, n1 * block_in + n0,
+                                k1 * block_reduce + k0]
         else:
             fract_shape = (
                 int_ceil_div(ori_nd_shape[1], block_reduce),
@@ -68,7 +70,7 @@ class FormatCompute(object):
             lambda_expression = lambda k1, n1, n0, k0: ori_tensor[n1 * block_in + n0, k1 * block_reduce + k0]
         return fract_shape, lambda_expression
 
-    def _lambda_nd2Zn(self, ori_tensor, block_in, block_reduce):
+    def _lambda_nd2zn(self, ori_tensor, block_in, block_reduce):
         """
         the express of nd format trans to Zz format. support batch
         input args:
@@ -88,14 +90,14 @@ class FormatCompute(object):
                 block_in,
                 block_reduce,
             )
-            fract_L1_shape = (
+            fract_l1_shape = (
                 ori_nd_shape[0],
                 int_ceil_div(ori_nd_shape[1], block_reduce),
                 int_ceil_div(ori_nd_shape[2], block_in),
                 block_reduce,
                 block_in,
             )
-            tensor_l1 = tvm.compute(fract_L1_shape, lambda batch, k1, n1, k0, n0:
+            tensor_l1 = tvm.compute(fract_l1_shape, lambda batch, k1, n1, k0, n0:
                                     ori_tensor[batch, k1 * block_reduce + k0, n1 * block_in + n0],
                                     name="tensor_b_l1")
             lambda_expression = lambda batch, k1, n1, n0, k0: tensor_l1[batch, k1, n1, k0, n0]
@@ -106,20 +108,20 @@ class FormatCompute(object):
                 block_in,
                 block_reduce,
             )
-            fract_L1_shape = (
+            fract_l1_shape = (
                 int_ceil_div(ori_nd_shape[0], block_reduce),
                 int_ceil_div(ori_nd_shape[1], block_in),
                 block_reduce,
                 block_in,
             )
-            tensor_l1 = tvm.compute(fract_L1_shape, lambda k1, n1, k0, n0:
+            tensor_l1 = tvm.compute(fract_l1_shape, lambda k1, n1, k0, n0:
                                     ori_tensor[k1 * block_reduce + k0, n1 * block_in + n0],
                                     name="tensor_b_l1")
             lambda_expression = lambda k1, n1, n0, k0: tensor_l1[k1, n1, k0, n0]
 
         return fract_shape, lambda_expression
 
-    def tvm_compute_nd_add_Nz_to_nd(self, tensor_beta_bias, tensor_alpha_c, tensor_name):
+    def tvm_compute_nd_add_nz_to_nd(self, tensor_beta_bias, tensor_alpha_c, tensor_name):
         """
         compute C_matrix = A_matrix + B_matrix, A_matrix's format is ND, B_matrix's format is
         Nz, the result C_matrix's format is ND. support batch
@@ -141,7 +143,7 @@ class FormatCompute(object):
         res = tvm.compute(res_shape, lambda_expression, name=tensor_name)
         return res
 
-    def tvm_compute_nd_add_Nz_to_Nz(self, tensor_beta_bias, tensor_alpha_c, tensor_name):
+    def tvm_compute_nd_add_nz_to_nz(self, tensor_beta_bias, tensor_alpha_c, tensor_name):
         """
         compute C_matrix = A_matrix + B_matrix, A_matrix's format is ND, B_matrix's format is
         Nz, the result C_matrix's format is Nz. support batch
@@ -366,8 +368,7 @@ class FormatCompute(object):
                 tvm.select(tvm.all(reduce_kb.var == 0, reduce_kp.var == 0),
                     ((tensor_a[mb, reduce_kb, mp, reduce_kp] - offset_x) * tensor_b[
                         batch, reduce_kb, nb, np, reduce_kp]).astype(
-                            matrix_type) +
-                    bias_fb[nb * block_out + np],
+                            matrix_type) + bias_fb[nb * block_out + np],
                     ((tensor_a[mb, reduce_kb, mp, reduce_kp] - offset_x) * tensor_b[
                         batch, reduce_kb, nb, np, reduce_kp]).astype(
                             matrix_type)),
@@ -525,7 +526,7 @@ class FormatCompute(object):
                 attrs={"ori_batch_shape": ori_batch_shape})
         return res
 
-    def compute_nd2Zz_vnchwconv(self, ori_tensor, compute_params):
+    def compute_nd2zz_vnchwconv(self, ori_tensor, compute_params):
         """
         use vnchwconv to reshape nd shape: (m, k) --> (m/m0, k, m0) --> (m/m0, k/k0, m0, k0)
         inpute params:
@@ -607,7 +608,7 @@ class FormatCompute(object):
         )
         return res
 
-    def _compute_nd2Zz_int8_trans(self, ori_tensor, compute_params):
+    def _compute_nd2zz_int8_trans(self, ori_tensor, compute_params):
         """
         this func is reshape nd2Zz when dtype is int8 and trans and ori_shape is ([m, k]
         input params:
@@ -616,7 +617,6 @@ class FormatCompute(object):
         return:
             the tensor format is FRACTAL_Z
         """
-        tensor_name = compute_params.get("tensor_name")
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
         mode_info = compute_params.get("mode_info")
@@ -659,7 +659,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_nd2Zz(self, ori_tensor, compute_params):
+    def compute_nd2zz(self, ori_tensor, compute_params):
         """
         reshape nd2Zz by normal way
         input params:
@@ -676,7 +676,7 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         int82int32_trans_flag = (data_flow == "int82int32") and trans
         if int82int32_trans_flag:
-            return self._compute_nd2Zz_int8_trans(ori_tensor, compute_params)
+            return self._compute_nd2zz_int8_trans(ori_tensor, compute_params)
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if len(ori_tensor_shape) == 2:
             if trans:
@@ -687,16 +687,16 @@ class FormatCompute(object):
                     block_reduce
                 )
 
-                tensor_L1_shape = (
+                tensor_l1_shape = (
                     int_ceil_div(ori_tensor_shape[1], block_in),
                     int_ceil_div(ori_tensor_shape[0], block_reduce),
                     block_reduce,
                     block_in
                 )
-                L1_tensor = tvm.compute(tensor_L1_shape,
+                l1_tensor = tvm.compute(tensor_l1_shape,
                             lambda m1, k1, k0, m0: ori_tensor[k1 * block_reduce + k0, m1 * block_in + m0],
                             name="tensor_a_l1")
-                lambda_expression = lambda m1, k1, m0, k0: L1_tensor[m1, k1, k0, m0]
+                lambda_expression = lambda m1, k1, m0, k0: l1_tensor[m1, k1, k0, m0]
             else:
                 tensor_matrix_shape = (
                     int_ceil_div(ori_tensor_shape[0], block_in),
@@ -714,17 +714,17 @@ class FormatCompute(object):
                     block_in,
                     block_reduce
                 )
-                tensor_L1_shape = (
+                tensor_l1_shape = (
                     ori_tensor_shape[0],
                     int_ceil_div(ori_tensor_shape[2], block_in),
                     int_ceil_div(ori_tensor_shape[1], block_reduce),
                     block_reduce,
                     block_in
                 )
-                L1_tensor = tvm.compute(tensor_L1_shape,
+                l1_tensor = tvm.compute(tensor_l1_shape,
                             lambda batch, m1, k1, k0, m0: ori_tensor[batch, k1 * block_reduce + k0,
                                 m1 * block_in + m0], name="tensor_a_l1")
-                lambda_expression = lambda batch, m1, k1, m0, k0:L1_tensor[batch, m1, k1, k0, m0]
+                lambda_expression = lambda batch, m1, k1, m0, k0:l1_tensor[batch, m1, k1, k0, m0]
             else:
                 tensor_matrix_shape = (
                     ori_tensor_shape[0],
@@ -743,7 +743,7 @@ class FormatCompute(object):
         )
         return res
 
-    def compute_nd2Zz_gevm(self, ori_tensor, compute_params):
+    def compute_nd2zz_gevm(self, ori_tensor, compute_params):
         """
         reshape nd2Zz by normal way and gevm mode
         input params:
@@ -751,7 +751,6 @@ class FormatCompute(object):
         return:
            the tensor format Zz
         """
-        tensor_name = compute_params.get("tensor_name")
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
         data_flow = compute_params.get("data_flow")
@@ -760,7 +759,7 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         int82int32_trans_flag = (data_flow == "int82int32") and trans
         if int82int32_trans_flag:
-            return self._compute_nd2Zz_int8_trans(ori_tensor, compute_params)
+            return self._compute_nd2zz_int8_trans(ori_tensor, compute_params)
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if len(ori_tensor_shape) == 2:
             if trans:
@@ -801,7 +800,7 @@ class FormatCompute(object):
         res_fract = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
-            name=tensor_name,
+            name=compute_params.get("tensor_name"),
             attrs={"mode": mode_info, "format_info": format_info}
         )
         if len(ori_tensor_shape) == 2:
@@ -820,7 +819,7 @@ class FormatCompute(object):
             )
         return res_matrix
 
-    def compute_nd2Zn(self, ori_tensor, compute_params):
+    def compute_nd2zn(self, ori_tensor, compute_params):
         """
         reshape nd2Zn by normal way
         input params:
@@ -837,12 +836,12 @@ class FormatCompute(object):
         data_flow = compute_params.get("data_flow")
         int82int32_no_trans_flag = (data_flow == "int82int32") and (not trans)
         if int82int32_no_trans_flag:
-            return self._compute_nd2Zn_int8_no_trans(ori_tensor, compute_params)
+            return self._compute_nd2zn_int8_no_trans(ori_tensor, compute_params)
 
         if trans:
-            fract_shape, lambda_expression = self._lambda_nd2Nz(ori_tensor, block_out, block_reduce)
+            fract_shape, lambda_expression = self._lambda_nd2nz(ori_tensor, block_out, block_reduce)
         else:
-            fract_shape, lambda_expression = self._lambda_nd2Zn(ori_tensor, block_reduce, block_out)
+            fract_shape, lambda_expression = self._lambda_nd2zn(ori_tensor, block_reduce, block_out)
 
         res = tvm.compute(
             fract_shape,
@@ -853,7 +852,7 @@ class FormatCompute(object):
 
         return res
 
-    def _compute_nd2Zn_int8_no_trans(self, ori_tensor, compute_params):
+    def _compute_nd2zn_int8_no_trans(self, ori_tensor, compute_params):
         """
         this func is reshape nd2Zn when dtype is int8 and not trans and ori_shape is [k, n]
         input params:
@@ -862,7 +861,6 @@ class FormatCompute(object):
         return:
             the tensor format is FRACTAL_Z
         """
-        tensor_name = compute_params.get("tensor_name")
         block_out = compute_params.get("block_out")
         block_reduce = compute_params.get("block_reduce")
         mode_info = compute_params.get("mode_info")
@@ -910,7 +908,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_nd2Zn_vnchwconv(self, ori_tensor, compute_params):
+    def compute_nd2zn_vnchwconv(self, ori_tensor, compute_params):
         """
         reshape nd2Zn by vnchwconv [k, n] --> [k / block_reduce, n, block_reduce] -- >
             [k / block_reduce, n / block_out, block_out, block_reduce]
@@ -923,7 +921,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         block_out = compute_params.get("block_out")
         block_reduce = compute_params.get("block_reduce")
-        mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
@@ -993,7 +990,7 @@ class FormatCompute(object):
         )
         return tensor_matrix
 
-    def compute_nd2Nz(self, ori_tensor, compute_params):
+    def compute_nd2nz(self, ori_tensor, compute_params):
         """
         reshape ori_shape's shape nd2Nz by normal way
         input_params:
@@ -1009,9 +1006,9 @@ class FormatCompute(object):
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
         if not trans:
-            fract_shape, lambda_expression = self._lambda_nd2Nz(ori_tensor, block_in, block_reduce)
+            fract_shape, lambda_expression = self._lambda_nd2nz(ori_tensor, block_in, block_reduce)
         else:
-            fract_shape, lambda_expression = self._lambda_nd2Zn(ori_tensor, block_in, block_reduce)
+            fract_shape, lambda_expression = self._lambda_nd2zn(ori_tensor, block_in, block_reduce)
 
         res = tvm.compute(
             fract_shape,
@@ -1022,7 +1019,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_Nz2Zz_int82fp32(self, ori_tensor, compute_params):
+    def compute_nz2zz_int82fp32(self, ori_tensor, compute_params):
         """
         reshape Nz2Zz and int8 cast to fp32
         input_params:
@@ -1082,7 +1079,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_Zn2Zn_int82fp32(self, ori_tensor, compute_params):
+    def compute_zn2zn_int82fp32(self, ori_tensor, compute_params):
         """
         reshape Zn-int8 to Zn-fp16
         input_params:
@@ -1142,7 +1139,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_Nz2nd(self, ori_tensor, output_shape=None, tensor_name="nz_to_nd", res_tag="", attrs_dict=None):
+    def compute_nz2nd(self, ori_tensor, output_shape=None, tensor_name="nz_to_nd", res_tag="", attrs_dict=None):
         """
         reshape the ori_tensor Nz to nd
         input params:
