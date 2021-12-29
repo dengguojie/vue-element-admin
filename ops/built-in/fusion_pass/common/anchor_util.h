@@ -57,7 +57,7 @@ template<typename T>
 inline ge::GeTensorDescPtr GetCurrNodeMutableInputDesc(ge::NodePtr curr_node, T idx) {
   auto curr_desc = curr_node->GetOpDesc();
   FUSION_PASS_CHECK(curr_desc == nullptr, ge::CommonRuntimeErrLog("", "current opdesc is null."), return nullptr);
-  return curr_desc->MutableOutputDesc(idx);
+  return curr_desc->MutableInputDesc(idx);
 }
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_UTIL_ANCHOR_UTIL_H_
