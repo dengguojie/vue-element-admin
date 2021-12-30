@@ -137,6 +137,7 @@ uint32_t CombinationsCpuKernel::DoCompute(CpuKernelContext &ctx) {
       t[idx] = (with_replacement) ? (t[idx - 1] - 1) : t[idx - 1];
     }
   }
+  delete[] combination;
   return KERNEL_STATUS_OK;
 }
 REGISTER_CPU_KERNEL(kCombinations, CombinationsCpuKernel);
