@@ -104,9 +104,9 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   Operator range_op = OpDescUtils::CreateOperatorFromNode(range_node);
 
   // check input dtype
-  DataType start_type = range_op.GetInputDesc("start").GetDataType();
-  DataType limit_type = range_op.GetInputDesc("limit").GetDataType();
-  DataType delta_type = range_op.GetInputDesc("delta").GetDataType();
+  DataType start_type = range_op.GetInputDescByName("start").GetDataType();
+  DataType limit_type = range_op.GetInputDescByName("limit").GetDataType();
+  DataType delta_type = range_op.GetInputDescByName("delta").GetDataType();
   if ((start_type != limit_type) && (limit_type != delta_type)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the dtype of input tensor is not same, graph not changed");
     return NOT_CHANGED;
@@ -165,7 +165,7 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   OutDataAnchorPtr start_anchor_out = start_anchor_in->GetPeerOutAnchor();
   OutDataAnchorPtr limit_anchor_out = limit_anchor_in->GetPeerOutAnchor();
   OutDataAnchorPtr delta_anchor_out = delta_anchor_in->GetPeerOutAnchor();
-  Format const_format = range_op.GetInputDesc("start").GetFormat();
+  Format const_format = range_op.GetInputDescByName("start").GetFormat();
   FUSION_PASS_CHECK((fabs(delta_fp) < EPSILON), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Devide by 0 exception."),
                     return PARAM_INVALID);
   int dim_num = int(ceil(abs(limit_fp - start_fp) / abs(delta_fp)));

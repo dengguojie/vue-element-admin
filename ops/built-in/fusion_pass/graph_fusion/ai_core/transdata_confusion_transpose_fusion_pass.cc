@@ -134,25 +134,25 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph,
   // get perm of confusion_transpose_d
   std::vector<int64_t> permList;
   if (op.GetAttr("perm", permList) != ge::GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "GetOpAttr perm failed!");
+    OP_LOGI(TbeGetName(op).c_str(), "GetOpAttr perm failed!");
     return NOT_CHANGED;
   }
   if (permList.size() != 4 || permList[0] != 0 || permList[1] != 2 || permList[2] != 1 || permList[3] != 3) {
-    OP_LOGI(op.GetName().c_str(),
+    OP_LOGI(TbeGetName(op).c_str(),
             "length of perm not equal to 4!");
     return NOT_CHANGED;
   }
   size_t firstShapeSize = transDataShape_1.GetDimNum();
   size_t secondShapeSize = transDataShape_2.GetDimNum();
   if (!((firstShapeSize == 3 && secondShapeSize == 4) || (firstShapeSize == 4 && secondShapeSize == 3))) {
-    OP_LOGI(op.GetName().c_str(), "the dims of transdata shape not match the fusion condition!");
+    OP_LOGI(TbeGetName(op).c_str(), "the dims of transdata shape not match the fusion condition!");
     return NOT_CHANGED;
   }
   if (firstShapeSize == 3){
     if (!(transDataShape_1.GetDim(0) == transDataShape_2.GetDim(0) &&
     transDataShape_1.GetDim(1) == transDataShape_2.GetDim(2) &&
     transDataShape_1.GetDim(2) == transDataShape_2.GetDim(1) * transDataShape_2.GetDim(3))){
-      OP_LOGI(op.GetName().c_str(), "the dims of transdata shape not match the fusion condition!");
+      OP_LOGI(TbeGetName(op).c_str(), "the dims of transdata shape not match the fusion condition!");
       return NOT_CHANGED;
     }
   }
@@ -160,7 +160,7 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph,
     if (!(transDataShape_2.GetDim(0) == transDataShape_1.GetDim(0) &&
     transDataShape_2.GetDim(1) == transDataShape_1.GetDim(2) &&
     transDataShape_2.GetDim(2) == transDataShape_1.GetDim(1) * transDataShape_1.GetDim(3))){
-      OP_LOGI(op.GetName().c_str(), "the shape of transdata not match the fusion condition!");
+      OP_LOGI(TbeGetName(op).c_str(), "the shape of transdata not match the fusion condition!");
       return NOT_CHANGED;
     }
   }

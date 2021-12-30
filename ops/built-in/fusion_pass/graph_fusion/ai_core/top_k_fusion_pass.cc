@@ -183,7 +183,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   if (op.GetInputConstData("k", const_tensor) == GRAPH_SUCCESS) {
     // top_k_v2 use k = 0
     is_topk_v2 = false;
-    auto k_tensor_desc = op.GetInputDesc("k");
+    auto k_tensor_desc = op.GetInputDescByName("k");
     DataType input_k_dtype = k_tensor_desc.GetDataType();
     uint8_t* const_data_ptr = const_tensor.GetData();
     FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(kFusedOpType.c_str(), "Get k const data failed."),

@@ -98,7 +98,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   // check dynamic shape
   Operator spaceToDepthOp = OpDescUtils::CreateOperatorFromNode(spaceToDepthNode);
-  TensorDesc inputDesc = spaceToDepthOp.GetInputDesc("x");
+  TensorDesc inputDesc = spaceToDepthOp.GetInputDescByName("x");
   Shape inputShape = inputDesc.GetShape();
   FUSION_PASS_CHECK(IsUnknownShape(inputShape.GetDims()), OP_LOGI(FUSED_OP_TYPE.c_str(), "SpaceToDepth is dynamic."),
                     return NOT_CHANGED);
