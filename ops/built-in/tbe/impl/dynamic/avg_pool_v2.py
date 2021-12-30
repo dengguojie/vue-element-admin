@@ -33,6 +33,8 @@ from impl.util.util_conv2d_dynamic import check_input_range
 from impl.util.util_conv2d_dynamic import check_range_l1_size
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_conv2d_dynamic import check_range_value
+from impl.util.util_conv2d_dynamic import check_graph_mode
+from tbe.common.utils import log
 
 
 # 'pylint: disable=too-few-public-methods
@@ -376,12 +378,19 @@ def avg_pool_v2_generalization(x: dict, weight: dict, bias: dict, y: dict, ksize
         error_manager_cube.raise_err_specific_user("avg_pool_v2", "not support unknow_rank under mode {}".format(
             generalize_config.get("mode")))
 
-    # check if range of inputs is supported or not
-    check_result = check_avg_pool_v2_range(x, ksize, strides, padding, pads)
-    if check_result:
-        return check_result
-    return [x, weight, bias, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
-        offset_x, kernel_name]
+    log.debug("avg_pool_v2 generalization inputs: %s", x)
+    if check_graph_mode(x):
+        # check if range of inputs is supported or not
+        check_result = check_avg_pool_v2_range(x, ksize, strides, padding, pads)
+        if check_result:
+            log.debug("avg_pool_v2 generalization invalid range, check result: %s", check_result)
+            return check_result
+    result = []
+    result.append([x, weight, bias, y, ksize, strides, padding, pads, data_format, global_pooling, ceil_mode, exclusive,
+            offset_x, kernel_name])
+
+    log.debug("avg_pool_v2 generalization result: %s", result)
+    return result
 
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals

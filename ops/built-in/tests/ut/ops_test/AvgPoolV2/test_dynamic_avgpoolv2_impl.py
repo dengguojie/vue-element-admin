@@ -675,7 +675,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NCHW_valid(test_arg):
         (1, 1, 3, 3), (1, 1, 1, 1), "VALID", None, 'NCHW', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NCHW_valid']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_valid failed")
     else:
         print("expected")
@@ -713,7 +713,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NCHW_same(test_arg):
         (1, 1, 3, 3), (1, 1, 1, 1), "SAME", None, 'NCHW', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NCHW_same']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_same failed")
     else:
         print("expected")
@@ -751,7 +751,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated(test_arg):
         (1, 1, 3, 3), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NCHW', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NCHW_calculated']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_calculated failed")
     else:
         print("expected")
@@ -789,7 +789,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NHWC_valid(test_arg):
         (1, 3, 3, 1), (1, 1, 1, 1), "VALID", None, 'NHWC', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NHWC_valid']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NCHW_same failed")
     else:
         print("expected")
@@ -827,7 +827,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NHWC_same(test_arg):
         (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NHWC_same']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NHWC_same failed")
     else:
         print("expected")
@@ -865,7 +865,7 @@ def test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated(test_arg):
         (1, 3, 3, 1), (1, 1, 1, 1), "CALCULATED", (1, 1, 2, 2), 'NHWC', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_NHWC_calculated']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_NHWC_calculated failed")
     else:
         print("expected")
@@ -903,7 +903,7 @@ def test_avg_pool_v2_graph_mode_supported_range_none(test_arg):
         (1, 3, 3, 1), (1, 1, 1, 1), "SAME", None, 'NHWC', None, None, None, 0,
         'avg_pool_v2_graph_mode_supported_range_none']
     ret = avg_pool_v2_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_v2_graph_mode_supported_range_none failed")
     else:
         print("expected")
