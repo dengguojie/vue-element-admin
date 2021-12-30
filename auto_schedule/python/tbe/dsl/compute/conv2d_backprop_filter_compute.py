@@ -25,12 +25,10 @@ from functools import reduce
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
-from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import Tensor
 
@@ -240,24 +238,11 @@ class Conv2dBackpropFilter:
         None
         """
 
-        self.shapelist = {}
-
-        self.fmap = input_x
-        self.grads = out_backprop
-
-        self.weight_shape = list(filter_sizes)
-
-        self.fmap_dtype = input_x.dtype
-        self.grads_dtype = out_backprop.dtype
-        self.res_dtype = res_dtype
-
-        self.pad = cube_util.shape_to_list(padding)
-        self.stride = list(strides)
-        self.dilation = list(dilations)
-        self.group = groups
-        self.kernel_name = kernel_name
-        self.group_dict = {}
-
+        self.fmap, self.grads, self.weight_shape = input_x, out_backprop, list(filter_sizes)
+        self.fmap_dtype, self.grads_dtype, self.res_dtype = input_x.dtype, out_backprop.dtype, res_dtype
+        self.pad, self.stride, self.dilation = cube_util.shape_to_list(padding), list(strides), list(dilations)
+        self.group, self.kernel_name = groups, kernel_name
+        self.shapelist, self.group_dict = {}, {}
         self.optag = "conv2d_backprop_filter"
 
         # 5HD shape
@@ -388,12 +373,12 @@ class Conv2dBackpropFilter:
 
         weight_shape_n = _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE
         weight_shape_c = _ceil_div(self.group * self.weight_shape[1], BLOCK_SIZE) * BLOCK_SIZE
-        grads_c = self.shape_grads_5hd[1] * self.shape_grads_5hd[4]
-        fmap_c = self.shape_x_5hd[1] * self.shape_x_5hd[4]
         check_shape_equal(self.shape_grads_5hd[4], self.c0_size, "grads_c0", "c0_size")
         check_shape_equal(self.shape_x_5hd[4], self.c0_size, "fmap_c0", "c0_size")
-        check_shape_equal(grads_c, weight_shape_n, "grads's C1*C0", "weight's N")
-        check_shape_equal(fmap_c, weight_shape_c, "fmap's C1*C0", "weight's C")
+        check_shape_equal(self.shape_grads_5hd[1] * self.shape_grads_5hd[4], \
+            weight_shape_n, "grads's C1*C0", "weight's N")
+        check_shape_equal(self.shape_x_5hd[1] * self.shape_x_5hd[4], \
+            weight_shape_c, "fmap's C1*C0", "weight's C")
 
         if self.shape_grads_5hd[0] != self.shape_x_5hd[0]:
             dict_args = {}
@@ -524,25 +509,21 @@ class Conv2dBackpropFilter:
         """
         stride_height, stride_width = self.stride
         pad_top, pad_bottom, pad_left, pad_right = self.pad
-        _, grads_channel_1, grads_height, grads_width, grads_c0 \
-            = self.shape_grads_5hd
+        _, grads_channel_1, grads_height, grads_width, grads_c0 = self.shape_grads_5hd
         _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
         kernel_batch, _, kernel_height, kernel_width = self.weight_shape
         dilationn, dilationc, dilationh, dilationw = self.dilation
 
         def _check_dilation():
-            dilation_min = 1
-            dilation_max = 255
+            dilation_min, dilation_max = 1, 255
             if dilationn != 1 or dilationc != 1:
                 dict_args = {}
                 dict_args["errCode"] = "E60023"
                 dict_args["dilation_n"] = str(dilationn)
                 dict_args["dilation_c"] = str(dilationc)
                 error_manager_util.raise_runtime_error(dict_args)
-            _check_variable_range(dilationh, dilation_min, dilation_max,
-                                  "dilationh")
-            _check_variable_range(dilationw, dilation_min, dilation_max,
-                                  "dilationw")
+            _check_variable_range(dilationh, dilation_min, dilation_max, "dilationh")
+            _check_variable_range(dilationw, dilation_min, dilation_max, "dilationw")
 
         def _check_groups():
             if kernel_batch % self.group != 0:
@@ -589,10 +570,8 @@ class Conv2dBackpropFilter:
                 error_manager_util.raise_runtime_error(dict_args)
 
         if not self.var_map:
-            _check_addressing_rule(self.shape_grads_5hd, 2,
-                                    DATA_SIZE_LIMIT_INT64, 'shape_grads_5hd')
-            _check_addressing_rule(self.shape_x_5hd, 2, DATA_SIZE_LIMIT_INT64,
-                                'shape_x_5hd')
+            _check_addressing_rule(self.shape_grads_5hd, 2, DATA_SIZE_LIMIT_INT64, 'shape_grads_5hd')
+            _check_addressing_rule(self.shape_x_5hd, 2, DATA_SIZE_LIMIT_INT64, 'shape_x_5hd')
         # int64 addressing limit of tvm
         kernel_fractal = (fmap_channel_1*kernel_height*kernel_width,
                           grads_channel_1*grads_c0,
@@ -601,8 +580,7 @@ class Conv2dBackpropFilter:
         # because of atomic write, dw_ubuf does not tiled, cannot exceed int32
         # limit (change to int64 limit after tvm v0.6)
 
-        _check_addressing_rule(kernel_fractal, 4, DATA_SIZE_LIMIT_INT64,
-                               'kernel_fractal')
+        _check_addressing_rule(kernel_fractal, 4, DATA_SIZE_LIMIT_INT64, 'kernel_fractal')
         return True
 
     def _deconv_dw_input_check_3(self):
@@ -692,10 +670,10 @@ class Conv2dBackpropFilter:
         if not self.var_map:
             self._deconv_dw_input_check_3()
         self._compute_group_dict()
-        self._deconv_dw_compute()
+        self.deconv_dw_compute()
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
 
-    def _deconv_dw_compute(self):
+    def deconv_dw_compute(self):
         """
         complete compute definition
 
@@ -1278,7 +1256,7 @@ class Conv2dBackpropFilter:
             if self.fmap_dtype == "float32":
                 # matrix: fmap_c0 aligned to 8
                 # fractal: hw_mad aligned to 8, while fmap_c0 aligned to 16
-                # eg: fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
+                # fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
                 # matrix is (1, 49, 2, 3, 3, c0(8)) to fractal is (group(1), batch(1), 8, 9, c0(16), mad_0(8))
                 hw_vm_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
                 c1_index = group_index * self.group_dict.get("cin1_g") + \
@@ -1450,7 +1428,7 @@ class Conv2dBackpropFilter:
         """
 
         block_size = 16
-        fmap, kernel_h, kernel_w, padding, stride, fmap_wo, dilation = \
+        fmap, kernel_h, kernel_w, padding, stride, fmap_wo, _ = \
                                                                 img2col_para
 
         def __im2col_idx(idx):
@@ -1497,15 +1475,15 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
 
     para_dict:
 
-        strides : 2-D shape, specifies in height and width dimension
+    strides : 2-D shape, specifies in height and width dimension
 
-        padding : 4-D shape, specifies in up/down/left/right dimension
+    padding : 4-D shape, specifies in up/down/left/right dimension
 
-        dilations : 4-D shape, specifies in batch/channel/height/width dimension
+    dilations : 4-D shape, specifies in batch/channel/height/width dimension
 
-        groups : The number of filter's group. Default value is 1.
+    groups : The number of filter's group. Default value is 1.
 
-        res_dtype : the output data type
+    res_dtype : the output data type
 
     Returns
     -------
@@ -1536,6 +1514,9 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
 
 
 class DynamicConv2dBpFilterParams:
+    """
+    Class for parameters of dynamic conv2d_fp_filter.
+    """
 
     var_map = {}
     correct_range_flag = False

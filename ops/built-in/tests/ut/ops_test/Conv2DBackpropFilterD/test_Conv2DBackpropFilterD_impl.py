@@ -381,3 +381,4 @@ ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
     sys.exit(0)
+
