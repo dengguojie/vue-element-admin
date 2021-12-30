@@ -2615,6 +2615,8 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+        elif status_ori == Compare.EQUAL:
+            pass
         elif status == Compare.EQUAL:
             sch_agent.same_attach(b_l0b, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
@@ -2766,8 +2768,7 @@ class GemmSchedule(object):
 
     def _bl1_process(self):
         self.bl1_attach_status = "full_load"
-        is_bypass = self.tiling.get("BL1_shape") is None
-        not_need_bl1_process = is_bypass and (not self.is_dynamic)
+        not_need_bl1_process = self.tiling.get("BL1_shape") in (None, []) and (not self.is_dynamic)
         not_need_bl1_process = not_need_bl1_process and (not self.have_batch_b)
         if not_need_bl1_process:
             return
@@ -2872,6 +2873,8 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+        elif status_ori == Compare.EQUAL:
+            pass
         elif status == Compare.EQUAL:
             self.bl1_attach_status = self.c_l0c_attach_status
             if self.cache_tiling:

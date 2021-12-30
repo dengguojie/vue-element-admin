@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.dynamic.mat_mul import matmul_generalization
 from impl.mat_mul import mat_mul_compute
+from impl.mat_mul import mat_mul
 from impl.ascend_requant import ascend_requant_compute
 from tbe.common.context import op_context
 from tbe.dsl import auto_schedule
@@ -162,6 +163,21 @@ def test_matmul_requant_bl1_fullload_bind_multicore():
             sch = auto_schedule(output_fusion_op)
             config = {"name": "test_matmul_requant_bl1_fullload_bind_multicore", "tensor_list":[input_0, input_1, input_2, output_fusion_op]}
             cce_build_code(sch, config)
+
+def test_matmul_requant_bl1_bl0_status_ori_equal():
+    def custom_tiling(*args):
+        tiling = {'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [32, 1, 1, 1], 'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0, 'BL0_matrix': [2, 2, 16, 16, 1, 1], 'BL1_shape': [32, 1, 1, 1], 'BUB_channel_wise_flag': None, 'BUB_shape': None, 'B_overhead_opt_flag': 0, 'CL0_matrix': [2, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [
+            2, 2, 16, 16, 1, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 1, 1, 1], 'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 2, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2, 'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}
+        return tiling
+
+    te_set_version("Ascend910")
+    with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=custom_tiling())):
+        with cce():
+            input_x1 = {'shape': [2,2,16,16], 'ori_shape': [32,32], 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'dtype': 'float16'}
+            input_x2 = {'shape': [2,2,16,16], 'ori_shape': [32,32], 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'dtype': 'float16'}
+            bias = None
+            output_y = {'shape': [2,2,16,16], 'ori_shape': [32,32], 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'dtype': 'float16'}
+            mat_mul(input_x1, input_x2, bias, output_y=output_y)
 
 if __name__ == '__main__':
     test_matmul_generalization_upper_bound_input1()
