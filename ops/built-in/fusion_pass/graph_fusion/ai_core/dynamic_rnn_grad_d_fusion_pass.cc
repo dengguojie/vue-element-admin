@@ -185,7 +185,8 @@ ge::NodePtr DynamicRNNGradDFusionPass::GetDynamicReshapeDxNode(std::string& resh
                                                                ge::NodePtr dynamicRNNGradNode,
                                                                ge::GeTensorDesc inputDesc, ge::GeTensorDesc outputDesc,
                                                                ge::ComputeGraph& graph, bool& failStatus){
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/" + reshapeNodeName,
+  std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeNodeName;
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(),
                                                        "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
@@ -228,7 +229,7 @@ vector<ge::OpDescPtr> DynamicRNNGradDFusionPass::GetDynamicBodyReshapeNode(std::
                                      ge::GeTensorDesc inputDesc, ge::GeTensorDesc outputDesc,
                                                                  ge::ComputeGraph& graph, bool& failStatus){
   vector<ge::OpDescPtr> res = {};
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeNodeName, "Reshape");
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeNodeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return res);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
@@ -263,7 +264,7 @@ vector<ge::OpDescPtr> DynamicRNNGradDFusionPass::GetDynamicBodyDxReshapeNode(std
                         ge::GeTensorDesc outputDesc,
                                                                  ge::ComputeGraph& graph, bool& failStatus){
   vector<ge::OpDescPtr> res = {};
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeNodeName, "Reshape");
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeNodeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return res);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
@@ -301,7 +302,8 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::GetDynamicReshapeNode(std::string
                                                                      ge::NodePtr shapeNode,
                                                                      ge::ComputeGraph& graph, bool& failStatus){
   vector<ge::NodePtr> result = {};
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/" + reshapeNodeName,
+  std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeNodeName;
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(),
                                                        "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return result);
   ge::GeTensorDesc inputDesc = dgateInput->GetOpDesc()->GetOutputDesc(X_INDEX).Clone();
@@ -827,8 +829,8 @@ ge::NodePtr DynamicRNNGradDFusionPass::BuildTShape(ge::GeTensorDesc xDesc, ge::N
         failStatus=true; return nullptr);
   shapeDesc->AddInputDesc("x", xDesc);
   vector<int64_t> inputDims = xDesc.GetShape().GetDims();
-  ge::GeTensorDesc outputDesc = ge::GeTensorDesc(GeShape({inputDims.size()}), ge::FORMAT_ND, ge::DT_INT32);
-  outputDesc.SetOriginShape(GeShape({inputDims.size()}));
+  ge::GeTensorDesc outputDesc = ge::GeTensorDesc(GeShape(inputDims), ge::FORMAT_ND, ge::DT_INT32);
+  outputDesc.SetOriginShape(GeShape(inputDims));
   outputDesc.SetOriginFormat(ge::FORMAT_ND);
   shapeDesc->AddOutputDesc("y", outputDesc);
   ge::NodePtr shapeNode = graph.AddNode(shapeDesc);
@@ -1119,7 +1121,7 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph &
 
   std::string direction = "UNIDIRECTIONAL";
   ge::AttrUtils::GetStr(dynamicRNNGradNode->GetOpDesc(), "direction", direction);
-  int64_t idxOri = W_INDEX;
+  uint32_t idxOri = W_INDEX;
   int64_t idxDgate = X_INDEX;
 
   if (direction == "UNIDIRECTIONAL") {
@@ -1630,8 +1632,8 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddConcatHCNode(ge::NodePtr dynami
 ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInputReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
                                                               ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
                                                               vector<ge::NodePtr>& newNodes, bool& failStatus){
-
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/" + reshapeName, "Reshape");
+  std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeName;
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
@@ -1660,7 +1662,8 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInputReshapeNode(ge::NodePtr dy
 ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInithReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
                                                                   ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
                                                                   vector<ge::NodePtr>& newNodes, bool& failStatus) {
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/" + reshapeName, "Unsqueeze");
+  std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeName;
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Unsqueeze");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
