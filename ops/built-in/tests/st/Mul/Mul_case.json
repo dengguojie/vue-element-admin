@@ -806,5 +806,80 @@
     ],
     "attr": [],
     "case_name": "test_Mul_025"
+  },
+  {
+    "op": "Mul",
+    "calc_expect_func_file": "test_mul_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "shape": [-1, 16, 16, 16],
+        "typical_shape": [4, 16, 16, 16],
+        "shape_range": [[1, 2240]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NHWC",
+        "shape": [-1, 16, 16, 16],
+        "typical_shape": [4, 16, 16, 16],
+        "shape_range": [[1, 2240]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [4, 16, 16, 16],
+        "format": "ND",
+        "ori_shape": [4, 16, 16, 16],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_mul_dynamic_1"
+  },
+  {
+    "op": "Mul",
+    "calc_expect_func_file": "test_mul_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NDHWC",
+        "shape": [-1, 16, 16, 16, 16],
+        "typical_shape": [4, 16, 16, 16, 16],
+        "shape_range": [[1, 2240]],
+        "type": "float",
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NDHWC",
+        "shape": [-1, 16, 16, 16, 16],
+        "typical_shape": [4, 16, 16, 16, 16],
+        "shape_range": [[1, 2240]],
+        "type": "float",
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [4, 16, 16, 16, 16],
+        "format": "NDHWC",
+        "ori_shape": [4, 16, 16, 16, 16],
+        "ori_format": "NDHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "case_name": "test_mul_dynamic_2"
   }
 ]
+

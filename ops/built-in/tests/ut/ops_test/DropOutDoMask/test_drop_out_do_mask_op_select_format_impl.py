@@ -271,5 +271,6 @@ def test_op_broadcast(test_arg):
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_op_broadcast)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910A")

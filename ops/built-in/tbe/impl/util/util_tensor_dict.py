@@ -35,7 +35,7 @@ class FormatConstant:
     FORMAT_NHWC = "NHWC"
 
 
-# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes,unused-argument
 class TensorClass:
     """
     Class: class for Tensor Dict
@@ -169,7 +169,7 @@ class TensorClass:
 def get_format_for_format_ignore(tensor_cls_a, need_align=False):
     """get_format_for_broardcast, do format_ignore op_select
     """
-    format_a_list = list()
+    format_a_list = []
     if need_align or tensor_cls_a.is_dividend_input:
         if tensor_cls_a.is_support_nz(need_align):
             format_a_list += [FormatConstant.FORMAT_NZ]
@@ -210,7 +210,7 @@ def is_all_dim_equal(input_dim_list, ignore_dy_dim=False):
     return is_list_same and not is_dy_dim
 
 
-def is_broadcast_for_5hd(input_tensors, need_align_with_broadcast):
+def is_broadcast_for_5hd(input_tensors, need_align_with_broadcast, need_check_other_shape=True):
     """is_broadcast_for_5hd, check whether all input_tensor support 5hd
     """
     check_func_name = TensorClass.is_support_5hd
@@ -222,7 +222,7 @@ def is_broadcast_for_5hd(input_tensors, need_align_with_broadcast):
     return is_all_5hd_supported and is_all_c_equal
 
 
-def is_broadcast_for_6hd(input_tensors, need_align_with_broadcast):
+def is_broadcast_for_6hd(input_tensors, need_align_with_broadcast, need_check_other_shape=True):
     """is_broadcast_for_6hd, check whether all input_tensor support 6hd
     """
     check_func_name = TensorClass.is_support_6hd
@@ -234,7 +234,7 @@ def is_broadcast_for_6hd(input_tensors, need_align_with_broadcast):
     return is_all_6hd_supported and is_all_c_equal
 
 
-def is_broadcast_for_nz(input_tensors, need_align_with_broadcast):
+def is_broadcast_for_nz(input_tensors, need_align_with_broadcast, need_check_other_shape=True):
     """is_broadcast_for_nz, check whether all input_tensor support nz
     """
     check_func_name = TensorClass.is_support_nz
@@ -247,28 +247,70 @@ def is_broadcast_for_nz(input_tensors, need_align_with_broadcast):
     return is_all_nz_supported and is_dim_equal
 
 
-def is_broadcast_for_fz(input_tensors, need_align_with_broadcast):
+def is_broadcast_for_fz(input_tensors, need_align_with_broadcast, need_check_other_shape=True):
     """is_broadcast_for_fz, check whether all input_tensor support fz
+
+    Parameters
+    ----------
+    input_tensors: list
+        a list of TensorClass
+    need_align_with_broadcast: bool
+        check whether the n/c dim needs to be aligned
+    need_check_other_shape: bool
+        check whether the h/w dim needs to be equal
+        fz shape is [(N1*H*W), N0, C1, C0]
+
+    Returns
+    -------
+    res : bool
     """
     check_func_name = TensorClass.is_support_fz
     ori_c_dim_list = [tensor_cls.ori_c for tensor_cls in input_tensors]
     ori_n_dim_list = [tensor_cls.ori_n for tensor_cls in input_tensors]
+    ori_h_dim_list = [tensor_cls.ori_h for tensor_cls in input_tensors]
+    ori_w_dim_list = [tensor_cls.ori_w for tensor_cls in input_tensors]
 
     is_all_fz_supported = is_all_supported(check_func_name, input_tensors, need_align_with_broadcast)
-    is_all_equal = is_all_dim_equal(ori_c_dim_list) and is_all_dim_equal(ori_n_dim_list)
+    is_all_equal = False
+    if is_all_fz_supported:
+        is_all_equal = is_all_dim_equal(ori_c_dim_list) and is_all_dim_equal(ori_n_dim_list)
+        if need_check_other_shape:
+            is_all_equal = is_all_equal and is_all_dim_equal(ori_h_dim_list) and is_all_dim_equal(ori_w_dim_list)
 
     return is_all_fz_supported and is_all_equal
 
 
-def is_broadcast_for_fz3d(input_tensors, need_align_with_broadcast):
+def is_broadcast_for_fz3d(input_tensors, need_align_with_broadcast, need_check_other_shape=True):
     """is_broadcast_for_fz3d, check whether all input_tensor support fz3d
+
+    Parameters
+    ----------
+    input_tensors: list
+        a list of TensorClass
+    need_align_with_broadcast: bool
+        check whether the n/c dim needs to be aligned
+    need_check_other_shape: bool
+        check whether the h/w dim needs to be equal
+        fz3d shape is [(N1*D*H*W), N0, C1, C0]
+
+    Returns
+    -------
+    res : bool
     """
     check_func_name = TensorClass.is_support_fz3d
     ori_c_dim_list = [tensor_cls.ori_c for tensor_cls in input_tensors]
     ori_n_dim_list = [tensor_cls.ori_n for tensor_cls in input_tensors]
+    ori_h_dim_list = [tensor_cls.ori_h for tensor_cls in input_tensors]
+    ori_w_dim_list = [tensor_cls.ori_w for tensor_cls in input_tensors]
+    ori_d_dim_list = [tensor_cls.ori_d for tensor_cls in input_tensors]
 
     is_all_fz3d_supported = is_all_supported(check_func_name, input_tensors, need_align_with_broadcast)
-    is_all_equal = is_all_dim_equal(ori_c_dim_list) and is_all_dim_equal(ori_n_dim_list)
+    is_all_equal = False
+    if is_all_fz3d_supported:
+        is_all_equal = is_all_dim_equal(ori_c_dim_list) and is_all_dim_equal(ori_n_dim_list)
+        if need_check_other_shape:
+            is_all_equal = is_all_equal and is_all_dim_equal(ori_h_dim_list) and is_all_dim_equal(ori_w_dim_list)
+            is_all_equal = is_all_equal and is_all_dim_equal(ori_d_dim_list)
 
     return is_all_fz3d_supported and is_all_equal
 
@@ -277,6 +319,7 @@ def is_broadcast_for_fz3d(input_tensors, need_align_with_broadcast):
 def get_format_for_broardcast(tensor_cls_list,
                               need_align_with_broadcast=False,
                               need_align_without_broadcast=False,
+                              need_check_other_dim=True,
                               need_add_default_format=True):
     """get_format_for_broardcast_tensors, do broadcast op_select
 
@@ -312,7 +355,7 @@ def get_format_for_broardcast(tensor_cls_list,
     if not tensor_cls_list:
         return []
     # gen the output list
-    result_list = [list() for _ in range(len(tensor_cls_list) + 1)]
+    result_list = [[] for _ in range(len(tensor_cls_list) + 1)]
 
     # case: static case, and all shape is equal, supported all format
     static_status_list = [tensor.is_static_shape for tensor in tensor_cls_list]
@@ -339,13 +382,13 @@ def get_format_for_broardcast(tensor_cls_list,
     scalar_idx_list = [i for i, tensor in enumerate(tensor_cls_list) if tensor.shape_count == 1]
     tensor_cls_without_one_data_list = [tensor for tensor in tensor_cls_list if tensor.shape_count != 1]
 
-    special_format_list = list()
+    special_format_list = []
 
     def _run_match(match_func_name, match_format):
         """
         _run_match: when match_func_name is true, will add match_format to special_format_list
         """
-        if match_func_name(tensor_cls_without_one_data_list, need_align_with_broadcast):
+        if match_func_name(tensor_cls_without_one_data_list, need_align_with_broadcast, need_check_other_dim):
             special_format_list.append(match_format)
 
     # define the check function dict
@@ -362,8 +405,7 @@ def get_format_for_broardcast(tensor_cls_list,
         _run_match(match_key[0], match_key[1])
 
     # set all format base special_format_list
-    # ex: 5HD + 5HD = 5HD
-    #     6HD + 6HD = 6HD
+    # example: 5HD + 5HD = 5HD,6HD + 6HD = 6HD,NZ + NZ = NZ
     for _format_list in result_list:
         _format_list += special_format_list
 

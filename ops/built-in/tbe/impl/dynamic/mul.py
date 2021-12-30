@@ -15,8 +15,13 @@
 """
 dynamic mul
 """
+from impl.util import util_common
+from impl.util import util_select_op_base
+from impl.util.util_tensor_dict import TensorClass
+from impl.util.util_tensor_dict import get_format_for_broardcast
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -24,7 +29,56 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
-from impl.util import util_common
+
+
+# 'pylint: disable=unused-argument,too-many-locals
+def op_select_format(input1, input2, output, kernel_name="mul"):
+    """
+    Returns the dtype and format for Mul
+    """
+    tensor_cls_1 = TensorClass(input1)
+    tensor_cls_2 = TensorClass(input2)
+    dtype_list = ["float16", "float", "int32", "uint8", "int8"]
+    vmul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    if not vmul_support_fp32:
+        dtype_list.remove("float")
+        # If the platform does not support float32 data type,
+        # neither of uint8 and int8 is supported at the same time
+        dtype_list.remove("uint8")
+        dtype_list.remove("int8")
+
+    format_op_select_res = get_format_for_broardcast([tensor_cls_1, tensor_cls_2])
+    format_input1, format_input2, format_output = format_op_select_res
+    support_format_num = len(format_input1)
+    dtype_result = []
+    for _dtype in dtype_list:
+        dtype_result += [_dtype] * support_format_num
+    tensor_dtype_str = ",".join(dtype_result)
+
+    format_input1 = format_input1 * len(dtype_list)
+    format_input2 = format_input2 * len(dtype_list)
+    format_output = format_output * len(dtype_list)
+
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x1",
+                                           datatype=tensor_dtype_str,
+                                           format=",".join(format_input1),
+                                           unknownshape_format=",".join(format_input1))
+    input1 = util_select_op_base.gen_param(classify="input1",
+                                           name="x2",
+                                           datatype=tensor_dtype_str,
+                                           format=",".join(format_input2),
+                                           unknownshape_format=",".join(format_input2))
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
+                                            datatype=tensor_dtype_str,
+                                            format=",".join(format_output),
+                                            unknownshape_format=",".join(format_output))
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local
@@ -50,7 +104,8 @@ def mul_compute(input1, input2, output, kernel_name="mul"):
     """
     x0_shape = shape_util.shape_to_list(input1.shape)
     x1_shape = shape_util.shape_to_list(input2.shape)
-    x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
+    x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape,
+                                                              x1_shape,
                                                               param_name_input1="input1",
                                                               param_name_input2="input2")
     input1_dtype = input1.dtype.lower()
@@ -103,8 +158,7 @@ def mul(input1, input2, output, kernel_name="mul"):
     para_check.check_dtype(dtype_x2, check_list, param_name="input2")
     para_check.check_elewise_shape_range([input1, input1], support_broadcast=True)
     if dtype_x1 != dtype_x2:
-        error_manager_vector.raise_err_inputs_dtype_not_equal("mul", "input1", "input2",
-                                                              str(dtype_x1), str(dtype_x2))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("mul", "input1", "input2", str(dtype_x1), str(dtype_x2))
 
     ins = classify([input1, input2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
