@@ -26,7 +26,6 @@ from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_vector
-from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import var
 
 
@@ -244,8 +243,6 @@ def bn_training_update_compute(x,
     else:
         num_rec = var("num_rec", dtype="float32")
         batch_var_scaler = var("batch_var_scaler", dtype="float32")
-        add_compile_info("bn_update_num_rec_dtype", "float32")
-        add_compile_info("bn_update_batch_var_scaler_dtype", "float32")
     # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)
 

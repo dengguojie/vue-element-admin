@@ -15,35 +15,59 @@
 #include <algorithm>
 #include "error_log.h"
 #include "vector_tiling.h"
+#include "graph/utils/op_desc_utils.h"
+#include "op_tiling_util.h"
+#include "eletwise.h"
 
 namespace optiling {
-    bool BNTrainingUpdateTiling(const std::string& op_type, const TeOpParas& op_paras,
-                                const nlohmann::json& op_info, OpRunInfo& run_info) {
-        OP_TILING_CHECK(op_paras.inputs.empty(),
-                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"), return false);
-        OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
-                        return false);
-        std::vector<int64_t> shape_x = op_paras.inputs[0].tensor[0].shape;
-        int32_t N = shape_x[0];
-        int32_t H = shape_x[2];
-        int32_t W = shape_x[3];
+  struct BNTrainingUpdateCompileInfo {
+    std::shared_ptr<AutoTilingHandler> tiling_handler;
+  };
 
-        float batch_var_scalar = 1.0;
-        float num_rec = 1.0;
-        int32_t num = N * H * W;
-        if (op_info.count("bn_update_num_rec_dtype") > 0) {
-            num_rec = 1.0 / (float)num;
-        }
-        if (op_info.count("bn_update_batch_var_scaler_dtype") > 0) {
-            batch_var_scalar = (float)(num) / (float)((num) - 1);
-        }
+  bool BNTrainingUpdateTiling(const std::string& op_type, const ge::Operator& op_paras,
+                              const BNTrainingUpdateCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+    auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+    OP_TILING_CHECK(operator_info == nullptr,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr"), return false);
+    auto input_x_desc = operator_info->MutableInputDesc(0);
+    OP_TILING_CHECK(input_x_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_x opdesc failed"),
+                    return false);
+    std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
+    int64_t N = shape_x[0];
+    int64_t H = shape_x[2];
+    int64_t W = shape_x[3];
 
-        EletwiseTiling(op_type, op_paras, op_info, run_info);
-        ByteBufferPut(run_info.tiling_data, (float)num_rec);
-        ByteBufferPut(run_info.tiling_data, (float)batch_var_scalar);
-        return true;
+    float batch_var_scalar = 1.0;
+    float num_rec = 1.0;
+    int64_t num = N * H * W;
+    if (num == 1) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "N, H, and W cannot all be one.");
+      return false;
     }
 
-    REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingUpdate, BNTrainingUpdateTiling);
+    num_rec = 1.0 / static_cast<float>(num);
+    batch_var_scalar = static_cast<float>(num) / static_cast<float>((num)-1);
+
+    bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
+    if (!ret) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_update tiling failed.");
+      return false;
+    }
+
+    run_info.AddTilingData(static_cast<float>(num_rec));
+    run_info.AddTilingData(static_cast<float>(batch_var_scalar));
+    return true;
+  }
+
+  static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                   BNTrainingUpdateCompileInfo & parsed_info) {
+    parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+    OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+
+    return true;
+  }
+
+  REGISTER_OP_TILING_V3_CUSTOM(BNTrainingUpdate, BNTrainingUpdateTiling, ParseJsonCompileInfo,
+                               BNTrainingUpdateCompileInfo);
 }   // namespace optiling
