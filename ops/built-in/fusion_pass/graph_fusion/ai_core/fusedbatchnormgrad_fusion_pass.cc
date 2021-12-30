@@ -260,11 +260,10 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     }
     for (auto outDataAnchor : fusedBatchNormGrad->GetAllOutDataAnchors()) {
       auto outputIdex = outDataAnchor->GetIdx();
-      if (outputIdex == NUMBER_0) {
+      if (static_cast<uint32_t>(outputIdex) == NUMBER_0) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
-              SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex),
-                                                    peerInDataAnchor),
+              SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),
               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "remove edge between fusedBatchNormGrad output and "
                       "graph node failed."),
@@ -275,7 +274,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                       "Add edge between xReduceOp input and graph node failed."), return FAILED);
         }
         continue;
-      } else if (outputIdex < NUMBER_3) {
+      } else if (static_cast<uint32_t>(outputIdex) < NUMBER_3) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),
@@ -288,7 +287,7 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
               VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                       "Add edge between xUpdateOp input and graph node failed."), return FAILED);
         }
-      } else if (outputIdex > NUMBER_2) {
+      } else if (static_cast<uint32_t>(outputIdex) > NUMBER_2) {
         for (auto peerInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::RemoveEdge(fusedBatchNormGrad->GetOutDataAnchor(outputIdex), peerInDataAnchor),
