@@ -49,8 +49,8 @@ vector<FusionPattern *> DynamicLSTMFusionPass::DefinePatterns()
 }
 
 Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodePtr &innerproductNode,
-        ge::ComputeGraph &graph,
-        vector<ge::NodePtr> &newNodes, const InputIndexInfo &inputIndexInfo)
+                                                ge::ComputeGraph &graph,
+                                                vector<ge::NodePtr> &newNodes, const InputIndexInfo &inputIndexInfo)
 {
     ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
     ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(inputIndexInfo.xStaticIndex);
@@ -273,16 +273,18 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         constWxOp.SetAttr("const_adjust_flag", true);
     } else {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "Node:%s's dtype is not in (float16, float32), fusion failed.", fusedDesc->GetName().c_str());
+                                       "Node:%s's dtype is not in (float16, float32), fusion failed.",
+                                       fusedDesc->GetName().c_str());
         failStatus = true;
     }
     return weightTensor;
 }
 
 Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, const ge::OpDescPtr &formerOpDesc,
-    const ge::GeTensorDesc &wxhTensorDesc, const InputIndexInfo &inputIndexInfo,bool expose_hidden,
-    ge::GeTensorDesc &staticTensorDesc,
-    int32_t outputSize)
+                                                 const ge::GeTensorDesc &wxhTensorDesc,
+                                                 const InputIndexInfo &inputIndexInfo, bool expose_hidden,
+                                                 ge::GeTensorDesc &staticTensorDesc,
+                                                 int32_t outputSize)
 {
     OP_LOGI(FUSED_OP_TYPE.c_str(),"Enter add DynamicLSTM node");
     // get x
@@ -356,7 +358,7 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
         lastOutputShape.push_back(shapeY.GetDim(1));
         lastOutputShape.push_back(shapeY.GetDim(dimTwo));
         GeShape input0ShapeNew(lastOutputShape);
-        ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(input0ShapeNew, ge::FORMAT_NCHW, 
+        ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(input0ShapeNew, ge::FORMAT_NCHW,
                                                              staticTensorDesc.GetDataType());
         outputTensorDesc.SetShape(input0ShapeNew);
         outputTensorDesc.SetOriginShape(input0ShapeNew);
@@ -374,15 +376,15 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // get the NodePtr of LSTM
     OP_LOGI(FUSED_OP_TYPE.c_str(), "lstm fusion start fusion");
     ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
-                                                                           "fusedNode is null, fusion failed."), 
+    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                                           "fusedNode is null, fusion failed."),
                       return PARAM_INVALID);
     int32_t inputSize = fusedNode->GetInDataNodes().size();
     int32_t outputSize = fusedNode->GetOutDataNodes().size();
     // get the OpDescPtr of LSTM
     ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
-                                                                           "fusedNode OpDesc is null, fusion failed."), 
+    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                                           "fusedNode OpDesc is null, fusion failed."),
                       return PARAM_INVALID);
 
     // LSTM input X support 3 dim and 4 dim

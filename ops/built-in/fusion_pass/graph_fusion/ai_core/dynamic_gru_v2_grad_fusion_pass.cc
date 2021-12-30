@@ -177,7 +177,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradNode(const string& gateO
            dynamicGRUGradNode->GetName() + "/GRUV2Grad/GRUV2HiddenGradCell_" + std::to_string(curT),
            "GRUV2HiddenGradCell")),
       hiddenGradDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // set attr of gate order
   ge::AttrUtils::SetStr(hiddenGradDesc, "gate_order", gateOrder);
@@ -242,13 +243,15 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradMatmulNode(int64_t curT,
       (matmulDesc = std::make_shared<ge::OpDesc>(
            dynamicGRUGradNode->GetName() + "/GRUV2Grad/Matmul_" + to_string(curT), "MatMulV2")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   } else {
     FUSION_PASS_MAKE_SHARED(
       (matmulDesc = std::make_shared<ge::OpDesc>(
            dynamicGRUGradNode->GetName() + "/GRUV2Grad/Matmul_" + to_string(curT), "BatchMatMul")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   }
 
   // input
@@ -360,7 +363,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddTConcatNodeDnxBack(const string& node
   FUSION_PASS_MAKE_SHARED(
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + nodeName, "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   FUSION_PASS_CHECK(srcNodes.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                      "AddTConcatNode:check failed, fusion failed."),
@@ -411,7 +415,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddTConcatNode(const string& nodeName, c
   FUSION_PASS_MAKE_SHARED(
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + nodeName, "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   FUSION_PASS_CHECK(srcNodes.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                      "AddTConcatNode:check failed, fusion failed."),
@@ -459,7 +464,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddTConcatNodeBack(const string& nodeNam
   FUSION_PASS_MAKE_SHARED(
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + nodeName, "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   FUSION_PASS_CHECK(srcNodes.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                      "AddTConcatNode:check failed, fusion failed."),
@@ -585,7 +591,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGrad
       (transDataDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUweightGrad/Dwh/HTransData",
                                                     "TransData")),
       transDataDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   ge::GeTensorDesc inputTensorDescH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["h"]).Clone();
   transDataDesc->AddInputDesc("trans_src", inputTensorDescH);
@@ -618,7 +625,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHSplitNode(ge::NodePtr dynamicGRUGrad
       (splitDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/SplitVD",
                                                 "SplitVD")),
       splitDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // add transData
   ge::NodePtr transNode = AddHTransData(dynamicGRUGradNode, graph, newNodes, failStatus);
@@ -647,7 +655,6 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHSplitNode(ge::NodePtr dynamicGRUGrad
     vector<int64_t> output2NzDim = {batch, hidden_dim};
     AddOutputNodeDesc(splitDesc, "split_1", output2NzDim, ge::FORMAT_ND, output2NzDim, ge::FORMAT_ND,
                       inputHType);
-
   } else {
     // add output1 split_t_1, shape:{t-1,batch_size,hidden_size}
     vector<int64_t> output1NzDim{t_size - 1, nzHiddenDim, nzBatch, 16, 16};
@@ -689,7 +696,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwhTransData(ge::NodePtr dynamicGRUGr
       (transDataDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUweightGrad/Dwh/TransData",
                                                     "TransData")),
       transDataDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   ge::GeTensorDesc inputTensorDescInitH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["init_h"]).Clone();
   inputTensorDescInitH.SetShape(GeShape({1, batch, hidden_dim}));
@@ -724,7 +732,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHConcatNode(ge::NodePtr dynamicGRUGra
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/HConcatD",
                                                  "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   // input
   ge::NodePtr transNode = AddDwhTransData(dynamicGRUGradNode, graph, newNodes, failStatus);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -779,13 +788,15 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicGRUG
       (matmulDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/BatchMatmul",
                                                  "MatMulV2")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   } else {
     FUSION_PASS_MAKE_SHARED(
       (matmulDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/BatchMatmul",
                                                  "BatchMatMul")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
   }
 
   // input
@@ -853,7 +864,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicGRUG
       (matmulDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwh/BatchMatmul",
                                                  "BatchMatMul")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   ge::GeTensorDesc inputTensorDescH = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["init_h"]).Clone();
@@ -871,7 +883,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicGRUG
   inputTensorDescH.SetFormat(ge::FORMAT_FRACTAL_NZ);
   inputTensorDescH.SetDataType(ge::DT_FLOAT16);
 
-  inputTensorDescDgate.SetShape(GeShape({1, 3 * nzHiddenDim, nzBatch, fzDim, fzDim}));
+  inputTensorDescDgate.SetShape(GeShape({1, (splitSize + 1) * nzHiddenDim, nzBatch, fzDim, fzDim}));
   inputTensorDescDgate.SetOriginShape(GeShape({1, batch, (splitSize + 1) * hidden_dim}));
   inputTensorDescDgate.SetDataType(ge::DT_FLOAT16);
   matmulDesc->AddInputDesc("input_h", inputTensorDescH);
@@ -917,7 +929,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDgateHSplitNodeBack(ge::NodePtr dynam
       (splitDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/SplitVDBack",
                                                 "SplitVD")),
       splitDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // add input
   ge::GeTensorDesc inputDgateH;
@@ -971,7 +984,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDgateHSplitNode(ge::NodePtr dynamicGR
       (splitDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/SplitVD",
                                                 "SplitVD")),
       splitDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // add input
   ge::GeTensorDesc inputDgateH;
@@ -1025,7 +1039,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDgateXConcatNodeBack(ge::NodePtr dyna
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/ConcatD",
                                                  "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   vector<int64_t> dirtNzDesc = {splitSize * nzHiddenDim, t_size * nzBatch, fzDim, fzDim};
@@ -1072,7 +1087,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDgateXConcatNode(ge::NodePtr dynamicG
       (concatDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/ConcatD",
                                                  "ConcatD")),
       concatDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   vector<int64_t> dirtNzDesc = {t_size, splitSize * nzHiddenDim, nzBatch, fzDim, fzDim};
@@ -1168,7 +1184,8 @@ Status DynamicGRUV2GradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicGRUGradNo
   FUSION_PASS_MAKE_SHARED(
       (matmulOpDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dx/BatchMatmulV2",
                                                    "BatchMatMulV2")),
-      matmulOpDesc = nullptr; return false);
+      matmulOpDesc = nullptr;
+      return false);
 
   // input
   ge::GeTensorDesc dgateXDesc = dgateXConcatNode->GetOpDesc()->GetOutputDesc(0).Clone();  // dgate_x
@@ -1224,7 +1241,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwxMatmulNodeBack(ge::NodePtr dynamic
       (matmulDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/BatchMatmul",
                                                  "MatMulV2")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   ge::GeTensorDesc xtDesc = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["x"]).Clone();  // xt
@@ -1270,7 +1288,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddDwxMatmulNode(ge::NodePtr dynamicGRUG
       (matmulDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUWeightGrad/Dwx/BatchMatmul",
                                                  "BatchMatMul")),
       matmulDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   ge::GeTensorDesc xtDesc = dynamicGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["x"]).Clone();  // xt
@@ -1318,7 +1337,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddReduceSumNode(ge::NodePtr dynamicGRUG
       (reduceSumDesc = std::make_shared<ge::OpDesc>(
            dynamicGRUGradNode->GetName() + "GRUWeightGrad/" + nodeName + "/ReduceSumD", "ReduceSumD")),
       reduceSumDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
@@ -1361,7 +1381,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddTReduceSumNode(ge::NodePtr dynamicGRU
       (reduceSumDesc = std::make_shared<ge::OpDesc>(
            dynamicGRUGradNode->GetName() + "GRUWeightGrad/" + nodeName + "/ReduceSumD", "ReduceSumD")),
       reduceSumDesc = nullptr;
-      failStatus = true; return nullptr);
+      failStatus = true;
+      return nullptr);
 
   // input
   ge::GeTensorDesc inputTensorDesc = inputNode->GetOpDesc()->GetOutputDesc(anchorIndex).Clone();
@@ -1435,8 +1456,7 @@ Status DynamicGRUV2GradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicGRUGrad
 }
 
 ge::NodePtr DynamicGRUV2GradFusionPass::GetConstNodeOne(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
-                                                        int anchorIndex,
-                                                        const vector<int64_t>& axis, const string& nodeName,
+                                                        const vector<int64_t>& axis,
                                                         ge::ComputeGraph& graph,
                                                         vector<ge::NodePtr>& newNodes, bool& failStatus){
   int64_t n_size = batch;
@@ -1446,7 +1466,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::GetConstNodeOne(ge::NodePtr dynamicGRUGr
   auto retMem = memset_s(inputAssit.get(), matrixSize, 1, matrixSize);
   FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnGrad",
                                                                   "Failed to operate memset_s function."),
-                    failStatus=true);
+                    failStatus = true);
   float* dstConst = inputAssit.get();
   for (int j = 0; j < matrixSize; j++) {
     *(dstConst + j) = 1;
@@ -1473,7 +1493,8 @@ ge::NodePtr DynamicGRUV2GradFusionPass::GetConstNodeOne(ge::NodePtr dynamicGRUGr
   FUSION_PASS_MAKE_SHARED(
       (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                  matrixSize * sizeof(float))),
-       failStatus = true; return nullptr);
+       failStatus = true;
+       return nullptr);
 
   ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assitPtr);
   ge::NodePtr const_node = graph.AddNode(const_opdesc);
@@ -1561,8 +1582,8 @@ Status DynamicGRUV2GradFusionPass::AddDbReduceSumNode(ge::NodePtr gruV2GradNode,
   vector<int64_t> reduceDbTAxis{0};
   // dbx
   if (fusion_reduce) {
-    ge::NodePtr const_one_node = GetConstNodeOne(gruV2GradNode, dbhNode, anchorOutputIndex,
-                                                 reduceDbTAxis, "dbh_t", graph, newNodes, isFailure);
+    ge::NodePtr const_one_node = GetConstNodeOne(gruV2GradNode, dbhNode,
+                                                 reduceDbTAxis, graph, newNodes, isFailure);
     ge::NodePtr dbxTMatMulNode = AddTMatMulNode(gruV2GradNode, dbxNode, const_one_node,
                                                 "dbx", graph, newNodes, isFailure);
     for (InDataAnchorPtr inAnchorPtr :
@@ -1628,7 +1649,7 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   input_dim = inputTensorDescX.GetShape().GetDim(splitSize);
 
   t_size = inputTensorDescH.GetShape().GetDim(0);
-  if (batch % fzDim == 0 && hidden_dim % fzDim == 0 && input_dim % fzDim ==0 && t_size != 1) {
+  if (batch % fzDim == 0 && hidden_dim % fzDim == 0 && input_dim % fzDim == 0 && t_size != 1) {
     fusion_reduce = true;
   }
   if (PatternFusionUtil::IsUnknownShape(batch) ||

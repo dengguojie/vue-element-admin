@@ -75,8 +75,8 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   ge::NodePtr AddReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
                                const vector<int64_t>& axis, const string& nodeName, const string& indexName,
                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr GetConstNodeOne(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
-                              const vector<int64_t>& axis, const string& nodeName, ge::ComputeGraph& graph,
+  ge::NodePtr GetConstNodeOne(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
+                              const vector<int64_t>& axis, ge::ComputeGraph& graph,
                               vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddTMatMulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
                              ge::NodePtr constNode, const string& nodeName, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
