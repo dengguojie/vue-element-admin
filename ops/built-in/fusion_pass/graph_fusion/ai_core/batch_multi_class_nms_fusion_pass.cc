@@ -48,6 +48,8 @@ const float FLOAT_NUMBER = 65535.0;
 const float FLOAT_NUMBER_6 = 65536.0;
 static const string PATTERN_FUSEDNODE = "FusedNodeBatchMultiClassNonMaxSuppression";
 static const string FUSED_NODE = "BatchMultiClassNonMaxSuppression";
+static const float NUMERATOR = 65535.0;
+static const float DENOMINATOR = 65534.0;
 
 vector<FusionPattern*> BatchMultiClassNonMaxSuppressionFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -395,7 +397,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
                       "add input x for Adds_mul after valid num is null, fusion failed."),
                       return FAILED);
       Adds_mul->AddOutputDesc("y", tensorDescadd_mul);
-      ge::AttrUtils::SetFloat(Adds_mul, "value", FLOAT_NUMBER / 65534.0);
+      ge::AttrUtils::SetFloat(Adds_mul, "value", NUMERATOR / DENOMINATOR);
 
       // add node add_mul to graph
       ge::NodePtr add_mulNode = graph.AddNode(Adds_mul);

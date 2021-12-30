@@ -18,7 +18,10 @@
  * \file continuation_indicator_fusion_pass.cc
  * \brief for caffe (ContinuationIndicator)
  */
+#include <string>
+#include <vector>
 #include "continuation_indicator_fusion_pass.h"
+#include "graph/utils/op_desc_utils.h"
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"
 #include "graph/utils/graph_utils.h"

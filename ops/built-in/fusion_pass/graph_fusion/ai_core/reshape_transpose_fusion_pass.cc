@@ -39,6 +39,7 @@ static const char PATTERN_RESHAPE[] = "FusedNodeReshape";
 static const string FUSION_OP_TYPE = "ConfusionTransposeD";
 static const string OP_TRANSPOSE_D = "TransposeD";
 static const string OP_RESHAPE = "Reshape";
+constexpr int32_t LAST_SECOND_INDEX = 2;
 
 vector<FusionPattern*> ReshapeTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -182,7 +183,7 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       return NOT_CHANGED;
     }
     if (reshapeDimInfo[reshapeDimInfo.size() - 1] % RESHAPE_DIM_UNIT != 0 || reshapeDimInfo[
-        reshapeDimInfo.size() - 2] % RESHAPE_DIM_UNIT != 0) {
+        reshapeDimInfo.size() - LAST_SECOND_INDEX] % RESHAPE_DIM_UNIT != 0) {
       OP_LOGI(
           FUSED_OP_TYPE.c_str(),
           "Node[%s]'s dimsize is [%zu], last two dimension should be divisible by 16, but actually is [%ld] and [%ld].",

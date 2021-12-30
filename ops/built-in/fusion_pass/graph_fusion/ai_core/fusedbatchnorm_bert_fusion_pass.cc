@@ -259,7 +259,7 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].",
             batchNormNode->GetOutDataAnchor(OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : batchNormNode->GetOutDataAnchor(
-         OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors()) {
+        OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(1), inAnchorPtr),
