@@ -107,13 +107,13 @@ Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
   uint32_t oriShapelens = inputOriginShap.size();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "softmax updateFormat input format is %d.", inputOriginFormat);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "softmax updateFormat input size is %d.", oriShapelens);
-  if(inputOriginFormat != ge::FORMAT_NCHW && inputOriginFormat != ge::FORMAT_NHWC) {
+  if (inputOriginFormat != ge::FORMAT_NCHW && inputOriginFormat != ge::FORMAT_NHWC) {
     if (oriShapelens <= IN_NHWC) {
       xInputDesc.SetFormat(ge::FORMAT_NHWC);
       xInputDesc.SetOriginFormat(ge::FORMAT_NHWC);
       yOutputDesc.SetFormat(ge::FORMAT_NHWC);
       yOutputDesc.SetOriginFormat(ge::FORMAT_NHWC);
-    }else if(oriShapelens == IN_NDHWC) {
+    } else if (oriShapelens == IN_NDHWC) {
       xInputDesc.SetFormat(ge::FORMAT_NDHWC);
       xInputDesc.SetOriginFormat(ge::FORMAT_NDHWC);
       yOutputDesc.SetFormat(ge::FORMAT_NDHWC);

@@ -283,7 +283,9 @@ Status DreluFusionPass::ReplaceNode(ge::NodePtr oldNode, ge::NodePtr newNode, ge
                       return FAILED);
   }
   // delete old node
-  FUSION_PASS_CHECK(RemoveNode(oldNode, graph) != SUCCESS, , return FAILED);
+  FUSION_PASS_CHECK(RemoveNode(oldNode, graph) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove old node error"),
+                    return FAILED);
   return SUCCESS;
 }
 REGISTER_PASS("DreluFusionPass", BUILT_IN_GRAPH_PASS, DreluFusionPass);

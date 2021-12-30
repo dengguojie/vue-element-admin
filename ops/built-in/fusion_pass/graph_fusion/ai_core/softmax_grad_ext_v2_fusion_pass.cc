@@ -20,13 +20,13 @@
  */
 #include <memory>
 #include <string>
-#include "softmax_grad_ext_v2_fusion_pass.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "softmax_grad_ext_v2_fusion_pass.h"
 
 namespace fe {
 static const string SOFTMAXGRADEXT = "SoftmaxGradExt";
@@ -92,7 +92,7 @@ vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
                    |                   \        |      /
           input0  sum        ----->     softmax_grad_ext
               \    /
-                sub    input1 
+                sub    input1
                  \      /
                    mul1      input2
                      \        /

@@ -39,7 +39,7 @@ static const int64_t IN_DIM_H = 2;
 static const int64_t IN_DIM_W = 3;
 
 template <typename Dtype>
-Status passThroughAssistHelpFP16(const int32_t n, Dtype& output1, const vector<int64_t>& passThroughDInputDimInfo) {
+Status passThroughAssistHelpFP16(Dtype& output1, const vector<int64_t>& passThroughDInputDimInfo) {
   OP_LOGI("passThroughAssistHelpFP16", "START TO DO passThroughAssistHelpFP16.");
   Dtype* output = &output1;
   fp16_t t;
@@ -189,7 +189,7 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.",
                     passThroughName.c_str()), return ret);
 
-  ret = passThroughAssistHelpFP16(destSize, *inputAssit.get(), passThroughDInputDimInfo);
+  ret = passThroughAssistHelpFP16(*inputAssit.get(), passThroughDInputDimInfo);
   FUSION_PASS_CHECK(ret != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.",
                     passThroughName.c_str()), return ret);
