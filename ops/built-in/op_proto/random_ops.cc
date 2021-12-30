@@ -560,25 +560,31 @@ COMMON_INFER_FUNC_REG(LinSpaceD, LinSpaceDInferShape);
 // ------------------LinSpaceD END-----------------------------
 
 // ------------------LinSpace-------------------------------
+template <typename T>
 static void GetLinSpaceConstValue(const Operator& op, const Tensor& const_tensor, std::vector<int64_t>& const_data) {
   size_t size = 0;
-  int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
-  size = const_tensor.GetSize() / sizeof(int32_t);
+  T* const_data_ptr = (T*)const_tensor.GetData();
+  size = const_tensor.GetSize() / sizeof(T);
   for (size_t i = 0; i < size; ++i) {
-    const_data.push_back((int32_t)((*(const_data_ptr + i))));
-    OP_LOGI(op.GetName().c_str(), "const data float fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
+    const_data.push_back((int64_t)((*(const_data_ptr + i))));
+    AscendString op_name;
+    (void)op.GetName(op_name);
+    OP_LOGI(op_name.GetString(), "const data float fusion pass ====== %ld", (int64_t)(*(const_data_ptr + i)));
   }
 }
 
 IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   Tensor input_num_tensor;
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+
   if (op.GetInputConstData("num", input_num_tensor) != GRAPH_SUCCESS) {
     std::vector<int64_t> shape_vec;
     Shape shape_start = op.GetInputDesc("num").GetShape();
     for (size_t dim = 0; dim < shape_start.GetDimNum(); dim++) {
       shape_vec.push_back(-1);
     }
-    DataType input_dtype = op.GetInputDesc("output").GetDataType();
+    DataType input_dtype = op.GetInputDescByName("start").GetDataType();
     TensorDesc td = op.GetOutputDesc("output");
     td.SetShape(ge::Shape(shape_vec));
     td.SetDataType(input_dtype);
@@ -587,10 +593,21 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   }
   std::vector<int64_t> num_shape_vec;
   if (num_shape_vec.empty()) {
-    OP_LOGI(op.GetName().c_str(), "num_shape_vec is empty!");
+    OP_LOGI(op_name.GetString(), "num_shape_vec is empty!");
   }
-  GetLinSpaceConstValue(op, input_num_tensor, num_shape_vec);
-  OP_LOGI(op.GetName().c_str(), "The num is %d \n", num_shape_vec[0]);
+  DataType data_type = op.GetInputDescByName("num").GetDataType();
+  switch(data_type) {
+    case DT_INT32:
+      GetLinSpaceConstValue<int32_t>(op, input_num_tensor, num_shape_vec);
+      break;
+    case DT_INT64:
+      GetLinSpaceConstValue<int64_t>(op, input_num_tensor, num_shape_vec);
+      break;
+    default:
+      OP_LOGE(op_name.GetString(), "num_data_type is not support fail!");
+      return GRAPH_FAILED;
+  }
+  OP_LOGI(op_name.GetString(), "The num is %d \n", num_shape_vec[0]);
 
   DataType input_dtype = op.GetInputDesc("start").GetDataType();
   TensorDesc td = op.GetOutputDesc("output");

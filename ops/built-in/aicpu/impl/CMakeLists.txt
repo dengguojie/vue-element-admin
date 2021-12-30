@@ -95,6 +95,7 @@ set(local_kernels_src_files
     kernels/normalized/zeroslike.cc
     kernels/normalized/zeta.cc
     kernels/normalized/tile_with_axis.cc
+    kernels/normalized/linspace.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
