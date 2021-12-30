@@ -25,7 +25,6 @@ from impl.util import fusion_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from tbe.dsl.base.operation import add_compile_info
 
 
 # 'pylint: disable=redefined-builtin
@@ -136,8 +135,6 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     # runtime tiling: "NCHW" or "NC1HWC0" reduce [0, 2, 3]
     num_rec = operation.var("num_rec", dtype="float32")
     batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
-    add_compile_info("bn_update_num_rec_dtype", "float32")
-    add_compile_info("bn_update_batch_var_scaler_dtype", "float32")
 
     # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)

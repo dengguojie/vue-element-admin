@@ -6,7 +6,7 @@
 #include "reduce_ops.h"
 #define private public
 #include "register/op_tiling_registry.h"
-#include "array_ops.h" 
+#include "array_ops.h"
 
 using namespace std;
 
@@ -160,11 +160,11 @@ TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
                         "20": [10000, 10100, 10200, 10300, 20003, 30004],
                         "25": [10000, 10100, 10200, 10300, 20004, 30004]
                         }})";
-    
+
     optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
     optiling::utils::OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
     EXPECT_EQ(runInfo.GetBlockDim(), 32);
     EXPECT_EQ(runInfo.GetTilingKey(), 8);
     EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 16 26 26 16 22 943842492 1065353604 ");
