@@ -116,7 +116,6 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output x_backprop failed.",
                             newOpName.c_str()),
                     return FAILED);
-  fusionNodes.push_back(graph.AddNode(graph.AddNode(newOpdesc)));
 
   // copy Opdesc
   ge::NodePtr newNode = graph.AddNode(newOpdesc);
