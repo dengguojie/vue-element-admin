@@ -960,6 +960,7 @@ def avg_pool_generalization(x: dict, filter: dict, bias: dict, y: dict, ksize: U
     if unknow_rank:
         error_manager_cube.raise_err_specific_user("avg_pool", "not support unknow_rank under mode {}".format(
             generalize_config["mode"]))
+    log.debug("avgpool generalization inputs: %s", x)
 
     if not check_graph_mode(x):
         x_range = gen_avg_pool_range(x, ksize, strides, padding)
@@ -975,12 +976,15 @@ def avg_pool_generalization(x: dict, filter: dict, bias: dict, y: dict, ksize: U
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
         result.append([x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name])
+        log.debug("avgpool generalization result: %s", result)
     else:
         json_str = check_avg_pool_range(x, ksize, strides, padding)
         if not json_str:
-            result = [x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name]
+            result = [[x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name]]
+            log.debug("avgpool generalization result: %s", result)
         else:
             result = json_str
+            log.debug("avgpool generalization invalid range, check result: %s", result)
     return result
 
 

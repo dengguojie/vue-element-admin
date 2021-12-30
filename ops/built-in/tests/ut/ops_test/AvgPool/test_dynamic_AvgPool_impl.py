@@ -1061,7 +1061,7 @@ def test_avg_pool_graph_mode_supported_range_NCHW_valid(test_arg):
         # ksize, strides, padding, data_format, offset_x, kernel_name, generalize_config
         (1, 1, 3, 3), (1, 1, 1, 1), "VALID", 'NCHW', 0, 'avg_pool_graph_mode_supported_range_NCHW_valid']
     ret = avg_pool_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_graph_mode_supported_range_NCHW_valid failed")
     else:
         print("expected")
@@ -1097,7 +1097,7 @@ def test_avg_pool_graph_mode_supported_range_NCHW_same(test_arg):
         # ksize, strides, padding, data_format, offset_x, kernel_name, generalize_config
         (1, 1, 3, 3), (1, 1, 1, 1), "SAME", 'NCHW', 0, 'avg_pool_graph_mode_supported_range_NCHW_same']
     ret = avg_pool_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_graph_mode_supported_range_NCHW_same failed")
     else:
         print("expected")
@@ -1133,7 +1133,7 @@ def test_avg_pool_graph_mode_supported_range_NHWC_valid(test_arg):
         # ksize, strides, padding, data_format, offset_x, kernel_name, generalize_config
         (1, 3, 3, 1), (1, 1, 1, 1), "VALID", 'NHWC', 0, 'avg_pool_graph_mode_supported_range_NHWC_valid']
     ret = avg_pool_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_graph_mode_supported_range_NCHW_same failed")
     else:
         print("expected")
@@ -1169,7 +1169,7 @@ def test_avg_pool_graph_mode_supported_range_NHWC_same(test_arg):
         # ksize, strides, padding, data_format, offset_x, kernel_name, generalize_config
         (1, 3, 3, 1), (1, 1, 1, 1), "SAME", 'NHWC', 0, 'avg_pool_graph_mode_supported_range_NHWC_same']
     ret = avg_pool_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_graph_mode_supported_range_NHWC_same failed")
     else:
         print("expected")
@@ -1205,7 +1205,7 @@ def test_avg_pool_graph_mode_supported_range_none(test_arg):
         # ksize, strides, padding, data_format, offset_x, kernel_name, generalize_config
         (1, 3, 3, 1), (1, 1, 1, 1), "SAME", 'NHWC', 0, 'avg_pool_graph_mode_supported_range_none']
     ret = avg_pool_generalization(*input_list)
-    if ret != input_list:
+    if ret != [input_list]:
         raise Exception("test_avg_pool_graph_mode_supported_range_none failed")
     else:
         print("expected")
