@@ -17,6 +17,7 @@ split_d
 """
 import functools
 import numpy as np
+from numpy.core.fromnumeric import resize
 from tbe.dsl.compute.array import split_compute_com
 from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 import te.platform as tbe_platform
@@ -651,8 +652,9 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
 
     is_split_last_dim = new_split_dim == 1
     if is_split_last_dim:
-        re_shape, re_dtype, re_size_splits = SplitEqual.reinter_split_equal(new_shape, dtype_lower, new_size_splits)
-        split_equal = SplitEqual(re_shape, re_dtype, new_split_dim, re_size_splits, kernel_name)
+        re_shape, re_dtype, re_size_splits, resize = SplitEqual.reinter_split_equal(
+            new_shape, dtype_lower, new_size_splits)
+        split_equal = SplitEqual(re_shape, re_dtype, new_split_dim, re_size_splits, resize, kernel_name)
         if split_equal.check_support():
             split_equal.run()
             return

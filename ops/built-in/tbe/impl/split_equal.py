@@ -47,7 +47,7 @@ class SplitEqual():
     """Function: use to finish SplitEqual main functions to reset data
     """
 
-    def __init__(self, shape, dtype, split_dim, size_splits, kernel_name):
+    def __init__(self, shape, dtype, split_dim, size_splits, resize, kernel_name):
         """init SplitEqual parameters
         """
         self.shape = shape
@@ -57,6 +57,7 @@ class SplitEqual():
         self.kernel_name = kernel_name
         self.first_dim = self.shape[0]
         self.last_dim = self.shape[1]
+        self.resize = resize
         self.sum_size_list = self.get_sum_list(self.size_splits)
         self.output_num = len(self.size_splits)
         self.x_unit = Constant.UNIT
@@ -138,22 +139,22 @@ class SplitEqual():
             for i in list_sixteen:
                 if self.size_splits[0] * i % 16 == 0:
                     return i
-        return 16
-    
+        return (16 // self.resize)
+
     @staticmethod
     def get_sum_list(size_splits):
         return list(map(lambda i:sum(size_splits[:i]), range(len(size_splits))))
-    
+
     @staticmethod
     def reinter_split_equal(new_shape, dtype_lower, new_size_splits):
         re_shape = new_shape
         re_dtype = dtype_lower
         re_size_splits = new_size_splits
-        if dtype_lower == "float32" and not tbe_platform.api_check_support("tik.vnchwconv", "float32"):
-            re_shape[-1] *= 2
-            re_dtype = "float16"
-            re_size_splits = list(map(lambda x:x*2, re_size_splits))
-        return re_shape, re_dtype, re_size_splits
+        resize = tbe_platform.get_bit_len(dtype_lower) // tbe_platform.get_bit_len("float16")
+        re_shape[-1] *= resize
+        re_dtype = "float16"
+        re_size_splits = list(map(lambda x: x * resize, re_size_splits))
+        return re_shape, re_dtype, re_size_splits, resize
 
     def run(self):
         """run function
