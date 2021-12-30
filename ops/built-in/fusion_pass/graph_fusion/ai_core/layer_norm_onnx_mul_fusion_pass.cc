@@ -124,7 +124,8 @@ Status LayerNormONNXMULFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::
   ge::OpDescPtr new_desc_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(opname, optype)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", opname.c_str());
-                          new_desc_ptr = nullptr; return INTERNAL_ERROR);
+                          new_desc_ptr = nullptr;
+                          return INTERNAL_ERROR);
 
   ge::GeTensorDesc input_descs = previous_node->GetOpDesc()->GetInputDesc(0);
   new_desc_ptr->AddInputDesc(input_descs);
@@ -152,7 +153,8 @@ Status LayerNormONNXMULFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::
   FUSION_PASS_MAKE_SHARED((const_desc_ptr = std::make_shared<ge::GeTensor>(
                                input_descs, reinterpret_cast<uint8_t*>(const_array.get()), const_numel * sizeof(T))),
                           const_desc_ptr = nullptr;
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed."); return PARAM_INVALID);
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed.");
+                          return PARAM_INVALID);
   ge::OpDescUtils::SetWeights(cur_node, {const_desc_ptr});
   auto const_nodes = OpDescUtils::GetConstInputs(cur_node);
   FUSION_PASS_CHECK(const_nodes.size() < 1, OP_LOGE(FUSED_OP_TYPE.c_str(), " const node size less than 1."),
@@ -384,7 +386,7 @@ static Status GetScalarFromOp(ge::NodePtr node, float& value) {
     return NOT_CHANGED;
   }
   if (const_input.GetData() != nullptr) {
-    float* tensor_data_ptr = (float*)const_input.GetData();
+    float* tensor_data_ptr = reinterpret_cast<float*>(const_input.GetData());
     value = *tensor_data_ptr;
   } else {
     OP_LOGE("LayerNorm", "const data of %s node is null.", node->GetName().c_str());

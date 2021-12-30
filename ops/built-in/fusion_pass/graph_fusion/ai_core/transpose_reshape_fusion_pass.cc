@@ -231,9 +231,9 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s to fusion node:%s.", transNode->GetName().c_str(),
           reshapeNode->GetName().c_str());
-  for (auto& inAnchorPtr : transNode->GetAllInDataAnchors()) {
-    if (inAnchorPtr != nullptr) {
-      inAnchorPtr->UnlinkAll();
+  for (auto& transNodeInAnchorPtr : transNode->GetAllInDataAnchors()) {
+    if (transNodeInAnchorPtr != nullptr) {
+      transNodeInAnchorPtr->UnlinkAll();
     }
   }
   for (auto& outAnchorPtr : transNode->GetAllOutDataAnchors()) {

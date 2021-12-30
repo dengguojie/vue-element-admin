@@ -66,23 +66,37 @@ Status SingleInstanceNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "instanceNormGrad is null, fusion failed."), return PARAM_INVALID);
 
   // copy Opdesc
+  string instanceNormGradNodeName = instanceNormGradNode->GetName();
   std::shared_ptr<ge::OpDesc> newINTrainingUpdateGradOpdesc = nullptr;
-  newINTrainingUpdateGradOpdesc =
-      std::make_shared<ge::OpDesc>(instanceNormGradNode->GetName() + "_INTrainingUpdateGrad", INTUPDATEGRAD);
+  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradOpdesc = std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
+                            + "_INTrainingUpdateGrad", INTUPDATEGRAD)),
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
+                            (instanceNormGradNodeName + "_INTrainingUpdateGrad").c_str());
+                          newINTrainingUpdateGradOpdesc = nullptr;
+                          return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingUpdateGradOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newINTrainingUpdateGradOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> newINTrainingReduceGradOpdesc = nullptr;
-  newINTrainingReduceGradOpdesc =
-      std::make_shared<ge::OpDesc>(instanceNormGradNode->GetName() + "_INTrainingReduceGrad", INTREDUCEGRAD);
+  FUSION_PASS_MAKE_SHARED((newINTrainingReduceGradOpdesc = std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
+                            + "_INTrainingReduceGrad", INTREDUCEGRAD)),
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
+                            (instanceNormGradNodeName + "_INTrainingReduceGrad").c_str());
+                          newINTrainingReduceGradOpdesc = nullptr;
+                          return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingReduceGradOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newINTrainingReduceGradOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> newINTrainingUpdateGradGammaBetaOpdesc = nullptr;
-  newINTrainingUpdateGradGammaBetaOpdesc = std::make_shared<ge::OpDesc>(
-      instanceNormGradNode->GetName() + "_INTrainingUpdateGradGammaBeta", INTUPDATEGRADGAMMABETA);
+  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradGammaBetaOpdesc = 
+                            std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
+                            + "_INTrainingUpdateGradGammaBeta", INTUPDATEGRADGAMMABETA)),
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
+                            (instanceNormGradNodeName + "_INTrainingUpdateGradGammaBeta").c_str());
+                          newINTrainingUpdateGradGammaBetaOpdesc = nullptr;
+                          return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingUpdateGradGammaBetaOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newINTrainingUpdateGradGammaBetaOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -172,7 +186,6 @@ Status SingleInstanceNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   newNodes.push_back(INTrainingUpdateGradGammaBetaNode);
 
   // connect output edge for INTrainingReduceGrad
-  string instanceNormGradNodeName = instanceNormGradNode->GetName();
   if (instanceNormGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (auto inDataAnchor : instanceNormGradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(instanceNormGradNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,

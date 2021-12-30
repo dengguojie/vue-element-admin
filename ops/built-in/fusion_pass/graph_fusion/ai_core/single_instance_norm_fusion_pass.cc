@@ -66,15 +66,22 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                     return PARAM_INVALID);
 
   // copy Opdesc
+  string instanceNormNodeName = instanceNormNode->GetName();
   std::shared_ptr<ge::OpDesc> newReduceOpdesc = nullptr;
-  newReduceOpdesc = std::make_shared<ge::OpDesc>(instanceNormNode->GetName() + "_ReduceV2", INREDUCE);
-
+  FUSION_PASS_MAKE_SHARED(
+      (newReduceOpdesc = std::make_shared<ge::OpDesc>(instanceNormNodeName + "_ReduceV2", INREDUCE)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", (instanceNormNodeName + "_ReduceV2").c_str());
+      newReduceOpdesc = nullptr;
+      return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newReduceOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newReduceOpdesc is null, fusion failed."), return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> newUpdateOpdesc = nullptr;
-  newUpdateOpdesc = std::make_shared<ge::OpDesc>(instanceNormNode->GetName() + "_UpdateV2", INUPDATE);
-
+  FUSION_PASS_MAKE_SHARED(
+      (newUpdateOpdesc = std::make_shared<ge::OpDesc>(instanceNormNodeName + "_UpdateV2", INUPDATE)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", (instanceNormNodeName + "_UpdateV2").c_str());
+      newUpdateOpdesc = nullptr;
+      return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newUpdateOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newUpdateOpdesc is null, fusion failed."), return PARAM_INVALID);
 
@@ -188,7 +195,6 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
       return FAILED);
 
   // connect output edge for inupdate
-  string instanceNormNodeName = instanceNormNode->GetName();
   if (instanceNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (auto inDataAnchor : instanceNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(instanceNormNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
