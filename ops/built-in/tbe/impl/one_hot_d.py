@@ -36,6 +36,21 @@ ON_OFF_VAL_SPACE = 32 * 2
 MAX_DEPTH = 131072
 
 
+def check_supported(input_x,
+                    input_on_val,
+                    input_off_val,
+                    output_y,
+                    depth,
+                    axis=-1,
+                    kernel_name="one_hot_d"):
+    x_shape = input_x.get("shape")
+    shape_list = [[2, 2]]
+    if list(x_shape) in shape_list:
+        reason = "when static and shape is 2,2"
+        return False, reason
+    return True, ""
+
+
 def _add_workspace(indices_reshape, depth, dtype, kernel_name):
     """ add workspace accroding to indices_reshape, depth and dtype.
 

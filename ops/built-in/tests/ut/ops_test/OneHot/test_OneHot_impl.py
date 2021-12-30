@@ -523,6 +523,21 @@ case30 = {"params": [
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case31 = {"params": [
+    {"shape": (2, 2), "dtype": "int32", "format": "ND", "ori_shape": (2, 2),
+     "ori_format": "ND", "range": [(2, None), (2, None)]},
+    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (-1,),
+     "ori_format": "ND", "range": [(2, None)]},
+    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (-1,),
+     "ori_format": "ND", "range": [(1, None)]},
+    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (-1,),
+     "ori_format": "ND", "range": [(1, None)]}, 
+    {"shape": (-1, -1, -1), "dtype": "int32", "format": "ND", "ori_shape": (-1, -1, -1),
+     "ori_format": "ND", "range": [(2, None), (2, None), (2, None)]}, 0],
+         "case_name": "dynamic_one_hot_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 def test_check_supported(test_arg):
     from impl.dynamic.one_hot import check_supported
     check_supported({"shape": (2048,), "dtype": "float16", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},

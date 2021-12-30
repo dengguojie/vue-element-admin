@@ -58,6 +58,14 @@ case6 = {"params": [{"shape": (1539,), "dtype": "int32", "format": "ND", "ori_sh
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
+def test_check_supported(test_arg):
+    from impl.one_hot_d import check_supported
+    check_supported({"shape": (2, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     2, -1)
+ut_case.add_cust_test_func(test_func=test_check_supported)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
