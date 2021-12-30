@@ -13,6 +13,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 MaxPoolGrad ut case
 """
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
 import math
 
@@ -1262,6 +1264,94 @@ strides = [1, 47, 49, 1]
 paddings = "SAME"
 data_format = "NHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_130")
+
+
+ori_shape0 = [18, 224, 18, 336]
+ori_shape1 = [18, 5, 3, 336]
+ksize = [1, 7, 7, 1]
+strides = [1, 48, 6, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_131")
+
+ori_shape0 = [98, 212, 17, 80]
+ori_shape1 = [98, 4, 1, 80]
+ksize = [1, 40, 1, 1]
+strides = [1, 45, 55, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_132")
+
+ori_shape0 = [81, 122, 191, 16]
+ori_shape1 = [81, 61, 4, 16]
+ksize = [1, 6, 45, 1]
+strides = [1, 2, 59, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_133")
+
+ori_shape0 = [8, 4, 285, 736]
+ori_shape1 = [8, 1, 7, 736]
+ksize = [1, 2, 87, 1]
+strides = [1, 13, 30, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_134")
+
+ori_shape0 = [1, 356, 118, 1168]
+ori_shape1 = [1, 71, 2, 1168]
+ksize = [1, 2, 24, 1]
+strides = [1, 5, 53, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_135")
+
+ori_shape0 = [88, 111, 182, 32]
+ori_shape1 = [88, 9, 3, 32]
+ksize = [1, 2, 129, 1]
+strides = [1, 13, 21, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_136")
+
+ori_shape0 = [7, 204, 565, 16]
+ori_shape1 = [7, 29, 160, 16]
+ksize = [1, 4, 88, 1]
+strides = [1, 7, 3, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_137")
+
+ori_shape0 = [42, 101, 303, 32]
+ori_shape1 = [42, 17, 101, 32]
+ksize = [1, 2, 81, 1]
+strides = [1, 6, 3, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_138")
+
+ori_shape0 = [9, 586, 120, 80]
+ori_shape1 = [9, 31, 10, 80]
+ksize = [1, 44, 1, 1]
+strides = [1, 19, 12, 1]
+paddings = "SAME"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_139")
+
+
+vals = {("tik.load3dv1",): False}
+def side_effects(*args):
+    return vals[args]
+with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_131")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_132")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_133")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_134")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_135")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_136")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_137")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_138")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_139")
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)
