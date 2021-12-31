@@ -306,8 +306,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   for (const auto &fcNode : fcNodes) {
     if (find(matmulWhiteList.begin(), matmulWhiteList.end(), fcNode->GetType()) == matmulWhiteList.end()) {
       fusionNodes.clear();
-      OP_LOGD(FUSED_OP_TYPE.c_str(),
-              "fcNode op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "fcNode op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
               fcNode->GetName().c_str(), fcNode->GetType().c_str());
       return SUCCESS;
     }

@@ -89,7 +89,7 @@ def raise_err_three_paras(err_code, op_name, para1, para2, para3):
 
 def raise_err_four_paras(err_code, op_name, para1, para2, para3, para4):
     """
-    E62003: "In op[%s], the size of [%s] on [%s] dimension should be in range [%s], 
+    E62003: "In op[%s], the size of [%s] on [%s] dimension should be in range [%s],
     but it is [%s]."
     """
     args_dict = {

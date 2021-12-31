@@ -89,7 +89,7 @@ def raise_cube_util_err(msg):
     return raise_cube_util_err_new(msg)
 
 
-def im2col_row_major(  # pylint: disable=R0913
+def im2col_row_major(
         a_im2col_vm_shape,
         tensor_a,
         kernel_w,
@@ -151,7 +151,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
     return im2col_fractal_new(a_im2col_shape, tensor_a_row_major)
 
 
-def im2col_fractal_3d(  # pylint: disable=R0913
+def im2col_fractal_3d(
         a_im2col_shape,
         tensor_a_row_major,
         fmap_c1,

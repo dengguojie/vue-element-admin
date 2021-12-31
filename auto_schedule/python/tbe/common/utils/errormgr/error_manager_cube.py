@@ -512,6 +512,9 @@ def raise_invalid_range(op_name, attr_name, attr_range, name):
 
 
 def raise_err_message_cube(*msgs):
+    """
+    Cube template reports error message
+    """
     args_dict = {
         "errCode": "E69999"
     }

@@ -18,6 +18,8 @@
 conv2d backprop input DSL interface.
 """
 import warnings
+from tbe.dsl.compute.conv2d_backprop_input_compute import \
+    conv2d_backprop_input_compute as conv2d_backprop_input_compute_new
 
 
 def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_sizes, para_dict):
@@ -61,5 +63,4 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     warnings.warn("te.lang.cce.te_compute.conv2d_backprop_input_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv2d_backprop_input_compute",
         DeprecationWarning)
-    from tbe.dsl.compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute
-    return conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_sizes, para_dict)
+    return conv2d_backprop_input_compute_new(filters, out_backprop, filter_sizes, input_sizes, para_dict)

@@ -170,8 +170,7 @@ def im2col_row_major(
                               tvm.const(offset_x, compute_dtype),
                               tensor_a(n_index, c1_index, h_index - padding_up + slice_offset,
                                        w_index - padding_left, c0_index))
-        else:
-            return tensor_a(n_index, c1_index, h_index + slice_offset, w_index, c0_index)
+        return tensor_a(n_index, c1_index, h_index + slice_offset, w_index, c0_index)
 
     return tvm.compute(a_im2col_vm_shape,
                        lambda *indices: __im2col_row_major_indices(indices, tensor_a, kernel_w, padding,
@@ -214,7 +213,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
         Returns : im2col_fractal tvm lambda function
         """
         _, _, _, a_col_k1, a_col_m0, a_col_k0 = a_im2col_shape
-        _, a_row_major_hw, group_c1, kernel_h, kernel_w, _ = tensor_a_row_major.shape
+        _, a_row_major_hw, _, kernel_h, kernel_w, _ = tensor_a_row_major.shape
         g_index, n_index, m1_index, k1_index, m0_index, k0_index = indices
 
         hw_index = m1_index * a_col_m0 + m0_index
@@ -234,10 +233,9 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
                 tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1),
                 tvm.const(0.0, tensor_a_row_major.dtype),
                 tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
-        else:
-            return tvm.select(
-                tvm.all(hw_index >= 0, hw_index < a_row_major_hw.value),
-                tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
+        return tvm.select(
+            tvm.all(hw_index >= 0, hw_index < a_row_major_hw.value),
+            tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
 
     return tvm.compute(a_im2col_shape,
                        lambda *indices: __im2col_fractal_indices(indices, tensor_a_row_major),
@@ -583,6 +581,7 @@ class ConvDslPattern(CubeDslPattern):
         """
         if not var_map:
             var_map = {}
+            
         def _is_load3d_special(var_map, h_out, w_hout):
             if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310")
                 and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -744,10 +743,8 @@ def calc_info_of_iter_vars(stage):
         for iter_var in stage.all_iter_vars if iter_var.dom is not None
     }
     fetch_info_from_relations(info_iter_vars)
-    res = [[
-        item.var,
-        (item.dom.min.value, item.dom.extent.value) if item.dom is not None else info_iter_vars[item.var]
-    ] for item in stage.leaf_iter_vars]
+    res = [[item.var, (item.dom.min.value, item.dom.extent.value) if item.dom is not None else info_iter_vars[item.var]
+            ] for item in stage.leaf_iter_vars]
 
     return res
 
@@ -871,7 +868,7 @@ def is_v200_version_new():
     True: v200 new version
     False: Other version
     """
-    return (is_ng1_version() or is_lhisi_cs_version())
+    return is_ng1_version() or is_lhisi_cs_version()
 
 
 def is_mini_or_lhisi_version():
