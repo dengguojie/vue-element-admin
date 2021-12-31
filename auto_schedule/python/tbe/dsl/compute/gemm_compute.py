@@ -522,21 +522,21 @@ def gemm(tensor_a, tensor_b, para_dict):
     """
     algorithm: gemm and matmul
     for gemm:
-        calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
+    calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
     for matmul:
-        caculating matrix multiplication with bias, C = A*B + bias
+    caculating matrix multiplication with bias, C = A*B + bias
 
     Parameters:
     tensor_a: the first tensor a
 
     tensor_b: second tensor b with the same type and shape with a
 
-              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
-              must be 32*16.
-              If A is transpose , then AShape classification matrix must be
-              32*16 in gm/L1,then it is 16*32 in L0A.
-              If B is transpose , then BShape classification matrix must be
-              16*32 in gm/L1,then it is 32*16 in L0B.
+    If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+    must be 32*16.
+    If A is transpose , then AShape classification matrix must be
+    32*16 in gm/L1,then it is 16*32 in L0A.
+    If B is transpose , then BShape classification matrix must be
+    16*32 in gm/L1,then it is 32*16 in L0B.
 
     para_dict:
 
@@ -1173,6 +1173,9 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
 
 
 class GEMMComputeParam:
+    """
+    be used by gemm_tilingcase
+    """
     tiling_info_dict = {}
     batch_a = False
     batch_b = False
@@ -1193,66 +1196,66 @@ class GEMMCompute:
 
     tensor_b: second tensor b with the same type and shape with a
 
-              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
-              must be 32*16.
-              If A is transpose , then AShape classification matrix must be
-              32*16 in gm/L1,then it is 16*32 in L0A.
-              If B is transpose , then BShape classification matrix must be
-              16*32 in gm/L1,then it is 32*16 in L0B.
+    If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+    must be 32*16.
+    If A is transpose , then AShape classification matrix must be
+    32*16 in gm/L1,then it is 16*32 in L0A.
+    If B is transpose , then BShape classification matrix must be
+    16*32 in gm/L1,then it is 32*16 in L0B.
 
     para_dict:
-        alpha: multiplier for the product of input tensors A * B.
+    alpha: multiplier for the product of input tensors A * B.
 
-        beta: multiplier for input tensor C.
+    beta: multiplier for input tensor C.
 
-        trans_a: if True, a needs to be transposed
+    trans_a: if True, a needs to be transposed
 
-        trans_b: if True, b needs to be transposed
+    trans_b: if True, b needs to be transposed
 
-        format_a: the format of tensor a
+    format_a: the format of tensor a
 
-        format_b: the format of tensor b
+    format_b: the format of tensor b
 
-        dst_dtype: output data type,support "float16" "float32", default is "float16"
+    dst_dtype: output data type,support "float16" "float32", default is "float16"
 
-        tensor_c: the tensor c
+    tensor_c: the tensor c
 
-        format_out: output format, now support ND,Nz
+    format_out: output format, now support ND,Nz
 
-        kernel_name: kernel name, default is "MatMul"
+    kernel_name: kernel name, default is "MatMul"
 
-        quantize_params: quantization parameters,
-                not None means enable quantization, it is dictionary structure
+    quantize_params: quantization parameters,
+    not None means enable quantization, it is dictionary structure
 
-        quantize_alg: quantize mode,
-            support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+    quantize_alg: quantize mode,
+    support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
 
-        scale_mode_a: tensor_a inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_b: tensor_b inbound quantization mode,
-                support 'SCALAR' and 'VECTOR'
-        scale_mode_out: out tensor quantization mode,
-                support 'SCALAR' and 'VECTOR'
+    scale_mode_a: tensor_a inbound quantization mode,
+    support 'SCALAR' and 'VECTOR'
+    scale_mode_b: tensor_b inbound quantization mode,
+    support 'SCALAR' and 'VECTOR'
+    scale_mode_out: out tensor quantization mode,
+    support 'SCALAR' and 'VECTOR'
 
-        sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
-        sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
+    sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
 
-        scale_q_a: scale placeholder for tensor_a inbound quantization
-        offset_q_a: offset placeholder for tensor_a inbound quantization
-        scale_q_b: scale placeholder for tensor_b inbound quantization
-        offset_q_b: offset placeholder for tensor_b inbound quantization
+    scale_q_a: scale placeholder for tensor_a inbound quantization
+    offset_q_a: offset placeholder for tensor_a inbound quantization
+    scale_q_b: scale placeholder for tensor_b inbound quantization
+    offset_q_b: offset placeholder for tensor_b inbound quantization
 
-        scale_drq: scale placeholder for requantization or dequantization
-        offset_drq: scale placeholder for requantization or dequantization
+    scale_drq: scale placeholder for requantization or dequantization
+    offset_drq: scale placeholder for requantization or dequantization
 
-        offset_a: the offset for tensor a
+    offset_a: the offset for tensor a
 
-        offset_b: the offset for tensor b
+    offset_b: the offset for tensor b
 
-        compress_index: index for compressed wights, None means not compress wights, now only for matmul
-        
-        op_type: op type
+    compress_index: index for compressed wights, None means not compress wights, now only for matmul
+
+    op_type: op type
 
     Returns None
     """

@@ -126,11 +126,11 @@ class FormatCompute(object):
         compute C_matrix = A_matrix + B_matrix, A_matrix's format is ND, B_matrix's format is
         Nz, the result C_matrix's format is ND. support batch
         input args:
-            tensor_beta_bias: the tensor with ND format
-            tensor_alpha_c: the tensor with Nz format
-            tensor_name: the result tensor's name in IR
+        tensor_beta_bias: the tensor with ND format
+        tensor_alpha_c: the tensor with Nz format
+        tensor_name: the result tensor's name in IR
         return:
-            res: the add result, format is ND
+        res: the add result, format is ND
         """
         res_shape = tensor_beta_bias.shape
         if len(res_shape) == 2:
@@ -148,11 +148,11 @@ class FormatCompute(object):
         compute C_matrix = A_matrix + B_matrix, A_matrix's format is ND, B_matrix's format is
         Nz, the result C_matrix's format is Nz. support batch
         input args:
-            tensor_beta_bias: the tensor with ND format
-            tensor_alpha_c: the tensor with Nz format
-            tensor_name: the result tensor's name in IR
+        tensor_beta_bias: the tensor with ND format
+        tensor_alpha_c: the tensor with Nz format
+        tensor_name: the result tensor's name in IR
         return:
-            res: the add result, format is Nz
+        res: the add result, format is Nz
         """
         res_shape = tensor_alpha_c.shape
         block_in = res_shape[-2]
@@ -399,10 +399,10 @@ class FormatCompute(object):
         """
         change_axis [batch, i, j, k, l] -> [batch, j, i, k, l]
         input_args:
-            ori_tensor: fractal format tensor
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: fractal format tensor
+        compute_params: dict, the info need trans to schedule
         return:
-            compute result
+        compute result
         """
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
@@ -441,10 +441,10 @@ class FormatCompute(object):
         """
         change_axis [batch, i, j, k, l] -> [batch, i, j, l, k]
         input_args:
-            ori_tensor: fractal format tensor
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: fractal format tensor
+        compute_params: dict, the info need trans to schedule
         return:
-            compute result
+        compute result
         """
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
@@ -482,10 +482,10 @@ class FormatCompute(object):
         """
         change_axis [batch, i, j, k, l] -> [batch, j, i, l, k]
         input_args:
-            ori_tensor: fractal format tensor
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: fractal format tensor
+        compute_params: dict, the info need trans to schedule
         return:
-            compute result
+        compute result
         """
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
@@ -530,10 +530,10 @@ class FormatCompute(object):
         """
         use vnchwconv to reshape nd shape: (m, k) --> (m/m0, k, m0) --> (m/m0, k/k0, m0, k0)
         inpute params:
-            ori_tensor: tensor, format is nd
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: tensor, format is nd
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor format is FRACTAL_Z
+        the tensor format is FRACTAL_Z
         """
         tensor_name = compute_params.get("tensor_name")
         block_in = compute_params.get("block_in")
@@ -612,10 +612,10 @@ class FormatCompute(object):
         """
         this func is reshape nd2Zz when dtype is int8 and trans and ori_shape is ([m, k]
         input params:
-            ori_tensor: the tensor format is nd
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: the tensor format is nd
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor format is FRACTAL_Z
+        the tensor format is FRACTAL_Z
         """
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
@@ -747,9 +747,9 @@ class FormatCompute(object):
         """
         reshape nd2Zz by normal way and gevm mode
         input params:
-            ori_tensor: the tensor format is nd
+        ori_tensor: the tensor format is nd
         return:
-           the tensor format Zz
+        the tensor format Zz
         """
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
@@ -823,9 +823,9 @@ class FormatCompute(object):
         """
         reshape nd2Zn by normal way
         input params:
-            ori_tensor: the tensor format is nd
+        ori_tensor: the tensor format is nd
         return:
-           the tensor format Zn
+        the tensor format Zn
         """
         tensor_name = compute_params.get("tensor_name")
         block_out = compute_params.get("block_out")
@@ -911,12 +911,12 @@ class FormatCompute(object):
     def compute_nd2zn_vnchwconv(self, ori_tensor, compute_params):
         """
         reshape nd2Zn by vnchwconv [k, n] --> [k / block_reduce, n, block_reduce] -- >
-            [k / block_reduce, n / block_out, block_out, block_reduce]
+        [k / block_reduce, n / block_out, block_out, block_reduce]
         input params:
-            ori_tensor: the tensor format is nd
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: the tensor format is nd
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor format is FRACTAL_Z
+        the tensor format is FRACTAL_Z
         """
         tensor_name = compute_params.get("tensor_name")
         block_out = compute_params.get("block_out")
@@ -994,10 +994,10 @@ class FormatCompute(object):
         """
         reshape ori_shape's shape nd2Nz by normal way
         input_params:
-            ori_tensor: the tensor format is nd
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: the tensor format is nd
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor format is FRACTAL_Z
+        the tensor format is FRACTAL_Z
         """
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
@@ -1023,10 +1023,10 @@ class FormatCompute(object):
         """
         reshape Nz2Zz and int8 cast to fp32
         input_params:
-            ori_tensor: the tensor format is Zz ,dtype is int8
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: the tensor format is Zz ,dtype is int8
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor format is FRACTAL_Z
+        the tensor format is FRACTAL_Z
         """
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
@@ -1083,10 +1083,10 @@ class FormatCompute(object):
         """
         reshape Zn-int8 to Zn-fp16
         input_params:
-            ori_tensor: the tensor format is Zn ,dtype is int8
-            compute_params: dict, the info need trans to schedule
+        ori_tensor: the tensor format is Zn ,dtype is int8
+        compute_params: dict, the info need trans to schedule
         return:
-            the tensor is Zn-fp16
+        the tensor is Zn-fp16
         """
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
@@ -1143,10 +1143,10 @@ class FormatCompute(object):
         """
         reshape the ori_tensor Nz to nd
         input params:
-            ori_tensor: the tensor format is Nz
-            tensor_name: the tensor's name after reshape in IR
+        ori_tensor: the tensor format is Nz
+        tensor_name: the tensor's name after reshape in IR
         return:
-            the format is ND tensor
+        the format is ND tensor
         """
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         block_out = ori_tensor_shape[-1]
