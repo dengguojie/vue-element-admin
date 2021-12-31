@@ -20,7 +20,6 @@ conv3d backprop input general compute.
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
@@ -31,7 +30,7 @@ _PAD_MIN = 0
 _PAD_MAX = 255
 
 
-class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
+class DeConvPattern(conv3d_dx_utils.CubeDslPattern):
     """
     convolution back propagation
 
@@ -40,15 +39,14 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
     kernel_sizes : shape of weight, [N, D, H, W, C]
 
     strides :list of strides,
-             [stridebatch, strided, strideh, stridew, stridechannel]
+        [stridebatch, strided, strideh, stridew, stridechannel]
 
     pad: list of padding, [pad_front, pad_tail, pad_top,
-                           pad_bottom, pad_left, pad_right]
+        pad_bottom, pad_left, pad_right]
 
     output_shape : shape of dE/dX, [N, D, H, W, C]
 
-    dilations : list of dilations,
-                [dilations_d, dilations_h, dilations_w]
+    dilations : list of dilations, [dilations_d, dilations_h, dilations_w]
 
     kernel_name : name of kernel
 
@@ -61,7 +59,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
     deconv_pattern_instance : instance of deconv pattern
     """
 
-    def __init__(self,  # pylint: disable=R0913
+    def __init__(self,
                  kernel_sizes, strides, pad, output_shape, output_dtype,
                  dilations, kernel_name, group_dict, var_map, dsl_flag):
         super(DeConvPattern, self).__init__()
@@ -86,7 +84,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         self.dsl_flag = dsl_flag
         self._flag_load3d_special_case = False
 
-    def generate_a(self, dy_ddr):  # pylint: disable=R0914
+    def generate_a(self, dy_ddr):
         """
         generate dy_col tensor for mad
 
@@ -136,8 +134,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 dy_vn = tvm.compute(
                     shape_dy_filling,
                     lambda *indice: dy_zero(*indice) + dy_filling(*indice),
-                    name = "dy_vn",
-                    tag = self.op_tag + "dy_vn")
+                    name="dy_vn",
+                    tag=self.op_tag + "dy_vn")
             else:
                 dy_filling = tvm.compute(
                     shape_dy_filling,
@@ -179,7 +177,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                   (dx_d, dx_h, dx_w),
                                   dilate_shape))
         pad_tail_after, pad_down_after, pad_right_after = new_pad_after
-        
+
         # stride > 1 ub->l1 may cut
         if stride_h > 1 or stride_w > 1:
             if self._var_map or (pad_down_after < 0 or pad_right_after < 0 or pad_tail_after < 0):
@@ -207,7 +205,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
                 if not dy_l1_attrs:
                     dy_l1_attrs = None
-                    
+
                 # cut dy_filling
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_cut,
@@ -260,7 +258,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dy_col = pat_conv.generate_a(dy_filling_l1, self._group_dict, self._var_map, self.op_tag)
         else:
             dy_col = pat_conv.generate_a(dy_filling, self._group_dict, self._var_map, self.op_tag)
-        
+
         self._flag_load3d_special_case = pat_conv.flag_load3d_special_case
 
         return dy_col
@@ -317,7 +315,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             tag=self.op_tag + "w_col")
         return w_col
 
-    def generate_c(self, dy_col, w_col, tensor_bias=None):  # pylint: disable=W0221,R0914
+    def generate_c(self, dy_col, w_col, tensor_bias=None):
         """
         generate dx_ddr
 
@@ -351,7 +349,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                                        tag=self.op_tag)
 
         # mad dx shape
-        dx_group, dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
+        _, dx_batch, dx_deep, _, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
         # real dx shape
         _, dx_d, dx_cin1, dx_h, dx_w, dx_cin0 = self.output_shape
         out_shape = (dx_batch, dx_deep, dx_cin1, dx_h * dx_w, dx_cin0)

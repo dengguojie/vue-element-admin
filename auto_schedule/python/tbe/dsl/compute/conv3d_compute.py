@@ -17,9 +17,6 @@
 """
 conv3d compute
 """
-import copy
-import warnings
-
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
@@ -57,6 +54,8 @@ _DILATION_MAX = 255
 _FMAP_DTYPE = ('float16')
 _W_DTYPE = ('float16')
 _RES_DTYPE = ('float16', 'float32')
+
+
 class Conv3DParam:
     """
     ConvParam
@@ -669,7 +668,7 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
     block_size_m = config['mac'][0]
     pad_head = pads[0]
 
-    shape_w = list(i.value for i in weight.shape)
+    shape_w = [i.value for i in weight.shape]
     ckk = shape_w[0] // real_g
 
     axis_k1 = tvm.reduce_axis((0, ckk), name='k1')
@@ -889,16 +888,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
 
     h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_dilated_h) // stride_dhw[1] + 1
-    d_out = (fmap_d + (pad_d[0] + pad_d[1]) - filter_dilated_d) // stride_dhw[0] + 1
-
-    load2d_pass_flag = ((filter_dilated_d == 1) and (filter_dilated_h == 1) and (filter_dilated_w == 1) and
-                        (list(pads) == [0, 0, 0, 0, 0, 0]) and
-                        (list(stride_dhw) == [1, 1, 1]))
-
-    #  Chip Design demand only h_dimesion constraint
-    only_fhkh_pass_flag = ((1 <= filter_dilated_h <= 11) and
-                           (stride_dhw[1] == 1) and
-                           (h_out == 1))
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
@@ -1046,7 +1035,7 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
 def _check_conv3d_dtype(fmap_dtype, filter_dtype, res_dtype):
     """
     Check the input parameters ' type of Conv3D
-    
+
     Parameters
     ----------
     fmap_dtype: The dtype of feature map
@@ -1061,7 +1050,7 @@ def _check_conv3d_dtype(fmap_dtype, filter_dtype, res_dtype):
 
     if filter_dtype not in _W_DTYPE:
         cube_err.raise_err_check_type("Conv3D", "weight", _W_DTYPE, filter_dtype)
-    
+
     if res_dtype not in _RES_DTYPE:
         cube_err.raise_err_check_type("Conv3D", "res dtype", _RES_DTYPE, res_dtype)
 
@@ -1107,7 +1096,7 @@ def conv3d(x, filter, filter_size, para_dict):
     stride_dhw = para_dict["strides"]
     stride_d, stride_h, stride_w = stride_dhw
     dilation_dhw = para_dict["dilation_dhw"]
-    
+
     shape_filter_ncdhw = filter_size
     _, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
 

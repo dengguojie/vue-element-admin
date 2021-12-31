@@ -22,44 +22,47 @@ from tbe.dsl.compute import cube_util
 from tbe import tvm
 
 
-def _im2col_row_major(a_im2col_vm_shape,
-                      tensor_a,
-                      kernel_w,
-                      cout_g,
-                      padding,
-                      stride,
-                      compute_dtype,
-                      var_map,
-                      tag='',
-                      special_load3d_flag=False,
-                      dilation=(1, 1, 1)):
+def _im2col_row_major(im2col_row_major_param_dict):
     """
     calculate im2col_row_major tensor
     Parameters
     ----------
-    a_im2col_vm_shape : shape of a_im2col_row_major
+    im2col_row_major_param_dict:
 
-    tensor_a : feature map
+        a_im2col_vm_shape : shape of a_im2col_row_major
 
-    kernel_w : width of filter
+        tensor_a : feature map
 
-    cout_g : new filter batch for group
+        kernel_w : width of filter
 
-    padding: the padding shape
+        cout_g : new filter batch for group
 
-    stride: the stride value
+        padding: the padding shape
 
-    compute_dtype: dtype of compute result
+        stride: the stride value
 
-    var_map: the parameters for dynamic shape
+        compute_dtype: dtype of compute result
 
-    tag : tag for different compute stage, '' by default
+        var_map: the parameters for dynamic shape
 
-    dilation: the dilation value, (1, 1, 1) by default
+        tag : tag for different compute stage, '' by default
+
+        dilation: the dilation value, (1, 1, 1) by default
     -------
     Returns : a_im2col_row_major tensor
 
     """
+    a_im2col_vm_shape = im2col_row_major_param_dict.get('a_im2col_row_major_shape')
+    tensor_a = im2col_row_major_param_dict.get('feature_map')
+    kernel_w = im2col_row_major_param_dict.get('kernel_w')
+    cout_g = im2col_row_major_param_dict.get('cout_g')
+    padding = im2col_row_major_param_dict.get('padding')
+    stride = im2col_row_major_param_dict.get('stride')
+    compute_dtype = im2col_row_major_param_dict.get('compute_dtype')
+    var_map = im2col_row_major_param_dict.get('var_map')
+    tag = im2col_row_major_param_dict.get('tag', '')
+    special_load3d_flag = im2col_row_major_param_dict.get('special_load3d_flag', False)
+    dilation = im2col_row_major_param_dict.get('dilation', (1, 1, 1))
     def __im2col_row_major_indices(indices, tensor_a, padding_var, stride, dilation):
         """
         calculate im2col_row_major tvm lambda function
@@ -214,7 +217,13 @@ class CubeDslPattern:
         ----------
         tensor_c : mad result tensor
         """
-        def __mad_condition(indices, axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
+        def __mad_condition(mad_condition_param_dict):
+            indices = mad_condition_param_dict.get('indices')
+            axis_kd = mad_condition_param_dict.get('axis_kd')
+            axis_k1 = mad_condition_param_dict.get('axis_k1')
+            axis_k0 = mad_condition_param_dict.get('axis_k0')
+            tensor_a = mad_condition_param_dict.get('tensor_a')
+            tensor_b = mad_condition_param_dict.get('tensor_b')
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all(
@@ -231,7 +240,13 @@ class CubeDslPattern:
                 tvm.const(0.0, type_c))
             return tensor_c
 
-        def __mad_condition_stride1(indices, axis_kd, axis_k1, axis_k0, tensor_a, tensor_b):
+        def __mad_condition_stride1(param_dict):
+            indices = param_dict.get('indices')
+            axis_kd = param_dict.get('axis_kd')
+            axis_k1 = param_dict.get('axis_k1')
+            axis_k0 = param_dict.get('axis_k0')
+            tensor_a = param_dict.get('tensor_a')
+            tensor_b = param_dict.get('tensor_b')
             g_index, n_index, deep_index, co1_index, m_index, co0_index = indices
             tensor_c = tvm.select(
                 tvm.all((deep_index - axis_kd + pad_head) >= 0,
@@ -258,17 +273,15 @@ class CubeDslPattern:
             return tensor_c
 
         def __conv3d_backprop_input_mad(indices, tensor_a, tensor_b):
-            tensor_c = tvm.sum(__mad_condition(indices, axis_kd, axis_k1,
-                                               axis_k0, tensor_a, tensor_b),
-                               axis=[axis_kd, axis_k1, axis_k0])
+            mad_condition_param_dict = {'indices': indices, 'axis_kd': axis_kd, 'axis_k1': axis_k1,
+                                        'axis_k0': axis_k0, 'tensor_a': tensor_a, 'tensor_b': tensor_b}
+            tensor_c = tvm.sum(__mad_condition(mad_condition_param_dict), axis=[axis_kd, axis_k1, axis_k0])
             return tensor_c
 
         def __conv3d_backprop_input_mad_stride1(indices, tensor_a, tensor_b):
-            tensor_c = tvm.sum(__mad_condition_stride1(indices,
-                                                       axis_kd, axis_k1,
-                                                       axis_k0, tensor_a,
-                                                       tensor_b),
-                               axis=[axis_kd, axis_k1, axis_k0])
+            param_dict = {'indices': indices, 'axis_kd': axis_kd, 'axis_k1': axis_k1, 'axis_k0': axis_k0,
+                          'tensor_a': tensor_a, 'tensor_b': tensor_b}
+            tensor_c = tvm.sum(__mad_condition_stride1(param_dict), axis=[axis_kd, axis_k1, axis_k0])
             return tensor_c
 
         def __conv3d_backprop_input_mad_noverlap(indices, tensor_a, tensor_b):
@@ -420,7 +433,7 @@ class ConvDslPattern(CubeDslPattern):
             self.flag_load3d_special_case = True
         return w_out
 
-    def generate_a(self, feature_map, group_dict, var_map={}, tag=""):
+    def generate_a(self, feature_map, group_dict, var_map=None, tag=""):
         """
         calculate im2col_fractal tensor
 
@@ -430,7 +443,7 @@ class ConvDslPattern(CubeDslPattern):
 
         group_dict : the information needed for group convolution
 
-        var_map : the parameters for dynamic shape, {} by default
+        var_map : the parameters for dynamic shape, None by default
 
         tag : the tag of tensor, None by default
 
@@ -438,6 +451,7 @@ class ConvDslPattern(CubeDslPattern):
         -------
         a_col : a_im2col_fractal tensor
         """
+        var_map = {} if not var_map else var_map
         a_batch, a_deep, a_c1, a_h, a_w, a_c0 = cube_util.shape_to_list(feature_map.shape)
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
@@ -480,17 +494,11 @@ class ConvDslPattern(CubeDslPattern):
                                   self._m0,
                                   a_c0)
 
-        a_row_major = _im2col_row_major(a_im2col_row_major_shape,
-                                        feature_map,
-                                        kernel_w,
-                                        cout_g,
-                                        padding=new_pad,
-                                        stride=stride,
-                                        compute_dtype=feature_map.dtype,
-                                        var_map=var_map,
-                                        dilation=dilation,
-                                        tag=tag,
-                                        special_load3d_flag=self.flag_load3d_special_case)
+        im2col_row_major_param_dict = {'a_im2col_row_major_shape': a_im2col_row_major_shape, 'feature_map': feature_map,
+                                       'kernel_w': kernel_w, 'cout_g': cout_g, 'padding': new_pad, 'stride': stride,
+                                       'compute_dtype': feature_map.dtype, 'var_map': var_map, 'dilation': dilation,
+                                       'tag': tag, 'special_load3d_flag': self.flag_load3d_special_case}
+        a_row_major = _im2col_row_major(im2col_row_major_param_dict)
 
         a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major, tag=tag)
 

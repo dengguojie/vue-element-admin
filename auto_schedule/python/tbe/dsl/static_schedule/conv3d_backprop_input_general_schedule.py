@@ -1312,14 +1312,15 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     kd_factor = bl0_tiling_kd
 
     kd_tiling_l1_factor = bl1_tiling_kdparts
-    (batch_outer, al1_at_ddr_m_outer, batch_inner, bl1_at_ddr_n_outer, bl1_at_ddr_n_inner,
+    (batch_outer, al1_at_ddr_m_outer, batch_inner, bl1_at_ddr_n_outer, _,
      col_at_ddr_axis, cddr_m_outer_inner, _, c_ddr_deep_outer, _) = _l0c_procees()
 
     c_ddr_deep_outer_value = compute_util.int_ceil_div(cddr_depth, cddr_deep_factor)
     # l0a_l0b
     al0_m_factor = al0_tiling_ma * al0_tiling_m0
     if kd_reduce_flag is False:
-        c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer, c_col_n_outer = _l0a_and_l0b_process()
+        c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer, c_col_n_outer \
+            = _l0a_and_l0b_process()
     else:
         (c_col_deep_outer, c_col_deep_inner, c_col_k_outer, c_col_m_outer,
          c_col_n_outer, reduce_axis_kd, reduce_axis_kd_outer,
@@ -1434,7 +1435,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch[mean_matrix_mul].set_buffer_size(dedy_bound)
         sch[a_filling].set_buffer_size(a_filling_bound)
 
-    def _handle_dynamic_workspace(stride_w):
+    def _handle_dynamic_workspace():
         al1_bound, al1_h = _get_al1_bound()
         extent_h = tvm.select(tvm.floordiv(al1_h, ho_l1) < 1,
                               al1_h,
@@ -1463,7 +1464,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch[a_l1].mem_unique()
 
     if var_map:
-        _handle_dynamic_workspace(stride_w)
+        _handle_dynamic_workspace()
     return sch
 
 
@@ -1559,7 +1560,7 @@ class AutoScheduleOp:
         for i in self._op:
             if i["dst_buffer"].same_as(src_tensor):
                 return i
-        return None
+        return {}
 
     def __analyse_input_output(self):
         input_ops = []

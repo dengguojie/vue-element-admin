@@ -72,12 +72,14 @@ class CceConv3dOp:
         self.var_range = {}
         self.flag_load3d_special_case = self._tensor_map["flag_load3d_special_case"]
 
-    def _get_value(self, ele):
+    @staticmethod
+    def _get_value(ele):
         res_ele = [ele.value if isinstance(ele, tvm.expr.IntImm) else \
                                                                 ele][0]
         return res_ele
 
-    def _int_ceil_div_tvm(self, num_a, num_b):
+    @staticmethod
+    def _int_ceil_div_tvm(num_a, num_b):
         """
         tvm.floordiv result
         """
@@ -162,30 +164,37 @@ class CceConv3dOp:
 
         return al1_factor, bl1_factor
 
-    def _reorder_axis(self, tiling, al1_factor, bl1_factor, double_buffer_flag,
-                      reorder_axis_dict, res_c):
+    def _reorder_axis(self, reorder_axis_param_dict):
         """
         reorder axis.
 
         Parameters
         ----------
-        tiling : case tiling
+        reorder_axis_param_dict:
 
-        al1_factor : al1 split factor [c1//kAl1, howo//mc//m0//m_Al1]
+            tiling : case tiling
 
-        bl1_factor : bl1 split factor [c1//kBl1, howo//nc//n0//n_Bl1]
+            al1_factor : al1 split factor [c1//kAl1, howo//mc//m0//m_Al1]
 
-        double_buffer_flag : flag of double buffer
+            bl1_factor : bl1 split factor [c1//kBl1, howo//nc//n0//n_Bl1]
 
-        reorder_axis_dict : axis to reorder
+            double_buffer_flag : flag of double buffer
 
-        res_c : c ddr
+            reorder_axis_dict : axis to reorder
+
+            res_c : c ddr
 
         Returns
         -------
         reorder flag
 
         """
+        tiling = reorder_axis_param_dict.get('tiling')
+        al1_factor = reorder_axis_param_dict.get('al1_factor')
+        bl1_factor = reorder_axis_param_dict.get('bl1_factor')
+        double_buffer_flag = reorder_axis_param_dict.get('double_buffer_flag')
+        reorder_axis_dict = reorder_axis_param_dict.get('reorder_axis_dict')
+        res_c = reorder_axis_param_dict.get('res_c')
         sch = self._schedule
         reorder_flag = False
         noi = reorder_axis_dict["noi"]
@@ -211,26 +220,33 @@ class CceConv3dOp:
                                m_outer_outer_outer_inner, noi)
         return reorder_flag
 
-    def _attach_bl0(self, tiling, stage_dict, bl0, coo, noo):
+    def _attach_bl0(self, attach_bl0_param_dict):
         """
         bl0 compute at.
 
         Parameters
         ----------
-        tiling : case tiling
+        attach_bl0_param_dict:
 
-        stage_dict : c_col res_c
+            tiling : case tiling
 
-        bl0 : loc axis
+            stage_dict : c_col res_c
 
-        coo : loc axis
+            bl0 : loc axis
 
-        noo : res axis
+            coo : loc axis
+
+            noo : res axis
 
         Returns
         -------
 
         """
+        tiling = attach_bl0_param_dict.get('tiling')
+        stage_dict = attach_bl0_param_dict.get('stage_dict')
+        bl0 = attach_bl0_param_dict.get('bl0')
+        coo = attach_bl0_param_dict.get('coo')
+        noo = attach_bl0_param_dict.get('noo')
         sch = self._schedule
         res_c = stage_dict["res_c"]
         c_col = stage_dict["c_col"]
@@ -285,31 +301,37 @@ class CceConv3dOp:
 
         return al1_at_ccol_axis, bl1_at_ccol_axis, k_axis_dict
 
-    def _get_nbuffer_al1_flag(self, tiling, compute_al1_axis, buffer_dict,
-                              k_outer_outer_inner, k_outer_outer_inner_size,
-                              shape_w):
+    def _get_nbuffer_al1_flag(self, nbuffer_al1_param_dict):
         """
         get al1 nbuffer flag.
 
         Parameters
         ----------
-        tiling : case tiling
+        nbuffer_al1_param_dict:
 
-        compute_al1_axis : al1 compute at axis
+            tiling : case tiling
 
-        buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+            compute_al1_axis : al1 compute at axis
 
-        k_outer_outer_inner : loc axis
+            buffer_dict : al1/bl1 al0/bl0 c_col c_ub
 
-        k_outer_outer_inner_size : k_outer_outer_inner size
+            k_outer_outer_inner : loc axis
 
-        shape_w : weight shape
+            k_outer_outer_inner_size : k_outer_outer_inner size
+
+            shape_w : weight shape
 
         Returns
         -------
         nbuffer_flag_al1, compute_al1_axis, nbuffer_axis
 
         """
+        tiling = nbuffer_al1_param_dict.get('tiling')
+        compute_al1_axis = nbuffer_al1_param_dict.get('compute_al1_axis')
+        buffer_dict = nbuffer_al1_param_dict.get('buffer_dict')
+        k_outer_outer_inner = nbuffer_al1_param_dict.get('k_outer_outer_inner')
+        k_outer_outer_inner_size = nbuffer_al1_param_dict.get('k_outer_outer_inner_size')
+        shape_w = nbuffer_al1_param_dict.get('shape_w')
         sch = self._schedule
         c_col = buffer_dict["c_col"]
         nbuffer_flag_al1 = False
@@ -334,33 +356,44 @@ class CceConv3dOp:
 
         return nbuffer_flag_al1, compute_al1_axis, nbuffer_axis, k_outer_outer_inner_size // nbuffer_size
 
-    def _get_cyclebuffer_flag(self, tiling, shape_w, w_dtype, shape_fmap, stride_d,
-                              pad_d, l0a_load2d_flag, dilation_h, dilation_w):
+    @staticmethod
+    def _get_cyclebuffer_flag(cyclebuffer_flag_param_dict):
         """
         calculate whether to do cyclebuffer
 
         Parameters
         ----------
-        tiling : tiling_new
+        cyclebuffer_flag_param_dict:
 
-        shape_w : filter shape
+            tiling : tiling_new
 
-        shape_fmap : fmap shape
+            shape_w : filter shape
 
-        stride_d : d channel stride
+            shape_fmap : fmap shape
 
-        pad_d : pad of d direction
+            stride_d : d channel stride
 
-        l0a_load2d_flag : whether fmap to load2d
+            pad_d : pad of d direction
 
-        dilation_h : dilation on h direction
+            l0a_load2d_flag : whether fmap to load2d
 
-        dilation_w : dilation on w direction
+            dilation_h : dilation on h direction
+
+            dilation_w : dilation on w direction
 
         return
         ---------
         cyclebuffer_flag
         """
+        tiling = cyclebuffer_flag_param_dict.get('tiling_new')
+        shape_w = cyclebuffer_flag_param_dict.get('shape_w_ndc1hwc0')
+        w_dtype = cyclebuffer_flag_param_dict.get('w_dtype')
+        shape_fmap = cyclebuffer_flag_param_dict.get('fmap_shape_ndc1hwc0')
+        stride_d = cyclebuffer_flag_param_dict.get('strided')
+        pad_d = cyclebuffer_flag_param_dict.get('padd')
+        l0a_load2d_flag = cyclebuffer_flag_param_dict.get('l0a_load2d_flag')
+        dilation_h = cyclebuffer_flag_param_dict.get('dilationh')
+        dilation_w = cyclebuffer_flag_param_dict.get('dilationw')
         cyclebuffer_flag = False
         filter_d = shape_w[1]
         filter_h = shape_w[3]
@@ -487,7 +520,8 @@ class CceConv3dOp:
             "reduce_factor": reduce_factor
         }
 
-    def _check_tiling(self, tiling):
+    @staticmethod
+    def _check_tiling(tiling):
         """
         default tiling check
 
@@ -586,12 +620,13 @@ class CceConv3dOp:
         self._schedule.set_var_range(self._tensor_map["d_dim"],
                                     int(tiling_new["block_dim"][-1]),
                                     int(tiling_new["block_dim"][-1]))
-        cyclebuffer_flag = self._get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
-                                                        w_dtype, fmap_shape_ndc1hwc0,
-                                                        strided, padd, l0a_load2d_flag,
-                                                        dilationh, dilationw)
+        cyclebuffer_flag_param_dict = {'tiling_new': tiling_new, 'shape_w_ndc1hwc0': shape_w_ndc1hwc0,
+                                       'w_dtype': w_dtype, 'fmap_shape_ndc1hwc0': fmap_shape_ndc1hwc0,
+                                       'strided': strided, 'padd': padd, 'l0a_load2d_flag': l0a_load2d_flag,
+                                       'dilationh': dilationh, 'dilationw': dilationw}
+        cyclebuffer_flag = CceConv3dOp._get_cyclebuffer_flag(cyclebuffer_flag_param_dict)
 
-        tiling_ok_flag = self._check_tiling(tiling_new)
+        tiling_ok_flag = CceConv3dOp._check_tiling(tiling_new)
 
         tiling = {}
         tiling["AL0_matrix"] = tiling_new["AL0_matrix"][0:4]
@@ -639,7 +674,7 @@ class CceConv3dOp:
             config = tbe_platform.CUBE_MKN[w_dtype]
             ci0 = config['mac'][1]
             l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
-            m_bit_length = {"float32": 32, "float16": 16, "uint8": 8, "int8": 8, "uint4": 4,"int4": 4}
+            m_bit_length = {"float32": 32, "float16": 16, "uint8": 8, "int8": 8, "uint4": 4, "int4": 4}
             m_bit_ratio = {"int32": 4, "float32": 4, "float16": 2, "uint8": 1,
                            "int8": 1, "uint4": 1.0 / 2, "int4": 1.0 / 2}
             input_data_type = in_dtype
@@ -742,8 +777,13 @@ class CceConv3dOp:
             if conv3d_compute.Conv3DParam.tiling_info_dict['bias_flag']:
                 sch[self._tensor_map['bias_add_tensor']].double_buffer()
 
-    def _condition_cycle_buffer_dynamic(self, cyclebuffer_flag,
-                                        al1, c_col, c_ub, tiling, cin1_g):
+    def _condition_cycle_buffer_dynamic(self, cycle_buffer_dynamic_param_dict):
+        cyclebuffer_flag = cycle_buffer_dynamic_param_dict.get('cyclebuffer_flag')
+        al1 = cycle_buffer_dynamic_param_dict.get('al1')
+        c_col = cycle_buffer_dynamic_param_dict.get('c_col')
+        c_ub = cycle_buffer_dynamic_param_dict.get('c_ub')
+        tiling = cycle_buffer_dynamic_param_dict.get('tiling')
+        cin1_g = cycle_buffer_dynamic_param_dict.get('cin1_g')
         sch = self._schedule
         d_out = self._tensor_map["d_out"]
         pad_head = c_col.op.attrs['pad_head']
@@ -760,8 +800,8 @@ class CceConv3dOp:
             # need to be updated during this load and the last load
             condition_update = d_index + pad_head > (n_index % d_out - 1) * \
                                 stride_d + kernel_d - 1
-            cyclebuffer_factor = self._int_ceil_div_tvm(self._tensor_map.get("d_out"),
-                                                        self._tensor_map.get("d_dim"))
+            cyclebuffer_factor = CceConv3dOp._int_ceil_div_tvm(self._tensor_map.get("d_out"),
+                                                               self._tensor_map.get("d_dim"))
             db_expr = tvm.select(tvm.convert(cyclebuffer_factor) == 1,
                                     0,
                                     tvm.floormod(n_index,
@@ -776,31 +816,39 @@ class CceConv3dOp:
             condition_cycle = tvm.any(condition_update, condition_db)
             sch[al1].set_store_predicate(condition_cycle)
 
-    def _intrin_mapping(self, fmap, mad_dict, buffer_dict, new_fmap_col_axis,
-                        tiling, cn_axis, l0a_load2d_flag):
+    def _intrin_mapping(self, intrin_mapping_param_dict):
         """
         intrin_mapping.
 
         Parameters
         ----------
-        famp : input tensor
+        intrin_mapping_param_dict:
 
-        mad_dict : for mad pragma
+            famp : input tensor
 
-        buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+            mad_dict : for mad pragma
 
-        new_fmap_col_axis : fmap_col axis
+            buffer_dict : al1/bl1 al0/bl0 c_col c_ub
 
-        tiling : case tiling
+            new_fmap_col_axis : fmap_col axis
 
-        cn_axis : loc axis
+            tiling : case tiling
 
-        l0a_load2d_flag : true or false
+            cn_axis : loc axis
+
+            l0a_load2d_flag : true or false
 
         Returns
         -------
 
         """
+        fmap = intrin_mapping_param_dict.get('fmap')
+        mad_dict = intrin_mapping_param_dict.get('mad_dict')
+        buffer_dict = intrin_mapping_param_dict.get('buffer_dict')
+        new_fmap_col_axis = intrin_mapping_param_dict.get('new_fmap_col_axis')
+        tiling = intrin_mapping_param_dict.get('tiling')
+        cn_axis = intrin_mapping_param_dict.get('cn_axis')
+        l0a_load2d_flag = intrin_mapping_param_dict.get('l0a_load2d_flag')
         sch = self._schedule
         al1 = buffer_dict["al1"]
         bl1 = buffer_dict["bl1"]
@@ -834,8 +882,9 @@ class CceConv3dOp:
             sch[al1].mem_unique()
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         elif self.var_map and not l0a_load2d_flag:
-            self._condition_cycle_buffer_dynamic(cyclebuffer_flag, al1, c_col,
-                                                 c_ub, tiling, cin1_g)
+            cycle_buffer_dynamic_param_dict = {'cyclebuffer_flag': cyclebuffer_flag, 'al1': al1,
+                                               'c_col': c_col, 'c_ub': c_ub, 'tiling': tiling, 'cin1_g': cin1_g}
+            self._condition_cycle_buffer_dynamic(cycle_buffer_dynamic_param_dict)
         elif self.var_map and l0a_load2d_flag:
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         else:
@@ -888,8 +937,7 @@ class CceConv3dOp:
         sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
         sch[c_col].emit_insn(cn_axis, 'mad', mad_dict)
 
-    def _attach_at(self, bodyops, inputops, compute_at_buffer, compute_at_axis,
-                   tiling):
+    def _attach_at(self, bodyops, inputops, compute_at_buffer, compute_at_axis, tiling):
         """
         tensor not for conv compute at.
 
@@ -976,40 +1024,51 @@ class CceConv3dOp:
             self._schedule[lop["cache_buffer"]].emit_insn(
                 lop["cache_buffer"].op.axis[0], 'dma_copy')
 
-    def _set_al1_at_axis(self, l0a_load2d_flag, nbuffer_flag_al1, reorder_flag,
-                         tiling, al1_factor, compute_axis, run_once_axis,
-                         allocate_axis, index_axis, buffer_dict, stage):
+    def _set_al1_at_axis(self, set_al1_at_axis_param_dict):
         """
         al1 compute_at.
 
         Parameters
         ----------
-        l0a_load2d_flag : true or false
+        set_al1_at_axis_param_dict:
 
-        nbuffer_flag_al1 : true or false
+            l0a_load2d_flag : true or false
 
-        reorder_flag : true or false
+            nbuffer_flag_al1 : true or false
 
-        tiling : case tiling
+            reorder_flag : true or false
 
-        al1_factor : al1 split factor [c1//kAl1, howo//mc//m0//m_Al1]
+            tiling : case tiling
 
-        compute_axis : al1 axis to compute at
+            al1_factor : al1 split factor [c1//kAl1, howo//mc//m0//m_Al1]
 
-        run_once_axis : al1 axis to run once
+            compute_axis : al1 axis to compute at
 
-        allocate_axis : al1 axis to allocate at
+            run_once_axis : al1 axis to run once
 
-        index_axis : al1 index to stage
+            allocate_axis : al1 axis to allocate at
 
-        buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+            index_axis : al1 index to stage
 
-        stage : c_col res_c
+            buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+
+            stage : c_col res_c
 
         Returns
         -------
 
         """
+        l0a_load2d_flag = set_al1_at_axis_param_dict.get('l0a_load2d_flag')
+        nbuffer_flag_al1 = set_al1_at_axis_param_dict.get('nbuffer_flag_al1')
+        reorder_flag = set_al1_at_axis_param_dict.get('reorder_flag')
+        tiling = set_al1_at_axis_param_dict.get('tiling')
+        al1_factor = set_al1_at_axis_param_dict.get('al1_factor')
+        compute_axis = set_al1_at_axis_param_dict.get('compute_al1_axis')
+        run_once_axis = set_al1_at_axis_param_dict.get('run_once_al1_axis')
+        allocate_axis = set_al1_at_axis_param_dict.get('allocate_al1_axis')
+        index_axis = set_al1_at_axis_param_dict.get('index_al1_dict')
+        buffer_dict = set_al1_at_axis_param_dict.get('buffer_dict')
+        stage = set_al1_at_axis_param_dict.get('stage')
         index = int(al1_factor[0] == 1) if tiling["AL1_shape"] else 2
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         sch = self._schedule
@@ -1073,36 +1132,45 @@ class CceConv3dOp:
 
         return True
 
-    def _set_bl1_at_axis(self, reorder_flag, tiling, bl1_factor,
-                         compute_bl1_axis, run_once_bl1_axis, allocate_bl1_axis,
-                         bl1_index_dict, buffer_dict, stage):
+    def _set_bl1_at_axis(self, bl1_at_axis_param_dict):
         """
         bl1 compute_at.
 
         Parameters
         ----------
-        reorder_flag : true or false
+        bl1_at_axis_param_dict:
 
-        tiling : case tiling
+            reorder_flag : true or false
 
-        bl1_factor : bl1 split factor [c1//kBl1, cout//nc//n0//m_Bl1]
+            tiling : case tiling
 
-        compute_bl1_axis : bl1 axis to compute at
+            bl1_factor : bl1 split factor [c1//kBl1, cout//nc//n0//m_Bl1]
 
-        run_once_bl1_axis : bl1 axis to run once
+            compute_bl1_axis : bl1 axis to compute at
 
-        allocate_bl1_axis : bl1 axis to allocate at
+            run_once_bl1_axis : bl1 axis to run once
 
-        bl1_index_axis : bl1 index to stage
+            allocate_bl1_axis : bl1 axis to allocate at
 
-        buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+            bl1_index_axis : bl1 index to stage
 
-        stage : c_col res_c
+            buffer_dict : al1/bl1 al0/bl0 c_col c_ub
+
+            stage : c_col res_c
 
         Returns
         -------
 
         """
+        reorder_flag = bl1_at_axis_param_dict.get('reorder_flag')
+        tiling = bl1_at_axis_param_dict.get('tiling')
+        bl1_factor = bl1_at_axis_param_dict.get('bl1_factor')
+        compute_bl1_axis = bl1_at_axis_param_dict.get('compute_bl1_axis')
+        run_once_bl1_axis = bl1_at_axis_param_dict.get('run_once_bl1_axis')
+        allocate_bl1_axis = bl1_at_axis_param_dict.get('allocate_bl1_axis')
+        bl1_index_dict = bl1_at_axis_param_dict.get('bl1_index_dict')
+        buffer_dict = bl1_at_axis_param_dict.get('buffer_dict')
+        stage = bl1_at_axis_param_dict.get('stage')
         index = 2 if (tiling["BL1_shape"] == []
                       or tiling["BL1_shape"] is None) else int(
                           bl1_factor[0] == 1)
@@ -1468,9 +1536,10 @@ class CceConv3dOp:
             "noi": noi
         }
 
-        reorder_flag = self._reorder_axis(tiling, al1_factor, bl1_factor,
-                                          double_buffer_flag, reorder_axis_dict,
-                                          res_c)
+        reorder_axis_param_dict = {'tiling': tiling, 'al1_factor': al1_factor, 'bl1_factor': bl1_factor,
+                                   'double_buffer_flag': double_buffer_flag, 'reorder_axis_dict': reorder_axis_dict,
+                                   'res_c': res_c}
+        reorder_flag = self._reorder_axis(reorder_axis_param_dict)
         m_outer_inner_outer, m_outer_inner_inner = sch[res_c].split(
             m_outer_inner, nparts=1)
 
@@ -1520,7 +1589,9 @@ class CceConv3dOp:
         sch[c_col].reorder(k_outer_outer, coo, boo, cn_axis, coi, boi, nn_axis,
                            k_outer_inner, reduce_kk)
         sch[fmap_col].compute_at(sch[c_col], boo)
-        self._attach_bl0(tiling, stage_dict, bl0, coo, noo)
+        attach_bl0_param_dict = {'tiling': tiling, 'stage_dict': stage_dict,
+                                 'bl0': bl0, 'coo': coo, 'noo': noo}
+        self._attach_bl0(attach_bl0_param_dict)
 
         #  ============ al1 and bl1 slice can be different with CUB & CL0 =====
         al1_at_ccol_axis, bl1_at_ccol_axis, k_axis_dict = self._al1_bl1_axis(
@@ -1556,10 +1627,13 @@ class CceConv3dOp:
         k_outer_outer_inner_size = int(k_outer_outer_size //
                                        max(al1_factor[0], bl1_factor[0]))
 
+        nbuffer_al1_param_dict = {'tiling': tiling, 'compute_al1_axis': compute_al1_axis,
+                                  'buffer_dict': buffer_dict,
+                                  'k_outer_outer_inner': k_outer_outer_inner,
+                                  'k_outer_outer_inner_size': k_outer_outer_inner_size,
+                                  'shape_w': shape_w}
         nbuffer_flag_al1, compute_al1_axis, _, _ \
-            = self._get_nbuffer_al1_flag(tiling, compute_al1_axis,
-                                         buffer_dict, k_outer_outer_inner,
-                                         k_outer_outer_inner_size, shape_w)
+            = self._get_nbuffer_al1_flag(nbuffer_al1_param_dict)
         run_once_al1_axis = {
             "c_outer_outer_inner": c_outer_outer_inner,
             "c_outer_outer_outer_inner": c_outer_outer_outer_inner
@@ -1571,10 +1645,12 @@ class CceConv3dOp:
         }
         index_al1_dict = {0: "al1_at_ccol_axis", 1: "al1_at_c_axis", 2: "noo"}
         stage = {0: c_col, 1: res_c, 2: res_c}
-        self._set_al1_at_axis(l0a_load2d_flag, nbuffer_flag_al1, reorder_flag,
-                              tiling, al1_factor, compute_al1_axis,
-                              run_once_al1_axis, allocate_al1_axis,
-                              index_al1_dict, buffer_dict, stage)
+        set_al1_at_axis_param_dict = {'l0a_load2d_flag': l0a_load2d_flag, 'nbuffer_flag_al1': nbuffer_flag_al1,
+                                      'reorder_flag': reorder_flag, 'tiling': tiling, 'al1_factor': al1_factor,
+                                      'compute_al1_axis': compute_al1_axis, 'run_once_al1_axis': run_once_al1_axis,
+                                      'allocate_al1_axis': allocate_al1_axis, 'index_al1_dict': index_al1_dict,
+                                      'buffer_dict': buffer_dict, 'stage': stage}
+        self._set_al1_at_axis(set_al1_at_axis_param_dict)
 
         # bl1 compute_at
         compute_bl1_axis = {
@@ -1590,10 +1666,11 @@ class CceConv3dOp:
         }
         run_once_bl1_axis = {"m_outer_outer_inner": m_outer_outer_inner}
         bl1_index_dict = {0: "bl1_at_ccol_axis", 1: "bl1_at_c_axis", 2: "c_outer_g_inner"}
-        self._set_bl1_at_axis(reorder_flag, tiling, bl1_factor,
-                              compute_bl1_axis, run_once_bl1_axis,
-                              allocate_bl1_axis, bl1_index_dict, buffer_dict,
-                              stage)
+        bl1_at_axis_param_dict = {'reorder_flag': reorder_flag, 'tiling': tiling, 'bl1_factor': bl1_factor,
+                                  'compute_bl1_axis': compute_bl1_axis, 'run_once_bl1_axis': run_once_bl1_axis,
+                                  'allocate_bl1_axis': allocate_bl1_axis, 'bl1_index_dict': bl1_index_dict,
+                                  'buffer_dict': buffer_dict, 'stage': stage}
+        self._set_bl1_at_axis(bl1_at_axis_param_dict)
 
         ############################ double buffer ###########################
         self._double_buffer(buffer_dict, double_buffer_flag)
@@ -1607,11 +1684,11 @@ class CceConv3dOp:
 
         def _get_batch_axis():
             batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2] * tiling["g_dim"]) * (
-                    (self._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
+                    (CceConv3dOp._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
                     block_dim[0]) + noo
             if tensor_map["cyclebuffer_flag"]:
                 batch_axis = tvm.floordiv(block, block_dim[1] * block_dim[2] * tiling["g_dim"]) * \
-                             ((self._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
+                             ((CceConv3dOp._get_value(fmap_col.shape[1]) + block_dim[0] - 1) //
                               block_dim[0]) + noo + batch_inner_inner
             return batch_axis
 
@@ -1661,15 +1738,16 @@ class CceConv3dOp:
                       (outer_factor // inner_factor) + k_outer_outer_outer_inner) *
                      k_outer_outer_inner_size + k_outer_outer_inner) == 0),
         }
-        self._intrin_mapping(fmap, mad_dict, buffer_dict, new_fmap_col_axis,
-                             tiling, cn_axis, l0a_load2d_flag)
+        intrin_mapping_param_dict = {'fmap': fmap, 'mad_dict': mad_dict, 'buffer_dict': buffer_dict,
+                                     'new_fmap_col_axis': new_fmap_col_axis, 'tiling': tiling,
+                                     'cn_axis': cn_axis, 'l0a_load2d_flag': l0a_load2d_flag}
+        self._intrin_mapping(intrin_mapping_param_dict)
 
         if self.dsl_flag:
             sch[res_c].emit_insn(c_pragma_axis, 'dma_copy')
 
         ########################### cube schedule end #########################
-        self._attach_at(self.body_ops, self.input_ops, compute_at_buffer,
-                        compute_at_axis, tiling)
+        self._attach_at(self.body_ops, self.input_ops, compute_at_buffer, compute_at_axis, tiling)
         self._to_pragma(self.body_ops, self.input_ops, c_outer_inner_inner)
 
         def _get_al1_bound():
@@ -1740,7 +1818,8 @@ class CceConv3dOp:
         tiling.clear()
         return True
 
-    def _get_elmwise_instr(self, elm_instr):
+    @staticmethod
+    def _get_elmwise_instr(elm_instr):
         """
         Get the instr for element-wise ops.
         """
@@ -1781,7 +1860,7 @@ class CceConv3dOp:
         tensorize_axis = lop["tensorize_axis"]
 
         if op_cmd[0].lower() == "elewise":
-            ele_instr = self._get_elmwise_instr(lop["op"])
+            ele_instr = CceConv3dOp._get_elmwise_instr(lop["op"])
             self._schedule[cache_buffer].emit_insn(tensorize_axis, ele_instr)
         elif lop["op"] == 'conv3d_C':
             self._schedule[cache_buffer].emit_insn(
@@ -1915,7 +1994,7 @@ class AutoScheduleOp:
         for i in self._op:
             if i["dst_buffer"].same_as(src_tensor):
                 return i
-        return None
+        return {}
 
     def __analyse_input_output(self):
         spec_body_ops = {"mean_matrix_init"}
