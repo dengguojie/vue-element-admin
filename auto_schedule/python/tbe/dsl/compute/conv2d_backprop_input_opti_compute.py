@@ -20,7 +20,6 @@ conv2d_backprop_input_opti_compute
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_cube
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.tvm import api as tvm
@@ -331,7 +330,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
         """
 
         if kernels.dtype == "int8":
-            _, _, ci0_dim, k0_dim = [i.value for i in kernels.shape]
+            _, _, ci0_dim, k0_dim = (i.value for i in kernels.shape)
 
             def _bl1_elem_func(*index):
                 return kernels(*index)
@@ -356,7 +355,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
                 attrs={"kernel_hw": (self._kernel_h, self._kernel_w)}
             )
         elif kernels.dtype == "float32":
-            k1_dim, co1_dim, co0_dim, k0_dim = [i.value for i in kernels.shape]
+            k1_dim, co1_dim, co0_dim, k0_dim = (i.value for i in kernels.shape)
             shape = (k1_dim, co1_dim, co0_dim, k0_dim)
 
             def _bl1_elem_func(*index):
@@ -383,7 +382,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
                 name=kernels.name + "_B_l0b"
             )
         else:
-            k1_dim, co1_dim, co0_dim, k0_dim = [i.value for i in kernels.shape]
+            k1_dim, co1_dim, co0_dim, k0_dim = (i.value for i in kernels.shape)
             shape = (k1_dim, co1_dim, co0_dim, k0_dim)
 
             def _bl1_elem_func(*index):
@@ -450,7 +449,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
 
         def _inner_generate_mmad_bt(matrix_a, matrix_b, bias):
             g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
-            g_extend_dim, _, co1_dim, co0_dim, _ = [i.value for i in matrix_b.shape]
+            g_extend_dim, _, co1_dim, co0_dim, _ = (i.value for i in matrix_b.shape)
             shape_c = (g_extend_dim, n_dim, co1_dim, hw_dim * m0_dim, co0_dim)
             k0_axis = tvm.reduce_axis([0, k0_dim], name="k0")
             k1_axis = tvm.reduce_axis([0, k1_dim], name="k1")
@@ -481,7 +480,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
 
         def _inner_generate_mmad(matrix_a, matrix_b):
             g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
-            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = [i.value for i in matrix_b.shape]
+            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = (i.value for i in matrix_b.shape)
             if bk1_dim != k1_dim or bk0_dim != k0_dim:
                 error_manager_cube.raise_err_specific(
                     "Conv2DBackpropInputD",

@@ -8,8 +8,6 @@ from math import ceil as math_ceil
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import conv2d_bp_input_ut_testcase
-import util_for_conv2d_bp_input as util
 from op_test_frame.ut import OpUT
 from te import tvm
 from te.platform import cce_conf

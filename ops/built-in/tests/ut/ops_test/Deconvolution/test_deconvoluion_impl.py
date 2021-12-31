@@ -410,6 +410,7 @@ def test_op_mix_case2_mock(test_arg):
                         kernel_name="deconvolution")
             sch = auto_schedule(out)
 
+
 def test_op_mix_case3_mock(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
         filter_frac = (2, 2, 16, 16)

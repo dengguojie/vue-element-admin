@@ -207,13 +207,8 @@ class DeConvPattern(cube_util.CubeDslPattern):
             padu, padd, padl, padr = dma_new_pad
 
             if padu != 0 or padd != 0 or padl != 0 or padr != 0 or stride_h * stride_w > 1:
-                shape_dy_filling = (
-                    dy_batch,
-                    kernel_cout1,
-                    dy_h * stride_h + padu + padd,
-                    dy_w * stride_w + padl + padr,
-                    kernel_cout0
-                    )
+                shape_dy_filling = (dy_batch, kernel_cout1, dy_h * stride_h + padu + padd,
+                                    dy_w * stride_w + padl + padr, kernel_cout0 )
                 if stride_h * stride_w > 1:
                     dy_zero = _fill_zero(shape_dy_filling)
                     dy_filling = tvm.compute(
@@ -222,20 +217,9 @@ class DeConvPattern(cube_util.CubeDslPattern):
                             tvm.all((ho_idx - padu)  % stride_h == 0, (wo_idx - padl) % stride_w == 0,
                                      ho_idx >= padu, ho_idx < shape_dy_filling[2] - padd,
                                      wo_idx >= padl, wo_idx < shape_dy_filling[3] - padr),
-                            dy_ddr[
-                                batch_idx,
-                                kernel_cout1_idx,
-                                (ho_idx - padu) // stride_h,
-                                (wo_idx - padl) // stride_w,
-                                kernel_cout0_idx
-                            ],
-                            dy_zero[
-                                batch_idx,
-                                kernel_cout1_idx,
-                                ho_idx,
-                                wo_idx,
-                                kernel_cout0_idx
-                            ]
+                            dy_ddr[batch_idx, kernel_cout1_idx, (ho_idx - padu) // stride_h,
+                                   (wo_idx - padl) // stride_w, kernel_cout0_idx],
+                            dy_zero[batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx]
                         ),
                         name="dy_filling_dma",
                         tag="ub_filling_dma",
@@ -249,11 +233,8 @@ class DeConvPattern(cube_util.CubeDslPattern):
                             tvm.any(ho_idx < padu, ho_idx > shape_dy_filling[2] - padd - 1,
                                     wo_idx < padl, wo_idx > shape_dy_filling[3] - padr - 1),
                             tvm.const(self._offset_x, dy_ddr.dtype),
-                            dy_ddr[batch_idx,
-                                   kernel_cout1_idx,
-                                   (ho_idx - padu),
-                                   (wo_idx - padl),
-                                   kernel_cout0_idx],
+                            dy_ddr[batch_idx, kernel_cout1_idx, (ho_idx - padu),
+                                   (wo_idx - padl), kernel_cout0_idx],
                         ),
                         name="dy_pad_dma",
                         tag="ub_pad_dma",
@@ -264,6 +245,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
             else:
                 dy_filling = dy_ddr
             return dy_filling
+        
         fusion_para = self._fusion_para
         DeConvPattern.fusion_para_map = fusion_para
         DeConvPattern.dedy = dy_ddr

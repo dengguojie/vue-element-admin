@@ -226,8 +226,8 @@ class Conv2dDxOptiSchedule:
         if TILING.get(l1_shape) == [] and not l0c_multi_group_flag:
             if l1_shape == "AL1_shape":
                 data_amount_l1 = (
-                    reduce(lambda x, y: x * y, DIM_MAP["A_matrix_dim"][2:])
-                    // TILING["block_dim"][2]
+                    reduce(lambda x, y: x * y, DIM_MAP.get("A_matrix_dim")[2:])
+                    // TILING.get("block_dim")[2]
                 ) * DIM_MAP.get(cube_util.GroupDictKeys.dy_c1_extend)
             if l1_shape == "BL1_shape":
                 data_amount_l1 = (
@@ -252,7 +252,7 @@ class Conv2dDxOptiSchedule:
                     * TILING.get("CL0_matrix")[1]
                     * l1_g
                     * block_m
-                    * DTYPE_BYTE_MAP[TENSOR_MAP.get("a_l1").dtype]
+                    * DTYPE_BYTE_MAP.get(TENSOR_MAP.get("a_l1").dtype)
                 )
             else:
                 data_amount_l1 = (
@@ -360,7 +360,7 @@ class Conv2dDxOptiSchedule:
                     * cl0_m_extent
                     * TILING.get("CUB_matrix")[3]
                     * group_cub
-                    * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype]
+                    * DTYPE_BYTE_MAP.get(TENSOR_MAP.get("c_ub").dtype)
                     * isdouble
                 )
             else:

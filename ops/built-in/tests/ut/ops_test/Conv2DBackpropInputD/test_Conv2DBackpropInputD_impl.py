@@ -369,6 +369,7 @@ def _test_conv2d_bp_input_fp32_case_1(test_arg):
                     out = trans_data_compute(dx, trans_out, "NC1HWC0", "NHWC")
                     sch = auto_schedule(out)
 
+
 def _test_conv2d_bp_input_fp32_case_2(test_arg):
    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):

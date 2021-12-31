@@ -131,6 +131,7 @@ def test_op_mix_case4_mock():
                     kernel_name="deconvolution")
             sch = auto_schedule(out)
 
+
 def test_op_compute_int8():
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_no_fixpipe)):
         x = tvm.placeholder(
