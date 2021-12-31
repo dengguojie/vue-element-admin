@@ -91,7 +91,6 @@ static Status generate_split_node_for_filter(ComputeGraph &graph, OpDescPtr conv
   GeShape split_out_shape = input_shape;
   int32_t dim_0 = 0;
   int32_t dim_1 = 1;
-  int32_t dim_2 = 2;
   int32_t dim_3 = 3;
 
   slice_desc = std::make_shared<ge::OpDesc>(conv_op_name+"_filter_split", "SplitD");

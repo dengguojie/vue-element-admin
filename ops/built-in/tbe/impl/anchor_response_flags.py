@@ -42,7 +42,7 @@ class AnchorResponseFlags():
         self.input_size = self.input_shape[0] * self.input_shape[1]
         self.output_size = self.output_shape[0]
 
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+        self.tik_instance = tik.Tik()
         self.block_byte_size = 32
 
         self.input_gm = self.tik_instance.Tensor(self.input_dtype, self.input_shape, scope=tik.scope_gm,
