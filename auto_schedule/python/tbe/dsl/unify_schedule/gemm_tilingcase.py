@@ -407,6 +407,34 @@ def _calc_batch_range(range_x1, range_x2):
     return batch_range
 
 
+def _cal_area(missing_support_info, mode, op_name):
+    """
+    cal the area of matmul or batchmatmul
+    """
+    factor = tbe_platform.BLOCK_REDUCE
+    if GEMMComputeParam.tiling_info_dict["A_dtype"] == "int8":
+        factor = tbe_platform.BLOCK_REDUCE_INT8
+    inputs = missing_support_info["inputs"]
+    m_index, k_m_index = (-1, -2) if GEMMComputeParam.tiling_info_dict["trans_a"] else (-2, -1)
+    k_n_index, n_index = (-1, -2) if GEMMComputeParam.tiling_info_dict["trans_b"] else (-2, -1)
+
+    m_range = _list_comprehensive(inputs[0]["tensor"][0]["range"][m_index], factor)
+    k_m_range = _list_comprehensive(inputs[0]["tensor"][0]["range"][k_m_index], factor)
+    k_n_range = _list_comprehensive(inputs[1]["tensor"][0]["range"][k_n_index], factor)
+    n_range = _list_comprehensive(inputs[1]["tensor"][0]["range"][n_index], factor)
+
+    k_range = _calc_intersection(k_m_range, k_n_range, op_name, "k_range")
+    area = [m_range, k_range, n_range]
+
+    if mode == "dynamic_mknb":
+        batch_range_a = inputs[0]["tensor"][0]["range"][:-2]
+        batch_range_b = inputs[1]["tensor"][0]["range"][:-2]
+        batch_range = _calc_batch_range(batch_range_a, batch_range_b)
+        area.append(batch_range)
+
+    return area
+
+
 def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_key_cnt, context):
     """
     calculate tiling cases with support info
@@ -441,28 +469,8 @@ def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_
             op_name,
             "invalid max_kernel_id"
         )
-    factor = tbe_platform.BLOCK_REDUCE
-    if GEMMComputeParam.tiling_info_dict["A_dtype"] == "int8":
-        factor = tbe_platform.BLOCK_REDUCE_INT8
     for missing_support_info in missing_support_info_list:
-        inputs = missing_support_info["inputs"]
-        m_index, k_m_index = (-1, -2) if GEMMComputeParam.tiling_info_dict["trans_a"] else (-2, -1)
-        k_n_index, n_index = (-1, -2) if GEMMComputeParam.tiling_info_dict["trans_b"] else (-2, -1)
-
-        m_range = _list_comprehensive(inputs[0]["tensor"][0]["range"][m_index], factor)
-        k_m_range = _list_comprehensive(inputs[0]["tensor"][0]["range"][k_m_index], factor)
-        k_n_range = _list_comprehensive(inputs[1]["tensor"][0]["range"][k_n_index], factor)
-        n_range = _list_comprehensive(inputs[1]["tensor"][0]["range"][n_index], factor)
-
-        k_range = _calc_intersection(k_m_range, k_n_range, op_name, "k_range")
-        area = [m_range, k_range, n_range]
-
-        if mode == "dynamic_mknb":
-            batch_range_a = inputs[0]["tensor"][0]["range"][:-2]
-            batch_range_b = inputs[1]["tensor"][0]["range"][:-2]
-            batch_range = _calc_batch_range(batch_range_a, batch_range_b)
-            area.append(batch_range)
-
+        area = _cal_area(missing_support_info, mode, op_name)
         tiling_case += _calc_tiling_case(mode, area, tiling_key_cnt + len(tiling_case))
 
     return tiling_case
@@ -494,7 +502,7 @@ def calc_matmul(outs, option=None):
     var_names = {"dynamic_mkn": (m_name, k_name, n_name),
                  "dynamic_mknb": (m_name, k_name, n_name, "batch")}
 
-    target_area = copy.deepcopy([get_te_var(v).get_bound() for v in var_names[mode]])
+    target_area = copy.deepcopy([get_te_var(v).get_bound() for v in var_names.get(mode)])
     # process target_area result in ND mode. make it M1/ K1 / N1
     if GEMMComputeParam.format_a == "ND":
         target_area[0][0] = math.ceil(target_area[0][0] / UNIT_LEN)
@@ -601,20 +609,19 @@ class MatmulTiling(CubeTilingOp):
         """
         transed_tiling_list = []
         for seed in tiling_list:
-            seed_k_value, seed_m_value = seed["A_shape"][1:3]
-            seed_n_value = seed["B_shape"][1]
-            tiling_value = seed["tiling"]
-            block_n, block_m = tiling_value["block_dim"][1:3]
-            loc_n_value, loc_m_value = tiling_value["CL0_matrix"][0:2]
-            k0_value = seed["A_shape"][4]
-            if not tiling_value["AL1_shape"]:
+            seed_k_value, seed_m_value = seed.get("A_shape")[1:3]
+            seed_n_value = seed.get("B_shape")[1]
+            tiling_value = seed.get("tiling")
+            loc_n_value, loc_m_value = tiling_value.get("CL0_matrix")[0:2]
+            k0_value = seed.get("A_shape")[4]
+            if not tiling_value.get("AL1_shape"):
                 k_al1 = seed_k_value * k0_value
-                multi_m_al1 = math.ceil(math.ceil(seed_m_value / loc_m_value) / block_m)
+                multi_m_al1 = math.ceil(math.ceil(seed_m_value / loc_m_value) / tiling_value.get("block_dim")[2])
                 tiling_value["AL1_shape"] = [k_al1, multi_m_al1, 1, 1]
 
-            if not tiling_value["BL1_shape"]:
+            if not tiling_value.get("BL1_shape"):
                 k_bl1 = seed_k_value * k0_value
-                multi_n_bl1 = math.ceil(math.ceil(seed_n_value / loc_n_value) / block_n)
+                multi_n_bl1 = math.ceil(math.ceil(seed_n_value / loc_n_value) / tiling_value.get("block_dim")[1])
                 tiling_value["BL1_shape"] = [k_bl1, multi_n_bl1, 1, 1]
 
             seed["tiling"] = tiling_value
@@ -673,7 +680,7 @@ class MatmulTiling(CubeTilingOp):
         # add compile_info
         info_dict = self.tiling_info
         bias_flag = info_dict.get("bias_flag")
-        nd_flag = True if GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND" else False
+        nd_flag = GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND"
         add_compile_info("binary_mode_flag", True)
         add_compile_info("binary_attrs", {"bias_flag": bias_flag,
                                           "nd_flag": nd_flag})
@@ -685,7 +692,7 @@ class MatmulTiling(CubeTilingOp):
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [0, 1], [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD], 
+            [0, 1], [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
             [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD])
         if nd_flag:
             l1_choice = list(
@@ -753,7 +760,7 @@ class MatmulTiling(CubeTilingOp):
                 cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
                 cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
                 cache_tiling["schedule_pattern"] = "Aligned"
-            name = int(''.join([str(i) for i in choice]))
+            name = int(''.join((str(i) for i in choice)))
             cache_tiling_all[name] = [[], cache_tiling, []]
 
         return cache_tiling_all
@@ -808,7 +815,7 @@ class MatmulTiling(CubeTilingOp):
             extend_value = math.floor(
                 left_size / (m_l0c_value * k_value * is_al1_double * UNIT_LEN * _get_reduce(self.a_type) *
                              _get_bit(self.a_type) +
-                             n_l0c_value * k_value * is_bl1_double * UNIT_LEN * _get_reduce(self.b_type)*
+                             n_l0c_value * k_value * is_bl1_double * UNIT_LEN * _get_reduce(self.b_type) *
                              _get_bit(self.b_type)))
             m_max = m_value + extend_value * block_m * m_l0c_value
             n_max = n_value + extend_value * block_n * n_l0c_value
