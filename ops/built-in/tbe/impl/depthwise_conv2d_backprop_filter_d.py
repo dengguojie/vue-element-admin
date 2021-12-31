@@ -110,7 +110,7 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument,
+
 @tbe_platform.fusion_manager.register("depthwise_conv2d_backprop_filter_d")
 def depthwise_conv2d_backprop_filter_d_compute(input_fm,
                                                out_backprop,

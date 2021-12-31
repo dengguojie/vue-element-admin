@@ -88,7 +88,7 @@ def parse_fuzz_build_range(info_list):
     list_size = 4
     range_list = []
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
+    if op_type in ["Conv2DBackpropInput", "depthwise_conv2d_backprop_input"]:
         target_index = 2
     elif op_type in ["Conv2DTranspose", "AvgPoolGrad"]:
         target_index = 1
@@ -99,7 +99,7 @@ def parse_fuzz_build_range(info_list):
         invalid = (not isinstance(inputs, list)) or len(inputs) == 0
         if invalid:
             continue
-        # >>> start: parse range from index [0] input
+        # >>> conv2d dx start: parse range from index [0] input
         for input_tensor in inputs:
             invalid = (not isinstance(input_tensor, dict)) or input_tensor.get("index") != target_index
             if invalid:
@@ -112,14 +112,12 @@ def parse_fuzz_build_range(info_list):
                 raise RuntimeError("invalid support info input {}".format(str(input_tensor)))
             input_range = input_tensor.get("tensor")[0].get("range")
             for axis_range in input_range:
-                invalid = (not isinstance(axis_range, list)) \
-                          or len(axis_range) != 2 \
-                          or axis_range[0] < 1 \
+                invalid = (not isinstance(axis_range, list)) or len(axis_range) != 2 or axis_range[0] < 1 \
                           or axis_range[0] > axis_range[1]
                 if invalid:
                     raise RuntimeError("invalid range {}".format(str(axis_range)))
             range_list.append(input_range)
-            # <<< end: parse range from index [0] input
+            # <<< conv2d dx end: parse range from index [0] input
     return range_list
 
 
@@ -134,9 +132,9 @@ def gen_support_info(range_x, ori_tensors):
     Parameters
     ----------
     range_x: list
-         input x range
+    input x range
     ori_tensors: dict
-        orginal vaild tensors
+    orginal vaild tensors
 
     Returns
     -------
@@ -147,7 +145,7 @@ def gen_support_info(range_x, ori_tensors):
     inputs = []
     item = {}
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
+    if op_type in ["Conv2DBackpropInput", "depthwise_conv2d_backprop_input"]:
         item["index"] = 2
     elif op_type in ["Conv2DTranspose", "AvgPoolGrad"]:
         item["index"] = 1
@@ -191,7 +189,7 @@ def gen_support_info(range_x, ori_tensors):
     range_valid[x_format.find("H")] = list(dy_range_nchw[2])
     range_valid[x_format.find("W")] = list(dy_range_nchw[3])
     tensor_info["range"] = range_valid
-    item["tensor"].append(tensor_info)
+    item.get("tensor").append(tensor_info)
     inputs.append(item)
     support_info["inputs"] = inputs
     # <<< end: generate input shape and range
@@ -205,14 +203,14 @@ def add_covered_shape_range(compile_info):
     Parameters
     ----------
     compile_info: dict
-        tiling range info
+    tiling range info
 
     Returns
     -------
     info_list: dict
-        support info and compile info pair
+    support info and compile info pair
     max_id: int
-        last kernel id
+    last kernel id
     """
     info_list = []
     id_list = list(compile_info["block_dim"].keys())
@@ -225,7 +223,7 @@ def add_covered_shape_range(compile_info):
     var_list = [var.get_name() for var in te_vars]
 
     # <<< end: add compute var for op tiling
-    for kernel_id, block_id in compile_info["block_dim"].items():
+    for kernel_id, _ in compile_info["block_dim"].items():
         new_compile = compile_info.copy()
         # >>> start: keep only one record
         for keys, value in new_compile.items():
@@ -352,9 +350,6 @@ def calc_conv2dbp_input(outs, option=None):
         if invalid:
             raise RuntimeError("can't get input from para_dict")
         input_format = ori_tensors_input["ori_format"]
-        pos_list = [input_format.find("N"),
-                    input_format.find("H"),
-                    input_format.find("W")]
         # te fusion make sure that each range is within the range request
         range_str = get_context().get_addition("missing_support_info")
         range_list = []
@@ -396,8 +391,8 @@ def calc_conv2dbp_input(outs, option=None):
     for tgt in tgt_list:
         new_info = copy.deepcopy(conv_info)
         tiling_op = Conv2dBpInputTiling(new_info, DynamicConv2dBpInputParams.var_map)
-        selector = TilingSelection(tiling_op, max_id)
-        tiling_cases += selector.calc_tiling(tgt, var_names)
+        selector_dx = TilingSelection(tiling_op, max_id)
+        tiling_cases += selector_dx.calc_tiling(tgt, var_names)
         # >>> start: gather compile_info process
         if fuzz_build:
             tgt_nhw = []
@@ -407,10 +402,9 @@ def calc_conv2dbp_input(outs, option=None):
             id_list = list(current_info["block_dim"].keys())
             id_list.sort()
             max_id = id_list[-1] + 1
-            # >>> start: make sure range is within tgt_nhw
+            # >>> conv2d dx start: make sure range is within tgt_nhw
             for range_key in ["repo_range", "cost_range"]:
-                valid = isinstance(current_info.get(range_key), dict)
-                if valid:
+                if isinstance(current_info.get(range_key), dict):
                     for kernel_id, range_x in current_info[range_key].items():
                         new_range = []
                         for index, dim_value in enumerate(range_x):
@@ -419,17 +413,17 @@ def calc_conv2dbp_input(outs, option=None):
                             else:
                                 new_range.append(tgt_nhw[index] if dim_value > tgt_nhw[index] else dim_value)
                         current_info[range_key][kernel_id] = new_range
-            # <<< end: make sure range is within tgt_nhw
+            # <<< conv2d dx end: make sure range is within tgt_nhw
             if total_info:
                 # >>> start: add new dict info
                 for key, value in current_info.items():
                     need_update = isinstance(total_info.get(key), dict) \
                                   and isinstance(value, dict)
                     if need_update:
-                        new_item = total_info[key]
+                        new_item = total_info.get(key)
                         new_item.update(value)
                         total_info[key] = new_item
-                        add_compile_info(key, total_info[key])
+                        add_compile_info(key, total_info.get(key))
             else:
                 total_info = current_info
                 # <<< end: add new dict info
@@ -453,7 +447,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.key = 'C_shape'
         self.op_type = "conv2d_bp_input"
 
-    def _modify_repo_tiling(self, tiling_mess):
+    @staticmethod
+    def _modify_repo_tiling(tiling_mess):
         tiling = tiling_mess.get("tiling")
         n_size = tiling_mess.get("B_shape")[1]
         block_dim = tiling.get("block_dim")
@@ -512,14 +507,13 @@ class Conv2dBpInputTiling(CubeTilingOp):
         fused_double_operand_num = fused_double_operand_num if fused_double_operand_num is not None else 0
         fused_double_operand_num /= FUSED_DOUBLE_OPERAND_MUL
         ub_size_limit = tbe_platform_info.get_soc_spec("UB_SIZE")
-        bias_flag = 1 if tiling_mess.get('bias_flag') == True else 0
+        bias_flag = 1 if tiling_mess.get('bias_flag') is True else 0
         bias_size = tiling_mess.get("C_shape")[1] * tiling_mess.get("C_shape")[-1] * bias_flag * cub_dtype_bit
         if (self.stride_h > 1 or self.stride_w > 1):
             if tiling.get("AUB_shape"):
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
                 aub_co1 = aub_tiling_k // (self.b_info[2] * self.b_info[3] * utils.FP16_K)
                 aub_w = tiling_mess["A_shape"][3] * self.stride_w
-                aub_h = (aub_tiling_m + self.stride_h - 1) // self.stride_h
                 aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
                 aub_bit = BIT_RATIO_DICT.get(self.a_type)
                 aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
@@ -596,8 +590,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
         """
         tiling = tiling_mess.get("tiling")
         ori_m = tiling_mess.get("C_shape")[2] * tiling_mess.get("C_shape")[3]
-        if ((self.stride_h > 1 or self.stride_w > 1) and
-            self.k_h == 1 and self.k_w == 1 and ori_m > LARGE_M and tiling["AL0_matrix"][0] == 1):
+        stride_above_one = self.stride_h > 1 or self.stride_w > 1
+        if (stride_above_one and self.k_h == 1 and self.k_w == 1 and ori_m > LARGE_M and tiling["AL0_matrix"][0] == 1):
             max_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             l0a_size = tbe_platform_info.get_soc_spec("L0A_SIZE") // BIT_RATIO_DICT.get(self.a_type)
             l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE") // BIT_RATIO_DICT.get(self.c_type)
@@ -862,15 +856,15 @@ class Conv2dBpInputTiling(CubeTilingOp):
         btype = self.tiling_info["B_dtype"]
         if atype in bit_dir.keys():
             k_al1 = k_w * k_h * 16
-            k_al0 = bit_dir[atype]
+            k_al0 = bit_dir.get(atype)
         else:
             # default value 32
             k_al1 = 32
             k_al0 = 32
 
         if btype in bit_dir.keys():
-            k_bl1 = bit_dir[atype]
-            k_bl0 = bit_dir[atype]
+            k_bl1 = bit_dir.get(atype)
+            k_bl0 = bit_dir.get(atype)
         else:
             # default value 32
             k_bl1 = 32
@@ -908,9 +902,10 @@ class Conv2dBpInputTiling(CubeTilingOp):
         tiling["batch_bef_group_fla"] = 0
         tiling["A_overhead_opt_flag"] = 0
         tiling["B_overhead_opt_flag"] = 0
+        tiling["CUB_channel_wise_flag"] = None
         tiling["AUB_channel_wise_flag"] = None
         tiling["BUB_channel_wise_flag"] = None
-        tiling["CUB_channel_wise_flag"] = None
+        tiling["default_tiling_flag"] = True
         tiling["manual_pingpong_buffer"] = {
             'AUB_pbuffer': 1,
             'BUB_pbuffer': 1,
@@ -922,7 +917,6 @@ class Conv2dBpInputTiling(CubeTilingOp):
             'CUB_pbuffer': 1,
             'UBG_pbuffer': 1,
         }
-        tiling["default_tiling_flag"] = True
         return tiling
 
     def _check_and_set_default_tiling(self, tiling_in):
@@ -931,21 +925,21 @@ class Conv2dBpInputTiling(CubeTilingOp):
                         "B_shape": self.b_info, "C_shape": self.c_info}
         while not self.check_tiling_ub(tiling_in):
             if tiling_in.get("tiling").get("manual_pingpong_buffer").get("CUB_pbuffer") == 2:
-                tiling_in["tiling"]["manual_pingpong_buffer"]["CUB_pbuffer"] = 1
+                tiling_in.get("tiling").get("manual_pingpong_buffer")["CUB_pbuffer"] = 1
                 continue
             _, mc_factor, m0, _ = tiling_in.get("tiling").get("CUB_matrix")[:4]
             if self.k_h == 1 and self.k_w == 1:
                 if (mc_factor * m0 - utils.FP16_M) > self.a_info[3]:
-                    tiling_in["tiling"]["CUB_matrix"][1] -= 1
-                    tiling_in["tiling"]["CL0_matrix"][1] -= 1
-                    tiling_in["tiling"]["AL0_matrix"][0] -= 1
+                    tiling_in.get("tiling").get("CUB_matrix")[1] -= 1
+                    tiling_in.get("tiling").get("CL0_matrix")[1] -= 1
+                    tiling_in.get("tiling").get("AL0_matrix")[0] -= 1
                 else:
                     return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                             "B_shape": self.b_info, "C_shape": self.c_info}
             elif mc_factor > 1:
-                tiling_in["tiling"]["CUB_matrix"][1] -= 1
-                tiling_in["tiling"]["CL0_matrix"][1] -= 1
-                tiling_in["tiling"]["AL0_matrix"][0] -= 1
+                tiling_in.get("tiling").get("CUB_matrix")[1] -= 1
+                tiling_in.get("tiling").get("CL0_matrix")[1] -= 1
+                tiling_in.get("tiling").get("AL0_matrix")[0] -= 1
             else:
                 return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                         "B_shape": self.b_info, "C_shape": self.c_info}
@@ -958,8 +952,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.k_cin = self.b_info[0]
         self.stride_h, self.stride_w = self.tiling_info["strideH_expand"], \
                                        self.tiling_info["strideW_expand"]
-        self.dilate_h, self.dilate_w = self.tiling_info["dilationH"], \
-                                       self.tiling_info["dilationW"],
+        self.dilate_h, self.dilate_w = self.tiling_info["dilationH"], self.tiling_info["dilationW"]
 
         if isinstance(self.tiling_info["padl"], Expr) or isinstance(self.tiling_info["padu"], Expr):
             self.pad_mode = "VAR"
@@ -1051,7 +1044,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         Returns
         -------
         bool, True: match
-              False: do not match
+        False: do not match
 
         """
 
@@ -1084,15 +1077,15 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 utils.FP16_K * self.k_h * self.k_w * \
                 tiling['manual_pingpong_buffer']['BL1_pbuffer']
 
-        l1_buffer_flag = True if fmap_l1_size + filter_l1_size <= utils.L1BUFFER else False
-        
-        A_shape = self.a_info[:3] + [self.get_output_w(fmap_w)] + [self.a_info[-1]]
-        C_shape = self.c_info[:3] + [fmap_w] + [self.c_info[-1]]
-        tiling_mess = {"tiling": tiling, "A_shape": A_shape, "B_shape": self.b_info, "C_shape": C_shape,
+        l1_buffer_flag = fmap_l1_size + filter_l1_size <= utils.L1BUFFER
+
+        a_shape = self.a_info[:3] + [self.get_output_w(fmap_w)] + [self.a_info[-1]]
+        c_shape = self.c_info[:3] + [fmap_w] + [self.c_info[-1]]
+        tiling_mess = {"tiling": tiling, "A_shape": a_shape, "B_shape": self.b_info, "C_shape": c_shape,
                        "fused_double_operand_num": self.tiling_info.get("fused_double_operand_num"),
                        "bias_flag": self.tiling_info.get("bias_flag")}
         ub_buffer_flag = self.check_tiling_ub(tiling_mess)
-        
+
         return l1_buffer_flag and ub_buffer_flag
 
     def get_output_h(self, fmap_h, stride=None):

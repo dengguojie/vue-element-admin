@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import te.lang.cce as tbe
+from tbe.common.context import op_context
 from te import tvm
 from te.platform.cce_conf import te_set_version
 from impl.depthwise_conv2d_backprop_filter_d import depthwise_conv2d_backprop_filter_d_compute
@@ -88,5 +89,6 @@ def test_depthwise_backprop_filter_fusion(
 
 
 if __name__ == '__main__':
-    for testcase in conv2d_bp_input_fusion_testcase:
-        test_depthwise_backprop_filter_fusion(*testcase)
+    with op_context.OpContext():
+        for testcase in conv2d_bp_input_fusion_testcase:
+            test_depthwise_backprop_filter_fusion(*testcase)

@@ -503,7 +503,7 @@ def avg_pool_grad_generalization(orig_input_shape,
 
 @tbe_register.register_operator("AvgPoolGrad")
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
-                             (tuple, list), (tuple, list, str), str, str)   
+                             (tuple, list), (tuple, list, str), str, str)
 def avg_pool_grad(orig_input_shape,
                   input_grad,
                   kernel_matrix,
