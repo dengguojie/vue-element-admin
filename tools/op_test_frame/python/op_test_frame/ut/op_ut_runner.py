@@ -30,6 +30,7 @@ from multiprocessing import Pool
 from functools import reduce
 
 import coverage
+import signal
 from op_test_frame.common import logger
 from op_test_frame.ut import ut_loader
 from op_test_frame.ut import ut_report
@@ -176,9 +177,12 @@ def get_cov_relate_source(module_name: str) -> list:
             module_dir = os.path.dirname(module_dir)
     return [module_name, module_dir]
 
+def receive_signal(signum, frame):
+    raise RuntimeError(f"Receive signal: {signum}")
 
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
+    signal.signal(signal.SIGSEGV, receive_signal)
     res = True
 
     if run_arg.cov_report:
