@@ -30,6 +30,11 @@
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
 
+namespace {
+  constexpr uint64_t INPUTS_SIZE_MIN = 2;
+  constexpr uint64_t OUTPUT_SHAPE_SIZE_LIMIT = 5;
+}
+
 namespace optiling {
 const int SHAPE_INDEX_TWO = 2;
 const int SHAPE_INDEX_THREE = 3;
@@ -139,7 +144,8 @@ bool AippTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op AippTiling: opCompileInfo json error.");
     return false;
   }
-  if (opParas.inputs.size() < 2 || opParas.inputs[0].tensor.size() == 0 || opParas.inputs[1].tensor.size() == 0) {
+  if (opParas.inputs.size() < INPUTS_SIZE_MIN || opParas.inputs[0].tensor.size() == 0 ||
+      opParas.inputs[1].tensor.size() == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op AippTiling: input shape error.");
     return false;
   }
@@ -150,7 +156,7 @@ bool AippTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
 
   const std::vector<int64_t>& outputShape = opParas.outputs[0].tensor[0].shape;
   int64_t outputShapeSize = outputShape.size();
-  if (outputShapeSize != 5 || outputShape[1] != 1) {
+  if (outputShapeSize != OUTPUT_SHAPE_SIZE_LIMIT || outputShape[1] != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op AippTiling: output shape dims must be 5, dim 1 must be equal to 1");
     return false;
   }

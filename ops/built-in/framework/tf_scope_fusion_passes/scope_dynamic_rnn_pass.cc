@@ -22,6 +22,11 @@
 #include "register/scope/scope_fusion_pass_register.h"
 #include "register/register.h"
 
+namespace {
+  constexpr int TRANPOSE_NUM = 2;
+  constexpr int32_t DYNAMICRNN_IN_IDX = 2;
+}
+
 namespace ge {
 static const char* kScopeType = "DynamicRNN";
 static const char* kLstmCellTanhType = "general_basic_lstm_cell_tanh";
@@ -128,7 +133,7 @@ void ScopeDynamicRNNPass::GenQuantScopePatterns(ScopeFusionPatterns& patterns) {
   fw_while->SetSubType(kFwQuantType);
   fw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "fw"));
   fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
-  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 2, 0));
+  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", TRANPOSE_NUM, 0));
   batch3.push_back(fw_while);
 
   ScopePattern* bw_while = new (std::nothrow) ScopePattern();
@@ -141,7 +146,7 @@ void ScopeDynamicRNNPass::GenQuantScopePatterns(ScopeFusionPatterns& patterns) {
   bw_while->SetSubType(kBwQuantType);
   bw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "bw"));
   bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
-  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 2, 0));
+  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", TRANPOSE_NUM, 0));
   bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseSequence", -1, 0));
   bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
   batch3.push_back(bw_while);
@@ -698,21 +703,21 @@ void ScopeDynamicRNNPass::GenerateFusionResultForQuant(const Scope* scope, Fusio
   float scale_b = 0;
   GetQuantScale(nodes_map, scale_x, scale_b);
 
-  //weight to dynamicrnn
+  // weight to dynamicrnn
   auto weight_0 = fusion_rlt->AddInnerNode("weight_0", "Const");
   CHECK_INNER_NODE_CONDITION(weight_0 != nullptr, fusion_rlt);
   Status ret = weight_0->InsertOutput("DynamicRNN_0", 1).BuildInnerNode();
   CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
   QuantWeightRollBack(nodes_map, w_in_node_name, "weight", weight_0->MutableOperator(), scale_x, scale_b);
 
-  //bias to dynamicrnn
+  // bias to dynamicrnn
   auto bias_0 = fusion_rlt->AddInnerNode("bias_0", "Const");
   CHECK_INNER_NODE_CONDITION(bias_0 != nullptr, fusion_rlt);
-  ret = bias_0->InsertOutput("DynamicRNN_0", 2).BuildInnerNode();
+  ret = bias_0->InsertOutput("DynamicRNN_0", DYNAMICRNN_IN_IDX).BuildInnerNode();
   CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
   QuantWeightRollBack(nodes_map, b_in_node_name, "bias", bias_0->MutableOperator(), scale_x, scale_b);
 
-  //dynamicrnn,input x,w,b
+  // dynamicrnn,input x,w,b
   auto DynamicRNN_0 = fusion_rlt->AddInnerNode("DynamicRNN_0", "DynamicRNN");
   CHECK_INNER_NODE_CONDITION(DynamicRNN_0 != nullptr, fusion_rlt);
   ret = DynamicRNN_0->InsertInput(kInputFromFusionScope, 0)
