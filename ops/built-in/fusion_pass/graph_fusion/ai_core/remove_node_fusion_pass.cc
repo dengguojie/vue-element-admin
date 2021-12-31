@@ -485,7 +485,7 @@ Status RemoveNodeFusionPass::ReLinkDataAnchor(vector<LinkIndexPair>& linkIndexPa
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(inputOutDataAnchor, inAnchor) != ge::GRAPH_SUCCESS,
                         VECTOR_FUSION_INNER_ERR_REPORT("ReLinkDataAnchor",
                                                        "Fail to link data edge[%u, %u] of the node.",
-                                                       linkPair.inAnchorIndex, linkPair.outAnchorIndex), 
+                                                       linkPair.inAnchorIndex, linkPair.outAnchorIndex),
                                                        return FAILED);
     }
   }

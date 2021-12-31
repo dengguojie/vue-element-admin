@@ -65,7 +65,7 @@ Status TransdataTransdataPass::RemoveNode(ge::NodePtr node, ge::ComputeGraph& gr
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, node->GetName().c_str());
   }
   // delete the node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, 
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
                     return FAILED);
   return SUCCESS;
@@ -75,7 +75,7 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("TransdataTransdataPass1");
-  FUSION_PASS_CHECK(pattern1 == nullptr, 
+  FUSION_PASS_CHECK(pattern1 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern1->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
@@ -88,7 +88,7 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass1 pattern end");
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("TransdataTransdataPass2");
-  FUSION_PASS_CHECK(pattern2 == nullptr, 
+  FUSION_PASS_CHECK(pattern2 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern2->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
@@ -105,8 +105,8 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass2 pattern end");
 
   FusionPattern* pattern3 = new (std::nothrow) FusionPattern("TransdataTransdataPass3");
-  FUSION_PASS_CHECK(pattern3 == nullptr, 
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), 
+  FUSION_PASS_CHECK(pattern3 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
                     return patterns);
 
   pattern3->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
@@ -166,7 +166,7 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return SUCCESS;
   }
   ge::OpDescPtr firstTransDataOpDesc = transData_1->GetOpDesc();
-  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, 
+  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 opdesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc firstTransDataInputTensor = firstTransDataOpDesc->GetInputDesc(0);

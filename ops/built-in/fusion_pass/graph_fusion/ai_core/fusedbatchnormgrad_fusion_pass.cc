@@ -200,15 +200,15 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                         OP_LOGW(FUSED_OP_TYPE.c_str(), "inDataAnchor is null"), continue);
       if (inDataAnchor->GetIdx() == NUMBER_0) {
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), 
+            SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(),
                                                xUpdateOp->GetInDataAnchor(NUMBER_0)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                            "Add edge between grads input node and x_update node failed."),
                                            return FAILED);
 
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(inDataAnchor->GetPeerOutAnchor(), xReduceOp->GetInDataAnchor(NUMBER_0)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                            "Add edge between grads input node and x_reduce node failed."),
                                            return FAILED);
       }
@@ -348,12 +348,12 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     if (!streamLabelTmp.empty()) {
       if (!ge::AttrUtils::SetStr(xUpdateOp->GetOpDesc(), STREAM_LABEL, streamLabelTmp)) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "BNTrainingUpdateGrad set _stream_label error, fusion failed.");
+                                       "BNTrainingUpdateGrad set _stream_label error, fusion failed.");
         return FAILED;
       }
       if (!ge::AttrUtils::SetStr(xReduceOp->GetOpDesc(), STREAM_LABEL, streamLabelTmp)) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "BNTrainingReduceGrad set _stream_label error, fusion failed.");
+                                       "BNTrainingReduceGrad set _stream_label error, fusion failed.");
         return FAILED;
       }
     }

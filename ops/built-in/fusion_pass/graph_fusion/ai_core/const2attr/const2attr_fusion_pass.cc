@@ -45,7 +45,7 @@ Status Const2AttrFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   return SUCCESS;
 }
 Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr opsKernelInfoStorePtr) {
-  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, 
+  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT("Const2AttrFusion", "opsKernelInfoStorePtr is nullptr"),
                     return FAILED);
 

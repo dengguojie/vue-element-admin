@@ -16,7 +16,7 @@
 
 /*!
  *\file bnupdate_eltwise_fusion_pass.cpp
- *\brief bnupdate eltwise fusion pattern 
+ *\brief bnupdate eltwise fusion pattern
  */
 #include "bnupdate_eltwise_fusion_pass.h"
 #include <string>
