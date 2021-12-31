@@ -627,7 +627,6 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
     }
 
     res = tbe.conv2d_backprop_input(weight, x, shape_weight, shape_res, para_dict=para_dict)
-
     return res
 
 

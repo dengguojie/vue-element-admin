@@ -221,14 +221,10 @@ class Conv3dBackpropFilter:
             self.flag_all_one_case = True
         DynamicConv3dBpFilterParams.flag_all_one_case = self.flag_all_one_case
 
-        cin1_g = group_dict['cin1_g']
-        cout_g = group_dict['cout_g']
-        real_g = group_dict['real_g']
-
         tiling_grads_shape = self.shape_grads_6hd[:]
-        tiling_grads_shape[2] = cout_g // tiling_grads_shape[-1]
+        tiling_grads_shape[2] = group_dict['cout_g'] // tiling_grads_shape[-1]
         tiling_fmap_shape = self.shape_x_6hd[:]
-        tiling_fmap_shape[2] = cin1_g
+        tiling_fmap_shape[2] = group_dict['cin1_g']
 
         # for dynamic
         self.dynamic_mode = self._get_dynamic_mode()
@@ -240,9 +236,9 @@ class Conv3dBackpropFilter:
             "op_type": 'conv3d_backprop_filter',
             "a_shape": tiling_grads_shape,
             "b_shape": tiling_fmap_shape,
-            "c_shape": [cout_g, self.weight_shape[1],
+            "c_shape": [group_dict['cout_g'], self.weight_shape[1],
                         self.weight_shape[3], self.weight_shape[4],
-                        cin1_g * _BLOCK_SIZE],
+                        group_dict['cin1_g'] * _BLOCK_SIZE],
             "a_dtype": self.grads.dtype,
             "b_dtype": self.fmap.dtype,
             "c_dtype": res_dtype,
@@ -252,7 +248,7 @@ class Conv3dBackpropFilter:
             "strideH_expand": 1,
             "strideW_expand": 1,
             "dilation": [1, self.dilation[3], self.dilation[4]],
-            "group": real_g,
+            "group": group_dict['real_g'],
             "fused_coefficient": [0, 0, 0],
             "bias_flag": 0,
             "kernel_name": kernel_name,
@@ -260,12 +256,10 @@ class Conv3dBackpropFilter:
         }
 
         self.flag_load3d_special_case = False
-        dedy_ho = self.shape_grads_6hd[3]
-        dedy_wo = self.shape_grads_6hd[4]
         if not self.var_map \
             and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
-            and dedy_ho != 1 \
-            and dedy_wo == 1:
+            and self.shape_grads_6hd[3] != 1 \
+            and self.shape_grads_6hd[4] == 1:
             self.flag_load3d_special_case = True
 
     def _get_dynamic_mode(self):
@@ -415,7 +409,7 @@ class Conv3dBackpropFilter:
                     "conv3d_backprop_filter", "grads_height",
                     str(grads_height), str(computed_grads_height))
 
-            if (dilation_kernel_height > fmap_height_after_pad):
+            if dilation_kernel_height > fmap_height_after_pad:
                 cube_err.raise_err_specific("conv3d_backprop_filter",
                     "height of filter cannot exceed that of x.")
 
@@ -433,7 +427,7 @@ class Conv3dBackpropFilter:
                     "conv3d_backprop_filter", "grads_width",
                     str(grads_width), str(computed_grads_width))
 
-            if (dilation_kernel_width > fmap_width_after_pad):
+            if dilation_kernel_width > fmap_width_after_pad:
                 cube_err.raise_err_specific("conv3d_backprop_filter",
                     "width of filter cannot exceed that of x.")
 
@@ -861,18 +855,13 @@ class Conv3dBackpropFilter:
             grads_depth = self.shape_list.get('grads_6hd')[1]
             stride_depth = self.stride[0]
             batch_indices, fmap_c1_indices, hw_mad_indices, fmap_c0_indices = indices
-            batch_size_index = batch_indices // grads_depth
             fmap_depth_index = batch_indices % grads_depth * stride_depth + fmap_c1_indices // fmap_channel_1
-            fmap_channel_1_index = fmap_c1_indices % fmap_channel_1
-            fmap_height_index = (hw_mad_indices // fmap_width)
-            fmap_width_index = (hw_mad_indices % fmap_width)
-            fmap_c0_index = fmap_c0_indices
             return tvm.select(
                 tvm.all(fmap_depth_index >= pad_front,
                         fmap_depth_index < pad_front + fmap_depth),
-                fmap(batch_size_index, fmap_depth_index - pad_front,
-                     fmap_channel_1_index, fmap_height_index,
-                     fmap_width_index, fmap_c0_index))
+                fmap(batch_indices // grads_depth, fmap_depth_index - pad_front,
+                     fmap_c1_indices % fmap_channel_1, (hw_mad_indices // fmap_width),
+                     (hw_mad_indices % fmap_width), fmap_c0_indices))
 
         return tvm.compute(
             fmap_shape_matrix,
@@ -987,13 +976,11 @@ class Conv3dBackpropFilter:
         """
 
         batch_size, grads_depth, _, grads_height, grads_width, _ = self.shape_list.get('grads_6hd')
-        hw_fuse = grads_height * grads_width
 
         batch_axis = tvm.reduce_axis((0, batch_size * grads_depth),
                                      name='axis_b')
-        k_axis = tvm.reduce_axis((0, hw_fuse), name='axis_k')
+        k_axis = tvm.reduce_axis((0, grads_height * grads_width), name='axis_k')
 
-        k_1 = k_axis.var // 16
         k_0 = k_axis.var % 16
 
         mode = "f162f32"
@@ -1003,8 +990,8 @@ class Conv3dBackpropFilter:
         c_col = tvm.compute(
             mad_shape,
             lambda g, fkk, grads_c, fmap_c0: tvm.sum(
-                (grads[g, batch_axis, grads_c // 16, k_1, grads_c % 16, k_0] *
-                 fmap[g, batch_axis, k_1, fkk, fmap_c0, k_0]).astype(self.
+                (grads[g, batch_axis, grads_c // 16, k_axis.var // 16, grads_c % 16, k_0] *
+                 fmap[g, batch_axis, k_axis.var // 16, fkk, fmap_c0, k_0]).astype(self.
                                                                   res_dtype),
                 axis=[batch_axis, k_axis]),
             name='dw',
@@ -1018,14 +1005,14 @@ class Conv3dBackpropFilter:
                              (list, tuple), (list, tuple), dict, (list, tuple),
                              str, str)
 def _conv3d_backprop_filter_compute(input_x,
-                                   out_backprop,
-                                   filter_sizes,
-                                   strides=None,
-                                   padding=None,
-                                   group_dict=None,
-                                   dilations=None,
-                                   res_dtype="float32",
-                                   kernel_name="conv3d_backprop_filter_cce"):
+                                    out_backprop,
+                                    filter_sizes,
+                                    strides=None,
+                                    padding=None,
+                                    group_dict=None,
+                                    dilations=None,
+                                    res_dtype="float32",
+                                    kernel_name="conv3d_backprop_filter_cce"):
     """
     the DSL interface of conv3d backprop filter compute
 

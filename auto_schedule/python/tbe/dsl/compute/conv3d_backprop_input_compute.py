@@ -528,6 +528,7 @@ def conv3d_dx(filter,
                                           group_dict, var_map=var_map,
                                           para_dict=para_dict)
 
+
 class DynamicConv3dBpInputParams:
     """
     Dynamic Conv3dBpInput Params
