@@ -238,20 +238,25 @@ class GemmScheduleV2:
             ]
         if tensor_map.get("ub_eltwise") is None:
             ub_factor_parts = None
-        c_gm_emit_axis, fixpipe_axis = util.split_ub(self.res, sch, l1_m_axis, l1_n_axis, ub_factor_parts)
+        c_gm_emit_axis = util.split_ub(self.res, sch, l1_m_axis, l1_n_axis, ub_factor_parts)
         # attach tensor of l0c and bias, c_slice_axis is l1_m_axis[1]
         sch[tensor_map.get("c_l0c")].compute_at(sch[self.res], l1_m_axis[1])
         util.do_buffer_align(sch, tensor_map, self.trans_a, self.trans_b)
-        util.attach_of_ub(sch, tensor_map, fixpipe_axis)
+        util.attach_of_ub(sch, tensor_map, c_gm_emit_axis[2])
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
-        util.attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, batch_inner)
+        util.attach_of_fixpipe(sch, tensor_map, bl1_parts, c_gm_emit_axis[2], batch_inner)
         k_axis = util.split_k(tensor_map.get("c_l0c"), sch, tiling["AL0_matrix"][1], al1_parts[0], bl1_parts[0])
         # attach of l0a and l0b tensor
         sch[tensor_map.get("a_l0a")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
         sch[tensor_map.get("b_l0b")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
         # attch of l1 tensor, l1_attch_axis = l1a_k_axis, l1b_k_axis, l1a_m_axis, l1b_n_axis
-        l1_attch_axis = [k_axis[0], k_axis[1], l1_m_axis[0], l1_n_axis[0]]
-        util.attach_of_l1(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts)
+        util.attach_of_l1(
+            sch,
+            tensor_map,
+            [k_axis[0], k_axis[1], l1_m_axis[0], l1_n_axis[0]],
+            al1_parts,
+            bl1_parts
+        )
         # double buffer function
         util.double_buffer_func(sch, tensor_map, tiling)
         # emit_insn function, emit_axis is for l0c and res emit_insn

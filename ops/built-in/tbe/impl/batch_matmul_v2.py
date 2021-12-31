@@ -135,7 +135,7 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
-def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
+def _shape_check(shape_a, shape_b, shape_bias, trans_a, trans_b):
     """
     Check the given shape for matrix A, B and bias == legal
 
@@ -148,8 +148,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
             and shape_a, shape_b must be 2 dims
     shape_bias: list or tuple
             Shape of bias, only support the input data format with ND
-    src_dtype: str
-            The data type of input, support "float16"
     trans_a: bool
             If True, shape_a is transposed before multiplication
     trans_b: bool
@@ -674,7 +672,7 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
         batch_matmul_vector.matmul_vector_cce(shape_a, shape_b, src_dtype, trans_a, trans_b, shape_bias, kernel_name)
         return
 
-    _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a_local, trans_b_local)
+    _shape_check(shape_a, shape_b, shape_bias, trans_a_local, trans_b_local)
     inp_src_dtype = src_dtype.lower()
 
     m_shape = shape_a[len(shape_a) - 2]

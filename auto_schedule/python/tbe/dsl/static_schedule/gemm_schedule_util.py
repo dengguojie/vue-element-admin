@@ -214,6 +214,26 @@ def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
     return tensor_map
 
 
+def _handle_fixpipe_tensor(sch, fixpipe_tensor, tensor_map, fixpipe_fb_dict, fixpipe_l1_list):
+    """
+    handle l1 and fb scope in fixpipe tensor
+    """
+    vector_params = fixpipe_tensor.op.attrs["vector_params"]
+    vector_tensors = fixpipe_tensor.op.attrs["vector_tensors"]
+    for idx, params_mem in enumerate(vector_params):
+        fixpipe_input = vector_tensors[idx]
+        fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
+        fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
+        if fixpipe_scope_name:
+            fixpipe_fb_dict[fixpipe_scope_name] = sch.cache_read(
+                fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor])
+            fixpipe_l1_list.append(fixpipe_input_l1)
+        else:
+            tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
+
+    return tensor_map, fixpipe_fb_dict, fixpipe_l1_list
+
+
 def set_matmul_fixpipe_scope(res, sch, tensor_map):
     """
     set scope for matmul
@@ -232,23 +252,31 @@ def set_matmul_fixpipe_scope(res, sch, tensor_map):
             fixpipe_fb_dict["local.FB0"] = sch.cache_read(deq_l1, "local.FB0", [fixpipe_input_tensor])
             fixpipe_l1_list.append(deq_l1)
         if fixpipe_input_tensor.op.tag == "fixpipe":
-            vector_params = fixpipe_input_tensor.op.attrs["vector_params"]
-            vector_tensors = fixpipe_input_tensor.op.attrs["vector_tensors"]
-            for idx, params_mem in enumerate(vector_params):
-                fixpipe_input = vector_tensors[idx]
-                fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_input_tensor])
-                fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
-                if fixpipe_scope_name:
-                    fixpipe_fb_dict[fixpipe_scope_name] = sch.cache_read(
-                        fixpipe_input_l1, fixpipe_scope_name, [fixpipe_input_tensor])
-                    fixpipe_l1_list.append(fixpipe_input_l1)
-                else:
-                    tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
+            tensor_map, fixpipe_fb_dict, fixpipe_l1_list = _handle_fixpipe_tensor(
+                sch, fixpipe_input_tensor, tensor_map, fixpipe_fb_dict, fixpipe_l1_list)
         sch[fixpipe_input_tensor].compute_inline()
         fixpipe_input_tensor = fixpipe_input_tensor.op.input_tensors[0]
     tensor_map["fixpipe_fb"] = fixpipe_fb_dict
     tensor_map["fixpipe_l1"] = fixpipe_l1_list
 
+    return tensor_map
+
+
+def _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map):
+    """
+    handle the input_tensor in ub
+    """
+    ub_eltwise_input = []
+    for tensor_mem_input, next_tensor_list in leaf_tensor.items():
+        eltwise_input_flag = False
+        input_tensor = all_tensor[tensor_mem_input]
+        for next_tensor in next_tensor_list:
+            if "elewise" in next_tensor.op.tag:
+                eltwise_input_flag = True
+                break
+        if eltwise_input_flag:
+            ub_eltwise_input.append(sch.cache_read(input_tensor, tbe_platform_info.scope_ubuf, next_tensor_list))
+    tensor_map["ub_eltwise_input"] = ub_eltwise_input
     return tensor_map
 
 
@@ -261,19 +289,11 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
     :param tensor_map: output fixpipe tensor of matmul which after setscope
     :return: dict
     """
-    ub_eltwise_input = []
     ub_eltwise = []
     tensor_map["fixpipe_to_ub"] = all_tensor.get("tensor_c_gm")
 
-    for tensor_mem_input, next_tensor_list in leaf_tensor.items():
-        eltwise_input_flag = False
-        input_tensor = all_tensor[tensor_mem_input]
-        for next_tensor in next_tensor_list:
-            if "elewise" in next_tensor.op.tag:
-                eltwise_input_flag = True
-                break
-        if eltwise_input_flag:
-            ub_eltwise_input.append(sch.cache_read(input_tensor, tbe_platform_info.scope_ubuf, next_tensor_list))
+    # handle the input ub tensor
+    tensor_map = _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map)
 
     for tensor_mem in all_tensor.values():
         if "elewise" in tensor_mem.op.tag:
@@ -293,7 +313,6 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
 
     sch[tensor_map["fixpipe_to_ub"]].set_scope(tbe_platform_info.scope_ubuf)
     tensor_map["ub_eltwise"] = ub_eltwise
-    tensor_map["ub_eltwise_input"] = ub_eltwise_input
 
     return tensor_map
 
@@ -398,7 +417,7 @@ def check_tiling_l0(tiling, tensor_map):
 
     for buffer_name, data_dtype in zip(["A", "B", "C"], [al0_dtype, bl0_dtype, cl0_dtype]):
         l0_buffer_name = "{}{}".format(buffer_name, "L0_matrix")
-        l0_size = reduce(lambda x, y: x * y, tiling[l0_buffer_name][:4]) * DATA_SIZE[data_dtype]
+        l0_size = reduce(lambda x, y: x * y, tiling[l0_buffer_name][:4]) * DATA_SIZE.get(data_dtype)
         l0_size_max = tbe_platform_info.get_soc_spec("L0" + buffer_name + "_SIZE")
         if tiling["manual_pingpong_buffer"].get(buffer_name + "L0_pbuffer") == 2:
             l0_size *= 2
@@ -573,11 +592,11 @@ def split_ub(c_gm, sch, l1_m_axis, l1_n_axis, ub_split):
     else:
         if len(c_gm.shape) in (MATMUL_LEN_ND, BATCH_MATMUL_LEN_ND):
             c_gm_emit_axis = [l1_m_axis[2], l1_n_axis[2]]
-            fixpipe_attach_axis = l1_m_axis[1]
         else:
             c_gm_emit_axis = [l1_n_axis[2], l1_m_axis[2]]
-            fixpipe_attach_axis = l1_m_axis[1]
-    return c_gm_emit_axis, fixpipe_attach_axis
+        fixpipe_attach_axis = l1_m_axis[1]
+
+    return c_gm_emit_axis + [fixpipe_attach_axis]
 
 
 def split_k(c_l0c, sch, l0c_k_factor, l1a_k_part, l1b_k_part):

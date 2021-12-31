@@ -134,8 +134,6 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
 
     return : dynamic format combination, static format combination
     """
-    dyn_case_scenario_list = []
-    full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), input4(offset_w), output
     base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"),
                            ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
@@ -160,17 +158,6 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
         (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float16", "ND"), ("int8", "ND"),
          ("float16", "FRACTAL_NZ"))]
 
-    # ND input and output scenario
-    nd_case_scenario = [
-            (("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
-            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND"))
-        ]
-    nd_case_scenario = []
-    nd_fp32out_scenario = [
-            (("float16", "ND"), ("float16", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
-            (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND"))
-        ]
-    nd_fp32out_scenario = []
 
     cube_vector_scenario = [
         (("float32", "FRACTAL_NZ"), ("float32", "FRACTAL_NZ"), ("float32", "ND"),
@@ -183,13 +170,12 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
          ("int8", "ND"), ("bfloat16", "FRACTAL_NZ"))
     ]
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
-    dyn_case_scenario_list = base_case_scenario + nd_case_scenario
+    dyn_case_scenario_list = base_case_scenario
     # Construct scenario list for static
     if support_l0c2out:
         full_case_scenario_list = base_case_scenario + cube_vector_scenario
     elif src_fp16_flag:
-        full_case_scenario_list = base_case_scenario + fp32_out_scenatio + nd_case_scenario \
-                                  + nd_fp32out_scenario + rnn_scenatio
+        full_case_scenario_list = base_case_scenario + fp32_out_scenatio + rnn_scenatio
     else:
         full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
     return dyn_case_scenario_list, full_case_scenario_list
@@ -244,7 +230,6 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
-
 
 
 @register_operator_compute("BatchMatMulV2", op_mode="dynamic", support_fusion=False)
@@ -713,26 +698,26 @@ def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
     """
     if bias:
         return False
-    if (input_x1.get("range") and input_x2.get("range")):
-        for dim_range in input_x1.get("range"):
-            if not dim_range or None in dim_range:
-                return True
-        for dim_range in input_x2.get("range"):
-            if not dim_range or None in dim_range:
+    if input_x1.get("range") and input_x2.get("range"):
+        for dim_range_1, dim_range_2 in zip(input_x1.get("range"), input_x2.get("range")):
+            input_none_range =  not dim_range_1 or None in dim_range_1 or not dim_range_2 or None in dim_range_2
+            if input_none_range:
                 return True
     else:
         return True
     return False
 
-def _check_ND_in_ND_out(input_x1, input_x2, output_z):
+
+def _check_nd_in_nd_out(input_x1, input_x2, output_z):
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     format_out = output_z.get("format")
     return format_a == "ND" and format_b == "ND" and format_out == "ND"
 
+
 def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z: dict) -> None:
     if get_none_range_flag(input_x1, input_x2, bias):
-        if _check_ND_in_ND_out(input_x1, input_x2, output_z):
+        if _check_nd_in_nd_out(input_x1, input_x2, output_z):
             operation.var("m")
             operation.var("k")
             operation.var("n")
@@ -755,7 +740,7 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z
         operation.var("kal1_16")
         operation.var("kbl1_16")
         operation.var("kl1_times")
-        if _check_ND_in_ND_out(input_x1, input_x2, output_z):
+        if _check_nd_in_nd_out(input_x1, input_x2, output_z):
             operation.var("m_aub")
             operation.var("n_bub")
             operation.var("k_aub")
@@ -768,6 +753,7 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z
             operation.var("b_align_value")
             operation.var("aub_align_bound")
             operation.var("bub_align_bound")
+
 
 def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: dict, output_z: dict, trans_a: bool,
                          trans_b: bool, offset_x: int, kernel_name: str, op_type: str = "BatchMatMulV2"):
