@@ -169,16 +169,16 @@ class CceConv2dBackpropFilterOp:
 
         def _get_dyn_mode(dynamic_para):
             if not dynamic_para:
-                return
+                return None
             var_range = dynamic_para.get("var_range")
             if not var_range:
-                return
+                return None
             if "batch" in var_range and len(var_range) == 1:
                 return "dynamic_batch"
             for var in ("dedy_h", "dedy_w", "fmap_h", "fmap_w"):
                 if var in var_range:
                     return "dynamic_hw"
-            return
+            return None
 
         def _tiling_shape_check():
             """
@@ -631,10 +631,10 @@ class CceConv2dBackpropFilterOp:
                         al1_attach_axis = c_grads_l1_at
                         al1_attach_scope = dw_ddr
                         if tiling.get("A_overhead_opt_flag"):
-                            if del_n0_outer_flag:
-                                # the list of axis is c_grads_mad_at, c_fmap_mad_at
-                                run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
-                            sch[grads_matrix].allocate_at(sch[dw_ddr], c_grads_l1_at, run_once_axes=run_once_n_dim)
+                            # the list of axis is c_grads_mad_at, c_fmap_mad_at
+                            run_once_n_dim_tmp = list(set(run_once_n_dim) - set(c_fmap_mad_at_list)) \
+                                if del_n0_outer_flag else run_once_n_dim
+                            sch[grads_matrix].allocate_at(sch[dw_ddr], c_grads_l1_at, run_once_axes=run_once_n_dim_tmp)
                             al1_attach_scope = l0a_attach_scope
                             al1_attach_axis = l0a_attach_axis
                 else:  # else: fully load, attach to thread_axis
@@ -644,7 +644,7 @@ class CceConv2dBackpropFilterOp:
                         if del_n0_outer_flag:
                             # the list of axis is c_grads_mad_at, c_fmap_mad_at
                             run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
-                        sch[grads_matrix].allocate_at(sch[dw_ddr], fused_multi_core, run_once_axes=run_once_n_dim)
+                        sch[grads_matrix].allocate_at(sch[dw_ddr], fused_multi_core, run_once_axes=run_once_n_dim) 
                         al1_attach_scope = l0a_attach_scope
                         al1_attach_axis = l0a_attach_axis
                 sch[grads_matrix].compute_at(sch[al1_attach_scope], al1_attach_axis)
@@ -901,44 +901,39 @@ class CceConv2dBackpropFilterOp:
                                                                     ele][0]
             return res_ele
 
-        def _get_para(stride_height, stride_width, pad_up, pad_down, \
-                      pad_left, pad_right, kernel_height, kernel_width, \
-                      dilation_height, dilation_width):
-            return stride_height, stride_width, pad_up, pad_down, pad_left, \
-                   pad_right, kernel_height, kernel_width, dilation_height, \
-                   dilation_width
-
         def _get_load3d_para():
             # load_3d parameters
             if self.var_map and not \
                                 DynamicConv2dBpFilterParams.flag_all_one_case:
                 stride_height, stride_width, pad_up, pad_down, pad_left, \
                 pad_right, kernel_height, kernel_width, dilation_height, \
-                dilation_width = _get_para( \
-                    _get_value(fmap_fractal.op.attrs['stride'][0]), \
-                    _get_value(fmap_fractal.op.attrs['stride'][1]), \
-                    _get_value(fmap_fractal.op.attrs['pad'][0]), \
-                    _get_value(fmap_fractal.op.attrs['pad'][1]), \
-                    _get_value(fmap_fractal.op.attrs['pad'][2]), \
-                    _get_value(fmap_fractal.op.attrs['pad'][3]), \
-                    _get_value(fmap_fractal.op.attrs['kernel_size'][2]), \
-                    _get_value(fmap_fractal.op.attrs['kernel_size'][3]), \
-                    _get_value(fmap_fractal.op.attrs['dilation'][2]), \
-                    _get_value(fmap_fractal.op.attrs['dilation'][3]))
+                dilation_width = (
+                    _get_value(fmap_fractal.op.attrs['stride'][0]),
+                    _get_value(fmap_fractal.op.attrs['stride'][1]),
+                    _get_value(fmap_fractal.op.attrs['pad'][0]),
+                    _get_value(fmap_fractal.op.attrs['pad'][1]),
+                    _get_value(fmap_fractal.op.attrs['pad'][2]),
+                    _get_value(fmap_fractal.op.attrs['pad'][3]),
+                    _get_value(fmap_fractal.op.attrs['kernel_size'][2]),
+                    _get_value(fmap_fractal.op.attrs['kernel_size'][3]),
+                    _get_value(fmap_fractal.op.attrs['dilation'][2]),
+                    _get_value(fmap_fractal.op.attrs['dilation'][3])
+                    )
             else:
                 stride_height, stride_width, pad_up, pad_down, pad_left, \
                 pad_right, kernel_height, kernel_width, dilation_height, \
-                dilation_width = _get_para( \
-                    fmap_matrix.op.attrs['stride'][0].value, \
-                    fmap_matrix.op.attrs['stride'][1].value, \
-                    fmap_matrix.op.attrs['pad'][0].value, \
-                    fmap_matrix.op.attrs['pad'][1].value, \
-                    fmap_matrix.op.attrs['pad'][2].value, \
-                    fmap_matrix.op.attrs['pad'][3].value, \
-                    fmap_matrix.op.attrs['kernel_size'][2].value, \
-                    fmap_matrix.op.attrs['kernel_size'][3].value, \
-                    fmap_matrix.op.attrs['dilation'][2].value, \
-                    fmap_matrix.op.attrs['dilation'][3].value)
+                dilation_width = (
+                    fmap_matrix.op.attrs['stride'][0].value,
+                    fmap_matrix.op.attrs['stride'][1].value,
+                    fmap_matrix.op.attrs['pad'][0].value,
+                    fmap_matrix.op.attrs['pad'][1].value,
+                    fmap_matrix.op.attrs['pad'][2].value,
+                    fmap_matrix.op.attrs['pad'][3].value,
+                    fmap_matrix.op.attrs['kernel_size'][2].value,
+                    fmap_matrix.op.attrs['kernel_size'][3].value,
+                    fmap_matrix.op.attrs['dilation'][2].value,
+                    fmap_matrix.op.attrs['dilation'][3].value
+                    )
             return stride_height, stride_width, pad_up, pad_down, pad_left, \
                    pad_right, kernel_height, kernel_width, dilation_height, \
                    dilation_width
@@ -1710,63 +1705,62 @@ class CceConv2dBackpropFilterOp:
         fused_multi_core = _bind_core()
 
         def _split_w_for_conv1d():
-            if flag_conv1d_case:
-                # the offset according to multicore
-                block_div = (block_dim_batch * block_dim_cout * block_dim_cin * block_dim_group)
-                hw_block_offset = fused_multi_core // block_div * _ceil_div(hw_pad_1, block_dim_hw) * CUBE_DIM
-                if self.var_map:
-                    bool_dw_cc = dynamic_bl1_attach == "dw_cc"
-                else:
-                    bool_dw_cc = tiling.get("BL1_shape") and (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
-                if bool_dw_cc:
-                    if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
-                        bl1_k = tiling.get("BL1_shape")[0]
-                        al1_k = grads_matrix_howo
-                        if tiling.get("AL1_shape"):
-                            al1_k = tiling.get("AL1_shape")[0]
-                        if bl1_at_axis == hw_mad_1_l1_in_at:
-                            # hw splited two times before BL1 attach
-                            hw_parts_offset = (hw_mad_1_l1_out_at.var * al1_k +
-                                          hw_mad_1_l1_in_at.var * bl1_k)
-                        else:
-                            # hw splited one time before BL1  attach
-                            hw_parts_offset = hw_mad_1_l1_out_at.var * bl1_k
+            # the offset according to multicore
+            block_div = (block_dim_batch * block_dim_cout * block_dim_cin * block_dim_group)
+            hw_block_offset = fused_multi_core // block_div * _ceil_div(hw_pad_1, block_dim_hw) * CUBE_DIM
+            if self.var_map:
+                bool_dw_cc = dynamic_bl1_attach == "dw_cc"
+            else:
+                bool_dw_cc = tiling.get("BL1_shape") and (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
+            if bool_dw_cc:
+                if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
+                    bl1_k = tiling.get("BL1_shape")[0]
+                    al1_k = grads_matrix_howo
+                    if tiling.get("AL1_shape"):
+                        al1_k = tiling.get("AL1_shape")[0]
+                    if bl1_at_axis == hw_mad_1_l1_in_at:
+                        # hw splited two times before BL1 attach
+                        hw_parts_offset = (hw_mad_1_l1_out_at.var * al1_k +
+                                        hw_mad_1_l1_in_at.var * bl1_k)
                     else:
-                        if not self.var_map and grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
-                            # hw splited one time before BL1  attach
-                            hw_parts_offset = hw_mad_1_l1_out_at * tiling.get("BL1_shape")[0]
-                        else:
-                            # hw splited 2 times before BL1 attach
-                            hw_parts_offset = \
-                                ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
-                                 grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *
-                                 tiling.get("BL1_shape")[0])
+                        # hw splited one time before BL1  attach
+                        hw_parts_offset = hw_mad_1_l1_out_at.var * bl1_k
+                else:
+                    if not self.var_map and grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
+                        # hw splited one time before BL1  attach
+                        hw_parts_offset = hw_mad_1_l1_out_at * tiling.get("BL1_shape")[0]
+                    else:
+                        # hw splited 2 times before BL1 attach
+                        hw_parts_offset = \
+                            ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
+                                grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *
+                                tiling.get("BL1_shape")[0])
 
-                    hw_offset = hw_block_offset + hw_parts_offset
-                else:
-                    # k axis is full load
-                    hw_offset = hw_block_offset
-                # the offset of w according to that of k_axis
-                hw_offset_with_pad = stride_width * hw_offset - pad_left
-                # the extend of w according to that of k_axis
-                if not tiling.get("BL1_shape"):
-                    kbl1_data = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
-                else:
-                    kbl1_data = tiling.get("BL1_shape")[0]
-                hw_extend = (kbl1_data - 1) * stride_width + kw_dilation
-                if self.var_map:
-                    sch[fmap_l1].buffer_tile((None, None),
-                                            (None, None),
-                                            (None, None),
-                                            (None, None),
-                                            (hw_offset_with_pad, hw_extend),
-                                            (None, None))
-                else:
-                    sch[fmap_l1].buffer_tile((None, None),
-                                            (None, None),
-                                            (None, None),
-                                            (hw_offset_with_pad, hw_extend),
-                                            (None, None))
+                hw_offset = hw_block_offset + hw_parts_offset
+            else:
+                # k axis is full load
+                hw_offset = hw_block_offset
+            # the offset of w according to that of k_axis
+            hw_offset_with_pad = stride_width * hw_offset - pad_left
+            # the extend of w according to that of k_axis
+            if not tiling.get("BL1_shape"):
+                kbl1_data = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
+            else:
+                kbl1_data = tiling.get("BL1_shape")[0]
+            hw_extend = (kbl1_data - 1) * stride_width + kw_dilation
+            if self.var_map:
+                sch[fmap_l1].buffer_tile((None, None),
+                                        (None, None),
+                                        (None, None),
+                                        (None, None),
+                                        (hw_offset_with_pad, hw_extend),
+                                        (None, None))
+            else:
+                sch[fmap_l1].buffer_tile((None, None),
+                                        (None, None),
+                                        (None, None),
+                                        (hw_offset_with_pad, hw_extend),
+                                        (None, None))
 
         def _get_bl1_bound():
             """
@@ -2009,7 +2003,8 @@ class CceConv2dBackpropFilterOp:
             if not self.cube_vector_split:
                 sch[dw_ub].mem_unique()
 
-        _split_w_for_conv1d()
+        if flag_conv1d_case:
+            _split_w_for_conv1d()
         if self.l0b_dma_flag:
             sch[fmap_l1].compute_inline()
             sch[fmap_matrix].compute_inline()

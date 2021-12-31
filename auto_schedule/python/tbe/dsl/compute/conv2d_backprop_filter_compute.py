@@ -763,14 +763,12 @@ class Conv2dBackpropFilter:
                                               grads_matrix)
         if not self.flag_all_one_case:
             if not self.var_map:
-                """
-                Load 3D Data Flow:
-                    fmap in DDR to fmap_matrix in L1 to fmap_fractal_nZ in L0B
+                # Load 3D Data Flow:
+                # fmap in DDR to fmap_matrix in L1 to fmap_fractal_nZ in L0B
 
-                Dma Mode Data Flow:
-                    fmap in DDR to fmap_ub_pad in UB to fmap_matrix in L1 to
-                        fmap_fractal_before_zZ in L1 to fmap_fractal_nZ in L0B
-                """
+                # Dma Mode Data Flow:
+                # fmap in DDR to fmap_ub_pad in UB to fmap_matrix in L1 to
+                # fmap_fractal_before_zZ in L1 to fmap_fractal_nZ in L0B
                 fmap_ub = None
                 if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
                     pad_top, pad_bottom, pad_left, pad_right = self.pad
@@ -1256,8 +1254,8 @@ class Conv2dBackpropFilter:
             if self.fmap_dtype == "float32":
                 # matrix: fmap_c0 aligned to 8
                 # fractal: hw_mad aligned to 8, while fmap_c0 aligned to 16
-                # fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
-                # matrix is (1, 49, 2, 3, 3, c0(8)) to fractal is (group(1), batch(1), 8, 9, c0(16), mad_0(8))
+                # e.g., fmap is (1, 16, 7, 7) and kernel is (16, 16, 3, 3)
+                # matrix is (1, 49, 2, 3, 3, 8) to fractal is (1, 1, 8, 9, 16, 8)
                 hw_vm_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
                 c1_index = group_index * self.group_dict.get("cin1_g") + \
                     fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
