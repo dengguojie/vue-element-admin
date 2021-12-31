@@ -50,7 +50,7 @@ FORMAT_DYNAMIC_THRESHOLD = 1 * 1
 BATCH_MATMUL_LENGTH = 5
 
 
-def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
+def _shape_check(tensor_a, tensor_b,
                 tensor_bias, trans_a, trans_b, format_a, format_b, dst_dtype,
                 nz_a, batch_dims):
     """
@@ -906,11 +906,11 @@ def _get_nz_out(tensor_c_ub, batch_dims, kernel_name, tag, out_para):
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
                              (type(None), tvm.tensor.Tensor), (type(None), dict), (type(None), str),
                              (type(None), tvm.tensor.Tensor), (type(None), dict), str)
-def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+def matmul(tensor_a,
            tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND",
            alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None,
            quantize_params=None, format_out=None, compress_index=None,
-           attrs={}, kernel_name="MatMul", op_type=""):
+           attrs=None, kernel_name="MatMul", op_type=""):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -976,6 +976,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
+    attrs = {} if not attrs else attrs
     support_l0c2out = tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     if support_l0c2out:
         result = _matmul_cv_split(tensor_a=tensor_a,
@@ -1009,7 +1010,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     return result
 
 
-def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+def _matmul_compute(
         tensor_a,
         tensor_b,
         trans_a=False,
@@ -1429,7 +1430,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         optmt_c = 1
 
     # not gemv
-    if block_out != tbe_platform.BLOCK_VECTOR:  # pylint: disable=too-many-nested-blocks
+    if block_out != tbe_platform.BLOCK_VECTOR:
         if tensor_a_length in (2, 4):
             if tensor_b_length in (3, 5):
                 batch_b = tensor_b.shape[0].value
@@ -3704,7 +3705,7 @@ def _get_special_l0_factor_tiling(src_shape, m_l0_shape, k_l0_shape, n_l0_shape)
     return m_l0_shape, k_l0_shape, n_l0_shape
 
 
-def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
+def _get_core_num_tiling(m_shape,
                         n_shape, k_shape):
     """
     get block tiling parameter
@@ -3791,7 +3792,7 @@ def _get_value(shape_object):
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                              str, float, float, str, (type(None), tvm.tensor.Tensor),
                              (type(None), dict), (type(None), str))
-def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
+def get_matmul_performance_format(tensor_a,
                                   tensor_b, trans_a=False, trans_b=False,
                                   format_a="ND", format_b="ND", alpha_num=1.0,
                                   beta_num=1.0, dst_dtype="float16",
@@ -3963,7 +3964,7 @@ def _matmul_cv_split(tensor_a,
         op_type
     )
 
-    matmul_object._compute_matmul()
+    matmul_object.compute_matmul()
 
     res = matmul_object.c_matrix
 
@@ -4056,6 +4057,12 @@ class MatMulCompute:
         self.n_shape = 0
         self.format_out = format_out
 
+        # the parameters to be calculated
+        self.c_matrix = None
+        self.batch_shape_a = None
+        self.batch_shape_b = None
+        self.kn_shape = None
+
     @staticmethod
     def _ceil_div(dividend, divisor):
         """
@@ -4069,7 +4076,7 @@ class MatMulCompute:
             error_manager_util.raise_runtime_error(dict_args)
         return (dividend + divisor - 1) // divisor
 
-    def _compute_matmul(self):
+    def compute_matmul(self):
         """MatMul enter
         Input None
         return result in self.c_matrix
@@ -4106,8 +4113,8 @@ class MatMulCompute:
         MatMulComputeParam.n_var_name = "n"
         MatMulComputeParam.k_var_name = "k"
         MatMulComputeParam.tiling_info_dict = {
-            "A_shape": self._get_a_shape_in_nc1hwc0(a_matrix),
-            "B_shape": self._get_b_shape_in_nc1hwc0(b_matrix),
+            "A_shape": self.get_a_shape_in_nc1hwc0(a_matrix),
+            "B_shape": self.get_b_shape_in_nc1hwc0(b_matrix),
             "C_shape": None,
             "A_dtype": self.tensor_a.dtype,
             "B_dtype": self.tensor_b.dtype,
@@ -4121,7 +4128,7 @@ class MatMulCompute:
             "strideW": 1,
             "strideH_expand": 1,
             "strideW_expand": 1,
-            "dilationH": self._get_trans_flag(not self.trans_a, not self.trans_b),
+            "dilationH": self.get_trans_flag(not self.trans_a, not self.trans_b),
             "dilationW": 1,
             "group": 1,
             "fused_double_operand_num": 0,
@@ -4134,7 +4141,8 @@ class MatMulCompute:
             "trans_b": not self.trans_b
         }
 
-    def _get_trans_flag(self, transpose_a, transpose_b):
+    @staticmethod
+    def get_trans_flag(transpose_a, transpose_b):
         """
         get trans flag inorder to get tiling
         """
@@ -4148,7 +4156,8 @@ class MatMulCompute:
             trans_flag = 3
         return trans_flag
 
-    def _get_a_shape_in_nc1hwc0(self, tensor_a_l0a):
+    @staticmethod
+    def get_a_shape_in_nc1hwc0(tensor_a_l0a):
         """
         get a shape's format nc1hwc0 inorder to get tiling
         """
@@ -4158,7 +4167,8 @@ class MatMulCompute:
             a_5hd_shape = [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
         return a_5hd_shape
 
-    def _get_b_shape_in_nc1hwc0(self, tensor_b_l0b):
+    @staticmethod
+    def get_b_shape_in_nc1hwc0(tensor_b_l0b):
         """
         get b shape's format nc1hwc0 inorder to get tiling
         """
@@ -4521,8 +4531,8 @@ class MatMulCompute:
 
         # matrix A
         if self.format_a == "FRACTAL_NZ":
-            # trans is [(batch), K, M, 16, 16/32]
-            # not trans is [(batch), M, K, 16, 16/32]
+            # trans shape -> batch, K, M, 16, 16/32
+            # not trans shape -> batch, M, K, 16, 16/32
             self.m_shape = _get_value(self.tensor_a.shape[-3]) if self.trans_a else _get_value(self.tensor_a.shape[-4])
             self.km_shape = _get_value(self.tensor_a.shape[-4]) if self.trans_a else _get_value(self.tensor_a.shape[-3])
             if in_dynamic():
@@ -4542,8 +4552,8 @@ class MatMulCompute:
 
         # matrix B
         if self.format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
-            # trans is [(batch), N, K, 16, 16/32]
-            # not trans is [(batch), K, N, 16, 16/32]
+            # trans shape -> batch, N, K, 16, 16/32
+            # not trans shape -> batch, K, N, 16, 16/32
             self.kn_shape = _get_value(self.tensor_b.shape[-3]) if self.trans_b else _get_value(self.tensor_b.shape[-4])
             self.n_shape = _get_value(self.tensor_b.shape[-4]) if self.trans_b else _get_value(self.tensor_b.shape[-3])
             if in_dynamic():
