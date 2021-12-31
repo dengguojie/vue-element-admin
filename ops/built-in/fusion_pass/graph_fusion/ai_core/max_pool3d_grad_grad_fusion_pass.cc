@@ -90,7 +90,7 @@ vector<FusionPattern*> MaxPool3DGradGradFusionPass::DefinePatterns() {
 }
 
 int MaxPool3DGradGradFusionPass::GetDHW(const std::vector<int32_t>& ksize, int32_t& D, int32_t& H, int32_t& W,
-                                        Format format) {
+                                        const Format format) {
   if (ksize.size() != 1 && ksize.size() != 3 && ksize.size() != 5) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ksize.size() is %lu, should be 1 3 or 5", ksize.size());
     return -1;

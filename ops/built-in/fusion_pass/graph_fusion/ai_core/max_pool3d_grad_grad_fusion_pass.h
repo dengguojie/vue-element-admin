@@ -29,7 +29,7 @@ class MaxPool3DGradGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  int GetDHW(const std::vector<int32_t>& ksize, int32_t& D, int32_t& H, int32_t& W, ge::Format format);
+  int GetDHW(const std::vector<int32_t>& ksize, int32_t& D, int32_t& H, int32_t& W, const ge::Format format);
   const string FUSED_OP_TYPE = "MaxPool3DGradGradD";
 };
 
