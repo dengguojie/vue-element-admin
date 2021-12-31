@@ -24,11 +24,12 @@ from math import ceil
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.context import get_context
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.static_schedule import util
-import tvm
 from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule as gemm_schedule_integrated
+import tvm
 
 DTYPE_WIDTH_MAP = {"uint64": 4,
                    "float16": 1,
@@ -53,14 +54,13 @@ CORE_NUM_THRITY_TWO = 32
 CORE_NUM_EIGHT = 8
 MATMUL_CONFUSION_TANSPOSE_OUTPUT_DIM = 6
 
-def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
+
+def gemm_para_check(l1_tiling_shape, l0_tiling_shape):
     """
     algorithm: gemm_para_check
 
     Parameters
     ----------
-    gm_shape : the M,N,K shape
-
     l1_tiling_shape : L1 Tiling shape
 
     l0_tiling_shape : L0 Tiling shape
@@ -69,10 +69,6 @@ def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     -------
     None
     """
-    gm_m = gm_shape[0]
-    gm_k = gm_shape[1]
-    gm_n = gm_shape[2]
-
     block_m = l1_tiling_shape[0]
     block_k = l1_tiling_shape[1]
     block_n = l1_tiling_shape[2]
@@ -129,8 +125,8 @@ def _get_header_tensor_in_dequant_ew_fusion(dequant_activation_tensor,
     add header_ub tensor to dequant_activation_tensor.
     """
     header_set = set(placeholder_tensors)
-    header_ub_tensors = list()
-    comm_2_elwt = dict()
+    header_ub_tensors = []
+    comm_2_elwt = {}
     for ten_i in dequant_activation_tensor:
         common_tensors = header_set & set(ten_i.op.input_tensors)
         for common_tensor in common_tensors:
@@ -181,19 +177,20 @@ def get_special_l0_factor(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     return m_l0_shape, k_l0_shape, n_l0_shape
 
 
-def get_batch_factors(tensor_a_shape,  # pylint: disable=too-many-arguments
-                      tensor_a_l0a, tensor_b_l0b, m_var, n_var, is_gemv,
-                      n_nparts_mode):
+def get_batch_factors(tensor_a_l0a, tensor_b_l0b, m_var, n_var, batch_param_dict):
     """
     get batch vars
     """
+    tensor_a_dim = batch_param_dict.get("tensor_a_dim")
+    is_gemv = batch_param_dict.get("is_gemv")
+    n_nparts_mode = batch_param_dict.get("n_nparts_mode")
     m_shape = m_var[0]
     m_factors = m_var[1]
     n_shape = n_var[0]
     n_factors = n_var[1]
     core_inner_m = m_shape
     core_inner_n = n_shape
-    if len(tensor_a_shape) == 3 or len(tensor_a_shape) == 5:
+    if tensor_a_dim in (3, 5):
         batch = tensor_a_l0a.shape[0].value
         if is_gemv:
             batch = tensor_b_l0b.shape[0].value
@@ -257,6 +254,13 @@ def get_mini_frac_shape_map():
                  }
 
     return shape_map
+
+
+def get_mini_shape_map(is_b_nz):
+    """
+    get knowledge tiling of mini platform
+    """
+    return get_shape_map() if is_b_nz else get_mini_frac_shape_map()
 
 
 def get_cloud_shape_map(core_num):
@@ -347,10 +351,8 @@ def _check_scalar(elemwise_tensors):
         input_tensor = elemwise_tensors[0].op.input_tensors[0]
         if functools.reduce(lambda x, y: x*y, input_tensor.shape).value != 1:
             return False
-        else:
-            return True
-    else:
-        return False
+        return True
+    return False
 
 
 def _get_ub_res_byte(_get_out_tensors_width, dequant_activation_tensor,
@@ -366,33 +368,17 @@ def _get_ub_res_byte(_get_out_tensors_width, dequant_activation_tensor,
     return ub_res_byte
 
 
-def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
-                         n_shape, k_shape, l1_fusion_type):
+def get_factor_m_n(core_num, m_axis_outer, n_axis_outer, mnk_shape):
     """
-    :param input_shape_1:the tensor_a shape
-    :param input_shape_2:the tensor_b shape
-    :return:core_num
+    get factor m and factor n according to minimum copy size
     """
-    frac_size = 16
-    is_l1fusion = l1_fusion_type in (0, 1)
-    core_num = get_l1fusion_device_core_num(is_l1fusion)
-    m_axis_outer = (m_shape + frac_size - 1) // frac_size
-    if m_shape == 1:
-        m_axis_outer = 1
-        n_axis_outer = (n_shape + frac_size - 1) // frac_size
-        if n_axis_outer > core_num:
-            return 1, core_num
-        return 1, 1
-
-    m_axis_outer = m_shape // frac_size
-    n_axis_outer = n_shape // frac_size
-    if (m_axis_outer * n_axis_outer) <= core_num:
-        return m_axis_outer, n_axis_outer
+    m_shape, n_shape, k_shape = mnk_shape
     tensor_a_size = m_shape * k_shape
     tensor_b_size = n_shape * k_shape
     min_copy_size = core_num * (tensor_a_size + tensor_b_size)
     m_factor = 1
     n_factor = 1
+    frac_size = 16
 
     for i in range(1, core_num + 1):
         # judge cur_factor
@@ -428,41 +414,69 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
     return m_factor, n_factor
 
 
+def get_perfect_core_num(m_shape, n_shape, k_shape, l1_fusion_type):
+    """
+    get perfect core number according to minimum copy size strategy
+
+    Parameters:
+    ----------
+    m_shape: m shape in one core, number
+    n_shape: n shape in one core, number
+    k_shape: k shape in one core, number
+    l1_fusion_type: type of l1 fusion, number
+
+    Returns:
+    ----------
+    m_factor: perfect m_factor
+    n_factor: perfect n_factor
+    """
+    frac_size = 16
+    is_l1fusion = l1_fusion_type in (0, 1)
+    core_num = get_l1fusion_device_core_num(is_l1fusion)
+    m_axis_outer = (m_shape + frac_size - 1) // frac_size
+    if m_shape == 1:
+        m_axis_outer = 1
+        n_axis_outer = (n_shape + frac_size - 1) // frac_size
+        if n_axis_outer > core_num:
+            return 1, core_num
+        return 1, 1
+
+    m_axis_outer = m_shape // frac_size
+    n_axis_outer = n_shape // frac_size
+    if (m_axis_outer * n_axis_outer) <= core_num:
+        return m_axis_outer, n_axis_outer
+
+    m_factor, n_factor = get_factor_m_n(core_num, m_axis_outer, n_axis_outer,
+                                        [m_shape, n_shape, k_shape])
+
+    return m_factor, n_factor
+
+
 def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
     """
     get knowledge tiling for matmul schedule
     """
     m_shape, k_shape, n_shape, b_trans, ub_res_byte = shape_tiling_args
-    b_trans_val = -1
-    if b_trans is not None:
-        b_trans_val = 1 if b_trans else 0
+    b_trans_map = {True: 1, False: 0}
+    b_trans_val = b_trans_map.get(b_trans, -1)
     shape_args = (m_shape, k_shape, n_shape, b_trans_val, ub_res_byte)
 
-    shape_map = {}
     core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
-    if core_num == DOUBLE_VALUE:
-        if is_b_nz:
-            shape_map = get_shape_map()
-        else:
-            shape_map = get_mini_frac_shape_map()
-    elif core_num in (CORE_NUM_THRITY, CORE_NUM_THRITY_TWO):
-        shape_map = get_cloud_shape_map(core_num)
-    elif core_num == CORE_NUM_EIGHT:
-        shape_map = get_mdc_shape_map()
-    if shape_map.get(shape_args) is not None:
-        tiling_shape = shape_map[shape_args]
-    else:
-        shape_args = (m_shape, k_shape, n_shape, -1, ub_res_byte)
-        if shape_map.get(shape_args) is not None:
-            tiling_shape = shape_map[shape_args]
-        else:
-            shape_args = (m_shape, -1, n_shape, b_trans_val, ub_res_byte)
-            if shape_map.get(shape_args) is not None:
-                tiling_shape = shape_map[shape_args]
-            else:
-                shape_args = (m_shape, -1, n_shape, -1, ub_res_byte)
-                if shape_map.get(shape_args) is not None:
-                    tiling_shape = shape_map[shape_args]
+    typical_platform_shape_map = {
+        DOUBLE_VALUE: get_mini_shape_map(is_b_nz),
+        CORE_NUM_THRITY: get_cloud_shape_map(core_num),
+        CORE_NUM_THRITY_TWO: get_cloud_shape_map(core_num),
+        CORE_NUM_EIGHT: get_mdc_shape_map()
+    }
+    shape_map = typical_platform_shape_map.get(core_num, {})
+
+    shape_args1 = (m_shape, k_shape, n_shape, -1, ub_res_byte)
+    shape_args2 = (m_shape, -1, n_shape, b_trans_val, ub_res_byte)
+    shape_args3 = (m_shape, -1, n_shape, -1, ub_res_byte)
+    for args in [shape_args, shape_args1, shape_args2, shape_args3]:
+        if shape_map.get(args) is not None:
+            tiling_shape = shape_map[args]
+            break
 
     return tiling_shape
 
@@ -526,7 +540,7 @@ def get_refresh_core_factors(m_factors, n_factors, batch):
 
 def get_tensor_c_axis(is_fractal_a, is_fractal_b, tensor_a_reuse_local,
                       tensor_b_reuse_local,
-                      l1_n_outer, l1_m_outer):  # pylint: disable=too-many-arguments
+                      l1_n_outer, l1_m_outer):
     """
     get tensor c axis for allocate_at
     """
@@ -569,7 +583,7 @@ def allocate_axis(sch, batch_double, double_once, tensor_a_reuse_local,
                   tensor_b_reuse_local, tensor_a_l1, tensor_b_l1,
                   tensor_c, res, n_outer_axis, m_outer_axis, l1_k_outer,
                   in_addr_type, input_l1_flag, l1_fusion_and_l1_size_0,
-                  gemv_flag):  # pylint: disable=too-many-arguments
+                  gemv_flag):
     """
     allocate_axis_for tensor_a and tensor_b
     """
@@ -616,7 +630,7 @@ def allocate_axis(sch, batch_double, double_once, tensor_a_reuse_local,
 
 def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
                      m_l1_shape, k_l1_shape, n_l1_shape,
-                     dtype_byte):  # pylint: disable=too-many-locals, unused-argument, too-many-arguments
+                     dtype_byte):
     """
     get the result of resue axis
     """
@@ -711,22 +725,27 @@ def _gen_in_out_tensor_map(out_tensor, in_out_tensor_map):
 
 def check_placeholders_shared(fusion_ele, tensor_a, tensor_b,
                               res, matmul_tensors):
-    """check placeholders shared"""
+    """
+    check placeholders shared
+    """
     if not fusion_ele:
-        return None
+        return
 
     in_out_tensor_map = {}
     _gen_in_out_tensor_map(res, in_out_tensor_map)
     if tensor_a in in_out_tensor_map:
-        for ten_i in in_out_tensor_map[tensor_a]:
+        for ten_i in in_out_tensor_map.get(tensor_a):
             if ten_i not in matmul_tensors:
-                args_dict = {"errorCode": "E61001", "reason": "matmul placeholders can't be shared with elementwise op."}
+                args_dict = {"errorCode": "E61001",
+                             "reason": "matmul placeholders can't be shared with elementwise op."}
                 raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
     if tensor_b in in_out_tensor_map:
-        for ten_i in in_out_tensor_map[tensor_b]:
+        for ten_i in in_out_tensor_map.get(tensor_b):
             if ten_i not in matmul_tensors:
-                args_dict = {"errorCode": "E61001", "reason": "matmul placeholders can't be shared with elementwise op."}
-                raise RuntimeError(args_dict, error_manager_util.get_error_message(dict_args))
+                args_dict = {"errorCode": "E61001",
+                             "reason": "matmul placeholders can't be shared with elementwise op."}
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+    return
 
 
 def get_output_format(tensor):
@@ -774,8 +793,7 @@ def get_weigths_and_compress_index(tensors):
     return b_l1, comp_index
 
 
-def get_compress_block_info(tight_mode,  # pylint: disable=too-many-locals
-                            tensor_w, tile_k, tile_n):
+def get_compress_block_info(tile_k, tile_n):
     """
     get weigths compress info, like, block size, index size
     """
@@ -812,7 +830,7 @@ def emit_insn_func(sche, insn_tensor, insn_axis, insn_tag):
         sche[insn_tensor].emit_insn(insn_axis, insn_tag)
 
 
-def set_compress_info(sch,  # pylint: disable=R0913, R0914
+def set_compress_info(sch,
                       compress_tensor, compress_index,
                       tile_k, tile_n, out_axis):
     """
@@ -865,12 +883,14 @@ def set_compress_info(sch,  # pylint: disable=R0913, R0914
                                     "block_size": block_size,
                                     "hoist_axis": out_axis})
 
+
 def _get_gemm_integrated_flag(res):
     all_tensor = _get_all_tensors(res)
-    for name, tensor in all_tensor.items():
+    for _, tensor in all_tensor.items():
         if "is_gemm_new" in tensor.op.attrs:
             return True
     return False
+
 
 def _get_all_tensors(res):
     """
@@ -878,7 +898,7 @@ def _get_all_tensors(res):
     :param res: tensor
     :return: list
     """
-    all_tensor = dict()
+    all_tensor = {}
     all_tensor["res"] = res
 
     def get(tensor):
@@ -1130,13 +1150,12 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         if quant is not None:
             matmul_dequant_tensor = get_placeholder_tensor(dequant_nz)
             return matmul_dequant_tensor
-        return None
+        return []
 
     matmul_dequant_tensor = _get_matmul_dequant_tensor()
 
     quantify_fusion = requant_fusion or dequant_fusion
 
-    tensor_ele_map = []
     elemwise_tensors = []
     fusion_ele = False
 
@@ -1173,7 +1192,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     def _get_matmul_dequant_activation_tensor():
         if dequant_tensor is None:
-            return None
+            return
         tensor_front_dequant = get_placeholder_tensor(dequant_tensor)
         for ten_in in compute_tensors:
             if ten_in not in tensor_front_dequant:
@@ -1188,7 +1207,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
             dequant_activation_tensor.remove(dequant_type_tensor)
         if res in dequant_activation_tensor and quant is not None:
             dequant_activation_tensor.remove(res)
-        return None
+        return
     _get_matmul_dequant_activation_tensor()
     _add_res_ub(dequant_activation_tensor, res, sch)
     header_ub_tensors = _get_header_tensor_in_dequant_ew_fusion(
@@ -1377,9 +1396,13 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     m_var = [m_shape, m_factors]
     n_var = [n_shape, n_factors]
+    batch_param_dict = {
+        "tensor_a_dim": len(tensor_a_shape),
+        "gemv_flag": gemv_flag,
+        "n_nparts_mode": n_nparts_mode
+    }
     batch, core_inner_m, core_inner_n = get_batch_factors(
-        tensor_a_shape, tensor_a_l0a, tensor_b_l0b, m_var, n_var, gemv_flag,
-        n_nparts_mode)
+        tensor_a_l0a, tensor_b_l0b, m_var, n_var, batch_param_dict)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("batch", batch)
     m_factors, n_factors = get_refresh_core_factors(m_factors, n_factors, batch)
 
@@ -1396,7 +1419,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         ------
             max width for tensors
         """
-        # pylint: cell-var-from-loop
         in_out_tensor_map = {}
         _gen_in_out_tensor_map(out_tensor, in_out_tensor_map)
         stack = [out_tensor]
@@ -1412,15 +1434,15 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                         get mid tesnor width
                         """
                         all_out = True
-                        for out_ten in in_out_tensor_map[tens]:  # pylint: disable=W0640
+                        for out_ten in in_out_tensor_map[tens]:
                             if out_ten not in visited_list:
                                 all_out = False
-                        if all_out and (tens not in visited_list):  # pylint: disable=W0640
-                            visited_list.append(tens)  # pylint: disable=W0640
-                            stack.remove(tens)  # pylint: disable=W0640
+                        if all_out and (tens not in visited_list):
+                            visited_list.append(tens)
+                            stack.remove(tens)
                             # the shape of deq_scale is very small
                             if tens.op.tag not in DEQ_SCALE_CHILD_LIST:
-                                for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
+                                for in_ten in tens.op.input_tensors:
                                     if in_ten not in stack and \
                                             in_ten != matmul_end_tensor:
                                         stack.append(in_ten)
@@ -1429,8 +1451,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                             width_local = 0
                             cast_flag = False
                             for ele in stack:
-                                width_local = width_local + DTYPE_WIDTH_MAP[ele.dtype]
-                                if DTYPE_WIDTH_MAP[ele.dtype] == 2:
+                                width_local = width_local + DTYPE_WIDTH_MAP.get(ele.dtype)
+                                if DTYPE_WIDTH_MAP.get(ele.dtype) == 2:
                                     cast_flag = True
                             if width_local == 2 and cast_flag:
                                 width_local = 3
@@ -1442,17 +1464,16 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
                 else:
                     def calc_width_tail(width):
-                        # pylint: cell-var-from-loop
-                        visited_list.append(tens)  # pylint: disable=W0640
-                        stack.remove(tens)  # pylint: disable=W0640
-                        for in_ten in tens.op.input_tensors:  # pylint: disable=W0640
+                        visited_list.append(tens)
+                        stack.remove(tens)
+                        for in_ten in tens.op.input_tensors:
                             if in_ten not in stack and in_ten != matmul_end_tensor:
                                 stack.append(in_ten)
                         width_local = 0
                         cast_flag = False
                         for ele in stack:
-                            width_local = width_local + DTYPE_WIDTH_MAP[ele.dtype]
-                            if DTYPE_WIDTH_MAP[ele.dtype] == 2:
+                            width_local = width_local + DTYPE_WIDTH_MAP.get(ele.dtype)
+                            if DTYPE_WIDTH_MAP.get(ele.dtype) == 2:
                                 cast_flag = True
                         if width_local == 2 and cast_flag:
                             width_local = 3
@@ -1467,11 +1488,11 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                 tmp_stack.append(ele)
         return width
 
-    l0a_byte = int(DTYPE_WIDTH_MAP[tensor_a_l0a.dtype] * 2)
-    l0b_byte = int(DTYPE_WIDTH_MAP[tensor_b_l0b.dtype] * 2)
-    l0c_byte = int(DTYPE_WIDTH_MAP[tensor_c.dtype] * 2)
-    l1a_byte = int(DTYPE_WIDTH_MAP[tensor_a_l1.dtype] * 2)
-    l1b_byte = int(DTYPE_WIDTH_MAP[tensor_b_l1.dtype] * 2)
+    l0a_byte = int(DTYPE_WIDTH_MAP.get(tensor_a_l0a.dtype) * 2)
+    l0b_byte = int(DTYPE_WIDTH_MAP.get(tensor_b_l0b.dtype) * 2)
+    l0c_byte = int(DTYPE_WIDTH_MAP.get(tensor_c.dtype) * 2)
+    l1a_byte = int(DTYPE_WIDTH_MAP.get(tensor_a_l1.dtype) * 2)
+    l1b_byte = int(DTYPE_WIDTH_MAP.get(tensor_b_l1.dtype) * 2)
 
     def get_scope_byte_size(tensor_ub, tensor_ub_fract):
         """
@@ -1480,7 +1501,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         # Calculating tiling para need a_ub info
         ub_byte = 0
         if tensor_ub is not None:
-            ub_byte = int(DTYPE_WIDTH_MAP[tensor_ub.dtype] * 2)
+            ub_byte = int(DTYPE_WIDTH_MAP.get(tensor_ub.dtype) * 2)
             if tensor_ub_fract is not None:
                 ub_byte = ub_byte * 2
         return ub_byte
@@ -1493,9 +1514,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                                    ub_res_byte, elemwise_tensors)
 
     if gemv_flag:
-        tmp = a_ub_byte  # pylint: disable=R1712
-        a_ub_byte = b_ub_byte
-        b_ub_byte = tmp
+        a_ub_byte, b_ub_byte = b_ub_byte, a_ub_byte
 
     ub_reserve_buff = 0
     if dequant_fusion or tensor_c_ub.op.attrs['scale_drq'].value == "ENABLE":
@@ -1603,8 +1622,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                                                       n_l0_shape)
 
     # tiling param check
-    gemm_para_check([m_shape, k_shape, n_shape], l1_tiling_shape,
-                    l0_tiling_shape)
+    gemm_para_check(l1_tiling_shape, l0_tiling_shape)
 
     # compute L1->L0 tiling params
     m_l0_tile = m_l0_shape // block_in
@@ -1634,9 +1652,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     _date_transfer_tiling_check(date_transfer_fusion, n_l1_tile, n_l0_tile)
 
     fusion_n_l1_tile = n_l1_tile
-    fusion_n_l0_tile = n_l0_tile
     if date_transfer_fusion and n_cut_even:
-        fusion_n_l0_tile = n_l0_tile // 2
         fusion_n_l1_tile = n_l1_tile // 2
 
     def _update_n_factor(n_nparts_mode, n_factors):
@@ -1700,20 +1716,20 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         gm_ub = None
         ele_header_ub_tensors = []
         if not fusion_ele:
-            return gm_ub, ele_header_ub_tensors, dict()
+            return gm_ub, ele_header_ub_tensors, {}
         in_out_tensor_map = {}
         _gen_in_out_tensor_map(res, in_out_tensor_map)
         # multi output fusion with elementwise
         if fusion_ele and tensor_c_gm in res_ori:
             gm_ub = sch.cache_read(tensor_c_gm, tbe_platform_info.scope_ubuf,
-                                   in_out_tensor_map[tensor_c_gm])
+                                   in_out_tensor_map.get(tensor_c_gm))
 
         tensor_ele_ub = []
         header_tensors = list(set(header_tensors))
         for ten_i in header_tensors:
-            if in_out_tensor_map[ten_i][0] not in matmul_tensors:
+            if in_out_tensor_map.get(ten_i)[0] not in matmul_tensors:
                 ele_ub = sch.cache_read(ten_i, tbe_platform_info.scope_ubuf,
-                                        in_out_tensor_map[ten_i])
+                                        in_out_tensor_map.get(ten_i))
                 tensor_ele_ub.append(ele_ub)
                 ele_header_ub_tensors.append(ele_ub)
 
@@ -1730,7 +1746,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         """
         get axpy_ub to axpy_parents[1]_ub dict, in order to set reused_by.
         """
-        axpy_and_parent = list()
+        axpy_and_parent = []
         for ten_i in elemwise_tensors:
             if "elewise_binary_scalar_axpy" in ten_i.op.tag:
                 axpy_and_parent.append([ten_i, ten_i.op.input_tensors[1]])
@@ -1746,12 +1762,12 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
             sch[ten_i].compute_inline()
         if axpy_and_parent:
             return dict(axpy_and_parent)
-        return dict()
+        return {}
 
     gm_ub, ele_header_ub_tensors, axpy_2_parent = \
         set_scope_buffer_type(placeholder_tensors)
 
-    def set_tensor_buffer_align(gm_pattern):
+    def set_tensor_buffer_align():
         """
         set tensor_c and tensor_c_add_bias buffer align
         """
@@ -1816,7 +1832,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                                               (unchanged, block_out))
 
     # set tensor buffer align
-    set_tensor_buffer_align(mad_pattern)
+    set_tensor_buffer_align()
 
     def _set_requant_transfer_buffer_align(requant_fusion,
                                            requant_data_transfer):
@@ -1836,7 +1852,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     is_l1fusion = l1_fusion_type in (0, 1)
     core_num = get_l1fusion_device_core_num(is_l1fusion)
-    core_thres = core_num // 2
 
     batch_outer = None
     # for multi batch use multi block
@@ -1845,8 +1860,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         if batch > core_num:
             batch_factor = core_num
         cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_batch_blk", batch_factor)
-        batch_outer, batch_inner = sch[res].split(res.op.axis[0],
-                                                  nparts=batch_factor)
+        batch_outer, _ = sch[res].split(res.op.axis[0],
+                                        nparts=batch_factor)
         thread_block = tvm.thread_axis("blockIdx.x")
         sch[res].bind(batch_outer, thread_block)
 
@@ -1912,7 +1927,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         quant_fusion = requant_fusion or dequant_fusion
         if not quant_fusion:
             return tensor_c_ub
-        return None
+        return
 
     def _is_multicore_bind_naxis(res, format_out, tensor_len_c,
                                  n_l1_tile, block_out):
@@ -2063,7 +2078,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         split c ub tensor and return emit insn axis
         """
         if c_ub_tensor is None:
-            return None
+            return
 
         block_in, block_out = block_value
         m_factor, n_factor = factor_value

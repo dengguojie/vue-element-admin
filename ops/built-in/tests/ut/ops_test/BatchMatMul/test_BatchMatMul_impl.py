@@ -244,6 +244,7 @@ ut_case.add_case("Ascend920A", case9)
 ut_case.add_case(["Ascend910A"], case12)
 ut_case.add_case(["Ascend910A"], case13)
 ut_case.add_case(["Ascend910A"], case14)
+
 print("==========add case for batchmamtul fusion===============")
 for fusion_case in batchmatmul_ut_fusion_case:
    ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
