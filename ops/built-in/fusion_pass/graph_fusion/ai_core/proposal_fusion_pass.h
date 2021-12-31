@@ -33,7 +33,7 @@ class ProposalFusionPass : public PatternFusionBasePass {
 
  private:
   void GenerateShifts(int height, int width, float feat_stride, vector<float>& shifts);
-  Status GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr proposalVNode);
+  Status GenerateAnchorsFp16(uint16_t* output1, const ge::NodePtr proposalVNode);
   const string FUSED_OP_TYPE = "ProposalD";
 };
 

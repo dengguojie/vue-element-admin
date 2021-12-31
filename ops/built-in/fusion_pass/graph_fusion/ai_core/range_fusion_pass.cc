@@ -42,7 +42,7 @@ static float EPSILON = 0.0000001;
 static const char* FUSED_NODE = "Range";
 static const string PATTERN_FUSED_NODE = "Range";
 
-static void CalcData(const Tensor& data, const DataType& dtype, vector<float>& constVec) {
+static void CalcData(const Tensor& data, vector<float>& constVec) {
   const uint8_t* const_data = data.GetData();
   if (const_data == nullptr) {
     return;
@@ -53,7 +53,7 @@ static void CalcData(const Tensor& data, const DataType& dtype, vector<float>& c
   }
 }
 
-static void CalcData(const Tensor& data, const DataType& dtype, vector<int32_t>& constVec) {
+static void CalcData(const Tensor& data, vector<int32_t>& constVec) {
   const uint8_t* const_data = data.GetData();
   if (const_data == nullptr) {
     return;
@@ -140,9 +140,9 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
     vector<float> start_vec;
     vector<float> limit_vec;
     vector<float> delta_vec;
-    CalcData(start_tensor, start_type, start_vec);
-    CalcData(limit_tensor, limit_type, limit_vec);
-    CalcData(delta_tensor, delta_type, delta_vec);
+    CalcData(start_tensor, start_vec);
+    CalcData(limit_tensor, limit_vec);
+    CalcData(delta_tensor, delta_vec);
     start_fp = start_vec[0];
     limit_fp = limit_vec[0];
     delta_fp = delta_vec[0];
@@ -150,9 +150,9 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
     vector<int32_t> start_vec;
     vector<int32_t> limit_vec;
     vector<int32_t> delta_vec;
-    CalcData(start_tensor, start_type, start_vec);
-    CalcData(limit_tensor, limit_type, limit_vec);
-    CalcData(delta_tensor, delta_type, delta_vec);
+    CalcData(start_tensor, start_vec);
+    CalcData(limit_tensor, limit_vec);
+    CalcData(delta_tensor, delta_vec);
     start_fp = float(start_vec[0]);
     limit_fp = float(limit_vec[0]);
     delta_fp = float(delta_vec[0]);

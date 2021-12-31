@@ -148,7 +148,7 @@ void ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride
   delete[] shifts_tmp;
 }
 
-Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr proposalVNode) {
+Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, const ge::NodePtr proposalVNode) {
   ge::GeTensorDesc proposalInputTensor = proposalVNode->GetOpDesc()->GetInputDesc(1);
   int batch = proposalInputTensor.GetShape().GetDim(0);
   int channel = proposalInputTensor.GetShape().GetDim(1);
@@ -190,9 +190,9 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr pr
 
   if ((int)anchor_scale.size() * (int)anchor_ratio.size() * 4 != channel) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-            "Proposal input channel is invalid, scale.size*ratio.size*4 must equal channel,"
-            "scale.size:%lu, ratio.size:%lu, channel:%d",
-            anchor_scale.size(), anchor_ratio.size(), channel);
+                                   "Proposal input channel is invalid, scale.size*ratio.size*4 must equal channel,"
+                                   "scale.size:%lu, ratio.size:%lu, channel:%d",
+                                   anchor_scale.size(), anchor_ratio.size(), channel);
     return FAILED;
   }
 
