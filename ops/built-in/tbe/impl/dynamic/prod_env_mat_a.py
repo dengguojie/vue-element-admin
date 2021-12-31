@@ -31,10 +31,12 @@ class Constant:
     DTYPE_BYTES = {"float32": 4, "float16": 2}
 
 
+# 'pylint: disable=too-many-public-methods
 class ProdEnvMatA:
     """
     ProdEnvMatA class
     """
+    # 'pylint: disable=unused-argument
     def __init__(self, coord, types, natoms, box, mesh, davg, dstd, sel_a, rcut, rcut_smth, nlist,
                  split_count, split_index, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile())
@@ -423,7 +425,6 @@ class ProdEnvMatA:
 
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             descrpt_a_deriv_tensor = dstd_ub
-            nnei_data_move_blocks = self.nnei_align // self.block_num
 
             self.tik_instance.vadds(self.nnei_align, descrpt_a_deriv_tensor,
                                     descrpt_deriv_tensor,
@@ -528,7 +529,6 @@ class ProdEnvMatA:
         concat rij data in res ub buffer.
         """
         nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
-        nnei_data_move_blocks = nnei_align // self.block_num
         rij_tensor = free_buffer
 
         self.tik_instance.vadds(nnei_align, rij_tensor,
@@ -564,7 +564,6 @@ class ProdEnvMatA:
         concat rij descrpt descrpt_deriv data in res ub buffer.
         """
         nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
-        nnei_data_move_blocks = nnei_align // self.block_num
 
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             descrpt_a_tensor = free_buffer
@@ -698,9 +697,7 @@ class ProdEnvMatA:
         compute descrpt and descrpt_deriv last process.
         """
         compute_nums = self.nnei
-        tail_mask = compute_nums % self.nnei_once_repeat_nums
         nnei_mask_repeat = compute_nums // self.nnei_once_repeat_nums
-        tail_add_start = nnei_mask_repeat * self.nnei_once_repeat_nums
         nnei_repeat_times = (compute_nums + 63) // self.nnei_once_repeat_nums
 
         descrpt_a_0 = res_descrpt_a_tensor[0]
@@ -848,11 +845,6 @@ class ProdEnvMatA:
 
         descrpt_a_tensors = [descrpt_a_0, descrpt_a_1, descrpt_a_2, descrpt_a_3]
 
-        descrpt_a_deriv_tensors = [descrpt_a_deriv_0, descrpt_a_deriv_1, descrpt_a_deriv_2,
-                                   descrpt_a_deriv_3, descrpt_a_deriv_4, descrpt_a_deriv_5,
-                                   descrpt_a_deriv_6, descrpt_a_deriv_7, descrpt_a_deriv_8,
-                                   descrpt_a_deriv_9, descrpt_a_deriv_10, descrpt_a_deriv_11]
-
         self.concat_result(descrpt_a_tensors,
                            res_descrpt_a_tensor,
                            free_buffer)
@@ -865,9 +857,7 @@ class ProdEnvMatA:
         the first vec compute process for descrpt and descrpt_deriv.
         """
         compute_nums = self.nnei
-        tail_mask = compute_nums % self.nnei_once_repeat_nums
         nnei_mask_repeat = (compute_nums + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums
-        tail_addr_start = nnei_mask_repeat * self.nnei_once_repeat_nums
 
         self.tik_instance.vec_dup(self.nnei_once_repeat_nums, sw_tensor, 0,
                                   nnei_mask_repeat, self.repeat_stride)
@@ -974,9 +964,6 @@ class ProdEnvMatA:
 
         revert_min = self.tik_instance.Scalar(dtype="float32", name="revert_min",
                                               init_value=self.rcut * (-1))
-
-        max_sub_min = self.tik_instance.Scalar(dtype="float32", name="max_sub_min",
-                                               init_value=self.rcut_smth - self.rcut)
 
         rev_max_sub_min = self.tik_instance.Scalar(dtype="float32", name="rev_max_sub_min",
                                                    init_value=1 / (self.rcut_smth - self.rcut))
@@ -1243,10 +1230,6 @@ class ProdEnvMatA:
         """
         sort proposal by score.
         """
-        cur_type_neighbour_nums_align = self.tik_instance.Scalar(self.INT32_TYPE, "cur_type_neighbour_nums_align",
-                                                                 init_value=(self.cur_type_neighbour_nums + 15)
-                                                                            // 16 * 16)
-
         self.tik_instance.vrpsort16(dst_proposal, tensor_proposal,
                                     self.max_nbor_size // 16)
 
@@ -1259,9 +1242,6 @@ class ProdEnvMatA:
                                 self.repeat_stride, self.repeat_stride,
                                 0, "counter")
 
-        proposal_tensors = [dst_proposal, tensor_proposal]
-        proposal_dst_point = self.tik_instance.Scalar(self.INT32_TYPE, "proposal_dst_point", init_value=0)
-        proposal_src_point = self.tik_instance.Scalar(self.INT32_TYPE, "proposal_src_point", init_value=0)
         cur_range_target_nums = self.tik_instance.Scalar(self.INT32_TYPE, "cur_range_target_nums",
                                                          init_value=16 * 4)
 
@@ -1278,7 +1258,7 @@ class ProdEnvMatA:
         cur_sort = self.tik_instance.Scalar(self.INT32_TYPE, "cur_sort",
                                             init_value=self.max_nbor_size + 100)
 
-        with self.tik_instance.for_range(cur_range_target_nums, cur_sort) as cur_times:
+        with self.tik_instance.for_range(cur_range_target_nums, cur_sort):
             vector_nums.set_as(self.max_nbor_size // cur_range_target_nums)
             dst_offset.set_as(0)
             single_qune_nums.set_as(cur_range_target_nums // 4)
@@ -1648,7 +1628,7 @@ class ProdEnvMatA:
             sorted_dis_dot_tensor = self.tik_instance.Tensor(self.coord_dtype, [extract_length_align],
                                                              name="sorted_dis_dot_tensor",
                                                              scope=self.tik.scope_ubuf)
-            
+
             init_dis = self.tik_instance.Scalar("float32", "init_dis",
                                                 init_value=self.rcut_smth + 1)
 
@@ -1662,14 +1642,14 @@ class ProdEnvMatA:
             self.tik_instance.vector_dup(self.repeat_once_size, sorted_dis_dot_tensor, init_dis_dot,
                                          extract_length_align // self.nnei_once_repeat_nums, self.block_stride,
                                          self.repeat_stride)
-            
+
             cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "loc_idx",
                                                init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
 
             for_input_cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "for_input_cur_loc",
                                                          init_value=self.nloc_offset +
                                                                     block_idx * one_cor_nloc_num + loc_nei_idx)
-            
+
             cur_loc_index = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_index",
                                                      init_value=for_input_cur_loc + 1)
 
@@ -1922,6 +1902,7 @@ class ProdEnvMatA:
                                             self.rij_gm, self.nlist_gm], config={})
 
 
+# 'pylint: disable=unused-argument
 def _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
                   rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, kernel_name):
     """
@@ -1992,6 +1973,7 @@ def _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "type_num", type_num)
 
 
+# 'pylint: disable=redefined-builtin
 @register_operator("ProdEnvMatA")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -2032,7 +2014,7 @@ def prod_env_mat_a(coord, type, natoms, box, mesh, davg, dstd, descrpt, descrpt_
     """
     _check_params(coord, type, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
                   rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, kernel_name)
-    prod_env_mat_a_obj = ProdEnvMatA(coord, type, natoms, box, mesh, davg, dstd, sel_a, rcut_r, rcut_r_smth, nlist,
-                                     split_count, split_index, kernel_name)
+    prod_env_mat_a_obj = ProdEnvMatA(coord, type, natoms, box, mesh, davg, dstd, sel_a, rcut_r, rcut_r_smth,
+                                     nlist, split_count, split_index, kernel_name)
 
     prod_env_mat_a_obj.compute_process()

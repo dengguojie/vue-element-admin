@@ -151,7 +151,7 @@ class AsStrided:
                                       self.tiling_params[self.dim_info_beg + 2])
         for idx, val in enumerate(AsStrided.SCALAR_INDEX[1:20]):
             gap = val * 3
-            var_offset["tmp_offset_" + str(idx + 2)] = (var_offset["tmp_offset_" + str(val)] +
+            var_offset["tmp_offset_{}".format(idx + 2)] = (var_offset["tmp_offset_{}".format(val)] +
                                                         axis_0_cur_idx // self.tiling_params[self.dim_info_beg + gap] %
                                                         self.tiling_params[self.dim_info_beg + gap + 1] *
                                                         self.tiling_params[self.dim_info_beg + gap + 2])

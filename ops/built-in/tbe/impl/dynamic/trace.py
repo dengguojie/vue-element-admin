@@ -14,13 +14,12 @@ http://www.apache.org/licenses/LICENSE-2.0
 trace
 """
 
-import json
-import math
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
@@ -49,7 +48,7 @@ def get_bytes_len(dtype):
         if i.isdigit():
             break
         index += 1
-    return (int(dtype[index:]) // 8)
+    return int(dtype[index:]) // 8
 
 
 def ceil_value(value, factor):
@@ -211,14 +210,12 @@ class TikTrace():
                 process_limit = self.tik_instance.Scalar(dtype="int32",
                     name="process_limit",
                     init_value=move_offset + self.data_num_each_core)
-                with self.tik_instance.if_scope(process_limit 
-                    <= self.metrix_rank):
-                    self._trace_computer_each_core(index, move_offset,
-                        self.data_num_each_core)
+                with self.tik_instance.if_scope(process_limit <= self.metrix_rank):
+                    self._trace_computer_each_core(index, move_offset, self.data_num_each_core)
                 with self.tik_instance.else_scope():
-                    tail_cnt = self.tik_instance.Scalar(dtype="int32",
-                        name="tail_cnt", init_value=self.metrix_rank - (
-                            (self.aicore_num - 1) * self.data_num_each_core))
+                    tail_cnt = self.tik_instance.Scalar(
+                        dtype="int32", name="tail_cnt",
+                        init_value=self.metrix_rank - ((self.aicore_num - 1) * self.data_num_each_core))
                     self._trace_computer_each_core(index, move_offset, tail_cnt)
 
         self._trace_computer_all_core()
@@ -226,7 +223,7 @@ class TikTrace():
             "core_num": self.core_num
         })
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-            inputs=[self.input_x_gm], outputs = [self.output_y_gm],
+            inputs=[self.input_x_gm], outputs=[self.output_y_gm],
             flowtable=[self.tiling_gm])
         return self.tik_instance
 
@@ -255,7 +252,7 @@ class TikTrace():
         last_cnt = proc_cnt % self.aicore_proc_cnt
         with self.tik_instance.if_scope(last_cnt > 0):
             self._trace_computer_each_matrix(move_offset, last_cnt)
-        
+
         self.tik_instance.data_move(self.aicore_output_gm[index, 0],
             self.metrix_sum_ub, 0, 1, 1, 0, 0)
 
@@ -280,12 +277,12 @@ class TikTrace():
                 init_value=((i + move_offset) * (self.input_w + 1)))
             self.tik_instance.data_move(self.aicore_comp_ub[i, 0],
                 self.input_x_gm[diag_idx], 0, 1, 1, 0, 0)
-        
-        last_data_idx = self.tik_instance.Scalar(dtype="int64",
-            name="last_data_idx", init_value=(comp_line_num + move_offset) 
-            * (self.input_w + 1) - self.data_each_block + 1)
-        self.tik_instance.data_move(self.aicore_comp_ub[comp_line_num, 0],
-                self.input_x_gm[last_data_idx], 0, 1, 1, 0, 0)
+
+        last_data_idx = self.tik_instance.Scalar(
+            dtype="int64", name="last_data_idx",
+            init_value=(comp_line_num + move_offset) * (self.input_w + 1) - self.data_each_block + 1)
+        self.tik_instance.data_move(
+            self.aicore_comp_ub[comp_line_num, 0], self.input_x_gm[last_data_idx], 0, 1, 1, 0, 0)
         self.aicore_comp_ub[comp_line_num, 0].set_as(
             self.aicore_comp_ub[comp_line_num, self.data_each_block - 1])
 

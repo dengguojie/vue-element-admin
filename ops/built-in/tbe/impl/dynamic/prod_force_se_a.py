@@ -74,8 +74,8 @@ class ProdForceSeA:
         (net_deriv_dtype, in_deriv_dtype, nlist_dtype, natoms_dtype, force_dtype) = dtypes
         (natoms_shape) = shapes
         (n_a_sel, n_r_sel, split_count, split_index) = attrs
-        self.n_a_sel =n_a_sel
-        self.n_r_sel =n_r_sel
+        self.n_a_sel = n_a_sel
+        self.n_r_sel = n_r_sel
         self.split_count = split_count
         self.split_index = split_index
         self.nnei = n_a_sel + n_r_sel
@@ -151,6 +151,7 @@ class ProdForceSeA:
                 with self.tik_instance.else_scope():
                     self._run_one_core_loop(core_idx, self.core_loop_left)
 
+    # 'pylint:disable=too-many-locals,too-many-branchs,too-many-statements
     def _run_one_core_loop(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
             nloc_offset_vector = self.core_offset + core_idx * self.core_loop_unit
@@ -164,7 +165,7 @@ class ProdForceSeA:
                 with self.tik_instance.for_range(0, self.nnei // self.nnei_unit_len) as nnei_idx:
                     ndescrpt = self.nnei_unit_len * 4
                     deriv_nnei_vcpadd_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
-                        (3, Constant.NLOC_UNIT_LEN, self.nnei_unit_len),name="deriv_nnei_vcpadd_ub_fp32",
+                        (3, Constant.NLOC_UNIT_LEN, self.nnei_unit_len), name="deriv_nnei_vcpadd_ub_fp32",
                         scope=tik.scope_ubuf)
                     # prepare
                     with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as i:
@@ -565,7 +566,7 @@ class ProdForceSeA:
                     ndescrpt = self.nnei_unit_len * 4
                     with self.tik_instance.for_range(0, nloc_left) as l_idx:
                         deriv_nnei_vcpadd_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
-                            (3 * self.nnei_unit_len + 32,),name="deriv_nnei_vcpadd_ub_fp32",
+                            (3 * self.nnei_unit_len + 32,), name="deriv_nnei_vcpadd_ub_fp32",
                             scope=tik.scope_ubuf)
                         # prepare
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
@@ -763,7 +764,7 @@ class ProdForceSeA:
                     ndescrpt_tail = nnei_tail_fill * 4
                     with self.tik_instance.for_range(0, nloc_left) as l_idx:
                         deriv_nnei_vcpadd_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
-                            (3 * nnei_tail_fill + 32,),name="deriv_nnei_vcpadd_ub_fp32",
+                            (3 * nnei_tail_fill + 32,), name="deriv_nnei_vcpadd_ub_fp32",
                             scope=tik.scope_ubuf)
                         # prepare
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
@@ -1004,6 +1005,7 @@ def _para_dtype_check(args_list):
                            param_name="force")
 
 
+# 'pylint:disable=too-many-arguments,too-many-locals
 @register_operator("ProdForceSeA")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
@@ -1018,6 +1020,9 @@ def _para_dtype_check(args_list):
 def prod_force_se_a(net_deriv, in_deriv, nlist, natoms,
                     force, n_a_sel, n_r_sel, split_count, split_index,
                     kernel_name="prod_force_se_a"):
+    """
+    prod_force_se_a
+    """
     args_list = (net_deriv, in_deriv, nlist, natoms, force)
     _para_dtype_check(args_list)
     net_deriv_dtype = net_deriv.get("dtype").lower()

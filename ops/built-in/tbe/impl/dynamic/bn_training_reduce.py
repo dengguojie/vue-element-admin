@@ -2322,7 +2322,7 @@ class BnReduceAtomicSchedule:
             res_align_axis = res_a1_start_index - 1
 
             align_factor = Constant.BLOCK_SIZE_BYTE // \
-            Constant.DTYPE_BYTE_MAPPING.get(self._final_out_tensor_ub_rf.dtype)            
+            Constant.DTYPE_BYTE_MAPPING.get(self._final_out_tensor_ub_rf.dtype)
             para = {
                 "align_axis_var": self._final_out_tensor_ub_rf.op.axis[res_align_axis + self._axis_offset],
                 "align_factor": align_factor,

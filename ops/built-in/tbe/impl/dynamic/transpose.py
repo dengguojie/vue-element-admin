@@ -77,10 +77,18 @@ TILING_FIXED_MAX_LEN = 2048
 
 
 def get_ub_size():
+    """
+    get_ub_size, get ub size
+    """
     return tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
+
 def get_core_num():
+    """
+    get_core_num, get core num
+    """
     return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
 
 def _fuzzy_match(shape_t):
     """
@@ -105,6 +113,7 @@ def _fuzzy_match(shape_t):
         if count == len(shape_t):
             return True
     return False
+
 
 def _fuzzy_match_black(shape_t):
     """
@@ -149,6 +158,7 @@ def _fuzzy_match_black(shape_t):
             return True
     return False
 
+
 def _static_scenario_goto_old_version(shape, core_num):
     if core_num > 32 or core_num == 1:
         return True
@@ -160,7 +170,7 @@ def _static_scenario_goto_old_version(shape, core_num):
                          [1, 32, 32, 3], [1, 32, 32, 512],  [1, 3, 256, 256],
                          [1, 3, 32, 32], [1, 3, 4, 4], [1, 3, 64, 64],
                          [1, 3, 8, 8], [1, 512, 16, 16], [1, 512, 32, 32],
-                         [1, 512, 4, 4], [1, 512 ,512, 128], [1, 512, 512, 3],
+                         [1, 512, 4, 4], [1, 512, 512, 128], [1, 512, 512, 3],
                          [1, 512, 64, 64], [1, 512, 8, 8], [1, 64, 64, 3],
                          [1, 64, 64, 512], [1, 8, 8, 3], [1, 8, 8, 512],
                          [24, 512, 1024], [24, 512, 4096], [16, 512, 4096], [16, 512, 1024],
@@ -197,6 +207,7 @@ def _static_scenario_goto_old_version(shape, core_num):
         return True
 
     return False
+
 
 def _by_dynamic_static_union_version(shape, core_num):
     """
@@ -311,7 +322,7 @@ def _by_dynamic_static_union_version(shape, core_num):
     return False
 
 
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-return-statements
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
     dynamic transpose is selected when any condition is true: \n
@@ -5656,4 +5667,3 @@ def transpose(x, perm, y, kernel_name="transpose"):
     input_list = [data_in, data_perm]
     transpose_instance = Transpose(tik_inst, x_dtype, tensor_list, kernel_name)
     return transpose_instance.compute(input_list)
-

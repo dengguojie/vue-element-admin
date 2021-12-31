@@ -266,6 +266,8 @@ class BatchMultiClassNonMaxSuppression:
         return self.tik_instance
 
     def init_nms_result_zero(self, core_idx):
+        """init_nms_result_zero
+        """
         if self.l1_nms_result_zero and is_vector_core():
             with self.tik_instance.new_stmt_scope():
                 ub_nms_result = self.tik_instance.Tensor("float16", (self.max_selected_nms_num_in_ub, 8),

@@ -202,7 +202,7 @@ class TabulateFusionGrad:
         self.tik_inst.vec_dup(constant.MASK64, table_idx_ub, 0, self.nei_repeats_align64, 8)
 
         # condition 1: x >= lower
-        # table_offset = (x - lower) // s0
+        # `table_offset = (x - lower) // s0`
         self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x, -self.lower,
                             self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vmuls(constant.MASK64, em_x_tmp, em_x_tmp, self.rec_stride0,
@@ -211,7 +211,7 @@ class TabulateFusionGrad:
                             self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vconv(constant.MASK64, "none", table_offset_fp32, table_offset_one_loc,
                             self.nei_repeats_align64, 1, 1, 8, 8)
-        # x -= (table_offset * s0) + lower
+        # `x -= (table_offset * s0) + lower`
         self.tik_inst.vmuls(constant.MASK64, em_x_tmp, table_offset_fp32, self.stride0,
                             self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x_tmp, self.lower,
@@ -226,7 +226,7 @@ class TabulateFusionGrad:
                            self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
 
         # condition 2: x >= upper
-        # table_offset = (x - upper) // s1
+        # `table_offset = (x - upper) // s1`
         self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x, -self.upper, self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vmuls(constant.MASK64, em_x_tmp, em_x_tmp, self.rec_stride1,
                             self.nei_repeats_align64, 1, 1, 8, 8)
@@ -234,12 +234,12 @@ class TabulateFusionGrad:
                             self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vconv(constant.MASK64, "none", table_offset_fp32, table_offset_one_loc,
                             self.nei_repeats_align64, 1, 1, 8, 8)
-        # x -= (table_offset * s1) + upper
+        # `x -= (table_offset * s1) + upper`
         self.tik_inst.vmuls(constant.MASK64, em_x_tmp, table_offset_fp32, self.stride1,
                             self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x_tmp, self.upper, self.nei_repeats_align64, 1, 1, 8, 8)
         self.tik_inst.vsub(constant.MASK64, em_x_tmp, em_x, em_x_tmp, self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        # table_offset = table_offset + first_stride
+        # `table_offset = table_offset + first_stride`
         self.tik_inst.vadds(constant.MASK64, table_offset_fp32, table_offset_fp32, self.first_stride,
                             self.nei_repeats_align64, 1, 1, 8, 8)
         # mask and selection: x >= upper
@@ -250,9 +250,9 @@ class TabulateFusionGrad:
                            self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
 
         # condition 3: x >= max
-        # table_offset = max_tbl_idx
+        # `table_offset = max_tbl_idx`
         self.tik_inst.vec_dup(constant.MASK64, table_offset_fp32, self.max_tbl_idx, self.nei_repeats_align64, 8)
-        # x = 0
+        # `x = 0`
         self.tik_inst.vec_dup(constant.MASK64, em_x_tmp, 0, self.nei_repeats_align64, 8)
         # mask and selection: x >= max
         self.tik_inst.vcmpvs_ge(tmp_cmp_mask, em_x, self._max, self.nei_repeats_align64, 1, 8)
@@ -351,87 +351,87 @@ class TabulateFusionGrad:
                 self.tik_inst.v4dtrans(False, va_tile, table, self.tile_size, 6)
 
             # all data required ready, let's go!
-            # res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0
+            # `res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0`
             # grad = res' = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
             with self.tik_inst.new_stmt_scope(disable_sync=False):
-                # res = a0
+                # `res = a0`
                 vres = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vres", scope=tik.scope_ubuf)
                 self.tik_inst.vec_dup(constant.MASK64, vres, 0, self.tile_size // constant.MASK64, 8)
                 self.tik_inst.vadd(constant.MASK64, vres, vres, va_tile,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # grad = a1
+                # `grad = a1`
                 vgrad = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vgrad", scope=tik.scope_ubuf)
                 self.tik_inst.vec_dup(constant.MASK64, vgrad, 0, self.tile_size // constant.MASK64, 8)
                 self.tik_inst.vadd(constant.MASK64, vgrad, vgrad, va_tile[self.tile_size],
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # vpx = x
+                # `vpx = x`
                 vpx = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vpx", scope=tik.scope_ubuf)
                 self.tik_inst.vec_dup(constant.MASK64, vpx, 0, self.tile_size // constant.MASK64, 8)
                 self.tik_inst.vadd(constant.MASK64, vpx, vpx, vem_x_tile,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # res = res + a1 * x
+                # `res = res + a1 * x`
                 self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size], vpx,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # vxa = 2 * a2
+                # `vxa = 2 * a2`
                 vxa = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vxa", scope=tik.scope_ubuf)
                 self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 2], 2,
                                     self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # grad = grad + 2 * a2 * x
+                # `grad = grad + 2 * a2 * x`
                 self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # vpx = x2
+                # `vpx = x2`
                 self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # res = res + a2 * x2
+                # `res = res + a2 * x2`
                 self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 2], vpx,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # vxa = 3 * a3
+                # `vxa = 3 * a3`
                 self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 3], 3,
                                     self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # grad = grad + 3 * a3 * x2
+                # `grad = grad + 3 * a3 * x2`
                 self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # vpx = x3
+                # `vpx = x3`
                 self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # res = res + a3 * x3
+                # `res = res + a3 * x3`
                 self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 3], vpx,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # vxa = 4 * a4
+                # `vxa = 4 * a4`
                 self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 4], 4,
                                     self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # grad = grad + 4 * a4 * x3
+                # `grad = grad + 4 * a4 * x3`
                 self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # vpx = x4
+                # `vpx = x4`
                 self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # res = res + a4 * x4
+                # `res = res + a4 * x4`
                 self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 4], vpx,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # vxa = 5 * a5
+                # `vxa = 5 * a5`
                 self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 5], 5,
                                     self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # grad = grad + 5 * a5 * x4
+                # `grad = grad + 5 * a5 * x4`
                 self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
 
-                # vpx = x5
+                # `vpx = x5`
                 self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # res = res + a5 * x5
+                # `res = res + a5 * x5`
                 self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 5], vpx,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # dy_dem_0 = res * rr0
+                # `dy_dem_0 = res * rr0`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem, vres, vrr_tile, self.tile_size // constant.MASK64,
                                    1, 1, 1, 8, 8, 8)
-                # dy_dem_1 = res * rr1
+                # `y_dem_1 = res * rr1`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size], vres, vrr_tile[self.tile_size],
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # dy_dem_2 = res * rr2
+                # `dy_dem_2 = res * rr2`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 2], vres, vrr_tile[self.tile_size * 2],
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # dy_dem_3 = res * rr3
+                # `dy_dem_3 = res * rr3`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 3], vres, vrr_tile[self.tile_size * 3],
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
                 # dy_dot : dot(ll, rr)
@@ -441,7 +441,7 @@ class TabulateFusionGrad:
                                      (self.tile_size * 4) // constant.MASK64, 1, 1, 8)
                 self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
                                      (self.tile_size * 2) // constant.MASK64, 1, 1, 8)
-                # dy_dem_4(grad) = grad * dy_dot
+                # `dy_dem_4(grad) = grad * dy_dot`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 4], vgrad, vdy_dot_tile,
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
 
@@ -504,10 +504,10 @@ class TabulateFusionGrad:
             self.tik_inst.v4dtrans(False, va_tile, table, self.tile_size, 6)
 
         # all data required ready, let's go!
-        # res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0
+        # 'res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0'
         # grad = res' = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
         with self.tik_inst.new_stmt_scope(disable_sync=False):
-            # res = a0
+            # `res = a0`
             vres = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vres", scope=tik.scope_ubuf)
             self.tik_inst.vec_dup(constant.MASK64, vres, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vres, vres, va_tile,
@@ -517,7 +517,7 @@ class TabulateFusionGrad:
             self.tik_inst.vec_dup(constant.MASK64, vgrad, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vgrad, vgrad, va_tile[self.tile_size],
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # vpx = x
+            # `vpx = x`
             vpx = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vpx", scope=tik.scope_ubuf)
             self.tik_inst.vec_dup(constant.MASK64, vpx, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vpx, vpx, vem_x_tile,
@@ -525,76 +525,76 @@ class TabulateFusionGrad:
             # res = res + a1 * x
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # vxa = 2 * a2
+            # `vxa = 2 * a2`
             vxa = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vxa", scope=tik.scope_ubuf)
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 2], 2,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # grad = grad + 2 * a2 * x
+            # `grad = grad + 2 * a2 * x`
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # vpx = x2
+            # `vpx = x2`
             self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # res = res + a2 * x2
+            # `res = res + a2 * x2`
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 2], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # vxa = 3 * a3
+            # `vxa = 3 * a3`
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 3], 3,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # grad = grad + 3 * a3 * x2
+            # `grad = grad + 3 * a3 * x2`
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # vpx = x3
+            # `vpx = x3`
             self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # res = res + a3 * x3
+            # `res = res + a3 * x3`
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 3], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # vxa = 4 * a4
+            # `vxa = 4 * a4`
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 4], 4,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
             # grad = grad + 4 * a4 * x3
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # vpx = x4
+            # `vpx = x4`
             self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # res = res + a4 * x4
+            # `res = res + a4 * x4`
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 4], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # vxa = 5 * a5
+            # `vxa = 5 * a5`
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 5], 5,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
             # grad = grad + 5 * a5 * x4
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
 
-            # vpx = x5
+            # `vpx = x5`
             self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # res = res + a5 * x5
+            # `res = res + a5 * x5`
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 5], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # dy_dem_0 = res * rr0
+            # `dy_dem_0 = res * rr0`
             self.tik_inst.vmla(constant.MASK64, vdy_dem, vres, vrr_tile, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
-            # dy_dem_1 = res * rr1
+            # `dy_dem_1 = res * rr1`
             self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size], vres, vrr_tile[self.tile_size],
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # dy_dem_2 = res * rr2
+            # `dy_dem_2 = res * rr2`
             self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 2], vres, vrr_tile[self.tile_size * 2],
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # dy_dem_3 = res * rr3
+            # `dy_dem_3 = res * rr3`
             self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 3], vres, vrr_tile[self.tile_size * 3],
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # dy_dot : dot(ll, rr)
+            # `dy_dot : dot(ll, rr)`
             self.tik_inst.vmul(constant.MASK64, vdy_dot_tile, vem_dot_tile, vdy_dot_tile,
                                (self.tile_size * 4) // constant.MASK64, 1, 1, 1, 8, 8, 8)
             self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
                                  (self.tile_size * 4) // constant.MASK64, 1, 1, 8)
             self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
                                  (self.tile_size * 2) // constant.MASK64, 1, 1, 8)
-            # dy_dem_4(grad) = grad * dy_dot
+            # `dy_dem_4(grad) = grad * dy_dot`
             self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 4], vgrad, vdy_dot_tile,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
 

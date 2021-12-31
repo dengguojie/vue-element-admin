@@ -18,11 +18,12 @@ avg_pool_v2
 from typing import Union
 import tbe.dsl as tbe_base
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import log
 from tbe.dsl import auto_schedule
 from tbe.dsl import build
 from tbe.dsl.compute.conv_compute import conv
 from tbe.dsl.compute.conv_compute import ConvParam
-from tbe.common.platform.platform_info import get_soc_spec
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_cube_dynamic import Conv2dParaProcess
 from impl.util.platform_adapter import para_check
@@ -34,7 +35,6 @@ from impl.util.util_conv2d_dynamic import check_range_l1_size
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_conv2d_dynamic import check_range_value
 from impl.util.util_conv2d_dynamic import check_graph_mode
-from tbe.common.utils import log
 
 
 # 'pylint: disable=too-few-public-methods
