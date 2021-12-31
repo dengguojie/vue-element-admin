@@ -103,11 +103,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -195,11 +195,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -287,11 +287,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -379,11 +379,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -472,11 +472,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -565,11 +565,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -657,11 +657,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;
@@ -749,11 +749,11 @@ TEST_F(transdata_transpose_fusion_pass_test, transdata_transpose_fusion_pass_tes
     std::vector<int64_t> origin = inputDesc.GetOriginShape().GetDims();
     std::vector<int64_t> outdims = outputDesc.GetShape().GetDims();
     for (int i = 0; i < indims.size(); ++i) {
-      std::cout << node->GetType() << "input dim " << indims[i] << endl;
+      std::cout << node->GetType() << "input dim " << indims[i] << std::endl;
     }
 
     for (int i = 0; i < outdims.size(); ++i) {
-      std::cout << node->GetType() << "output dim " << outdims[i] << endl;
+      std::cout << node->GetType() << "output dim " << outdims[i] << std::endl;
     }
     if (node->GetType() == "TransposeD") {
       findTransPose = true;

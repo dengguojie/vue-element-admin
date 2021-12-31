@@ -50,10 +50,10 @@ TEST_F(mul_square_fusion_test, mul_square_fusion_test_1) {
 
     bool findSquare = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-	std::cout<<node->GetType()<<endl;
-        if (node->GetType() == "Square") {
-            findSquare = true;
-        }
+      std::cout << node->GetType() << std::endl;
+      if (node->GetType() == "Square") {
+        findSquare = true;
+      }
     }
     EXPECT_EQ(findSquare, true);
 }

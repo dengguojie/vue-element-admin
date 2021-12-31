@@ -117,14 +117,6 @@ TEST_F(eltwise, eltwise_infer_shape_3) {
   EXPECT_EQ(output_desc.GetOriginShape().GetDims(), expected_output_shape);
 }
 
-TEST_F(eltwise, InfershapeEltwise_001) {
-  ge::op::Eltwise op;
-  op.SetAttr("N", "error");
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
 TEST_F(eltwise, InfershapeEltwise_002) {
   ge::op::Eltwise op;
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 10}};
