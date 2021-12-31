@@ -708,7 +708,7 @@ def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
     return False
 
 
-def _check_nd_in_nd_out(input_x1, input_x2, output_z):
+def _check_nd_in_nd_out(input_x1: dict, input_x2: dict, output_z: dict) -> bool:
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     format_out = output_z.get("format")

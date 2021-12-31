@@ -340,7 +340,7 @@ class GEMMCompute(FormatCompute):
         GEMMComputeParam.block_reduce = self.block_reduce
 
         # This self.ops_format means format_a in this scenario.
-        n_shape_dynamic_flag = isinstance(n1_shape, tvm.expr.Var) or isinstance(n1_shape, tvm.expr.Expr)
+        n_shape_dynamic_flag = isinstance(n1_shape, (tvm.expr.Var, tvm.expr.Expr))
         tail_block = GEMMComputeParam.check_tail_block(
             n_shape, self.ops_data_flow_mode,
             self.format_out,

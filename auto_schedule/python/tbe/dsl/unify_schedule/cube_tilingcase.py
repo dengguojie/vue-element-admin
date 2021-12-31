@@ -345,7 +345,7 @@ class TilingSelection:
         Parameters
         ----------
         target_area: tuple, target area to be covered
-        
+
         Returns
         -------
         tilings_cases: list, calculated tilings
