@@ -238,11 +238,11 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     input_x1: dict
         A dict object, dict with keys(shape, dtype, and range)
         the dtype must be fp16
-        the format must be FRACTAL_NZ
+        the format can be FRACTAL_NZ or ND
     input_x2: dict
         A dict object, dict with keys(shape, dtype and range)
         the dtype must be fp16
-        the format must be FRACTAL_NZ
+        the format can be FRACTAL_NZ or ND
     bias: dict
         A dict object, dict with keys(shape and dtype) or None
         the dtype must be fp16
@@ -252,7 +252,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     output_y: dict
         A dict object, dict with keys(shape, dtype, format and range)
         the dtype must be fp16
-        the format must be FRACTAL_NZ
+        the format can be FRACTAL_NZ or ND
     trans_a: bool
         If true, shape_a == transposed before multiplication
     trans_b: bool

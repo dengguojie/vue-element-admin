@@ -142,12 +142,27 @@ class GEMMComputeParam:
         else:
             divide_factor = 16
             data_num = 8
-        
+
         if 1 <= int(n_shape) <= divide_factor or int(n_shape) % divide_factor == 0:
             tail_block_flag = 1
         elif int(n_shape) % divide_factor < data_num:
             tail_block_flag = 0
         return tail_block_flag
+    
+    @staticmethod
+    def get_trans_flag(transpose_a, transpose_b):
+        """
+        get trans flag inorder to get tiling
+        """
+        trans_flag = 1
+        if transpose_a:
+            if transpose_b:
+                trans_flag = 4
+            else:
+                trans_flag = 2
+        elif transpose_b:
+            trans_flag = 3
+        return trans_flag
 
 
 class GEMMCompute(FormatCompute):
@@ -356,7 +371,7 @@ class GEMMCompute(FormatCompute):
             "strideW": tail_block,
             "strideH_expand": 1,
             "strideW_expand": 1,
-            "dilationH": self._get_trans_flag(self.trans_a, self.trans_b),
+            "dilationH": GEMMComputeParam.get_trans_flag(self.trans_a, self.trans_b),
             "dilationW": 1,
             "group": 1,
             "fused_double_operand_num": fused_double_operand_num,
@@ -369,19 +384,6 @@ class GEMMCompute(FormatCompute):
             "trans_b": self.trans_b
         }
 
-    def _get_trans_flag(self, transpose_a, transpose_b):
-        """
-        get trans flag inorder to get tiling
-        """
-        trans_flag = 1
-        if transpose_a:
-            if transpose_b:
-                trans_flag = 4
-            else:
-                trans_flag = 2
-        elif transpose_b:
-            trans_flag = 3
-        return trans_flag
 
     def _get_offset_info(self, attrs_dict, dtype_a, dtype_b):
         """
