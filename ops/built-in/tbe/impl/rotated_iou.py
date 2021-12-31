@@ -53,7 +53,7 @@ class Constant(object):
     COEF = 0.01745329252
     # limit of k's size of query_boxes
     K_LIMIT = 2000
-    # to avoid denominator zero  
+    # to avoid denominator zero
     EPSILON = 1e-6
 
 
@@ -68,14 +68,17 @@ class RotatedIou(object):
         """
         class init
         """
+        self.attr_check(mode, is_cross, kernel_name)
+
+        self.kernel_name = kernel_name
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.trans = trans
-        self.kernel_name = kernel_name
+         
         self.v_threshold = v_threshold
         self.e_threshold = e_threshold
-        
-        check_res = self.paras_check(boxes, query_boxes, iou, mode, is_cross, kernel_name)
-        self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3],
+
+        check_res = self.tensor_check(boxes, query_boxes, iou)
+        self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3]
         # Calculate concurrent number on boxes(input_1) dimension
         self.task_num = self.n
         while self.task_num % 2 == 0 and self.task_num >= 64:
@@ -239,32 +242,35 @@ class RotatedIou(object):
         self.numerator_x = None
         self.numerator_y = None
 
-    def paras_check(self, boxes, query_boxes, iou, mode, is_cross, kernel_name):
+    def attr_check(self, mode, is_cross, kernel_name):
         """
-        paras_check
+        attr_check
         """
         util.check_kernel_name(kernel_name)
+        if mode != 'iou':
+            raise RuntimeError("mode only support iou")
+
+        if not is_cross:
+            raise RuntimeError("is_cross only support True")
+
+    def tensor_check(self, boxes, query_boxes, iou):
+        """
+        tensor_check
+        """
+        shape_query_boxes = query_boxes.get("shape")
+        dtype_query_boxes = query_boxes.get("dtype").lower()
+        util.check_shape_rule(shape_query_boxes)
+        util.check_dtype_rule(dtype_query_boxes, "float32")
 
         shape_boxes = boxes.get("shape")
         dtype_boxes = boxes.get("dtype").lower()
         util.check_shape_rule(shape_boxes)
         util.check_dtype_rule(dtype_boxes, "float32")
 
-        shape_query_boxes = query_boxes.get("shape")
-        dtype_query_boxes = query_boxes.get("dtype").lower()
-        util.check_shape_rule(shape_query_boxes)
-        util.check_dtype_rule(dtype_query_boxes, "float32")
-
         shape_iou = iou.get("shape")
         dtype_iou = iou.get("dtype").lower()
         util.check_shape_rule(shape_iou)
         util.check_dtype_rule(dtype_iou, "float32")
-
-        if mode != 'iou':
-            raise RuntimeError("mode only support iou")
-
-        if not is_cross:
-            raise RuntimeError("is_cross only support True")
 
         if shape_boxes[2] != shape_iou[1]:
             raise RuntimeError("Shape unmatch in boxes nums")
@@ -287,10 +293,10 @@ class RotatedIou(object):
         """
         Calculating triangle area based on vertex coordinates.
         """
-        self.b1_x2.set_as(self.corners_ub[idx_tmp])
-        self.b1_y2.set_as(self.corners_ub[idx_tmp + Constant.BLOCK])
         self.b1_x3.set_as(self.corners_ub[idx_current_tmp])
         self.b1_y3.set_as(self.corners_ub[idx_current_tmp + Constant.BLOCK])
+        self.b1_x2.set_as(self.corners_ub[idx_tmp])
+        self.b1_y2.set_as(self.corners_ub[idx_tmp + Constant.BLOCK])
 
         self.value.set_as(
             self.b1_x1 * (self.b1_y2 - self.b1_y3) + self.b1_x2 * (self.b1_y3 - self.b1_y1) + self.b1_x3 * (
@@ -387,15 +393,15 @@ class RotatedIou(object):
         self.BC_y.set_as(self.b2_y1 - self.b1_y2)
         self.BD_x.set_as(self.b2_x2 - self.b1_x2)
         self.BD_y.set_as(self.b2_y2 - self.b1_y2)
-
+        # func: 'x = ((x1-x2) * (x3*y4-x4*y3) - (x3-x4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))'
+        # func: 'y = ((y1-y2) * (x3*y4-x4*y3) - (y3-y4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))'
         self.direct_AC_AD.set_as(self.AC_x * self.AD_y - self.AC_y * self.AD_x)
         self.direct_BC_BD.set_as(self.BC_x * self.BD_y - self.BC_y * self.BD_x)
         with self.tik_instance.if_scope(self.direct_AC_AD * self.direct_BC_BD < self.e_threshold):
             self.direct_CA_CB.set_as(self.AC_x * self.BC_y - self.AC_y * self.BC_x)
             self.direct_DA_DB.set_as(self.AD_x * self.BD_y - self.AD_y * self.BD_x)
             with self.tik_instance.if_scope(self.direct_CA_CB * self.direct_DA_DB < self.e_threshold):
-                # func: x = ((x1-x2) * (x3*y4-x4*y3) - (x3-x4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))
-                # func: y = ((y1-y2) * (x3*y4-x4*y3) - (y3-y4) * (x1*y2-x2*y1)) / ((x3-x4) * (y1-y2) - (x1-x2)*(y3-y4))
+
                 self.tmp_1.set_as(self.b1_x1 * self.b1_y2 - self.b1_y1 * self.b1_x2)
                 self.tmp_2.set_as(self.b2_x1 * self.b2_y2 - self.b2_y1 * self.b2_x2)
                 self.b1_x1_x2.set_as(self.b1_x1 - self.b1_x2)
@@ -506,10 +512,10 @@ class RotatedIou(object):
         self.b2_y4.set_as(self.y4_of_boxes_ub[b2_idx])
 
         # check b1
-        # func: AB = (x2-x1, y2-y1)
+        # func: 'AB = (x2-x1, y2-y1)'
         self.AB_x.set_as(self.b2_x2 - self.b2_x1)
         self.AB_y.set_as(self.b2_y2 - self.b2_y1)
-        # func: AD = (x4-x1, y4-y1)
+        # func: 'AD = (x4-x1, y4-y1)'
         self.AD_x.set_as(self.b2_x4 - self.b2_x1)
         self.AD_y.set_as(self.b2_y4 - self.b2_y1)
 
@@ -565,10 +571,10 @@ class RotatedIou(object):
                 self.corners_num.set_as(self.corners_num + 1)
 
         # check b2
-        # func: AB = (x2-x1, y2-y1)
+        # func: 'AB = (x2-x1, y2-y1)'
         self.AB_x.set_as(self.b1_x2 - self.b1_x1)
         self.AB_y.set_as(self.b1_y2 - self.b1_y1)
-        # func: AD = (x4-x1, y4-y1)
+        # func: 'AD = (x4-x1, y4-y1)'
         self.AD_x.set_as(self.b1_x4 - self.b1_x1)
         self.AD_y.set_as(self.b1_y4 - self.b1_y1)
 
@@ -795,7 +801,7 @@ class RotatedIou(object):
                     self.boxes_gm[
                         self.n * Constant.Y_IDX + self.b1_batch * task_idx + current_batch * self.n * Constant.INFOS],
                     0, 1, self.b1_repeats, 0, 0)
-        
+
         self.tik_instance.h_mul(self.area_of_boxes_ub, self.h_of_boxes_ub, self.w_of_boxes_ub)
         self.tik_instance.h_mul(self.half_w_cos_of_boxes_ub, self.cos_t_of_boxes_ub, self.half_w_of_boxes_ub)
         self.tik_instance.h_mul(self.half_w_sin_of_boxes_ub, self.sin_t_of_boxes_ub, self.half_w_of_boxes_ub)
@@ -857,7 +863,7 @@ class RotatedIou(object):
         self.h_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="h_of_boxes_ub",
                                                       scope=tik.scope_ubuf)
         self.area_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="area_of_boxes_ub",
-                                                         scope=tik.scope_ubuf)                                              
+                                                         scope=tik.scope_ubuf)
         self.half_w_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="half_w_of_boxes_ub",
                                                            scope=tik.scope_ubuf)
         self.half_h_of_boxes_ub = self.tik_instance.Tensor(self.dtype, [self.k_align], name="half_h_of_boxes_ub",
@@ -1084,7 +1090,8 @@ class RotatedIou(object):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True, v_threshold=0, e_threshold=0, kernel_name="rotated_iou"):
+def rotated_iou(boxes, query_boxes, iou, trans=False, mode="iou", is_cross=True, v_threshold=0, e_threshold=0,
+                kernel_name="rotated_iou"):
     """
     Function: compute the rotated boxes's iou.
     Modify : 2021-12-01
