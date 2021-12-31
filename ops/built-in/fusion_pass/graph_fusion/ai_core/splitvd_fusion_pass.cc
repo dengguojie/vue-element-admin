@@ -18,13 +18,13 @@
  * \file splitvd_fusion_pass.cpp
  * \brief
  */
+#include "splitvd_fusion_pass.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <map>
 #include <cmath>
 
-#include "splitvd_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"

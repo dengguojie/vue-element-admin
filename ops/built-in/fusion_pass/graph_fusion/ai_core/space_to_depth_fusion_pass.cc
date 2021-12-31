@@ -18,17 +18,17 @@
  * \file space_to_depth_fusion_pass.cc
  * \brief
  */
+#include <string>
+#include <numeric>
+#include <vector>
 #include "space_to_depth_fusion_pass.h"
-#include "fp16_t.hpp"
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "tbe_ops_pass_util.h"
-#include <string>
-#include <numeric>
-#include <vector>
+#include "fp16_t.hpp"
 
 using namespace ge;
 namespace fe {
@@ -39,7 +39,7 @@ static const std::string CONSTANTOP = "Constant";
 static const uint16_t UINT_NUM_ZERO = 0;
 
 template <typename Dtype>
-Status spaceToDepthAssistHelpFP16(const int32_t n, Dtype& output1, const vector<int64_t> spaceToDepthDInputDimInfo) {
+Status spaceToDepthAssistHelpFP16(Dtype& output1, const vector<int64_t> spaceToDepthDInputDimInfo) {
   OP_LOGI("spaceToDepthAssistHelpFP16", "START TO DO spaceToDepthAssistHelpFP16.");
   Dtype* output = &output1;
   fp16_t t;
@@ -98,7 +98,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   // check dynamic shape
   Operator spaceToDepthOp = OpDescUtils::CreateOperatorFromNode(spaceToDepthNode);
-  TensorDesc inputDesc = spaceToDepthOp.GetInputDescByName("x");
+  TensorDesc inputDesc = spaceToDepthOp.GetInputDesc("x");
   Shape inputShape = inputDesc.GetShape();
   FUSION_PASS_CHECK(IsUnknownShape(inputShape.GetDims()), OP_LOGI(FUSED_OP_TYPE.c_str(), "SpaceToDepth is dynamic."),
                     return NOT_CHANGED);
@@ -197,7 +197,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: NnSet failed.", spaceToDepthName.c_str()),
                     return NOT_CHANGED);
 
-  ret = spaceToDepthAssistHelpFP16(destSize, *inputAssit.get(), spaceToDepthDInputDimInfo);
+  ret = spaceToDepthAssistHelpFP16(*inputAssit.get(), spaceToDepthDInputDimInfo);
   FUSION_PASS_CHECK(
       ret != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Node[%s]: Generate assist matrix failed.", spaceToDepthName.c_str()),
