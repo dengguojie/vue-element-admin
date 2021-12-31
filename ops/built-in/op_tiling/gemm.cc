@@ -135,7 +135,7 @@ bool GetGEMMBatch(const string& op_type, const ge::GeShape& shape_a, const ge::G
     return true;
   }
 
-  params.b_have_batch = num_dimb > 2 ? true : false;
+  params.b_have_batch = num_dimb > kNumTwo ? true : false;
 
   const ge::GeShape& shape_short = num_dima < num_dimb ? shape_a : shape_b;
   const ge::GeShape& shape_long = num_dima < num_dimb ? shape_b : shape_a;
@@ -213,7 +213,8 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
          compile_value.params.ori_shape_N > INT_MAX),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "The m,k,n of a and b tensors' ori_shape must not larger than INT_MAX"),
   return false);
-  if (!compile_value.params.binary_mode_flag && compile_value.params.format_a == "ND" && compile_value.params.format_b == "ND") {
+  if (!compile_value.params.binary_mode_flag && compile_value.params.format_a == "ND" && 
+      compile_value.params.format_b == "ND") {
     // Aligned schedule pattern selection is only enabled in ND input format
     bool aligned_m = compile_value.params.ori_shape_M % block_in == 0;
     bool aligned_k = compile_value.params.ori_shape_K % block_reduce == 0;
