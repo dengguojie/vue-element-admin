@@ -88,7 +88,7 @@ def raise_cube_util_err(msg):
     raise RuntimeError(args_dict, msg)
 
 
-def im2col_row_major(  # pylint: disable=R0913
+def im2col_row_major(
         a_im2col_vm_shape,
         tensor_a,
         kernel_w,
@@ -124,7 +124,7 @@ def im2col_row_major(  # pylint: disable=R0913
     -------
     Returns : a_im2col_row_major tensor
     """
-    def __im2col_row_major_indices(  # pylint: disable=R0913,R0914
+    def __im2col_row_major_indices(
             indices,
             tensor_a,
             kernel_w,
@@ -201,7 +201,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
     -------
     Returns : a_im2col_fractal tensor
     """
-    def __im2col_fractal_indices(indices, tensor_a_row_major):  # pylint: disable=R0914
+    def __im2col_fractal_indices(indices, tensor_a_row_major):
         """
         calculate im2col_fractal tvm lambda function
         Parameters
@@ -245,7 +245,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
                        tag='im2col_fractal')
 
 
-def im2col_fractal_3d(  # pylint: disable=R0913
+def im2col_fractal_3d(
         a_im2col_shape,
         tensor_a_row_major,
         fmap_c1,
@@ -275,7 +275,7 @@ def im2col_fractal_3d(  # pylint: disable=R0913
     -------
     Returns : a_im2col_fractal tensor
     """
-    def __im2col_fractal_indices(indices, tensor_a_row_major):  # pylint: disable=R0914
+    def __im2col_fractal_indices(indices, tensor_a_row_major):
         """
         calculate im2col_fractal tvm lambda function
         Parameters
@@ -415,7 +415,7 @@ class CubeDslPattern:
 
         return type_c
 
-    def generate_c(  # pylint: disable=R0913,R0914
+    def generate_c(
             self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode="",
             bias_table_flag=False):
         """
@@ -492,7 +492,7 @@ class CubeDslPattern:
         return tensor_c
 
 
-class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
+class ConvDslPattern(CubeDslPattern):
     """
     class of convolution
 
@@ -510,7 +510,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     -------
     conv_pattern_instance : instance of conv pattern
     """
-    def __init__(  # pylint: disable=R0913
+    def __init__(
             self, kernel_h, kernel_w, stride, pad, dilations, offset_x=0, l0a_dma_flag=False):
         super().__init__()
         self._kernel_h = kernel_h
@@ -552,7 +552,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
 
         return height_out, width_out
 
-    def generate_a(  # pylint: disable=R0914
+    def generate_a(
         self,
         feature_map,
         g_after,
@@ -643,7 +643,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             a_col = im2col_fractal_v2(a_im2col_fractal_shape, img2col_para)
         return a_col
 
-    def generate_c(  # pylint: disable=R0913
+    def generate_c(
             self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0):
         """
         calculate convolution output tensor
@@ -692,7 +692,8 @@ def is_support_v200():
 
 
 def calc_info_of_iter_vars(stage):
-    """Calcuate information of IterVar.
+    """
+    Calcuate information of IterVar.
 
     Args: stage: Stage of schedule.
 
@@ -752,7 +753,8 @@ def calc_info_of_iter_vars(stage):
 
 
 def print_iter_vars(iter_vars):
-    """Pretty print iter_vars.
+    """
+    Pretty print iter_vars.
 
     Args: iter_vars: List of iter_var.
 

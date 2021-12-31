@@ -18,6 +18,17 @@
 cube util.
 """
 import warnings
+from tbe.dsl.compute.cube_util import shape_to_list as shape_to_list_new
+from tbe.dsl.compute.cube_util import check_pad_zero as check_pad_zero_new
+from tbe.dsl.compute.cube_util import ceil_div as ceil_div_new
+from tbe.dsl.compute.cube_util import raise_cube_util_err as raise_cube_util_err_new
+from tbe.dsl.compute.cube_util import im2col_row_major as im2col_row_major_new
+from tbe.dsl.compute.cube_util import im2col_fractal as im2col_fractal_new
+from tbe.dsl.compute.cube_util import im2col_fractal_3d as im2col_fractal_3d_new
+from tbe.dsl.compute.cube_util import im2col_fractal_v2 as im2col_fractal_v2_new
+from tbe.dsl.compute.cube_util import is_support_v200 as is_support_v200_new
+from tbe.dsl.compute.cube_util import calc_info_of_iter_vars as calc_info_of_iter_vars_new
+from tbe.dsl.compute.cube_util import print_iter_vars as print_iter_vars_new
 
 
 class GroupDictKeys:
@@ -43,8 +54,7 @@ def shape_to_list(shape):
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import shape_to_list
-    return shape_to_list(shape)
+    return shape_to_list_new(shape)
 
 
 def check_pad_zero(pads):
@@ -54,8 +64,7 @@ def check_pad_zero(pads):
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import check_pad_zero
-    return check_pad_zero(pads)
+    return check_pad_zero_new(pads)
 
 
 def ceil_div(num1, num2):
@@ -65,8 +74,7 @@ def ceil_div(num1, num2):
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import ceil_div
-    return ceil_div(num1, num2)
+    return ceil_div_new(num1, num2)
 
 
 def raise_cube_util_err(msg):
@@ -78,8 +86,7 @@ def raise_cube_util_err(msg):
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import raise_cube_util_err
-    return raise_cube_util_err(msg)
+    return raise_cube_util_err_new(msg)
 
 
 def im2col_row_major(  # pylint: disable=R0913
@@ -100,7 +107,7 @@ def im2col_row_major(  # pylint: disable=R0913
     ----------
     a_im2col_vm_shape : shape of a_im2col_row_major
 
-    tensor_a : feature map
+    tensor_a: feature map
 
     kernel_w: width of filter
 
@@ -119,9 +126,8 @@ def im2col_row_major(  # pylint: disable=R0913
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import im2col_row_major
-    return im2col_row_major(a_im2col_vm_shape, tensor_a, kernel_w, padding, stride, compute_dtype,
-                            opti_h_flag, tag, dilation, offset_x, slice_offset)
+    return im2col_row_major_new(a_im2col_vm_shape, tensor_a, kernel_w, padding, stride, compute_dtype,
+                                opti_h_flag, tag, dilation, offset_x, slice_offset)
 
 
 def im2col_fractal(a_im2col_shape, tensor_a_row_major):
@@ -129,9 +135,9 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
     calculate im2col_fractal tensor
     Parameters
     ----------
-    a_im2col_shape : shape of a_im2col
+    a_im2col_shape: shape of a_im2col
 
-    tensor_a_row_major : feature map after row major
+    tensor_a_row_major: feature map after row major
 
     config: the config of cube
 
@@ -142,8 +148,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import im2col_fractal
-    return im2col_fractal(a_im2col_shape, tensor_a_row_major)
+    return im2col_fractal_new(a_im2col_shape, tensor_a_row_major)
 
 
 def im2col_fractal_3d(  # pylint: disable=R0913
@@ -172,16 +177,15 @@ def im2col_fractal_3d(  # pylint: disable=R0913
 
     strided : stride d
 
-    cyclebuffer_flag : whether to do  cyclebuffer
+    cyclebuffer_flag : whether to do cyclebuffer
     -------
     Returns : a_im2col_fractal tensor
     """
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import im2col_fractal_3d
-    return im2col_fractal_3d(a_im2col_shape, tensor_a_row_major, fmap_c1, d_out, filter_d, stride_d, cin1_g,
-                             cyclebuffer_flag, tag)
+    return im2col_fractal_3d_new(a_im2col_shape, tensor_a_row_major, fmap_c1, d_out, filter_d, stride_d, cin1_g,
+                                 cyclebuffer_flag, tag)
 
 
 def im2col_fractal_v2(shape, img2col_para):
@@ -191,16 +195,14 @@ def im2col_fractal_v2(shape, img2col_para):
     ----------
     shape : shape of a_im2col
 
-    img2col_para : tensor of fmap, kernel_h, kernel_w, padding, stride,
-                   fmap_wo, dilation
+    img2col_para : tensor of fmap, kernel_h, kernel_w, padding, stride, fmap_wo, dilation
     -------
     Returns : a_im2col_fractal tensor
     """
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import im2col_fractal_v2
-    return im2col_fractal_v2(shape, img2col_para)
+    return im2col_fractal_v2_new(shape, img2col_para)
 
 
 def is_support_v200():
@@ -216,46 +218,33 @@ def is_support_v200():
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import is_support_v200
-    return is_support_v200()
+    return is_support_v200_new()
 
 
 def calc_info_of_iter_vars(stage):
     """Calcuate information of IterVar.
 
-    Args:
-        stage: Stage of schedule.
+    Args: stage: Stage of schedule.
 
     Returns:
-        A list of elements that are combinations of IterVar.var and information.
-        For example:
-
-        [[i0.inner, IterVar(min=0,
-                            extent=3,
-                            parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
-         [i0.outer, IterVar(min=0,
-                            extent=2,
-                            parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
-         [i1, (0, 16)]]
+    A list of elements that are combinations of IterVar.var and information.
+    For example:[[i0.inner, IterVar(min=0, extent=3,parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],
+    [i0.outer, IterVar(min=0,extent=2,parent=Parent(var=i0, min=0, extent=6, factor=2, nparts=-1))],[i1, (0, 16)]]
     """
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import calc_info_of_iter_vars
-    return calc_info_of_iter_vars(stage)
+    return calc_info_of_iter_vars_new(stage)
 
 
 def print_iter_vars(iter_vars):
     """Pretty print iter_vars.
 
-    Args:
-        iter_vars: List of iter_var.
+    Args: iter_vars: List of iter_var.
 
-    Returns:
-        None.
+    Returns:None.
     """
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \
         "please replace it with the func tbe.dsl.compute.cube_util",
         DeprecationWarning)
-    from tbe.dsl.compute.cube_util import print_iter_vars
-    return print_iter_vars(iter_vars)
+    return print_iter_vars_new(iter_vars)

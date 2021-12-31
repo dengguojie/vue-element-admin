@@ -261,6 +261,23 @@ Status FusionReturn(bool &cond, vector<ge::NodePtr> &fusionNodes) {
   return NOT_CHANGED;
 }
 
+void TbeFullyconnectionElemwiseFusionPass::CheckOutputFusion(const BufferFusionMapping &mapping,
+                                                             vector<ge::NodePtr> &fusionNodes) {
+  // the outputData can't be fused
+  for (auto &item : mapping) {
+    auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
+    if (opdesc == item.first->types.end()) {
+      continue;
+    }
+    for (auto &node : item.second) {
+      auto node_ptr = find(fusionNodes.begin(), fusionNodes.end(), node);
+      if (node_ptr != fusionNodes.end()) {
+        fusionNodes.erase(node_ptr);
+      }
+    }
+  }
+}
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -297,7 +314,8 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   }
 
   // check whether the matmul/dequant/gelu/quant/fusion
-  bool isdequantElemwiseQuant = !dequantNodes.empty() && !quantNodes.empty() && !reluNodes.empty() && elemWiseNodes.empty();
+  bool isdequantElemwiseQuant =
+      !dequantNodes.empty() && !quantNodes.empty() && !reluNodes.empty() && elemWiseNodes.empty();
   if (isdequantElemwiseQuant) {
     bool elemwiseisGelu = CheckMatmulDequantGeluQuantFusion(reluNodes);
     FUSION_PASS_CHECK(
@@ -377,21 +395,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
       return SUCCESS;
     }
   }
-
-  // the outputData can't be fused
-  for (auto& item : mapping) {
-    auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-    if (opdesc == item.first->types.end()) {
-      continue;
-    }
-    for (auto& node : item.second) {
-      auto node_ptr = find(fusionNodes.begin(), fusionNodes.end(), node);
-      if (node_ptr != fusionNodes.end()) {
-        fusionNodes.erase(node_ptr);
-      }
-    }
-  }
-
+  CheckOutputFusion(mapping, fusionNodes);
   SetSplitInfo(mapping, fusionNodes);
   OP_LOGD("End to do TbeFullyconnectionElemwiseFusionPass!");
   return SUCCESS;

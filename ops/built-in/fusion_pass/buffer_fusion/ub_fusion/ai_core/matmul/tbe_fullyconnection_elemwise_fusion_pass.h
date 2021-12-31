@@ -52,6 +52,7 @@ private:
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
   Status CheckDynamicMode(vector<ge::NodePtr>& matmulNodes, std::vector<ge::NodePtr>& fusionNodes) const;
   bool CheckMatmulDequantGeluQuantFusion(const vector<ge::NodePtr> &reluNodes);
+  void CheckOutputFusion(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusionNodes);
 };
 
 }  // namespace fe
