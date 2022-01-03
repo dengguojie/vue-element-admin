@@ -245,7 +245,7 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   return SUCCESS;
 }
 
-Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr subNode) {
+Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr subNode) const {
   FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "sum node is null"), return FAILED);
   vector<int32_t> axisValue;
   if (ge::AttrUtils::GetListInt(sumNode->GetOpDesc(), ATTR_NAME_CONST, axisValue) == false) {

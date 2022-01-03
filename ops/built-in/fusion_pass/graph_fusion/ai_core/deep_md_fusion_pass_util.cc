@@ -50,7 +50,7 @@ Status DeepMdFusionPassUtil::CheckSplitInitInfo(const std::string& fusedOpType, 
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
   int32_t splitCount;
-  FUSION_PASS_CHECK(op.GetAttr(ATTR_SPLIT_COUNT, splitCount) == ge::GRAPH_SUCCESS && splitCount == 2,
+  FUSION_PASS_CHECK(op.GetAttr(ATTR_SPLIT_COUNT.c_str(), splitCount) == ge::GRAPH_SUCCESS && splitCount == 2,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "split_count should not be 2 before fusion"),
                     return PARAM_INVALID);
 

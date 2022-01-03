@@ -39,7 +39,7 @@ class ALSTMFusionPass : public PatternFusionBasePass {
   ge::GeTensorDesc ProcessStatic(ge::NodePtr fusedNode, int32_t num_output, ge::NodePtr& innerproductNode,
                                  ge::NodePtr& dequantNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                  bool& failStatus, int32_t xStaticIndex, int32_t wxStaticIndex);
-  ge::GeTensorPtr ProcessWxh(ge::NodePtr fusedNode, bool& failStatus, int32_t& wxIndex, int32_t& whIndex,
+  ge::GeTensorPtr ProcessWxh(ge::NodePtr fusedNode, bool& failStatus, const int32_t& wxIndex, const int32_t& whIndex,
                              int32_t c0Index);
   const string FUSED_OP_TYPE = "SplitVD_BasicLSTMCellV2_ConcatD";
 };

@@ -33,7 +33,7 @@ class LogSoftmaxGradFusionPass : public PatternFusionBasePass {
   Status IsMatch(ge::NodePtr sumNode, ge::NodePtr subNode, ge::NodePtr expNode, ge::NodePtr mulNode);
   Status DoFusion(ge::ComputeGraph& graph, ge::NodePtr sumNode, ge::NodePtr subNode, ge::NodePtr expNode,
                   ge::NodePtr mulNode, vector<ge::NodePtr>& fusionNodes);
-  Status UpdateAttr(ge::NodePtr sumNode, ge::NodePtr subNode);
+  Status UpdateAttr(ge::NodePtr sumNode, ge::NodePtr subNode) const;
   Status LinkOutputEdge(ge::NodePtr oldNode, ge::NodePtr newNode);
   const string FUSED_OP_TYPE = "LogSoftmaxGrad";
 };

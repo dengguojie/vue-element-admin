@@ -45,6 +45,7 @@ static const std::string PATTERN_FUSEDNODE = "LSTM";
 static const int32_t REPEAT_SIZE = 4;
 static const int64_t DIM_5HD_UNIT_SIZE = 16;
 static const int64_t DIM_5HD_DIV_FACTOR = 15;
+static const int32_t HIDDEN_DIM_FACTOR = 4;
 
 vector<FusionPattern*> ALSTMFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -169,7 +170,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
       for (int j = 0; j < (wCol / 4); j++) {
         for (int k = 0; k < wRow; k++) {
           *(wStaticWeight + i * singleDestCol * destWRow + j * destWRow + k) =
-              *(wStaticOriData + i * (wCol / 4) * wRow + j * wRow + k);
+              *(wStaticOriData + i * (wCol / HIDDEN_DIM_FACTOR) * wRow + j * wRow + k);
         }
       }
     }
@@ -239,8 +240,8 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   return outputTensorDesc;
 }
 
-ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failStatus, int32_t& wxIndex,
-                                            int32_t& whIndex, int32_t c0Index) {
+ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failStatus, const int32_t& wxIndex,
+                                            const int32_t& whIndex, int32_t c0Index) {
   string opType = GetPeerNodeOptype(fusedNode);
   ge::InDataAnchorPtr inputWxAnchorPtr0 = fusedNode->GetInDataAnchor(wxIndex);
   ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
@@ -420,7 +421,8 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
   if (!constAdjustFlag) {
     ge::GeTensorPtr biasTensorPtr = bias_data[0];
     int32_t bias_dim = biasTensorDesc.GetShape().GetDim(0);
-    int32_t tar_bias_dim = (((bias_dim / 4) + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * 4;
+    int32_t tar_bias_dim =
+        (((bias_dim / 4) + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * HIDDEN_DIM_FACTOR;
     vector<int64_t> biasDims;
     biasDims.push_back(tar_bias_dim);
     GeShape biasShape(biasDims);
@@ -462,7 +464,8 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
 
   ge::GeTensorDesc outTensorDesc = fusedDesc->GetOutputDesc(0);
   int32_t hiddenSize = outTensorDesc.GetShape().GetDim(2);
-  int32_t tarHiddenDim = ((hiddenSize + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * 4;
+  int32_t tarHiddenDim = 
+      ((hiddenSize + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * HIDDEN_DIM_FACTOR;
   vector<int64_t> outputOriDims;
   outputOriDims.push_back(shape_0.GetDim(1));
   outputOriDims.push_back(hiddenSize);

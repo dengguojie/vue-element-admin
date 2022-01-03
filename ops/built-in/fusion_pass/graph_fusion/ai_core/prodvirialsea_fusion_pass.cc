@@ -18,8 +18,7 @@
  * \file prodvirialsea_fusion_pass.cc
  * \brief ProdVirialSeA fusion pass(Parallel ProdVirialSeA)
  */
-#include <stdint.h>
-
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string>
