@@ -24,7 +24,7 @@ from tbe.dsl.static_schedule.conv2d_backprop_input_general_schedule import gener
 from tbe.dsl.static_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
 
 
-class CceConv2dBackpropInputOp:  # pylint: disable=R0903
+class CceConv2dBackpropInputOp:
     """
     The class of conv2d backprop input
 
@@ -48,7 +48,7 @@ class CceConv2dBackpropInputOp:  # pylint: disable=R0903
         self._res_tensor = None
         self._spec_node_list = None
 
-    def schedule(  # pylint: disable=R0913
+    def schedule(
         self,
         res,
         spec_node_list,
@@ -85,8 +85,7 @@ class CceConv2dBackpropInputOp:  # pylint: disable=R0903
             if res.dtype == "int8":
                 bl1_size *= 2
                 if al1_size + bl1_size > tbe_platform_info.get_soc_spec("L1_SIZE"):
-                    dict_args = dict()
-                    dict_args["errCode"] = "E60026"
+                    dict_args = {"errCode": "E60026"}
                     raise RuntimeError(
                         dict_args, error_manager_util.get_error_message(dict_args)
                     )

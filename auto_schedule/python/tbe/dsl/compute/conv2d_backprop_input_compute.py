@@ -17,8 +17,6 @@
 """
 conv2d backprop input DSL interface.
 """
-from inspect import currentframe
-
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
@@ -89,6 +87,7 @@ FIXPIPE_SUPPORT_OP_LIST = ["Conv2DBackpropInputD", "Deconvolution", "Conv2DTrans
 FIXPIPE_FUSION_FLAG = "in_fixpipe_fusion"
 SUPPORT_FIXPIPE_INTRINSIC = "Intrinsic_fix_pipe_l0c2out"
 
+
 class DeconvParam:
     """
     class of deconvParam
@@ -153,6 +152,7 @@ def _check_variable_range(attr_value, attr_name, attr_min=None, attr_max=None):
         raise RuntimeError(args_dict,
                            error_manager_util.get_error_message(args_dict))
 
+
 def _get_fixpipe_fusion_flag():
     context = op_context.get_context()
     if context is None:
@@ -164,6 +164,7 @@ def _get_fixpipe_fusion_flag():
         if FIXPIPE_FUSION_FLAG in op_info.extra_params:
             return True
     return False
+
 
 def _check_equal_rule(param_1, param_2, param_name1, param_name2):
     """
@@ -179,7 +180,7 @@ def _check_equal_rule(param_1, param_2, param_name1, param_name2):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-def _check_input_params(  # pylint: disable=R0913,R0914,R0915
+def _check_input_params(
         filters,
         out_backprop,
         filter_sizes,
@@ -229,7 +230,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     def _check_shape_rule(shape_arg, shape_dim, shape_dtype, shape_name):
         if len(shape_arg) != shape_dim:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60006"
             dict_args["param_name"] = shape_name
             dict_args["expected_length"] = str(shape_dim)
@@ -240,7 +241,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         axis_i = 0
         for i in shape_arg:
             if not isinstance(i, shape_dtype):
-                dict_args = dict()
+                dict_args = {}
                 dict_args["errCode"] = "E65001"
                 dict_args["param_name"] = shape_name
                 dict_args["axis_rule"] = str(shape_dtype)
@@ -254,7 +255,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # check dtype
     def _check_dtype(valid_dtype_dict):
         def _gen_dict_args(name, dtype_list, type_value):
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60011"
             dict_args["attr_name"] = name
             dict_args["range"] = str(dtype_list)
@@ -278,7 +279,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             )
 
         if filters.dtype != out_backprop.dtype:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E65002"
             dict_args["param_1"] = "filter"
             dict_args["param_2"] = "out_backprop"
@@ -295,7 +296,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # check shape
     def _check_shape():
         if len(filters.shape) != FILTER_SHAPE_DIM:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E65003"
             dict_args["param_name"] = "filter.shape"
             dict_args["format"] = "[k1, n1, n0, k0]"
@@ -306,7 +307,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             )
 
         if len(out_backprop.shape) != DY_SHAPE_DIM:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E65003"
             dict_args["param_name"] = "out_backprop.shape"
             dict_args["format"] = "[No, Co1, Ho, Wo, Co0]"
@@ -347,8 +348,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     dy_c1_extend = group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
     dx_c_ori = group_dict.get(cube_util.GroupDictKeys.dx_c_ori)
     filter_c_ori = group_dict.get(cube_util.GroupDictKeys.filter_c_ori)
-    groups = group_dict.get(cube_util.GroupDictKeys.groups)
-    filter_ori_format = group_dict.get(cube_util.GroupDictKeys.filter_ori_format)
     var_map = DeconvParam.var_map
 
     valid_dtype_dict = {}
@@ -371,7 +370,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         _, filter_cout1, filter_cout0, filter_cin0 = cube_util.shape_to_list(filters.shape)
 
     dy_batch, dy_c1, dy_h, dy_w, dy_c0 = cube_util.shape_to_list(out_backprop.shape)
-    filter_cout, filter_cin, filter_h, filter_w = filter_sizes
+    filter_cout, _, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
     stride_h, stride_w = strides
     pad_up, pad_down, pad_left, pad_right = padding
@@ -380,8 +379,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     dx_h_after_pad = dx_h + pad_up + pad_down
     dx_w_after_pad = dx_w + pad_left + pad_right
-    _, dedy_k0, _ = tbe_platform.CUBE_MKN[out_backprop.dtype]["mac"]
-    _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
+    _, dedy_k0, _ = tbe_platform.CUBE_MKN.get(out_backprop.dtype)["mac"]
+    _, w_k0, w_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
 
     filter_cout = (filter_cout + w_k0 - 1) // w_k0 * w_k0
 
@@ -413,7 +412,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         dx_w_bound = get_te_var("dx_w").get_bound()
 
     if offset_w is not None:
-        dict_args = dict()
+        dict_args = {}
         dict_args["errCode"] = "E65004"
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
@@ -514,7 +513,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # dilation
     def _check_dilation():
         if dilation_n != 1 or dilation_c != 1:
-            dict_args = dict()
+            dict_args = {}
             dict_args["errCode"] = "E60023"
             dict_args["dilation_n"] = str(dilation_n)
             dict_args["dilation_c"] = str(dilation_c)
@@ -547,7 +546,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             dy_w = cube_util.shape_to_list(out_backprop.shape)[3]
         if not dy_w:
             return
-        c0_size_k = tbe_platform.CUBE_MKN[filters.dtype]["mac"][1]
+        c0_size_k = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"][1]
         bl1_size = filter_w * tbe_platform.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
 
         al1_w_value = dy_w * stride_w
@@ -567,8 +566,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         DeconvParam.al1_size = al1_size
         DeconvParam.bl1_size = bl1_size
         if al1_size + bl1_size > tbe_platform_info.get_soc_spec("L1_SIZE"):
-            dict_args = dict()
-            dict_args["errCode"] = "E60026"
+            dict_args = {"errCode": "E60026"}
             raise RuntimeError(
                 dict_args, error_manager_util.get_error_message(dict_args)
             )
@@ -584,14 +582,13 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             else:
                 bit_ratio = BIT_RATIO_DICT.get(dtype)
             if attr_value * bit_ratio > DATA_SIZE_MAX:
-                dict_args = dict()
-                dict_args["errCode"] = "E60020"
+                dict_args = {"errCode": "E60020"}
                 raise RuntimeError(
                     dict_args, error_manager_util.get_error_message(dict_args)
                 )
 
-        _, dedy_k0, _ = tbe_platform.CUBE_MKN[out_backprop.dtype]["mac"]
-        _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
+        _, dedy_k0, _ = tbe_platform.CUBE_MKN.get(out_backprop.dtype)["mac"]
+        _, w_k0, w_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
 
         if "batch_n" in var_map:
             dy_batch_upper, dx_batch_upper = batch_n_bound[1], batch_n_bound[1]
@@ -691,7 +688,6 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     fusion_para = para_dict.get("fusion_para")
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_input_cce")
     group_dict = para_dict.get("group_dict")
-    is_fusion_flag = para_dict.get("is_fusion_flag")
     pooling_mode = para_dict.get("pooling_mode")
     impl_mode = para_dict.get("impl_mode", "")
 
@@ -721,8 +717,6 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             cube_util.GroupDictKeys.filter_c_ori: filter_sizes[1],
             cube_util.GroupDictKeys.filter_ori_format: "NCHW"
         }
-
-    caller_name = currentframe().f_back.f_back.f_code.co_name
 
     # opti -> general:
     # 1) In quantified non-fusion scene, opti strategy maybe exceed UB size;
@@ -761,10 +755,10 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                         fusion_para=fusion_para,
                         switch_to_general_scheme=switch_to_general_scheme)
 
-    out_channel, in_channel, filter_h, filter_w = filter_sizes
+    _, _, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
 
-    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
+    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
     if filters.dtype == "float32":
         shape_dx = (dx_batch, ceil(dx_c, dx_k0), dx_h, dx_w, dx_k0)
@@ -776,7 +770,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     dy_6gd_shape = [g_extend, shape_dy[0], dy_c1_extend] + shape_dy[2:]
     dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
 
-    bias_flag = False if tensor_bias is None else True
+    bias_flag = tensor_bias is not None
 
 
     DynamicConv2dBpInputParams.ori_tensor = para_dict.get("ori_tensors")
@@ -812,7 +806,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
     DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False),
                                                "op_type": para_dict.get("op_type", "")}
-    if pooling_mode is "AVG":
+    if pooling_mode == "AVG":
         DynamicConv2dBpInputParams.tiling_info_dict["fused_coefficient"] = [3, 0, 0]
 
     support_fixpipe = tbe_platform.intrinsic_check_support(SUPPORT_FIXPIPE_INTRINSIC)
@@ -839,7 +833,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         )
     else:
         # dynamic avg_pool_grad: dy_grad is dy_grad / mean_matrix
-        if pooling_mode is "AVG":
+        if pooling_mode == "AVG":
             mean_matrix_shape = [shape_dy[2], shape_dy[3], shape_dy[4]]
             mean_matrix = tvm.compute(
                 mean_matrix_shape,
@@ -901,7 +895,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     return dx_ddr
 
 
-class DynamicConv2dBpInputParams:  # pylint: disable=R0903
+class DynamicConv2dBpInputParams:
     """
     Dynamic Conv2dBpInput Params
     """

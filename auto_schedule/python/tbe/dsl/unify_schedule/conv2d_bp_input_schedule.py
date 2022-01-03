@@ -19,7 +19,6 @@ conv2d schedule
 """
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
-from tbe.dsl.static_schedule.cce_schedule import get_op_info
 from tbe.tvm import schedule as tvm
 
 from .constants import Pattern
@@ -47,17 +46,15 @@ class Conv2dBackpropInputSchedule:
 
         self._scope = "local.UB"
         self._cce_op = CceConv2dBackpropInputOp(self._scope, need_tensorize=True, need_pragma=True)
+        self._var_range = self._tiling_case['var_range']
+        self._tiling_strategy = self._tiling_case['tiling_strategy']
 
     def do_schedule(self):
         """
         do schedule
         """
-
-        self._var_range = self._tiling_case['var_range']
-
         self._schedule = tvm.create_schedule([res.op for res in self._outs])
         self._schedule.tiling_key = self._tiling_case['key']
-        self._tiling_strategy = self._tiling_case['tiling_strategy']
 
         self._cce_op.schedule(self._outs[0], self._outs, [self._schedule],
                               tiling_case=self._tiling_strategy, var_range=self._var_range)

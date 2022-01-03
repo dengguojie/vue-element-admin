@@ -235,7 +235,7 @@ class Conv2dDxOptiSchedule:
                     // TILING["block_dim"][1]
                 )
         else:
-            block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+            block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype)["mac"]
             # if l0c_multi_group_flag and TILING.get(l1_shape) is [], l1 comput at l0c
             full_k = DIM_MAP.get("B_matrix_dim")[1] * block_k
             l1_k = TILING.get(l1_shape)[0] if TILING.get(l1_shape) else full_k
@@ -468,7 +468,7 @@ class Conv2dDxOptiSchedule:
         batch_l0 = 1
         g_l0 = 1
         if instr == "A":
-            block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("a_l0a").dtype][
+            block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("a_l0a").dtype)[
                 "mac"
             ]
             # l0_matrix is bl0_matrix:[kb, nb, n0, k0]
@@ -477,7 +477,7 @@ class Conv2dDxOptiSchedule:
             else:
                 full_ab = [cl0_matrix[1], k_dim, block_m, block_k, batch_l0, g_l0]
         elif instr == "B":
-            block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l0b").dtype][
+            block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l0b").dtype)[
                 "mac"
             ]
             # l0_matrix is al0_matrix:[ma, ka, m0, k0]
@@ -492,7 +492,7 @@ class Conv2dDxOptiSchedule:
 
 
     def _check_tilinng_k_l1(self):
-        _, block_k, _ = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+        _, block_k, _ = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype)["mac"]
         k_al1 = TILING.get("AL1_shape")[0]
         k_bl1 = TILING.get("BL1_shape")[0]
         if k_al1 % k_bl1 != 0 and k_bl1 % k_al1 != 0:
@@ -902,10 +902,10 @@ class Conv2dDxOptiSchedule:
         """
         self.dx_para.update_para_map("FUSION_TYPE", FUSION_DX_REQUANT)
         TENSOR_MAP["data_transfer"] = self._get_src_tensor(dx_res, 0)
-        TENSOR_MAP["c_ub"] = self._get_src_tensor(TENSOR_MAP["data_transfer"], 0)
-        if "vector" in TENSOR_MAP["c_ub"].op.tag:
+        TENSOR_MAP["c_ub"] = self._get_src_tensor(TENSOR_MAP.get("data_transfer"), 0)
+        if "vector" in TENSOR_MAP.get("c_ub").op.tag:
             quant_para["req_vector"] = True
-        TENSOR_MAP["deq"] = self._get_src_tensor(TENSOR_MAP["c_ub"], 1)
+        TENSOR_MAP["deq"] = self._get_src_tensor(TENSOR_MAP.get("c_ub"), 1)
         return quant_para
 
 
@@ -960,7 +960,7 @@ class Conv2dDxOptiSchedule:
         return quant_para
 
 
-    def _set_data_layout(self, res, dex_res, sch, var_range):  # pylint: disable=R0914,R0915,R0912
+    def _set_data_layout(self, res, dex_res, sch, var_range):
         """
         get DIM_MAP which contains all ops
 
@@ -981,7 +981,7 @@ class Conv2dDxOptiSchedule:
             :param tensor_add_res: add_res tensor
             :return: dx_gm tensor
             """
-            global TENSOR_MAP  # pylint: disable=W0603
+            global TENSOR_MAP
             tensor_add_left = tensor_add_res.op.input_tensors[0]
             tensor_add_right = tensor_add_res.op.input_tensors[1]
             if tensor_add_left.op.tag == "conv2d_backprop_input_opti":
@@ -997,7 +997,7 @@ class Conv2dDxOptiSchedule:
             TENSOR_MAP["add_input_ub"] = tensor_add_input_ub
             return tensor_dx_gm
 
-        def _check_dx_fusion_type(res, fusion_tensor_map):  # pylint: disable=R0915
+        def _check_dx_fusion_type(res, fusion_tensor_map):
             """
             check fusion type and set buffer
             """
@@ -1020,9 +1020,10 @@ class Conv2dDxOptiSchedule:
                         input_tensor_des = input_tensor_mem[1]
                     else:
                         input_tensor_des = c_ub_res
-                    input_tensor_ub = sch.cache_read(input_tensor_mem[0], tbe_platform_info.scope_ubuf, input_tensor_des)
+                    input_tensor_ub = sch.cache_read(input_tensor_mem[0], tbe_platform_info.scope_ubuf,
+                                                     input_tensor_des)
                     input_list.append(input_tensor_ub)
-                fusion_tensor_map["input_tensor"] =input_list
+                fusion_tensor_map["input_tensor"] = input_list
 
             def _handle_elewise_fusion():
                 self.dx_para.update_para_map("FUSION_TYPE", FUSION_DX_ELEWISE)
@@ -1065,7 +1066,7 @@ class Conv2dDxOptiSchedule:
 
                 _handle_elewise_tensor()
                 tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
-            elif (res.op.tag == "emit_insn_elewise_multiple_sel|bool" or 
+            elif (res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
                   (var_range and res.op.tag == "elewise_multiple_sel")):
                 drelu_gm = res
                 # dx+add+drelu
@@ -1152,20 +1153,20 @@ class Conv2dDxOptiSchedule:
                 FUSION_DX_DEQUANT_QUANT,
                 FUSION_DX_REQUANT
             ):
-                tensor_cub = TENSOR_MAP["c_ub"]
+                tensor_cub = TENSOR_MAP.get("c_ub")
 
             return tensor_cub
 
         def _get_l1_fusion_para():
             fusion_para = DeConvKernelSize1Pattern.fusion_para
-            self.dx_para.update_para_map("input_memory_type", [fusion_para["input_memory_type"]])
-            self.dx_para.update_para_map("l1_fusion_type", fusion_para["l1_fusion_type"])
-            self.dx_para.update_para_map("fmap_l1_addr_flag", fusion_para["fmap_l1_addr_flag"])
-            self.dx_para.update_para_map("fmap_l1_valid_size", fusion_para["fmap_l1_valid_size"])
+            self.dx_para.update_para_map("input_memory_type", [fusion_para.get("input_memory_type")])
+            self.dx_para.update_para_map("l1_fusion_type", fusion_para.get("l1_fusion_type"))
+            self.dx_para.update_para_map("fmap_l1_addr_flag", fusion_para.get("fmap_l1_addr_flag"))
+            self.dx_para.update_para_map("fmap_l1_valid_size", fusion_para.get("fmap_l1_valid_size"))
 
-            load3d_flag = bool(fusion_para["l1_fusion_type"] != -1)
+            load3d_flag = bool(fusion_para.get("l1_fusion_type") != -1)
             self.dx_para.update_para_map("load3d_flag", load3d_flag)
-            out_mem = fusion_para["output_memory_type"]
+            out_mem = fusion_para.get("output_memory_type")
             if out_mem == "fuse_flag":
                 if dex_res.op.tag == "conv_virtual_res":
                     for out_member in DOUBLE_TENSOR_OUT:
@@ -1193,10 +1194,7 @@ class Conv2dDxOptiSchedule:
             self.dx_para.update_para_map("output_memory_type", output_memory_type)
 
         def _al1_fusion_handle():
-            if (
-                self.dx_para.get_para_map("load3d_flag")
-                and self.dx_para.get_para_map("input_memory_type")[0] == 1
-            ):
+            if (self.dx_para.get_para_map("load3d_flag") and self.dx_para.get_para_map("input_memory_type")[0] == 1):
                 a_l0a_before = a_l0a.op.input_tensors[0]
                 dedy = a_l0a_before.op.input_tensors[0]
                 dedy_col = sch.cache_read(
@@ -1212,10 +1210,7 @@ class Conv2dDxOptiSchedule:
                     (al1_shape[3], al1_shape[3]),
                     (1, 1)
                 )
-            elif (
-                self.dx_para.get_para_map("load3d_flag")
-                and self.dx_para.get_para_map("input_memory_type")[0] == 0
-            ):
+            elif (self.dx_para.get_para_map("load3d_flag") and self.dx_para.get_para_map("input_memory_type")[0] == 0):
                 a_l0a_before = a_l0a.op.input_tensors[0]
                 dedy_col = a_l0a_before.op.input_tensors[0]
                 dedy = dedy_col.op.input_tensors[0]
@@ -1259,7 +1254,7 @@ class Conv2dDxOptiSchedule:
                     (1, 1),
                     (1, 1),
                     (1, 1),
-                    (1, tbe_platform.CUBE_MKN[a_l0a_before.dtype]["mac"][1])
+                    (1, tbe_platform.CUBE_MKN.get(a_l0a_before.dtype)["mac"][1])
                 )
             else:
                 sch[dedy_col].storage_align(sch[dedy_col].op.axis[1], storage_align_size, 0)
@@ -1277,8 +1272,8 @@ class Conv2dDxOptiSchedule:
                     var_map[name] = var_range[name]
             return var_map
 
-        global TENSOR_MAP  # pylint: disable=W0603
-        global DIM_MAP  # pylint: disable=W0603
+        global TENSOR_MAP
+        global DIM_MAP
         # L1 fusion write select
 
         self._print_debug("dx fusion tag:", res.op.tag)
@@ -1289,7 +1284,7 @@ class Conv2dDxOptiSchedule:
 
         # get tensor of ub by fusion_type
         tensor_cub = _get_ub_tensor(fusion_type)
-        no_need_use_ub_flag = (tensor_cub == None)
+        no_need_use_ub_flag = (tensor_cub is None)
         self.dx_para.update_para_map("no_need_use_ub_flag", no_need_use_ub_flag)
 
         if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
@@ -1344,7 +1339,7 @@ class Conv2dDxOptiSchedule:
 
         # set scope
         if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
-            tensor_cub = TENSOR_MAP["c_ub"]
+            tensor_cub = TENSOR_MAP.get("c_ub")
         if tensor_cub is not None:
             sch[tensor_cub].set_scope(tbe_platform_info.scope_ubuf)
             TENSOR_MAP["c_ub"] = tensor_cub
@@ -1358,7 +1353,7 @@ class Conv2dDxOptiSchedule:
         TENSOR_MAP["a_l1"] = dedy_col
         sch[a_l0a].set_scope(tbe_platform_info.scope_ca)
 
-        l0a_m0, l0a_k0, _ = tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"]
+        l0a_m0, l0a_k0, _ = tbe_platform.CUBE_MKN.get(a_l0a.dtype)["mac"]
         sch[a_l0a].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, l0a_m0), (1, l0a_k0))
         TENSOR_MAP["a_l0a"] = a_l0a
         if TENSOR_MAP.get("c_add_bias") is not None:
@@ -1381,7 +1376,7 @@ class Conv2dDxOptiSchedule:
 
         # fill in dimmap
         DIM_MAP["group_dict"] =  tensor_dx_gm.op.attrs["group_dict"]
-        group_dict_map = DIM_MAP["group_dict"]
+        group_dict_map = DIM_MAP.get("group_dict")
         DIM_MAP[cube_util.GroupDictKeys.g_extend] = group_dict_map[cube_util.GroupDictKeys.g_extend].value
         DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dy_c1_extend].value
         DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dx_c1_extend].value
@@ -1391,25 +1386,25 @@ class Conv2dDxOptiSchedule:
         else:
             DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res.shape)
         if self.dx_para.get_para_map("FM_NHWC_TRANS_5HD"):
-            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["a_l1"].shape)
+            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP.get("a_l1").shape)
         else:
-            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
+            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP.get("img_placehold").shape)
         DIM_MAP["A_matrix_dim"] = cube_util.shape_to_list(dedy_col.shape)
         DIM_MAP["B_matrix_dim"] = cube_util.shape_to_list(weight_l0.shape)
         DIM_MAP["filter_shape"] = cube_util.shape_to_list(weight_l1.op.input_tensors[0].shape)
         DIM_MAP["dx_5D_shape"] = cube_util.shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])
-        DIM_MAP["dx_6GD_shape"] = [DIM_MAP[cube_util.GroupDictKeys.g_extend],
-                                DIM_MAP["dx_5D_shape"][0],
-                                DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend]] + DIM_MAP["dx_5D_shape"][2:]
-        DIM_MAP["dy_6GD_shape"] = [DIM_MAP[cube_util.GroupDictKeys.g_extend],
-                                DIM_MAP.get("img_shape")[0],
-                                DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]]+ DIM_MAP.get("img_shape")[2:]
+        DIM_MAP["dx_6GD_shape"] = [DIM_MAP.get(cube_util.GroupDictKeys.g_extend),
+                                   DIM_MAP.get("dx_5D_shape")[0],
+                                   DIM_MAP.get(cube_util.GroupDictKeys.dx_c1_extend)] + DIM_MAP.get("dx_5D_shape")[2:]
+        DIM_MAP["dy_6GD_shape"] = [DIM_MAP.get(cube_util.GroupDictKeys.g_extend),
+                                   DIM_MAP.get("img_shape")[0],
+                                   DIM_MAP.get(cube_util.GroupDictKeys.dy_c1_extend)] + DIM_MAP.get("img_shape")[2:]
         if weight_l0.dtype == "float32":
-            DIM_MAP["dy_6GD_shape"][2] *= 2
+            DIM_MAP.get("dy_6GD_shape")[2] *= 2
 
         if TENSOR_MAP.get("dilate_ub") is not None:
-            DIM_MAP["dilate_dim"] = cube_util.shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["dilate"])
-            DIM_MAP["out_hwdim"] = cube_util.shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["out_hw"])
+            DIM_MAP["dilate_dim"] = cube_util.shape_to_list(TENSOR_MAP.get("dilate_ub").op.attrs["dilate"])
+            DIM_MAP["out_hwdim"] = cube_util.shape_to_list(TENSOR_MAP.get("dilate_ub").op.attrs["out_hw"])
 
         if "batch_n" in var_map:
             sch.set_var_range(DIM_MAP.get("img_shape")[0], *var_range.get("batch_n"))
@@ -1425,7 +1420,7 @@ class Conv2dDxOptiSchedule:
         return tensor_dx_gm, var_map
 
 
-    def _get_aicore_tiling_factor(self, is_conv1d_bool, sch, var_map, var_range, l0c_multi_group_flag):  # pylint: disable=R0915
+    def _get_aicore_tiling_factor(self, is_conv1d_bool, sch, var_map, var_range, l0c_multi_group_flag):
         """
         using tilling parameter calculate factor
 
@@ -1443,8 +1438,8 @@ class Conv2dDxOptiSchedule:
                 check_ifmc_falg = bool(
                     (mc_from_tiling // DIM_MAP.get("img_shape")[3])
                     * DIM_MAP.get("img_shape")[3]
-                    * DIM_MAP["dilate_dim"][0]
-                    * DIM_MAP["dilate_dim"][1]
+                    * DIM_MAP.get("dilate_dim")[0]
+                    * DIM_MAP.get("dilate_dim")[1]
                     <= CUB_BUFFER_LIMIT
                 )
                 if (
@@ -1466,8 +1461,8 @@ class Conv2dDxOptiSchedule:
                     check_ifmc_falg_s = bool(
                         n_is_hfactor
                         * DIM_MAP.get("img_shape")[3]
-                        * DIM_MAP["dilate_dim"][0]
-                        * DIM_MAP["dilate_dim"][1]
+                        * DIM_MAP.get("dilate_dim")[0]
+                        * DIM_MAP.get("dilate_dim")[1]
                         > CUB_BUFFER_LIMIT
                     )
                 if mc_from_tiling % DIM_MAP.get("img_shape")[3] != 0 or check_ifmc_falg_s:
@@ -1476,7 +1471,7 @@ class Conv2dDxOptiSchedule:
                         n_is_hfactor = n_is_hfactor - 1
 
             l0c_tiling_factor[1] = (
-                DIM_MAP.get("out_hwdim")[1] * n_is_hfactor * DIM_MAP["dilate_dim"][0]
+                DIM_MAP.get("out_hwdim")[1] * n_is_hfactor * DIM_MAP.get("dilate_dim")[0]
             )
             if l0c_tiling_factor[1] == 0:
                 self._raise_dx_opti_err("nw can not be zero")
@@ -1490,8 +1485,8 @@ class Conv2dDxOptiSchedule:
             cub_db_flag = TILING.get("manual_pingpong_buffer").get("CUB_pbuffer")
             cub_dtype_bit = DTYPE_BYTE_MAP.get("float16")
             ub_buffer_size = tbe_platform_info.get_soc_spec("UB_SIZE")
-            stride_h, stride_w = DIM_MAP["dilate_dim"]
-            dx_h, dx_w = DIM_MAP.get("out_hwdim")
+            stride_h, stride_w = DIM_MAP.get("dilate_dim")
+            _, dx_w = DIM_MAP.get("out_hwdim")
 
             if "dedy_w" in var_map and not var_map.get("dedy_w")[1]:
                 sch.set_var_value(n_is_hfactor, (mc_from_tiling - block_m) // DIM_MAP.get("img_shape")[3])
@@ -1522,7 +1517,8 @@ class Conv2dDxOptiSchedule:
                                                 (mc_from_tiling - block_m) // DIM_MAP.get("img_shape")[3]),
                                         max_n_is_hfactor), 1))
                 else:
-                    sch.set_var_value(n_is_hfactor, tvm.max((mc_from_tiling - block_m) // DIM_MAP.get("img_shape")[3], 1))
+                    sch.set_var_value(n_is_hfactor,
+                                      tvm.max((mc_from_tiling - block_m) // DIM_MAP.get("img_shape")[3], 1))
                 sch.set_var_range(n_is_hfactor, 1, mc_from_tiling)
             l0c_tiling_factor[1] = dx_w * n_is_hfactor * stride_h
             undilate_l0c_m = n_is_hfactor * DIM_MAP.get("img_shape")[3]
@@ -1535,7 +1531,7 @@ class Conv2dDxOptiSchedule:
                 factor = 2 if TENSOR_MAP.get("a_l1").dtype == "float32" else 1
                 al1_parts = [
                     int_ceil_div(
-                        DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] * factor,
+                        DIM_MAP.get(cube_util.GroupDictKeys.dy_c1_extend) * factor,
                         int_ceil_div(TILING["AL1_shape"][0], block_k)
                     ),
                     int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1]),
@@ -1560,8 +1556,8 @@ class Conv2dDxOptiSchedule:
                 ]
             return al1_parts, bl1_parts
 
-        block_m = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
-        block_k = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"][1]
+        block_m = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("c_l0c").dtype)["mac"][0]
+        block_k = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype)["mac"][1]
         # get factor from l0c, ub to ddr
         mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
         l0c_tiling_factor = [TILING["CL0_matrix"][0], mc_from_tiling]
@@ -1574,7 +1570,7 @@ class Conv2dDxOptiSchedule:
             # get fh*w(fh is factor of H),
             # and update l0c_tiling_factor[1] to dilate*fh*w
             if is_conv1d_bool:
-                l0c_tiling_factor[1] = mc_from_tiling * DIM_MAP["dilate_dim"][1]
+                l0c_tiling_factor[1] = mc_from_tiling * DIM_MAP.get("dilate_dim")[1]
                 undilate_l0c_m = mc_from_tiling
                 need_buffer_tile = True
             else:
@@ -1590,8 +1586,8 @@ class Conv2dDxOptiSchedule:
             if (
                 l0c_tiling_factor[1] % block_m != 0
                 or (
-                    DIM_MAP["out_img_shape"][2] -
-                    DIM_MAP["out_img_shape"][2] // l0c_tiling_factor[1] * l0c_tiling_factor[1]
+                    DIM_MAP.get("out_img_shape")[2] -
+                    DIM_MAP.get("out_img_shape")[2] // l0c_tiling_factor[1] * l0c_tiling_factor[1]
                 ) % block_m != 0
             ):
                 self._print_debug("Tiling[CUB_matrix][0] reset to 1, mask_ub_need_bind_buffer")
@@ -1644,7 +1640,8 @@ class Conv2dDxOptiSchedule:
         )
 
 
-    def _get_mmad_factor(self, ):
+    @staticmethod
+    def _get_mmad_factor():
         """
         get tilling factor in mmad
 
@@ -1658,7 +1655,7 @@ class Conv2dDxOptiSchedule:
         return al0_factor, bl0_factor, reduce_factor
 
 
-    def _bind_multi_core(  # pylint: disable=R0913,R0914
+    def _bind_multi_core(
         self,
         sch,
         c_gm,
@@ -1676,7 +1673,7 @@ class Conv2dDxOptiSchedule:
         blockidx_list = []
         # split batch axis
         if "batch_n" in var_map:
-            batch_dim_factor = int_ceil_div(DIM_MAP["out_img_shape"][0], block_dim[0])
+            batch_dim_factor = int_ceil_div(DIM_MAP.get("out_img_shape")[0], block_dim[0])
             batch_dim_factor = tvm.max(1, batch_dim_factor)
             batch_out, batch_in = sch[c_gm].split(c_gm.op.axis[0], batch_dim_factor)
         else:
@@ -1716,7 +1713,7 @@ class Conv2dDxOptiSchedule:
         return [batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list]
 
 
-    def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
+    def _get_l0c_and_l1_axis(
         self, sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
     ):
         """
@@ -1733,7 +1730,8 @@ class Conv2dDxOptiSchedule:
         -------------------------------------------------------------------
         """
 
-        def _get_reorder_flag(al1_parts, bl1_parts, reorder_flag):
+        def _get_reorder_flag(al1_parts, bl1_parts):
+            reorder_flag = False
             if (
                 TILING["AL1_shape"]
                 and al1_parts[0] != 1
@@ -1760,10 +1758,10 @@ class Conv2dDxOptiSchedule:
             self._print_debug("reorder_flag:", reorder_flag)
             return reorder_flag
 
-        if self.dx_para.get_para_map("5HD_TRANS_NHWC"): #(batch, howo_axis, co_axis)
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"): # (batch, howo_axis, co_axis)
             c_gm_howo_axis_idx = 1
             c_gm_co_axis_idx = 2
-        else:                                           #(batch, co_aixs//16, howo_axis, 16)
+        else:                                           # (batch, co_aixs//16, howo_axis, 16)
             c_gm_howo_axis_idx = 2
             c_gm_co_axis_idx = 1
 
@@ -1788,16 +1786,8 @@ class Conv2dDxOptiSchedule:
         l1_n_outer_outer, l1_n_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
         self._print_ir_conv("split gm by loc_factor and l1_parts", sch)
         [batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out,
-        l1_n_out_inner_in, blockidx_list] = self._bind_multi_core(
-            sch,
-            c_gm,
-            g_dim,
-            l1_n_outer_outer,
-            l1_n_out_inner,
-            l1_m_outer_outer,
-            l1_m_outer_inner,
-            var_map
-        )
+        l1_n_out_inner_in, blockidx_list] = self._bind_multi_core(sch, c_gm, g_dim, l1_n_outer_outer, l1_n_out_inner,
+                                                                  l1_m_outer_outer, l1_m_outer_inner, var_map)
         self._print_ir_conv("bind multi core", sch)
         # reorder al1 and bl1 axis according to double buffer
         batch_in_out_axis, batch_in_inner_axis = sch[c_gm].split(batch_in, factor=1)
@@ -1805,7 +1795,7 @@ class Conv2dDxOptiSchedule:
         # m or n reorder flag, if m_outer is smaller, reorder is true
         reorder_flag = False
         if not var_map:
-            reorder_flag = _get_reorder_flag(al1_parts, bl1_parts, reorder_flag)
+            reorder_flag = _get_reorder_flag(al1_parts, bl1_parts)
         self._print_ir_conv("before reorder", sch)
         if reorder_flag:
             sch[c_gm].reorder(l1_m_outer_outer, batch_in_inner_axis, l1_n_outer_outer)
@@ -1817,27 +1807,14 @@ class Conv2dDxOptiSchedule:
             overload_flag_gm = True
         self._print_ir_conv("after reorder", sch)
 
-        return (
-            batch_in_out_axis,
-            l1_n_outer_outer,
-            batch_in_inner_axis,
-            l1_n_out_inner_out,
-            l1_m_outer_inner_in,
-            l0c_n_inner,
-            l0c_m_inner,
-            l1_m_outer_outer,
-            l1_n_out_inner_in,
-            blockidx_list,
-            g_inner,
-            overload_axis,
-            overload_flag_gm,
-            l0c_m_outer,
-            reorder_flag
-        )
+        return (batch_in_out_axis, l1_n_outer_outer, batch_in_inner_axis, l1_n_out_inner_out, l1_m_outer_inner_in,
+                l0c_n_inner, l0c_m_inner, l1_m_outer_outer, l1_n_out_inner_in, blockidx_list, g_inner, overload_axis,
+                overload_flag_gm, l0c_m_outer, reorder_flag)
 
 
-    def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
-        self, sch, c_l0c, new_c_col_axis, al0_axis_factor, bl0_axis_factor, reduce_axis_factor
+    @staticmethod
+    def _get_l0a_and_l0b_axis(
+        sch, c_l0c, new_c_col_axis, al0_axis_factor, bl0_axis_factor, reduce_axis_factor
     ):
         """
         get l0a and l0b axis
@@ -1856,7 +1833,7 @@ class Conv2dDxOptiSchedule:
         reduce_out, reduce_inner = sch[c_l0c].op.reduce_axis
         al0_m_out, al0_m_inner = sch[c_l0c].split(
             new_c_col_axis[2],
-            al0_axis_factor[0] * tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]
+            al0_axis_factor[0] * tbe_platform.CUBE_MKN.get(c_l0c.dtype)["mac"][0]
         )
         bl0_n_outer, bl0_n_inner = sch[c_l0c].split(new_c_col_axis[1], bl0_axis_factor[1])
         # for reduce axis, al0 and b_l0b should be the same
@@ -1924,7 +1901,8 @@ class Conv2dDxOptiSchedule:
         return al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial, overload_flag_l0c
 
 
-    def _dilate_schedule(self, sch, dilate_ub, out_w, dilate_w, dilate_h, var_map=None):
+    @staticmethod
+    def _dilate_schedule(sch, dilate_ub, out_w, dilate_w, dilate_h, var_map=None):
         """
         :param sch:
         :param dilate_ub:
@@ -1956,9 +1934,9 @@ class Conv2dDxOptiSchedule:
         :param fusion_type:  FUSION_DX_DEQUANT_QUANT or FUSION_DX_REQUANT
 
         """
-        block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
-        min_n = DIM_MAP["dx_c1_extend"]
-        min_l0b = min_n * block_k * block_n * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l0b").dtype]
+        block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype)["mac"]
+        min_n = DIM_MAP.get("dx_c1_extend")
+        min_l0b = min_n * block_k * block_n * DTYPE_BYTE_MAP.get(TENSOR_MAP.get("b_l0b").dtype)
         if min_l0b > tbe_platform_info.get_soc_spec("L0B_SIZE"):
             self._raise_dx_opti_err("The minimum data in l0b exceed buffer space, the fusion backs to single operator.")
         min_m = 1
@@ -1972,19 +1950,17 @@ class Conv2dDxOptiSchedule:
                 # add one is needed by buffer_tile of ub
                 min_m = int_ceil_div(dy_w, block_m) + 1
         group_l0c = 2
-        min_l0c = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_l0c").dtype] * group_l0c
+        min_l0c = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP.get(TENSOR_MAP.get("c_l0c").dtype) * group_l0c
         if min_l0c > tbe_platform_info.get_soc_spec("L0C_SIZE"):
             self._raise_dx_opti_err("The minimum data in l0c exceed buffer space, the fusion backs to single operator.")
         self._calc_double_op_num(fusion_type)
-        min_ub = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_gm").dtype] \
-                * group_l0c * FUSION_TYPE_2_OPERAND_NUM[fusion_type]
+        min_ub = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP.get(TENSOR_MAP.get("c_gm").dtype) \
+                * group_l0c * FUSION_TYPE_2_OPERAND_NUM.get(fusion_type)
         if min_ub > tbe_platform_info.get_soc_spec("UB_SIZE"):
             self._raise_dx_opti_err("The minimum data in ub exceed buffer space, the fusion backs to single operator.")
 
 
-    def opti_schedule(
-        self, tensor, sch_list, tiling_case=None, var_range=None
-    ):  # pylint: disable=R0915,R0914
+    def opti_schedule(self, tensor, sch_list, tiling_case=None, var_range=None):
         """
         the schedule of conv2d_backprop_opti_input
 
@@ -2001,10 +1977,10 @@ class Conv2dDxOptiSchedule:
         def _do_buffer_tile():
             def _get_cub_buffertile_m_min():
                 # cub buffertile hw axis
-                block_m = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"][0]
+                block_m = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("c_ub").dtype)["mac"][0]
                 mm_coefficient_factor = undilate_l0c_m
                 moo_coefficient_unzero = int_ceil_div(
-                    int_ceil_div(DIM_MAP["out_img_shape"][2], l0c_factor[1]), al1_parts[1]
+                    int_ceil_div(DIM_MAP.get("out_img_shape")[2], l0c_factor[1]), al1_parts[1]
                 )
 
                 moo_coefficient = 0 if al1_parts[1] == 1 else moo_coefficient_unzero
@@ -2034,7 +2010,7 @@ class Conv2dDxOptiSchedule:
                 # cub buffertile cout axis
                 no_coefficient = l0c_factor[0]
                 noo_coefficient_unzero = int_ceil_div(
-                    int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
+                    int_ceil_div(DIM_MAP.get("dx_6GD_shape")[2], l0c_factor[0]), bl1_parts[1]
                 )
                 noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
                 noio_coefficient = (
@@ -2045,11 +2021,11 @@ class Conv2dDxOptiSchedule:
                 go_coefficient = (
                     0
                     if TILING["block_dim"][3] == 1
-                    else int_ceil_div(DIM_MAP["dx_6GD_shape"][0], TILING["block_dim"][3])
+                    else int_ceil_div(DIM_MAP.get("dx_6GD_shape")[0], TILING.get("block_dim")[3])
                 )
                 gi_coefficient = (
                     0
-                    if DIM_MAP["dx_6GD_shape"][0] == 1
+                    if DIM_MAP.get("dx_6GD_shape")[0] == 1
                     else 1
                 )
                 noii_coefficient = (
@@ -2064,7 +2040,7 @@ class Conv2dDxOptiSchedule:
                 )
                 cub_buffertile_n_min = (
                     go_coefficient * group_axis
-                    + gi_coefficient * g_inner) * DIM_MAP["dx_6GD_shape"][2] + (
+                    + gi_coefficient * g_inner) * DIM_MAP.get("dx_6GD_shape")[2] + (
                     bl1_at_c_axis.var * noo_coefficient
                     + noio_coefficient * noio_axis
                     + noii_coefficient * noii_axis.var
@@ -2076,7 +2052,7 @@ class Conv2dDxOptiSchedule:
             # multi core and one core
             group_axis, batcho_axis, noio_axis, moio_axis = blockidx_list
             # cub buffertile batch axis
-            batch_factor = int_ceil_div(DIM_MAP.get("img_shape")[0], TILING["block_dim"][0])
+            batch_factor = int_ceil_div(DIM_MAP.get("img_shape")[0], TILING.get("block_dim")[0])
             batcho_coefficient = 0 if TILING["block_dim"][0] == 1 else batch_factor
             batchio_coefficient = 0 if batch_factor == 1 else 1
             batch_dim = [
@@ -2108,18 +2084,18 @@ class Conv2dDxOptiSchedule:
                 ]
                 for tensor in TENSOR_MAP:
                     if tensor == "elewise_tensor":
-                        for elewise_tensor in TENSOR_MAP[tensor]:
+                        for elewise_tensor in TENSOR_MAP.get(tensor):
                             if "broadcast" in elewise_tensor.op.tag or elewise_tensor.op.tag == "dequant_remove_pad":
                                 sch[elewise_tensor].compute_inline()
                             else:
                                 sch[elewise_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
                     elif tensor == "input_tensor":
-                        for input_tensor in TENSOR_MAP[tensor]:
+                        for input_tensor in TENSOR_MAP.get(tensor):
                             sch[input_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
-                    elif tensor == "input_ub" and not quan_para["q_padding"]:
-                        sch[TENSOR_MAP[tensor]].compute_inline()
+                    elif tensor == "input_ub" and not quan_para.get("q_padding"):
+                        sch[TENSOR_MAP.get(tensor)].compute_inline()
                     elif tensor in ub_attach_list:
-                        sch[TENSOR_MAP[tensor]].compute_at(sch[c_gm], l0c_m_inner_outer)
+                        sch[TENSOR_MAP.get(tensor)].compute_at(sch[c_gm], l0c_m_inner_outer)
 
             def _attach_ub_bias():
                 split_bias_flag = TILING.get("CUB_channel_wise_flag")
@@ -2146,7 +2122,7 @@ class Conv2dDxOptiSchedule:
                         if TENSOR_MAP.get("dilate_ub") is None:
                             strideh, stridew = 1, 1
                         else:
-                            strideh, stridew = DIM_MAP["dilate_dim"]
+                            strideh, stridew = DIM_MAP.get("dilate_dim")
                         align_buffer = reduce(lambda x, y: x * y, TILING["CUB_matrix"][1:4]) * strideh * stridew
                         self._print_debug("mask_ub_need_bind_buffer, align_buffer:", align_buffer)
                         sch[bitmask_ub].bind_buffer(bitmask_ub.op.axis[1], align_buffer, 0)
@@ -2161,9 +2137,9 @@ class Conv2dDxOptiSchedule:
                 sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
             elif fusion_type == FUSION_DX_ELEWISE:
-                for input_tensor in TENSOR_MAP["input_tensor_list"]:
+                for input_tensor in TENSOR_MAP.get("input_tensor_list"):
                     sch[input_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
-                for ub_tensor in TENSOR_MAP["ub_list"]:
+                for ub_tensor in TENSOR_MAP.get("ub_list"):
                     if "broadcast" in ub_tensor.op.tag:
                         sch[ub_tensor].compute_inline()
                     else:
@@ -2179,22 +2155,22 @@ class Conv2dDxOptiSchedule:
             _attach_ub_bias()
 
             if dilate_ub is not None:
-                filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
                 sch[dilate_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[filling_zero_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 if var_map:
-                    tensor_vn = TENSOR_MAP["tensor_vn"]
+                    tensor_vn = TENSOR_MAP.get("tensor_vn")
                     sch[tensor_vn].compute_at(sch[c_gm], l0c_m_inner_outer)
             if not self.dx_para.get_para_map("no_need_use_ub_flag"):
                 sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
 
             if "data_transfer" in TENSOR_MAP:
                 sch[c_ub].compute_inline()
-                sch[TENSOR_MAP["data_transfer"]].buffer_align(
+                sch[TENSOR_MAP.get("data_transfer")].buffer_align(
                     (1, 1),
                     (1, 1),
-                    (1, tbe_platform.CUBE_MKN["int8"]["mac"][0]),
-                    (1, tbe_platform.CUBE_MKN["int8"]["mac"][0])
+                    (1, tbe_platform.CUBE_MKN.get("int8")["mac"][0]),
+                    (1, tbe_platform.CUBE_MKN.get("int8")["mac"][0])
                 )
 
         def _attach_al1_bl1():
@@ -2300,11 +2276,11 @@ class Conv2dDxOptiSchedule:
                 if bias_add_vector_ub is not None:
                     sch[bias_add_vector_ub].double_buffer()
                 if dilate_ub is not None:
-                    filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                    filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
                     sch[dilate_ub].double_buffer()
                     sch[filling_zero_ub].double_buffer()
                     if var_map:
-                        tensor_vn = TENSOR_MAP["tensor_vn"]
+                        tensor_vn = TENSOR_MAP.get("tensor_vn")
                         sch[tensor_vn].double_buffer()
                 if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
                     sch[fusion_dx_gm].double_buffer()
@@ -2315,9 +2291,9 @@ class Conv2dDxOptiSchedule:
                             sch[add_input_ub].double_buffer()
                             sch[add_input_ub].preload()
                 elif fusion_type == FUSION_DX_ELEWISE:
-                    for ub_tensor in TENSOR_MAP["ub_list"]:
+                    for ub_tensor in TENSOR_MAP.get("ub_list"):
                         sch[ub_tensor].double_buffer()
-                    for input_tensor in TENSOR_MAP["input_tensor_list"]:
+                    for input_tensor in TENSOR_MAP.get("input_tensor_list"):
                         sch[input_tensor].double_buffer()
                         sch[input_tensor].preload()
 
@@ -2328,7 +2304,7 @@ class Conv2dDxOptiSchedule:
                 dx_output_ub = c_ub
             if fusion_type == FUSION_DX_ADD_DRELU:
                 if dilate_ub is not None:
-                    filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                    filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
                     sch[filling_zero_ub].reused_by(add_input_ub)
                     sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
                     if var_map:
@@ -2341,7 +2317,7 @@ class Conv2dDxOptiSchedule:
                 iv_c_gm = cube_util.calc_info_of_iter_vars(sch[c_gm])
                 len_axis = iv_c_gm[-2][1].extent
                 if FUSION_TYPE_2_OPERAND_NUM.get(fusion_type) < 1:
-                    for ub_tensor in TENSOR_MAP["ub_list"]:
+                    for ub_tensor in TENSOR_MAP.get("ub_list"):
                         len_align = (
                             tvm.min(
                                 len_axis, dx_output_ub.shape[2] - l0c_m_outer.var * len_axis
@@ -2352,7 +2328,7 @@ class Conv2dDxOptiSchedule:
                         sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
                         sch[dx_output_ub].reused_by(ub_tensor)
 
-        def _fusion_intrin_mapping(fusion_type):  # pylint: disable=R0915
+        def _fusion_intrin_mapping(fusion_type):
             def _add_res_ub_insn():
                 if dilate_ub is None:
                     sch[add_res_ub].emit_insn(add_res_ub.op.axis[0], "vector_add")
@@ -2362,17 +2338,17 @@ class Conv2dDxOptiSchedule:
             def _quant_vector_insn():
                 for tensor_name in TENSOR_MAP:
                     if tensor_name == "reform_op":
-                        reform_ub = TENSOR_MAP[tensor_name]
+                        reform_ub = TENSOR_MAP.get(tensor_name)
                         ndim = len(sch[reform_ub].op.axis)
                         coo, _ = sch[reform_ub].split(
                             sch[reform_ub].op.axis[ndim - 1],
-                            tbe_platform.CUBE_MKN["float16"]["mac"][1]
+                            tbe_platform.CUBE_MKN.get("float16")["mac"][1]
                         )
                         axis_list = sch[reform_ub].op.axis[0:ndim - 1]
                         sch[reform_ub].reorder(coo, *axis_list)
                         sch[reform_ub].emit_insn(sch[reform_ub].op.axis[2], "vector_auto")
                     elif tensor_name == "elewise_tensor":
-                        for elewise_tensor in TENSOR_MAP[tensor_name]:
+                        for elewise_tensor in TENSOR_MAP.get(tensor_name):
                             sch[elewise_tensor].emit_insn(
                                 elewise_tensor.op.axis[0], "vector_auto"
                             )
@@ -2380,16 +2356,16 @@ class Conv2dDxOptiSchedule:
             def _quant_copy_insn():
                 for tensor_name in TENSOR_MAP:
                     if tensor_name == "deq":
-                        sch[TENSOR_MAP[tensor_name]].emit_insn(
-                            TENSOR_MAP[tensor_name].op.axis[0], "dma_copy"
+                        sch[TENSOR_MAP.get(tensor_name)].emit_insn(
+                            TENSOR_MAP.get(tensor_name).op.axis[0], "dma_copy"
                         )
                     elif tensor_name == "input_tensor":
-                        for input_tensor in TENSOR_MAP[tensor_name]:
+                        for input_tensor in TENSOR_MAP.get(tensor_name):
                             sch[input_tensor].emit_insn(
                                 input_tensor.op.axis[0], "dma_copy"
                             )
                     elif tensor_name == "data_transfer":
-                        c_ub_reform = TENSOR_MAP[tensor_name]
+                        c_ub_reform = TENSOR_MAP.get(tensor_name)
                         reform_outer, reform_inner = sch[c_ub_reform].split(
                             c_ub_reform.op.axis[3], nparts=2
                         )
@@ -2407,19 +2383,20 @@ class Conv2dDxOptiSchedule:
                 _quant_copy_insn()
                 for tensor_name in TENSOR_MAP:
                     if tensor_name == "c_ub" and fusion_type != FUSION_DX_REQUANT:
-                        axis_index = 2 if quan_para["deq_vector"] else 0
+                        axis_index = 2 if quan_para.get("deq_vector") else 0
                         if cube_util.is_v200_version_new():
-                            sch[TENSOR_MAP[tensor_name]].emit_insn(TENSOR_MAP[tensor_name].op.axis[axis_index],
+                            sch[TENSOR_MAP.get(tensor_name)].emit_insn(TENSOR_MAP.get(tensor_name).op.axis[axis_index],
                                                                 "dma_copy")
                         else:
                             emit = "vector" if axis_index == 2 else "scalar"
-                            sch[TENSOR_MAP[tensor_name]].pragma(TENSOR_MAP[tensor_name].op.axis[axis_index],
+                            sch[TENSOR_MAP.get(tensor_name)].pragma(TENSOR_MAP.get(tensor_name).op.axis[axis_index],
                                                                 "deq_scale", emit)
-                    elif tensor_name == "input_ub" and quan_para["q_padding"]:
-                        sch[TENSOR_MAP[tensor_name]].emit_insn(TENSOR_MAP[tensor_name].op.axis[0], "dma_padding")
+                    elif tensor_name == "input_ub" and quan_para.get("q_padding"):
+                        sch[TENSOR_MAP.get(tensor_name)].emit_insn(TENSOR_MAP.get(tensor_name).op.axis[0],
+                                                                   "dma_padding")
                     elif tensor_name == "cast_i8_ub":
-                        cast_i8_ub = TENSOR_MAP[tensor_name]
-                        round_mode_emit_insn = ("vector_conv_%s" % quan_para["q_round"].lower())
+                        cast_i8_ub = TENSOR_MAP.get(tensor_name)
+                        round_mode_emit_insn = ("vector_conv_%s" % quan_para.get("q_round").lower())
                         if cube_util.is_mini_version():
                             round_mode_emit_insn = "vector_conv"
                         sch[cast_i8_ub].emit_insn(cast_i8_ub.op.axis[0], round_mode_emit_insn)
@@ -2432,9 +2409,9 @@ class Conv2dDxOptiSchedule:
                     sch[add_input_ub].emit_insn(add_input_ub.op.axis[0], "dma_copy")
                     _add_res_ub_insn()
             elif fusion_type == FUSION_DX_ELEWISE:
-                for input_tensor in TENSOR_MAP["input_tensor_list"]:
+                for input_tensor in TENSOR_MAP.get("input_tensor_list"):
                     sch[input_tensor].emit_insn(input_tensor.op.axis[0], "dma_copy")
-                for ub_tensor in TENSOR_MAP["ub_list"]:
+                for ub_tensor in TENSOR_MAP.get("ub_list"):
                     sch[ub_tensor].emit_insn(ub_tensor.op.axis[0], "vector_auto")
             elif fusion_type in (
                 FUSION_DX_DEQUANT,
@@ -2443,7 +2420,7 @@ class Conv2dDxOptiSchedule:
             ):
                 _quant_ub_insn()
 
-        def _intrin_mapping(fusion_type):  # pylint: disable=R0915,R0912
+        def _intrin_mapping(fusion_type):
             def _l1fusion_intrin():
                 if TILING["AL1_shape"] is not None:
                     if self.dx_para.get_para_map("input_memory_type")[0] == 1:
@@ -2516,9 +2493,9 @@ class Conv2dDxOptiSchedule:
                     sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
             if dilate_ub is not None:
-                filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+                filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
                 if var_map:
-                    tensor_vn = TENSOR_MAP["tensor_vn"]
+                    tensor_vn = TENSOR_MAP.get("tensor_vn")
                     sch[dilate_ub].reused_by(tensor_vn)
                     sch[tensor_vn].emit_insn(sch[tensor_vn].op.axis[0], "phony_insn")
                 if bias_add_vector_ub is not None:
@@ -2598,7 +2575,7 @@ class Conv2dDxOptiSchedule:
                 al1_bound = al1_m * k_al1
             else:
                 al1_bound = (
-                    DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]
+                    DIM_MAP.get(cube_util.GroupDictKeys.dy_c1_extend)
                     * align(dedy_shape_nc1hwc0[2] * dedy_shape_nc1hwc0[3], tiling_m0)
                     * dedy_shape_nc1hwc0[4]
                 )
@@ -2614,7 +2591,7 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].set_buffer_size(l0c_bound)
             dilate_bound = l0c_factor[1] * nc_factor * tiling_n0
             sch[dilate_ub].set_buffer_size(dilate_bound)
-            filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+            filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
             sch[filling_zero_ub].set_buffer_size(dilate_bound)
             if fusion_type == FUSION_DX_ADD_DRELU:
                 sch[add_input_ub].set_buffer_size(dilate_bound)
@@ -2623,9 +2600,9 @@ class Conv2dDxOptiSchedule:
 
         def _is_conv1d():
             return (
-                DIM_MAP["dx_5D_shape"][2] == 1
+                DIM_MAP.get("dx_5D_shape")[2] == 1
                 and DIM_MAP.get("img_shape")[2] == 1
-                and (TENSOR_MAP.get("dilate_ub") is None or DIM_MAP["dilate_dim"][0] == 1)
+                and (TENSOR_MAP.get("dilate_ub") is None or DIM_MAP.get("dilate_dim")[0] == 1)
             )
 
         def _res_select_write(res):
@@ -2641,7 +2618,7 @@ class Conv2dDxOptiSchedule:
 
         def _get_fusion_type(fusion_type):
             # get the fusion num
-            fusion_type_num = FUSION_TYPE_2_NUM[fusion_type]
+            fusion_type_num = FUSION_TYPE_2_NUM.get(fusion_type)
             if isinstance(fusion_type_num, tuple):
                 if dx_res.dtype == "float16":
                     fusion_type_num = 1
@@ -2735,16 +2712,16 @@ class Conv2dDxOptiSchedule:
         l0c_multi_group_flag = False
         if dx_res_write.dtype == "int8":
             # In quant or requant scenes, co of ddr is 32, c1_ddr is c1_loc//2
-            DIM_MAP["dx_6GD_shape"][2] = (DIM_MAP["dx_6GD_shape"][2] + 1) // 2
-            DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] * 2
+            DIM_MAP.get("dx_6GD_shape")[2] = (DIM_MAP.get("dx_6GD_shape")[2] + 1) // 2
+            DIM_MAP.get("dx_6GD_shape")[5] = DIM_MAP.get("dx_6GD_shape")[5] * 2
             # In quant scenes, if C1 % 2 == 1 and G>1, the min group_l0c is 2
-            if DIM_MAP["dx_c1_extend"] % 2 == 1 and DIM_MAP["g_extend"] > 1:
+            if DIM_MAP.get("dx_c1_extend") % 2 == 1 and DIM_MAP.get("g_extend") > 1:
                 l0c_multi_group_flag = True
                 self._check_quant_fusion_legal(fusion_type)
 
         if dx_res_write.dtype == "float32" and a_l1.dtype == "float32":
             # cin1_g was calculated with c0=8
-            DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] // 2
+            DIM_MAP.get("dx_6GD_shape")[5] = DIM_MAP.get("dx_6GD_shape")[5] // 2
         if self.dx_para.get_para_map("load3d_flag"):
             a_l0a_before = TENSOR_MAP.get("a_l0a_before")
         drelu_ub, bitmask_ub, add_res_ub, add_input_ub, fusion_dx_gm = (
@@ -2763,10 +2740,9 @@ class Conv2dDxOptiSchedule:
             TENSOR_MAP.get("c_add_bias")
         )
 
-        bias_l1, bias_bt, c_add_bt = (
+        bias_l1, bias_bt = (
             TENSOR_MAP.get("bias_l1"),
-            TENSOR_MAP.get("bias_bt"),
-            TENSOR_MAP.get("c_add_bt")
+            TENSOR_MAP.get("bias_bt")
         )
         self._get_tiling(
             dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, l0c_multi_group_flag
@@ -2785,7 +2761,7 @@ class Conv2dDxOptiSchedule:
         al0_axis_factor, bl0_axis_factor, reduce_axis_factor = self._get_mmad_factor()
         num_batch = DIM_MAP.get("img_shape")[0]
         self._print_ir_conv("before split", sch)
-        g_extend = DIM_MAP[cube_util.GroupDictKeys.g_extend]
+        g_extend = DIM_MAP.get(cube_util.GroupDictKeys.g_extend)
         # split and get axis of l0c, al1, bl1
         (
             batch_in_out_axis,
@@ -2911,7 +2887,7 @@ class Conv2dDxOptiSchedule:
         def _buffer_tile_l0c_c1():
             no_coefficient = (l0c_factor[0] * 2 if dx_res_write.dtype == "int8" else l0c_factor[0])
             noo_coefficient_unzero = int_ceil_div(
-                    int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
+                    int_ceil_div(DIM_MAP.get("dx_6GD_shape")[2], l0c_factor[0]), bl1_parts[1]
                 )
             noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
             noio_coefficient = (
@@ -2957,22 +2933,22 @@ class Conv2dDxOptiSchedule:
                     sch[c_ub].buffer_align(
                         (1, 1),
                         (1, 1),
-                        (1, tbe_platform.CUBE_MKN["float32"]["mac"][0]),
-                        (1, tbe_platform.CUBE_MKN["float32"]["mac"][1])
+                        (1, tbe_platform.CUBE_MKN.get("float32")["mac"][0]),
+                        (1, tbe_platform.CUBE_MKN.get("float32")["mac"][1])
                     )
                 else:
                     sch[c_ub].buffer_align(
                         (1, 1),
                         (1, 1),
-                        (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
-                        (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
+                        (1, tbe_platform.CUBE_MKN.get("float16")["mac"][0]),
+                        (1, tbe_platform.CUBE_MKN.get("float16")["mac"][0])
                     )
             if bias_add_vector_ub is not None and dilate_ub is None:
                 sch[bias_add_vector_ub].buffer_align(
                     (1, 1),
                     (1, 1),
-                    (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
-                    (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
+                    (1, tbe_platform.CUBE_MKN.get("float16")["mac"][0]),
+                    (1, tbe_platform.CUBE_MKN.get("float16")["mac"][0])
                 )
 
         # double buffer
