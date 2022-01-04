@@ -23,7 +23,7 @@ from te import platform as tbe_platform
 
 
 @register_op_compute("Celu")
-# 'pylint:disable=too-many-arguments, too-many-locals
+# 'pylint:disable=too-many-arguments,too-many-locals,unused-argument
 def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
     """
     Implement the operator by referring to  the
@@ -38,7 +38,6 @@ def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
 
     high_perf = False
     data_type = x.dtype
-    
     if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         high_perf = True
 
@@ -51,14 +50,14 @@ def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
     else:
         compute_type = data_type
 
-    # min(0, alpha * (exp(x/input_scale)-1))
+    # apply min part of formula
     x_mul_rec_input_scale = tbe.vmuls(x, tvm.const(1.0/alpha, compute_type))
     exp_x_mul_rec_input_scale = tbe.vexp(x_mul_rec_input_scale)
     exp_x_mul_rec_input_scale_minus1 = tbe.vadds(exp_x_mul_rec_input_scale, tvm.const(-1.0, compute_type))
     alpha_times_exp_minus1 = tbe.vmuls(exp_x_mul_rec_input_scale_minus1, tvm.const(alpha, compute_type))
     vmin_x = tbe.vmins(alpha_times_exp_minus1, tvm.const(0.0, compute_type))
 
-    # max(0, x)
+    # apply max part of formula
     vmax_x = tbe.vmaxs(x, tvm.const(0.0, compute_type))
 
     # add min max

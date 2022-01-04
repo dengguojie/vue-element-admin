@@ -6,9 +6,9 @@ test_celu_golden
 '''
 import torch
 
-def calc_expect_func(input_x, output_y, alpha=1.0):
-    x = input_x["value"]
-    torch_x = torch.Tensor(x)
+def calc_expect_func(x, y, alpha=1.0):
+    x_array = x["value"]
+    torch_x = torch.Tensor(x_array)
     
     res = torch.celu(torch_x, alpha=alpha).numpy()
     return [res, ]
