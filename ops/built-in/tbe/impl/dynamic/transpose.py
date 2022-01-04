@@ -197,7 +197,12 @@ def _static_scenario_goto_old_version(shape, core_num):
                          [25, 64, 512], [64, 25, 512],
                          #IMAGE_SEG
                          [1, 256, 256, 9], [1, 256, 9, 256],
-                         [4, 4, 64, 114], [4, 4, 128, 228], [2, 4, 64, 114], [2, 4, 128, 228]
+                         [4, 4, 64, 114], [4, 4, 128, 228], [2, 4, 64, 114], [2, 4, 128, 228],
+                         #PG2_PRECISION
+                         [10, 4, 64, 114], [1, 12, 28, 28], [1, 21, 28, 28], [1, 24, 1, 1],  [1, 24, 14, 14],
+                         [1, 24, 2, 2], [1, 24, 4, 4], [1, 24, 7, 7],  [1, 3948, 7],  [1, 42, 1, 1], [1, 42, 14, 14],
+                         [1, 42, 2, 2], [1, 42, 4, 4], [1, 42, 7, 7], [1, 7, 3948], [2, 384], [24, 4, 64, 114],
+                         [384, 2], [6, 4, 128, 228]
                       ]
     shape_t = list(shape)
     if shape_t in black_list_shape:
@@ -208,6 +213,17 @@ def _static_scenario_goto_old_version(shape, core_num):
 
     return False
 
+def _nd_to_nz_shape_mismatch(input_x, output_y):
+    x_shape = input_x.get("shape")
+    x_format = input_x.get("format")
+    y_shape = output_y.get("shape")
+    y_format = output_y.get("format")
+    x_shape_t = list(x_shape)
+    y_shape_t = list(y_shape)
+    if (x_format == "ND") and (y_format == "FRACTAL_NZ"):
+        if (len(x_shape_t) == 5) and (len(y_shape_t) == 4):
+            return True
+    return False 
 
 def _by_dynamic_static_union_version(shape, core_num):
     """
@@ -341,6 +357,9 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
 
     if util_common.is_unknown([input_x, perm, output_y]):
         return True, ""
+
+    if _nd_to_nz_shape_mismatch(input_x, output_y):
+        return False, "nd_to_nz_shape_mismatch"
 
     if _by_dynamic_static_union_version(x_shape, get_core_num()):
         return True, ""

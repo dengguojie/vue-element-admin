@@ -100,6 +100,16 @@ def test_op_check_supported_in_white_list_fuzzy_match_return_true_2(test_arg):
     if not res:
         raise Exception("768, 12, 197,fp16 in fuzzy white list, should return True")
 
+def test_nd_2_nz_shape_mismatch(test_arg):
+    from impl.dynamic.transpose import check_supported
+    input_x = {'ori_shape': (24, 128, 3072), 'shape': (24, 192, 8, 16, 16), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    perm = {'ori_shape': (5,), 'shape': (5,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (), 'shape': (48, 192, 16, 16), 'ori_format': 'ND', 'format': 'FRACTAL_NZ', 'dtype': 'float16'}
+    res, reason = check_supported(input_x, perm, output_y)
+    print(reason)
+    if res:
+        raise Exception("nd_2_nz_shape_mismatch should return False")
+
 def test_get_ub_core_for_cov(test_arg):
     from impl.dynamic.transpose import get_ub_size 
     from impl.dynamic.transpose import get_core_num
@@ -134,6 +144,7 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_b
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_1)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_2)
 ut_case.add_cust_test_func(test_func=test_get_ub_core_for_cov)
+ut_case.add_cust_test_func(test_func=test_nd_2_nz_shape_mismatch)
 
 
 def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
