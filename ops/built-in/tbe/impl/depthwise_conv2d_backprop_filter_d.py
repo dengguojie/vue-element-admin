@@ -129,35 +129,42 @@ def depthwise_conv2d_backprop_filter_d_compute(input_fm,
     Parameters
     ----------
     input_fm : Tvm tensor.
-        Placeholder for input feature map.
+    Placeholder for input feature map.
 
     out_backprop: Tvm tensor.
         Placeholder for derivatives of loss function with respect to output feature map.
 
-    filter_grad : a dict.
-        4-D origin shape of filter tensor [H, W, C, K],
-        K is depthwise_multiplier, support float32.
+    filter_grad : 
+    a dict.
+    4-D origin shape of filter tensor [H, W, C, K],
+    K is depthwise_multiplier, support float32.
 
-    filter_size : a list/tuple of four ints
-        1-D origin shape of filter tensor with [H, W, C, K],
-        K is depthwise_multiplier, support int.
+    filter_size : 
+    a list/tuple of four ints.
+    1-D origin shape of filter tensor with [H, W, C, K],
+    K is depthwise_multiplier, support int.
 
-    strides : a list/tuple of four ints
-        strides size, [1, 1, stride_height, stride_width] or
-        [1, stride_height, stride_width, 1].
+    strides : 
+    a list/tuple of four ints.
+    strides size, [1, 1, stride_height, stride_width] or
+    [1, stride_height, stride_width, 1].
 
-    dilations : a list/tuple of four ints
-        dilations size, [1, 1, dilation_height, dilation_width] or
-        [1, dilation_height, dilation_width, 1].
+    dilations : 
+    a list/tuple of four ints.
+    dilations size, [1, 1, dilation_height, dilation_width] or
+    [1, dilation_height, dilation_width, 1].
 
-    pads : a list/tuple of four ints
-        padding added to each dimension of the input.
+    pads : 
+    a list/tuple of four ints.
+    padding added to each dimension of the input.
 
-    data_format : str
-        shape of origine shape of featuremap [N, C, H, W] or [N, H, W, C].
+    data_format : 
+    str.
+    shape of origine shape of featuremap [N, C, H, W] or [N, H, W, C].
 
-    kernel_name : str
-        cce kernel name
+    kernel_name : 
+    str.
+    cce kernel name.
 
     Returns
     -------
@@ -257,7 +264,7 @@ def depthwise_conv2d_backprop_filter_d_compute(input_fm,
 
     return dedw
 
-# 'pylint: disable=invalid-name,
+
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.REQUIRED_OUTPUT,

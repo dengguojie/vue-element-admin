@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""
+fixpipe fusion for conv2d_bp_filter
+"""
 
 from tbe import tvm
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
@@ -21,13 +24,12 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
     """
     conv2d_backprop_filter Fixpipe
     """
-    def _get_c0_c1_index(self):
+    @staticmethod
+    def _get_c0_c1_index():
         """
         get c0 c1 index according to format
         """
-        NC1MC0_C1_IDX = 1
-        NC1MC0_C0_IDX = -1
-        return NC1MC0_C0_IDX, NC1MC0_C1_IDX
+        return -1, 1
 
     def _update_inputs(self):
         """
@@ -41,11 +43,10 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
         get output shape
         """
         shape = self.output.get("shape")
-        format = self.output.get("format")
         out_shape = shape
-        if len(shape) == 4 and format == "NHWC":
+        if len(shape) == 4 and self.output.get("format") == "NHWC":
             out_shape = [shape[0], shape[1] * shape[2], shape[3]]
-        elif len(shape) == 4 and format == "FRACTAL_Z":
+        elif len(shape) == 4 and self.output.get("format") == "FRACTAL_Z":
             # (C1HW, N1, N0, C0) -> (real_g, fkk, Cout_g, fmap_c0)
             out_shape = [1, shape[0], shape[1] * shape[2], shape[3]]
         else:
@@ -57,28 +58,28 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
         """
         shape or format transform for fixpipe_op
         """
-        FIXPIPE_OP_TAG = "fixpipe"
-        FIXPIPE_REFORM_TAG = "fixpipe_reform"
-        FIXPIPE_NO_TRANS_TAG = "fixpipe_no_trans"
+        fixpipe_op_tag = "fixpipe"
+        fixpipe_reform_tag = "fixpipe_reform"
+        fixpipe_no_trans_tag = "fixpipe_no_trans"
         self.attrs["kernel_name"] = self.x1.op.attrs["kernel_name"]
         if self._is_nz2nd():
-            real_g, fkk, cout_g, fmap_c0 = tuple(i.value for i in self.x1.shape)
-            _, HkWk, _ = self.output_shape
+            _, _, cout_g, fmap_c0 = tuple(i.value for i in self.x1.shape)
+            _, hk_wk, _ = self.output_shape
             res_reform = tvm.compute(self.output_shape,
                                      lambda n_idx, hw_idx, c_idx:
                                         res(n_idx // cout_g,
-                                            c_idx // fmap_c0 * HkWk + hw_idx,
+                                            c_idx // fmap_c0 * hk_wk + hw_idx,
                                             n_idx % cout_g,
                                             c_idx % fmap_c0),
-                                     name=FIXPIPE_OP_TAG,
-                                     tag=FIXPIPE_REFORM_TAG,
+                                     name=fixpipe_op_tag,
+                                     tag=fixpipe_reform_tag,
                                      attrs=self.attrs)
 
             return res_reform
 
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
-                                 name=FIXPIPE_OP_TAG,
-                                 tag=FIXPIPE_NO_TRANS_TAG,
+                                 name=fixpipe_op_tag,
+                                 tag=fixpipe_no_trans_tag,
                                  attrs=self.attrs)
         return res_reform

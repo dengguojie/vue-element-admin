@@ -1141,7 +1141,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                               cin1_g, kernel_h, kernel_w, b_ddr_n0]
         else:
             # GCin1HkWk, Cout1, Cout0, Cin0
-            b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 \
+            _, _, b_ddr_k0, b_ddr_n0 \
                 = cube_util.shape_to_list(weight_fz_tensor.shape)
             # Cout, Cin1, Hk, Wk, Cin0
             filter_shape_g = (cou1_g * b_ddr_k0,

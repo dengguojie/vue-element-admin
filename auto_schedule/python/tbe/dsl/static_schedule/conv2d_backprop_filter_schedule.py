@@ -644,7 +644,7 @@ class CceConv2dBackpropFilterOp:
                         if del_n0_outer_flag:
                             # the list of axis is c_grads_mad_at, c_fmap_mad_at
                             run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
-                        sch[grads_matrix].allocate_at(sch[dw_ddr], fused_multi_core, run_once_axes=run_once_n_dim) 
+                        sch[grads_matrix].allocate_at(sch[dw_ddr], fused_multi_core, run_once_axes=run_once_n_dim)
                         al1_attach_scope = l0a_attach_scope
                         al1_attach_axis = l0a_attach_axis
                 sch[grads_matrix].compute_at(sch[al1_attach_scope], al1_attach_axis)
