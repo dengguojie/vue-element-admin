@@ -106,6 +106,19 @@ case8 = {"params": [{"shape": (6, 52, 52, 3, 85), "dtype": "float32", "format": 
          "format_expect": [],
          "support_expect": True}
 
+case9 = {"params": [{"shape": (8, 46, 46, 63), "dtype": "float16", "format": "ND",
+                     "ori_shape": (8, 46, 46, 63),"ori_format": "ND"},
+                     [{"shape": (8, 46, 46, 21), "dtype": "float16", "format": "ND",
+                     "ori_shape": (8, 46, 46, 21),"ori_format": "ND"},
+                     {"shape": (8, 46, 46, 21), "dtype": "float16", "format": "ND",
+                     "ori_shape": (8, 46, 46, 21),"ori_format": "ND"},
+                     {"shape": (8, 46, 46, 21), "dtype": "float16", "format": "ND",
+                     "ori_shape": (8, 46, 46, 21),"ori_format": "ND"},], [21, 21, 21], 3, 3],
+         "case_name": "split_d_v_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
@@ -114,6 +127,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 
 if __name__ == '__main__':
     ut_case.run()
