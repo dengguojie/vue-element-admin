@@ -217,7 +217,7 @@ bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(con
   FUSION_PASS_CHECK(
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return true);
-  const auto &instrinsicScatterVcmp = platformInfo.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vcmp"];
+  const auto &instrinsicScatterVcmp = platformInfo.ai_core_intrinsic_dtype_map["Intrinsic_abs"];
   bool supportFP32Flag =
       find(instrinsicScatterVcmp.begin(), instrinsicScatterVcmp.end(), "float32") != instrinsicScatterVcmp.end();
   if (!supportFP32Flag) {
