@@ -73,7 +73,8 @@ v300_case = [
     ("conv2d_transdata", "conv2d_transdata", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
     ("conv2d_dequant_add_quant", "conv2d_dequant_add_quant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
     ("conv2d_dequant_relu6_quant", "conv2d_dequant_relu6_quant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
-    ("conv2d_relu", "conv2d_relu", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0)
+    ("conv2d_relu", "conv2d_relu", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
+    ("conv2d_dequant_add(anti_quant)_quant", "conv2d_dequant_add_quant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
 ]
 
 
@@ -173,21 +174,41 @@ def create_clip_value_1(dataflow, shape):
     return None
 
 
-def create_anti_quant_scale(dataflow, shape):
+def create_anti_quant_scale(casename, dataflow, shape):
+    if casename.find("anti_quant") != -1:
+        anti_quant_scale = tvm.placeholder([1],  # [n, c1, hw, c0]
+                                       name='anti_quant_scale',
+                                       dtype="float16",
+                                       attrs={"const_value": [1],
+                                              "ori_shape": [1]})
+        return anti_quant_scale
     return None
 
 
-def create_anti_quant_offset(dataflow, shape):
+def create_anti_quant_offset(casename, dataflow, shape):
+    if casename.find("anti_quant") != -1:
+        anti_quant_offset = tvm.placeholder([1],  # [n, c1, hw, c0]
+                                       name='anti_quant_offset',
+                                       dtype="int8",
+                                       attrs={"const_value": [1],
+                                              "ori_shape": [1]})
+        return anti_quant_offset
     return None
 
 
-def create_eltwise_src(dataflow, shape):
+def create_eltwise_src(casename, dataflow, shape):
     if dataflow.find("add") == -1 and dataflow.find("sub") == -1:
         return None
 
-    x1 = tvm.placeholder(shape_to_list(shape),  # [n, c1, hw, c0]
+    shepe_x2 = shape_to_list(shape)
+    data_type = "float16"
+    if casename.find("anti_quant") != -1:
+        data_type = "int8"
+        shepe_x2 = [shepe_x2[0], shepe_x2[1] // 2, shepe_x2[2], shepe_x2[3] * 2]
+
+    x1 = tvm.placeholder(shepe_x2,  # [n, c1, hw, c0]
                          name='x1',
-                         dtype="float16",
+                         dtype=data_type,
                          attrs={'ori_shape': shape_to_list(shape)})
     return x1
 
@@ -265,7 +286,8 @@ def conv_v300_fusion_case(casename,
                           quant_offset=0,
                           relu_param=0,
                           cout_real=0):
-    from impl.fix_pipe import fixpipe_compute
+    from impl.fixpipe_op.fixpipe_conv2d import FixpipeConv2d
+
     Ni, Ci, Hi, Wi = shape_in
     Co, _, Hk, Wk = shape_w
 
@@ -331,10 +353,10 @@ def conv_v300_fusion_case(casename,
         relu_weight_1 = create_relu_weight_1(dataflow, shape_param)
         clip_value_0 = create_clip_value_0(dataflow, shape_param, quant_scale, quant_offset)
         clip_value_1 = create_clip_value_1(dataflow, shape_param)
-        anti_quant_scale = create_anti_quant_scale(dataflow, shape_param)
-        anti_quant_offset = create_anti_quant_offset(dataflow, shape_param)
+        anti_quant_scale = create_anti_quant_scale(casename, dataflow, shape_param)
+        anti_quant_offset = create_anti_quant_offset(casename, dataflow, shape_param)
 
-        x1 = create_eltwise_src(dataflow, conv_res.shape)
+        x1 = create_eltwise_src(casename,dataflow, conv_res.shape)
         shape_out = conv_res.shape
         shape_out_5hd = [shape_out[0], shape_out[1], ho, wo, shape_out[3]]
         output = get_output_dict(dataflow, shape_out_5hd, conv_type)
@@ -347,8 +369,22 @@ def conv_v300_fusion_case(casename,
             eltwise_mode = get_eltwise_mode(dataflow)
 
             unit_list = get_unit_list(dataflow)
+            fixpipe_obj = FixpipeConv2d("conv2d", conv_res,
+                                  x1,
+                                  quant_scale_0,
+                                  relu_weight_0,
+                                  clip_value_0,
+                                  quant_scale_1,
+                                  relu_weight_1,
+                                  clip_value_1,
+                                  anti_quant_scale,
+                                  anti_quant_offset,
+                                  output,
+                                  [],
+                                  unit_list,
+                                  eltwise_mode)
 
-            out = fixpipe_compute(conv_res,
+            out = fixpipe_obj.fixpipe_compute(conv_res,
                                   x1,
                                   quant_scale_0,
                                   relu_weight_0,
@@ -760,9 +796,89 @@ def check_fixpipe_func_name():
         print("======> check error op_type")
 
 
+def check_fixpipe_conv2d():
+    from impl.fixpipe_op import fixpipe_conv2d
+    print (fixpipe_conv2d.C0_16)
+    print (fixpipe_conv2d.C0_32)
+    print (fixpipe_conv2d.C0_64)
+
+    def _create_placeholder(input_dict, name):
+        if "ori_shape" not in input_dict:
+            raise RuntimeError("ori_shape not in dict")
+
+        attrs = {}
+        if "const_valule" in input_dict:
+            attrs["const_value"] = input_dict.get("const_value")
+
+        attrs["ori_shape"] = input_dict.get("ori_shape")
+        return tvm.placeholder(input_dict.get("shape"), input_dict.get("dtype"), name=name, attrs=attrs)
+
+    x1_dict = {
+        "shape": [1, 2, 112 * 112, 16],
+        "format": "NC1HWC0",
+        "dtype": "float16",
+        "ori_shape": [1, 2, 112 * 112, 16]
+    }
+
+    x2_dict = {
+        "shape": [1, 1, 112 * 112, 32],
+        "format": "NC1HWC0",
+        "dtype": "int8",
+        "ori_shape": [1, 1, 112 * 112, 32]
+    }
+
+    scalar_dict = {
+        "shape": [1],
+        "format": "NC1HWC0",
+        "dtype": "float16",
+        "ori_shape": [1],
+        "const_value": [1],
+    }
+
+    offset_dict = {
+        "shape": [1],
+        "format": "NC1HWC0",
+        "dtype": "int8",
+        "ori_shape": [1],
+        "const_value": [1],
+    }
+
+    output = {
+        "shape": [1, 2, 112 * 112, 16],
+        "format": "NC1HWC0",
+        "dtype": "float16",
+        "ori_shape": [1, 2, 112 * 112, 16]
+    }
+
+    x1 = _create_placeholder(x1_dict, "x1")
+    x2 = _create_placeholder(x2_dict, "x2")
+    anti_quant = _create_placeholder(scalar_dict, "scalar")
+    offset = _create_placeholder(offset_dict, "offset")
+
+    # anti_quant
+    fixpipe_obj = fixpipe_conv2d.FixpipeConv2d("conv2d",
+                                               x1, x2, None, None, None, None, None, None,
+                                               anti_quant, offset, output, [], [], "ADD")
+    tvm.compute(x2_dict.get("shape"),
+                lambda *indices:
+                fixpipe_obj._x2_reform_generate_func(x2, x2_dict.get("shape"))(*indices),
+                name="test")
+
+    # default
+    fixpipe_obj = fixpipe_conv2d.FixpipeConv2d("conv2d",
+                                               x1, x2, None, None, None, None, None, None,
+                                               None, None, output, [], [], "ADD")
+    tvm.compute(x2_dict.get("shape"),
+                lambda *indices:
+                fixpipe_obj._x2_reform_generate_func(x2, x2_dict.get("shape"))(*indices),
+                name="test")
+    #fixpipe_obj.fixpipe_compute(x1, x2, None, None, None, None, None, None, anti_quant, offset, output, [], [], "ADD")
+
+
 def run_v300_cases(test_arg):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            check_fixpipe_conv2d()
             check_fixpipe_func_name()
             check_FixpipeBase()
             check_fix_pipe()
@@ -772,7 +888,6 @@ if __name__ == "__main__":
     print("====> conv2d v300 ut start")
     run_v300_cases("")
     print("====> end v300 ut start")
-    exit(0)
 
 
 

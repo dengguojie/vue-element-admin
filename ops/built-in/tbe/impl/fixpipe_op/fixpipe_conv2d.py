@@ -21,6 +21,10 @@ from impl.fixpipe_op.fixpipe_util import *
 
 NC1MC0_C1_IDX = 1
 NC1MC0_C0_IDX = -1
+NC1MC0_C0_IDX_REAL = 3
+C0_16 = 16
+C0_32 = 32
+C0_64 = 64
 
 
 class FixpipeConv2d(FixpipeBase):
@@ -96,3 +100,43 @@ class FixpipeConv2d(FixpipeBase):
                                  tag=FIXPIPE_REFORM_TAG,
                                  attrs=self.attrs)
         return res_reform
+
+    def _x2_reform_generate_func_anti_quant(self, x2, input_shape):
+        """
+        x2 index reform with anti_qunt unit
+        """
+        dim_num = len(input_shape)
+        c1_index = NC1MC0_C1_IDX
+        c0_index = NC1MC0_C0_IDX_REAL
+
+        x2_shape = shape_to_list(x2.shape)
+        x2_c0 = x2_shape[-1]
+
+        if x2_c0 not in [C0_32, C0_64]:
+            raise RuntimeError("c0 of x2 should be 32 or 64")
+
+        def lamda_func(*indice):
+            new_indice = [0] * dim_num
+            for i in range(dim_num):
+                if i == c0_index:
+                    new_indice[i] = (indice[c1_index] * C0_16 + indice[c0_index]) % x2_c0
+                    continue
+
+                if i == c1_index:
+                    new_indice[i] = (indice[c1_index] * C0_16 + indice[c0_index]) // x2_c0
+                    continue
+
+                new_indice[i] = indice[i]
+
+            return x2(*new_indice)
+
+        return lamda_func
+
+    def _x2_reform_generate_func(self, x2, input_shape):
+        """
+        x2 index reform
+        """
+        if self.anti_quant_scale is None:
+            return self._x2_reform_generate_func_default(x2, input_shape)
+
+        return self._x2_reform_generate_func_anti_quant(x2, input_shape)

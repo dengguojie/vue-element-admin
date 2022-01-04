@@ -53,26 +53,27 @@ class FixpipeBase(object):
         self.unit_list = unit_list
         self.eltwise_mode = eltwise_mode
 
+        self.vector_inputs_dict = {
+            QUANT_SCALE_0_STR: self.quant_scale_0,
+            RELU_WEIGHT_0_STR: self.relu_weight_0,
+            QUANT_SCALE_1_STR: self.quant_scale_1,
+            RELU_WEIGHT_1_STR: self.relu_weight_1,
+            ELTWISE_SRC_STR: self.x2
+        }
+
         # set vector tendor flag
         self.quant_scale_0_vector_flag = is_vector_input(self.quant_scale_0)
         self.relu_weight_0_vector_flag = is_vector_input(self.relu_weight_0)
         self.quant_scale_1_vector_flag = is_vector_input(self.quant_scale_1)
         self.relu_weight_1_vector_flag = is_vector_input(self.relu_weight_1)
 
-        self.vector_inputs_dict = {
-            QUANT_SCALE_0_STR: self.quant_scale_0,
-            QUANT_SCALE_1_STR: self.quant_scale_1,
-            RELU_WEIGHT_0_STR: self.relu_weight_0,
-            RELU_WEIGHT_1_STR: self.relu_weight_1,
-            ELTWISE_SRC_STR: self.x2
-        }
-
-        self.input_dtype = ""
-        self.input_shape = []
-        self.output_dtype = ""
-        self.output_shape = []
         self.attrs = {}
         self.op_dict = {}
+
+        self.output_dtype = ""
+        self.output_shape = []
+        self.input_dtype = ""
+        self.input_shape = []
 
     def _get_params(self):
         """
@@ -224,17 +225,6 @@ class FixpipeBase(object):
             return True
         return False
 
-    def _is_channel_merge(self):
-        """
-        check channel merge scene
-        """
-        if self._is_nz2nd():
-            return False
-
-        if self.output_dtype in ["int8", "int4"]:
-            return True
-        return False
-
     def _is_channel_split(self):
         """
         check channel spilt scene
@@ -243,6 +233,17 @@ class FixpipeBase(object):
             return False
 
         if self.output_dtype == DTYPE_FLOAT32:
+            return True
+        return False
+
+    def _is_channel_merge(self):
+        """
+        check channel merge scene
+        """
+        if self._is_nz2nd():
+            return False
+
+        if self.output_dtype in ["int8", "int4"]:
             return True
         return False
 
@@ -286,6 +287,7 @@ class FixpipeBase(object):
         attrs["vector_params"] = vector_params
         attrs["vector_tensors"] = vector_tensors
         attrs["nz2nd_flag"] = self._is_nz2nd()
+        attrs["anti_quant_flag"] = True if self.anti_quant_scale is not None else False
         log.debug("fixpipe attrs:{}".format(attrs))
         return attrs
 
@@ -300,6 +302,27 @@ class FixpipeBase(object):
         check op input params
         """
         pass
+
+    def _x2_reform_generate_func_default(self, x2, input_shape):
+        """
+        x2 index reform default
+        """
+        dim_num = len(input_shape)
+
+        def lamda_func(*indice):
+            new_indice = [0] * dim_num
+            for i in range(dim_num):
+                new_indice[i] = indice[i]
+
+            return x2(*new_indice)
+        
+        return lamda_func
+    
+    def _x2_reform_generate_func(self, x2, input_shape):
+        """
+        x2 index reform
+        """
+        return self._x2_reform_generate_func_default(x2, input_shape)
 
     def fixpipe_op_compute(self):
         """
@@ -318,7 +341,7 @@ class FixpipeBase(object):
                                                 pre_conv_param=self.quant_scale_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_0_vector_flag else get_input_scalar_value(self.quant_scale_0),
                                                 pre_relu_param=self.relu_weight_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_0_vector_flag else get_input_scalar_value(self.relu_weight_0),
                                                 pre_clip_relu_param=get_input_scalar_value(self.clip_value_0),
-                                                post_eltwise_src=self.x2(*indices) if self.x2 is not None else self.x2,
+                                                post_eltwise_src=self._x2_reform_generate_func(self.x2, self.input_shape)(*indices) if self.x2 is not None else self.x2,
                                                 post_anti_quant_scale=get_input_scalar_value(self.anti_quant_scale),
                                                 post_anti_quant_offset=get_input_scalar_value(self.anti_quant_offset),
                                                 post_clip_relu_param=get_input_scalar_value(self.clip_value_1),

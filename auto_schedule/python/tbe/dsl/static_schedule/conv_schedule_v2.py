@@ -111,12 +111,13 @@ class FixpipeFusionNew(object):
         self.fixpipe_params = []
         self.fixpipe_tensors = [] # param tensors
         self.eltwise_src = None
-        self.eltwise_dtype = "None"
+        self.eltwise_dtype = "float16"
         self.eltwise_flag = False
         self.quant_pre_flag = False
         self.relu_pre_flag = False
         self.quant_post_flag = False
         self.relu_post_flag = False
+        self.anti_quant_flag = False
         self.nz2nd_flag = False
         self.cache_read_tensors = []
         self.cache_read_tensors_channelwise = []
@@ -125,7 +126,7 @@ class FixpipeFusionNew(object):
         """
         fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
         """
-        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag
+        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag, self.anti_quant_flag
 
     def fetch_eltwise_info(self):
         """
@@ -166,7 +167,8 @@ class FixpipeFusionNew(object):
                 self.fixpipe_flag = True
                 self.fixpipe_params = src_tensor.op.attrs["vector_params"]
                 self.fixpipe_tensors = src_tensor.op.attrs["vector_tensors"]
-                self.nz2nd_flag = src_tensor.op.attrs["nz2nd_flag"].value
+                self.nz2nd_flag = bool(src_tensor.op.attrs["nz2nd_flag"].value)
+                self.anti_quant_flag = bool(src_tensor.op.attrs["anti_quant_flag"].value)
                 self.get_eltwise_info()
 
                 tensor_queue.clear()
@@ -208,7 +210,7 @@ class FixpipeFusionNew(object):
             sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
 
         for tensor in self.cache_read_tensors_channelwise:
-            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy", {"mem_align":1})
     
     def inline_fixpipe_tensor(self, sch):
         """
@@ -238,6 +240,7 @@ class FixpipeFusion:
         self.quant_post_flag = False
         self.relu_post_flag = False
         self.nz2nd_flag = False
+        self.anti_quant_flag = False
         self.weight_input = None
         self.inline_tensors = []
         self.fixpipe_inputs = [] # scale of dequant/requant, weight_input of prelu
@@ -280,7 +283,7 @@ class FixpipeFusion:
         """
         fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
         """
-        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag
+        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag, self.anti_quant_flag
 
     def fixpipe_inputs_set_scope(self, sch, op_graph):
         """
@@ -995,9 +998,9 @@ class Conv2dSchedule:
         c_shape = tiling_query_param["c_shape"]
         mad_dtype = tiling_query_param["mad_dtype"]
         bias_flag = tiling_query_param["bias_flag"]
-        quant_pre_flag, relu_pre_flag, quant_post_flag, relu_post_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
+        quant_pre_flag, relu_pre_flag, quant_post_flag, relu_post_flag, anti_quant_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
         eltwise_flag = False
-        eltwise_dtype = "None"
+        eltwise_dtype = "float16"
         if is_support_fixpipe_op():
             eltwise_flag, eltwise_dtype = self._fixpipe_fusion.fetch_eltwise_info()
 
@@ -1016,10 +1019,11 @@ class Conv2dSchedule:
                      "dilation": [self._dilate_h, self._dilate_w],
                      "group": self._group_opt,
                      "bias_flag": bias_flag,
-                     "fixpipe_buffer_dict": {"quant_pre_flag": quant_pre_flag, 
-                                             "relu_pre_flag": relu_pre_flag,
-                                             "quant_post_flag": quant_post_flag,
-                                             "relu_post_flag": relu_post_flag},
+                     "fixpipe_fusion_flag_dict": {"quant_pre_flag": quant_pre_flag,
+                                                  "relu_pre_flag": relu_pre_flag,
+                                                  "quant_post_flag": quant_post_flag,
+                                                  "relu_post_flag": relu_post_flag,
+                                                  "anti_quant_flag": anti_quant_flag},
                      "eltwise_dict": {
                          "eltwise_flag": eltwise_flag,
                          "eltwise_dtype": eltwise_dtype
