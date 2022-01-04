@@ -4095,7 +4095,8 @@ static bool InferShapeAndTypeTrace(Operator& op, const std::string& inputName, c
   DataType inputDtype = op.GetInputDescByName(inputName.c_str()).GetDataType();
   ge::Shape inputShape = op.GetInputDescByName(inputName.c_str()).GetShape();
   std::vector<int64_t> inputDims = inputShape.GetDims();
-  if (inputDims.size() != 2) {
+  constexpr int64_t shapeDims = 2;
+  if (inputDims.size() != shapeDims) {
     OP_LOGE(outputName.c_str(), "the input shape must is 2-D matrix.\n");
     return false;
   }
@@ -4127,7 +4128,6 @@ IMPLEMT_VERIFIER(Trace, TraceVerify) {
     OP_LOGE(op_name.GetString(), "the input dtype must is float16 or float.\n");
     return GRAPH_FAILED;
   }
-  
   return GRAPH_SUCCESS;
 }
 
