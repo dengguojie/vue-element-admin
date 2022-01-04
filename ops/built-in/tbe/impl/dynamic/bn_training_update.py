@@ -102,10 +102,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
     if len(shape_offset) not in (5, 6) or len(shape_mean) not in (5, 6) or len(shape_variance) not in (5, 6):
         error_reson = "This operator can only support 5D or 6, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
-    dim_c1 = 0
-    dim_c0 = 0
-    i = 0
-    j = 0
+
     if format == "NC1HWC0":
         dim_c1 = shape_x[1]
         dim_c0 = shape_x[4]
@@ -116,19 +113,22 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         dim_c0 = shape_x[5]
         i = 2
         j = 5
-    if shape_sum[i] != dim_c1 or shape_sum[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
-    if shape_square_sum[i] != dim_c1 or shape_square_sum[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update",
-                                                      "Dimension C of x and square_sum must be equal")
-    if shape_scale[i] != dim_c1 or shape_scale[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
-    if shape_offset[i] != dim_c1 or shape_offset[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and offset must be equal")
-    if shape_mean[i] != dim_c1 or shape_mean[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
-    if shape_variance[i] != dim_c1 or shape_variance[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
+    
+    if dim_c1 != -1 and dim_c0 != -1:
+        if shape_sum[i] != -1 and shape_sum[j] != -1 and (shape_sum[i] != dim_c1 or shape_sum[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
+        if shape_square_sum[i] != -1 and shape_square_sum[j] != -1 and \
+            (shape_square_sum[i] != dim_c1 or shape_square_sum[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update",
+                                                          "Dimension C of x and square_sum must be equal")
+        if shape_scale[i] != -1 and shape_scale[j] != -1 and (shape_scale[i] != dim_c1 or shape_scale[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
+        if shape_offset[i] != -1 and shape_offset[j] != -1 and (shape_offset[i] != dim_c1 or shape_offset[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and offset must be equal")
+        if shape_mean[i] != -1 and shape_mean[j] != -1 and (shape_mean[i] != dim_c1 or shape_mean[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
+        if shape_variance[i] != -1 and shape_variance[j] != -1 and (shape_variance[i] != dim_c1 or shape_variance[j] != dim_c0):
+            error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
