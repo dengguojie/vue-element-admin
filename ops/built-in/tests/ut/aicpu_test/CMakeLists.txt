@@ -102,6 +102,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/cosh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
@@ -316,6 +317,7 @@ set(_cpu_kernels_ut_files
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/ones_like/src/ones_like_utest.cpp
   testcase/poisson/src/poisson_utest.cpp
+  testcase/qr/src/qr_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
