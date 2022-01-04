@@ -709,6 +709,9 @@ def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
 
 
 def _check_nd_in_nd_out(input_x1: dict, input_x2: dict, output_z: dict) -> bool:
+    """
+    check format of inputs and output
+    """
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
     format_out = output_z.get("format")

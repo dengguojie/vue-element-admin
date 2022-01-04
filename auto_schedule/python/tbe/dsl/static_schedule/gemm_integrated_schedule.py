@@ -303,8 +303,8 @@ class GemmSchedule(object):
         self.k_name = GEMMComputeParam.k_var_name
         self.n_name = GEMMComputeParam.n_var_name
         self.m1_name = "m"
-        self.k1_name = "n"
-        self.n1_name = "k"
+        self.k1_name = "k"
+        self.n1_name = "n"
         self.split_mode = {"ceil_mode": True}
         self.status_ori_dict = {
             0: Compare.EQUAL,
