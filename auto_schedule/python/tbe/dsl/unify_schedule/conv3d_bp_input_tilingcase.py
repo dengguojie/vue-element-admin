@@ -1037,7 +1037,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         calculate output d
         """
         if not fmap_d:
-            raise RuntimeError("fmap_d invalid value.")
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(fmap_d, stride_d)
         return (fmap_d + self.padh + self.padt - self.k_d_dilation) // stride_d + 1
@@ -1047,7 +1047,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         calculate output h
         """
         if not fmap_h:
-            raise RuntimeError("fmap_d invalid value.")
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(fmap_h, stride_h)
         return (fmap_h + self.padu + self.padd - self.k_h_dilation) // stride_h + 1
@@ -1057,7 +1057,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         calculate output w
         """
         if not fmap_w:
-            raise RuntimeError("fmap_d invalid value.")
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(fmap_w, stride_w)
         return (fmap_w + self.padl + self.padr - self.k_w_dilation) // stride_w + 1

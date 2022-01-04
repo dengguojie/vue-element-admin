@@ -377,6 +377,7 @@ def depthwise_conv2d_backprop_input_d(filter,
         input_sizes=input_shape,
         para_dict=para_dict
     )
+
     tensor_list = [filter_init, dout, dedx]
     with tvm.target.cce():
         sch = tbe.auto_schedule(dedx)
