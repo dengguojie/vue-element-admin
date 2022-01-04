@@ -883,11 +883,8 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
 
     # calculated by h_i and w_i
     dilation_d, dilation_h, dilation_w = dilation_dhw
-    filter_dilated_d = (filter_d - 1) * dilation_d + 1
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
-
-    h_out = (fmap_h + (pad_h[0] + pad_h[1]) - filter_dilated_h) // stride_dhw[1] + 1
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")

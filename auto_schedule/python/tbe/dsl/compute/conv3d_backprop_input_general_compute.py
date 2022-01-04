@@ -39,10 +39,10 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):
     kernel_sizes : shape of weight, [N, D, H, W, C]
 
     strides :list of strides,
-        [stridebatch, strided, strideh, stridew, stridechannel]
+    [stridebatch, strided, strideh, stridew, stridechannel]
 
     pad: list of padding, [pad_front, pad_tail, pad_top,
-        pad_bottom, pad_left, pad_right]
+    pad_bottom, pad_left, pad_right]
 
     output_shape : shape of dE/dX, [N, D, H, W, C]
 
@@ -275,7 +275,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):
         ----------
         w_col: w tensor of fractal shape after transformation in L0B
         """
-        w_k1, kernel_cout1, kernel_cout0, w_k0 = list(i.value for i in kernels.shape)
+        w_k1, kernel_cout1, kernel_cout0, w_k0 = [i.value for i in kernels.shape]
         kernel_h, kernel_w, kernel_d = self._kernel_h, self._kernel_w, self._kernel_d
         if w_k1 % (kernel_h * kernel_w) != 0:
             cube_err.raise_err_specific('conv3d_backprop_input',

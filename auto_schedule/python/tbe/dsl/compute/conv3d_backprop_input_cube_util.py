@@ -63,6 +63,7 @@ def _im2col_row_major(im2col_row_major_param_dict):
     tag = im2col_row_major_param_dict.get('tag', '')
     special_load3d_flag = im2col_row_major_param_dict.get('special_load3d_flag', False)
     dilation = im2col_row_major_param_dict.get('dilation', (1, 1, 1))
+
     def __im2col_row_major_indices(indices, tensor_a, padding_var, stride, dilation):
         """
         calculate im2col_row_major tvm lambda function
