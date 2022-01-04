@@ -176,6 +176,18 @@ class GemmSchedule:
     MAX_ORI_SHAPE_TEMP = 1048560
     MAX_UB_SHAPE = 4096
     BLOCKS_PER_REPEAT = 8
+
+    # index of tiling
+    IDX_BATCH_DIM = 0
+    IDX_N_DIM = 1
+    IDX_M_DIM = 2
+
+    IDX_KBL1 = 0
+    IDX_MULTI_N1 = 1
+
+    IDX_KAL1 = 0
+    IDX_MULTI_M1 = 1
+
     TILING_RANGE = {
         "range_block_dim": (1, 32),
         "range_64": (1, 64),
@@ -319,6 +331,7 @@ class GemmSchedule:
             2: Compare.LESS_EQ,
             3: Compare.GREATE_EQ
         }
+        self.bind_core_when_full_load_bl1 = False
 
     @staticmethod
     def _get_all_tags(res):
@@ -432,6 +445,84 @@ class GemmSchedule:
         self.have_batch_b = len(tensor_l0b.shape) in (3, 5)
         self.have_batch = len(tensor_l0c.shape) in (3, 5)
 
+    def _is_full_load(self, item):
+        return item == []
+
+    def _bit_width(self, dtype):
+        return {'float16': 16, 'int8': 8, 'float32': 32, 'int4': 4}[dtype]
+
+    def _temporarily_enable_fullload_to_bind_multi_core_when_exceed_space(self):
+        if self.is_dynamic:
+            return
+
+        t = self.tiling
+        soc_version = tbe_platform_info.get_soc_spec(tbe_platform_info.FULL_SOC_VERSION)
+        size_l1 = tbe_platform_info.get_soc_spec(tbe_platform_info.L1_SIZE)
+
+        status = soc_version == "Ascend710" and self.quantify_fusion
+        status = status and self.get_a_matrix_mode == "Nz2Zz" and self.get_b_matrix_mode == "none"
+        status = status and not self._is_full_load(t.get("AL1_shape")) and self._is_full_load(t.get("BL1_shape"))
+        status = status and (self._calc_b_l1(False) + self._calc_a_l1(False) > size_l1)
+        status = status and (self._calc_b_l1(True) + self._calc_a_l1(False) <= size_l1)
+
+        if status:
+            self.bind_core_when_full_load_bl1 = True
+
+    def _prod(self, lst):
+        return functools.reduce(lambda x, y: x * y, lst)
+
+    def _calc_b_l1(self, consider_multi_core_in_full_load=True):
+        tensor_bl1 = self.TENSOR_MAP.get("b_l1")
+        tensor_bl0 = self.TENSOR_MAP.get("b_l0b")
+        tiling_bl1 = self.tiling.get("BL1_shape")
+        tiling_pb_bl1 = self.tiling.get("manual_pingpong_buffer").get("BL1_pbuffer")
+        n_dim = self.tiling.get("block_dim")[self.IDX_N_DIM]
+        *_, _, n1_bl0, n0_bl0, _ = (x.value for x in tensor_bl0.shape) if self._is_full_load(
+            self.tiling.get("BL0_matrix")) else self.tiling.get("BL0_matrix")
+
+        if self._is_full_load(tiling_bl1):
+            size_shape = self._prod(x.value for x in tensor_bl1.shape)
+
+            if consider_multi_core_in_full_load:
+                # consistent with the implementation logic of schedule_agent, using nparts to split the axis
+                # get_b_matrix_mode: none
+                # cache_read tensor_b
+                # k1, n1, k0, n0 with not trans_b
+                *_, k1, n1, _, _ = (x.value for x in tensor_bl1.shape)
+                if self.transpose_b:
+                    k1, n1 = n1, k1
+                n1_factor = math.ceil(n1 / n_dim)
+                size_shape = size_shape // n1 * n1_factor
+        else:
+            size_shape = tiling_bl1[self.IDX_KBL1] * tiling_bl1[self.IDX_MULTI_N1] * n1_bl0 * n0_bl0
+        return size_shape * tiling_pb_bl1 * self._bit_width(tensor_bl1.dtype)
+
+    def _calc_a_l1(self, consider_multi_core_in_full_load=True):
+        tensor_al1 = self.TENSOR_MAP.get("a_l1")
+        tensor_al0 = self.TENSOR_MAP.get("a_l0b")
+        tiling_al1 = self.tiling.get("AL1_shape")
+        tiling_pb_al1 = self.tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
+        m_dim = self.tiling.get("block_dim")[self.IDX_M_DIM]
+        *_, m1_al0, _, m0_al0, _ = (x.value for x in tensor_al0.shape) if self._is_full_load(
+            self.tiling.get("AL0_matrix")) else self.tiling.get("AL0_matrix")
+
+        if self._is_full_load(tiling_al1):
+            size_shape = self._prod(x.value for x in tensor_al1.shape)
+
+            if consider_multi_core_in_full_load:
+                # consistent with the implementation logic of schedule_agent, using nparts to split the axis
+                # get_a_matrix_mode: Nz2Zz
+                # cache_read tensor_a
+                # k1, m1, m0, k0 with not trans_a
+                *_, k1, m1, _, _ = (x.value for x in tensor_al1.shape)
+                if self.transpose_a:
+                    k1, m1 = m1, k1
+                m1_factor = math.ceil(m1 / m_dim)
+                size_shape = size_shape // m1 * m1_factor
+        else:
+            size_shape = tiling_al1[self.IDX_KAL1] * tiling_al1[self.IDX_MULTI_M1] * m1_al0 * m0_al0
+        return size_shape * tiling_pb_al1 * self._bit_width(tensor_al1.dtype)
+
     def gemm_schedule(self):
         """
         the main func of gemm_schedule
@@ -453,8 +544,8 @@ class GemmSchedule:
         self._tiling_ub_process()
         c_ub_tiling_shape = self._cub_process()
         self._cl0_process(c_ub_tiling_shape)
-        self._l0a_process()
-        self._l0b_process()
+        self._al0_process()
+        self._bl0_process()
         self._do_l1_ub_process()
         self._bind_multi_core()
         self._do_emit_insn()
@@ -2412,8 +2503,8 @@ class GemmSchedule:
         _, tiling_k, _, _ = self.TENSOR_MAP.get("a_l0a").shape
         return tiling_k
 
-    def _l0a_process(self):
-        self._print_debug("-------debug info in l0a_process-------")
+    def _al0_process(self):
+        self._print_debug("-------debug info in al0_process-------")
         not_need_process = (self.tiling.get("AL0_matrix") == []) and (not self.is_dynamic)
         not_need_process = not_need_process and self.have_batch_a
         if not_need_process:
@@ -2469,7 +2560,7 @@ class GemmSchedule:
         self._print_debug([al0_tiling_shape, cl0_tiling_shape], "al0_tiling_shape with cl0_tiling_shape")
         all_status = (status_ori, status)
         self._do_attach_l0a(all_status, a_l0a, l0a2l0c_affine_shape, l0a2out_affine_shape)
-        self._print_debug("-------debug info in l0a_process end-------")
+        self._print_debug("-------debug info in al0_process end-------")
 
     def _do_attach_l0a(self, all_status, a_l0a, l0a2l0c_affine_shape, l0a2out_affine_shape):
         status_ori, status = all_status
@@ -2518,8 +2609,8 @@ class GemmSchedule:
                 l0b_shape.insert(0, dynamic_batch)
         return l0b_shape
 
-    def _l0b_process(self):
-        self._print_debug("-------debug info in l0b_process-------")
+    def _bl0_process(self):
+        self._print_debug("-------debug info in bl0_process-------")
 
         bl0_tiling_kb, bl0_tiling_nb = self.bl0_tiling_kb, self.bl0_tiling_nb
         bl0_tiling_n0, bl0_tiling_k0 = self.bl0_tiling_n0, self.bl0_tiling_k0
@@ -2566,10 +2657,10 @@ class GemmSchedule:
         else:
             status_ori = Compare.compare(tiling_ori_l0b, b_l0b_shape)
             status = Compare.compare(bl0_tiling_shape, cl0_tiling_shape)
-        self._do_attach_l0b(status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape)
-        self._print_debug("-------debug info in l0b_process end-------")
+        self._do_attach_bl0(status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape)
+        self._print_debug("-------debug info in bl0_process end-------")
 
-    def _do_attach_l0b(self, status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape):
+    def _do_attach_bl0(self, status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape):
         if self.is_dynamic and not self.cache_tiling:
             status_ori = Compare.LESS_EQ
             status = Compare.LESS_EQ
@@ -2583,7 +2674,7 @@ class GemmSchedule:
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
-        elif status_ori == Compare.EQUAL:
+        elif status_ori == Compare.EQUAL and (not self.bind_core_when_full_load_bl1):
             pass
         elif status == Compare.EQUAL:
             self.sch_agent.same_attach(b_l0b, self.TENSOR_MAP.get("c_l0c"))
@@ -2734,9 +2825,12 @@ class GemmSchedule:
             )
 
     def _bl1_process(self):
+        self._temporarily_enable_fullload_to_bind_multi_core_when_exceed_space()
+
         self.bl1_attach_status = "full_load"
         not_need_bl1_process = self.tiling.get("BL1_shape") in (None, []) and (not self.is_dynamic)
-        not_need_bl1_process = not_need_bl1_process and (not self.have_batch_b)
+        not_need_bl1_process = not_need_bl1_process and (
+            not self.have_batch_b) and (not self.bind_core_when_full_load_bl1)
         if not_need_bl1_process:
             return
         self._print_debug("-------debug info in bl1_process-------")
@@ -2772,7 +2866,8 @@ class GemmSchedule:
             k_shape = b_l0b_shape[-4]
 
         bl1_shape = [k_shape, n_shape]
-        bl1_shape[1] = self._int_ceil_div(bl1_shape[1], self.tiling.get("block_dim")[1])
+        if not self.bind_core_when_full_load_bl1:
+            bl1_shape[1] = self._int_ceil_div(bl1_shape[1], self.tiling.get("block_dim")[1])
 
         if self.have_batch_b:
             bl1_ori_batch = self.dynamic_batch if self.is_dynamic else b_l1.shape[0].value
