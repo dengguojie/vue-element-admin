@@ -208,7 +208,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
 
             if padu != 0 or padd != 0 or padl != 0 or padr != 0 or stride_h * stride_w > 1:
                 shape_dy_filling = (dy_batch, kernel_cout1, dy_h * stride_h + padu + padd,
-                                    dy_w * stride_w + padl + padr, kernel_cout0 )
+                                    dy_w * stride_w + padl + padr, kernel_cout0)
                 if stride_h * stride_w > 1:
                     dy_zero = _fill_zero(shape_dy_filling)
                     dy_filling = tvm.compute(
@@ -245,7 +245,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
             else:
                 dy_filling = dy_ddr
             return dy_filling
-        
+
         fusion_para = self._fusion_para
         DeConvPattern.fusion_para_map = fusion_para
         DeConvPattern.dedy = dy_ddr
