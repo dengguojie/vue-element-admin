@@ -70,8 +70,6 @@ def ceil_div(value_x, value_y):
     the ceiling of value_x as an Integral
     """
 
-    if value_y == 0:
-        return value_x
     result = (value_x + value_y - 1) // value_y
 
     return result
@@ -93,8 +91,6 @@ def ceil_fill(value_x, value_y):
     the ceiling product of value_x and value_y as an Integral
     """
 
-    if value_y == 0:
-        return value_x
     result = (value_x + value_y - 1) // value_y * value_y
 
     return result
@@ -116,8 +112,6 @@ def floor_div(value_x, value_y):
     the floor of value_x as an Integral
     """
 
-    if value_y == 0:
-        return value_x
     result = value_x // value_y
 
     return result
@@ -139,8 +133,6 @@ def lcm(value_x, value_y):
     the lcm of value_x and value_y as an Integral
     """
 
-    if value_x == 0 or value_y == 0:
-        return 0
     result = value_x * value_y // func_gcd(value_x, value_y)
 
     return result

@@ -203,8 +203,6 @@ class AsStrided:
         """
         ceiling division
         """
-        if val_y == 0:
-            return val_y
         return (val_x + val_y - 1) // val_y
 
     @staticmethod
@@ -212,8 +210,6 @@ class AsStrided:
         """
         floor division
         """
-        if val_y == 0:
-            return val_y
         return val_x // val_y
 
     def _compute_branch_func(self, args, block_idx):
