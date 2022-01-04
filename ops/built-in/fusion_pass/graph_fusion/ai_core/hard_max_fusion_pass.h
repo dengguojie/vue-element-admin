@@ -30,10 +30,10 @@ protected:
 	Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes)override;
 	Status CreateArgMaxDNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node, ge::NodePtr &new_node, int64_t &depth,
 		int64_t &dim);
+	Status SetConstDesc(const vector<int64_t> &tensor_shape, ge::GeTensorDesc &tensor_desc,
+		const ge::GeTensorDesc &des_desc)const;
 	Status CreateOneHotDNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node, ge::NodePtr &argmax_node,
 		ge::NodePtr &new_node, int64_t depth, int64_t dim);
-	Status SetConstDesc(vector<int64_t> &tensor_shape, ge::GeTensorDesc &tensor_desc,
-		const ge::GeTensorDesc &des_desc)const;
 	Status NnSets(const fp16_t alpha, const int32_t n, fp16_t &output1) const;
 	Status OnValueConstNode(vector<int64_t> &on_value_tensor_shape, const ge::GeTensorDesc &input_desc_one,
 		ge::GeTensorPtr &assit_on_value_ptr, ge::GeTensorDesc &on_value_tensor_desc)const;
