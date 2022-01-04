@@ -484,7 +484,7 @@ def _shape_check(tensor_a, tensor_b,
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-def _check_quantize_params(quantize_params=None):  # pylint: disable=R0912
+def _check_quantize_params(quantize_params=None):
     """
     Parameters:
     quantize_params: quantization parameters,
@@ -1024,7 +1024,7 @@ def _matmul_compute(
         quantize_params=None,
         format_out=None,
         compress_index=None,
-        attrs={},
+        attrs=None,
         kernel_name="MatMul"):
     """
     algorithm: mmad
@@ -1091,7 +1091,7 @@ def _matmul_compute(
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
-
+    attrs = {} if not attrs else attrs
     batch_dims = _get_batch_dims(attrs)
     nz_a = False
     if format_a == "FRACTAL_NZ":
@@ -4077,7 +4077,9 @@ class MatMulCompute:
         return (dividend + divisor - 1) // divisor
 
     def compute_matmul(self):
-        """MatMul enter
+        """
+        MatMul enter
+
         Input None
         return result in self.c_matrix
         ---------------------------------
