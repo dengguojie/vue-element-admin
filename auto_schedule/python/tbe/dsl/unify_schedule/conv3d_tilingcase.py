@@ -87,8 +87,8 @@ def _parse_fuzz_build_range(info_list):
     -------
     range_list: list of 5d range
     """
-    range_list = []
     target_index = 0
+    range_list = []
     for item in info_list:
         inputs = item.get("inputs")
         for input_tensor in inputs:
@@ -168,9 +168,8 @@ def add_covered_shape_range(compile_info):
     """
     id_list = list(compile_info["block_dim"].keys())
     id_list.sort()
-
-    info_list = []
     te_vars = []
+    info_list = []
     for cpt in op_get_context().get_computes():
         te_vars += cpt.get_vars()
     var_list = [var.get_name() for var in te_vars]
@@ -264,8 +263,8 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
     -------
     list of dict, each dict for a tiling case
     """
-    tiling_cases = []
     all_compile_info = {}
+    tiling_cases = []
     for tgt in tgt_list:
         tiling_op = Conv3dTiling(conv_info, Conv3DParam.var_map)
         selector = TilingSelection(tiling_op, max_kernel_id)
@@ -284,10 +283,10 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
                     for kernel_id, range_x in current_info[range_key].items():
                         new_range = []
                         for index, dim_value in enumerate(range_x):
-                            if index in (0, 2, 4, 6):
-                                new_range.append(tgt_ndhw[index] if dim_value < tgt_ndhw[index] else dim_value)
-                            else:
+                            if index not in (0, 2, 4, 6):
                                 new_range.append(tgt_ndhw[index] if dim_value > tgt_ndhw[index] else dim_value)
+                            else:
+                                new_range.append(tgt_ndhw[index] if dim_value < tgt_ndhw[index] else dim_value)
                         current_info[range_key][kernel_id] = new_range
             if all_compile_info:
                 for key, value in current_info.items():
@@ -820,7 +819,6 @@ class Conv3dTiling(CubeTilingOp):
         # get min value
         hi_min, wi_min = 1, 1
         if self.pad_mode != "VAR":
-            di_min = max(self.k_d - self.padf - self.padb, 1)
             hi_min = max(self.k_h - self.padu - self.padd, 1)
             wi_min = max(self.k_w - self.padl - self.padr, 1)
         support_w_min = wi_min

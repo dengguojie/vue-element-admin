@@ -411,6 +411,9 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         return (al1_min_byte + bl1_min_byte) <= utils.L1BUFFER
 
     def get_default_tiling(self):
+        """
+        get default tiling
+        """
         tiling = self._get_default_tiling_extend()
         return tiling.get("tiling")
 
@@ -651,7 +654,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         if not h_i:
             return None
         return max(1, (h_i + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
-                (self.k_h - 1 ) - 1) // self.stride_h + 1)
+                (self.k_h - 1) - 1) // self.stride_h + 1)
 
     def _get_output_w(self, w_i):
         if not w_i:
