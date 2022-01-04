@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"

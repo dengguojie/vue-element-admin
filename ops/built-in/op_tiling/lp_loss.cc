@@ -16,7 +16,6 @@
 
 #include <iostream>
 #include "../fusion_pass/common/fp16_t.hpp"
-#include "eletwise.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
 

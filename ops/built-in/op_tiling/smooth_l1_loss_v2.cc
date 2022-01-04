@@ -20,7 +20,6 @@
 #include "error_log.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
-#include "eletwise.h"
 
 namespace optiling {
 struct SmoothL1LossV2CompileInfo {

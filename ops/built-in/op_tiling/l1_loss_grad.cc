@@ -15,9 +15,8 @@
  */
 
 #include <iostream>
-#include "reduce_tiling.h"
-#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "vector_tiling.h"
 #include "op_tiling_util.h"
 
 namespace optiling {
