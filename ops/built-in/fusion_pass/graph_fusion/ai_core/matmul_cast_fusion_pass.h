@@ -31,9 +31,9 @@ class MatmulCastFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status LinkOutputEdgeWithoutControl(const ge::NodePtr &oldNode, const ge::NodePtr &newNode);
-  Status IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode);
-  Status DoFusion(const ge::NodePtr &matmulNode);
+  Status LinkOutputEdgeWithoutControl(const ge::NodePtr &oldNode, const ge::NodePtr &newNode) const;
+  Status IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode) const;
+  Status DoFusion(const ge::NodePtr &matmulNode) const;
   const std::string CAST = "Cast";
   const string FUSED_OP_TYPE = "MatMul/MatMulV2";
 };

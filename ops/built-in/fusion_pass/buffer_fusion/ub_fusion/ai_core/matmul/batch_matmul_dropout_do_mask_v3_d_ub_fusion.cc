@@ -205,7 +205,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
         return FAILED);
       for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
         Status sta = CheckDropoutOutNode(dropout_out_node, dropout_control_node, add_nodes);
-        FUSION_PASS_CHECK(sta != SUCCESS, OP_LOGD(FUSED_OP_TYPE.c_str(),"Check dropout out node failed."),
+        FUSION_PASS_CHECK(sta != SUCCESS, OP_LOGD(FUSED_OP_TYPE.c_str(), "Check dropout out node failed."),
                           return FAILED);
       }
     }

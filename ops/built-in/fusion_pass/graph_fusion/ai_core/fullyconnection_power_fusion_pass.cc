@@ -86,7 +86,7 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
                       return FAILED);
     fcPowerHostOp->MutableInputDesc(0)->SetOriginDataType(biasTensorDesc.GetDataType());
     fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(
-                                        static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+        static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableInputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
 
     FUSION_PASS_CHECK(fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc) != GRAPH_SUCCESS,
@@ -96,7 +96,7 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "get output desc 0 failed"),
                       return FAILED);
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(
-                                         static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+        static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
     fcPowerHostOp->MutableOutputDesc(0)->SetDataType(biasTensorDesc.GetDataType());
     fcPowerHostOp->MutableOutputDesc(0)->SetShape(biasTensorDesc.GetShape());

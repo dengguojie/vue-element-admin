@@ -27,7 +27,6 @@
 namespace fe {
 class BatchMatMulNonAlignedFusionPass : public PatternFusionBasePass {
  protected:
-  static const string kNameFusionPass;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
   vector<FusionPattern *> DefinePatterns() override;
 
@@ -42,18 +41,18 @@ class BatchMatMulNonAlignedFusionPass : public PatternFusionBasePass {
   ge::NodePtr add_1_node = nullptr;
   ge::NodePtr add_2_node = nullptr;
 
-  Status CreatePadDNode(ge::ComputeGraph &graph, const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
+  Status CreatePadDNode(ge::ComputeGraph *graph, const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
                         ge::NodePtr &pad_node, vector<vector<int64_t>> &paddings) const;
-  Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::OutDataAnchorPtr &out_anchor,
+  Status CreateReshapeNode(ge::ComputeGraph *graph, const ge::OutDataAnchorPtr &out_anchor,
                            const vector<int64_t> &shape, ge::NodePtr &shape_node) const;
   ge::OpDescPtr CreateListConstDesc(const string &name, vector<int64_t> values) const;
-  Status CreateReshapePadReshape(ge::ComputeGraph &graph, const ge::InDataAnchorPtr &dst_anchor,
+  Status CreateReshapePadReshape(ge::ComputeGraph *graph, const ge::InDataAnchorPtr &dst_anchor,
                                  map<string, vector<int64_t>> &shape_dict, vector<vector<int64_t>> &paddings) const;
   Status UpdateConst(const ge::NodePtr &shape_node, vector<int64_t> &const_shape) const;
   Status UpdateAllShape(ge::NodePtr &cur_node, const ge::NodePtr &end_node) const;
   Status GetNodes(const Mapping &mapping);
-  Status DoFusionPattern1(ge::ComputeGraph &graph, map<std::string, int64_t>& batch_matmul_shape_info) const;
-  Status DoFusionPattern2(ge::ComputeGraph &graph, map<std::string, int64_t>& batch_matmul_shape_info) const;
+  Status DoFusionPattern1(ge::ComputeGraph *graph, map<std::string, int64_t>& batch_matmul_shape_info) const;
+  Status DoFusionPattern2(ge::ComputeGraph *graph, map<std::string, int64_t>& batch_matmul_shape_info) const;
   Status CheckStaticShape() const;
   Status CheckNodeShape(const ge::NodePtr &node) const;
   Status CheckPerm(const ge::NodePtr &transpose_node, const vector<int64_t> &perm_list) const;
@@ -64,8 +63,6 @@ class BatchMatMulNonAlignedFusionPass : public PatternFusionBasePass {
   Status CheckBatchMatmulInputNode(const ge::NodePtr& batchmatmul_node) const;
   Status GetBatchMatMulShape(map<std::string, int64_t>& batch_matmul_shape_info);
 };
-
-const string BatchMatMulNonAlignedFusionPass::kNameFusionPass = "BatchMatMulNonAlignedFusionPass";
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_NON_ALIGNED_FUSION_PASS_H

@@ -78,8 +78,8 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   return patterns;
 }
 
-void TbeMatmulElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
-             std::vector<ge::NodePtr> &fusion_nodes) {
+void TbeMatmulElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping& mapping,
+                                               std::vector<ge::NodePtr>& fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE, mapping);
   if (matmulNodes.empty()) {

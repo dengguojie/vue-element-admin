@@ -68,7 +68,7 @@ vector<FusionPattern*> MatmulCastFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode) {
+Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode) const {
   std::shared_ptr<ge::OpDesc> matmulOp = matmulNode->GetOpDesc();
   std::shared_ptr<ge::OpDesc> castOp = castNode->GetOpDesc();
   FUSION_PASS_CHECK(matmulOp == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "MATMUL ops is null"), return FAILED);
@@ -144,7 +144,7 @@ Status MatmulCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   return SUCCESS;
 }
 
-Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmulNode) {
+Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmulNode) const {
   std::shared_ptr<ge::OpDesc> matmulOp = matmulNode->GetOpDesc();
   FUSION_PASS_CHECK(matmulOp == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "matmul op is null"), return FAILED);
   if (ge::AttrUtils::SetInt(matmulOp, OUT_T, ge::DT_FLOAT) == false) {
@@ -163,7 +163,8 @@ Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmulNode) {
   return SUCCESS;
 }
 
-Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr &oldNode, const ge::NodePtr &newNode) {
+Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr& oldNode,
+                                                          const ge::NodePtr& newNode) const {
   ge::OutDataAnchorPtr newOutDataAnchor = newNode->GetOutDataAnchor(0);
   if (newOutDataAnchor == nullptr) {
     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");

@@ -17,8 +17,8 @@
 /*!
  * \file batch_matmul_reduce_mean_fusion_pass.h
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H
 
 #include <vector>
 
@@ -39,7 +39,6 @@ struct SliceParams {
 
 class BatchMatMulReduceMeanFusionPass : public PatternFusionBasePass {
 protected:
-  static const string kNameFusionPass;
   vector<FusionPattern *> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
@@ -53,20 +52,19 @@ private:
   int64_t n_dim_aligned = 0;
 
   Status GetNodes(const Mapping &mapping);
-  Status CheckNodeShape(ge::NodePtr &node);
-  Status CheckStaticShape();
+  Status CheckNodeShape(const ge::NodePtr &node) const;
+  Status CheckStaticShape() const;
   Status CheckAligned();
-  Status CheckReduceMean();
-  Status InsertBatchMatMulPadD(ge::ComputeGraph &graph);
-  Status InsertAddPadD(ge::ComputeGraph &graph);
-  Status InsertReduceMeanSliceD(ge::ComputeGraph &graph);
-  Status CreatePadDNode(ge::ComputeGraph &graph, ge::NodePtr &pad_node,
-                        const ge::NodePtr &op_node, PadParams &pad_params);
-  Status CreateSliceDNode(ge::ComputeGraph &graph, const ge::NodePtr &op_node, SliceParams &slice_params);
-  Status UpdateAllShape(ge::NodePtr &cur_node, ge::NodePtr &end_node);
+  Status CheckReduceMean() const;
+  Status InsertBatchMatMulPadD(ge::ComputeGraph *graph);
+  Status InsertAddPadD(ge::ComputeGraph *graph) const;
+  Status InsertReduceMeanSliceD(ge::ComputeGraph *graph);
+  Status CreatePadDNode(ge::ComputeGraph *graph, ge::NodePtr *pad_node,
+                        const ge::NodePtr &op_node, const PadParams &pad_params) const;
+  Status CreateSliceDNode(ge::ComputeGraph *graph, const ge::NodePtr &op_node,
+                          const SliceParams &slice_params);
+  Status UpdateAllShape(ge::NodePtr *cur_node, const ge::NodePtr &end_node) const;
 };
-
-const string BatchMatMulReduceMeanFusionPass::kNameFusionPass = "BatchMatMulReduceMeanFusionPass";
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_REDUCE_MEAN_FUSION_PASS_H

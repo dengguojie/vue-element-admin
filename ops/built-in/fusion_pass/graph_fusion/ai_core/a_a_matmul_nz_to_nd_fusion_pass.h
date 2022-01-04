@@ -17,8 +17,8 @@
 /*!
  * \file a_a_matmul_nz_to_nd_fusion_pass.h
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H
 
 #include <vector>
 
@@ -27,8 +27,7 @@
 namespace fe {
 class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
  protected:
-  static const string kNameFusionPass;
-  Status DoFusion(ge::ComputeGraph& graph);
+  Status DoFusion(ge::ComputeGraph* graph);
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
   bool CheckFormatOfTransData(const ge::NodePtr node_ptr_transdata, const string& expect_src_format,
                               const string& expect_dst_format);
@@ -56,8 +55,6 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   std::vector<std::pair<int64_t, int64_t>> in_range_matmul_1;
   std::vector<std::pair<int64_t, int64_t>> out_range_matmul_0;
 };
-
-const string AAMatMulNzToNdFusionPass::kNameFusionPass = "AAMatMulNzToNdFusionPass";
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_A_A_MATMUL_NZ_TO_ND_FUSION_PASS_H
