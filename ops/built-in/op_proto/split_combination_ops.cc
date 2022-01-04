@@ -350,7 +350,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
     for (auto i = 0; i < num_split; ++i) {
       op.UpdateDynamicOutputDesc("y", i, td);
     }
-    OP_LOGD(op.GetName().c_str(), "SplitVInferShape end, split_dim and size_splits is not const");
+    OP_LOGD(op.GetName().c_str(), "SplitVInferShape end, split_dim is not const");
     return GRAPH_SUCCESS;
   }
 
@@ -360,7 +360,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   CalcSplitV(split_dim_data, split_dim_dtype, split_dim_vec);
 
   if (split_dim_vec.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "size of split_vec must be larger than 0");
+    OP_LOGE(op.GetName().c_str(), "size of split_dim must be larger than 0");
     OpsInputShapeErrReport(op.GetName(), "size of split_dim must be larger than 0",
                            "size of split_dim", ConcatString(split_dim_vec.size()));
     return GRAPH_FAILED;
@@ -383,7 +383,11 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
     x_shape.SetDim(split_dim, -1);
 
     for (size_t i = 0; i < x_shape_range.size(); ++i) {
-      out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
+      if (split_dim == static_cast<int>(i)) {
+        out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
+      } else {
+        out_range.push_back(x_shape_range[i]);
+      }
     }
 
     td.SetShape(x_shape);
@@ -433,7 +437,15 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
     tdx.SetShape(x_shape);
     tdx.SetOriginShape(x_shape);
     tdx.SetDataType(x_dtype);
-    tdx.SetShapeRange(x_shape_range);
+    out_range.clear();
+    for (size_t j = 0; j < x_shape_range.size(); ++j) {
+      if (split_dim == static_cast<int>(j)) {
+        out_range.push_back(std::pair<int64_t, int64_t>(size_splits[i], size_splits[i]));
+      } else {
+        out_range.push_back(x_shape_range[j]);
+      }
+    }
+    tdx.SetShapeRange(out_range);
     op.UpdateDynamicOutputDesc("y", i, tdx);
   }
   OP_LOGD(op.GetName().c_str(), "SplitVInferShape success");
