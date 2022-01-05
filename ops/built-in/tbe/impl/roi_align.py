@@ -2272,8 +2272,12 @@ def _compute_roi_with_single_point(tik_instance, feature_shape, dtype,
         with tik_instance.for_range(0, 2) as j:
             one = tik_instance.Scalar(dtype="int32", init_value=-1)
             cache_table[j, 0].set_as(one)
+
+    thread_num = 2
+    if pool_w == 1:
+        thread_num = 1
     with tik_instance.for_range(0, pool_h) as p_h:
-        with tik_instance.for_range(0, pool_w, thread_num=2) as p_w:
+        with tik_instance.for_range(0, pool_w, thread_num=thread_num) as p_w:
             # less 255
             c_block = 110
             c_number = (fm_c1 + (c_block - 1)) // c_block
@@ -2550,7 +2554,8 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
     roi_x_floor = tik_instance.Tensor(
         "int32", [128], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
-    if dtype == "float32":
+    suppot_vconv = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "f322s32c")
+    if not suppot_vconv and dtype == "float32":
         raw_fp16 = tik_instance.Tensor(
             "float16", [128], name="raw_fp16", scope=tbe_platform.scope_ubuf)
         tik_instance.vec_conv(64, "", raw_fp16[0], raw_y[0], 2, 4, 8)
