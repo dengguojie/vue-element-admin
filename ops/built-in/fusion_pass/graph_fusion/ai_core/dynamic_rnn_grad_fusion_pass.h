@@ -30,6 +30,8 @@ class DynamicRNNGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
+  Status AddEdgeForNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr node, int unlinkIndex, int anchorIndex);
+
   Status AddEdgeForCell(ge::NodePtr dynamicRNNGradNode,
                         vector<ge::NodePtr>& newNodes, bool& failStatus,
                         vector<vector<ge::NodePtr>> resultNode, ge::NodePtr lstmSplitC,

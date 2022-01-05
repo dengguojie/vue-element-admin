@@ -303,7 +303,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
     lstmBatchMatMulDesc->AddInputDesc("w", dynamicRNNGradDesc->GetInputDesc(1));
     // add matmul output
     vector<int64_t> outputy_dims;
-    outputy_dims.push_back((output_tensor_desc.GetShape().GetDim(0) + NUM_15) / NUM_16 );
+    outputy_dims.push_back((output_tensor_desc.GetShape().GetDim(0) + NUM_15) / NUM_16);
     outputy_dims.push_back((dynamicRNNGradDesc->GetInputDesc(1).GetOriginShape().GetDim(0) + NUM_15) / NUM_16);
     outputy_dims.push_back(NUM_16);
     outputy_dims.push_back(NUM_16);
@@ -419,6 +419,22 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
   result.push_back(reshape_nodes);
 
   return result;
+}
+
+Status DynamicRNNGradFusionPass::AddEdgeForNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr node,
+                                                int unlinkIndex, int anchorIndex) {
+  if (dynamicRNNGradNode->GetOutDataAnchor(unlinkIndex)->GetPeerInDataAnchors().size() > 0) {
+    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(unlinkIndex)->GetPeerInDataAnchors()) {
+      inAnchorPtr->UnlinkAll();
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(node->GetOutDataAnchor(anchorIndex), inAnchorPtr),
+                        VECTOR_FUSION_INNER_ERR_REPORT(
+                          FUSED_OP_TYPE.c_str(),
+                          "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                          node->GetName().c_str(), 0, node->GetName().c_str(), 0),
+                        return FAILED);
+    }
+  }
+  return SUCCESS;
 }
 
 Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode,
@@ -651,44 +667,31 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode,
     }
     OP_LOGD(FUSED_OP_TYPE.c_str(), "add cell input edge.");
     if (i == num_split_x - 1) {
-      if (dynamicRNNGradNode->GetOutDataAnchor(NUM_4)->GetPeerInDataAnchors().size() > 0) {
-        for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(NUM_4)->GetPeerInDataAnchors()) {
-          inAnchorPtr->UnlinkAll();
-          FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(1), inAnchorPtr),
-            VECTOR_FUSION_INNER_ERR_REPORT(
-              FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
-              basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0,
-              basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
-            return FAILED);
-        }
-      }
-      if (dynamicRNNGradNode->GetOutDataAnchor(NUM_3)->GetPeerInDataAnchors().size() > 0) {
-        for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(NUM_3)->GetPeerInDataAnchors()) {
-          inAnchorPtr->UnlinkAll();
-          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(split_nodes[i]->GetOutDataAnchor(1), inAnchorPtr),
-                            VECTOR_FUSION_INNER_ERR_REPORT(
-                              FUSED_OP_TYPE.c_str(),
-                              "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
-                              split_nodes[i]->GetName().c_str(), 0, split_nodes[i]->GetName().c_str(), 0),
-                            return FAILED);
-        }
-      }
+      FUSION_PASS_CHECK(SUCCESS != AddEdgeForNode(dynamicRNNGradNode, basic_lstm_cell_state_grad_nodes[i], NUM_4, 1),
+                        VECTOR_FUSION_INNER_ERR_REPORT(
+                          FUSED_OP_TYPE.c_str(),
+                          "AddEdgeForNode failed, fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                          basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0,
+                          basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                        return FAILED);
+
+      FUSION_PASS_CHECK(SUCCESS != AddEdgeForNode(dynamicRNNGradNode, split_nodes[i], NUM_3, 1),
+                        VECTOR_FUSION_INNER_ERR_REPORT(
+                          FUSED_OP_TYPE.c_str(),
+                          "AddEdgeForNode failed, fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                          split_nodes[i]->GetName().c_str(), 0, split_nodes[i]->GetName().c_str(), 0),
+                        return FAILED);
     }
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add output edge for lstmInput.");
   // add output edge for lstmInput
-  if (dynamicRNNGradNode->GetOutDataAnchor(NUM_2)->GetPeerInDataAnchors().size() > 0) {
-    for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(NUM_2)->GetPeerInDataAnchors()) {
-      inAnchorPtr->UnlinkAll();
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmXConcatD->GetOutDataAnchor(0), inAnchorPtr),
-                        VECTOR_FUSION_INNER_ERR_REPORT(
-                          FUSED_OP_TYPE.c_str(),
-                          "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
-                          lstmXConcatD->GetName().c_str(), 0, lstmXConcatD->GetName().c_str(), 0),
-                        return FAILED);
-    }
-  }
+  FUSION_PASS_CHECK(SUCCESS != AddEdgeForNode(dynamicRNNGradNode, lstmXConcatD, NUM_2, 0),
+                    VECTOR_FUSION_INNER_ERR_REPORT(
+                      FUSED_OP_TYPE.c_str(),
+                      "AddEdgeForNode failed, fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                      lstmXConcatD->GetName().c_str(), 0, lstmXConcatD->GetName().c_str(), 0),
+                    return FAILED);
+
   OP_LOGD(FUSED_OP_TYPE.c_str(), "end add edge.");
 
   return SUCCESS;
@@ -1076,7 +1079,6 @@ ge::NodePtr DynamicRNNGradFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGradNod
       failStatus = true; return nullptr);
   // input
   ge::GeTensorDesc inputTensorDescH = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(NUM_6);  // h
-  inputTensorDescH = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(NUM_6);
   splitDesc->AddInputDesc("input_h", inputTensorDescH);
   vector<int64_t> outputDims;
   outputDims.push_back(inputTensorDescH.GetShape().GetDim(0) - 1);

@@ -35,8 +35,7 @@ class TabulateFusionFusionPass : public PatternFusionBasePass {
   const std::string FUSED_OP_TYPE = "TabulateFusion";
   Status CreateConcatNodes(ge::ComputeGraph& graph, ge::NodePtr& tabulateNode, vector<ge::NodePtr>& newTabulateNodes,
                            ge::NodePtr& concatNode);
-  Status UpdateTabulateFusionNode(ge::ComputeGraph &graph, ge::NodePtr &tabulateNodeAic,
-                                  ge::NodePtr &tabulateNodeVec);
+  Status UpdateTabulateFusionNode(const ge::NodePtr &tabulateNodeAic, const ge::NodePtr &tabulateNodeVec);
 };
 
 }  // namespace fe

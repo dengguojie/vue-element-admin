@@ -40,7 +40,6 @@
 #include "tabulatefusion_fusion_pass.h"
 
 namespace fe {
-
 static const std::string PATTERN_TABULATEFUSIONA = "TabulateFusion";
 static const std::string OP_TYPE_TABULATEFUSION = "TabulateFusion";
 static const std::string ATTR_OP_SPECIFIED_ENGINE_NAME = "_specified_engine_name";
@@ -48,6 +47,7 @@ static const std::string ATTR_OP_SPECIFIED_KERNEL_LIB_NAME = "_specified_kernel_
 static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
+static const int SPLIT_COUNT = 2;
 
 /*!
  * @brief Define pattern.
@@ -56,9 +56,9 @@ static const std::string ATTR_SPLIT_INDEX = "split_index";
  *        inputs                         inputs
  *          |                            /     \
  *    TabulateFusion    ==>    TabulateFusion   TabulateFusion
- *          |                           \        / 
- *       outputs                         \      /  
- *                                        \    /   
+ *          |                           \        /
+ *       outputs                         \      /
+ *                                        \    /
  *                                        Concat
  *                                           |
  *                                       outputs
@@ -78,8 +78,8 @@ vector<FusionPattern *> TabulateFusionFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TabulateFusionFusionPass::UpdateTabulateFusionNode(ge::ComputeGraph &graph, ge::NodePtr &tabulateNodeAic,
-                                                          ge::NodePtr &tabulateNodeVec) {
+Status TabulateFusionFusionPass::UpdateTabulateFusionNode(const ge::NodePtr &tabulateNodeAic,
+                                                          const ge::NodePtr &tabulateNodeVec) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into Update TabulateFusion node.");
   ge::OpDescPtr tabulateAicDesc = tabulateNodeAic->GetOpDesc();
   ge::OpDescPtr tabulateVecDesc = tabulateNodeVec->GetOpDesc();
@@ -98,8 +98,7 @@ Status TabulateFusionFusionPass::UpdateTabulateFusionNode(ge::ComputeGraph &grap
 
   if (tabulateAicOutputShape.GetDim(0) > 0) {
     int64_t nloc = tabulateAicOutputShape.GetDim(0);
-    int64_t splitCount = 2;
-    int64_t ceilValue = (nloc + splitCount - 1) / splitCount;
+    int64_t ceilValue = (nloc + SPLIT_COUNT - 1) / SPLIT_COUNT;
 
     tabulateAicOutputShape.SetDim(0, ceilValue);
     tabulateAicOutput.SetShape(tabulateAicOutputShape);
@@ -140,7 +139,7 @@ Status TabulateFusionFusionPass::CreateConcatNodes(ge::ComputeGraph &graph, ge::
                     return FAILED);
 
   ge::AttrUtils::SetInt(concatDesc, "concat_dim", 0);
-  ge::AttrUtils::SetInt(concatDesc, "N", 2);
+  ge::AttrUtils::SetInt(concatDesc, "N", SPLIT_COUNT);
 
   concatNode = graph.AddNode(concatDesc);
   FUSION_PASS_CHECK(concatNode == nullptr,
@@ -191,15 +190,15 @@ Status TabulateFusionFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappin
                                                                          tabulateNodeAic, tabulateNodeVec) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to split TabulateFusion node"),
                     return FAILED);
-  FUSION_PASS_CHECK(UpdateTabulateFusionNode(graph, tabulateNodeAic, tabulateNodeVec) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to split TabulateFusion node"),
+  FUSION_PASS_CHECK(UpdateTabulateFusionNode(tabulateNodeAic, tabulateNodeVec) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to update TabulateFusion node"),
                     return FAILED);
 
   ge::NodePtr concatNode = nullptr;
   vector<ge::NodePtr> newTabulateNodes = {tabulateNodeAic, tabulateNodeVec};
   Status concatRet = CreateConcatNodes(graph, tabulateNode, newTabulateNodes, concatNode);
   FUSION_PASS_CHECK(concatRet != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Add nodes."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Concat nodes."),
                     return concatRet);
 
   FUSION_PASS_CHECK(DeepMdFusionPassUtil::ClearFusedNode(FUSED_OP_TYPE, graph, tabulateNode) != SUCCESS,
