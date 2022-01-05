@@ -150,8 +150,8 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
 
 vector<FusionPattern*> FullyConnectionPowerPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE, "Define FullyConnectionPowerPass pattern begin");
-  vector<FusionPattern*> patterns;
-  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FullyConnectionPowerPass");
+  vector<FusionPattern *> patterns;
+  FusionPattern *pattern1 = new (std::nothrow) FusionPattern("FullyConnectionPowerPass");
   FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "new an object failed"),
                     return patterns);
 

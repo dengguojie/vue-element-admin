@@ -213,7 +213,7 @@ bool CalcGEMMMknb(const string& op_type, const json& compile_info, ge::DataType 
          compile_value.params.ori_shape_N > INT_MAX),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "The m,k,n of a and b tensors' ori_shape must not larger than INT_MAX"),
   return false);
-  if (!compile_value.params.binary_mode_flag && compile_value.params.format_a == "ND" && 
+  if (!compile_value.params.binary_mode_flag && compile_value.params.format_a == "ND" &&
       compile_value.params.format_b == "ND") {
     // Aligned schedule pattern selection is only enabled in ND input format
     bool aligned_m = compile_value.params.ori_shape_M % block_in == 0;
@@ -470,7 +470,7 @@ bool GemmParseFunc(const string& op_type, const json& compile_info, GemmCompile&
   compile_value.dynamic_mode = compile_info["dynamic_mode"];
   compile_value.params.format_a = compile_info["format_a"];
   compile_value.params.format_b = compile_info["format_b"];
-  auto& repo_attr = compile_info["attrs"];
+  const auto& repo_attr = compile_info["attrs"];
   compile_value.trans_a = repo_attr["transpose_a"];
   compile_value.trans_b = repo_attr["transpose_b"];
 

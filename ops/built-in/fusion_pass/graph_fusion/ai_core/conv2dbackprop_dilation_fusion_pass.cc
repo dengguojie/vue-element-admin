@@ -74,9 +74,10 @@ vector<FusionPattern *> Conv2DbpInputDilationFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
-  pattern->AddOpDesc(PATTERN_CONV2DBACKPROPINPUT,
-                      {kConv2dBackpropInputOpType, kDeconvolutionOpType, kConv2dTransposeOpType}
-                     ).SetOutput(PATTERN_CONV2DBACKPROPINPUT);
+  pattern
+      ->AddOpDesc(PATTERN_CONV2DBACKPROPINPUT,
+                  {kConv2dBackpropInputOpType, kDeconvolutionOpType, kConv2dTransposeOpType})
+      .SetOutput(PATTERN_CONV2DBACKPROPINPUT);
 
   patterns.push_back(pattern);
 

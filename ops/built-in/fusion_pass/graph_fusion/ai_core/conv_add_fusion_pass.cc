@@ -481,8 +481,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
             conv_node->GetAllInDataAnchors().size());
     OP_LOGI(fused_op_type_.c_str(), "ConvAddFusionPass: Conv3d [%s] has %u input desc.", conv_node->GetName().c_str(),
             conv_node_desc->GetAllInputsDesc().size());
-    int64_t in_edges_size = conv_node->GetInDataNodes().size();
-    if (in_edges_size < 0) {
+    if (conv_node->GetInDataNodes().size() < 0) {
       OP_LOGI(fused_op_type_.c_str(), "inEdges size is invalid.");
       return NOT_CHANGED;
     }

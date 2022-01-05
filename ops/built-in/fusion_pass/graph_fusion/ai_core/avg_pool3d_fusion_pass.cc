@@ -137,8 +137,8 @@ void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, 
             t = val;
             for (int c = 0; c < kC0; c++) {
               if (cnt >= max_size) {
-                VECTOR_FUSION_INNER_ERR_REPORT(kPatternAvgPool3D.c_str(),
-                                              "Multiplier size error, max size is %d.", max_size);
+                VECTOR_FUSION_INNER_ERR_REPORT(kPatternAvgPool3D.c_str(), "Multiplier size error, max size is %d.",
+                                               max_size);
                 return;
               }
               data[cnt] = t.val;

@@ -27,16 +27,9 @@
 #include <map>
 
 #include "quant_host_cpu_op_common.h"
-#include "fp16_t.hpp"
-#include "graph/debug/ge_attr_define.h"
-#include "graph/types.h"
-#include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
-#include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-#include "op_log.h"
-#include "pattern_fusion_util.h"
 #include "securec.h"
 #include "common/util/error_manager/error_manager.h"
 #include "../../../op_proto/util/error_util.h"

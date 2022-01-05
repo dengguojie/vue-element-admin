@@ -843,7 +843,7 @@ void NeitherFullLoadKforNZ(const L2Status &l2Status, const L0Status &l0Status, L
 }
 
 void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
-                           const BatchmatmulParas &params, const int &kmax_axis)
+                           const int &kmax_axis)
 {
   if (kmax_axis == kTypeOne) {
     // first get k_al1, second get k_bl1
@@ -851,16 +851,16 @@ void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L
     l1Status.bl1_size = l1Status.kbl1_16 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.kal1_16 = min(
-      l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-      l2Status.k);
+        l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
+        l2Status.k);
     l1Status.al1_times = l1Status.kal1_16 / l0Status.k_l0;
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
     l1Status.al1_size = l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes;
     l1Status.bl1_size = kL1Size - l1Status.al1_size;
     l1Status.kbl1_16 = min(
-      l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
-      l2Status.k);
+        l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
+        l2Status.k);
     l1Status.bl1_times = min(l1Status.kbl1_16 / l0Status.k_l0, l1Status.max_k_bl1);
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
@@ -870,16 +870,16 @@ void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L
     l1Status.al1_size = l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes;
     l1Status.bl1_size = kL1Size - l1Status.al1_size;
     l1Status.kbl1_16 = min(
-      l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
-      l2Status.k);
+        l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
+        l2Status.k);
     l1Status.bl1_times = l1Status.kbl1_16 / l0Status.k_l0;
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
     l1Status.bl1_size = l1Status.kbl1_16 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.kal1_16 = min(
-      l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-      l2Status.k);
+        l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
+        l2Status.k);
     l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
@@ -900,7 +900,7 @@ void NeitherFullLoadK(const L2Status &l2Status, const L0Status &l0Status, L1Stat
   }
 
   if (params.nd_flag && kmax_axis != kTypeZero) {
-    NeitherFullLoadKforND(l2Status, l0Status, l1Status, params, kmax_axis);
+    NeitherFullLoadKforND(l2Status, l0Status, l1Status, kmax_axis);
   } else {
     NeitherFullLoadKforNZ(l2Status, l0Status, l1Status, params);
   }
@@ -1146,9 +1146,8 @@ void GetBUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
 }
 
-void GetABUbSize(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_t &m_aub,
-                 const int32_t &k_bub, const int32_t &n_bub, const BatchmatmulParas &params, UbStatus &ubStatus)
-{
+void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
+                 const BatchmatmulParas &params, UbStatus &ubStatus) {
   ubStatus.aub_bank_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
   ubStatus.bub_bank_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
   ubStatus.aub_size = ubStatus.aub_bank_size;
@@ -1173,10 +1172,8 @@ void GetABUbSize(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_
   }
 }
 
-void CheckBankConflict(const int32_t &ub_rest_size, const L2Status &l2Status, const L1Status &l1Status,
-                       const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
-{
-  GetABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
+void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &params, UbStatus &ubStatus) {
+  GetABUbSize(ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   if (ubStatus.aub_bank_size + ubStatus.bub_bank_size <= ub_rest_size) {
     ubStatus.aub_size = ubStatus.aub_bank_size;
     ubStatus.bub_size = ubStatus.bub_bank_size;
@@ -1185,11 +1182,13 @@ void CheckBankConflict(const int32_t &ub_rest_size, const L2Status &l2Status, co
     int align_mode = kTypeZero;
     if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
       if (ubStatus.aub_bank_size > ubStatus.bub_bank_size) {
-        align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kTypeOne : 
-            ((ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kTypeTwo : kTypeZero);
+        align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size)
+                         ? kTypeOne
+                         : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kTypeTwo : kTypeZero);
       } else {
-        align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kTypeTwo : 
-            ((ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kTypeOne : kTypeZero);
+        align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size)
+                         ? kTypeTwo
+                         : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kTypeOne : kTypeZero);
       }
     }
     if (align_mode == kTypeZero) {
@@ -1203,7 +1202,7 @@ void CheckBankConflict(const int32_t &ub_rest_size, const L2Status &l2Status, co
       ubStatus.aub_size = ubStatus.aub_bank_size;
     } else if (align_mode == kTypeTwo) {
       ubStatus.a_align_value = 1;
-      ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize *ubStatus.m_aub * kBlockSize;
+      ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
       ubStatus.bub_size = ubStatus.bub_bank_size;
     }
   }
@@ -1214,7 +1213,7 @@ void GetABUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const
 {
   GetAUbFactors(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
   GetBUbFactors(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
-  CheckBankConflict(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
+  CheckBankConflict(ub_rest_size, params, ubStatus);
 }
 
 void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const L2Status &l2Status,
