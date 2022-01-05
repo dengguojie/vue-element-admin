@@ -134,6 +134,27 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
+def _get_mkn_shape(shape_a, shape_b, trans_a, trans_b):
+    """
+    get the m, k ,n of x1 and x2
+    """
+    if trans_a:
+        m_shape = shape_a[-1]
+        km_shape = shape_a[-2]
+    else:
+        m_shape = shape_a[-2]
+        km_shape = shape_a[-1]
+
+    if trans_b:
+        kn_shape = shape_b[-1]
+        n_shape = shape_b[-2]
+    else:
+        kn_shape = shape_b[-2]
+        n_shape = shape_b[-1]
+
+    return m_shape, n_shape, km_shape, kn_shape
+
+
 def _shape_check(shape_a, shape_b, shape_bias, trans_a, trans_b):
     """
     Check the given shape for matrix A, B and bias == legal
@@ -156,48 +177,25 @@ def _shape_check(shape_a, shape_b, shape_bias, trans_a, trans_b):
     -------
     None
     """
-    shape_len_a = len(shape_a)
-    shape_len_b = len(shape_b)
-
-    if shape_len_a >= shape_len_b:
-        shape_len = shape_len_a
-    else:
-        shape_len = shape_len_b
-
+    shape_len = max(len(shape_a), len(shape_b))
     if shape_len < 2:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "shape length for batch matmul greater than or equal to 2")
 
-    is_gevm = (shape_a[-2] == 1) or (shape_a[-1] == 1)
-    is_gemv = (shape_b[-2] == 1) or (shape_b[-1] == 1)
+    m_shape, n_shape, km_shape, kn_shape = _get_mkn_shape(shape_a, shape_b, trans_a, trans_b)
+    is_gevm = (m_shape == 1) or (km_shape == 1)
+    is_gemv = (n_shape == 1) or (kn_shape == 1)
 
-    if trans_a:
-        m_shape = shape_a[shape_len_a - 1]
-        km_shape = shape_a[shape_len_a - 2]
-    else:
-        m_shape = shape_a[shape_len_a - 2]
-        km_shape = shape_a[shape_len_a - 1]
-
-    if trans_b:
-        kn_shape = shape_b[shape_len_b - 1]
-        n_shape = shape_b[shape_len_b - 2]
-    else:
-        kn_shape = shape_b[shape_len_b - 2]
-        n_shape = shape_b[shape_len_b - 1]
-
-    if m_shape == 1:
-        if n_shape == 1:
-            error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input_x',
-                                                               "input shape M and N can't both be 1")
+    if m_shape == 1 and n_shape == 1:
+        error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input_x',
+                                                           "input shape M and N can't both be 1")
 
     if km_shape != kn_shape:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "reduce axis not same")
 
-    shape_bias_length = len(shape_bias)
-
-    if shape_bias_length > 0:
-        if shape_bias_length == 1:
+    if len(shape_bias) > 0:
+        if len(shape_bias) == 1:
             if is_gevm or is_gemv:
                 if shape_bias[0] != m_shape * n_shape:
                     error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
@@ -207,7 +205,7 @@ def _shape_check(shape_a, shape_b, shape_bias, trans_a, trans_b):
                 if shape_bias[0] != n_shape:
                     error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                                        "broadcast bias shape must be equal to shape n")
-        elif shape_bias_length == shape_len:
+        elif len(shape_bias) == shape_len:
             out_shape = list(shape_a[:-2]) + [m_shape, n_shape]
             if list(shape_bias) != out_shape:
                 error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',

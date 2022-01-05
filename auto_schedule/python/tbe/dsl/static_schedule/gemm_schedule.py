@@ -246,14 +246,11 @@ class GemmScheduleV2:
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
         util.attach_of_fixpipe(sch, tensor_map, bl1_parts, c_gm_emit_axis[2], batch_inner)
         k_axis = util.split_k(tensor_map.get("c_l0c"), sch, tiling["AL0_matrix"][1], al1_parts[0], bl1_parts[0])
-        # attach of l0a and l0b tensor
-        sch[tensor_map.get("a_l0a")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
-        sch[tensor_map.get("b_l0b")].compute_at(sch[tensor_map.get("c_l0c")], k_axis[2])
-        # attch of l1 tensor, l1_attch_axis = l1a_k_axis, l1b_k_axis, l1a_m_axis, l1b_n_axis
-        util.attach_of_l1(
+        # attch of l1 tensor and l0 tensor, l1_attch_axis = l1a_k_axis, l1b_k_axis, l0_k_axis, l1a_m_axis, l1b_n_axis
+        util.attach_of_l1_l0(
             sch,
             tensor_map,
-            [k_axis[0], k_axis[1], l1_m_axis[0], l1_n_axis[0]],
+            [*k_axis, l1_m_axis[0], l1_n_axis[0]],
             al1_parts,
             bl1_parts
         )

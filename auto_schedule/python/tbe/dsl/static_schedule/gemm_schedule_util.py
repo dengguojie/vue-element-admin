@@ -721,26 +721,29 @@ def attach_of_ub(sch, tensor_map, ub_axis):
         sch[fixpipe_to_ub].compute_at(sch[tensor_map["c_gm"]], ub_axis)
 
 
-def attach_of_l1(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
+def attach_of_l1_l0(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
     """
-    attach tensor of l1a and l1b
+    attach tensor of l1a,l1b, l0a, l0b
     :param sch: schedule
     :param tensor_map: tensor of matmul
-    :param l1_attch_axis: l1a_k_axis, l1b_k_axis, l1a_m_axis, l1b_n_axis
+    :param l1_attch_axis: l1a_k_axis, l1b_k_axis, l0_k_aixs, l1a_m_axis, l1b_n_axis
     :param al1_parts: tilling parts for al1
     :param bl1_parts: tilling parts for bl1
     :return: None
     """
-    a_l1 = tensor_map["a_l1"]
-    b_l1 = tensor_map["b_l1"]
+    a_l1, b_l1 = tensor_map.get("a_l1"), tensor_map.get("b_l1")
+    a_l0, b_l0, c_l0c = tensor_map.get("a_l0a"), tensor_map.get("b_l0b"), tensor_map.get("c_l0c")
+    c_gm = tensor_map.get("c_gm")
+    sch[a_l0].compute_at(sch[c_l0c], l1_attch_axis[2])
+    sch[b_l0].compute_at(sch[c_l0c], l1_attch_axis[2])
     if al1_parts[0] is None:
-        sch[a_l1].compute_at(sch[tensor_map["c_gm"]], l1_attch_axis[2])
+        sch[a_l1].compute_at(sch[c_gm], l1_attch_axis[3])
     else:
-        sch[a_l1].compute_at(sch[tensor_map["c_l0c"]], l1_attch_axis[0])
+        sch[a_l1].compute_at(sch[c_l0c], l1_attch_axis[0])
     if bl1_parts[0] is None:
-        sch[b_l1].compute_at(sch[tensor_map["c_gm"]], l1_attch_axis[3])
+        sch[b_l1].compute_at(sch[c_gm], l1_attch_axis[4])
     else:
-        sch[b_l1].compute_at(sch[tensor_map["c_l0c"]], l1_attch_axis[1])
+        sch[b_l1].compute_at(sch[c_l0c], l1_attch_axis[1])
 
 
 # double buffer for all tensor
