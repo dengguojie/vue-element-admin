@@ -110,8 +110,8 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
 
   // verify input format for mini
   FUSION_PASS_CHECK(optional_info.soc_version == "Ascend310" &&
-                    (inputOriginFormat == ge::FORMAT_NCHW || inputOriginFormat == ge::FORMAT_NHWC),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "input not support NCHW and NHWC on mini platform."),
+                    inputOriginFormat != ge::FORMAT_ND,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "input only support ND format on mini platform."),
                     return NOT_CHANGED);
 
   if (x_tensor_desc.GetFormat() == FORMAT_NCHW || x_tensor_desc.GetFormat() == FORMAT_NCDHW) {
