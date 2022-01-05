@@ -87,6 +87,8 @@ class GatherScheduleZeroShape(Schedule):
 
         self._gather_compute_type = 0
 
+        self._max_dtype_bytes = 1
+
     def do_schedule(self):
         """
         schedule body

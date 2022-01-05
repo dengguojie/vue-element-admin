@@ -219,8 +219,7 @@ class GatherSchedule(Schedule):
         visited_tensors = set()
 
         self.__dfs_sub_graph(self._out_tensor, visited_tensors)
-        byte_len = [DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes]
-        self._max_dtype_bytes = max(byte_len)
+        self._max_dtype_bytes = max(DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes)
 
         # params gm and indices gm by name
         for one_input_tensor in self._input_tensors:

@@ -302,7 +302,7 @@ def _pre_build(schedules_list):
         return new_var_names
 
     # set special build cfg
-    operation.add_build_arg("double_buffer_non_resuse", True)
+    operation.add_build_arg("double_buffer_non_reuse", True)
     cpt_computes = operation.get_context().get_computes()
 
     schedules = []

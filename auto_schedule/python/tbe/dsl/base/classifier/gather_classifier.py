@@ -517,8 +517,8 @@ class GatherNdClassifier:
 
 def _classify_gather_zero_shape(params_dtype, indices_dtype, gather_type="gather"):
     params_dict = {
-        "shape": (0, 0),
-        "range": ((0, 0), (0, 0)),
+        "shape": (0, 0, 0, 0),
+        "range": ((0, 0), (0, 0), (0, 0), (0, 0)),
         "dtype": params_dtype
     }
 
