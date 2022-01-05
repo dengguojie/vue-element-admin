@@ -42,6 +42,7 @@ BLOCK_SIZE_BYTE = 32
 
 CONST = "const"
 ORIGINAL = "original"
+COPY = "copy"
 VECTOR = "vector"
 PHONY = "phony"
 
@@ -509,7 +510,13 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                 tensor_bound = self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype]
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
-                if self._mode == ORIGINAL:
+                cond1 = isinstance(tensor_i.shape[1], tvm.expr.IntImm) and (int(tensor_i.shape[1]) != 1)
+                cond2 = isinstance(tensor_i.shape[1], tvm.expr.Max)
+                cond3 = isinstance(tensor_i.shape[1], tvm.expr.Var)
+                if self._mode == COPY and (cond1 or cond2 or cond3):
+                    sch[tensor_i].emit_insn(param[0], param[1],
+                                            attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound], no_stride=0))
+                elif self._mode == ORIGINAL:
                     sch[tensor_i].emit_insn(param[0], param[1],
                                             attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
                 else:

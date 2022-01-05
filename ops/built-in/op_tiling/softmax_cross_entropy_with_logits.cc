@@ -165,7 +165,16 @@ void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_
   bool broadcast_dim10_to_dim00 = (dim10 == 1 && dim00 > 1);
   bool broadcast_dim01_to_dim11 = (dim01 == 1 && dim11 > 1);
   bool broadcast_dim11_to_dim01 = (dim11 == 1 && dim01 > 1);
-  if (broadcast_dim01_to_dim11 && dim00 == dim10) {
+  if (dim00 == dim10 && dim01 == dim11) {
+    // copy: [a, b] [a, b] choose no_stride=0, but [a, 1] [a, 1] choose no_stride=1
+    key = 10;
+  } else if (broadcast_dim00_to_dim10 && dim01 == dim11) {
+    // 1 common, large common
+    key = 1;
+  } else if (broadcast_dim10_to_dim00 && dim01 == dim11) {
+    // large common, 1 common
+    key = 4;
+  } else if (broadcast_dim01_to_dim11 && dim00 == dim10) {
     // common 1, common large
     key = 2;
   } else if (broadcast_dim11_to_dim01 && dim00 == dim10) {

@@ -2067,6 +2067,132 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
-  EXPECT_EQ(runInfo.GetTilingKey(), 0);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 7 8 8 1 7 ");
+}
+
+// no known no multi-core case
+TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_34) {
+  std::string op_name = "SoftmaxCrossEntropyWithLogits";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  std::string compileInfo = R"({
+                        "_pattern": "SoftmaxCrossEntropyWithLogits",
+                        "ori_shape": {"features_shape0": 1, "features_shape1": 8, "labels_shape0": 7, "labels_shape1": 8},
+                        "range": {"features_range0_l":1, "features_range0_r":1, "features_range1_l": 8, "features_range1_r": 8,
+                                  "labels_range0_l":7, "labels_range0_r":7, "labels_range1_l": 8, "labels_range1_r": 8},
+                        "common_info" : {
+                        "ub_size" : 262144,
+                        "core_num" : 32},
+                        "flag_info": [false, false, true, false, false],
+                        "base_info": {
+                        "000": [262144, 4, 10, 30]},
+                        "elewise_vars": {"0": []},
+                        "_vars": {"0": ["block_nparts_0", "ub_factor_0"]},
+                        "_normal_vars": {"0": []},
+                        "_attr_vars": {"0": []},
+                        "_custom_vars": {"0": ["block_nparts_0", "ub_factor_0"]}})";
+
+  std::vector<std::vector<int64_t>> inputs{{1, 8}, {7, 8}};
+
+  std::vector<std::vector<int64_t>> outputs{{
+                                                7,
+                                            },
+                                            {7, 8}};
+
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_ND;
+
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+
+  auto opParas = op::SoftmaxCrossEntropyWithLogits(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, features);
+  TENSOR_INPUT(opParas, tensor_inputB, labels);
+  TENSOR_OUTPUT(opParas, tensor_outputA, loss);
+  TENSOR_OUTPUT(opParas, tensor_outputB, backprop);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 7 8 8 1 7 ");
+}
+
+// no known no multi-core case
+TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_35) {
+  std::string op_name = "SoftmaxCrossEntropyWithLogits";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  std::string compileInfo = R"({
+                        "_pattern": "SoftmaxCrossEntropyWithLogits",
+                        "ori_shape": {"features_shape0": 7, "features_shape1": 8, "labels_shape0": 1, "labels_shape1": 8},
+                        "range": {"features_range0_l":7, "features_range0_r":7, "features_range1_l": 8, "features_range1_r": 8,
+                                  "labels_range0_l":1, "labels_range0_r":1, "labels_range1_l": 8, "labels_range1_r": 8},
+                        "common_info" : {
+                        "ub_size" : 262144,
+                        "core_num" : 32},
+                        "flag_info": [false, false, true, false, false],
+                        "base_info": {
+                        "000": [262144, 4, 10, 30]},
+                        "elewise_vars": {"0": []},
+                        "_vars": {"0": ["block_nparts_0", "ub_factor_0"]},
+                        "_normal_vars": {"0": []},
+                        "_attr_vars": {"0": []},
+                        "_custom_vars": {"0": ["block_nparts_0", "ub_factor_0"]}})";
+
+  std::vector<std::vector<int64_t>> inputs{{7, 8}, {1, 8}};
+
+  std::vector<std::vector<int64_t>> outputs{{
+                                                7,
+                                            },
+                                            {7, 8}};
+
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_ND;
+
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+
+  auto opParas = op::SoftmaxCrossEntropyWithLogits(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, features);
+  TENSOR_INPUT(opParas, tensor_inputB, labels);
+  TENSOR_OUTPUT(opParas, tensor_outputA, loss);
+  TENSOR_OUTPUT(opParas, tensor_outputB, backprop);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 4);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 1 8 8 1 7 ");
 }
