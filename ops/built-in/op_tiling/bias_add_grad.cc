@@ -16,7 +16,7 @@
 
 #include <unordered_map>
 #include "error_log.h"
-#include "reduce_tiling.h"
+#include "vector_tiling.h"
 #include "op_tiling_util.h"
 
 namespace optiling {

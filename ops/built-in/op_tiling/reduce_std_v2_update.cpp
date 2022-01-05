@@ -18,8 +18,6 @@
 #include <cctype>
 #include <iostream>
 
-#include "reduce_tiling.h"
-#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {

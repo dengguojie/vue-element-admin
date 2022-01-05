@@ -17,7 +17,6 @@
 #include "vector_tiling.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_tiling_util.h"
-#include "eletwise.h"
 
 namespace optiling {
   struct BNTrainingUpdateV3CompileInfo {

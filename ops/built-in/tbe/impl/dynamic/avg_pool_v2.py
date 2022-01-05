@@ -396,8 +396,8 @@ def avg_pool_v2_generalization(x: dict, weight: dict, bias: dict, y: dict, ksize
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
 @register_operator("AvgPoolV2")
-@para_check.check_input_type(dict, (dict, Constant.NONETYPE), (dict, Constant.NONETYPE), dict, (list, tuple), (list, tuple),
-                             str, (list, tuple), str, bool, bool, bool, int, str)
+@para_check.check_input_type(dict, (dict, Constant.NONETYPE), (dict, Constant.NONETYPE), dict, (list, tuple),
+                             (list, tuple), str, (list, tuple), str, bool, bool, bool, int, str)
 def avg_pool_v2(x, weight, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                 data_format="NCHW", global_pooling=False, ceil_mode=False,
                 exclusive=True, offset_x=0, kernel_name="avg_pool_v2"):

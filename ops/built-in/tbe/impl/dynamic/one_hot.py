@@ -2427,6 +2427,7 @@ class OneHot:
                                         id_number)
 
 
+# 'pylint: disable=too-many-return-statements
 def check_supported(x, depth, on_value, off_value, y, axis,
                     kernel_name="one_hot"):
     """

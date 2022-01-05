@@ -697,7 +697,6 @@ class ProdEnvMatA:
         compute descrpt and descrpt_deriv last process.
         """
         compute_nums = self.nnei
-        nnei_mask_repeat = compute_nums // self.nnei_once_repeat_nums
         nnei_repeat_times = (compute_nums + 63) // self.nnei_once_repeat_nums
 
         descrpt_a_0 = res_descrpt_a_tensor[0]

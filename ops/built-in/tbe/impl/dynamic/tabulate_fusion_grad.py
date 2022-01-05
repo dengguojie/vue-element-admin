@@ -434,7 +434,7 @@ class TabulateFusionGrad:
                 # `dy_dem_3 = res * rr3`
                 self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 3], vres, vrr_tile[self.tile_size * 3],
                                    self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # dy_dot : dot(ll, rr)
+                # `dy_dot : dot(ll, rr)`
                 self.tik_inst.vmul(constant.MASK64, vdy_dot_tile, vem_dot_tile, vdy_dot_tile,
                                    (self.tile_size * 4) // constant.MASK64, 1, 1, 1, 8, 8, 8)
                 self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
@@ -504,7 +504,7 @@ class TabulateFusionGrad:
             self.tik_inst.v4dtrans(False, va_tile, table, self.tile_size, 6)
 
         # all data required ready, let's go!
-        # 'res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0'
+        # `res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0`
         # grad = res' = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
         with self.tik_inst.new_stmt_scope(disable_sync=False):
             # `res = a0`
@@ -512,7 +512,7 @@ class TabulateFusionGrad:
             self.tik_inst.vec_dup(constant.MASK64, vres, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vres, vres, va_tile,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # grad = a1
+            # `grad = a1`
             vgrad = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vgrad", scope=tik.scope_ubuf)
             self.tik_inst.vec_dup(constant.MASK64, vgrad, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vgrad, vgrad, va_tile[self.tile_size],
@@ -522,7 +522,7 @@ class TabulateFusionGrad:
             self.tik_inst.vec_dup(constant.MASK64, vpx, 0, self.tile_size // constant.MASK64, 8)
             self.tik_inst.vadd(constant.MASK64, vpx, vpx, vem_x_tile,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # res = res + a1 * x
+            # `res = res + a1 * x`
             self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size], vpx,
                                self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
             # `vxa = 2 * a2`
@@ -553,7 +553,7 @@ class TabulateFusionGrad:
             # `vxa = 4 * a4`
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 4], 4,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # grad = grad + 4 * a4 * x3
+            # `grad = grad + 4 * a4 * x3`
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
             # `vpx = x4`
@@ -565,7 +565,7 @@ class TabulateFusionGrad:
             # `vxa = 5 * a5`
             self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 5], 5,
                                 self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # grad = grad + 5 * a5 * x4
+            # `grad = grad + 5 * a5 * x4`
             self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
                                1, 1, 1, 8, 8, 8)
 

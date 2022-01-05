@@ -21,7 +21,6 @@
 #include <cctype>
 #include <iostream>
 #include <sstream>
-#include "eletwise.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
 #include "vector_tiling.h"

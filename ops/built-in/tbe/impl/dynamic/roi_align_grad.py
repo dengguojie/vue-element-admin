@@ -54,6 +54,7 @@ class Constant:
     WIDTH_DIM_CONST_NEW = 70
     UB_SIZE_NEW_VER = 196608
 
+
 # 'pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
 # 'pylint: disable=unused-argument
 def ceil_value(value, dtype):

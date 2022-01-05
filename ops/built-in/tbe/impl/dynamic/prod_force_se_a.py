@@ -151,7 +151,7 @@ class ProdForceSeA:
                 with self.tik_instance.else_scope():
                     self._run_one_core_loop(core_idx, self.core_loop_left)
 
-    # 'pylint:disable=too-many-locals,too-many-branchs,too-many-statements
+    # 'pylint:disable=too-many-locals,too-many-branches,too-many-statements
     def _run_one_core_loop(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
             nloc_offset_vector = self.core_offset + core_idx * self.core_loop_unit

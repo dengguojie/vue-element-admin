@@ -18,7 +18,6 @@
  * \file bn_reduce_grad.cpp
  * \brief
  */
-#include "eletwise.h"
 #include <algorithm>
 #include "vector_tiling.h"
 #include "error_log.h"

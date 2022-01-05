@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include "reduce_tiling.h"
-#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "error_log.h"
+#include "vector_tiling.h"
 #include "op_tiling_util.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"

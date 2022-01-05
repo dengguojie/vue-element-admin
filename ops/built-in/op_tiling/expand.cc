@@ -24,7 +24,6 @@
 
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
-#include "eletwise.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
 
