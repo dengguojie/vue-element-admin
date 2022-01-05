@@ -34,6 +34,9 @@ class LSTMPFusionPass : public PatternFusionBasePass {
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
   Status CreateConcatNode(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
+  Status CreateWcConstNode(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
+  Status CreateInitConstNode(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& new_node,
+                             const int32_t dim_len, const std::string name);
   Status CreateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& input_desc, ge::NodePtr& new_node,
                              std::vector<int32_t>& perm, const std::string& name);
   Status CreateDynamicV3Node(ge::ComputeGraph& graph, ge::OpDescPtr& fused_desc, ge::NodePtr& fused_node,
