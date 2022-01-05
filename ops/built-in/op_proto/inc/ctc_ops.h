@@ -163,7 +163,7 @@ REG_OP(CTCBeamSearchDecoder)
 *@par Third-party framework compatibility
 * Compatible with Pytorch CTCLoss operator.
 
-*@par Restrictions:
+*@attention Constraints:
 *The limit of Label’s length is 1K.
 */
 REG_OP(CTCLossV2)
@@ -204,7 +204,7 @@ REG_OP(CTCLossV2)
 *@par Third-party framework compatibility
 * Compatible with Pytorch CTCLoss operator.
 
-*@par Restrictions:
+*@attention Constraints:
 *The limit of Label’s length is 1K.
 */
 REG_OP(CTCLossV2Grad)

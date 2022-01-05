@@ -2429,7 +2429,7 @@ REG_OP(AddRowRanges)
 *@par Outputs:
 *y: A ND Tensor of float32/float16/int32/int8 with shapes 1-D (D,), 2-D(N, D), 3-D(N, C, D)
 
-* @par Restrictions:
+*@attention Constraints:
 * Warning: input shape's length must not be bigger than 1024 * 1024 * 1024.
 */
 REG_OP(MaskedFillRange)
