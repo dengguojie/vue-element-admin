@@ -1230,6 +1230,9 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
 
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto ge_tensor_desc = op_info->MutableInputDesc(0);
+  CHECK(ge_tensor_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("input 0 tensor_desc is null.")),
+        return GRAPH_FAILED);
   vector<int64_t> output_shape_dims;
   for (int64_t input_idx = 0; input_idx < pack_num; input_idx++) {
     auto input_shape_dims = op_info->MutableInputDesc(input_idx)->MutableShape().GetDims();
