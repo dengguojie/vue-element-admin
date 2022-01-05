@@ -173,7 +173,7 @@ bool ExtremumGradFusionPass::CheckZeroConstantOp(ge::NodePtr nodeZeros) const {
   return true;
 }
 
-bool ExtremumGradFusionPass::CheckSelectOp(ge::NodePtr nodeSelect, ge::NodePtr nodeEqual) {
+bool ExtremumGradFusionPass::CheckSelectOp(const ge::NodePtr nodeSelect, const ge::NodePtr nodeEqual) {
   if (nodeSelect == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "select node is null");
     return false;
@@ -201,7 +201,7 @@ bool ExtremumGradFusionPass::CheckSelectOp(ge::NodePtr nodeSelect, ge::NodePtr n
   return true;
 }
 
-bool ExtremumGradFusionPass::CheckSumOp(ge::NodePtr nodeSum, ge::NodePtr nodeEqual) {
+bool ExtremumGradFusionPass::CheckSumOp(ge::NodePtr nodeSum, ge::NodePtr nodeEqual) const {
   if (nodeSum == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "node sum is nullptr");
     return false;
@@ -688,7 +688,7 @@ Status ExtremumGradFusionPass::DoFusion(ge::ComputeGraph& graph, const map<strin
   return SUCCESS;
 }
 
-Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node) const {
+Status ExtremumGradFusionPass::RemoveInputEdges(ge::ComputeGraph& graph, const ge::NodePtr node) const {
   if (node == nullptr) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[node] must not be null.");
     return fe::PARAM_INVALID;
@@ -1012,7 +1012,7 @@ Status ExtremumGradFusionPass::AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, 
     auto dstAnchor = extreGradNode->GetInDataAnchor(inAnchorIndex);
     Status replaceEdgeDstRes = ReplaceEdgeDst(srcAnchor, inputAnchor, dstAnchor);
     if (replaceEdgeDstRes != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                      "Replace equal_inputAnchors[%d] to extreGradNode_inputAnchors[%d] failed",
                                      inAnchorIndex - EQUAL_TO_EXTREMUM_START, inAnchorIndex);
       return replaceEdgeDstRes;

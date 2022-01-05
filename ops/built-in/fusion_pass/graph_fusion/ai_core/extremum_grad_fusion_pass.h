@@ -54,7 +54,7 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
   ge::NodePtr CreateExtremumGradNode(ge::ComputeGraph& graph, ge::NodePtr nodeEqual, ge::NodePtr selectDxNode,
                                      ge::NodePtr selectDyNode, const std::map<std::string, ge::NodePtr>& recordMap);
 
-  Status SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, ge::OpDescPtr selectOpDesc, 
+  Status SetExtreMumGradOpDesc(ge::OpDescPtr equalOpDesc, ge::OpDescPtr selectOpDesc,
                                ge::OpDescPtr extreGradOpDesc) const;
 
   Status AdjustAnchor(ge::OutDataAnchorPtr dzInputAnchor, ge::NodePtr nodeEqual, ge::NodePtr extreGradNode,
@@ -74,14 +74,14 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
 
   bool CheckZeroConstantOp(ge::NodePtr nodeZeros) const;
 
-  bool CheckSelectOp(ge::NodePtr nodeSelect, ge::NodePtr nodeEqual);
+  bool CheckSelectOp(const ge::NodePtr nodeSelect, const ge::NodePtr nodeEqual);
 
   bool CheckSameZeroNode(ge::NodePtr nodeZeros, const map<string, ge::NodePtr>& recordMap);
 
-  bool CheckSumOp(ge::NodePtr nodeSum, ge::NodePtr nodeEqual);
+  bool CheckSumOp(ge::NodePtr nodeSum, ge::NodePtr nodeEqual) const;
 
   ge::NodePtr FindNodeInRecordMap(const map<string, ge::NodePtr>& recordMap, string key);
-  Status RemoveInputEdges(ge::ComputeGraph& graph, ge::NodePtr node) const;
+  Status RemoveInputEdges(ge::ComputeGraph& graph, const ge::NodePtr node) const;
   Status RemoveOutputEdges(ge::NodePtr node) const;
   const std::string CONSTANT = "Const";
   const string FUSED_OP_TYPE = "MaximumGrad/MinimumGrad";
