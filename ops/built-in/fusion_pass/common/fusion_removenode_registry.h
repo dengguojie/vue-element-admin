@@ -75,7 +75,7 @@ class FusionRemoveNodeRegistry {
 
 class RemoveNodeReciever {
  public:
-  RemoveNodeReciever(FusionRemoveNodeRegister& reg_data);
+  RemoveNodeReciever(FusionRemoveNodeRegister& reg);
   virtual ~RemoveNodeReciever() = default;
 };
 
