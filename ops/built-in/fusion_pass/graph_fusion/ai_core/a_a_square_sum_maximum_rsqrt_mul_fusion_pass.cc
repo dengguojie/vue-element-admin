@@ -308,7 +308,8 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
     for (size_t i = 0; i < size; ++i) {
       int64_t tmp = *(const_data_ptr + i);
       const_data.push_back(tmp);
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s const data int64 proto %lld", mulNode->GetOpDesc()->GetName().c_str(), tmp);
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s const data int64 proto %lld", mulNode->GetOpDesc()->GetName().c_str(),
+              tmp);
     }
     ge::AttrUtils::SetListInt(mulNode->GetOpDesc(), ge::L2_NORMALIZE_ATTR_AXIS, const_data);
   }

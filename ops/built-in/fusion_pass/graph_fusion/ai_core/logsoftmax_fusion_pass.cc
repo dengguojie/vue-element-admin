@@ -86,7 +86,9 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
   int64_t inputW = 0;
   bool isUsePattern = false;
   ge::AttrUtils::GetListInt(logsoftmaxOpDesc, "axes", axes_val);
-  FUSION_PASS_CHECK(axes_val.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "axes is null, please check!"), return FAILED);
+  FUSION_PASS_CHECK(axes_val.empty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "axes is null, please check!"),
+                    return FAILED);
   if (axes_val[0] < 0) {
     axes_val[0] = axes_val[0] + dimInfo.size();
   }
@@ -98,7 +100,8 @@ Status LogSoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
     return NOT_CHANGED;
   }
   isUsePattern = CheckISUsePattern(inputW, inputC);
-  if (axes_val[0] == 2 && isUsePattern) {
+  const size_t axes_0_val_use_pattern = 2;
+  if (axes_val[0] == axes_0_val_use_pattern && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
     ge::GeShape assitShape(inputDimInfo);
     ge::GeShape assitShapeOrigin(inputDimInfo);

@@ -64,7 +64,6 @@ std::vector<int> compute_kernel(int input_size, int output_size){
   int padding_size = 0;
   int kernel_size = 0;
   int stride_size = 0;
-  int res0 = 0;
 
   int ceil_mode = 1;
 
@@ -75,7 +74,7 @@ std::vector<int> compute_kernel(int input_size, int output_size){
   } else {
     for (kernel_size = (input_size / output_size + 1); kernel_size <= (input_size / output_size + 2); kernel_size++) {
       for (stride_size = (input_size / output_size); stride_size <= (input_size / output_size + 1); stride_size++) {
-        res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
+        int res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
         if (res0 == output_size) {
           return std::vector<int>{1, kernel_size, stride_size, padding_size, ceil_mode};
         }
@@ -84,7 +83,7 @@ std::vector<int> compute_kernel(int input_size, int output_size){
     while (padding_size >= 0) {
       for (kernel_size = padding_size + 1; kernel_size <= input_size + 2 * padding_size; kernel_size++) {
         for (stride_size = 1; stride_size <= kernel_size; stride_size++) {
-          res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
+          int res0 = (input_size + 2 * padding_size - kernel_size) / stride_size + 1;
           if (res0 == output_size) {
             return std::vector<int>{2, kernel_size, stride_size, padding_size, ceil_mode};
           }
