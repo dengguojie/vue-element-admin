@@ -222,7 +222,8 @@ def is_support_v200():
 
 
 def calc_info_of_iter_vars(stage):
-    """Calcuate information of IterVar.
+    """
+    Calcuate information of IterVar.
 
     Args: stage: Stage of schedule.
 
@@ -238,7 +239,8 @@ def calc_info_of_iter_vars(stage):
 
 
 def print_iter_vars(iter_vars):
-    """Pretty print iter_vars.
+    """
+    Pretty print iter_vars.
 
     Args: iter_vars: List of iter_var.
 

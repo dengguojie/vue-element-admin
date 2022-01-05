@@ -47,13 +47,13 @@ def raise_err_two_paras(err_code, op_name, para1, para2):
     E62005: "In op[%s], x D(after pad) must >= stride D, actual are [%s] and [%s]"
     E62303: "In op[%s], the value of AL1_shape & BL1_shape are  not reasonable, which are [%s] and [%s]."
     E62502: "In op[%s], there is a division by zero operation during calculating, the oprands are [%s] and [%s]."
-    E62503: "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation it should be [%s], 
+    E62503: "In op[%s], the  Fmap's batch must be equal to the batch in backpropagation it should be [%s],
     but actually it is [%s]."
-    E62504: "In op[%s], the  Dedy's channel must be equal to the Filter's batch in backpropagation it should be [%s], 
+    E62504: "In op[%s], the  Dedy's channel must be equal to the Filter's batch in backpropagation it should be [%s],
     but actually it is [%s]."
-    E62505: "In op[%s], the  input's channel must be equal to the Filter's batch in backpropagation it should be [%s], 
+    E62505: "In op[%s], the  input's channel must be equal to the Filter's batch in backpropagation it should be [%s],
     but actually it is [%s]."
-    E62506: "In op[%s], the  Dedy's channel must be equal to the Filter's channel in backpropagation it should be [%s], 
+    E62506: "In op[%s], the  Dedy's channel must be equal to the Filter's channel in backpropagation it should be [%s],
     but actually it is [%s]."
     """
     args_dict = {
