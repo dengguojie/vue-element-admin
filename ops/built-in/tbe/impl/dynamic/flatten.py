@@ -23,6 +23,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_tik_comm_func import ceil_div
 
 
 # 'pylint: disable=too-few-public-methods
@@ -36,16 +37,7 @@ class Constant:
     TILING_ARG_NUM = 16
 
 
-# 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
-def _get_ceil_int(int1, int2):
-    """Get ceil
-    """
-    _result = int1 // int2
-    if int1 % int2 == 0:
-        return _result
-    return _result + 1
-
-
+# 'pylint: disable=unused-argument,invalid-name
 def get_op_support_info(x, y, axis=1, kernel_name="flatten"):
     """
     get_op_support_info
@@ -56,6 +48,7 @@ def get_op_support_info(x, y, axis=1, kernel_name="flatten"):
     return op_cal_info_in_json
 
 
+# 'pylint: disable=too-many-instance-attributes
 class Flatten:
     """Performs flatten on input tensor
     """
@@ -89,7 +82,7 @@ class Flatten:
         self.ub_availble = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size
         self.ub_max_data = self.ub_availble // self.dtype_size
         self.copy_segment = self.ub_max_data // 2
-        self.copy_segment = (_get_ceil_int(self.copy_segment, self.data_len_one_block) - 1) * self.data_len_one_block
+        self.copy_segment = (ceil_div(self.copy_segment, self.data_len_one_block) - 1) * self.data_len_one_block
 
         # input and output tensor in gm
         self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm",
@@ -117,6 +110,17 @@ class Flatten:
         self.last_copy_loop.set_as(self.tiling_ub[4])
         self.last_copy_tail.set_as(self.tiling_ub[5])
 
+    # 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
+    def _get_ceil_int(self, int1, int2):
+        """Get ceil
+        """
+        result = self.tik_instance.Scalar("int64", name="result")
+        with self.tik_instance.if_scope(int1 % int2 == 0):
+            result.set_as(int1 // int2)
+        with self.tik_instance.else_scope():
+            result.set_as(int1 // int2 + 1)
+        return result
+
     def copy_only(self, core_index, loop_num, tail_num):
         """Only execute move in and move out
         """
@@ -129,7 +133,7 @@ class Flatten:
         """Copy in and out
         """
         offset = core_index * self.core_data + loop_idx * self.copy_segment
-        bust_len = _get_ceil_int(loop_len, self.data_len_one_block)
+        bust_len = self._get_ceil_int(loop_len, self.data_len_one_block)
         data_ub = self.tik_instance.Tensor(self.dst_dtype, [self.copy_segment], name="data_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(data_ub, self.src_gm[offset], 0, 1, bust_len, 0, 0)
         self.tik_instance.data_move(self.dst_gm[offset], data_ub, 0, 1, bust_len, 0, 0)
@@ -148,10 +152,11 @@ class Flatten:
             with self.tik_instance.if_scope(core_index < (self.core_used - 1)):
                 loop_num.set_as(self.copy_loop)
                 tail_num.set_as(self.copy_tail)
-            with self.tik_instance.else_scope():
+                self.copy_only(core_index, loop_num, tail_num)
+            with self.tik_instance.elif_scope(core_index == (self.core_used - 1)):
                 loop_num.set_as(self.last_copy_loop)
                 tail_num.set_as(self.last_copy_tail)
-            self.copy_only(core_index, loop_num, tail_num)
+                self.copy_only(core_index, loop_num, tail_num)
 
         # add compile info
         tbe_context.get_context().add_compile_info("vars", {
@@ -170,6 +175,7 @@ class Flatten:
         return self.tik_instance
 
 
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator("Flatten")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

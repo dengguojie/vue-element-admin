@@ -177,6 +177,27 @@ case7 = {
     "format_expect": [],
     "support_expect": True
 }
+case8 = {
+    "params": [{
+        "shape": (1, 3, 35, 35),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (1, 3, 35, 35),
+        "ori_format": "ND",
+        "range": [(1, 1), (3, 3), (35, 35), (35, 35)]
+    }, {
+        "shape": (1, 3675),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (1, 3675),
+        "ori_format": "ND",
+        "range": [(1, 1), (3675, 3675)]
+    }, 1],
+    "case_name": "Flatten_dynamic_8",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
@@ -185,6 +206,7 @@ ut_case.add_case("all", case4)
 ut_case.add_case("all", case5)
 ut_case.add_case("all", case6)
 ut_case.add_case("all", case7)
+ut_case.add_case("all", case8)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

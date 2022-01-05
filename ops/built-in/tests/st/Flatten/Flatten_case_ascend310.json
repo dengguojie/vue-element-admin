@@ -424,5 +424,52 @@
       }
     ],
     "case_name": "test_Flatten_007"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          3,
+          35,
+          35
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3,
+          35,
+          35
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          3675
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          3675
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_008"
   }
 ]
