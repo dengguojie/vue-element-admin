@@ -3,7 +3,6 @@
 import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
-
 from te import tvm
 from te.lang.cce import vadds
 from te.lang.cce import cce_build_code
