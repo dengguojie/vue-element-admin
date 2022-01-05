@@ -505,17 +505,17 @@ REG_OP(ScatterElements)
 * Three inputs, including:
 *@li var: An ND Tensor .
 
-*Must be one of the following types: float16, float32, int32, int8, uint8
-*@li indices: An ND Tensor of type int32 or int64
+*Must be one of the following types: float16, float, int32, int8, uint8
+*@li indices: An ND Tensor . \n
 
+*Must be one of the following types: int32 or int64
+*@li updates: An ND Tensor .
 
-*@li updates: An Tensor. format:NCHW, NHWC .
-
-*Must be one of the following types: float16, float32, int32, int8, uint8
+*Must be one of the following types: float16, float, int32, int8, uint8
 
 *@par Attributes:
-* use_locking: An optional bool. Defaults to "False". If "True", the operation
-* will be protected by a lock . \n
+*use_locking: An optional bool. Defaults to "False". If "True",
+* the operation will be protected by a lock . \n
 
 *@par Outputs:
 *var: A Tensor. Has the same type and format as input "var" . \n
