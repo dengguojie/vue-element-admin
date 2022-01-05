@@ -431,7 +431,6 @@ def test_trans_data_fp32(test_arg):
     tensor_a_ori = tvm.placeholder((12288, 4096), name="tensor_a_ori", dtype="float32")
     tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
 
-
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_1_128_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_910)

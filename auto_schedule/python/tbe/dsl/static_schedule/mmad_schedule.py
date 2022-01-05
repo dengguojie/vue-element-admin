@@ -184,12 +184,8 @@ def get_batch_factors(tensor_a_l0a, tensor_b_l0b, m_var, n_var, batch_param_dict
     tensor_a_dim = batch_param_dict.get("tensor_a_dim")
     is_gemv = batch_param_dict.get("is_gemv")
     n_nparts_mode = batch_param_dict.get("n_nparts_mode")
-    m_shape = m_var[0]
-    m_factors = m_var[1]
-    n_shape = n_var[0]
-    n_factors = n_var[1]
-    core_inner_m = m_shape
-    core_inner_n = n_shape
+    core_inner_m = m_var[0]
+    core_inner_n = n_var[0]
     if tensor_a_dim in (3, 5):
         batch = tensor_a_l0a.shape[0].value
         if is_gemv:
@@ -199,16 +195,16 @@ def get_batch_factors(tensor_a_l0a, tensor_b_l0b, m_var, n_var, batch_param_dict
     if batch in (0, 1):
         block_in = tbe_platform.BLOCK_IN
         block_out = tbe_platform.BLOCK_OUT
-        if m_shape != 1:
-            core_inner_m = (((m_shape + block_in - 1) // block_in +
-                             (m_factors - 1)) // m_factors) * block_in
+        if m_var[0] != 1:
+            core_inner_m = (((m_var[0] + block_in - 1) // block_in +
+                             (m_var[1] - 1)) // m_var[1]) * block_in
         if n_nparts_mode:
-            core_inner_n = (((n_shape + block_out - 1) // block_out +
-                             (n_factors - 1)) // n_factors) * block_out
+            core_inner_n = (((n_var[0] + block_out - 1) // block_out +
+                             (n_var[1] - 1)) // n_var[1]) * block_out
         else:
             # in quant fsuion factor mode, n_factors means each block
             # process fract number
-            core_inner_n = n_factors * block_out
+            core_inner_n = n_var[1] * block_out
 
     return batch, core_inner_m, core_inner_n
 
@@ -629,7 +625,7 @@ def allocate_axis(sch, batch_double, double_once, tensor_a_reuse_local,
 
 
 def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
-                     m_l1_shape, k_l1_shape, n_l1_shape,
+                     m_l1_shape, n_l1_shape,
                      dtype_byte):
     """
     get the result of resue axis
@@ -850,8 +846,7 @@ def set_compress_info(sch,
     tile_k_value = compress_tensor.op.attrs["tile_L1_k"]
     tile_n_value = compress_tensor.op.attrs["tile_L1_n"]
 
-    block_size = get_compress_block_info(mode,
-                                         compress_tensor, tile_k, tile_n)
+    block_size = get_compress_block_info(tile_k, tile_n)
 
     k_value = block_size // (tile_n * frac_size)
 
@@ -1434,7 +1429,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
                         get mid tesnor width
                         """
                         all_out = True
-                        for out_ten in in_out_tensor_map[tens]:
+                        for out_ten in in_out_tensor_map.get(tens):
                             if out_ten not in visited_list:
                                 all_out = False
                         if all_out and (tens not in visited_list):
@@ -1595,7 +1590,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         tensor_b_reuse, \
         batch_double, \
         double_once = get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
-                                       m_l1_shape, k_l1_shape, n_l1_shape,
+                                       m_l1_shape, n_l1_shape,
                                        l1a_byte)
 
     def _get_m_l1_double_buffer(m_l1_shape, m_shape, k_l1_shape, k_shape):
@@ -1925,9 +1920,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     def _update_compute_at_tensor_c_ub(tensor_c_ub):
         quant_fusion = requant_fusion or dequant_fusion
-        if not quant_fusion:
-            return tensor_c_ub
-        return
+        quant_fusion_map = {False: tensor_c_ub}
+        return quant_fusion_map.get(quant_fusion)
 
     def _is_multicore_bind_naxis(res, format_out, tensor_len_c,
                                  n_l1_tile, block_out):
@@ -2078,7 +2072,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         split c ub tensor and return emit insn axis
         """
         if c_ub_tensor is None:
-            return
+            return c_ub_tensor
 
         block_in, block_out = block_value
         m_factor, n_factor = factor_value
