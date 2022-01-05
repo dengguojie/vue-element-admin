@@ -1572,6 +1572,16 @@ def top_k_d(input_tensor,
     None
     """
     if tbe_platform.api_check_support("tik.vbitsort32"):
+        shape = input_tensor.get("shape")
+        cols = int(shape[-1])
+        rows = 1
+        for i in range(len(shape) - 1):
+            rows = rows * int(shape[i])
+
+        if rows == 1 and cols == 100000 and k == 100000:
+            from impl.top_k_v220 import build_topk_10w_v220
+            return build_topk_10w_v220(input_tensor, indices_tensor, out_tensor, out_indices_tensor, k, sorted, dim,
+                                       largest, kernel_name)
         return top_k_template(input_tensor,
                               indices_tensor,
                               out_tensor,

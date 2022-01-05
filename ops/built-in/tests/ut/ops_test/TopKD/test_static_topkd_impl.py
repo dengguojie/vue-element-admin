@@ -17,6 +17,8 @@ Dynamic Topk ut case
 """
 import te
 from op_test_frame.ut import OpUT
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from impl.top_k_d import top_k_d
 from tbe.common.platform.platform_info import set_current_compile_soc_info
 
@@ -69,3 +71,23 @@ def test_static_lhisi(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_static_1951)
 ut_case.add_cust_test_func(test_func=test_static_lhisi)
+
+# vals = {("tik.vbitsort32"): True}
+def side_effects(*args):
+    # return vals[args]
+    return True
+
+def test_v220_mock(test_arg):
+    #with patch("te.platform.cce_conf.api_check_support",MagicMock(side_effect=side_effects)):
+    with patch("te.platform.api_check_support",MagicMock(side_effect=side_effects)):
+        with patch("te.tik.Tik.vmrgsort",MagicMock(side_effect=side_effects)):
+            with patch("te.tik.Tik.vadds",MagicMock(side_effect=side_effects)):
+                with patch("te.tik.Tik.vsort32",MagicMock(side_effect=side_effects)):
+                    with patch("te.tik.Tik.vreduce",MagicMock(side_effect=side_effects)):
+                        from impl.top_k_d import top_k_d
+                        top_k_d({"shape": (100000,), "format": "ND", "dtype": "float16", "ori_shape": (100000,), "ori_format": "ND"},
+                                {"shape": (8192, ), "format": "ND", "dtype": "float16", "ori_shape": (8192,), "ori_format": "ND"},
+                                {"shape": (100000,), "format": "ND", "dtype": "float16", "ori_shape": (100000,), "ori_format": "ND"},
+                                {"shape": (100000,), "format": "ND", "dtype": "int32", "ori_shape": (100000,), "ori_format": "ND"},
+                                100000, True, -1, True)
+ut_case.add_cust_test_func(test_func=test_v220_mock)
