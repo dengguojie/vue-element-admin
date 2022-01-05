@@ -18,7 +18,7 @@
  * \file tabulatefusion_fusion_pass.cc
  * \brief TabulateFusion fusion pass(Parallel TabulateFusion)
  */
-#include <stdint.h>
+#include <cstdint>
 
 #include <iostream>
 #include <memory>

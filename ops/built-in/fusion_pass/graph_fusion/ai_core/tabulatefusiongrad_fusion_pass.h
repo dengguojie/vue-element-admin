@@ -33,8 +33,7 @@ class TabulateFusionGradFusionPass : public PatternFusionBasePass {
 
  private:
   const std::string FUSED_OP_TYPE = "TabulateFusionGrad";
-  Status UpdateTabulateFusionGradNode(ge::ComputeGraph& graph, ge::NodePtr& tabulateNodeAic,
-                                      ge::NodePtr& tabulateNodeVec);
+  Status UpdateTabulateFusionGradNode(ge::NodePtr& tabulateNodeAic, ge::NodePtr& tabulateNodeVec);
 };
 
 }  // namespace fe

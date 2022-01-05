@@ -72,8 +72,8 @@ vector<FusionPattern*> TabulateFusionGradFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TabulateFusionGradFusionPass::UpdateTabulateFusionGradNode(ge::ComputeGraph& graph, ge::NodePtr& tabulateNodeAic,
-                                                                  ge::NodePtr& tabulateNodeVec) {
+Status TabulateFusionGradFusionPass::UpdateTabulateFusionGradNode(
+    ge::NodePtr &tabulateNodeAic, ge::NodePtr &tabulateNodeVec) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into Update TabulateFusion node");
   ge::OpDescPtr tabulateAicDesc = tabulateNodeAic->GetOpDesc();
   ge::OpDescPtr tabulateVecDesc = tabulateNodeVec->GetOpDesc();
@@ -153,7 +153,7 @@ Status TabulateFusionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   newNodes.push_back(nodeAic);
   newNodes.push_back(nodeVec);
 
-  FUSION_PASS_CHECK(UpdateTabulateFusionGradNode(graph, nodeAic, nodeVec) != SUCCESS,
+  FUSION_PASS_CHECK(UpdateTabulateFusionGradNode(nodeAic, nodeVec) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to update tabulate shape"),
                     return FAILED);
 

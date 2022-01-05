@@ -32,7 +32,9 @@
 #include "vector_tiling_profiling.h"
 
 using namespace std;
-
+namespace {
+  constexpr int64_t STEP_NUM_TWO = 2;
+}
 
 namespace optiling {
 #define LOOP_FOR_UB_PADDING 30
@@ -1041,8 +1043,10 @@ static void CalcOutShape(ShapeInfo& shapeInfo) {
   }
 }
 
-static bool IsAllOne(const ShapeInfo& shapeInfo) {
-  return std::all_of(shapeInfo.inShape.begin(), shapeInfo.inShape.begin() + shapeInfo.dim, [](const int64_t& item) { return item == 1; });
+static bool IsAllOne(const ShapeInfo &shapeInfo) {
+  return std::all_of(shapeInfo.inShape.begin(),
+                     shapeInfo.inShape.begin() + shapeInfo.dim,
+                     [](const int64_t &item) { return item == 1; });
 }
 
 /*
@@ -3360,7 +3364,7 @@ static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo&
     }
   }
   if (dstOnlyVol * AlignX(srcVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
-    if (bi.dstIndexIn[bi.dstNum - 1].step > 2) {
+    if (bi.dstIndexIn[bi.dstNum - 1].step > STEP_NUM_TWO) {
       bi.dstIndexIn[bi.dstNum - 1].step--;
     }
     overflowFlag = true;
@@ -3389,7 +3393,7 @@ static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo&
     }
   }
   if (srcOnlyVol * AlignX(dstVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
-    if (bi.dstIndexIn[bi.dstNum - 1].step > 2) {
+    if (bi.dstIndexIn[bi.dstNum - 1].step > STEP_NUM_TWO) {
       bi.dstIndexIn[bi.dstNum - 1].step--;
     }
     overflowFlag = true;

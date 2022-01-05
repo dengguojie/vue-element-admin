@@ -141,8 +141,9 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   if (PatternFusionUtil::IsUnknownShape(dimInfo1[2]) || PatternFusionUtil::IsUnknownShape(dimInfo1[3]) ||
       PatternFusionUtil::IsUnknownShape(dimInfo2[2]) || PatternFusionUtil::IsUnknownShape(dimInfo2[3]) ||
       PatternFusionUtil::IsUnknownShape(dimInfo3[2]) || PatternFusionUtil::IsUnknownShape(dimInfo3[3])) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-    "YoloV3DetectionOutputPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(
+        FUSED_OP_TYPE.c_str(),
+        "YoloV3DetectionOutputPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 

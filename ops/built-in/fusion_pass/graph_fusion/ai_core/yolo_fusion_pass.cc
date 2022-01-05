@@ -76,8 +76,8 @@ Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::No
   for (size_t i = 2; i <= 3; i++) {
     auto dim = inputShape[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-      "YoloPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(
+          FUSED_OP_TYPE.c_str(), "YoloPass cannot be applied for unknown shape.");
       return FAILED;
     }
   }

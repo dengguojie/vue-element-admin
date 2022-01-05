@@ -88,7 +88,7 @@ bool TraceTiling(const std::string& op_type, const TeOpParas& op_paras,
   if (need_core_num <= 1) {
     tiling_param.tiling_mode = TILING_MODE_1;
     tiling_param.need_core_num = 1;
-  } else if (1 < need_core_num && need_core_num < all_core_num) {
+  } else if (need_core_num > 1 && need_core_num < all_core_num) {
     tiling_param.tiling_mode = TILING_MODE_2;
     tiling_param.need_core_num = need_core_num;
   } else {

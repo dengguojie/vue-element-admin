@@ -265,10 +265,9 @@ Status TransDataConfusionTransposeDFusionPass::CheckShapeInfo(const ge::NodePtr&
   return SUCCESS;
 }
 
-Status TransDataConfusionTransposeDFusionPass::InsertTransposeDNode(ge::ComputeGraph& graph,
-                                                                   const ge::NodePtr& transData1,
-                                                                   const ge::NodePtr& transData2,
-                                                                   ge::NodePtr& transposeNode) {
+Status TransDataConfusionTransposeDFusionPass::InsertTransposeDNode(
+    ge::ComputeGraph &graph, const ge::NodePtr &transData1,
+    const ge::NodePtr &transData2, ge::NodePtr &transposeNode) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "InsertTransposeDNode begin");
 
   auto transData1InAnchor = transData1->GetInDataAnchor(0);
@@ -307,7 +306,7 @@ Status TransDataConfusionTransposeDFusionPass::InsertTransposeDNode(ge::ComputeG
   xShape.push_back(transData1InputShape.at(3));
   xShape.push_back(transData1InputShape.at(4));
   transposeDNodeOpDesc->MutableInputDesc(0)->SetShape(ge::GeShape(xShape));
-  
+
   std::vector<int64_t> perm = {0, 1, 3, 2, 5, 4};
   ge::AttrUtils::SetListInt(transposeDNodeOpDesc, "perm", perm);
 
