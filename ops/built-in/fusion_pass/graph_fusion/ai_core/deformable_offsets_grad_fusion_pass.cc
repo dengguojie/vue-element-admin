@@ -86,8 +86,8 @@ Status MakeHelperTensor(const vector<int64_t>& offsets_shape, const vector<int64
                       g * K_H * K_W + k_h * K_W + k_w;
             h_index = h * W_OUT * 3 * group * K_H * K_W + w * 3 * group * K_H * K_W + 1 * group * K_H * K_W +
                       g * K_H * K_W + k_h * K_W + k_w;
-            float w_val = (float)(w * stride_w - pad_left + k_w * dilation_w);
-            float h_val = (float)(h * stride_h - pad_top + k_h * dilation_h);
+            float w_val = static_cast<float>(w * stride_w - pad_left + k_w * dilation_w);
+            float h_val = static_cast<float>(h * stride_h - pad_top + k_h * dilation_h);
             helper_tensor[w_index] = w_val;
             helper_tensor[h_index] = h_val;
           }

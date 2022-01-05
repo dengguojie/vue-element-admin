@@ -19,6 +19,7 @@
  * \brief reducesum fusion pass
  */
 #include "a_reduce_sum_fusion_pass.h"
+#include <algorithm>
 #include "tbe_ops_pass_util.h"
 
 namespace fe {
@@ -40,12 +41,11 @@ Status AReduceSumFusionPass::CheckSumFussionOrNot(vector<int64_t> tensor_info, v
                                                   const Operator& op) const {
   bool keep_dims = false;
   const string keep_dims_name = "keep_dims";
-  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name.c_str(), keep_dims)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "can't get keep_dims attr.");
   }
-
-  for (auto& input_shape_value : tensor_info) {
-    if (input_shape_value < 0 && !keep_dims) {
+  if (!keep_dims) {
+    if (std::any_of(tensor_info.begin(), tensor_info.end(), [](int64_t& val){return val < 0;})) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Dynamic shape process and not keep dim, shouldn't delete.");
       return FAILED;
     }

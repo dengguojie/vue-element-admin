@@ -322,23 +322,26 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeTensorDesc input_tensor_scale = batchNormNode->GetOpDesc()->GetInputDesc(1);
   if (newOpdesc->AddInputDesc("scale", input_tensor_scale) != SUCCESS){
     momentumPtr = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input scale failed.",
-    newOpName.c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "Op[%s]: add the input desc for the input scale failed.",
+                                   newOpName.c_str());
     return FAILED;
   }
   ge::GeTensorDesc input_tensor_offset = batchNormNode->GetOpDesc()->GetInputDesc(INPUT_IDX_2);
   if (newOpdesc->AddInputDesc("offset", input_tensor_offset) != SUCCESS){
     momentumPtr = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input offset failed.",
-    newOpName.c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "Op[%s]: add the input desc for the input offset failed.",
+                                   newOpName.c_str());
     return FAILED;
   }
   // add output
   ge::GeTensorDesc tensor1 = batchNormNode->GetOpDesc()->GetOutputDesc(0);
   if (newOpdesc->AddOutputDesc("y", tensor1) != SUCCESS){
     momentumPtr = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Op[%s]: add the output desc for the output y failed.",
-    newOpName.c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "Op[%s]: add the output desc for the output y failed.",
+                                   newOpName.c_str());
     return FAILED;
   }
   ge::NodePtr newNode = graph.AddNode(newOpdesc);
