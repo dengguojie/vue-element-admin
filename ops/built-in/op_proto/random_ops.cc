@@ -596,7 +596,7 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
     OP_LOGI(op_name.GetString(), "num_shape_vec is empty!");
   }
   DataType data_type = op.GetInputDescByName("num").GetDataType();
-  switch(data_type) {
+  switch (data_type) {
     case DT_INT32:
       GetLinSpaceConstValue<int32_t>(op, input_num_tensor, num_shape_vec);
       break;
