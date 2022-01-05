@@ -2629,6 +2629,43 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   return true;
 }
 
+// ----------------TopKV2D Op---------------------
+IMPLEMT_COMMON_INFERFUNC(TopKV2DInferShape) {
+  const vector<string> depend_names = {"k"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  Tensor k_tensor;
+  bool unkonwn_dim_flag{false};
+  if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "Get constdata failed, unknown dim.");
+    unkonwn_dim_flag = true;
+  }
+  // Tensor::GetData() return a uint8 ptr. However the definition of k is int32.
+  // So here use int32* ptr to get the k value
+  int64_t k = UNKNOWN_DIM;
+  if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
+    DataType dtype = op.GetInputDesc("k").GetDataType();
+    if (dtype == DT_INT32) {
+      k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
+    } else if (dtype == DT_INT64) {
+      k = *(reinterpret_cast<int64_t*>(k_tensor.GetData()));
+    } else {
+      OP_LOGE(op.GetName().c_str(), "The type of k Error!");
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (TopKInferCommon(op, k) == false) {
+    OP_LOGE(op.GetName().c_str(), "TopKInferCommon Failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(TopKV2D, TopKV2DInferShape);
+// ----------------TopKV2D Op End-----------------
+
 // ----------------TopKD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
