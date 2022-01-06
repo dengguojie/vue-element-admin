@@ -196,11 +196,6 @@ Status ConstToAttrStridedSliceV2Pass::GetStridedSliceV2CpuState(const Operator &
   }
   std::vector<int64_t> strides;
   op.GetAttr("strides", strides);
-  if (strides.back() != 1) {
-    OP_LOGW(FUSEDNODE.c_str(),
-            "The stride of last dim is not equal 1, need go to aicpu");
-    need_to_cpu = true;
-  }
   for (auto s : strides) {
     if (s < 0) {
       OP_LOGW(FUSEDNODE.c_str(), "The stride less than 0, need go to aicpu");

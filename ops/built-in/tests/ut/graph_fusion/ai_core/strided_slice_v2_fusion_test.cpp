@@ -135,16 +135,16 @@ TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_3) {
   EXPECT_EQ(findOp, true);
 }
 
-TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_4) {
+TEST_F(strided_slice_v2_fusion_test, last_dim_stride_greater_than_one) {
   bool findOp = false;
-  test<int32_t>("strided_slice_v2_fusion_test_4",
+  test<int32_t>("last_dim_stride_greater_than_one",
                 {0, 0, 0}, // begin
                 {3, 2, 4}, // end
                 {0, 1, 2}, // axes
                 {1, 1, 2}, // strides
                 {10, 12, 12}, // x shape
                 {3, 2, 2}, // y shape
-                "StridedSlice",
+                "StridedSliceD",
                 findOp);
   EXPECT_EQ(findOp, true);
 }
@@ -163,3 +163,16 @@ TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_5) {
   EXPECT_EQ(findOp, true);
 }
 
+TEST_F(strided_slice_v2_fusion_test, negative_stride) {
+  bool findOp = false;
+  test<int32_t>("negative_stride",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {0, 1, 2}, // axes
+                {1, 1, -2}, // strides
+                {10, 12, 12}, // x shape
+                {3, 2, 2}, // y shape
+                "StridedSlice",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
