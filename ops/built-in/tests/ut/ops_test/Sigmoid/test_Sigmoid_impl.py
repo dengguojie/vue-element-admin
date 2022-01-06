@@ -85,25 +85,28 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend710", {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
-                "sigmoid",
-                "high_performance"],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+# ut_case.add_precision_case("all", {
+#     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
+#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
+#                 "sigmoid",
+#                 "high_performance"],
+#     "calc_expect_func": calc_expect_func,
+#     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+# })
 
-# def test_for_1951(test_arg):
-#     set_current_compile_soc_info("Ascend710")
-#     sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
-#             {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
-#             "sigmoid",
-#             "high_performance")
-#     set_current_compile_soc_info(test_arg)
-#
-#
-# ut_case.add_cust_test_func(test_func=test_for_1951)
+print('run case for high_performance')
+ut_case.add_case(
+    'Ascend710',
+    {
+        'params': [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+                   {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)}],
+        'addition_params': {'impl_mode': 'high_performance'},
+        'case_name': 'high_performance_case',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
 if __name__ == '__main__':
-    ut_case.run('Ascend910')
+    ut_case.run('Ascend710')
     exit(0)
