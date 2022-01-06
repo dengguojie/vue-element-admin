@@ -68,10 +68,10 @@ Status SingleInstanceNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   // copy Opdesc
   string instanceNormGradNodeName = instanceNormGradNode->GetName();
   std::shared_ptr<ge::OpDesc> newINTrainingUpdateGradOpdesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradOpdesc = std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
-                            + "_INTrainingUpdateGrad", INTUPDATEGRAD)),
+  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradOpdesc = std::make_shared<ge::OpDesc>(
+                               instanceNormGradNodeName + "_INTrainingUpdateGrad", INTUPDATEGRAD)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
-                            (instanceNormGradNodeName + "_INTrainingUpdateGrad").c_str());
+                                  (instanceNormGradNodeName + "_INTrainingUpdateGrad").c_str());
                           newINTrainingUpdateGradOpdesc = nullptr;
                           return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingUpdateGradOpdesc == nullptr,
@@ -79,10 +79,10 @@ Status SingleInstanceNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
                     return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> newINTrainingReduceGradOpdesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((newINTrainingReduceGradOpdesc = std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
-                            + "_INTrainingReduceGrad", INTREDUCEGRAD)),
+  FUSION_PASS_MAKE_SHARED((newINTrainingReduceGradOpdesc = std::make_shared<ge::OpDesc>(
+                               instanceNormGradNodeName + "_INTrainingReduceGrad", INTREDUCEGRAD)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
-                            (instanceNormGradNodeName + "_INTrainingReduceGrad").c_str());
+                                  (instanceNormGradNodeName + "_INTrainingReduceGrad").c_str());
                           newINTrainingReduceGradOpdesc = nullptr;
                           return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingReduceGradOpdesc == nullptr,
@@ -90,11 +90,10 @@ Status SingleInstanceNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
                     return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> newINTrainingUpdateGradGammaBetaOpdesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradGammaBetaOpdesc = 
-                            std::make_shared<ge::OpDesc>(instanceNormGradNodeName 
-                            + "_INTrainingUpdateGradGammaBeta", INTUPDATEGRADGAMMABETA)),
+  FUSION_PASS_MAKE_SHARED((newINTrainingUpdateGradGammaBetaOpdesc = std::make_shared<ge::OpDesc>(
+                               instanceNormGradNodeName + "_INTrainingUpdateGradGammaBeta", INTUPDATEGRADGAMMABETA)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.",
-                            (instanceNormGradNodeName + "_INTrainingUpdateGradGammaBeta").c_str());
+                                  (instanceNormGradNodeName + "_INTrainingUpdateGradGammaBeta").c_str());
                           newINTrainingUpdateGradGammaBetaOpdesc = nullptr;
                           return INTERNAL_ERROR);
   FUSION_PASS_CHECK(newINTrainingUpdateGradGammaBetaOpdesc == nullptr,

@@ -37,6 +37,8 @@
 
 using namespace ge;
 namespace fe {
+const std::string CONSTANT = "Const";
+const std::string CONSTANTOP = "Constant";
 
 static const std::string PATTERN_TRANSPOSE = "FusedNodeTranspose";
 static const std::string PATTERN_RESHAPE = "FusedNodeReshape";

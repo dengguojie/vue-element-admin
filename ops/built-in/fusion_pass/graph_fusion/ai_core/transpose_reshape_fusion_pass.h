@@ -24,8 +24,6 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-const std::string CONSTANT = "Const";
-const std::string CONSTANTOP = "Constant";
 class TransposeReshapeFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
