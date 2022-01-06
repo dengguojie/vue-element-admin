@@ -18,7 +18,7 @@
  * \file prodenvmata_fusion_pass.cc
  * \brief ProdEnvMatA fusion pass(Parallel ProdEnvMatA)
  */
-#include <stdint.h>
+#include <cstdint>
 
 #include <iostream>
 #include <memory>
@@ -39,7 +39,6 @@
 #include "prodenvmata_fusion_pass.h"
 
 namespace fe {
-
 static const std::string PATTERN_PRODENVMATA = "ProdEnvMatA";
 static const std::string OP_TYPE_PRODENVMATA = "ProdEnvMatA";
 static const std::string ATTR_OP_SPECIFIED_ENGINE_NAME = "_specified_engine_name";
@@ -54,7 +53,9 @@ int32_t nloc = 0;
 int32_t nnei = 0;
 int32_t nsample = 0;
 
-
+const int64_t THIRD_CONCAT_NODE_INDEX = 2;
+const int64_t FORTH_CONCAT_NODE_INDEX = 3;
+const int64_t SPLIT_NODE_COUNT_VALUE = 2;
 /*!
  * @brief Define pattern.
  * The graph struct need to adapt and target is shown as follows:
@@ -141,7 +142,7 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
   // Set attribute of AICore flag.
   ge::AttrUtils::SetStr(envmatDescAic, ATTR_OP_SPECIFIED_ENGINE_NAME, "AIcoreEngine");
   ge::AttrUtils::SetStr(envmatDescAic, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "AIcoreEngine");
-  ge::AttrUtils::SetInt(envmatDescAic, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(envmatDescAic, ATTR_SPLIT_COUNT, SPLIT_NODE_COUNT_VALUE);
   ge::AttrUtils::SetInt(envmatDescAic, ATTR_SPLIT_INDEX, 0);
 
   envmatNodeAiCore = graph.AddNode(envmatDescAic);
@@ -199,7 +200,7 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
   // Set attribute of VectorCore flag.
   ge::AttrUtils::SetStr(envmatDescVec, ATTR_OP_SPECIFIED_ENGINE_NAME, "VectorEngine");
   ge::AttrUtils::SetStr(envmatDescVec, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "VectorEngine");
-  ge::AttrUtils::SetInt(envmatDescVec, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(envmatDescVec, ATTR_SPLIT_COUNT, SPLIT_NODE_COUNT_VALUE);
   ge::AttrUtils::SetInt(envmatDescVec, ATTR_SPLIT_INDEX, (int64_t)1);
   ge::AttrUtils::SetStr(envmatDescVec, ATTR_NAME_STREAM_LABEL, "VectorEngine");
 
@@ -229,9 +230,9 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
 }
 
 Status ProdEnvMatAFusionPass::CreateConcatNode(ge::ComputeGraph& graph, ge::NodePtr& envmatNode,
-                                                vector<ge::NodePtr>& newEnvmatNodes,
-                                                ge::NodePtr& cocatNode,
-                                                std::string& nodeName, int32_t outputIndex){
+                                               vector<ge::NodePtr>& newEnvmatNodes,
+                                               ge::NodePtr& cocatNode,
+                                               const std::string& nodeName, int32_t outputIndex){
   ge::OpDescPtr concatDesc = nullptr;
   std::string concatNodeName = envmatNode->GetName() + "/" + nodeName + "/Concat";
   FUSION_PASS_MAKE_SHARED(concatDesc = std::make_shared<ge::OpDesc>(concatNodeName,
@@ -277,11 +278,11 @@ Status ProdEnvMatAFusionPass::CreateConcatNodes(ge::ComputeGraph& graph, ge::Nod
 
   std::string concatEnvmatRijName = "concatEnvmatRij";
   CreateConcatNode(graph, envmatNode, newEnvmatNodes,
-                   newConcatNodes[2], concatEnvmatRijName, 2);
+                   newConcatNodes[THIRD_CONCAT_NODE_INDEX], concatEnvmatRijName, THIRD_CONCAT_NODE_INDEX);
 
   std::string concatEnvmatNlistName = "concatEnvmatNlist";
-  CreateConcatNode(graph, envmatNode, newEnvmatNodes, newConcatNodes[3],
-                   concatEnvmatNlistName, 3);
+  CreateConcatNode(graph, envmatNode, newEnvmatNodes, newConcatNodes[FORTH_CONCAT_NODE_INDEX],
+                   concatEnvmatNlistName, FORTH_CONCAT_NODE_INDEX);
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[0]->GetOutDataAnchor(0),
@@ -437,8 +438,8 @@ Status ProdEnvMatAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   newNodes.push_back(envmatNodeVectorCore);
   newNodes.push_back(newConcatNodes[0]);
   newNodes.push_back(newConcatNodes[1]);
-  newNodes.push_back(newConcatNodes[2]);
-  newNodes.push_back(newConcatNodes[3]);
+  newNodes.push_back(newConcatNodes[THIRD_CONCAT_NODE_INDEX]);
+  newNodes.push_back(newConcatNodes[FORTH_CONCAT_NODE_INDEX]);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to ProdEnvMatA fusion pass.");
   return SUCCESS;

@@ -18,7 +18,7 @@
  * \file deep_md_fusion_pass_util.cc
  * \brief Deep MD fusion pass util
  */
-#include <stdint.h>
+#include <cstdint>
 
 #include <iostream>
 #include <memory>
@@ -44,7 +44,7 @@ static const std::string ATTR_OP_SPECIFIED_KERNEL_LIB_NAME = "_specified_kernel_
 static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
-
+const int64_t SPLIT_COUNT_VALUE = 2;
 Status DeepMdFusionPassUtil::CheckSplitInitInfo(const std::string& fusedOpType, const ge::NodePtr& node) {
   OP_LOGD(fusedOpType.c_str(), "Enter into CheckSplitInitInfo");
 
@@ -77,7 +77,7 @@ Status DeepMdFusionPassUtil::SplitNodeToAICoreAndVectorCore(const std::string& f
   // Set attribute of AICore flag
   ge::AttrUtils::SetStr(opDescAic, ATTR_OP_SPECIFIED_ENGINE_NAME, "AIcoreEngine");
   ge::AttrUtils::SetStr(opDescAic, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "AIcoreEngine");
-  ge::AttrUtils::SetInt(opDescAic, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(opDescAic, ATTR_SPLIT_COUNT, SPLIT_COUNT_VALUE);
   ge::AttrUtils::SetInt(opDescAic, ATTR_SPLIT_INDEX, 0);
 
   nodeAic = graph.AddNode(opDescAic);
@@ -94,7 +94,7 @@ Status DeepMdFusionPassUtil::SplitNodeToAICoreAndVectorCore(const std::string& f
   // Set attribute of VectorCore flag
   ge::AttrUtils::SetStr(opDescVec, ATTR_OP_SPECIFIED_ENGINE_NAME, "VectorEngine");
   ge::AttrUtils::SetStr(opDescVec, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "VectorEngine");
-  ge::AttrUtils::SetInt(opDescVec, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(opDescVec, ATTR_SPLIT_COUNT, SPLIT_COUNT_VALUE);
   ge::AttrUtils::SetInt(opDescVec, ATTR_SPLIT_INDEX, (int64_t)1);
   ge::AttrUtils::SetStr(opDescVec, ATTR_NAME_STREAM_LABEL, "VectorEngine");
 

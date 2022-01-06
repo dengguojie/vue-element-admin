@@ -35,7 +35,7 @@ class ProdEnvMatAFusionPass : public PatternFusionBasePass {
   Status CreateConcatNode(ge::ComputeGraph& graph, ge::NodePtr& envmatNode,
                           vector<ge::NodePtr>& newEnvmatNodes,
                           ge::NodePtr& cocatNode,
-                          std::string& nodeName, int32_t outputIndex);
+                          const std::string& nodeName, int32_t outputIndex);
   Status CreateConcatNodes(ge::ComputeGraph& graph, ge::NodePtr& envmatNode,
                            vector<ge::NodePtr>& newEnvmatNodes,
                            vector<ge::NodePtr>& newConcatNodes);
