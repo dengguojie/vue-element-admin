@@ -113,9 +113,7 @@ ut_case.add_precision_case("all", {
 def sigmoid_test_high(test_arg):
     cce_conf.cce_conf.te_set_version("Ascend710")
     sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-            "sigmoid",
-            'high_performance')
+            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)})
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
