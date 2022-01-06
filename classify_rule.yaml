@@ -359,6 +359,7 @@ cube-tiling:
       - ops/built-in/tbe/impl/dynamic/conv2d.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d.py
+      - ops/built-in/tbe/impl/fused_bn2_reluv2_conv2d_bn1.py
       - auto_schedule/python/lang/cce/te_compute/conv_compute.py
       - auto_schedule/python/lang/cce/te_compute/max_pool2d_3_2_fusion_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv_compute.py
@@ -398,6 +399,8 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/bnupdate_reluv2_bnreduce_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/bnupdate_reluv2_bnreduce_fusion_pass.h
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
