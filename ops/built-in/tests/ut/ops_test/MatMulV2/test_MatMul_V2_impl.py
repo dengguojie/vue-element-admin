@@ -598,7 +598,7 @@ def test_nbuffer_case3(test_arg):
 
 
 def test_auto_tiling(test_arg):
-
+    # Test Auto tiling
     with cce():
         x1 = tvm.placeholder((4, 641, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (10256, 64)}, dtype="float16")
         x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")

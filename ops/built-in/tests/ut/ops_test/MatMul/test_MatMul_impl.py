@@ -530,6 +530,7 @@ ut_case.add_cust_test_func(test_func=test_mock_cases)
 
 
 def test_matmul_api(test_arg):
+    # Test MatMul
     import tbe.dsl as tbe
     shape_a = [1, 1, 16, 16]
     shape_b = [1, 1, 16, 16]
