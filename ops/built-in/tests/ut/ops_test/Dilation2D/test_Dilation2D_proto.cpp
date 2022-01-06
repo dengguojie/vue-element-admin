@@ -294,7 +294,7 @@ TEST_F(dilation2d_infer_test, VerifierDilation2D_011) {
   op.SetAttr("padding_mode", true);
 
   auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(dilation2d_infer_test, VerifierDilation2D_012) {
@@ -327,7 +327,7 @@ TEST_F(dilation2d_infer_test, VerifierDilation2D_013) {
   op.SetAttr("pads", true);
 
   auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(dilation2d_infer_test, VerifierDilation2D_014) {
@@ -364,7 +364,7 @@ TEST_F(dilation2d_infer_test, VerifierDilation2D_015) {
   op.SetAttr("ceil_mode", "ceil_mode");
 
   auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(dilation2d_infer_test, VerifierDilation2D_016) {

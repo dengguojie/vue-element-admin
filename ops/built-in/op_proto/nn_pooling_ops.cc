@@ -391,12 +391,8 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
 
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
-    return GRAPH_FAILED;
-  }
+  std::string data_format = "NHWC";
+  op.GetAttr("data_format", data_format);
   if (data_format != "NHWC" && data_format != "NCHW") {
     OpsAttrValueErrReport(op.GetName(), "data_format", "NHWC,NCHW", data_format);
     OP_LOGE(op.GetName().c_str(), "data_format[%s] is invalid!", data_format.c_str());
@@ -430,35 +426,20 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
 
-  std::string padding_mode;
-  if (op.GetAttr("padding_mode", padding_mode) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "padding_mode");
-    OP_LOGE(op.GetName().c_str(), "Get padding failed!");
-    return GRAPH_FAILED;
-  }
+  std::string padding_mode = "SAME";
+  op.GetAttr("padding_mode", padding_mode);
   if (padding_mode != "SAME" && padding_mode != "VALID" && padding_mode != "CALCULATED") {
     OpsAttrValueErrReport(op.GetName(), "padding_mode", "SAME,VALID,CALCULATED", padding_mode);
     OP_LOGE(op.GetName().c_str(), "Attr padding(%s) only support SAME,VALID,CALCULATED", padding_mode.c_str());
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> pads;
-  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "pads");
-    OP_LOGE(op.GetName().c_str(), "Get attr pads failed");
-    return GRAPH_FAILED;
-  }
+  std::vector<int64_t> pads = {0, 0, 0, 0};
+  op.GetAttr("pads", pads);
   if (pads.size() != 4) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
         GetAttrSizeErrMsg("pads", ConcatString(pads.size()), "4"));
     OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
-    return GRAPH_FAILED;
-  }
-
-  bool ceil_mode;
-  if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
-    OP_LOGE(op.GetName().c_str(), "Get attr ceil_mode failed");
     return GRAPH_FAILED;
   }
 
@@ -505,9 +486,12 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
 IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
   auto strides =  op.get_attr_strides();
   auto rates = op.get_attr_rates();
-  auto padding_mode = op.get_attr_padding_mode();
-  auto pads = op.get_attr_pads();
-  auto ceil_mode = op.get_attr_ceil_mode();
+  std::string padding_mode = "SAME";
+  op.GetAttr("padding_mode", padding_mode);
+  std::vector<int64_t> pads = {0, 0, 0, 0};
+  op.GetAttr("pads", pads);
+  bool ceil_mode = false;
+  op.GetAttr("ceil_mode", ceil_mode);
   Shape x_shape = op.GetInputDesc("x").GetShape();
   Shape filter_shape = op.GetInputDesc("filter").GetShape();
   auto data_type = op.GetInputDesc("x").GetDataType();
