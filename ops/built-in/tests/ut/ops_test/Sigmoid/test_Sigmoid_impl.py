@@ -85,17 +85,25 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
+                "sigmoid",
+                "high_performance"],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 
-def test_for_1951(test_arg):
-    set_current_compile_soc_info("Ascend710")
-    sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
-            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
-            "sigmoid",
-            "high_performance")
-    set_current_compile_soc_info(test_arg)
-
-
-ut_case.add_cust_test_func(test_func=test_for_1951)
+# def test_for_1951(test_arg):
+#     set_current_compile_soc_info("Ascend710")
+#     sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
+#             {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
+#             "sigmoid",
+#             "high_performance")
+#     set_current_compile_soc_info(test_arg)
+#
+#
+# ut_case.add_cust_test_func(test_func=test_for_1951)
 if __name__ == '__main__':
     ut_case.run('Ascend910')
     exit(0)
