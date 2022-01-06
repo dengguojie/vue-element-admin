@@ -35,7 +35,7 @@ const int64_t BLOCK_SIZE = 32;
 const int64_t C0_CONST = 16;
 const int64_t DIM_H = 2;
 const int64_t DIM_W = 3;
-//ub size limits
+// ub size limits
 const int64_t WIDTH_DIM_CONST = 80;
 const int64_t WIDTH_DIM_CONST_NEW = 70;
 const int64_t UB_SIZE_NEW_VER = 196608;

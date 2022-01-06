@@ -30,6 +30,9 @@ const char* kScopeTypeMoments = "moments";
 const char* kScopeRltType = "LayerNorm";
 const char* kOpType = "LayerNorm";
 constexpr int32_t DST_OUTSIZE = 6;
+constexpr int32_t ADDV2_VAL = 2;
+constexpr int32_t ADD_VAL = 2;
+constexpr int32_t MUL_VAL = 3;
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormPass::DefinePatterns() {
@@ -240,7 +243,7 @@ void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns
   }
   batch_norm_cell_add->SetSubType(kScopeTypeBatchnorm);
   batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", 2));        // Add num is 1
+  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", ADD_VAL));        // Add num is 1
   batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
   batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
   batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
@@ -254,9 +257,9 @@ void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns
   }
   batch_norm_cell_addv2->SetSubType(kScopeTypeBatchnorm);
   batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", 2));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", ADDV2_VAL));
   batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));
+  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", MUL_VAL));
   batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));
   batch_norm_cell_addv2->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
   batch.push_back(batch_norm_cell_addv2);

@@ -37,6 +37,12 @@ const int64_t OUT_SPECIAL_DIM_1 = 1;
 const int64_t OUT_SPECIAL_DIM_2 = 80;
 const int64_t OUT_SPECIAL_DIM_3 = 21340;
 const int64_t OUT_SPECIAL_DIM_4 = 12828;
+const int64_t CORENUM_IDX = 0;
+const int64_t UBSIZE_IDX = 1;
+const int64_t VARSIZE_IDX = 2;
+const int64_t INDICESSIZE_IDX = 3;
+const int64_t AUTOMIC_IDX = 4;
+const int64_t INPUTDESC_IDX = 2;
 // 32b aligned, ub can store all updatesNum, float32 atomic
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can't store all updatesNum, float32 atomic
@@ -363,11 +369,11 @@ bool GetScatterAddCompileParams(const std::string& opType, const std::vector<int
                                 int64_t& ubSize, int64_t& varSize, int64_t& indicesSize, int64_t& supportAtomic) {
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != opCompileInfo.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse opCompileInfo failed."), return false);
-  coreNum = opCompileInfo[0];
-  ubSize = opCompileInfo[1];
-  varSize = opCompileInfo[2];
-  indicesSize = opCompileInfo[3];
-  supportAtomic = opCompileInfo[4];
+  coreNum = opCompileInfo[CORENUM_IDX];
+  ubSize = opCompileInfo[UBSIZE_IDX];
+  varSize = opCompileInfo[VARSIZE_IDX];
+  indicesSize = opCompileInfo[INDICESSIZE_IDX];
+  supportAtomic = opCompileInfo[AUTOMIC_IDX];
   return true;
 }
 
@@ -391,7 +397,7 @@ bool ScatterAddTiling(const std::string& opType, const ge::Operator& opParas, co
                   return false);
   const GeShape& indicesShape = input_desc->MutableShape();
   // get input updates Desc
-  input_desc = operator_info->MutableInputDesc(2);
+  input_desc = operator_info->MutableInputDesc(INPUTDESC_IDX);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& updatesShape = input_desc->MutableShape();

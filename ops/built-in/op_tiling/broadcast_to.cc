@@ -27,7 +27,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct BroadcastToCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
 };

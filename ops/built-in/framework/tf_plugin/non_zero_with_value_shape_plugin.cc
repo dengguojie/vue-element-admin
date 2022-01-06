@@ -28,7 +28,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status ParseParamsNonZeroWithValueShape(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "AutoMappingFn failed.");

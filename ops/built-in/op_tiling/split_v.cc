@@ -52,9 +52,13 @@ const int32_t TILING_MODE_6 = 6;
 const int32_t TILING_MODE_7 = 7;
 
 const int32_t TRANSPOSE_SIZE = 256;
+constexpr int32_t CORENUM_IDX = 0;
+constexpr int32_t UBELEMS_IDX = 1;
 constexpr int32_t SPLIT_NUM = 16;
 constexpr int32_t ALLIGN_NUM_16 = 16;
 constexpr int32_t ALLIGN_NUM_15 = 15;
+constexpr int32_t NUMSPLIT_IDX = 2;
+
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_elems", "num_split"};
 
@@ -535,9 +539,9 @@ bool GetSplitVCompileParams(const std::string& op_type, const std::vector<int64_
                                       COMPILE_INFO_KEY.size(), opCompileInfo.size()),
       return false);
 
-  coreNum = opCompileInfo[0];
-  ubElems = opCompileInfo[1];
-  numSplit = opCompileInfo[2];
+  coreNum = opCompileInfo[CORENUM_IDX];
+  ubElems = opCompileInfo[UBELEMS_IDX];
+  numSplit = opCompileInfo[NUMSPLIT_IDX];
 
   return true;
 }

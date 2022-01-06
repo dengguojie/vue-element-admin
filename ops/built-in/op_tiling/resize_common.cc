@@ -26,7 +26,6 @@ constexpr int32_t TILING_KEY_100000 = 100000;
 }  // namespace
 
 namespace optiling {
-
 bool ResizeCommonTuneParamsFunc(const std::string& op_type, const nlohmann::json& compile_info,
                                 ResizeCommonInputCompile& compile_value) {
   if (compile_info.count(INNERTUNEPARAM) == 0) {

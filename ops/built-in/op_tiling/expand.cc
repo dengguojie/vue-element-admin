@@ -28,7 +28,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 struct ExpandCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
 };
