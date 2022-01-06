@@ -420,8 +420,7 @@ class GEMMCompute(FormatCompute):
         """
         if GEMMComputeParam.batch_b:
             return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
-        else:
-            return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+        return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
 
     def _set_bias_or_c(self):
         if (self.alpha is None) or (self.beta is None):
@@ -973,7 +972,7 @@ class GEMMCompute(FormatCompute):
 
         return tensor_normalize_ub
 
-    def _do_aligned_shape_for_dynamic(self, tensor_need_align, aligned_shape, tensor_name, 
+    def _do_aligned_shape_for_dynamic(self, tensor_need_align, aligned_shape, tensor_name,
                                       in_dtype, use_aligned_pattern=False):
         """
         do align for a_matrix or b_matrix, pad zero along the way in dynamic mode
@@ -1239,6 +1238,7 @@ class GEMMCompute(FormatCompute):
         if self.format_b in ("FRACTAL_Z", "FRACTAL_NZ"):
         # ------------------------ fractal process ----------------------- #
             return self._compute_b_matrix_fractal(tensor_b_normalize)
+
         # -------------------------- ND process -------------------------- #
         return self._compute_b_matrix_nd(tensor_b_normalize)
 
@@ -1255,7 +1255,7 @@ class GEMMCompute(FormatCompute):
                     "format_in_b_l1": "Nz",
                     "format_in_b_ub": "none"
                 }
-                self.trans_b = False if self.trans_b else True
+                self.trans_b = not self.trans_b
             compute_params_gemv["trans"] = self.trans_b
             tensor_b_matrix = self.fract_change_outer_axis(tensor_b_normalize, compute_params_gemv)
         else:
