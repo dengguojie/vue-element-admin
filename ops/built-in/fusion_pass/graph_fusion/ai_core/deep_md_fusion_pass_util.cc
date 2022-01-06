@@ -163,7 +163,7 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
                                             addNode->GetInDataAnchor(0)) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from preNode output to x1"),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preNodes[2]->GetOutDataAnchor(preNodeOutputIdx),
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preNodes[SPLIT_COUNT_VALUE]->GetOutDataAnchor(preNodeOutputIdx),
                                             addNode->GetInDataAnchor(1)) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from preNode output to x2"),
                     return FAILED);
@@ -204,7 +204,7 @@ Status DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(const std::string& f
 
   ge::GeTensorDesc outputDesc = fusedOpDesc->GetOutputDesc(preNodeOutputIdx);
   ge::GeTensorDesc outputDescAic = preNodes[1]->GetOpDesc()->GetOutputDesc(preNodeOutputIdx);
-  ge::GeTensorDesc outputDescVec = preNodes[2]->GetOpDesc()->GetOutputDesc(preNodeOutputIdx);
+  ge::GeTensorDesc outputDescVec = preNodes[SPLIT_COUNT_VALUE]->GetOpDesc()->GetOutputDesc(preNodeOutputIdx);
   FUSION_PASS_CHECK(concatDesc->AddInputDesc("x1", outputDescAic) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add x1 desc for Concat."),
                     return FAILED);
@@ -226,7 +226,7 @@ Status DeepMdFusionPassUtil::CreateConcatNodeAfterSplitNode(const std::string& f
                                                        concatNode->GetInDataAnchor(0)),
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from output to concat x1."),
                     return FAILED);
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(preNodes[2]->GetOutDataAnchor(preNodeOutputIdx),
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(preNodes[SPLIT_COUNT_VALUE]->GetOutDataAnchor(preNodeOutputIdx),
                                                        concatNode->GetInDataAnchor(1)),
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to add edge from output to concat x2."),
                     return FAILED);

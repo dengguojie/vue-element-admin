@@ -56,6 +56,12 @@ int32_t nsample = 0;
 const int64_t THIRD_CONCAT_NODE_INDEX = 2;
 const int64_t FORTH_CONCAT_NODE_INDEX = 3;
 const int64_t SPLIT_NODE_COUNT_VALUE = 2;
+const int64_t THIRD_OUTPUT_INDEX = 2;
+const int64_t FORTH_OUTPUT_INDEX = 3;
+const int64_t CONCAT_NUMS = 2;
+const int64_t DESCRIPT_LAST_DIM = 4;
+const int64_t DERIV_LAST_DIM = 12;
+const int64_t RIJ_LAST_DIM = 3;
 /*!
  * @brief Define pattern.
  * The graph struct need to adapt and target is shown as follows:
@@ -100,18 +106,18 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
       return FAILED);
 
   if (nall != -1) {
-    int32_t aic_nloc = (nloc / 2) + (nloc % 2);
-    ge::GeShape output1Shape({nsample, aic_nloc * nnei * 4});
+    int32_t aic_nloc = (nloc / SPLIT_NODE_COUNT_VALUE) + (nloc % SPLIT_NODE_COUNT_VALUE);
+    ge::GeShape output1Shape({nsample, aic_nloc * nnei * DESCRIPT_LAST_DIM});
     ge::GeTensorDesc output1TensorDesc = ge::GeTensorDesc(output1Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output1TensorDesc.SetOriginShape(output1Shape);
     output1TensorDesc.SetOriginFormat(ge::FORMAT_ND);
 
-    ge::GeShape output2Shape({nsample, aic_nloc * nnei * 12});
+    ge::GeShape output2Shape({nsample, aic_nloc * nnei * DERIV_LAST_DIM});
     ge::GeTensorDesc output2TensorDesc = ge::GeTensorDesc(output2Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output2TensorDesc.SetOriginShape(output2Shape);
     output2TensorDesc.SetOriginFormat(ge::FORMAT_ND);
 
-    ge::GeShape output3Shape({nsample, aic_nloc * nnei * 3});
+    ge::GeShape output3Shape({nsample, aic_nloc * nnei * RIJ_LAST_DIM});
     ge::GeTensorDesc output3TensorDesc = ge::GeTensorDesc(output3Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output3TensorDesc.SetOriginShape(output3Shape);
     output3TensorDesc.SetOriginFormat(ge::FORMAT_ND);
@@ -157,18 +163,18 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
       return FAILED);
 
   if (nall != -1) {
-    int32_t vec_nloc = nloc / 2;
-    ge::GeShape output1Shape({nsample, vec_nloc * nnei * 4});
+    int32_t vec_nloc = nloc / SPLIT_NODE_COUNT_VALUE;
+    ge::GeShape output1Shape({nsample, vec_nloc * nnei * DESCRIPT_LAST_DIM});
     ge::GeTensorDesc output1TensorDesc = ge::GeTensorDesc(output1Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output1TensorDesc.SetOriginShape(output1Shape);
     output1TensorDesc.SetOriginFormat(ge::FORMAT_ND);
 
-    ge::GeShape output2Shape({nsample, vec_nloc * nnei * 12});
+    ge::GeShape output2Shape({nsample, vec_nloc * nnei * DERIV_LAST_DIM});
     ge::GeTensorDesc output2TensorDesc = ge::GeTensorDesc(output2Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output2TensorDesc.SetOriginShape(output2Shape);
     output2TensorDesc.SetOriginFormat(ge::FORMAT_ND);
 
-    ge::GeShape output3Shape({nsample, vec_nloc * nnei * 3});
+    ge::GeShape output3Shape({nsample, vec_nloc * nnei * RIJ_LAST_DIM});
     ge::GeTensorDesc output3TensorDesc = ge::GeTensorDesc(output3Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output3TensorDesc.SetOriginShape(output3Shape);
     output3TensorDesc.SetOriginFormat(ge::FORMAT_ND);
@@ -255,7 +261,7 @@ Status ProdEnvMatAFusionPass::CreateConcatNode(ge::ComputeGraph& graph, ge::Node
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add y desc for Concat envmat."),
                     return FAILED);
   ge::AttrUtils::SetInt(concatDesc, "concat_dim", 1);
-  ge::AttrUtils::SetInt(concatDesc, "N", 2);
+  ge::AttrUtils::SetInt(concatDesc, "N", CONCAT_NUMS);
   cocatNode = graph.AddNode(concatDesc);
   FUSION_PASS_CHECK(cocatNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add Concat(envmat) Node to graph"),
@@ -307,24 +313,24 @@ Status ProdEnvMatAFusionPass::CreateConcatNodes(ge::ComputeGraph& graph, ge::Nod
       return FAILED);
 
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[0]->GetOutDataAnchor(2),
-                                         newConcatNodes[2]->GetInDataAnchor(0)),
+      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[0]->GetOutDataAnchor(THIRD_OUTPUT_INDEX),
+                                         newConcatNodes[THIRD_CONCAT_NODE_INDEX]->GetInDataAnchor(0)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from output rij to x1."),
       return FAILED);
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[1]->GetOutDataAnchor(2),
-                                         newConcatNodes[2]->GetInDataAnchor(1)),
+      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[1]->GetOutDataAnchor(THIRD_OUTPUT_INDEX),
+                                         newConcatNodes[THIRD_CONCAT_NODE_INDEX]->GetInDataAnchor(1)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from output rij to x2."),
       return FAILED);
 
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[0]->GetOutDataAnchor(3),
-                                         newConcatNodes[3]->GetInDataAnchor(0)),
+      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[0]->GetOutDataAnchor(FORTH_OUTPUT_INDEX),
+                                         newConcatNodes[FORTH_CONCAT_NODE_INDEX]->GetInDataAnchor(0)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from output nlist to x1."),
       return FAILED);
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[1]->GetOutDataAnchor(3),
-                                         newConcatNodes[3]->GetInDataAnchor(1)),
+      SUCCESS != ge::GraphUtils::AddEdge(newEnvmatNodes[1]->GetOutDataAnchor(FORTH_OUTPUT_INDEX),
+                                         newConcatNodes[FORTH_CONCAT_NODE_INDEX]->GetInDataAnchor(1)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from output nlist to x2."),
       return FAILED);
 
@@ -343,16 +349,17 @@ Status ProdEnvMatAFusionPass::CreateConcatNodes(ge::ComputeGraph& graph, ge::Nod
                                                      "Failed to add edge from output concatNode to output node."),
                       return FAILED);
   }
-  for (auto inAnchor : envmatNode->GetOutDataAnchor(2)->GetPeerInDataAnchors()) {
+  for (auto inAnchor : envmatNode->GetOutDataAnchor(THIRD_OUTPUT_INDEX)->GetPeerInDataAnchors()) {
     inAnchor->UnlinkAll();
     FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(newConcatNodes[2]->GetOutDataAnchor(0), inAnchor),
+        SUCCESS != ge::GraphUtils::AddEdge(newConcatNodes[THIRD_CONCAT_NODE_INDEX]->GetOutDataAnchor(0), inAnchor),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from concatNode to output node."),
         return FAILED);
   }
-  for (auto inAnchor : envmatNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {
+  for (auto inAnchor : envmatNode->GetOutDataAnchor(FORTH_OUTPUT_INDEX)->GetPeerInDataAnchors()) {
     inAnchor->UnlinkAll();
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(newConcatNodes[3]->GetOutDataAnchor(0), inAnchor),
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(newConcatNodes[FORTH_CONCAT_NODE_INDEX]->GetOutDataAnchor(0),
+                                                         inAnchor),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                      "Failed to add edge from output concatNode to output node."),
                       return FAILED);
@@ -399,7 +406,7 @@ Status ProdEnvMatAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   nall = envmatNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDim(1);
   nsample = envmatNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDim(0);
-  int32_t nlistDim = envmatNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(1);
+  int32_t nlistDim = envmatNode->GetOpDesc()->GetOutputDesc(FORTH_OUTPUT_INDEX).GetShape().GetDim(1);
   vector<int32_t> sel_a = {};
   ge::AttrUtils::GetListInt(envmatNode->GetOpDesc(), "sel_a", sel_a);
   for (size_t i = 0; i < sel_a.size(); i++) {
