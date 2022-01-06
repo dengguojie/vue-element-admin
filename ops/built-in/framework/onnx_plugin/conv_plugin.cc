@@ -200,9 +200,10 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   auto ret_dilations = op.GetAttr("dilations", convAttr.dilations);
   op.GetAttr("auto_pad", pad_mode);
   if (pad_mode != "NOTSET") {
-    OP_LOGW("Conv",
-            "The attr of auto_pad is not NOTSET, unsupported other value for now,transform failed, may cause precision "
-            "error.");
+    ONNX_PLUGIN_LOGE("Conv",
+                     "The attr of auto_pad is not NOTSET, unsupported other value for now, transform failed,"
+                     "may cause precision error.");
+    return FAILED;
   }
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS) {
     OP_LOGW("Conv",

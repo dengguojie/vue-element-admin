@@ -183,10 +183,7 @@ TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_9) {
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
 
-  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
-  // check op count, some op need check op attr, op input count.
-  std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
 TEST_F(conv_onnx_plugin_test, conv_onnx_plugin_test_case_10) {
