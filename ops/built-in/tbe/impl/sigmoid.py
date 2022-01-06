@@ -115,7 +115,8 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
 
     if soc_version in ("Ascend710",):
         print('successs!!!')
-
+    if impl_mode == "high_performance":
+        print("successss!!!!!!!!!!!!!!!!")
     if soc_version in ("Ascend710", ) and impl_mode == "high_performance":
         return sigmoid_high_performance_compute(x, y, kernel_name)
 
@@ -153,7 +154,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     return tmp_rec
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME, para_check.check_op_params)
 def sigmoid(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     """calculating data
 
