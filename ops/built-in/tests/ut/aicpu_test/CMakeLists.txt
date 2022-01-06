@@ -103,6 +103,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
@@ -331,6 +332,7 @@ set(_cpu_kernels_ut_files
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sigmoid/src/sigmoid_utest.cpp
   testcase/sign/src/sign_utest.cpp
+  testcase/sigmoid_grad/src/sigmoid_grad_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
   testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
