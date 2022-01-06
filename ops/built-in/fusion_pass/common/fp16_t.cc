@@ -110,7 +110,7 @@ static float fp16ToFloat(const uint16_t& fpVal) {
     mRet = mRet << (FP32_MAN_LEN - FP16_MAN_LEN);
   }
   fVal = FP32_CONSTRUCTOR(sRet, eRet, mRet);
-    ret = *((float *)&fVal);
+  ret = *(reinterpret_cast<float*>(&fVal));
 
   return ret;
 }
@@ -144,7 +144,7 @@ static double fp16ToDouble(const uint16_t& fpVal) {
     mRet = mRet << (FP64_MAN_LEN - FP16_MAN_LEN);
   }
   fVal = (sRet << FP64_SIGN_INDEX) | (eRet << FP64_MAN_LEN) | (mRet);
-    ret = *((double *)&fVal);
+  ret = *(reinterpret_cast<double*>(&fVal));
 
   return ret;
 }
