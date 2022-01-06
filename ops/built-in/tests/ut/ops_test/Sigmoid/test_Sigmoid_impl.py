@@ -17,6 +17,7 @@ import numpy as np
 from op_test_frame.common import precision_info
 # from op_test_frame.ut import ElementwiseOpUT
 from op_test_frame.ut import OpUT
+from te import platform as cce_conf
 from tbe.common.platform.platform_info import set_current_compile_soc_info
 from impl.sigmoid import sigmoid
 # ut_case = ElementwiseOpUT("Sigmoid", None, None)
@@ -94,19 +95,31 @@ ut_case.add_precision_case("all", {
 #     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 # })
 
-print('run case for high_performance')
-ut_case.add_case(
-    'Ascend710',
-    {
-        'params': [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-                   {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)}],
-        'addition_params': {'impl_mode': 'high_performance'},
-        'case_name': 'high_performance_case',
-        'expect': 'success',
-        'format_expect': [],
-        'support_expect': True,
-    },
-)
+# print('run case for high_performance')
+# ut_case.add_case(
+#     'Ascend710',
+#     {
+#         'params': [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+#                    {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)}],
+#         'addition_params': {'impl_mode': 'high_performance'},
+#         'case_name': 'high_performance_case',
+#         'expect': 'success',
+#         'format_expect': [],
+#         'support_expect': True,
+#     },
+# )
+
+
+def sigmoid_test_high(test_arg):
+    cce_conf.cce_conf.te_set_version("Ascend710")
+    sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+            "sigmoid",
+            'high_performance')
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+
+ut_case.add_cust_test_func(test_func=sigmoid_test_high)
 if __name__ == '__main__':
     ut_case.run('Ascend710')
     exit(0)
