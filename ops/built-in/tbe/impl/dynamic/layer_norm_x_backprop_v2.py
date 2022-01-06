@@ -210,7 +210,7 @@ def _get_params(shape_x, shape_mean, shape_gamma):
 
 
 def _broadcast_interval_dimension(tensor, shape):
-    if tensor.shape[0] == 1 and tensor.shape[-1] == 1:
+    if shape_util.shape_to_list(tensor.shape)[0] == 1 and shape_util.shape_to_list(tensor.shape)[-1] == 1:
         tmp_shape = [1] + shape[1:]
         tmp_tensor = tbe.broadcast(tensor, tmp_shape)
         tensor_target = tbe.broadcast(tmp_tensor, shape)
