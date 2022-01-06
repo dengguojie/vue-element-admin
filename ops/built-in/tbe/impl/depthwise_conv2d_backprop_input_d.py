@@ -327,7 +327,7 @@ def depthwise_conv2d_backprop_input_d(filter,
     dilations = (1, 1, dilation_h, dilation_w)
 
     # output parameters
-    _, dout_c0, _ = tbe_platform.CUBE_MKN[output_dtype]["mac"]
+    _, dout_c0, _ = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
     batch, output_channel, output_height, output_width = output_shape
     output_c1 = (output_channel + dout_c0 - 1) // dout_c0
 

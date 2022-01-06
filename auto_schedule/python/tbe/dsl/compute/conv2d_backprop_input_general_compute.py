@@ -457,8 +457,6 @@ class DeConvPattern(cube_util.CubeDslPattern):
             def __kernel_2_l0_compute(indices, kernels):
                 if kernels.dtype == "float32":
                     _, block_k0, block_n0 = tbe_platform.CUBE_MKN[kernels.dtype]["mac"]
-                    new_cin1_g = self._cin1_g // 2
-                    new_cou1_g = self._cou1_g * 2
                     old_cin0, new_cin0 = block_k0, block_n0
                     old_cou0, new_cou0 = block_n0, block_k0
                     hw = kernel_h * kernel_w
@@ -467,7 +465,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
                     cout_dim = (w_k1_idx // hw) * new_cou0 + kernel_cout0_idx
                     cin_dim = kernel_cin1_idx * new_cin0 + w_k0_idx
                     fkk_index = g_idx * self._cin1_g * hw + cin_dim // old_cin0 * hw + (hw - 1) - w_k1_idx % hw
-                    cout1_index = w_k1_idx // hw * new_cou0 // old_cou0
+                    cout1_index = cout_dim // old_cou0
                     kernel_cout0_idx = cout_dim % old_cou0
                     w_k0_idx = cin_dim % old_cin0
                 else:

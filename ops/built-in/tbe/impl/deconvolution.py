@@ -560,8 +560,8 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         w_index = data_format.find("W")
         strides = [strides[h_index], strides[w_index]]
 
-    shape_weight = util_deconv_comm.get_filter_shape(
-        ori_format_weight, ori_shape_weight
+    shape_weight = list(util_deconv_comm.get_filter_shape(
+        ori_format_weight, ori_shape_weight)
     )
     if weight_dtype == "int8":
         # NCHW means (groups * cout_ori, cin_ori, hk,wk), but it means
