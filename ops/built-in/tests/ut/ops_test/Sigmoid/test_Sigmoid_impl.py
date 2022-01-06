@@ -17,6 +17,8 @@ import numpy as np
 from op_test_frame.common import precision_info
 # from op_test_frame.ut import ElementwiseOpUT
 from op_test_frame.ut import OpUT
+from tbe.common.platform.platform_info import set_current_compile_soc_info
+from impl.sigmoid import sigmoid
 # ut_case = ElementwiseOpUT("Sigmoid", None, None)
 ut_case = OpUT("Sigmoid", "impl.sigmoid", "sigmoid")
 
@@ -40,6 +42,8 @@ ut_case = OpUT("Sigmoid", "impl.sigmoid", "sigmoid")
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (10, 13))
 
 # ============ auto gen ["Ascend910"] test cases end =================
+
+
 def calc_expect_func(input_x, output_y):
     dtype = input_x["dtype"]
     if dtype == "fp16" or dtype == "float16":
@@ -51,6 +55,7 @@ def calc_expect_func(input_x, output_y):
 
     res = (1/(1+np.exp(-input_x["value"]))).astype(sdtype)
     return res
+
 
 ut_case.add_precision_case("all", {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
@@ -79,6 +84,18 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
+
+
+def test_for_1951(test_arg):
+    set_current_compile_soc_info("Ascend710")
+    sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
+            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
+            {"sigmoid"},
+            {"high_performance"})
+    set_current_compile_soc_info(test_arg)
+
+
+ut_case.add_cust_test_func(test_func=test_for_1951)
 if __name__ == '__main__':
     ut_case.run('Ascend910')
     exit(0)
