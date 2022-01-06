@@ -19,7 +19,8 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
 
 def _run_api_end_with_d(
     fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
-          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (4, 18), (50, 70), (78, 98), (32,32)]},
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16',
+          "range": [(1, 1), (4, 18), (50, 70), (78, 98), (32,32)]},
     weight={'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
             'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16',"range": [(2, 2), (2, 2), (2, 2), (32, 32), (64,64)]},
     bias=None, offset_w=None,

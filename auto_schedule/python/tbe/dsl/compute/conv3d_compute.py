@@ -67,9 +67,9 @@ class Conv3DParam:
         """
          get the tensor_map in convparam
         """
-        return self._TENSOR_MAP
+        return self.tensor_map
 
-    _TENSOR_MAP = {}
+    tensor_map = {}
     dim_map = {}
     tiling = None
     var_map = {}
@@ -319,7 +319,7 @@ def _cube_3d_compute(fmap,
     dim_map_copy = _DIM_MAP.copy()
     dim_map_copy.update(dim_map1)
 
-    Conv3DParam._TENSOR_MAP = _TENSOR_MAP
+    Conv3DParam.tensor_map = _TENSOR_MAP
     Conv3DParam.dim_map = dim_map_copy
     Conv3DParam.tiling = None
     res = c_ub
@@ -882,7 +882,7 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     block_size_m = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][0]
 
     # calculated by h_i and w_i
-    dilation_d, dilation_h, dilation_w = dilation_dhw
+    _, dilation_h, dilation_w = dilation_dhw
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
 

@@ -56,7 +56,7 @@ class CceConv3dOp:
         self._need_pragma = need_pragma
         self._scope = scope
         self._schedule = None
-        self._tensor_map = conv3d_compute.Conv3DParam._TENSOR_MAP
+        self._tensor_map = conv3d_compute.Conv3DParam.tensor_map
         self._dim_map = conv3d_compute.Conv3DParam.dim_map
         self._tiling = conv3d_compute.Conv3DParam.tiling
         self._fused_op_num = 0
