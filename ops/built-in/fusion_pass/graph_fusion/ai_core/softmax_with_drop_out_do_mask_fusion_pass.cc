@@ -34,9 +34,9 @@ using namespace ge;
 namespace fe {
 static const uint32_t CORE_NUM = 32;
 static const string AXIS = "axes";
+static const string KEEPPROB = "keep_prob";
 static const string PATTERN_DROPOUT = "DropOutDoMaskV3D";
 static const string PATTERN_SOFTMAX = "SoftmaxV2";
-static const string KEEPPROB = "keep_prob";
 static const string SOFTMAXWITHDROPOUTDOMASK = "SoftmaxV2WithDropOutDoMaskV3D";
 
 vector<FusionPattern*> SoftmaxWithDropOutDoMaskFusionPass::DefinePatterns() {
@@ -62,14 +62,14 @@ vector<FusionPattern*> SoftmaxWithDropOutDoMaskFusionPass::DefinePatterns() {
 Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                   vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftmaxWithDropOutDoMaskFusionPass fusion begin.");
-  ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_SOFTMAX, mapping);
   ge::NodePtr dropoutNode = GetNodeFromMapping(PATTERN_DROPOUT, mapping);
+  ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_SOFTMAX, mapping);
 
-  FUSION_PASS_CHECK(softmaxNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmaxNode is null, fusion failed."),
-                    return PARAM_INVALID);
   FUSION_PASS_CHECK(dropoutNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dropoutNode is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dropout Node is null, fusion failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(softmaxNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (softmaxNode->GetOpDesc()->GetInputDesc(0).GetDataType() != ge::DT_FLOAT16) {
@@ -77,8 +77,14 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
     return NOT_CHANGED;
   }
 
-  PlatformInfo platform_info;
+  vector<int64_t> OriginDimInfo = softmaxNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+  if (!(OriginDimInfo.size() == 4 && OriginDimInfo[2] == 512 && OriginDimInfo[3] == 512)) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "shape is not support.");
+    return NOT_CHANGED;
+  }
+
   OptionalInfo optional_info;
+  PlatformInfo platform_info;
   FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
                                                                                      optional_info) != fe::SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get platformInfo failed."), return false);
