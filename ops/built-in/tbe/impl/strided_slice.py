@@ -21,7 +21,6 @@ import math
 from functools import reduce
 from impl import common_util
 from impl import constant_util as constant
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 from impl.dynamic.strided_slice import StridedSlice
@@ -526,7 +525,7 @@ def strided_slice(input_x,
             return need_ub_size
 
         def _is_shape_equal_except_last(input_shape, out_shape, length):
-            for i in range(length):
+            for i in range(length + 1):
                 if input_shape[i] != out_shape[i]:
                     return False
             return True

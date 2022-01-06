@@ -117,12 +117,29 @@ case6 = {"params": [{"shape": (64, 256), "dtype": "float16", "format": "ND",
          "expect": "success",
          "support_expect": True}
 
+case7 = {"params": [{"shape": (64, 256), "dtype": "float16", "format": "ND",
+                     "ori_shape": (64, 256), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND", "const_value": [1, 1]},
+                    {"shape": (1, 1), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 1), "ori_format": "ND"},
+                     0, 0, 0, 0, 15
+                    ],
+         "case_name": "StridedSlice_7",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["all"], case1)
 ut_case.add_case(["all"], case2)
 ut_case.add_case(["all"], case3)
 ut_case.add_case(["all"], case4)
 ut_case.add_case(["all"], case5)
 ut_case.add_case(["all"], case6)
+ut_case.add_case(["all"], case7)
 
 def test_op_check_supported_1(test_arg):
     from impl.strided_slice import check_supported
