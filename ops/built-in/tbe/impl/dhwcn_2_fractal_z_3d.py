@@ -24,16 +24,21 @@ from te.utils.op_utils import *
 import te.platform.cce_params as cce_params
 
 
-# UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# C0 length
-C0_LEN = 16
-# repeat up limit
-REPEAT_LIMIT = 255
-# mask value
-MASK_128 = 128
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # UB size in byte
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # AICORE count
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # C0 length
+    C0_LEN = 16
+    # repeat up limit
+    REPEAT_LIMIT = 255
+    # mask value
+    MASK_128 = 128
 
 
 # 'pylint: disable=locally-disabled,too-many-lines
@@ -64,15 +69,15 @@ def _get_vnchwconv_ub_size(col_size, dtype):
         byte_cnt = 4
 
     # 16 lines, the unit is byte
-    need_ub_size = _ceil_div(col_size, C0_LEN) * C0_LEN * C0_LEN * byte_cnt
+    need_ub_size = _ceil_div(col_size, Constant.C0_LEN) * Constant.C0_LEN * Constant.C0_LEN * byte_cnt
     # the UB will be split into two parts, the unit is byte
     ub_half_248k_size = 248 * 1024 // 2
-    ub_upper_limit = UB_SIZE // 2
+    ub_upper_limit = Constant.UB_SIZE // 2
     if ub_upper_limit > ub_half_248k_size:
         ub_upper_limit = ub_half_248k_size
 
     if need_ub_size >= ub_upper_limit:
-        ub_size = ub_upper_limit // byte_cnt // C0_LEN * C0_LEN
+        ub_size = ub_upper_limit // byte_cnt // Constant.C0_LEN * Constant.C0_LEN
     else:
         ub_size = need_ub_size // byte_cnt
 
@@ -93,22 +98,22 @@ def _clean_ubuf(tik_inst, src, src_offset, dup_len):
     if dup_len > 0:
         repeat = dup_len // (batch_size * dtype_factor)
         left_elem = dup_len % (batch_size * dtype_factor)
-        repeat_loop = repeat // REPEAT_LIMIT
-        repeat_left = repeat % REPEAT_LIMIT
+        repeat_loop = repeat // Constant.REPEAT_LIMIT
+        repeat_left = repeat % Constant.REPEAT_LIMIT
         dup_value = float(0)
 
         if repeat_loop > 0:
             with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vector_dup(MASK_128,
+                tik_inst.vector_dup(Constant.MASK_128,
                                     src[src_offset + rpt_idx *
-                                        REPEAT_LIMIT *
+                                        Constant.REPEAT_LIMIT *
                                         batch_size * dtype_factor],
-                                    dup_value, REPEAT_LIMIT, 1, 8)
+                                    dup_value, Constant.REPEAT_LIMIT, 1, 8)
 
         if repeat_left > 0:
-            tik_inst.vector_dup(MASK_128,
+            tik_inst.vector_dup(Constant.MASK_128,
                                 src[src_offset + repeat_loop *
-                                    REPEAT_LIMIT *
+                                    Constant.REPEAT_LIMIT *
                                     batch_size * dtype_factor],
                                 dup_value, repeat_left, 1, 8)
 
@@ -126,19 +131,19 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
     """
 
     axis_d, axis_h, axis_w, axis_c, axis_n = shape_in
-    multi_c_loop_cnt = (axis_c // C0_LEN) // CORE_NUM
-    multi_c_loop_left = (axis_c // C0_LEN) % CORE_NUM
-    axis_c_left = axis_c % C0_LEN
+    multi_c_loop_cnt = (axis_c // Constant.C0_LEN) // Constant.CORE_NUM
+    multi_c_loop_left = (axis_c // Constant.C0_LEN) % Constant.CORE_NUM
+    axis_c_left = axis_c % Constant.C0_LEN
     vnchw_ub_size = _get_vnchwconv_ub_size(axis_n, data_in.dtype)
     # vnchwconv process 16 lines each time
-    vnchw_col_size = vnchw_ub_size // C0_LEN
+    vnchw_col_size = vnchw_ub_size // Constant.C0_LEN
 
     in_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                             name="in_ub", scope=tik.scope_ubuf)
     out_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                              name="out_ub", scope=tik.scope_ubuf)
 
-    with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+    with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
         with tik_inst.for_range(0, axis_d) as d_idx:
             with tik_inst.for_range(0, axis_h * axis_w) as hw_idx:
 
@@ -147,8 +152,8 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
                     real transfer process for multiple core on axis c
                     """
 
-                    ceil_axis_n = _ceil_div(axis_n, C0_LEN) * C0_LEN
-                    n_16_size = ceil_axis_n * C0_LEN
+                    ceil_axis_n = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
+                    n_16_size = ceil_axis_n * Constant.C0_LEN
                     idx_list = [0, 1, 2, 3, 4, 5, 6, 7,
                                 8, 9, 10, 11, 12, 13, 14, 15]
 
@@ -162,12 +167,12 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
                                 in_ub,
                                 data_in[n_lp_id * vnchw_col_size +
                                         (block_idx +
-                                         c_lp_idx * CORE_NUM + c_idx) *
-                                        C0_LEN * axis_n +
+                                         c_lp_idx * Constant.CORE_NUM + c_idx) *
+                                        Constant.C0_LEN * axis_n +
                                         (hw_idx + d_idx * axis_h * axis_w) *
                                         axis_c * axis_n],
                                 0, 1,
-                                c_cnt * _ceil_div(col_size, C0_LEN), 0, 0)
+                                c_cnt * _ceil_div(col_size, Constant.C0_LEN), 0, 0)
                         else:
                             with tik_inst.for_range(0, c_cnt) as c_index:
                                 tik_inst.data_move(
@@ -175,17 +180,17 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
                                     data_in[c_index * axis_n +
                                             n_lp_id * vnchw_col_size +
                                             (block_idx +
-                                             c_lp_idx * CORE_NUM + c_idx) *
-                                            C0_LEN * axis_n +
+                                             c_lp_idx * Constant.CORE_NUM + c_idx) *
+                                            Constant.C0_LEN * axis_n +
                                             (hw_idx + d_idx * axis_h * axis_w)
                                             * axis_c * axis_n],
                                     0, 1,
-                                    _ceil_div(col_size, C0_LEN), 0, 0)
+                                    _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
                         src_addr_list = [in_ub[vnchw_col_size * i] for i in
                                          idx_list]
-                        dst_addr_list = [out_ub[C0_LEN * i] for i in idx_list]
-                        repeat_cnt = _ceil_div(col_size, C0_LEN)
+                        dst_addr_list = [out_ub[Constant.C0_LEN * i] for i in idx_list]
+                        repeat_cnt = _ceil_div(col_size, Constant.C0_LEN)
                         src_stride = 0 if repeat_cnt == 1 else 1
                         dst_stride = 0 if repeat_cnt == 1 else 16
 
@@ -194,23 +199,23 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
                                            repeat_cnt, dst_stride, src_stride)
 
                         # set n left to zero
-                        if col_size % C0_LEN:
+                        if col_size % Constant.C0_LEN:
                             _clean_ubuf(tik_inst, out_ub,
-                                        col_size * C0_LEN,
-                                        (C0_LEN - col_size % C0_LEN) * C0_LEN)
+                                        col_size * Constant.C0_LEN,
+                                        (Constant.C0_LEN - col_size % Constant.C0_LEN) * Constant.C0_LEN)
 
-                        ni_c0_size = C0_LEN * C0_LEN
-                        no_ni_c0_size = _ceil_div(axis_n, C0_LEN) * ni_c0_size
+                        ni_c0_size = Constant.C0_LEN * Constant.C0_LEN
+                        no_ni_c0_size = _ceil_div(axis_n, Constant.C0_LEN) * ni_c0_size
                         tik_inst.data_move(
                             data_out[
-                                n_lp_id * _ceil_div(vnchw_col_size, C0_LEN) *
+                                n_lp_id * _ceil_div(vnchw_col_size, Constant.C0_LEN) *
                                 ni_c0_size +
-                                (hw_idx + (c_lp_idx * CORE_NUM + c_idx +
+                                (hw_idx + (c_lp_idx * Constant.CORE_NUM + c_idx +
                                            block_idx + d_idx *
-                                           _ceil_div(axis_c, C0_LEN)) *
+                                           _ceil_div(axis_c, Constant.C0_LEN)) *
                                  axis_h * axis_w) * no_ni_c0_size],
                             out_ub,
-                            0, 1, repeat_cnt * C0_LEN, 0, 0)
+                            0, 1, repeat_cnt * Constant.C0_LEN, 0, 0)
 
                     if n_16_size > vnchw_ub_size:
                         axis_n_loop = axis_n // vnchw_col_size
@@ -229,20 +234,20 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
 
                 if multi_c_loop_cnt > 0:
                     with tik_inst.for_range(0, multi_c_loop_cnt) as c_loop_idx:
-                        _inner_process(c_loop_idx, 0, C0_LEN)
+                        _inner_process(c_loop_idx, 0, Constant.C0_LEN)
 
                 if multi_c_loop_left > 0:
                     with tik_inst.if_scope(block_idx < multi_c_loop_left):
-                        _inner_process(multi_c_loop_cnt, 0, C0_LEN)
+                        _inner_process(multi_c_loop_cnt, 0, Constant.C0_LEN)
 
                 if axis_c_left > 0:
                     _clean_ubuf(tik_inst,
                                 in_ub,
                                 axis_c_left * vnchw_col_size,
-                                (C0_LEN - axis_c_left) * vnchw_col_size)
+                                (Constant.C0_LEN - axis_c_left) * vnchw_col_size)
 
                     with tik_inst.if_scope(block_idx < 1):
-                        _inner_process(0, axis_c // C0_LEN, axis_c_left)
+                        _inner_process(0, axis_c // Constant.C0_LEN, axis_c_left)
 
 
 def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
@@ -252,20 +257,20 @@ def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
 
     axis_d, axis_h, axis_w, axis_c, _ = shape_in
     # move 16 * 256 elements each time
-    out_ub_size = C0_LEN * C0_LEN * C0_LEN
+    out_ub_size = Constant.C0_LEN * Constant.C0_LEN * Constant.C0_LEN
     out_ub = tik_inst.Tensor(data_in.dtype, (out_ub_size,),
                              name="out_ub", scope=tik.scope_ubuf)
     # in order to keep ub size 16 align
-    in_ub_size = (UB_SIZE // 2 - out_ub_size) // C0_LEN * C0_LEN
+    in_ub_size = (Constant.UB_SIZE // 2 - out_ub_size) // Constant.C0_LEN * Constant.C0_LEN
     in_ub = tik_inst.Tensor(data_in.dtype, (in_ub_size,),
                             name="in_ub", scope=tik.scope_ubuf)
     c_list = [i for i in range(axis_c)]
     reg_list = [tik_inst.Scalar(data_in.dtype) for i in c_list]
 
     dhw_size = axis_d * axis_h * axis_w
-    core_data_size = dhw_size // CORE_NUM * axis_c
-    core_data_left = dhw_size % CORE_NUM * axis_c
-    ni_c0_size = C0_LEN * C0_LEN
+    core_data_size = dhw_size // Constant.CORE_NUM * axis_c
+    core_data_left = dhw_size % Constant.CORE_NUM * axis_c
+    ni_c0_size = Constant.C0_LEN * Constant.C0_LEN
 
     # set out_ub to zero
     _clean_ubuf(tik_inst, out_ub, 0, out_ub_size)
@@ -287,20 +292,20 @@ def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
                                data_in[lp_idx * ub_align_c_size +
                                        block_index * slice_size +
                                        in_offset],
-                               0, 1, _ceil_div(col_size, C0_LEN), 0, 0)
+                               0, 1, _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
             c_count = col_size // axis_c
-            mv_loop = c_count // C0_LEN
-            mv_left = c_count % C0_LEN
+            mv_loop = c_count // Constant.C0_LEN
+            mv_left = c_count % Constant.C0_LEN
 
             def _move_elements(lp_index, mv_len):
                 """
                 move elements for output
                 """
 
-                if axis_c == C0_LEN:
+                if axis_c == Constant.C0_LEN:
                     tik_inst.data_move(out_ub,
-                                       in_ub[lp_index * C0_LEN * C0_LEN],
+                                       in_ub[lp_index * Constant.C0_LEN * Constant.C0_LEN],
                                        0, mv_len, 1, 0, 15)
                 else:
                     with tik_inst.for_range(0, mv_len) as len_idx:
@@ -308,23 +313,23 @@ def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
                         for idx in c_list:
                             reg_list[idx].set_as(
                                 in_ub[idx + len_idx * axis_c +
-                                      lp_index * axis_c * C0_LEN])
+                                      lp_index * axis_c * Constant.C0_LEN])
 
                         for idx in c_list:
                             out_ub[len_idx * ni_c0_size + idx].set_as(
                                 reg_list[idx])
 
                 tik_inst.data_move(
-                    data_out[(lp_index * C0_LEN +
+                    data_out[(lp_index * Constant.C0_LEN +
                               lp_idx * (ub_align_c_size // axis_c) +
                               block_index * (slice_size // axis_c)) *
                              ni_c0_size + out_offset],
                     out_ub,
-                    0, 1, mv_len * C0_LEN, 0, 0)
+                    0, 1, mv_len * Constant.C0_LEN, 0, 0)
 
             if mv_loop > 0:
                 with tik_inst.for_range(0, mv_loop) as mv_lp_idx:
-                    _move_elements(mv_lp_idx, C0_LEN)
+                    _move_elements(mv_lp_idx, Constant.C0_LEN)
 
             if mv_left > 0:
                 _move_elements(mv_loop, mv_left)
@@ -344,16 +349,16 @@ def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
         else:
             _inner_dhwcn_2_3d_dhw(0, slice_size)
 
-    with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+    with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
         if core_data_size > 0:
             _inner_process_dhw(block_idx, core_data_size, 0, 0)
 
         if core_data_left > 0:
-            with tik_inst.if_scope(block_idx < (dhw_size % CORE_NUM)):
+            with tik_inst.if_scope(block_idx < (dhw_size % Constant.CORE_NUM)):
                 _inner_process_dhw(
                     block_idx, axis_c,
-                    core_data_size * CORE_NUM,
-                    dhw_size // CORE_NUM * ni_c0_size * CORE_NUM)
+                    core_data_size * Constant.CORE_NUM,
+                    dhw_size // Constant.CORE_NUM * ni_c0_size * Constant.CORE_NUM)
 
 
 # 'pylint: disable=too-many-statements, too-many-branches
@@ -366,40 +371,40 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
 
     if axis_n == 1:
         # move 16 * 256 elements each time
-        out_ub_size = C0_LEN * C0_LEN * C0_LEN
+        out_ub_size = Constant.C0_LEN * Constant.C0_LEN * Constant.C0_LEN
         out_ub = tik_inst.Tensor(data_in.dtype, (out_ub_size,),
                                  name="out_ub", scope=tik.scope_ubuf)
 
         # in order to keep ub size 16 align
-        in_ub_size = (UB_SIZE // 2 - out_ub_size) // C0_LEN * C0_LEN
+        in_ub_size = (Constant.UB_SIZE // 2 - out_ub_size) // Constant.C0_LEN * Constant.C0_LEN
         in_ub = tik_inst.Tensor(data_in.dtype, (in_ub_size,),
                                 name="in_ub", scope=tik.scope_ubuf)
 
         # set out_ub to zero
         _clean_ubuf(tik_inst, out_ub, 0, out_ub_size)
 
-        if axis_c % C0_LEN:
-            c_list = [i for i in range(axis_c % C0_LEN)]
+        if axis_c % Constant.C0_LEN:
+            c_list = [i for i in range(axis_c % Constant.C0_LEN)]
             reg_list = [tik_inst.Scalar(data_in.dtype) for i in c_list]
 
     else:
         vnchw_ub_size = _get_vnchwconv_ub_size(axis_n, data_in.dtype)
         # vnchwconv process 16 lines each time
-        vnchw_col_size = vnchw_ub_size // C0_LEN
+        vnchw_col_size = vnchw_ub_size // Constant.C0_LEN
         in_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                                 name="in_ub", scope=tik.scope_ubuf)
         out_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                                  name="out_ub", scope=tik.scope_ubuf)
 
     hw_size = axis_h * axis_w
-    multi_hw_loop_cnt = hw_size // CORE_NUM
-    multi_hw_left_cnt = hw_size % CORE_NUM
-    c_loop_cnt = axis_c // C0_LEN
-    c_left_cnt = axis_c % C0_LEN
-    ni_c0_size = C0_LEN * C0_LEN
-    c1hw_size = _ceil_div(axis_c, C0_LEN) * hw_size
+    multi_hw_loop_cnt = hw_size // Constant.CORE_NUM
+    multi_hw_left_cnt = hw_size % Constant.CORE_NUM
+    c_loop_cnt = axis_c // Constant.C0_LEN
+    c_left_cnt = axis_c % Constant.C0_LEN
+    ni_c0_size = Constant.C0_LEN * Constant.C0_LEN
+    c1hw_size = _ceil_div(axis_c, Constant.C0_LEN) * hw_size
 
-    with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+    with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
         with tik_inst.for_range(0, axis_d) as d_idx:
 
             def _inner_process_hw(hw_lp_index):
@@ -412,8 +417,8 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                     do transfer from dhwcn to 3d by vnchwconv
                     """
 
-                    ceil_axis_n = _ceil_div(axis_n, C0_LEN) * C0_LEN
-                    n_16_size = ceil_axis_n * C0_LEN
+                    ceil_axis_n = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
+                    n_16_size = ceil_axis_n * Constant.C0_LEN
                     idx_list = [0, 1, 2, 3, 4, 5, 6, 7,
                                 8, 9, 10, 11, 12, 13, 14, 15]
 
@@ -431,13 +436,13 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                 tik_inst.data_move(
                                     in_ub,
                                     data_in[n_lp_index * vnchw_col_size +
-                                            c_lp_index * C0_LEN * axis_n +
+                                            c_lp_index * Constant.C0_LEN * axis_n +
                                             (block_idx +
-                                             hw_lp_index * CORE_NUM +
+                                             hw_lp_index * Constant.CORE_NUM +
                                              d_idx * hw_size) *
                                             axis_c * axis_n],
                                     0, 1,
-                                    c_cnt * _ceil_div(col_size, C0_LEN), 0, 0)
+                                    c_cnt * _ceil_div(col_size, Constant.C0_LEN), 0, 0)
                             else:
                                 with tik_inst.for_range(
                                         0, c_cnt) as c_line_idx:
@@ -445,19 +450,19 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                         in_ub[c_line_idx * vnchw_col_size],
                                         data_in[c_line_idx * axis_n +
                                                 n_lp_index * vnchw_col_size +
-                                                c_lp_index * C0_LEN * axis_n +
+                                                c_lp_index * Constant.C0_LEN * axis_n +
                                                 (block_idx +
-                                                 hw_lp_index * CORE_NUM +
+                                                 hw_lp_index * Constant.CORE_NUM +
                                                  d_idx * hw_size) *
                                                 axis_c * axis_n],
                                         0, 1,
-                                        _ceil_div(col_size, C0_LEN), 0, 0)
+                                        _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
                             src_addr_list = [in_ub[vnchw_col_size * i]
                                              for i in idx_list]
-                            dst_addr_list = [out_ub[C0_LEN * i]
+                            dst_addr_list = [out_ub[Constant.C0_LEN * i]
                                              for i in idx_list]
-                            repeat_cnt = _ceil_div(col_size, C0_LEN)
+                            repeat_cnt = _ceil_div(col_size, Constant.C0_LEN)
                             src_stride = 0 if repeat_cnt == 1 else 1
                             dst_stride = 0 if repeat_cnt == 1 else 16
 
@@ -467,23 +472,23 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                                repeat_cnt,
                                                dst_stride, src_stride)
                             # set n left to zero
-                            if col_size % C0_LEN:
+                            if col_size % Constant.C0_LEN:
                                 _clean_ubuf(
                                     tik_inst, out_ub,
-                                    col_size * C0_LEN,
-                                    (C0_LEN - col_size % C0_LEN) * C0_LEN)
+                                    col_size * Constant.C0_LEN,
+                                    (Constant.C0_LEN - col_size % Constant.C0_LEN) * Constant.C0_LEN)
 
                             no_ni_c0_size = \
-                                _ceil_div(axis_n, C0_LEN) * ni_c0_size
+                                _ceil_div(axis_n, Constant.C0_LEN) * ni_c0_size
                             tik_inst.data_move(
                                 data_out[n_lp_index *
-                                         _ceil_div(vnchw_col_size, C0_LEN) *
+                                         _ceil_div(vnchw_col_size, Constant.C0_LEN) *
                                          ni_c0_size +
                                          (c_lp_index * hw_size + block_idx +
-                                          hw_lp_index * CORE_NUM +
+                                          hw_lp_index * Constant.CORE_NUM +
                                           d_idx * c1hw_size) * no_ni_c0_size],
                                 out_ub,
-                                0, 1, repeat_cnt * C0_LEN, 0, 0)
+                                0, 1, repeat_cnt * Constant.C0_LEN, 0, 0)
 
                         if n_16_size > vnchw_ub_size:
                             n_loop = axis_n // vnchw_col_size
@@ -502,13 +507,13 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
 
                     if c_loop_cnt:
                         with tik_inst.for_range(0, c_loop_cnt) as c_lp_idx:
-                            _c_loop_process(c_lp_idx, C0_LEN)
+                            _c_loop_process(c_lp_idx, Constant.C0_LEN)
 
                     if c_left_cnt:
                         # clean the un-used lines of 16 lines to zero
                         _clean_ubuf(tik_inst, in_ub,
                                     c_left_cnt * vnchw_col_size,
-                                    (C0_LEN - c_left_cnt) * vnchw_col_size)
+                                    (Constant.C0_LEN - c_left_cnt) * vnchw_col_size)
                         _c_loop_process(c_loop_cnt, c_left_cnt)
                 _inner_dhwcn_2_3d_hw_vnchw()
 
@@ -523,27 +528,27 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                     dhwcn transfer to 3d by c with c <= in_ub_size
                     """
 
-                    if not col_size % C0_LEN:
+                    if not col_size % Constant.C0_LEN:
                         tik_inst.data_move(
                             in_ub,
-                            data_in[(hwc_index * C0_LEN + block_idx * hw_len +
+                            data_in[(hwc_index * Constant.C0_LEN + block_idx * hw_len +
                                      d_idx * hw_size) * axis_c + in_offset],
-                            0, c0_line, _ceil_div(col_size, C0_LEN), 0,
-                            (hwc_col_size - col_size) // C0_LEN)
+                            0, c0_line, _ceil_div(col_size, Constant.C0_LEN), 0,
+                            (hwc_col_size - col_size) // Constant.C0_LEN)
                     else:
                         with tik_inst.for_range(0, c0_line) as c0_idx:
                             tik_inst.data_move(
                                 in_ub[c0_idx * hwc_col_size],
-                                data_in[(hwc_index * C0_LEN +
+                                data_in[(hwc_index * Constant.C0_LEN +
                                          block_idx * hw_len +
                                          d_idx * hw_size) * axis_c +
                                         in_offset + c0_idx * col_size],
-                                0, 1, _ceil_div(col_size, C0_LEN), 0, 0)
+                                0, 1, _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
                     src_addr_list = [in_ub[hwc_col_size * i] for i in idx_list]
-                    dst_addr_list = [in_ub[hwc_ub_size + C0_LEN * i]
+                    dst_addr_list = [in_ub[hwc_ub_size + Constant.C0_LEN * i]
                                      for i in idx_list]
-                    repeat_cnt1 = _ceil_div(col_size, C0_LEN)
+                    repeat_cnt1 = _ceil_div(col_size, Constant.C0_LEN)
                     src_stride = 0 if repeat_cnt1 == 1 else 1
                     dst_stride = 0 if repeat_cnt1 == 1 else 16
                     # first vnchwconv
@@ -557,25 +562,25 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                         in_ub[hwc_ub_size * 2],
                         in_ub[hwc_ub_size],
                         0, col_size // axis_c, axis_c,
-                        0, _ceil_div(axis_c, C0_LEN) * C0_LEN - axis_c)
+                        0, _ceil_div(axis_c, Constant.C0_LEN) * Constant.C0_LEN - axis_c)
 
                     repeat_cnt2 = 1
                     src_stride2 = 0
                     dst_stride2 = 0
                     c_cnt = col_size // axis_c
-                    c0_cnt = _ceil_div(axis_c, C0_LEN)
+                    c0_cnt = _ceil_div(axis_c, Constant.C0_LEN)
 
                     with tik_inst.for_range(0, c0_cnt) as c0_index:
                         with tik_inst.for_range(0, c_cnt) as c_index:
                             src_tmp_list = [
                                 in_ub[hwc_ub_size * 2 +
                                       (c0_index + c_index * c0_cnt) *
-                                      ni_c0_size + C0_LEN * i]
+                                      ni_c0_size + Constant.C0_LEN * i]
                                 for i in idx_list]
                             dst_tmp_list = [out_ub[ni_c0_size * i]
                                             for i in idx_list]
 
-                            # mv 16 c0 to make 16 C0_LEN * C0_LEN
+                            # mv 16 c0 to make 16 Constant.C0_LEN * Constant.C0_LEN
                             tik_inst.vnchwconv(False, False,
                                                dst_tmp_list,
                                                src_tmp_list,
@@ -584,18 +589,18 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
 
                             tik_inst.data_move(
                                 data_out[(c_index + c0_index * hw_size +
-                                          hwc_index * C0_LEN +
+                                          hwc_index * Constant.C0_LEN +
                                           block_idx * hw_len +
                                           d_idx * c0_cnt * hw_size) *
                                          ni_c0_size + out_offset],
                                 out_ub,
-                                0, c0_line, C0_LEN,
-                                0, (c_cnt - 1) * C0_LEN)
+                                0, c0_line, Constant.C0_LEN,
+                                0, (c_cnt - 1) * Constant.C0_LEN)
 
                 c_count_in_col = \
-                    hwc_col_size // (_ceil_div(axis_c, C0_LEN) * C0_LEN)
-                actual_c_count_in_col = hw_len // C0_LEN
-                c_count_left = hw_len % C0_LEN
+                    hwc_col_size // (_ceil_div(axis_c, Constant.C0_LEN) * Constant.C0_LEN)
+                actual_c_count_in_col = hw_len // Constant.C0_LEN
+                c_count_left = hw_len % Constant.C0_LEN
                 idx_list = [0, 1, 2, 3, 4, 5, 6, 7,
                             8, 9, 10, 11, 12, 13, 14, 15]
 
@@ -607,12 +612,12 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                         with tik_inst.for_range(0, hwc_ub_loop) as hwc_ub_idx:
                             _dhwcn_2_3d_hw_hwc(
                                 hwc_ub_idx * c_count_in_col,
-                                c_count_in_col * axis_c, C0_LEN)
+                                c_count_in_col * axis_c, Constant.C0_LEN)
 
                     if hwc_ub_left:
                         _dhwcn_2_3d_hw_hwc(
                             hwc_ub_loop * c_count_in_col,
-                            hwc_ub_left * axis_c, C0_LEN)
+                            hwc_ub_left * axis_c, Constant.C0_LEN)
 
                 if c_count_left:
                     _dhwcn_2_3d_hw_hwc(
@@ -633,29 +638,29 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                     tik_inst.data_move(
                         in_ub,
                         data_in[c_ub_index * in_ub_size +
-                                (block_idx + hw_lp_index * CORE_NUM +
+                                (block_idx + hw_lp_index * Constant.CORE_NUM +
                                  d_idx * hw_size) * axis_c],
-                        0, 1, _ceil_div(col_size, C0_LEN), 0, 0)
+                        0, 1, _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
-                    c0_cnt = col_size // C0_LEN
-                    col_left = col_size % C0_LEN
+                    c0_cnt = col_size // Constant.C0_LEN
+                    col_left = col_size % Constant.C0_LEN
                     if c0_cnt:
-                        c0_loop = c0_cnt // C0_LEN
-                        c0_loop_left = c0_cnt % C0_LEN
+                        c0_loop = c0_cnt // Constant.C0_LEN
+                        c0_loop_left = c0_cnt % Constant.C0_LEN
                         with tik_inst.for_range(0, c0_loop) as c0_lp_idx:
                             tik_inst.data_move(
                                 out_ub,
                                 in_ub[c0_lp_idx * ni_c0_size],
-                                0, C0_LEN, 1, 0, 15)
+                                0, Constant.C0_LEN, 1, 0, 15)
 
                             tik_inst.data_move(
-                                data_out[(block_idx + hw_lp_index * CORE_NUM +
-                                          (c0_lp_idx * C0_LEN + c_ub_index *
-                                           in_ub_size // C0_LEN +
-                                           d_idx * _ceil_div(axis_c, C0_LEN)) *
+                                data_out[(block_idx + hw_lp_index * Constant.CORE_NUM +
+                                          (c0_lp_idx * Constant.C0_LEN + c_ub_index *
+                                           in_ub_size // Constant.C0_LEN +
+                                           d_idx * _ceil_div(axis_c, Constant.C0_LEN)) *
                                           hw_size) * ni_c0_size],
                                 out_ub,
-                                0, C0_LEN, C0_LEN, 0, (hw_size - 1) * C0_LEN)
+                                0, Constant.C0_LEN, Constant.C0_LEN, 0, (hw_size - 1) * Constant.C0_LEN)
 
                         if c0_loop_left:
                             tik_inst.data_move(
@@ -664,32 +669,32 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                                 0, c0_loop_left, 1, 0, 15)
 
                             tik_inst.data_move(
-                                data_out[(block_idx + hw_lp_index * CORE_NUM +
-                                          (c0_loop * C0_LEN + c_ub_index *
-                                           in_ub_size // C0_LEN +
-                                           d_idx * _ceil_div(axis_c, C0_LEN)) *
+                                data_out[(block_idx + hw_lp_index * Constant.CORE_NUM +
+                                          (c0_loop * Constant.C0_LEN + c_ub_index *
+                                           in_ub_size // Constant.C0_LEN +
+                                           d_idx * _ceil_div(axis_c, Constant.C0_LEN)) *
                                           hw_size) * ni_c0_size],
                                 out_ub,
-                                0, c0_loop_left, C0_LEN,
-                                0, (hw_size - 1) * C0_LEN)
+                                0, c0_loop_left, Constant.C0_LEN,
+                                0, (hw_size - 1) * Constant.C0_LEN)
 
                     if col_left:
                         # the left cnt is less than one block,
                         # so clean one block
-                        _clean_ubuf(tik_inst, out_ub, 0, C0_LEN)
+                        _clean_ubuf(tik_inst, out_ub, 0, Constant.C0_LEN)
                         for idx in c_list:
-                            reg_list[idx].set_as(in_ub[c0_cnt * C0_LEN + idx])
+                            reg_list[idx].set_as(in_ub[c0_cnt * Constant.C0_LEN + idx])
                         for idx in c_list:
                             out_ub[idx].set_as(reg_list[idx])
 
                         tik_inst.data_move(
-                            data_out[(block_idx + hw_lp_index * CORE_NUM +
+                            data_out[(block_idx + hw_lp_index * Constant.CORE_NUM +
                                       (c0_cnt + c_ub_index *
-                                       in_ub_size // C0_LEN +
-                                       d_idx * _ceil_div(axis_c, C0_LEN)) *
+                                       in_ub_size // Constant.C0_LEN +
+                                       d_idx * _ceil_div(axis_c, Constant.C0_LEN)) *
                                       hw_size) * ni_c0_size],
                             out_ub,
-                            0, 1, C0_LEN, 0, (hw_size - 1) * C0_LEN)
+                            0, 1, Constant.C0_LEN, 0, (hw_size - 1) * Constant.C0_LEN)
 
                 c_ub_loop = axis_c // in_ub_size
                 c_ub_left = axis_c % in_ub_size
@@ -722,12 +727,12 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
 
                 else:
                     # to split the in_ub_size into 3 parts and align with 16
-                    hwc_col_size = in_ub_size // 3 // C0_LEN // C0_LEN * C0_LEN
-                    hwc_ub_size = hwc_col_size * C0_LEN
+                    hwc_col_size = in_ub_size // 3 // Constant.C0_LEN // Constant.C0_LEN * Constant.C0_LEN
+                    hwc_ub_size = hwc_col_size * Constant.C0_LEN
 
                     # clean dst address of ub_to_ub one time
                     with tik_inst.if_scope(d_idx == 0):
-                        with tik_inst.if_scope(axis_c % C0_LEN):
+                        with tik_inst.if_scope(axis_c % Constant.C0_LEN):
                             _clean_ubuf(tik_inst, in_ub,
                                         hwc_ub_size * 2, hwc_ub_size)
 
@@ -740,8 +745,8 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                         with tik_inst.if_scope(block_idx < multi_hw_left_cnt):
                             _inner_process_hwc(
                                 1,
-                                multi_hw_loop_cnt * CORE_NUM * axis_c,
-                                multi_hw_loop_cnt * CORE_NUM * ni_c0_size)
+                                multi_hw_loop_cnt * Constant.CORE_NUM * axis_c,
+                                multi_hw_loop_cnt * Constant.CORE_NUM * ni_c0_size)
 
 
 def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
@@ -751,28 +756,28 @@ def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
 
     axis_d, axis_h, axis_w, axis_c, axis_n = shape_in
 
-    multi_d_loop_cnt = axis_d // CORE_NUM
-    multi_d_left_cnt = axis_d % CORE_NUM
+    multi_d_loop_cnt = axis_d // Constant.CORE_NUM
+    multi_d_left_cnt = axis_d % Constant.CORE_NUM
     hw_size = axis_h * axis_w
     idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
     vnchw_ub_size = _get_vnchwconv_ub_size(axis_n, data_in.dtype)
     # vnchwconv process 16 lines each time
-    vnchw_col_size = vnchw_ub_size // C0_LEN
+    vnchw_col_size = vnchw_ub_size // Constant.C0_LEN
     in_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                             name="in_ub", scope=tik.scope_ubuf)
     out_ub = tik_inst.Tensor(data_in.dtype, (vnchw_ub_size,),
                              name="out_ub", scope=tik.scope_ubuf)
 
-    with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+    with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
 
         def _inner_process_d(d_lp_index):
             """
             real transfer process for multiple core on axis h, w
             """
 
-            c_loop_cnt = axis_c // C0_LEN
-            c_left = axis_c % C0_LEN
+            c_loop_cnt = axis_c // Constant.C0_LEN
+            c_left = axis_c % Constant.C0_LEN
 
             with tik_inst.for_range(0, hw_size) as hw_idx:
 
@@ -790,28 +795,28 @@ def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
                             tik_inst.data_move(
                                 in_ub,
                                 data_in[n_lp_index * vnchw_col_size +
-                                        c_lp_index * C0_LEN * axis_n +
+                                        c_lp_index * Constant.C0_LEN * axis_n +
                                         hw_idx * axis_c * axis_n +
-                                        (block_idx + d_lp_index * CORE_NUM) *
+                                        (block_idx + d_lp_index * Constant.CORE_NUM) *
                                         hw_size * axis_c * axis_n],
                                 0, 1,
-                                c_cnt * _ceil_div(col_size, C0_LEN), 0, 0)
+                                c_cnt * _ceil_div(col_size, Constant.C0_LEN), 0, 0)
                         else:
                             with tik_inst.for_range(0, c_cnt) as c_index:
                                 tik_inst.data_move(
                                     in_ub[c_index * vnchw_col_size],
                                     data_in[n_lp_index * vnchw_col_size +
                                             c_index * axis_n +
-                                            c_lp_index * C0_LEN * axis_n +
+                                            c_lp_index * Constant.C0_LEN * axis_n +
                                             hw_idx * axis_c * axis_n +
-                                            (block_idx + d_lp_index * CORE_NUM)
+                                            (block_idx + d_lp_index * Constant.CORE_NUM)
                                             * hw_size * axis_c * axis_n],
-                                    0, 1, _ceil_div(col_size, C0_LEN), 0, 0)
+                                    0, 1, _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
                         src_addr_list = [in_ub[vnchw_col_size * i]
                                          for i in idx_list]
-                        dst_addr_list = [out_ub[C0_LEN * i] for i in idx_list]
-                        repeat_cnt = _ceil_div(col_size, C0_LEN)
+                        dst_addr_list = [out_ub[Constant.C0_LEN * i] for i in idx_list]
+                        repeat_cnt = _ceil_div(col_size, Constant.C0_LEN)
                         src_stride = 0 if repeat_cnt == 1 else 1
                         dst_stride = 0 if repeat_cnt == 1 else 16
 
@@ -821,25 +826,25 @@ def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
                                            repeat_cnt,
                                            dst_stride, src_stride)
                         # set n left to zero
-                        if col_size % C0_LEN:
+                        if col_size % Constant.C0_LEN:
                             _clean_ubuf(
                                 tik_inst, out_ub,
-                                col_size * C0_LEN,
-                                (C0_LEN - col_size % C0_LEN) * C0_LEN)
+                                col_size * Constant.C0_LEN,
+                                (Constant.C0_LEN - col_size % Constant.C0_LEN) * Constant.C0_LEN)
 
-                        ni_c0_size = C0_LEN * C0_LEN
-                        no_ni_c0_size = _ceil_div(axis_n, C0_LEN) * ni_c0_size
-                        c1_cnt = _ceil_div(axis_c, C0_LEN)
+                        ni_c0_size = Constant.C0_LEN * Constant.C0_LEN
+                        no_ni_c0_size = _ceil_div(axis_n, Constant.C0_LEN) * ni_c0_size
+                        c1_cnt = _ceil_div(axis_c, Constant.C0_LEN)
                         c1hw_size = c1_cnt * hw_size
                         tik_inst.data_move(
                             data_out[n_lp_index *
-                                     _ceil_div(vnchw_col_size, C0_LEN) *
+                                     _ceil_div(vnchw_col_size, Constant.C0_LEN) *
                                      ni_c0_size +
                                      (c_lp_index * hw_size + hw_idx +
-                                      (d_lp_index * CORE_NUM + block_idx) *
+                                      (d_lp_index * Constant.CORE_NUM + block_idx) *
                                       c1hw_size) * no_ni_c0_size],
                             out_ub,
-                            0, 1, repeat_cnt * C0_LEN, 0, 0)
+                            0, 1, repeat_cnt * Constant.C0_LEN, 0, 0)
 
                     if axis_n > vnchw_col_size:
                         n_loop = axis_n // vnchw_col_size
@@ -858,12 +863,12 @@ def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
 
                 if c_loop_cnt:
                     with tik_inst.for_range(0, c_loop_cnt) as c_lp_idx:
-                        _dhwcn_2_3d_d(c_lp_idx, C0_LEN)
+                        _dhwcn_2_3d_d(c_lp_idx, Constant.C0_LEN)
 
                 if c_left:
                     # set the lines will not be used to zero
                     _clean_ubuf(tik_inst, in_ub, c_left * vnchw_col_size,
-                                (C0_LEN - c_left) * vnchw_col_size)
+                                (Constant.C0_LEN - c_left) * vnchw_col_size)
                     _dhwcn_2_3d_d(c_loop_cnt, c_left)
 
         if multi_d_loop_cnt:
@@ -881,11 +886,11 @@ def dhwcn_2_fractal_z_3d_compute(tik_inst, data_in, data_out, shape_in):
     """
 
     axis_d, _, _, axis_c, axis_n = shape_in
-    if axis_c <= C0_LEN and axis_n == 1:
+    if axis_c <= Constant.C0_LEN and axis_n == 1:
         _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in)
-    elif axis_c // C0_LEN // CORE_NUM > 0 and axis_n > 1:
+    elif axis_c // Constant.C0_LEN // Constant.CORE_NUM > 0 and axis_n > 1:
         _multi_core_on_c(tik_inst, data_in, data_out, shape_in)
-    elif axis_d // CORE_NUM > 0 and axis_n > 1:
+    elif axis_d // Constant.CORE_NUM > 0 and axis_n > 1:
         _multi_core_on_d(tik_inst, data_in, data_out, shape_in)
     else:
         _multi_core_on_hw(tik_inst, data_in, data_out, shape_in)
@@ -895,9 +900,9 @@ def _set_core_num(origin_num):
     """
     function of set core num
     """
-    if origin_num < CORE_NUM:
+    if origin_num < Constant.CORE_NUM:
         return origin_num
-    return CORE_NUM
+    return Constant.CORE_NUM
 
 
 def _set_loop(tik_instance, num_core, max_core, total_dim):
@@ -906,7 +911,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     """
     core_loop = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_dim % CORE_NUM):
+    with tik_instance.if_scope(num_core < total_dim % Constant.CORE_NUM):
         core_loop.set_as(_ceil_div(total_dim, max_core))
     with tik_instance.else_scope():
         core_loop.set_as(total_dim // max_core)
@@ -933,7 +938,7 @@ class Dhwcn2Fz3dFp32Compute:
         self.kernel_name = kernel_name
         self.float_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
         self.cp_align_len = cce_params.BLOCK_REDUCE_INT8 // self.float_size
-        self.ub_ele = ((UB_SIZE - 64) // self.float_size // 2
+        self.ub_ele = ((Constant.UB_SIZE - 64) // self.float_size // 2
                        // 256) * 256
         self.c_0 = self.dst_shape[3]
         self.n_i = self.dst_shape[2]
@@ -1588,10 +1593,10 @@ def dhwcn_2_fractal_z_3d(src, dst, src_format, dst_format,
     check_list = ("float16",)
     check_dtype(input_dtype, check_list)
     check_shape(shape_in, min_rank=5, max_rank=5)
-    shape_out = (shape_in[0], _ceil_div(shape_in[3], C0_LEN),
+    shape_out = (shape_in[0], _ceil_div(shape_in[3], Constant.C0_LEN),
                  shape_in[1] * shape_in[2],
-                 _ceil_div(shape_in[4], C0_LEN),
-                 C0_LEN, C0_LEN)
+                 _ceil_div(shape_in[4], Constant.C0_LEN),
+                 Constant.C0_LEN, Constant.C0_LEN)
     check_shape(shape_out)
 
     if input_dtype != dst_dtype:
