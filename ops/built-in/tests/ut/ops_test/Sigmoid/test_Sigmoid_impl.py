@@ -85,7 +85,7 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("all", {
+ut_case.add_precision_case("Ascend710", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
                 "sigmoid",
