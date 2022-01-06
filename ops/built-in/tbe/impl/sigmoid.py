@@ -162,6 +162,8 @@ def sigmoid(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         kernel name, default value is "sigmoid"
+    impl_mode : str
+        impl_mode, default value is "high_precision"
 
     Returns
     -------
