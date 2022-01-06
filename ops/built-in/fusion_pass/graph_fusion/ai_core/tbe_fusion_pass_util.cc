@@ -245,7 +245,7 @@ bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const char* name
     return false;
   }
 
-  if (!GetConstIntData(tensor, op.GetInputDesc(name).GetDataType(), values)) {
+  if (!GetConstIntData(tensor, op.GetInputDescByName(name).GetDataType(), values)) {
     OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", TbeGetName(op).c_str(),
             name);
     return false;

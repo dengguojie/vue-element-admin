@@ -101,7 +101,7 @@ bool Concatv2dFusionPass::CheckConcatValid(const ge::NodePtr& node, const ge::Fo
 bool Concatv2dFusionPass::HasUnKnowInputShape(const std::vector<ge::NodePtr> &input_nodes) {
   bool res = false;
   res = std::any_of(std::begin(input_nodes), std::end(input_nodes), \
-                      [](const ge::NodePtr& item){return HasUnKnowShape(item);});
+                    [](const ge::NodePtr& item){return HasUnKnowShape(item);});
   return res;
 }
 

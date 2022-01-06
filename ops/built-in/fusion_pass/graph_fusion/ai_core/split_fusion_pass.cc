@@ -93,6 +93,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                       return NOT_CHANGED);
     OP_LOGI(FUSED_NODE, "CheckOpSupported fail, split dynamic");
   }
+
   // build a fusion node op desc
   OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitAttrInfo);
   FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGI(FUSED_OP_TYPE, "fusion op desc is nullptr."),
@@ -250,7 +251,8 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
         }
 
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(splitd_base_node->GetOutDataAnchor(i), splitd_node->GetInDataAnchor(0)),
+            SUCCESS != ge::GraphUtils::AddEdge(splitd_base_node->GetOutDataAnchor(i),
+                                               splitd_node->GetInDataAnchor(0)),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                     splitd_base_node->GetName().c_str(), i, splitd_node->GetName().c_str(), i),

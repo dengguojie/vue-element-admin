@@ -37,11 +37,15 @@
 
 namespace fe {
 const int32_t OUT_ANCHOR_INDEX = 4;
-const int32_t OUT_ANCHOR_INDEX_THREE = 3;
-const int32_t CLEAR_OUTPUT_INDEX_TWO = 2;
 const int32_t OUTPUTS_SIZE_ASTRICT = 5;
-static const string PATTERN_FUSEDBATCHNORM = "BatchNorm";
+const int32_t BATCH_NORM_SCALE_IDX = 3;
+const int32_t BATCH_NORM_INPUT_COUNT = 3;
+const int32_t SQUARE_SUM_SCALE_IDX = 2;
+const int32_t BATCH_NORM_UPDATE_SCALE_IDX= 2;
+const int32_t BATCH_NORM_NODE_SCALE_IDX= 2;
+const int32_t SUM_SCALE_IDX = 1;
 static const string PASS_OP_TYPE_BATCHNORM = "BatchNorm";
+static const string PATTERN_FUSEDBATCHNORM = "BatchNorm";
 
 vector<FusionPattern*> FusedBatchNormBertFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -64,7 +68,7 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   FUSION_PASS_CHECK(batchNormDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(
                     FUSED_OP_TYPE.c_str(), "batchNormNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
-  if (batchNormDesc->GetInputsSize() != OUT_ANCHOR_INDEX_THREE) {
+  if (batchNormDesc->GetInputsSize() != BATCH_NORM_INPUT_COUNT) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] should have 3 input desc, but actually is %d", batchNormName.c_str(),
             batchNormDesc->GetInputsSize());
     return NOT_CHANGED;
@@ -77,16 +81,16 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s] has %u output anchor.", batchNormDesc->GetName().c_str(),
           batchNormNode->GetAllOutDataAnchors().size());
   if (!(batchNormNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().empty()) ||
-      !(batchNormNode->GetOutDataAnchor(CLEAR_OUTPUT_INDEX_TWO)->GetPeerInDataAnchors().empty())) {
+      !(batchNormNode->GetOutDataAnchor(BATCH_NORM_NODE_SCALE_IDX)->GetPeerInDataAnchors().empty())) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s 1st and 2nd output anchor shouldn't link to any other input anchors.",
             batchNormName.c_str());
     return NOT_CHANGED;
   }
   if (batchNormNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().empty() ||
-      batchNormNode->GetOutDataAnchor(OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors().empty() ||
+      batchNormNode->GetOutDataAnchor(BATCH_NORM_SCALE_IDX)->GetPeerInDataAnchors().empty() ||
       batchNormNode->GetOutDataAnchor(OUT_ANCHOR_INDEX)->GetPeerInDataAnchors().empty()) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s 0/3/4 output should link to other node's input.",
-    batchNormName.c_str());
+            batchNormName.c_str());
     return NOT_CHANGED;
   }
   // end validation
@@ -100,7 +104,7 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                     batchNormName.c_str()), return PARAM_INVALID);
   batchNormReduceDesc->SetName(batchNormDesc->GetName() + "/BNTrainingReduce");
   batchNormReduceDesc->SetType("BNTrainingReduce");
-  if (batchNormReduceDesc->GetInputsSize() < OUT_ANCHOR_INDEX_THREE) {
+  if (batchNormReduceDesc->GetInputsSize() < BATCH_NORM_INPUT_COUNT) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc", batchNormReduceDesc->GetInputsSize());
     return NOT_CHANGED;
   }
@@ -110,14 +114,14 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     return NOT_CHANGED;
   }
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, OUT_ANCHOR_INDEX);
-  OpDescUtils::ClearInputDesc(batchNormReduceDesc, OUT_ANCHOR_INDEX_THREE);
-  OpDescUtils::ClearInputDesc(batchNormReduceDesc, CLEAR_OUTPUT_INDEX_TWO);
+  OpDescUtils::ClearInputDesc(batchNormReduceDesc, BATCH_NORM_SCALE_IDX);
+  OpDescUtils::ClearInputDesc(batchNormReduceDesc, BATCH_NORM_UPDATE_SCALE_IDX);
   OpDescUtils::ClearInputDesc(batchNormReduceDesc, 1);
   for (int index = 4; index >= 0; index--) {
     OpDescUtils::ClearOutputDesc(batchNormReduceDesc, index);
   }
   batchNormReduceDesc->AddOutputDesc("sum", batchNormDesc->GetInputDesc(1));
-  batchNormReduceDesc->AddOutputDesc("square_sum", batchNormDesc->GetInputDesc(CLEAR_OUTPUT_INDEX_TWO));
+  batchNormReduceDesc->AddOutputDesc("square_sum", batchNormDesc->GetInputDesc(SQUARE_SUM_SCALE_IDX));
   // end reduce desc
   // update desc
   ge::OpDescPtr batchNormUpdateV2Desc = AttrUtils::CloneOpDesc(batchNormDesc);
@@ -131,14 +135,14 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
             batchNormUpdateV2Desc->GetOutputsSize());
     return NOT_CHANGED;
   }
-  if (batchNormUpdateV2Desc->GetInputsSize() < OUT_ANCHOR_INDEX_THREE) {
+  if (batchNormUpdateV2Desc->GetInputsSize() < BATCH_NORM_SCALE_IDX) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
             batchNormUpdateV2Desc->GetInputsSize());
     return NOT_CHANGED;
   }
-  batchNormUpdateV2Desc->AddInputDesc(OUT_ANCHOR_INDEX_THREE, batchNormDesc->GetInputDesc(1));
-  batchNormUpdateV2Desc->AddInputDesc(OUT_ANCHOR_INDEX, batchNormDesc->GetInputDesc(2));
-  OpDescUtils::ClearOutputDesc(batchNormUpdateV2Desc, CLEAR_OUTPUT_INDEX_TWO);
+  batchNormUpdateV2Desc->AddInputDesc(BATCH_NORM_SCALE_IDX, batchNormDesc->GetInputDesc(SUM_SCALE_IDX));
+  batchNormUpdateV2Desc->AddInputDesc(OUT_ANCHOR_INDEX, batchNormDesc->GetInputDesc(BATCH_NORM_UPDATE_SCALE_IDX));
+  OpDescUtils::ClearOutputDesc(batchNormUpdateV2Desc, BATCH_NORM_UPDATE_SCALE_IDX);
   OpDescUtils::ClearOutputDesc(batchNormUpdateV2Desc, 1);
   // end update desc
 
@@ -229,8 +233,8 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index.",
           batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
   FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
-                                                   batchNormUpdateV2Node->GetInDataAnchor(4)),
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(BATCH_NORM_NODE_SCALE_IDX)->GetPeerOutAnchor(),
+                                                   batchNormUpdateV2Node->GetInDataAnchor(OUT_ANCHOR_INDEX)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                      "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index failed.",
                                      batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str()),
@@ -255,11 +259,11 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     }
   }
 
-  if (batchNormNode->GetOutDataAnchor(OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors().size() > 0) {
+  if (batchNormNode->GetOutDataAnchor(BATCH_NORM_SCALE_IDX)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of batchNormNode is [%d].",
-            batchNormNode->GetOutDataAnchor(OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors().size());
+            batchNormNode->GetOutDataAnchor(BATCH_NORM_SCALE_IDX)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : batchNormNode->GetOutDataAnchor(
-        OUT_ANCHOR_INDEX_THREE)->GetPeerInDataAnchors()) {
+         BATCH_NORM_SCALE_IDX)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(batchNormUpdateV2Node->GetOutDataAnchor(1), inAnchorPtr),

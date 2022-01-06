@@ -41,8 +41,9 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
-const int32_t INPUT_DESC_INDEX_THREE = 3;
-const int32_t CLEAR_OUTPUT_INDEX_TWO = 2;
+const int32_t LIN_SPACE_NODE_INPUT_NUM_IDX = 3;
+const int32_t LIN_SPACE_NODE_INPUT_STOP_IDX = 2;
+const int32_t LIN_SPACE_NODE_INPUT_START_IDX = 1;
 static const float FLOAT_NUM_ZERO = 0;
 static const string PATTERN_LINSPACE = "LinSpace";
 const char* LINSPACE = "LinSpace";
@@ -94,11 +95,11 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     "linSpaceDDesc's OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   ge::GeTensorDesc tensorDesc0 = linspaceVNode->GetOpDesc()->GetInputDesc(0);
-  ge::GeTensorDesc tensorDesc1 = linspaceVNode->GetOpDesc()->GetInputDesc(1);
-  ge::GeTensorDesc tensorDesc2 = linspaceVNode->GetOpDesc()->GetInputDesc(CLEAR_OUTPUT_INDEX_TWO);
+  ge::GeTensorDesc tensorDesc1 = linspaceVNode->GetOpDesc()->GetInputDesc(LIN_SPACE_NODE_INPUT_START_IDX);
+  ge::GeTensorDesc tensorDesc2 = linspaceVNode->GetOpDesc()->GetInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX);
 
   // find the parent node of lin_space
-  ge::InDataAnchorPtr linspaceAnchorPtr2 = linspaceVNode->GetInDataAnchor(CLEAR_OUTPUT_INDEX_TWO);
+  ge::InDataAnchorPtr linspaceAnchorPtr2 = linspaceVNode->GetInDataAnchor(LIN_SPACE_NODE_INPUT_STOP_IDX);
   ge::OutDataAnchorPtr constAnchorPtr2 = linspaceAnchorPtr2->GetPeerOutAnchor();
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Success to get the father node\n");
@@ -142,21 +143,22 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                           assitPtr = nullptr;
                           return PARAM_INVALID);
 
-  OpDescUtils::ClearInputDesc(linSpaceDDesc, CLEAR_OUTPUT_INDEX_TWO);
-  OpDescUtils::ClearInputDesc(linSpaceDDesc, 1);
+  OpDescUtils::ClearInputDesc(linSpaceDDesc, LIN_SPACE_NODE_INPUT_STOP_IDX);
+  OpDescUtils::ClearInputDesc(linSpaceDDesc, LIN_SPACE_NODE_INPUT_START_IDX);
   OpDescUtils::ClearInputDesc(linSpaceDDesc, 0);
 
   // new the assist node
-  std::shared_ptr<ge::OpDesc> newConstantOp = std::make_shared<ge::OpDesc>(linSpaceDDesc->GetName() + "_assist", "Constant");
+  std::shared_ptr<ge::OpDesc> newConstantOp = std::make_shared<ge::OpDesc>(linSpaceDDesc->GetName() + 
+                                                                           "_assist", "Constant");
   FUSION_PASS_MAKE_SHARED(newConstantOp, return PARAM_INVALID);
   ge::AttrUtils::SetTensor(newConstantOp, "value", assitPtr);
   (void)newConstantOp->AddOutputDesc(assitPtr->GetTensorDesc());
   ge::NodePtr assistNode = graph.AddNode(newConstantOp);
 
   linSpaceDDesc->AddInputDesc(0, newConstantOp->GetOutputDesc(0));
-  linSpaceDDesc->AddInputDesc(1, linspaceDesc->GetInputDesc(0));
-  linSpaceDDesc->AddInputDesc(CLEAR_OUTPUT_INDEX_TWO, linspaceDesc->GetInputDesc(1));
-  linSpaceDDesc->AddInputDesc(INPUT_DESC_INDEX_THREE, linspaceDesc->GetInputDesc(2));
+  linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_START_IDX, linspaceDesc->GetInputDesc(0));
+  linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX, linspaceDesc->GetInputDesc(LIN_SPACE_NODE_INPUT_START_IDX));
+  linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_NUM_IDX, linspaceDesc->GetInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX));
 
   ge::NodePtr linSpaceDNode = graph.AddNode(linSpaceDDesc);
   FUSION_PASS_CHECK(

@@ -48,8 +48,8 @@ static const int64_t INT_LESS_C0 = 15;
 static const string PATTERN_SPP = "SPP";
 static const char* SPP = "SPP";
 
-Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc, int64_t hyramidLevel,
-                                 int64_t poolMethod) {
+Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc,
+                                 int64_t hyramidLevel, int64_t poolMethod) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make pooling layer");
   vector<int64_t> shapeDims = inputDesc.GetOriginShape().GetDims();
   if (shapeDims.empty() || shapeDims.size() < INT_NUM_FOUR) {

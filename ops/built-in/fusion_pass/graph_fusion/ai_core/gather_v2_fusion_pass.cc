@@ -67,6 +67,7 @@ Status ConstToAttrGatherV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_CHECK(fusedNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
+
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",

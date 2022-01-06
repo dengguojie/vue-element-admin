@@ -43,6 +43,7 @@ namespace fe {
 static const char* FUSED_NODE = "SplitV";
 static const std::string PATTERN_FUSEDNODE = "FusedNodeSplitV";
 static const size_t SPLIT_MAX_NUM = 63;
+static const int64_t SPLIT_MAX_NUM_INT64 = 63;
 /*
 1:
 SplitV ---> SplitVD
@@ -123,7 +124,7 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   // A maximum of 63 tensors are supported in mini mode.
   int64_t num_split;
   ge::AttrUtils::GetInt(fusedDesc, "num_split", num_split);
-  FUSION_PASS_CHECK(num_split <= SPLIT_MAX_NUM,
+  FUSION_PASS_CHECK(num_split <= SPLIT_MAX_NUM_INT64,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of num_split of SplitVD node is less than 63."),
                     return SUCCESS);
 
@@ -231,7 +232,7 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         ge::AttrUtils::SetListInt(splitvd_node->GetOpDesc(), "size_splits", size_splits_new2);
 
         SplitVDDesc->UpdateInputDesc(0, outputDesc[i]);
-        for (int64_t h = 0; h < SPLIT_MAX_NUM; h++) {
+        for (size_t h = 0; h < SPLIT_MAX_NUM; h++) {
           ge::GeTensorDesc SplitVDOutputTensor_2 = SplitVDDesc->GetOutputDesc(h);
           ge::GeShape SplitVDOutputShape_2 = SplitVDOutputTensor_2.GetShape();
           SplitVDOutputShape_2.SetDim(split_dim_num, size_splits_new2[h]);

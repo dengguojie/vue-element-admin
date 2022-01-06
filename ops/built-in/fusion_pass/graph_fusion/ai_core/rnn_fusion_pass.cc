@@ -61,7 +61,8 @@ vector<FusionPattern*> RNNFusionPass::DefinePatterns() {
   return patterns;
 }
 
-ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num_output, ge::NodePtr& innerproductNode,
+ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num_output,
+                                              ge::NodePtr& innerproductNode,
                                               ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                               bool& failStatus) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProcessStatic:W_xh_x_static->FullyConnection(InnerProduct).");
@@ -419,6 +420,7 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     spiltStaticDesc->AddOutputDesc("output_data" + std::to_string(i + 1), splitNodeXDesc);
     sizeSplitsX.push_back(1);
   }
+
   ge::AttrUtils::SetListInt(spiltStaticDesc, "size_splits", sizeSplitsX);
   ge::AttrUtils::SetInt(spiltStaticDesc, "split_dim", 0);
   ge::AttrUtils::SetInt(spiltStaticDesc, "num_split", numSplitX);
