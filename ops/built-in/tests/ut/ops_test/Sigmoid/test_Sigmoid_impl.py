@@ -90,8 +90,8 @@ def test_for_1951(test_arg):
     set_current_compile_soc_info("Ascend710")
     sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33), "param_type": "input"},
             {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33),"param_type": "output"},
-            {"sigmoid"},
-            {"high_performance"})
+            "sigmoid",
+            "high_performance")
     set_current_compile_soc_info(test_arg)
 
 
