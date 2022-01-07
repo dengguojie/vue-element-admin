@@ -36,9 +36,14 @@ class Constant:
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("sigmoid")
-def sigmoid_compute(x, y, kernel_name="sigmoid"):
+def sigmoid_high_performance_compute(x, y, kernel_name="sigmoid"):
     """calculating data
+
+    Calculation principle
+    ---------------------
+    `L(x) = 0.229270815*x - 0.0102459298*x^3 + 0.000207697530*x^5 + 0.5`
+    `L(x) = a*x + b*x^3 + c*x^5 + d = x(a + x^2(b + cx^2)) + d`
+    `sigmoid = max(0, min(1,L(x)))`
 
     Parameters
     ----------
@@ -53,6 +58,64 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     -------
     output tensor
     """
+
+    mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
+    dtype = x.dtype
+    if dtype == "float32" and not mul_support:
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16",), dtype)
+
+    const_num_one = tvm.const(1, dtype=dtype)
+    const_num_zero = tvm.const(0, dtype=dtype)
+    const_num_a = tvm.const(0.229270815, dtype=dtype)
+    const_num_b = tvm.const(-0.0102459298, dtype=dtype)
+    const_num_c = tvm.const(0.000207697530, dtype=dtype)
+    const_num_d = tvm.const(0.5, dtype=dtype)
+    # `x^2`
+    tmp_x2 = tbe.vmul(x, x)
+    # `cx^2`
+    tmp_cx2 = tbe.vmuls(tmp_x2, const_num_c)
+    # `b + cx^2`
+    tmp_bsum = tbe.vadds(tmp_cx2, const_num_b)
+    # `x^2(b + cx^2)`
+    tmop_cx4 = tbe.vmul(tmp_x2, tmp_bsum)
+    # `a + x^2(b + cx^2)`
+    tmp_asum = tbe.vadds(tmop_cx4, const_num_a)
+    # `x(a + x^2(b + cx^2))`
+    tmp_cx5 = tbe.vmul(x, tmp_asum)
+    # `x(a + x^2(b + cx^2)) + d`
+    tmp_d = tbe.vadds(tmp_cx5, const_num_d)
+
+    tmp_min = tbe.vmins(tmp_d, const_num_one)
+    tmp_max = tbe.vmaxs(tmp_min, const_num_zero)
+
+    return tmp_max
+
+
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
+@tbe_platform.fusion_manager.fusion_manager.register("sigmoid")
+def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
+    """calculating data
+
+    Parameters
+    ----------
+    x : TVM tensor
+        the placeholder of x
+    y : dict
+        dict of y, include keys(shape and dtype)
+    kernel_name : str
+        kernel name, default value is "sigmoid"
+    impl_mode : str
+        impl_mode, default value is "high_precision"
+
+    Returns
+    -------
+    output tensor
+    """
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+
+    if soc_version in ("Ascend710", ) and impl_mode == "high_performance":
+        return sigmoid_high_performance_compute(x, y, kernel_name)
+
     data_input = x
     dtype = x.dtype
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
@@ -88,7 +151,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def sigmoid(x, y, kernel_name="sigmoid"):
+def sigmoid(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     """calculating data
 
     Parameters
@@ -99,6 +162,8 @@ def sigmoid(x, y, kernel_name="sigmoid"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         kernel name, default value is "sigmoid"
+    impl_mode : str
+        impl_mode, default value is "high_precision"
 
     Returns
     -------
@@ -114,7 +179,7 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     fused_shape = [functools.reduce(lambda a, b: a * b, shape[:])]
     data_input = tvm.placeholder(fused_shape, name="data_input", dtype=input_dtype)
 
-    res = sigmoid_compute(data_input, y, kernel_name)
+    res = sigmoid_compute(data_input, y, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
