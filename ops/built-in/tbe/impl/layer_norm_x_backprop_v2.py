@@ -1106,6 +1106,7 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
 
     format_dy = input_dy.get("format")
 
+    EPSLON = 1e-5 if dtype == "float16" else 1e-12
     if format_dy.upper() == "FRACTAL_NZ":
         param_nz = update_shape_nz(shape_x, shape_variance, shape_gamma)
 
