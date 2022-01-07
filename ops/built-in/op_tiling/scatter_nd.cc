@@ -77,6 +77,7 @@ const int64_t ZERO = 0;
 const int64_t UPDATESSIZE_COMPILE_INDEX = 2;
 const int64_t INDICESSIZE_COMPILE_INDEX = 3;
 const int64_t SUPPORTATOMIC_COMPILE_INDEX = 4;
+const int64_t NEEDCAST_COMPILE_INDEX = 5;
 
 struct ScatterNdTilingParams {
   int64_t tilingMode;
@@ -139,8 +140,8 @@ void InitRunningParams(ScatterNdTilingParams& params) {
   params.lastCoreIndicesLastNum = 0;
 }
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "updates_size", "indices_size",
-                                                          "support_atomic"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num",     "ub_size",        "updates_size",
+                                                          "indices_size", "support_atomic", "need_cast"};
 
 void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indicesNum, int64_t updatesNum,
                                   int64_t updateDataNum, int64_t ubSize, int64_t updatesSize, int64_t indicesSize,
@@ -271,10 +272,17 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
 
 void CalScatterNdHighPerfBranchParams(ScatterNdTilingParams& runParams, int64_t indicesNum, int64_t coreNum,
                                       int64_t ubSize, int64_t updateDataNum, int64_t updatesDataEachBlock,
-                                      int64_t indicesSize) {
-  int64_t halfUbSize = ubSize / 2;
-  OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "halfUbSize = 0 is not support"),
-                  return );
+                                      int64_t indicesSize, int64_t updatesSize, int64_t need_cast) {
+  const int64_t UB_NUM = 2;
+  const int64_t UB_NEEDCAST_NUM = 4;
+  
+  int64_t alloc_indice_ubsize = ubSize / UB_NUM;
+  if (need_cast == 1) {
+    alloc_indice_ubsize = ubSize / UB_NEEDCAST_NUM;
+  }
+  int64_t alloc_ub_indicesnum = alloc_indice_ubsize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim;
+  OP_TILING_CHECK(alloc_indice_ubsize == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "alloc_indice_ubsize = 0 is not support"), return );
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "indicesSize = 0 is not support"),
                   return );
   OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "coreNum = 0 is not support"), return );
@@ -283,16 +291,16 @@ void CalScatterNdHighPerfBranchParams(ScatterNdTilingParams& runParams, int64_t 
   runParams.tilingMode = TILING_MODE_16;
   runParams.updatesDataNum = updateDataNum;
   runParams.indicesEachCoreData = ceil(float(indicesNum) / coreNum);
+  runParams.indicesEachCoreData = (runParams.indicesEachCoreData + runParams.indicesLastDim - 1) /
+                                  runParams.indicesLastDim * runParams.indicesLastDim;
   runParams.coreNum = ceil(float(indicesNum) / runParams.indicesEachCoreData);
   runParams.indicesLastCoreData = indicesNum - runParams.indicesEachCoreData * (runParams.coreNum - 1);
-  runParams.eachCoreIndicesLoopNum = runParams.indicesEachCoreData / (halfUbSize / indicesSize);
-  runParams.eachCoreIndicesLastNum = runParams.indicesEachCoreData % (halfUbSize / indicesSize);
-  runParams.lastCoreIndicesLoopNum = runParams.indicesLastCoreData / (halfUbSize / indicesSize);
-  runParams.lastCoreIndicesLastNum = runParams.indicesLastCoreData % (halfUbSize / indicesSize);
-
-  if (updateDataNum % updatesDataEachBlock == 0) {
-    runParams.tilingMode = TILING_MODE_17;
-  }
+  runParams.eachCoreIndicesLoopNum = runParams.indicesEachCoreData / alloc_ub_indicesnum;
+  runParams.eachCoreIndicesLastNum = runParams.indicesEachCoreData % alloc_ub_indicesnum;
+  runParams.lastCoreIndicesLoopNum = runParams.indicesLastCoreData / alloc_ub_indicesnum;
+  runParams.lastCoreIndicesLastNum = runParams.indicesLastCoreData % alloc_ub_indicesnum;
+  runParams.updatesLoopNum = updateDataNum / (alloc_indice_ubsize / updatesSize);
+  runParams.updatesLastNum = updateDataNum % (alloc_indice_ubsize / updatesSize);
 }
 
 void SetRuningParams(const ScatterNdTilingParams& params, utils::OpRunInfo& runInfo) {
@@ -442,6 +450,7 @@ bool ScatterNdTiling(const std::string& opType, const ge::Operator& opParas, con
   int64_t updatesSize = op_info[UPDATESSIZE_COMPILE_INDEX];
   int64_t indicesSize = op_info[INDICESSIZE_COMPILE_INDEX];
   int64_t supportAtomic = op_info[SUPPORTATOMIC_COMPILE_INDEX];
+  int64_t need_cast = op_info[NEEDCAST_COMPILE_INDEX];
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   if (coreNum <= ZERO || ubSize <= ZERO || updatesSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
@@ -466,7 +475,7 @@ bool ScatterNdTiling(const std::string& opType, const ge::Operator& opParas, con
   runParams.indicesLastDim = indicesBack;
   int64_t updatesDataEachBlock = BLOCK_SIZE / updatesSize;
 
-  for (int64_t i = 0; i + 1 < indicesBack; i++) {
+  for (int64_t i = 0; i < indicesBack; i++) {
     runParams.varOffSet[i] = std::accumulate(
         outShape.begin() + (i + 1), outShape.end() - (outShape.size() - indicesBack), 1, std::multiplies<int>());
   }
@@ -482,14 +491,9 @@ bool ScatterNdTiling(const std::string& opType, const ge::Operator& opParas, con
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 
-  if (supportAtomic == 1 && input_dtype == ge::DT_FLOAT) {
-    if (CheckScatterNdHighPerfShape(outShape, indicesShape)) {
-      CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum, updatesDataEachBlock,
-                                       indicesSize);
-    } else {
-      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize, updatesSize, indicesSize,
-                                   updatesDataEachBlock);
-    }
+  if (supportAtomic == 1) {
+    CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum, updatesDataEachBlock,
+                                     indicesSize, updatesSize, need_cast);
   } else {
     CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize, runParams.coreNum,
                                     updatesSize, indicesSize, updatesDataEachBlock);

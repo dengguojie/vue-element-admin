@@ -41,7 +41,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":0, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{2,5,7,3};
   std::vector<int64_t> inputB{2,5,7,11,5,7,11};
@@ -57,7 +57,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_0) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_INT32, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "14 112 32 4235 0 210 296450 0 4235 15118950 0 4235 59290 51878 3570 474320 3 35 7 0 0 0 0 0 19 21968 17 10294 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "14 112 32 4235 0 210 296450 0 4235 15118950 0 4235 59290 51878 3570 474320 3 35 7 1 0 0 0 0 19 21968 17 10294 0 0 0 0 0 0 ");
 }
 
 TEST_F(ScatterNdTiling, scatter_nd_tiling_1) {
@@ -66,7 +66,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{31037,1};
   std::vector<int64_t> inputB{31037,256};
@@ -82,7 +82,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_1) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "17 9375 32 256 0 0 0 0 0 0 0 0 0 0 300000 0 1 0 0 0 0 0 0 0 0 0 0 0 970 967 0 970 0 967 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 9375 32 256 0 0 0 0 256 0 0 0 0 0 300000 0 1 1 0 0 0 0 0 0 0 0 0 0 970 967 0 970 0 967 ");
 }
 
 TEST_F(ScatterNdTiling, scatter_nd_tiling_2) {
@@ -91,7 +91,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{279424,1};
   std::vector<int64_t> inputB{279424,1};
@@ -107,7 +107,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_2) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 0 32 1 0 0 0 0 0 0 0 0 0 0 279424 0 1 0 0 0 0 0 0 0 0 0 0 0 8732 8732 0 8732 0 8732 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 0 32 1 0 0 0 0 1 0 0 0 0 0 279424 0 1 1 0 0 0 0 0 0 0 0 0 0 8732 8732 0 8732 0 8732 ");
 }
 
 TEST_F(ScatterNdTiling, scatter_nd_tiling_3) {
@@ -116,7 +116,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_3) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{21340,1,2};
   std::vector<int64_t> inputB{21340,1};
@@ -132,7 +132,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_3) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 0 1 1 1 10936 21340 0 21340 0 0 0 0 0 640000 0 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 0 32 1 0 0 0 0 1 0 0 0 0 0 640000 0 2 1 1 0 0 0 0 0 0 0 0 0 1334 1326 0 1334 0 1326 ");
 }
 
 TEST_F(ScatterNdTiling, scatter_nd_tiling_4) {
@@ -140,7 +140,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_4) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{2,5,7,3};
   std::vector<int64_t> inputB{2,5,7,11,5,7,11};
@@ -164,7 +164,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_5) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 0, \"core_num\": 0, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 0, \"core_num\": 0, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":0, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{2,5,7,3};
   std::vector<int64_t> inputB{2,5,7,11,5,7,11};
@@ -188,7 +188,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_7) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{21340,1};
   std::vector<int64_t> inputB{21340,1};
@@ -204,7 +204,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_7) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 0 32 1 0 0 0 0 0 0 0 0 0 0 640000 0 1 0 0 0 0 0 0 0 0 0 0 0 667 663 0 667 0 663 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 0 32 1 0 0 0 0 1 0 0 0 0 0 640000 0 1 1 0 0 0 0 0 0 0 0 0 0 667 663 0 667 0 663 ");
 }
 
 TEST_F(ScatterNdTiling, scatter_nd_tiling_6) {
@@ -213,7 +213,7 @@ TEST_F(ScatterNdTiling, scatter_nd_tiling_6) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNd");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"updates_size\":4, \"indices_size\":4, \"support_atomic\":1, \"need_cast\":0}}";
 
   std::vector<int64_t> inputA{2,5,7,3};
   std::vector<int64_t> inputB{2,5,6,11,5,7,11};

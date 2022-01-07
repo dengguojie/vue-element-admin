@@ -299,5 +299,48 @@
          "name": "y"
        }
      ]
+  },
+  {
+    "op": "ScatterNd",
+    "case_name" : "test_scatter_nd_fp162fp32",
+     "input_desc": [
+       {
+        "format": "ND",
+        "shape": [-1, 1],
+        "typical_shape": [256, 1],
+        "shape_range": [[100, 600]],
+        "type": "int32",
+        "value_range": [[1, 512]],
+        "data_distribute" : "uniform",
+        "name": "indices"
+      },
+      {
+        "format": "ND",
+        "shape": [-1, 8],
+        "typical_shape": [256, 8],
+        "shape_range": [[100, 600]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [2],
+        "type": "int32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "shape",
+        "value": [256, 8]
+      }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [512, 8],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
   }
 ]

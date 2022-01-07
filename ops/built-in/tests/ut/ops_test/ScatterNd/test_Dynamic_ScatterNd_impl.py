@@ -5,11 +5,11 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("ScatterNd", "impl.dynamic.scatter_nd", "scatter_nd")
 
 
-def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, kernel_name_val, expect):
+def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, dtype2_val, kernel_name_val, expect):
     return {"params": [{"shape": shape_x, "dtype": "int32", "ori_shape":shape_x,"ori_format":"ND", "format":"ND","range": range_x},
-                       {"shape": shape_y, "dtype": "float32", "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y},
+                       {"shape": shape_y, "dtype": dtype_val, "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y},
                        {"shape": shape_x, "dtype": "int32", "ori_shape":shape_x,"ori_format":"ND", "format":"ND","range": range_x},
-                       {"shape": shape_y, "dtype": "float32", "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y}],
+                       {"shape": shape_y, "dtype": dtype2_val, "ori_shape":shape_y,"ori_format":"ND", "format":"ND","range": range_y}],
             "case_name": kernel_name_val,
             "expect": expect,
             "format_expect": [],
@@ -18,7 +18,18 @@ def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, ker
 ut_case.add_case("all",
                  gen_dynamic_floormod_case((-1,), (1,),
                                            ((1, None),), ((1, 1),),
-                                           "float32", "dynamic_scatter_nd_case", "success"))
+                                           "float32", "float32", "dynamic_scatter_nd_case_0", "success"))
+
+ut_case.add_case("all",
+                 gen_dynamic_floormod_case((-1,), (1,),
+                                           ((1, None),), ((1, 1),),
+                                           "float16", "float16", "dynamic_scatter_nd_case_1", "success"))
+                                           
+ut_case.add_case("all",
+                 gen_dynamic_floormod_case((-1,), (1,),
+                                           ((1, None),), ((1, 1),),
+                                           "float16", "float32", "dynamic_scatter_nd_case_2", "success"))
+                                           
 
 from impl.dynamic.scatter_nd import check_supported
 def test_check_support(test_arg):
