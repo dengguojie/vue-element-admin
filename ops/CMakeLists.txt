@@ -16,5 +16,5 @@
 add_subdirectory(built-in)
 
 if(ENABLE_TEST)
-  add_subdirectory(built-in/tests/ut/ops_test/Sigmoid)
+  add_subdirectory(built-in/tests)
 endif()
