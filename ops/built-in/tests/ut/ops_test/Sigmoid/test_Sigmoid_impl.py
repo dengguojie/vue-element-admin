@@ -114,7 +114,7 @@ ut_case.add_precision_case("all", {
 
 
 def sigmoid_test_high(test_arg):
-    patch('para_check.check_op_params', mock_decorator).start()
+    patch('te.utils.para_check.check_op_params', mock_decorator).start()
     cce_conf.cce_conf.te_set_version("Ascend710")
     sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
             {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
