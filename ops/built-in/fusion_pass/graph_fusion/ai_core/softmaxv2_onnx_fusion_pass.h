@@ -31,6 +31,7 @@ class ASoftmaxFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
+  bool CheckIsNeedFusion(ge::NodePtr& fused_node);
   Status CreateFlattenNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& new_node);
   Status CreateReshapeNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& flatten_node,
                            ge::NodePtr& new_node);

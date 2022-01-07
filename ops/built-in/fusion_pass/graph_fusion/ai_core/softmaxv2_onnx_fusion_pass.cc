@@ -68,11 +68,9 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax_opdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  // only softmax-11 and softmax-12 need insert reshape node
-  int need_fusion = 0;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(softmax_opdesc, "need_fusion", need_fusion),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get ATTR need_fusion fail"),
-                    return NOT_CHANGED);
+  if (!CheckIsNeedFusion(softmax_node)) {
+    return NOT_CHANGED;
+  }
 
   ge::NodePtr flatten_node = nullptr;
   FUSION_PASS_CHECK(CreateFlattenNode(graph, softmax_node, flatten_node) != SUCCESS,
@@ -135,6 +133,29 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(softmax_opdesc, "axes", {1}),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr axes failed"), return PARAM_INVALID);
   return SUCCESS;
+}
+
+bool ASoftmaxFusionPass::CheckIsNeedFusion(ge::NodePtr& fused_node) {
+  auto opdesc = fused_node->GetOpDesc();
+  int need_fusion = 0;
+  if (!ge::AttrUtils::GetInt(opdesc, "need_fusion", need_fusion)) {
+    OP_LOGW("ASoftmaxFusionPass", "Get ATTR need_fusion fail");
+    return false;
+  }
+  auto dims = opdesc->GetInputDesc(0).GetShape().GetDims();
+  std::vector<int32_t> axis;
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(opdesc, "axes", axis),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr axes failed"), return false);
+  if (axis.empty()) {
+    return true;
+  }
+
+  int dims_size = dims.size();
+  int dim = axis[0] >= 0 ? axis[0] : dims_size + axis[0];
+  if (dim == 1 || dim == dims_size - 1) {
+    return false;
+  }
+  return true;
 }
 
 Status ASoftmaxFusionPass::CreateFlattenNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& new_node) {
