@@ -76,7 +76,7 @@ Status IsPadZero(vector<int64_t> pad, bool& flag) {
 }
 
 Status PoolingGenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride,
-                         vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1, bool isInt8) {
+                                const vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1, const bool isInt8) {
   uint16_t* output = &output1;
   int64_t h_start = 0;
   int64_t w_start = 0;
@@ -111,7 +111,7 @@ Status PoolingGenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> win
   return SUCCESS;
 }
 
-NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode) {
+NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, const ge::NodePtr& PoolNode) {
   ge::OutDataAnchorPtr PoolAnchorPtr1 = PoolNode->GetOutDataAnchor(0);
   ge::NodePtr postNode = nullptr;
   ge::NodePtr mulNode = nullptr;
@@ -188,9 +188,9 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
   return mulNode;
 }
 
-Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad,
-                                   vector<int64_t>& dimInfo, vector<int64_t> window, vector<int64_t> stride,
-                                   std::string& recode, bool isInt8) {
+Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, const vector<int64_t> pad,
+                                   const vector<int64_t>& dimInfo, const vector<int64_t> window, const vector<int64_t> stride,
+                                   std::string& recode, const bool isInt8) {
   int64_t outputH = 0;
   int64_t outputW = 0;
   int64_t outputC = 0;
@@ -367,8 +367,8 @@ Status PoolingFusionPass::GetWeightOfConv(const std::string& opName, const int8_
 }
 
 Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode,
-                                         vector<ge::NodePtr>& fusionNodes,int64_t& windowH,
-                                         int64_t& windowW, int64_t& inputC) {
+                                         vector<ge::NodePtr>& fusionNodes, const int64_t& windowH,
+                                         const int64_t& windowW, const int64_t& inputC) {
   FUSION_PASS_CHECK(poolingNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);
 
@@ -493,7 +493,7 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   if (poolingOp->UpdateInputDesc(2, biasDesc) != ge::GRAPH_SUCCESS) {
     biasPtr = nullptr;
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
-            poolingNode->GetName().c_str());
+                                   poolingNode->GetName().c_str());
     return FAILED;
   }
   return SUCCESS;

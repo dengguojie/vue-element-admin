@@ -35,13 +35,13 @@ class PoolingFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad, vector<int64_t>& dimInfo,
-                  vector<int64_t> window, vector<int64_t> stride, std::string& recode, bool isInt8);
-  ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode);
+  Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, const vector<int64_t> pad, const vector<int64_t>& dimInfo,
+                  const vector<int64_t> window, const vector<int64_t> stride, std::string& recode, const bool isInt8);
+  ge::NodePtr AddMul(ge::ComputeGraph& graph, const ge::NodePtr& avgPoolNode);
   Status Calc4DWeight(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                       const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp);
   Status DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode, vector<ge::NodePtr>& fusionNodes,
-                        int64_t& windowH, int64_t& windowW, int64_t& inputC);
+                        const int64_t& windowH, const int64_t& windowW, const int64_t& inputC);
   Status GetWeightOfConv(const std::string& opName, const int8_t* filterInt8Data,
                          const std::vector<int64_t>& filterDims, std::unique_ptr<int32_t[]>& weightInt8OutParam);
   bool IsMeanValueAllEqual(vector<int64_t> input, vector<int64_t> window, vector<int64_t> stride, vector<int64_t> pad,
