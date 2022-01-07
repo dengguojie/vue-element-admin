@@ -120,7 +120,9 @@ def sigmoid_test_high(test_arg):
     cce_conf.cce_conf.te_set_version("Ascend710")
     with patch("te.utils.para_check.check_op_params",MagicMock(side_effect=side_effects)):
         sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)})
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+                "sigmoid",
+                "high_performance")
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
