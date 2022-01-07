@@ -18,7 +18,7 @@
  * \file tabulatefusiongrad_fusion_pass.cc
  * \brief TabulateFusionGrad fusion pass(Parallel TabulateFusionGrad)
  */
-#include <stdint.h>
+#include <cstdint>
 
 #include <iostream>
 #include <memory>
