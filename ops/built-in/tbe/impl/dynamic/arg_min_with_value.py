@@ -317,10 +317,12 @@ class Argmin():
                 offset = segment_tail_data - pro_len
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
-                not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
+                with self.tik_instance.new_stmt_scope():
+                    not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
-                not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
+                with self.tik_instance.new_stmt_scope():
+                    not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(segment_tail_data % self.data_each_block == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
@@ -1084,16 +1086,16 @@ class Argmin():
         """
         self.argmin_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.data_gm],
-                                   outputs=[self.result_gm, self.result_gm_2],
-                                   flowtable=[self.tiling_gm],
-                                   config=opt_config)
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,
             "core_num": self.core_num,
             "axis": self.axis,
         })
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.data_gm],
+                                   outputs=[self.result_gm, self.result_gm_2],
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
         return self.tik_instance
 
 

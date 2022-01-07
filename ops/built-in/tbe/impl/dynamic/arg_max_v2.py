@@ -133,7 +133,7 @@ class Argmax():
         self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), \
         name="tiling_gm", scope=tik.scope_gm)
         self.data_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="data_gm", scope=tik.scope_gm)
-        self.axis_gm = self.tik_instance.Tensor("int32", (1,), name="axis_gm", scope=tik.scope_gm)
+        self.axis_gm = self.tik_instance.Tensor("int32", (1,), name="dimension", scope=tik.scope_gm)
         self.result_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="result_gm", scope=tik.scope_gm)
 
     def do_not_last(self, segment, gm_in_offset, gm_out_offset):
@@ -310,11 +310,13 @@ class Argmax():
                 offset = segment_tail_data - pro_len
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
-                not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
+                with self.tik_instance.new_stmt_scope():
+                    not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
                 Constant.MAX_SEGMENT_LEN + offset
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
-                not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
+                with self.tik_instance.new_stmt_scope():
+                    not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(segment_tail_data % 8 == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
@@ -1044,15 +1046,15 @@ class Argmax():
         """
         self.argmax_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        tbe_context.get_context().add_compile_info("vars", {
+            "ub_ele": self.ub_ele,
+            "core_num": self.core_num,
+        })
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.data_gm, self.axis_gm],
                                    outputs=[self.result_gm],
                                    flowtable=[self.tiling_gm],
                                    config=opt_config)
-        tbe_context.get_context().add_compile_info("vars", {
-            "ub_ele": self.ub_ele,
-            "core_num": self.core_num,
-        })
         return self.tik_instance
 
 
