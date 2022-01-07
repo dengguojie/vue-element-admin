@@ -55,13 +55,13 @@ class Constant(object):
     K_LIMIT = 2000
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled, unused-argument, invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("rotated_overlaps")
 class RotatedOverlaps(object):
     """
     The class for RotatedOverlaps.
     """
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def __init__(self, boxes, query_boxes, overlaps, trans, kernel_name):
         """
         class init
@@ -70,7 +70,7 @@ class RotatedOverlaps(object):
         self.trans = trans
         self.kernel_name = kernel_name
         check_res = self.paras_check(boxes, query_boxes, overlaps, kernel_name)
-        self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3],
+        self.batch, self.n, self.k, self.dtype = check_res[0], check_res[1], check_res[2], check_res[3]
         # Calculate concurrent number on boxes(input_1) dimension
         self.task_num = self.n
         while self.task_num % 2 == 0 and self.task_num >= 64:
@@ -284,7 +284,7 @@ class RotatedOverlaps(object):
             self.b1_x1 * (self.b1_y2 - self.b1_y3) + self.b1_x2 * (self.b1_y3 - self.b1_y1) + self.b1_x3 * (
                     self.b1_y1 - self.b1_y2))
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def sum_area_of_triangles(self, b2_idx):
         """
         Calculate polygon area.
@@ -399,7 +399,7 @@ class RotatedOverlaps(object):
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.numerator_y / self.denominator)
                 self.corners_num.set_as(self.corners_num + 1)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_intersection_point(self, b2_idx):
         """
         record_intersection_point
@@ -465,7 +465,7 @@ class RotatedOverlaps(object):
         self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
         self.record_intersection_point_core()
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_vertex_point(self, b2_idx):
         """
         record_vertex_point
@@ -595,7 +595,7 @@ class RotatedOverlaps(object):
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y4)
                 self.corners_num.set_as(self.corners_num + 1)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def trans_boxes(self, task_idx, current_batch):
         """
         trans_boxes
@@ -805,7 +805,7 @@ class RotatedOverlaps(object):
         #       y_aim = y - 0.5w * sin + 0.5h * cos
         self.tik_instance.h_sub(self.y4_of_boxes_ub, self.y_sub_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def data_init(self):
         """
         data_init
@@ -1041,6 +1041,7 @@ class RotatedOverlaps(object):
         return self.tik_instance
 
 
+# 'pylint:disable=too-many-arguments, disable=too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def rotated_overlaps(boxes, query_boxes, overlaps, trans=False, kernel_name="rotated_overlaps"):

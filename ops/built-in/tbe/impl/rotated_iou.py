@@ -57,13 +57,13 @@ class Constant(object):
     EPSILON = 1e-6
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("rotated_iou")
 class RotatedIou(object):
     """
     The class for RotatedIou.
     """
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def __init__(self, boxes, query_boxes, iou, trans, mode, is_cross, v_threshold, e_threshold, kernel_name):
         """
         class init
@@ -302,7 +302,7 @@ class RotatedIou(object):
             self.b1_x1 * (self.b1_y2 - self.b1_y3) + self.b1_x2 * (self.b1_y3 - self.b1_y1) + self.b1_x3 * (
                     self.b1_y1 - self.b1_y2))
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def sum_area_of_triangles(self, b2_idx):
         """
         Calculate polygon area.
@@ -417,7 +417,7 @@ class RotatedIou(object):
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.numerator_y / self.denominator)
                 self.corners_num.set_as(self.corners_num + 1)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_intersection_point(self, b2_idx):
         """
         record_intersection_point
@@ -483,7 +483,7 @@ class RotatedIou(object):
         self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
         self.record_intersection_point_core()
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_vertex_point(self, b2_idx):
         """
         record_vertex_point
@@ -629,7 +629,7 @@ class RotatedIou(object):
                 self.corners_ub[self.corners_num + Constant.BLOCK].set_as(self.b2_y4)
                 self.corners_num.set_as(self.corners_num + 1)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def trans_boxes(self, task_idx, current_batch):
         """
         trans_boxes
@@ -840,7 +840,7 @@ class RotatedIou(object):
         #       y_aim = y - 0.5w * sin + 0.5h * cos
         self.tik_instance.h_sub(self.y4_of_boxes_ub, self.y_sub_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
-    # 'pylint:disable=too-many-arguments
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def data_init(self):
         """
         data_init
@@ -1087,6 +1087,7 @@ class RotatedIou(object):
         return self.tik_instance
 
 
+# 'pylint:disable=too-many-arguments, disable=too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
