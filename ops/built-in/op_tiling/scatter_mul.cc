@@ -315,9 +315,9 @@ bool ScatterMulOrDivTiling(const std::string& opType, const ge::Operator& opPara
 
   ScatterMulOrDivTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t varNum = varShape.GetShapeSize();
-  int64_t indicesNum = indicesShape.GetShapeSize();
-  int64_t updatesNum = updatesShape.GetShapeSize();
+  int64_t varNum = GetTensorSize(varShape);
+  int64_t indicesNum = GetTensorSize(indicesShape);
+  int64_t updatesNum = GetTensorSize(updatesShape);
   int64_t updateDataNum = 1;
   int64_t varDimNum = varShape.GetDimNum();
   if (varDimNum > 1) {

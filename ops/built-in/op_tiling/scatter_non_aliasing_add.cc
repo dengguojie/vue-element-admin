@@ -260,11 +260,11 @@ bool ScatterNonAliasingAddTiling(const std::string& opType, const ge::Operator& 
 
   ScatterNonAliasingAddTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t indicesNum = indicesShape.GetShapeSize();
-  int64_t addsNum = addsShape.GetShapeSize();
+  int64_t indicesNum = GetTensorSize(indicesShape);
+  int64_t addsNum = GetTensorSize(addsShape);
   int64_t K = indicesShape.GetDim(indicesShape.GetDimNum() - 1);
   int64_t addDataNum = forMul(varShape, K, varShape.GetDimNum());
-  int64_t maxIndice = varShape.GetShapeSize();
+  int64_t maxIndice = GetTensorSize(varShape);
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
   OP_LOGD(opType.c_str(), "BLOCK_SIZE=%ld.", BLOCK_SIZE);
   OP_LOGD(opType.c_str(), "varSize=%ld.", varSize);

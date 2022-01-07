@@ -264,7 +264,7 @@ bool GetUssCompileParams(const std::string& op_type, const std::vector<int64_t>&
 
 bool GetTilingMode(const GeShape& input_shape, const int32_t& e_size, const ge::DataType& input_dtype,
                    const int32_t& ub_tensor_ele_num, int32_t& select_key, const int32_t& num_segments) {
-  int input_dim = input_shape.GetShapeSize();
+  int input_dim = GetTensorSize(input_shape);
   if (num_segments > 1) {
     if (input_dim == 1) {
       select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
@@ -1369,8 +1369,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                   return false);
   const GeShape &ids_shape = input_desc->MutableShape();
 
-  const int32_t& input_size = input_shape.GetShapeSize();
-  const int32_t& ids_size = ids_shape.GetShapeSize();
+  const int32_t& input_size = GetTensorSize(input_shape);
+  const int32_t& ids_size = GetTensorSize(ids_shape);
 
   OP_LOGD(op_type, " : input_size=%d, ids_size=%d", input_size, ids_size);
   if (input_shape.GetDimNum() < ids_shape.GetDimNum()) {

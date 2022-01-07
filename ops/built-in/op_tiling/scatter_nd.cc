@@ -454,8 +454,8 @@ bool ScatterNdTiling(const std::string& opType, const ge::Operator& opParas, con
   InitRunningParams(runParams);
 
   int64_t varNum = std::accumulate(outShape.begin(), outShape.end(), 1, std::multiplies<int>());
-  int64_t indicesNum = indicesShape.GetShapeSize();
-  int64_t updatesNum = updatesShape.GetShapeSize();
+  int64_t indicesNum = GetTensorSize(indicesShape);
+  int64_t updatesNum = GetTensorSize(updatesShape);
   int64_t updateDataNum =
       ((int32_t)outShape.size() == indicesBack)
           ? 1

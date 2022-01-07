@@ -80,7 +80,7 @@ bool FlattenTiling(const std::string& op_type, const ge::Operator& op_paras, con
   if (src_shape.GetDimNum() == 0) {
     data_size = 1;
   } else {
-    data_size = src_shape.GetShapeSize();
+    data_size = GetTensorSize(src_shape);
   }
 
   int64_t core_num = 0;

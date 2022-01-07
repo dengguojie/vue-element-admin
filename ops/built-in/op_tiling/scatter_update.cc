@@ -320,7 +320,7 @@ bool ScatterUpdateTiling(const std::string& opType, const ge::Operator& opParas,
   ScatterUpdateTilingParams runParams;
   InitRunningParams(runParams);
   int64_t indicesNum = GetTensorSize(indicesShape);
-  int64_t updatesNum = updatesShape.GetShapeSize();
+  int64_t updatesNum = GetTensorSize(updatesShape);
   int64_t updateDataNum = (varShape.GetDimNum() > 1) ? var_num : 1;
   int64_t maxIndice = varShape.GetDim(0);
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;

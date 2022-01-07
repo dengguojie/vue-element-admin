@@ -67,7 +67,7 @@ bool AssignTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   ge::DataType input_dtype = value_desc->GetDataType();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  int64_t value_num = value_shape.GetShapeSize();
+  int64_t value_num = GetTensorSize(value_shape);
 
   int64_t core_num = 0;
   int64_t ub_size = 0;

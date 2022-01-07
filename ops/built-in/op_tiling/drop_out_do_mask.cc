@@ -65,7 +65,7 @@ bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_para
 
   const GeShape& var_shape = var_desc->MutableShape();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  int64_t var_num = var_shape.GetDimNum() == 0 ? 1 : var_shape.GetShapeSize();
+  int64_t var_num = var_shape.GetDimNum() == 0 ? 1 : GetTensorSize(var_shape);
   int64_t core_num = 0;
   if (!GetDropOutDoMaskCompileParams(op_type, op_info, core_num)) {
     VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");

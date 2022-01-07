@@ -252,10 +252,10 @@ bool ScatterNdAddTiling(const std::string& opType, const ge::Operator& opParas, 
 
   ScatterNdAddTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t indicesNum = indicesShape.GetShapeSize();
-  int64_t addsNum = addsShape.GetShapeSize();
+  int64_t indicesNum = GetTensorSize(indicesShape);
+  int64_t addsNum = GetTensorSize(addsShape);
   int64_t indicesLastDim = (indicesShape.GetDimNum() > 0) ? indicesShape.GetDim(indicesShape.GetDimNum() - 1) : 0;
-  int64_t maxIndice = varShape.GetShapeSize();
+  int64_t maxIndice = GetTensorSize(varShape);
   int64_t addDataNum = 1;
   int64_t varDimNum = varShape.GetDimNum();
   if (varDimNum > 1) {

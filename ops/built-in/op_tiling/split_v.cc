@@ -665,7 +665,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   InitSplitVRunningParams(runParams);
   runParams.sizeValueSplit = splitSizeValue;
 
-  int64_t inputElems = inputShape.GetShapeSize();
+  int64_t inputElems = GetTensorSize(inputShape);
   GELOGD("op [SplitVTiling] : inputElems=%d.", inputElems);
 
   if (!CalSplitVRunningParams(runParams, inputElems, inputShape, ubElems, coreNum, splitDim, numSplit, dataBlock,

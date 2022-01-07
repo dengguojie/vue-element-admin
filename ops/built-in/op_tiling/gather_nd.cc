@@ -247,8 +247,8 @@ bool GatherNdTiling(const std::string& opType, const ge::Operator& opParas, cons
   int32_t availableUbSize = ubSize - RESERVED_UB_SIZE;
   int32_t halfUbSize = availableUbSize / 2;
 
-  int32_t paramsTotal = paramsShape.GetShapeSize();
-  int32_t indicesTotal = indicesShape.GetShapeSize();
+  int32_t paramsTotal = GetTensorSize(paramsShape);
+  int32_t indicesTotal = GetTensorSize(indicesShape);
   int32_t paramsTotalTmp = paramsTotal;
   // e.g. paramsShape:(2, 100, 4, 3) => paramsSuffixList:[100*4*3, 4*3, 3, 1]
   std::vector<int32_t> paramsSuffixList;
