@@ -48,6 +48,7 @@ static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 static const int SPLIT_COUNT = 2;
+static const int NUM_3 = 3;
 
 /*!
  * @brief Define pattern.
@@ -78,8 +79,8 @@ vector<FusionPattern *> TabulateFusionFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TabulateFusionFusionPass::UpdateTabulateFusionNode(const ge::NodePtr &tabulateNodeAic,
-                                                          const ge::NodePtr &tabulateNodeVec) {
+Status TabulateFusionFusionPass::UpdateTabulateFusionNode(ge::NodePtr &tabulateNodeAic,
+                                                          ge::NodePtr &tabulateNodeVec) const {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into Update TabulateFusion node.");
   ge::OpDescPtr tabulateAicDesc = tabulateNodeAic->GetOpDesc();
   ge::OpDescPtr tabulateVecDesc = tabulateNodeVec->GetOpDesc();
@@ -92,7 +93,7 @@ Status TabulateFusionFusionPass::UpdateTabulateFusionNode(const ge::NodePtr &tab
   ge::GeTensorDesc tabulateVecOutput = tabulateVecDesc->GetOutputDesc(0);
   ge::GeShape tabulateAicOutputShape = tabulateAicOutput.GetShape();
   ge::GeShape tabulateVecOutputShape = tabulateVecOutput.GetShape();
-  FUSION_PASS_CHECK(tabulateAicOutputShape.GetDimNum() != 3 || tabulateVecOutputShape.GetDimNum() != 3,
+  FUSION_PASS_CHECK(tabulateAicOutputShape.GetDimNum() != NUM_3 || tabulateVecOutputShape.GetDimNum() != NUM_3,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The output shape must be 3."),
                     return PARAM_INVALID);
 

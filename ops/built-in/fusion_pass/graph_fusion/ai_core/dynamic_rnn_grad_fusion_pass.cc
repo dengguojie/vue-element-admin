@@ -422,7 +422,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
 }
 
 Status DynamicRNNGradFusionPass::AddEdgeForNode(ge::NodePtr dynamicRNNGradNode, ge::NodePtr node,
-                                                int unlinkIndex, int anchorIndex) {
+                                                int unlinkIndex, int anchorIndex) const {
   if (dynamicRNNGradNode->GetOutDataAnchor(unlinkIndex)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(unlinkIndex)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
