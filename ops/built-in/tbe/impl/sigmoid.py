@@ -112,6 +112,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     output tensor
     """
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    
     if soc_version in ("Ascend710", ) and impl_mode == "high_performance":
         return sigmoid_high_performance_compute(x, y, kernel_name)
 
