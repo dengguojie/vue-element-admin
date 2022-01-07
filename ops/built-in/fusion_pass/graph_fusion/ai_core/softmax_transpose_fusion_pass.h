@@ -45,15 +45,15 @@ class softmaxTransFusionPass : public PatternFusionBasePass {
    * @param inNodePtr: bn node
    * @return SUCCESS/FAILED
    */
-  Status CheckParameter(ge::NodePtr& inNodePtr);
-  bool CheckStatus(ge::OpDescPtr& inOpDescPtr, vector<int64_t> inputShape, uint32_t lastDimsVal, uint32_t times,
-                   uint32_t maxDimsVal);
+  Status CheckParameter(const ge::NodePtr& inNodePtr);
+  bool CheckStatus(ge::OpDescPtr& inOpDescPtr, vector<int64_t> inputShape, const uint32_t lastDimsVal,
+                   const uint32_t times, const uint32_t maxDimsVal);
   /**
    * Set output_dim and group_size attr value
    * @param newNodePtr: new node
    * @return SUCCESS/FAILED
    */
-  Status SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr, int64_t shapeSize);
+  Status SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr, const int64_t shapeSize);
 
   /**
    * Get new input attrs for OpDescPtr
@@ -63,7 +63,7 @@ class softmaxTransFusionPass : public PatternFusionBasePass {
    * @return SUCCESS/FAILED
    */
 
-  Status SetAttrValue(const ge::OpDescPtr& OpDescPtr, int64_t shapeSize, int32_t transfer);
+  Status SetAttrValue(const ge::OpDescPtr& OpDescPtr, const int64_t shapeSize, const int32_t transfer);
   const string FUSED_OP_TYPE = "TransposeD_SoftmaxV2_TransposeD";
 };
 }  // namespace fe

@@ -68,7 +68,7 @@ Status softmaxTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   return INFuison(graph, inNode, newNodes);
 }
 
-Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, int64_t shapeSize, int32_t transfer) {
+Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, const int64_t shapeSize, const int32_t transfer) {
   // transfer the total image axis -2 and axis -1 for this case
   if (transfer == 1) {
     vector<int32_t> permValue;
@@ -89,7 +89,7 @@ Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, int6
   return FAILED;
 }
 
-Status softmaxTransFusionPass::CheckParameter(ge::NodePtr& inNodePtr) {
+Status softmaxTransFusionPass::CheckParameter(const ge::NodePtr& inNodePtr) {
   // get psroipooling node inputs.
   Node::Vistor<NodePtr> inNodes = inNodePtr->GetInDataNodes();
   FUSION_PASS_CHECK((inNodes.size() != 1),
@@ -99,7 +99,7 @@ Status softmaxTransFusionPass::CheckParameter(ge::NodePtr& inNodePtr) {
 }
 
 Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr,
-                                                      int64_t shapeSize) {
+                                                      const int64_t shapeSize) {
   vector<int32_t> axisValue;
   ge::AttrUtils::GetListInt(preOpDescPtr, AXIS, axisValue);
 
@@ -117,8 +117,8 @@ Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOp
   return SUCCESS;
 }
 
-bool softmaxTransFusionPass::CheckStatus(ge::OpDescPtr& inOpDescPtr, vector<int64_t> inputShape, uint32_t lastDimsVal,
-                                         uint32_t times, uint32_t maxDimsVal) {
+bool softmaxTransFusionPass::CheckStatus(ge::OpDescPtr& inOpDescPtr, vector<int64_t> inputShape, const uint32_t lastDimsVal,
+                                         const uint32_t times, const uint32_t maxDimsVal) {
   uint32_t shapeSize = inputShape.size();
   vector<int32_t> axisValue;
   vector<int32_t>::iterator iterNegAxis, iterPosAxis;
@@ -162,7 +162,7 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
   if (inputFormat == ge::FORMAT_NC1HWC0){
       shapeSize = oriShapelens;
       transposeShape = inputOrishape;
-  } else{
+  } else {
       shapeSize = shapeLens;
       transposeShape = inputShape;
   }

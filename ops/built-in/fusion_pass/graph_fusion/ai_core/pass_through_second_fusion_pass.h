@@ -36,7 +36,7 @@ class PassThroughSecondFusionPass : public PatternFusionBasePass {
   Status InsertCurNode(ge::ComputeGraph& graph, ge::NodePtr oriNode);
   Status RemoveThisNode(ge::ComputeGraph& graph, ge::NodePtr thisNode);
   Status SetNodeAttrAndOpDesc(ge::OpDescPtr& curOpDesc, const ge::OpDescPtr& oriOpDesc);
-  Status RemoveWeightNode(ge::ComputeGraph& graph, ge::NodePtr oriNode);
+  Status RemoveWeightNode(ge::ComputeGraph& graph, const ge::NodePtr oriNode);
   Status UnlinkEdge(ge::NodePtr oriNode);
   const string FUSED_OP_TYPE = "SpaceToDepth";
 };

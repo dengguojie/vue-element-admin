@@ -147,7 +147,7 @@ Status PassThroughSecondFusionPass::RemoveThisNode(ge::ComputeGraph& graph, ge::
   return SUCCESS;
 }
 
-Status PassThroughSecondFusionPass::RemoveWeightNode(ge::ComputeGraph& graph, ge::NodePtr oriNode) {
+Status PassThroughSecondFusionPass::RemoveWeightNode(ge::ComputeGraph& graph, const ge::NodePtr oriNode) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter PassThrough Second FusionPass remove weight node");
   ge::InDataAnchorPtr oriBottomInAnchorPtr = oriNode->GetInDataAnchor(1);
   ge::OutDataAnchorPtr oriBottomPeerAnchorPtr = oriBottomInAnchorPtr->GetPeerOutAnchor();

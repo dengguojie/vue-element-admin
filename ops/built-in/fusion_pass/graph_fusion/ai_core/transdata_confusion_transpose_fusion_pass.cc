@@ -88,8 +88,8 @@ vector<FusionPattern*> TransDataConfusionTransposeFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph,
-  Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                                     vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransDataConfusionTransposeFusionPass fusion begin");
   ge::NodePtr transData_1 = GetNodeFromMapping(PATTERN_TRANSDATA_1, mapping);
   ge::NodePtr transData_2 = GetNodeFromMapping(PATTERN_TRANSDATA_2, mapping);
