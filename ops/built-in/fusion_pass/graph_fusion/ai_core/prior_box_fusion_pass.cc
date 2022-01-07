@@ -42,6 +42,7 @@ namespace fe {
 static const char PATTERN_PRIORBOX[] = "PriorBox";
 static const char PRIORBOX[] = "PriorBox";
 static const float FLOAT_NUM_ZERO = 0;
+static const float FLOAT_NUM_ONE = 1;
 static const float FLOAT_NUM_TWO = 2;
 static const uint16_t UINT_NUM_ZERO = 0;
 static const int32_t INT_NUM_TWO = 2;
@@ -124,17 +125,16 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
         float center_y = (h + offset) * step_h;
         int min_value = min_size[s];
         // first prior: aspect_ratio = 1, size = min_size
-        float box_width_0 = min_value;
-        float box_height_0 = min_value;
+        float box_width_and_height_0 = min_value;
         // min_size can determine the normalized square box.
         // xmin
-        float point_x_min_0 = (center_x - box_width_0 / FLOAT_NUM_TWO) / img_w;
+        float point_x_min_0 = (center_x - box_width_and_height_0 / FLOAT_NUM_TWO) / img_w;
         // ymin
-        float point_y_min_0 = (center_y - box_height_0 / FLOAT_NUM_TWO) / img_h;
+        float point_y_min_0 = (center_y - box_width_and_height_0 / FLOAT_NUM_TWO) / img_h;
         // xmax
-        float point_x_max_0 = (center_x + box_width_0 / FLOAT_NUM_TWO) / img_w;
+        float point_x_max_0 = (center_x + box_width_and_height_0 / FLOAT_NUM_TWO) / img_w;
         // ymax
-        float point_y_max_0 = (center_y + box_height_0 / FLOAT_NUM_TWO) / img_h;
+        float point_y_max_0 = (center_y + box_width_and_height_0 / FLOAT_NUM_TWO) / img_h;
         output.push_back(point_x_min_0);
         output.push_back(point_y_min_0);
         output.push_back(point_x_max_0);
@@ -143,16 +143,15 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
         if (max_size.size() > 0) {
           int max_value = max_size[s];
           // second prior: aspect_ratio = 1, size = sqrt(min_size * max_size)
-          float box_width_1 = sqrt(min_value * max_value);
-          float box_height_1 = sqrt(min_value * max_value);
+          float box_width_and_height_1 = sqrt(min_value * max_value);
           // xmin
-          float point_x_min_1 = (center_x - box_width_1 / FLOAT_NUM_TWO) / img_w;
+          float point_x_min_1 = (center_x - box_width_and_height_1 / FLOAT_NUM_TWO) / img_w;
           // ymin
-          float point_y_min_1 = (center_y - box_height_1 / FLOAT_NUM_TWO) / img_h;
+          float point_y_min_1 = (center_y - box_width_and_height_1 / FLOAT_NUM_TWO) / img_h;
           // xmax
-          float point_x_max_1 = (center_x + box_width_1 / FLOAT_NUM_TWO) / img_w;
+          float point_x_max_1 = (center_x + box_width_and_height_1 / FLOAT_NUM_TWO) / img_w;
           // ymax
-          float point_y_max_1 = (center_y + box_height_1 / FLOAT_NUM_TWO) / img_h;
+          float point_y_max_1 = (center_y + box_width_and_height_1 / FLOAT_NUM_TWO) / img_h;
           output.push_back(point_x_min_1);
           output.push_back(point_y_min_1);
           output.push_back(point_x_max_1);
@@ -185,7 +184,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
   // clip the prior's coordidate such that it is within [0, 1]
   if (clip) {
     for (int d = 0; d < dim; ++d) {
-      output[d] = std::min<float>(std::max<float>(output[d], FLOAT_NUM_ZERO), 1.);
+      output[d] = std::min<float>(std::max<float>(output[d], FLOAT_NUM_ZERO), FLOAT_NUM_ONE);
     }
   }
 
@@ -331,11 +330,10 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
     return FAILED;
   }
-  float step_w_size = FLOAT_NUM_ZERO;
-  float step_h_size = FLOAT_NUM_ZERO;
+
   // set image width and height
-  int64_t img_width = 0;
-  int64_t img_height = 0;
+  int64_t img_width = img_w;
+  int64_t img_height = img_h;
   // If img_w and img_h is none in attribute, set width and height from img's dims
   if (img_h == 0 || img_w == 0) {
     // The width and height of input
@@ -345,17 +343,14 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
       return FAILED;
     }
-  } else {
-    img_width = img_w;
-    img_height = img_h;
   }
+
+  float step_w_size = step_w;
+  float step_h_size = step_h;
   // If step_w and step_h is none in attribute, set width and height by layer
   if (step_w == 0 || step_h == 0) {
     step_w_size = static_cast<float>(img_width) / layer_width;  // scaling
     step_h_size = static_cast<float>(img_height) / layer_height;
-  } else {
-    step_w_size = step_w;
-    step_h_size = step_h;
   }
 
   vector<float> outputData;
@@ -399,7 +394,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
   // vector to tensor for const
   ret = BoxValueGenFP16(outputDims, outputData, outputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, 
+  FUSION_PASS_CHECK(ret != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Generate data by FP16 failed."), return ret);
   // set output type to fp16
   boxOutTensorDesc.SetDataType(ge::DT_FLOAT16);

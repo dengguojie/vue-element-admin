@@ -52,8 +52,7 @@ ge::NodePtr PReluGradFusionPass::AddPReluGradNoneNode(ge::NodePtr prelugradNode,
   // create prelugrad_none desc
   ge::OpDescPtr prelugradNoneDesc = AttrUtils::CloneOpDesc(prelugradDesc);
   FUSION_PASS_CHECK(prelugradNoneDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "prelugradNone's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "None's OpDesc is null, fusion failed."),
                     failStatus = true);
 
   // input
@@ -80,8 +79,8 @@ ge::NodePtr PReluGradFusionPass::AddPReluGradNoneNode(ge::NodePtr prelugradNode,
   }
 
   FUSION_PASS_CHECK(prelugradNode->GetOutDataAnchor(0) == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "prelugrad node output anchor is null"), failStatus = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prelugrad node output anchor is null"),
+                    failStatus = true);
   if (prelugradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : prelugradNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
@@ -141,8 +140,8 @@ ge::NodePtr PReluGradFusionPass::AddReduceNode(ge::NodePtr prelugradNode, ge::No
   // Edge
   ge::GraphUtils::AddEdge(prelugradNoneNode->GetOutDataAnchor(1), reduceNode->GetInDataAnchor(0));
   FUSION_PASS_CHECK(prelugradNode->GetOutDataAnchor(1) == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "prelugrad node output anchor is null"), failStatus = true);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prelugrad node output anchor is null"),
+                    failStatus = true);
   if (prelugradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : prelugradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
@@ -177,13 +176,12 @@ Status PReluGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(prelugradNode);
   ge::NodePtr prelugradNoneNode = AddPReluGradNoneNode(prelugradNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, 
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
-                      "AddPReluGradNoneNode:check failed, fusion failed."),
+  FUSION_PASS_CHECK(failStatus,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddPReluGradNoneNode:check failed."),
                     return FAILED);
 
   AddReduceNode(prelugradNode, prelugradNoneNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, 
+  FUSION_PASS_CHECK(failStatus,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddReduceNode:check failed, fusion failed."),
                     return FAILED);
 

@@ -249,7 +249,6 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   int64_t padBottom = 0;
   int64_t padLeft = 0;
   int64_t padRight = 0;
-  vector<int64_t> pad = {0, 0, 0, 0};
   vector<int64_t> dilation = {1, 1};
 
   ge::OpDescPtr mulOp = mulNode->GetOpDesc();
@@ -286,7 +285,7 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   padBottom = max(padBottom, static_cast<int64_t>(0));
   padLeft = max(padLeft, static_cast<int64_t>(0));
   padRight = max(padRight, static_cast<int64_t>(0));
-  pad = {padTop, padBottom, padLeft, padRight};
+  vector<int64_t> pad = {padTop, padBottom, padLeft, padRight};
 
   ge::GeTensorPtr coffePtr = nullptr;
   int64_t coffeSize = 1 * outputC1 * outputH * outputW * outputC0;
@@ -803,7 +802,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
 
-  if(stridesH > MAX_STRIDE || stridesW > MAX_STRIDE) {
+  if (stridesH > MAX_STRIDE || stridesW > MAX_STRIDE) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "strided_h or strided_w >63, not support");
     return NOT_CHANGED;
   }
@@ -1024,8 +1023,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
             mulC = dimMul[1];
           }
           if (PatternFusionUtil::IsUnknownShape(mulC)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-            "AvgPoolFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Pass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
@@ -1040,8 +1038,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         for (size_t i = 1; i <= INT_NUM_THREE; i++) {
           auto dim = dimOut[i];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-            "AvgPoolFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Pass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }

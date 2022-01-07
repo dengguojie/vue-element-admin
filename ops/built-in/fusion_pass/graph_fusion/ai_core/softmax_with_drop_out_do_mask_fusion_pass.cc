@@ -33,6 +33,12 @@
 using namespace ge;
 namespace fe {
 static const uint32_t CORE_NUM = 32;
+static const int32_t INT_NUM_TWO = 2;
+static const int32_t INT_NUM_THREE = 3;
+static const int32_t INT_NUM_FOUR = 4;
+static const int32_t INT_NUM_C0 = 16;
+static const int32_t INT_NUM_C1 = 32;
+static const int32_t INT_H_W = 512;
 static const string AXIS = "axes";
 static const string KEEPPROB = "keep_prob";
 static const string PATTERN_DROPOUT = "DropOutDoMaskV3D";
@@ -78,7 +84,8 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   }
 
   vector<int64_t> OriginDimInfo = softmaxNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-  if (!(OriginDimInfo.size() == 4 && OriginDimInfo[2] == 512 && OriginDimInfo[3] == 512)) {
+  if (!(OriginDimInfo.size() == INT_NUM_FOUR && OriginDimInfo[INT_NUM_TWO] == INT_H_W &&
+        OriginDimInfo[INT_NUM_THREE] == INT_H_W)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "shape is not support.");
     return NOT_CHANGED;
   }
@@ -96,7 +103,8 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
-  newOpdesc = std::make_shared<ge::OpDesc>(dropoutNode->GetName() + "/" + SOFTMAXWITHDROPOUTDOMASK, SOFTMAXWITHDROPOUTDOMASK);
+  newOpdesc = std::make_shared<ge::OpDesc>(dropoutNode->GetName() + "/" + SOFTMAXWITHDROPOUTDOMASK,
+                                           SOFTMAXWITHDROPOUTDOMASK);
 
   FUSION_PASS_CHECK(newOpdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
@@ -108,8 +116,8 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   ge::GeShape softmaxInputShape = input_tensor0.GetShape();
 
   vector<int64_t> dimInfo = softmaxInputShape.GetDims();
-  vector<int64_t> assitDimInfoOrigin = {dimInfo[0], dimInfo[1], 512, 512};
-  vector<int64_t> assitDimInfo = {dimInfo[0], dimInfo[1], 32, 32, 16, 16};
+  vector<int64_t> assitDimInfoOrigin = {dimInfo[0], dimInfo[1], INT_H_W, INT_H_W};
+  vector<int64_t> assitDimInfo = {dimInfo[0], dimInfo[1], INT_NUM_C1, INT_NUM_C1, INT_NUM_C0, INT_NUM_C0};
   ge::GeShape assitShape(assitDimInfo);
   ge::GeShape assitShapeOrigin(assitDimInfoOrigin);
 

@@ -152,8 +152,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   int64_t dimsInput1 = matrixsetdiagInputShape.GetDimNum() - INT_NUM_TWO;
   for (size_t j = 0; j < matrixsetdiagInputShape.GetDimNum(); ++j) {
     if (PatternFusionUtil::IsUnknownShape(matrixsetdiagInputShape.GetDim(j))) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-        "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Pass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     dimNums = matrixsetdiagInputShape.GetDim(j) * dimNums;
@@ -164,8 +163,7 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   int64_t dimNums2 = matrixsetdiagInputShape.GetDim(dimsInput1);
   if (PatternFusionUtil::IsUnknownShape(dimNums1) ||
       PatternFusionUtil::IsUnknownShape(dimNums2)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-      "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Pass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
   FUSION_PASS_CHECK(dimNums1 == 0 || dimNums2 == 0,

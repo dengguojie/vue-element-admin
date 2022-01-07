@@ -133,7 +133,7 @@ namespace fe {
       // link mish node
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(softPlusNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                            mishNode->GetInDataAnchor(0)),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                           "Add edge from node:%s to node:%s failed.",
                           softPlusNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                           mishNode->GetName().c_str()),

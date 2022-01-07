@@ -165,8 +165,8 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
     FUSION_PASS_CHECK(shapeDims.size() < INT_NUM_FOUR,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPP output shape dims is less than 4."),
                       return PARAM_INVALID;);
-    for (size_t i = 1; i <= INT_NUM_THREE; i++) {
-      auto dim = shapeDims[i];
+    for (size_t j = 1; j <= INT_NUM_THREE; j++) {
+      auto dim = shapeDims[j];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "SPPPass cannot be applied for unknown shape.");
         return FAILED;

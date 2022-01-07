@@ -336,8 +336,8 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
     ge::NodePtr basicRNNNode = graph.AddNode(basicRNNDesc2);
     FUSION_PASS_CHECK(
         basicRNNNode == nullptr,
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-          "fusionNode:%s is null, fusion failed.", basicRNNDesc2->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                                       basicRNNDesc2->GetName().c_str()),
         failStatus = true);
     newNodes.push_back(basicRNNNode);
     rnnCellNode.push_back(basicRNNNode);
