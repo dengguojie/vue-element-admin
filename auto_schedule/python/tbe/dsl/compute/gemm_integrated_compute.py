@@ -1235,8 +1235,8 @@ class GEMMCompute(FormatCompute):
                 name="tensor_b_int82fp16"
             )
 
-        if self.format_b in ("FRACTAL_Z", "FRACTAL_NZ"):
         # ------------------------ fractal process ----------------------- #
+        if self.format_b in ("FRACTAL_Z", "FRACTAL_NZ"):
             return self._compute_b_matrix_fractal(tensor_b_normalize)
 
         # -------------------------- ND process -------------------------- #

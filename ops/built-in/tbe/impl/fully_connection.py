@@ -112,11 +112,8 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
              y        ori shape = [16, 16, 16, 16] ori_format = "NCHW"
     """
     shape_x_ori = x.get("ori_shape")
-    length_x_ori = len(shape_x_ori)
     format_x_ori = x.get("format")
-
     shape_y_ori = y.get("ori_shape")
-    length_y_ori = len(shape_y_ori)
 
     if axis == 1:
         if shape_x_ori[0] == 1:
@@ -130,7 +127,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
                             "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
             output0_param = {"classify": "output0", "name": "y",
                              "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
-        elif length_y_ori == 4:
+        elif len(shape_y_ori) == 4:
             input0_param = {"classify": "input0", "name": "x",
                             "datatype": ["float16", "int8", "int4"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
             input1_param = {"classify": "input1", "name": "w",
@@ -141,7 +138,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
                             "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
             output0_param = {"classify": "output0", "name": "y",
                              "datatype": ["float16", "int32", "int32"], "format": ["NC1HWC0", "NC1HWC0", "NC1HWC0"]}
-        elif length_x_ori == 2:
+        elif len(shape_x_ori) == 2:
             input0_param = {"classify": "input0", "name": "x",
                             "datatype": ["float16", "int8", "int4"],
                             "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
@@ -167,7 +164,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
             input3_param = {"classify": "input3", "name": "offset_w",
                             "datatype": ["int8", "int8", "int4"], "format": ["ND", "ND", "ND"]}
             output0_param = {"classify": "output0", "name": "y",
-                             "datatype": ["float16", "int32", "int32"], 
+                             "datatype": ["float16", "int32", "int32"],
                              "format": ["FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ"]}
     else:
         input0_param = {"classify": "input0", "name": "x",
@@ -227,7 +224,6 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
 
     # w info
     shape_w = w.get('shape')
-    dtype_w = w.get('dtype')
     format_w = w.get('format')
 
     para_check.check_format(format_w, ["FRACTAL_Z"], param_name="w")
