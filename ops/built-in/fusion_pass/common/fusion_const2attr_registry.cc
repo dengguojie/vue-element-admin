@@ -43,7 +43,8 @@ Status FusionConst2AttrOpRegistry::SetConst2AttrRegister(const string& opType, c
   }
   return SUCCESS;
 }
-Status FusionConst2AttrOpRegistry::GetRegisterByOriType(const string& oriOpType, FusionConst2AttrOpRegister& reg) const {
+Status FusionConst2AttrOpRegistry::GetRegisterByOriType(const string& oriOpType,
+                                                        FusionConst2AttrOpRegister& reg) const {
   std::unordered_map<string, FusionConst2AttrOpRegister>::const_iterator iter = const2AttrOpMap_.find(oriOpType);
   if (iter != const2AttrOpMap_.cend()) {
     reg = iter->second;
