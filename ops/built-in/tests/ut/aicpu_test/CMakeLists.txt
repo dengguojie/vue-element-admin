@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/svd.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
@@ -342,6 +343,7 @@ set(_cpu_kernels_ut_files
   testcase/strided_slice/src/strided_slice_utest.cpp
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/sub/src/sub_utest.cpp
+  testcase/svd/src/svd_utest.cpp
   testcase/tan/src/tan_utest.cpp
   testcase/tanhgrad/src/tanhgrad_utest.cpp
   testcase/tile_with_axis/src/tile_with_axis_utest.cpp

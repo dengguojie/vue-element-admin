@@ -109,6 +109,7 @@ if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/sigmoid_grad.cc
+        kernels/normalized/custom/research/svd.cc
     )
 endif()
 message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src_files})
