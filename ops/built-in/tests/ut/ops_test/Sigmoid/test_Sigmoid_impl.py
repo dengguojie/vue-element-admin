@@ -112,28 +112,29 @@ ut_case.add_precision_case("all", {
 #     },
 # )
 
+def side_effects(*args):
+    # return vals[args]
+    return True
 
 def sigmoid_test_high(test_arg):
-    #patch('te.utils.para_check.check_op_params', mock_decorator).start()
     cce_conf.cce_conf.te_set_version("Ascend710")
-    sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-            {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
-            "sigmoid",
-            "high_performance")
+    with patch("te.utils.para_check.check_op_params",MagicMock(side_effect=side_effects)):
+        sigmoid({"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (11, 33), "shape": (11, 33)})
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-def mock_decorator(*args, **kwargs):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            return f(*args, **kwargs)
-        return decorated_function
-    return True
+# def mock_decorator(*args, **kwargs):
+#     def decorator(f):
+#         @wraps(f)
+#         def decorated_function(*args, **kwargs):
+#             return f(*args, **kwargs)
+#         return decorated_function
+#     return True
 
 
 ut_case.add_cust_test_func(test_func=sigmoid_test_high)
 if __name__ == '__main__':
-    patch('te.utils.para_check.check_op_params', mock_decorator).start()
+    #mock.patch('te.utils.para_check.check_op_params', mock_decorator).start()
     ut_case.run('Ascend710')
     exit(0)
