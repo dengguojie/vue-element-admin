@@ -42,7 +42,7 @@ def sigmoid_high_performance_compute(x, y, kernel_name="sigmoid"):
     Calculation principle
     ---------------------
     `L(x) = 0.229270815*x - 0.0102459298*x^3 + 0.000207697530*x^5 + 0.5`
-    `L(x) = a*x - b*x^3 + c*x^5 + d = x(a + x^2(b + cx^2)) + d`
+    `L(x) = a*x + b*x^3 + c*x^5 + d = x(a + x^2(b + cx^2)) + d`
     `sigmoid = max(0, min(1,L(x)))`
 
     Parameters
@@ -112,7 +112,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     output tensor
     """
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    
+
     if soc_version in ("Ascend710", ) and impl_mode == "high_performance":
         return sigmoid_high_performance_compute(x, y, kernel_name)
 
