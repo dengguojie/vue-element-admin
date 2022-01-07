@@ -792,13 +792,13 @@ REG_OP(DiagPart)
 * Four inputs, including:
 *@li x: A Tensor of type float16, int8.
 *@li w: A weight matrix of type float16, int8.
-*@li b: A Tensor of type float16, int32, float32.
-*@li offset_w: A Tensor of type int8 . \n
+*@li b: An optional Tensor of type float16, int32, float32.
+*@li offset_w: An optional Tensor of type int8. Reserved. Only None Supported. \n
 
 *@par Attributes:
-*@li num_output: Reserved.
+*@li num_output: Required. An int, output neuron number. Reserved.
 *@li transpose: A bool, specifying weight whether to transpose input w, either "true" or "false". Defaults to "false".
-*@li axis: Optional. A int, 1 or 2, specifying which dimension the input "K" starts from. Defaults to 1.
+*@li axis: Optional. An int, 1 or 2, specifying which dimension the input "K" starts from. Defaults to 1.
 * The product of the subsequent dimensions starting form first dimension or the second dimension is "K".
 *@li offset_x: An optional integer for quantized FullyConnection.
 *The negative offset added to the input image for int8 type. Ensure offset_x within the

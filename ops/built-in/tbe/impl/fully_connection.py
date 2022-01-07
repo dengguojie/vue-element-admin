@@ -419,7 +419,8 @@ def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
     num_output : output neuron number
     transpose: is weight transpose
     axis: the beginning reduce axis, reduce axis is [axis, last_axis]
-    offset_x: unused
+    offset_x: The negative offset added to the input image for int8 type. Ensure offset_x within the
+    effective range of int8 [-128, 127]. Defaults to "0"
 
     Returns:
     -------
