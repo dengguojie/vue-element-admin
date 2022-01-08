@@ -206,6 +206,7 @@ ut_case.add_case("Ascend910A", {
 
 from impl.avg_pool_v2 import check_supported
 from impl.avg_pool_v2 import avg_pool_v2_compute
+from impl.avg_pool_v2 import get_op_support_info
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
     None,None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
@@ -240,5 +241,44 @@ def test_avg_pool_v2_compute(test_arg):
     bias2=tvm.placeholder((16,), name="bias", dtype="float16", attrs={"shape":(16,),"ori_shape":(16,), "format":"ND", "ori_format":"ND"})
     out1={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16)}
     avg_pool_v2_compute(d,e,bias2,out1,[1,1,2,2],[1,1,2,2],"CALCULATED",(0,0,0,0),"NCHW",False,False,False)
+
+
+def test_get_op_support_info(test_arg):
+    a = {"shape": (1, 8, 12, 12, 16), "dtype": "float16",
+         "format": "NC1HWC0", "ori_shape": (1, 12, 12, 128),
+         "ori_format": "NHWC", "param_type": "input"}
+    out={"dtype": "float16", "format": "NC1HWC0",
+         "ori_format": "NHWC", "ori_shape": (1,1,1,128),
+         "shape": (1,8,1,1,16)}
+    info_result = get_op_support_info(a, None, None, out, [1, 12, 12, 1],
+                                      [1, 1, 1, 1], "VALID",
+                                      (0, 0, 0, 0), "NHWC", True)
+               
+    b = {"shape": (1, 8, 12, 12, 16), "dtype": "float16",
+         "format": "NC1HWC0", "ori_shape": (-1, 12, 12, 128),
+         "ori_format": "NHWC", "param_type": "input"}
+    out={"dtype": "float16", "format": "NC1HWC0",
+         "ori_format": "NHWC", "ori_shape": (1, 1, 1, 128),
+         "shape": (1, 8, 1, 1, 16)}
+    info_result2 = get_op_support_info(b, None, None, out, [1, 12, 12, 1],
+                                       [1, 1, 1, 1], "VALID",
+                                       (0, 0, 0, 0), "NHWC", False)
+
+    c = {"shape": (1, 8, 12, 12, 16), "dtype": "float16",
+         "format": "NC1HWC0", "ori_shape": (1, 12, 12, 128),
+         "ori_format": "NHWC", "param_type": "input"}
+    out={"dtype": "float16", "format": "NC1HWC0",
+         "ori_format": "NHWC", "ori_shape": (1,1,1,128),
+         "shape": (1,8,1,1,16)}
+    info_result3 = get_op_support_info(a, None, None, out, [1, 12, 12, 1],
+                                      [1, 1, 1, 1], "VALID",
+                                      (0, 0, 0, 0), "NHWC", False)       
+  
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_avg_pool_v2_compute)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+
+
+if __name__ == '__main__':
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    exit(0)

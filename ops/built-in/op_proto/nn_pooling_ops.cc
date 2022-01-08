@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include "axis_util.h"
 #include "graph/operator.h"
 #include "op_log.h"
@@ -2256,8 +2257,281 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   return GRAPH_SUCCESS;
 }
 
+// cal new_pad_value for avgpool_v2 according to conv(data slice info)
+static void InferHWAvgpoolv2(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
+                             int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
+                             int64_t* start_add_pad, int64_t* end_add_pad) 
+{
+    if ((start_add_pad == nullptr) || (end_add_pad == nullptr)) {
+        OP_LOGE("Get start_add_pad or end_add_pad failed.");
+        return;
+    }
+    OP_LOGD("InferHWAvgpoolv2:", "input:%d kernel:%d pad:%d stride:%d dilation:%d start_add_pad:%ld end_add_pad:%ld\n",
+            input, kernel, pad, stride, dilation, *start_add_pad, *end_add_pad);
+    if (output_slice.size() >= 2) { // output slice has 2 dim(h_start, h_end)
+        // calc start rule: (i_start + pad_h)/stride_h = output_start
+        int64_t i_start = output_slice[0] * stride - pad;
+        if (i_start < 0) {
+            *start_add_pad = -i_start;
+            i_start = 0;
+        } else {
+            *start_add_pad = 0;
+        }
+        // calc end rule: (iend_start + pad_h)/stride_h = output_end
+        // iend_end = iend_start + dilation*(kernel_h-1)
+        int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
+        if (i_end >= input) {
+            *end_add_pad = i_end - input + 1;
+            i_end = input - 1;
+        } else {
+            *end_add_pad = 0;
+        }
+        data_slice = {i_start, i_end};
+        OP_LOGD("InferHWAvgpoolv2:", "i_start:%ld i_end:%ld output_slice[0]:%ld output_slice[1]:%ld\n",
+                i_start, i_end, output_slice[0], output_slice[1]);
+    }
+}
+
+static void get_corrected_pad(int64_t* input_pad) 
+{
+    if (input_pad == nullptr) {
+        OP_LOGE("Get input_pad failed.");
+        return;
+    }
+    if (*input_pad < 0) {
+        *input_pad = 0;
+    }
+}
+
+  // The code here refers to the implementation of _calculate_pads before calling conv2d_compute in avg_pool_v2.py
+static void calculate_pad(string padding, int64_t input_h, int64_t input_w, int64_t stride_h,
+                          int64_t stride_w, int64_t ksize_h, int64_t ksize_w, vector<int64_t> dilations,
+                          vector<int64_t>& pad, vector<int64_t> pads, bool ceilMode) 
+{
+    if ((pads.size() < 4) || (dilations.size() < 4)) {
+        OP_LOGE("Get pad_vec or  dilations failed.");
+    } else {
+        OP_LOGD("calculate_pad:", "stride_h:%d stride_w:%d ksize_h:%d ksize_w:%d\n", stride_h, stride_w, ksize_h, ksize_w);
+        int64_t output_h = 0;
+        int64_t output_w = 0;
+        int64_t pad_row = 0;
+        int64_t pad_col = 0;
+        int64_t pad_top = 0;
+        int64_t pad_bottom = 0;
+        int64_t pad_left = 0;
+        int64_t pad_right = 0;
+        int64_t ho = 0;
+        int64_t wo = 0;
+        if (padding == "SAME") {
+            output_h = floor((input_h + stride_h - 1) / stride_h);
+            output_w = floor((input_w + stride_w - 1) / stride_w);
+            pad_row = (output_h - 1) * stride_h + ((ksize_h - 1) * dilations[0] + 1) - input_h;
+            pad_col = (output_w - 1) * stride_w + ((ksize_w - 1) * dilations[1] + 1) - input_w;
+            pad_top = floor(pad_row / 2);
+            pad_bottom = pad_row - pad_top;
+            pad_left = floor(pad_col / 2);
+            pad_right = pad_col - pad_left;
+            get_corrected_pad(&pad_top);
+            get_corrected_pad(&pad_bottom);
+            get_corrected_pad(&pad_left);
+            get_corrected_pad(&pad_right);
+            pad = {pad_top, pad_bottom, pad_left, pad_right};
+        } else if (padding == "CALCULATED") {
+            pad_top= pads[0];
+            pad_bottom= pads[1];
+            pad_left= pads[2];
+            pad_right= pads[3];
+
+            if (ceilMode) {
+                ho = floor((input_h - ksize_h + pad_top + pad_bottom + stride_h - 1) / stride_h) + 1;
+                wo = floor((input_w - ksize_w + pad_left + pad_right + stride_w - 1) / stride_w) + 1;
+                pad_bottom = (ho - 1) * stride_h + ksize_h - input_h - pad_top;
+                pad_right = (wo - 1) * stride_w + ksize_w - input_w - pad_left;
+            } else {
+                ho = floor((input_h - ksize_h + pad_top + pad_bottom) / stride_h) + 1;
+                wo = floor((input_w - ksize_w + pad_left + pad_right) / stride_w) + 1;
+                pad_bottom = (ho - 1) * stride_h + ksize_h - input_h - pad_top;
+                pad_right = (wo - 1) * stride_w + ksize_w - input_w - pad_left;
+                get_corrected_pad(&pad_bottom);
+                get_corrected_pad(&pad_right);
+            }
+            pad = {pad_top, pad_bottom, pad_left, pad_right};
+
+        } else {
+            pad = {0, 0, 0, 0};
+        }
+    }
+}
+
+IMPLEMT_INFER_DATA_SLICE(AvgPoolV2, AvgPoolV2InferDataSlice){
+    AscendString op_name;
+    CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+    OP_LOGD(op_name.GetString(), "Enter AvgPoolV2InferDataSlice");
+    auto inputTensorDesc = op.GetInputDescByName("x");
+    auto shape = inputTensorDesc.GetShape();
+    std::vector<int64_t> dims_input = shape.GetDims();
+    auto inputFormat = inputTensorDesc.GetFormat();
+
+    if (IsUnknownRankShape(dims_input)) {
+        OP_LOGD(op_name.GetString(), "input x shape [-2] do not support split.");
+        return GRAPH_FAILED;
+    }
+
+    // get input ksize
+    std::vector<int64_t> ksizeList;
+    if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr ksizeList");
+        return GRAPH_FAILED;
+    }
+    // get input strides
+    std::vector<int64_t> stridesList;
+    if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr stridesList");
+        return GRAPH_FAILED;
+    }
+    // get input data_format
+    std::string dataFormat;
+    if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr dataFormat");
+        return GRAPH_FAILED;
+    }
+    // get input padding_mode
+    std::string paddingMode;
+    if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr padding_mode");
+        return GRAPH_FAILED;
+    }
+
+    // get input ceil_mode
+    bool ceil_mode;
+    if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceil_mode)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr ceil_mode");
+        return GRAPH_FAILED;
+    }
+    // get input pads
+    std::vector<int64_t> pad_vec;
+    if (GRAPH_SUCCESS != op.GetAttr("pads", pad_vec)) {
+        OP_LOGD(op_name.GetString(), "failed to get op Attr pad_vec");
+        return GRAPH_FAILED;
+    }
+
+    if ((dims_input.size() < 4) || (ksizeList.size() < 4) || (stridesList.size() < 4) || (pad_vec.size() < 4)) {
+        OP_LOGE(op_name.GetString(), "dims_input size or ksize size or strides size or pad size less then 4.");
+        return GRAPH_FAILED;
+    }
+      
+    int64_t inputH = 0;
+    int64_t inputW = 0;
+    if (inputFormat == FORMAT_NC1HWC0) {
+        inputH = dims_input[2];
+        inputW = dims_input[3];
+    } else {
+        OP_LOGE(op_name.GetString(), "Invalid inputFormat.");
+        return GRAPH_FAILED;
+    }
+
+    int64_t windowH = 0;
+    int64_t windowW = 0;
+    int64_t strideH = 0;
+    int64_t strideW = 0;
+    if (dataFormat == "NHWC") {
+        windowH = ksizeList[1];
+        windowW = ksizeList[2];
+        strideH = stridesList[1];
+        strideW = stridesList[2];
+    } else if (dataFormat == "NCHW") {
+        windowH = ksizeList[2];
+        windowW = ksizeList[3];
+        strideH = stridesList[2];
+        strideW = stridesList[3];
+    } else {
+        OP_LOGE(op_name.GetString(), "Invalid dataFormat.");
+        return GRAPH_FAILED;
+    }
+    if (windowH == inputH && windowW == inputW) {
+        OP_LOGD(op_name.GetString(), "Global pool can't calculate over lap.");
+        return NO_OVERLAP_DIM;
+    }
+
+    vector<int64_t> dilations = {1, 1, 1, 1};
+    vector<int64_t> pad_list;
+    calculate_pad(paddingMode, inputH, inputW, strideH, strideW, windowH,
+                  windowW, dilations, pad_list, pad_vec, ceil_mode);
+    if (pad_list.size() < 4) {
+        OP_LOGE(op_name.GetString(), "pad_list size less then 4.");
+        return GRAPH_FAILED;
+    }
+    OP_LOGD(op_name.GetString(), "avgpoolv2 calculate_pad_list  is [%d,%d,%d,%d], ori_pad_vec is [%d,%d,%d,%d]",
+            pad_list[0], pad_list[1], pad_list[2], pad_list[3], pad_vec[0], pad_vec[1], pad_vec[2], pad_vec[3]);
+
+    vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
+    vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
+    GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+    if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+        OP_LOGE(op_name.GetString(), "no data slice, use default.");
+        return GRAPH_FAILED;
+    }
+
+    int64_t padt = pad_list[0];
+    int64_t padl = pad_list[2];
+    int64_t dilh = 1;
+    int64_t dilw = 1;
+    bool haveSlice = false;
+    vector<int64_t> new_pad_lists = pad_list;
+    for (unsigned i = 0; i < y_data_slice.size(); i++) {
+        if (y_data_slice[i].size() > 0) {
+            haveSlice = true;
+            if (i == 2) {
+                vector<int64_t> ih_slice;
+                int64_t top_add_pad = pad_list[0];
+                int64_t bom_add_pad = pad_list[1];
+                InferHWAvgpoolv2(inputH, windowH, padt, strideH, dilh, y_data_slice[i],
+                                 ih_slice, &top_add_pad, &bom_add_pad);
+                OP_LOGD(op_name.GetString(), "Avgpoolv2 h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
+                        ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+                new_pad_lists[0] = top_add_pad;
+                new_pad_lists[1] = bom_add_pad;
+                x_data_slice[i] = ih_slice;
+            } else if (i == 3) {
+                vector<int64_t> iw_slice;
+                int64_t left_add_pad = pad_list[2];
+                int64_t right_add_pad = pad_list[3];
+                InferHWAvgpoolv2(inputW, windowW, padl, strideW, dilw, y_data_slice[i], 
+                                iw_slice, &left_add_pad, &right_add_pad);
+                OP_LOGD(op_name.GetString(), "Avgpoolv2 w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
+                        iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+                new_pad_lists[2] = left_add_pad;
+                new_pad_lists[3] = right_add_pad;
+                x_data_slice[i] = iw_slice;
+            }
+        }
+    }
+    op.SetAttr("pads", new_pad_lists);
+    OP_LOGD(op_name.GetString(), "avgpoolv2 new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
+            new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
+    for (unsigned i = 0; i < x_data_slice.size(); i++) {
+        if (x_data_slice[i].size() > 0) {
+            if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+                OP_LOGE(op_name.GetString(), "Set x data slice failed.");
+                return GRAPH_FAILED;
+            }
+            return GRAPH_SUCCESS;
+        }
+    }
+
+    if (!haveSlice) {
+        return GRAPH_FAILED;
+  }
+    OP_LOGD(op_name.GetString(), "AvgPoolV2InferDataSlice success");
+    return NO_OVERLAP_DIM;
+}
+
+
 COMMON_INFER_FUNC_REG(AvgPoolV2, AvgPoolV2InferShape);
 VERIFY_FUNC_REG(AvgPoolV2, AvgPoolV2Verify);
+INFER_DATA_SLICE_FUNC_REG(AvgPoolV2, AvgPoolV2InferDataSlice);
 // ----------------AvgPoolV2 End-------------------
 
 // ----------------AvgPool3D-------------------

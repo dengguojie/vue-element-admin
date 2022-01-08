@@ -4,6 +4,9 @@
 
 #include "nn_pooling_ops.h"
 #include "op_proto_test_util.h"
+#include "utils/op_desc_utils.h"
+#include "utils/attr_utils.h"
+#include "graph/debug/ge_attr_define.h"
 
 class avg_poolv2 : public testing::Test {
  protected:
@@ -673,4 +676,243 @@ TEST_F(avg_poolv2, InfershapeAvgPoolV2_011) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "SAME");
+    op.SetAttr("data_format", "NCHW");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {1, 62}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {}, {0, 63}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    op.GetAttr("pads", pads);
+    std::vector<int> expect_pads = {1, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest02) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "CALCULATED");
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NCHW");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0, 63}, {1, 62}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 63}, {0, 63}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    op.GetAttr("pads", pads);
+    std::vector<int> expect_pads = {1, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest03) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "SAME");
+    op.SetAttr("data_format", "NCHW");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0, 31}, {1, 30}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 63}, {2, 62}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    op.GetAttr("pads", pads);
+    std::vector<int> expect_pads = {0, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest04) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 3, 3, 1});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "CALCULATED");
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NHWC");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0, 63}, {1, 62}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 63}, {0, 63}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    op.GetAttr("pads", pads);
+    std::vector<int> expect_pads = {1, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest05) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 3, 3});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NHWC");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0, 63}, {1, 62}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 63}, {0, 63}, {}};
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest06) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 3, 3, 1});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "CALCULATED");
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NHWC");
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest07) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "CALCULATED");
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NHWC");
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest08) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 3, 3, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "CALCULATED");
+    op.SetAttr("ceil_mode", true);
+    op.SetAttr("data_format", "NHWC");
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+TEST_F(avg_poolv2, avg_poolv2SplicDataTest09) {
+    ge::op::AvgPoolV2 op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16,
+                       ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 64, 64, 16}, ge::DT_FLOAT16, 
+                        ge::FORMAT_NC1HWC0, {4, 3, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1});
+    op.SetAttr("padding_mode", "SAME");
+    op.SetAttr("data_format", "NCHW");
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {1, 62}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 63}, {}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    op.GetAttr("pads", pads);
+    std::vector<int> expect_pads = {0, 0, 1, 1};
+    EXPECT_EQ(expect_pads, pads);
 }
