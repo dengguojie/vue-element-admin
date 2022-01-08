@@ -38,7 +38,6 @@ const int32_t LAST_AXIS_INDEX = 3;
 const std::string QUANT_SCALE = "quant_scale";
 const std::string DEQUANT_SCALE = "dequant_scale";
 const std::string ATTR_OFFSET_X = "offset_x";
-const std::string ATTR_OFFSET_W = "offset_w";
 const std::string ATTR_OFFSET = "offset";
 const std::string ATTR_SCALE = "scale";
 
