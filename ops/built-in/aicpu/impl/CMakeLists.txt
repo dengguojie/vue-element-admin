@@ -134,6 +134,7 @@ set(local_device_kernels_src_files
     kernels/device/avg_pool1d_avg_matrix.cc
     kernels/device/mem_cpy.cc
     kernels/device/where.cc
+    kernels/device/stateless_drop_out_gen_mask.cc
 )
 
 if(BUILD_OPEN_PROJECT)
@@ -182,6 +183,7 @@ if(BUILD_OPEN_PROJECT)
     target_compile_definitions(cpu_kernels PRIVATE
       _FORTIFY_SOURCE=2
       google=ascend_private
+      $<$<STREQUAL:${TARGET_LINUX_DISTRIBUTOR_ID},lhisiandroid>:RUN_ANDROID>
     )
 
     target_compile_options(cpu_kernels PRIVATE
@@ -237,6 +239,7 @@ if(BUILD_OPEN_PROJECT)
     target_compile_definitions(cpu_kernels_static PRIVATE
         _FORTIFY_SOURCE=2
         $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:LOG_CPP>
+        $<$<STREQUAL:${TARGET_LINUX_DISTRIBUTOR_ID},lhisiandroid>:RUN_ANDROID>
     )
 
     target_link_libraries(cpu_kernels_static PRIVATE
@@ -329,6 +332,7 @@ target_link_libraries(cpu_kernels PRIVATE
 target_compile_definitions(cpu_kernels PRIVATE
     _FORTIFY_SOURCE=2
     google=ascend_private
+    $<$<STREQUAL:${TARGET_LINUX_DISTRIBUTOR_ID},lhisiandroid>:RUN_ANDROID>
 )
 
 target_compile_options(cpu_kernels PRIVATE
@@ -356,6 +360,7 @@ target_link_options(cpu_kernels PRIVATE
 target_compile_definitions(cpu_kernels_static PRIVATE
     _FORTIFY_SOURCE=2
     $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:LOG_CPP>
+    $<$<STREQUAL:${TARGET_LINUX_DISTRIBUTOR_ID},lhisiandroid>:RUN_ANDROID>
 )
 
 target_link_libraries(cpu_kernels_static PRIVATE

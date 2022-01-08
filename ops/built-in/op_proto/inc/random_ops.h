@@ -500,6 +500,34 @@ REG_OP(DropOutGenMaskV3)
     .ATTR(seed2, Int, 0)
     .OP_END_FACTORY_REG(DropOutGenMaskV3)
 
+    
+/**
+*@brief Generate stateless random bit mask for dropout . \n
+
+*@par Inputs:
+include:
+*@li shape:The shape of the output tensor.
+*@li prob:0-D. Number of bit 1 . \n
+*@li seed:If either seed or seed2 are set to be non-zero, the random number
+*generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2:A second seed to avoid seed collision . \n
+
+*@par Outputs:
+*y:Output (1-D) random number using uint data format . \n
+
+*@attention Constraints:
+*The output is aligned with 128 bits
+
+*@see StatelessDropOutGenMask()
+*/
+REG_OP(StatelessDropOutGenMask)
+    .INPUT(shape, TensorType({ DT_INT32, DT_INT64 }))
+    .INPUT(prob, TensorType({ DT_FLOAT16, DT_FLOAT }))
+    .INPUT(seed, TensorType({ DT_INT32, DT_INT64 }))
+    .INPUT(seed1, TensorType({ DT_INT32, DT_INT64 }))
+    .OUTPUT(y, TensorType({ DT_UINT8 }))
+    .OP_END_FACTORY_REG(StatelessDropOutGenMask)
+
 /**
 *@brief Generates values in an interval . \n
 
