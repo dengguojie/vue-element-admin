@@ -266,7 +266,8 @@ class BatchMultiClassNonMaxSuppression:
         return self.tik_instance
 
     def init_nms_result_zero(self, core_idx):
-        """init_nms_result_zero
+        """
+        init_nms_result_zero
         """
         if self.l1_nms_result_zero and is_vector_core():
             with self.tik_instance.new_stmt_scope():
@@ -1375,7 +1376,8 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
                     ub_tmp_topk = tik_instance.Tensor("float16", topk_out_ub.shape,
                                                       name="ub_tmp_topk", scope=tik.scope_ubuf)
                     with tik_instance.for_range(0, top_n_num_tail) as _top_n_tail_idx:
-                        workspace_proposal_offset = sorted_k * 8 + _top_n_tail_idx * sorted_k * 8 + core_idx * nms.boxes_num * 8
+                        workspace_proposal_offset = \
+                            sorted_k * 8 + _top_n_tail_idx * sorted_k * 8 + core_idx * nms.boxes_num * 8
                         tik_instance.data_move(ub_tmp_topk, nms.workspace_second_nms_gm[workspace_proposal_offset],
                                                0, 1, loop_burst_len, 0, 0)
                         workspace_offset = _top_n_tail_idx * sorted_k * 8 + core_idx * nms.boxes_num * 8

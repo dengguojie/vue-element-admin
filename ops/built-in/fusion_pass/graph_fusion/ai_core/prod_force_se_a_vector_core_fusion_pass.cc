@@ -18,8 +18,7 @@
  * \file prod_force_se_a_vector_core_fusion_pass.cc
  * \brief ProdSeA fusion pass(Parallel ProdForceSeA)
  */
-#include <stdint.h>
-
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -39,7 +38,6 @@
 #include "prod_force_se_a_vector_core_fusion_pass.h"
 
 namespace fe {
-
 static const std::string PATTERN_PRODVIRIALSEA = "ProdForceSeA";
 static const std::string OP_TYPE_PRODVIRIALSEA = "ProdForceSeA";
 static const std::string ATTR_OP_SPECIFIED_ENGINE_NAME = "_specified_engine_name";
@@ -50,6 +48,7 @@ static const std::string ATTR_SPLIT_INDEX = "split_index";
 static const std::string ATTR_INPUT_NAME_KEY = "_input_name_key";
 static const std::string ATTR_INPUT_NAME_VALUE = "_input_name_value";
 static const uint32_t VIRIAL_INPUT_SIZE = 5;
+static const int64_t SPLIT_COUNT = 2;
 
 /*!
  * @brief Define pattern.
@@ -78,8 +77,8 @@ vector<FusionPattern*> ProdForceSeAVectorFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, ge::NodePtr& forceNode,
-                                                ge::NodePtr& forceNodeAiCore, ge::NodePtr& forceNodeVectorCore) {
+Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, const ge::NodePtr& forceNode,
+                                                    ge::NodePtr& forceNodeAiCore, ge::NodePtr& forceNodeVectorCore) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into split ProdForceSeA node.");
   ge::OpDescPtr forceDesc = forceNode->GetOpDesc();
   FUSION_PASS_CHECK(forceDesc == nullptr,
@@ -96,7 +95,7 @@ Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, ge:
   // Set attribute of AICore flag.
   ge::AttrUtils::SetStr(forceDescAic, ATTR_OP_SPECIFIED_ENGINE_NAME, "AIcoreEngine");
   ge::AttrUtils::SetStr(forceDescAic, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "AIcoreEngine");
-  ge::AttrUtils::SetInt(forceDescAic, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(forceDescAic, ATTR_SPLIT_COUNT, SPLIT_COUNT);
   ge::AttrUtils::SetInt(forceDescAic, ATTR_SPLIT_INDEX, 0);
 
   forceNodeAiCore = graph.AddNode(forceDescAic);
@@ -114,7 +113,7 @@ Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, ge:
   // Set attribute of VectorCore flag.
   ge::AttrUtils::SetStr(forceDescVec, ATTR_OP_SPECIFIED_ENGINE_NAME, "VectorEngine");
   ge::AttrUtils::SetStr(forceDescVec, ATTR_OP_SPECIFIED_KERNEL_LIB_NAME, "VectorEngine");
-  ge::AttrUtils::SetInt(forceDescVec, ATTR_SPLIT_COUNT, (int64_t)2);
+  ge::AttrUtils::SetInt(forceDescVec, ATTR_SPLIT_COUNT, SPLIT_COUNT);
   ge::AttrUtils::SetInt(forceDescVec, ATTR_SPLIT_INDEX, (int64_t)1);
   ge::AttrUtils::SetStr(forceDescVec, ATTR_NAME_STREAM_LABEL, "VectorEngine");
 
@@ -133,8 +132,8 @@ Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, ge:
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(forceNode->GetInDataAnchor(index)->GetPeerOutAnchor(),
                                            forceNodeVectorCore->GetInDataAnchor(index)),
-        VECTOR_FUSION_INNER_ERR_REPORT(
-            FUSED_OP_TYPE.c_str(), "Failed to add edge from ProdForceSeA node to ProdForceSeA(Vector Core) node."),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                       "Failed to add edge from ProdForceSeA node to ProdForceSeA(Vector Core) node."),
         return FAILED);
     index++;
   }
@@ -143,8 +142,8 @@ Status ProdForceSeAVectorFusionPass::SplitForceNode(ge::ComputeGraph& graph, ge:
   return SUCCESS;
 }
 
-Status ProdForceSeAVectorFusionPass::CreateAddNodes(ge::ComputeGraph& graph, ge::NodePtr& forceNode,
-                                               vector<ge::NodePtr>& newForceNodes, ge::NodePtr& addForceNode) {
+Status ProdForceSeAVectorFusionPass::CreateAddNodes(ge::ComputeGraph& graph, const ge::NodePtr& forceNode,
+                                                    vector<ge::NodePtr>& newForceNodes, ge::NodePtr& addForceNode) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into create Add nodes.");
 
   std::string addForceNodeName = forceNode->GetName() + "/Add/Force";
@@ -190,7 +189,7 @@ Status ProdForceSeAVectorFusionPass::CreateAddNodes(ge::ComputeGraph& graph, ge:
   return SUCCESS;
 }
 
-Status ProdForceSeAVectorFusionPass::ClearFusedNode(ge::ComputeGraph& graph, ge::NodePtr& node) {
+Status ProdForceSeAVectorFusionPass::ClearFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& node) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into clear fused node.");
 
   std::string nodeName = node->GetName();

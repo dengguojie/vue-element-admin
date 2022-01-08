@@ -33,11 +33,11 @@ class ProdForceSeAVectorFusionPass : public PatternFusionBasePass {
 
  private:
   const std::string FUSED_OP_TYPE = "ProdForceSeA";
-  Status SplitForceNode(ge::ComputeGraph& graph, ge::NodePtr& forceNode,
+  Status SplitForceNode(ge::ComputeGraph& graph, const ge::NodePtr& forceNode,
                         ge::NodePtr& forceNodeAiCore, ge::NodePtr& forceNodeVectorCore);
-  Status CreateAddNodes(ge::ComputeGraph& graph, ge::NodePtr& forceNode,
+  Status CreateAddNodes(ge::ComputeGraph& graph, const ge::NodePtr& forceNode,
                         vector<ge::NodePtr>& newForceNodes, ge::NodePtr& addForceNode);
-  Status ClearFusedNode(ge::ComputeGraph& graph, ge::NodePtr& node);
+  Status ClearFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& node);
 };
 
 }  // namespace fe

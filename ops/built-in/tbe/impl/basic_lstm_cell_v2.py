@@ -23,8 +23,13 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl import tanh_compute
 
-NONETYPE = type(None)
-C0 = 16
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    C0 = 16
 
 
 # 'pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines
@@ -342,7 +347,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
 
     input_dim, batch_dim = shape_x[0:2]
     output_dim = shape_h[0]
-    left_shape = (batch_dim, input_dim + output_dim, C0, C0)
+    left_shape = (batch_dim, input_dim + output_dim, Constant.C0, Constant.C0)
     right_shape = list(shape_w)
     right_shape[1] = right_shape[1] // 4
     matmul_shape = shape_h
@@ -496,7 +501,7 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
         operation_list["tensor_b_loc_" + t] = "dma_copy"
 
         reduce_kb = tvm.reduce_axis((0, input_dim + output_dim), name='reduce_kb_' + t)
-        reduce_kp = tvm.reduce_axis((0, C0), name='reduce_kp_' + t)
+        reduce_kp = tvm.reduce_axis((0, Constant.C0), name='reduce_kp_' + t)
         tensor_matmul_l0c_tmp = tvm.compute(
             matmul_shape, lambda nb, mb, mp, np: tvm.sum(
                 (tensor_xh_loa_tmp[mb, reduce_kb, mp, reduce_kp] *
@@ -654,9 +659,9 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     n_dim = shape_x[1]
     intput_dim = shape_x[0]
     output_dim = shape_h[0]
-    if num_output not in (0, output_dim * C0):
+    if num_output not in (0, output_dim * Constant.C0):
         error_manager_vector.raise_err_input_value_invalid("BasicLSTMCellV2",
-                                                           "num_output", output_dim * C0, num_output)
+                                                           "num_output", output_dim * Constant.C0, num_output)
 
     if x["dtype"] != "float16" or w_xh["dtype"] != "float16":
         error_detail = "the dtype of x and w_xh should be float16"
@@ -985,7 +990,7 @@ def get_tilling(x, h_t, product_info, mini_core):
         return res
 
     def _get_ub_used_size(n_factor, out_factor):
-        res = (1*n_factor * out_factor * C0 * C0 + n_factor*C0 + 3*out_factor*C0) * dtype_size
+        res = (1*n_factor * out_factor * Constant.C0 + n_factor + 3 * out_factor) * Constant.C0 * dtype_size
         return res
 
     while (_get_ub_used_size(block_n_factor, block_out_factor) > ub_limit) and block_n_factor > 1:
@@ -996,12 +1001,12 @@ def get_tilling(x, h_t, product_info, mini_core):
 
     #ub tilling
     k_factor = out_dim + input_dim
-    one_mn_size = k_factor * C0 * C0 * dtype_mad_size
+    one_mn_size = k_factor * Constant.C0 * Constant.C0 * dtype_mad_size
     if one_mn_size > l0_size:
         k_factor = 64
-        one_mn_size = k_factor * C0 * C0 * dtype_mad_size
+        one_mn_size = k_factor * Constant.C0 * Constant.C0 * dtype_mad_size
     k_factor = 64
-    one_mn_size = k_factor * C0 * C0 * dtype_mad_size
+    one_mn_size = k_factor * Constant.C0 * Constant.C0 * dtype_mad_size
     n_factor = min(int(l0_size / one_mn_size), block_n_factor)
     out_factor = min(int(l0_size / one_mn_size), block_out_factor)
 

@@ -44,6 +44,10 @@ namespace fe {
 static const char* FUSED_NODE = "ProdForceSeA";
 static const std::string PATTERN_FUSEDNODE = "ProdForceSeA";
 static const int64_t DYNAMIC_SHAPE = -1;
+static const int64_t DIM_IDX_0 = 0;
+static const int64_t DIM_IDX_1 = 1;
+static const int64_t DIM_IDX_2 = 2;
+static const int64_t DIM_SIZE = 3;
 
 bool ProdForceSeAFusionPass::CheckUsePattern(vector<int64_t>& dimInfo) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter in CheckUsePattern.");
@@ -69,34 +73,34 @@ Status ProdForceSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter into ProdForceSeAFusionPass");
   // prod_force_se_a node
   ge::NodePtr prodForceSeANode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(prodForceSeANode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "prodForceSeANode is null, fusion failed."),
+  FUSION_PASS_CHECK(prodForceSeANode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prodForceSeANode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr prodForceSeADesc = prodForceSeANode->GetOpDesc();
-  FUSION_PASS_CHECK(prodForceSeADesc == nullptr,
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prodForceSeANode's OpDesc is null, fusion failed."),
-    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      prodForceSeADesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "prodForceSeANode's OpDesc is null, fusion failed."),
+      return PARAM_INVALID);
   ge::GeTensorDesc prodForceSeAOutputOpDesc = prodForceSeADesc->GetOutputDesc(0);
   ge::GeShape prodForceSeAOutputShape = prodForceSeAOutputOpDesc.GetShape();
   vector<int64_t> dimInfo = prodForceSeAOutputShape.GetDims();
-  if (dimInfo.size() != 3) {
+  if (dimInfo.size() != DIM_SIZE) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output dim is %d.", dimInfo.size());
     return PARAM_INVALID;
   }
   std::vector<std::pair<int64_t, int64_t>> forceOutRange;
   FUSION_PASS_CHECK(prodForceSeAOutputOpDesc.GetShapeRange(forceOutRange) != GRAPH_SUCCESS,
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "ProdForceSeA get shape range failed."),
-    return NOT_CHANGED);
-  if (forceOutRange.size() != 3) {
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ProdForceSeA get shape range failed."), return NOT_CHANGED);
+  if (forceOutRange.size() != DIM_SIZE) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output range dim is %d.", forceOutRange.size());
     return PARAM_INVALID;
   }
-  int64_t outputNFrames = dimInfo[0];
-  int64_t outputNall = dimInfo[1];
-  int64_t outputLocal = dimInfo[2];
-  std::pair<int64_t, int64_t> outputNFramesRange = forceOutRange[0];
-  std::pair<int64_t, int64_t> outputNallRange = forceOutRange[1];
-  std::pair<int64_t, int64_t> outputLocalRange = forceOutRange[2];
+  int64_t outputNFrames = dimInfo[DIM_IDX_0];
+  int64_t outputNall = dimInfo[DIM_IDX_1];
+  int64_t outputLocal = dimInfo[DIM_IDX_2];
+  std::pair<int64_t, int64_t> outputNFramesRange = forceOutRange[DIM_IDX_0];
+  std::pair<int64_t, int64_t> outputNallRange = forceOutRange[DIM_IDX_1];
+  std::pair<int64_t, int64_t> outputLocalRange = forceOutRange[DIM_IDX_2];
   bool secondInfer = (outputNall == DYNAMIC_SHAPE);
   ge::AttrUtils::SetBool(prodForceSeADesc, "second_infer", secondInfer);
 
@@ -104,10 +108,10 @@ Status ProdForceSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   ge::OutDataAnchorPtr prodForceSeAOutAnchorPtr = prodForceSeANode->GetOutDataAnchor(0);
   ge::NodePtr postNode = nullptr;
   ge::OpDescPtr transposeDDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((transposeDDesc = std::make_shared<ge::OpDesc>(prodForceSeANode->GetName() + 
-    "_transposD_layer", "TransposeD")),return FAILED);
+  FUSION_PASS_MAKE_SHARED(
+      (transposeDDesc = std::make_shared<ge::OpDesc>(prodForceSeANode->GetName() + "_transposD_layer", "TransposeD")),
+      return FAILED);
 
-  
   // add input
   ge::GeTensorDesc transposeInputOpDesc = prodForceSeANode->GetOpDesc()->GetOutputDesc(0);
   vector<int64_t> inputDimInfo = {outputNFrames, outputLocal, outputNall};
@@ -118,20 +122,19 @@ Status ProdForceSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   transposeInputOpDesc.SetOriginShape(assistShape);
   transposeInputOpDesc.SetOriginShapeRange(newOutRange);
   FUSION_PASS_CHECK(transposeDDesc->AddInputDesc(transposeInputOpDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transpose input fail."),
-                    return FAILED);
-  
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transpose input fail."), return FAILED);
+
   // add output
   ge::GeTensorDesc transposeOutputOpDesc = prodForceSeANode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(transposeDDesc->AddOutputDesc(transposeOutputOpDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transpose output fail."),
-                    return FAILED);
-  
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "add transpose output fail."), return FAILED);
+
   // add node
   ge::NodePtr transposeDNode = graph.AddNode(transposeDDesc);
   ge::AttrUtils::SetListInt(transposeDDesc, "perm", {0, 2, 1});
 
-  //update output of ProdForceSeA
+  // update output of ProdForceSeA
   prodForceSeADesc->UpdateOutputDesc(0, transposeInputOpDesc);
 
   // add edges
@@ -143,11 +146,11 @@ Status ProdForceSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                       return FAILED);
 
     // add edge between transdateD and post
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeDNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "Add edge between node %s. and node %s failed.",
-                      transposeDDesc->GetName().c_str(), prodForceSeANode->GetName().c_str()),
-                      return FAILED);
+    FUSION_PASS_CHECK(
+        ge::GraphUtils::AddEdge(transposeDNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                                       transposeDDesc->GetName().c_str(), prodForceSeANode->GetName().c_str()),
+        return FAILED);
   }
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(prodForceSeAOutAnchorPtr, transposeDNode->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add transpose input0 edge fail."),
