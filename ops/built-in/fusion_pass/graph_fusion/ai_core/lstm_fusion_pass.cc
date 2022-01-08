@@ -422,7 +422,8 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
     ge::GeTensorPtr biasTensorPtr = bias_data[0];
     int32_t bias_dim = biasTensorDesc.GetShape().GetDim(0);
     int32_t tar_bias_dim =
-        (((bias_dim / 4) + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * HIDDEN_DIM_FACTOR;
+        (((bias_dim / HIDDEN_DIM_FACTOR) + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) *
+        HIDDEN_DIM_FACTOR;
     vector<int64_t> biasDims;
     biasDims.push_back(tar_bias_dim);
     GeShape biasShape(biasDims);
@@ -464,7 +465,7 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
 
   ge::GeTensorDesc outTensorDesc = fusedDesc->GetOutputDesc(0);
   int32_t hiddenSize = outTensorDesc.GetShape().GetDim(2);
-  int32_t tarHiddenDim = 
+  int32_t tarHiddenDim =
       ((hiddenSize + DIM_5HD_DIV_FACTOR) / DIM_5HD_UNIT_SIZE * DIM_5HD_UNIT_SIZE) * HIDDEN_DIM_FACTOR;
   vector<int64_t> outputOriDims;
   outputOriDims.push_back(shape_0.GetDim(1));

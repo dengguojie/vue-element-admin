@@ -286,7 +286,8 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   return SUCCESS;
 }
 
-Status GRUFusionPass::AddBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, ge::NodePtr& splitNode) {
+Status GRUFusionPass::AddBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode,
+                                       ge::NodePtr& splitNode) const {
   OpDescPtr splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
   FUSION_PASS_CHECK(splitDesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."),
@@ -438,7 +439,7 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
   return SUCCESS;
 }
 
-std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int64_t>& dims, bool isReverse) {
+std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int64_t>& dims, bool isReverse) const {
   std::vector<int64_t> res;
   if (isReverse) {
     for (int i = dims.size() - 1; i > 0; --i) {
