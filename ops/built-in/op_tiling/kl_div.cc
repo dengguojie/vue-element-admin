@@ -14,31 +14,28 @@
  * limitations under the License.
  */
 
-#include "reduce_tiling_v2.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "vector_tiling.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_tiling_util.h"
 
-#include "../op_proto/util/error_util.h"
-#include "op_log.h"
 #include "error_log.h"
-using namespace ge;
-
 namespace optiling {
-bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                 utils::OpRunInfo& run_info) {
+struct KLDivCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  ge::DataType reduce_mean_cof_dtype;
+  bool has_reduce_mean_cof_dtype;
+};
+
+bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras,
+                 const KLDivCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   OP_LOGD(op_type, "Enter KLDivTiling");
-
-  using namespace utils;
-  utils::Reduce reduce(op_type, op_paras, op_info, run_info);
-  bool ret = reduce.DoTiling();
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "DoTiling failed!");
-    return false;
-  }
-  ret = ret && reduce.WriteTilingData();
-
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
+  PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
@@ -50,23 +47,42 @@ bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras, const
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The dim0 cannot be zero!");
     return false;
   }
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+  if (parsed_info.has_reduce_mean_cof_dtype) {
     float reduce_mean_cof = 1.0;
-    if (reduce_mean_cof_dtype == "float32") {
+    if (parsed_info.reduce_mean_cof_dtype == ge::DT_FLOAT) {
       reduce_mean_cof = reduce_mean_cof / dim0;
       run_info.AddTilingData(reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
+    } else if (parsed_info.reduce_mean_cof_dtype == ge::DT_FLOAT16) {
       reduce_mean_cof = reduce_mean_cof / dim0;
       fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       run_info.AddTilingData(reduce_mean_cof_fp16);
       run_info.AddTilingData((uint16_t)0);
     }
-    OP_LOGD(op_type.c_str(), "reduce mean cof: %f", reduce_mean_cof);
+    OP_LOGD(op_type, "The value of reduce_mean_cof is: %f", reduce_mean_cof);
   }
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  PROFILING_TILING_END();
+
   OP_LOGD(op_type, "Exit KLDivTiling");
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(KLDiv, KLDivTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 KLDivCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  std::string dtype;
+  parsed_info.has_reduce_mean_cof_dtype = false;
+  
+  if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+    parsed_info.has_reduce_mean_cof_dtype = true;
+    parsed_info.reduce_mean_cof_dtype = (dtype == "float16") ? ge::DT_FLOAT16 : ge::DT_FLOAT;
+  }
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(KLDiv, KLDivTiling, ParseJsonCompileInfo, KLDivCompileInfo);
 }  // namespace optiling

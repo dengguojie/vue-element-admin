@@ -11,10 +11,12 @@
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 using namespace ge;
 using namespace op;
+using namespace ut_util;
 
 class KLDivTiling : public testing::Test {
  protected:
@@ -83,7 +85,7 @@ TEST_F(KLDivTiling, KLDivTiling_test_1)
   optiling::utils::OpCompileInfo op_compile_info("KLDivTiling_test_1", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(klDiv, op_compile_info, runInfo));
+  RUN_TILING_V3(klDiv, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 327680 10240 1 819 ");
 }
 
@@ -130,6 +132,6 @@ TEST_F(KLDivTiling, KLDivTiling_test_2)
   optiling::utils::OpCompileInfo op_compile_info("KLDivTiling_test_2", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(klDiv, op_compile_info, runInfo));
+  RUN_TILING_V3(klDiv, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16384 32 512 508 981467136 ");
 }
