@@ -66,7 +66,7 @@ uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
   if (parallel_flag) {
     int64_t per_unit_size{total /
                           std::min(std::max(kMinCoreNum, cores - kResvCpuNum), total)};
-    if (input_type == DT_INT64 || input_type == DT_FLOAT16) {
+    if (input_type == DT_INT64 || input_type == DT_FLOAT || input_type == DT_FLOAT16) {
       return ParallelFor(
           ctx, total, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
             T *inner_input = input + begin;
