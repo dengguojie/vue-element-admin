@@ -137,7 +137,7 @@ void StatelessDropOutGenMaskCpuKernel::StatelessDropOutGenMaskKernel(
       "ldr x5, %[out] \n"
 
       // Iteration begins
-      ".ARS: \n"
+    "1: \n" 
 
       /* Mix v0 with v1 */
       "aese   v0.16b, v1.16b \n"
@@ -310,7 +310,7 @@ void StatelessDropOutGenMaskCpuKernel::StatelessDropOutGenMaskKernel(
 
       // next iteration
       "subs   x0, x0, 1 \n"
-      "bne    .ARS \n"
+      "bne   1b \n"
       :
       : [offset] "m"(offset), [out] "m"(out), [in_offset] "m"(in_offset),
         [key] "m"(key), [key_const] "m"(key_const), [inc_step] "m"(inc_step),
