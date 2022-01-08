@@ -274,6 +274,47 @@ bool TbeAippFusionRule::CheckElemwiseValidation(ge::NodePtr elemwise_node) {
   return iter != elemwise_op_type_vec.end();
 }
 
+int64_t TbeAippFusionRule::CalcMinAIPPTbeL1Space(const ge::NodePtr& conv_node)
+{
+    int64_t fmapw;
+    int64_t filterh;
+    // get fmap and filter format
+    ge::Format first_format = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
+    ge::Format second_format = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginFormat();
+    FUSION_PASS_CHECK(first_format != ge::FORMAT_NCHW && first_format != ge::FORMAT_NHWC &&
+        second_format != ge::FORMAT_NCHW && second_format != ge::FORMAT_NHWC && second_format != ge::FORMAT_HWCN,
+        OP_LOGD("aipp fusion_rule", "Get node[%s]'s format is [%d] and [%d], can not fusion.",
+                conv_node->GetName().c_str(), first_format, second_format), return 0);
+    // get fmap shape
+    std::vector<int64_t> first_dims = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    FUSION_PASS_CHECK(first_dims.size() != 4,
+        OP_LOGD("aipp fusion_rule", "node[%s]'s first input shape size is [%zu] not 4, can not fusion.",
+                conv_node->GetName().c_str(), first_dims.size()), return 0);
+    // get filter shape
+    std::vector<int64_t> second_dims = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    FUSION_PASS_CHECK(second_dims.size() != 4,
+        OP_LOGD("aipp fusion_rule", "node[%s]'s second input shape size is [%zu] not 4, can not fusion.", 
+                conv_node->GetName().c_str(), second_dims.size()), return 0);
+
+    if (first_format == ge::FORMAT_NCHW) {
+        fmapw = first_dims[3]; // fmap w index is 3 when format is NCHW
+    } else {
+        fmapw = first_dims[2]; // fmap w index is 2 when format is NHWC
+    }
+
+    if (second_format == ge::FORMAT_NCHW) {
+        filterh = second_dims[2]; // filter h index is 2 when format is NCHW
+    } else if (second_format == ge::FORMAT_NHWC) {
+        filterh = second_dims[1]; // filter h index is 1 when format is NHWC
+    } else {
+        filterh = second_dims[0]; // filter h index is 0 when format is HWCN
+    }
+    OP_LOGD("aipp fusion_rule", "node[%s]'s fmapw is [%ld], filterh is [%ld]",
+            conv_node->GetName().c_str(), fmapw, filterh);
+
+    return fmapw * filterh;
+}
+
 void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
                                      const bool &is_deal_c_axis, const OpL1FusionType& aipp_L1_fusion_type) {
   std::string fused_op_type = "FusedOp";
@@ -287,6 +328,8 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
   if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type, L1_fusion_type, min_tbe_L1Space)) {
     return;
   }
+
+  min_tbe_L1Space = CalcMinAIPPTbeL1Space(conv_nodes[0]);
 
   if (is_deal_c_axis) {
     DelSplitInfoByInputAxis(split_maps, AXIS_C_INDEX);

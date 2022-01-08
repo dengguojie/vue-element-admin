@@ -34,6 +34,8 @@ class TbeAippFusionRule {
   static bool CheckElemwiseValidation(ge::NodePtr elemwise_node);
   static void SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
                            const bool &is_deal_c_axis, const OpL1FusionType& aipp_L1_fusion_type);
+private:
+  static int64_t CalcMinAIPPTbeL1Space(const ge::NodePtr& conv_node);
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_FUSION_RULE_H_
