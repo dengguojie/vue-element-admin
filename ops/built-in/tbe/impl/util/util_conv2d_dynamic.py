@@ -263,7 +263,7 @@ def correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, 
     correct range[low] for  output >= 1
     """
     padt, padd, padl, padr = pads
-    if DYNAMIC_FLAG in pads: #  padding=same mode
+    if DYNAMIC_FLAG in pads:  # padding=same mode
         low_h = input_range[idx_h][0]
         low_w = input_range[idx_w][0]
     else:
