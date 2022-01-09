@@ -20,6 +20,7 @@ import te.platform as tbe_platform
 from te import tik
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -61,6 +62,7 @@ def _adds_muls(tik_instance, dtype_num, scale, proposals_ub_x, proposals_ub_y):
                           128 * 2 // 128 // dtype_num, 8, 8)
 
 
+# 'pylint: disable=too-many-arguments
 def _get_roi_bin(tik_instance, dtype, sample_num, dtype_num, grid_w_int32, grid_h_int32,
                  grid_w_fp32, grid_h_fp32, grid_w_fp16, grid_h_fp16, roi_bin_w_fp32_value, roi_bin_h_fp32_value):
     suppot_vconv = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "f322s32c")
@@ -100,6 +102,7 @@ def _get_roi_bin(tik_instance, dtype, sample_num, dtype_num, grid_w_int32, grid_
         tik_instance.vec_dup(64 * dtype_num, grid_h_fp32, sample_num, 2 // dtype_num, 8)
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale, proposals_ub_x0, proposals_ub_y0,
                        proposals_ub_x1, proposals_ub_y1, roi_w_fp32, roi_h_fp32, proposal_num_128, pool_h, pool_w,
                        roi_end_mode):
@@ -150,6 +153,7 @@ def _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale, propos
            grid_h_int32, grid_w_fp32, grid_h_fp32
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, proposals_ub_x0,
                                             proposals_ub_y0, proposals_ub_x1,
                                             proposals_ub_y1, scale, pool_h, pool_w,
@@ -185,7 +189,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
 
 
 # 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
-# 'pylint: disable=no-member
+# 'pylint: disable=no-member,too-many-arguments
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -226,6 +230,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
            grid_w_int32, grid_h_int32, grid_w_fp32, grid_h_fp32, roi_int32_fm_index
 
 
+# 'pylint: disable=too-many-arguments
 def _newton(tik_instance, mask, dst_ub, src1, src2, repeat, dtype):
     """
     for div and usr newton when in mini
@@ -236,6 +241,7 @@ def _newton(tik_instance, mask, dst_ub, src1, src2, repeat, dtype):
     tik_instance.vec_mul(mask, dst_ub, rec_2, src1, repeat, 8, 8, 8)
 
 
+# 'pylint: disable=too-many-arguments
 def _reciprocal(tik_instance, mask, dest_ub, src1, repeat, dtype):
     """
     get reciprocal when in mini
@@ -255,6 +261,7 @@ def _reciprocal(tik_instance, mask, dest_ub, src1, repeat, dtype):
     tik_instance.vec_mul(mask, dest_ub, rec_1, rec_2, repeat, 8, 8, 8)
 
 
+# 'pylint: disable=too-many-arguments
 def _get_input(tik_instance, dtype, grid_h, grid_w, proposals_ub_y0,
                proposals_ub_x0, grid_h_int32, grid_w_int32,
                grid_h_fp32, grid_w_fp32, curr_roi):
@@ -296,6 +303,7 @@ def _get_input(tik_instance, dtype, grid_h, grid_w, proposals_ub_y0,
     return grid_w_roi, grid_h_roi, grid_w_num, grid_h_num, rois_start_w, rois_start_h, grid_h_num_f, grid_w_num_f
 
 
+# 'pylint: disable=too-many-arguments
 def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h, height, width, dtype):
     """
     get grid size and coordinate in feature
@@ -434,6 +442,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h, h
     return x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi, raw_x, raw_y
 
 
+# 'pylint: disable=too-many-arguments
 def _init_l1(tik_instance, dtype, w_number, fm_c1, fm_w, fm_c0):
     """
     initialize L1 cache
@@ -448,6 +457,7 @@ def _init_l1(tik_instance, dtype, w_number, fm_c1, fm_w, fm_c0):
     return cache_l1, cache_table
 
 
+# 'pylint: disable=too-many-arguments
 def _load_a_w_to_l1(tik_instance, cache_table, cache_l1, feature_map,
                     index, y_low, n_bust, point):
     """
@@ -475,6 +485,7 @@ def _load_a_w_to_l1(tik_instance, cache_table, cache_l1, feature_map,
     cache_table[point, 1].set_as(y_low)
 
 
+# 'pylint: disable=too-many-arguments
 def _load_feature_map_to_ub(tik_instance, fm_grid, feature_shape,
                             c_block, c_valid,
                             feature_map, index, current_cb,
@@ -523,6 +534,7 @@ def _load_feature_map_to_ub(tik_instance, fm_grid, feature_shape,
                                    1, n_bust, 1, 1)
 
 
+# 'pylint: disable=too-many-arguments
 def _load_from_l1_cache(tik_instance, feature_map, fm_grid, cache_l1, point,
                         current_cb, c_block, x_low, x_high, c_valid, n_bust):
     """
@@ -539,6 +551,7 @@ def _load_from_l1_cache(tik_instance, feature_map, fm_grid, cache_l1, point,
                            (4 - 1) * n_bust)
 
 
+# 'pylint: disable=too-many-arguments
 def _compute_w1234(tik_instance, h_y, l_y, h_x, l_x, w1_lt, w2_rt, w3_lb, w4_rb,
                    fm_grid, c_valid, n_bust):
     """
@@ -599,6 +612,7 @@ def _compute_w1234(tik_instance, h_y, l_y, h_x, l_x, w1_lt, w2_rt, w3_lb, w4_rb,
     tik_instance.vec_add(16, w1_lt[0, 0], w1_lt[0, 0], w4_rb[0, 0], c_valid, n_bust, n_bust, n_bust)
 
 
+# 'pylint: disable=too-many-arguments
 def _get_average(tik_instance, grid_curr_h_f32, grid_curr_w_f32, val, c_valid,
                  p_w, n_bust):
     """
@@ -630,6 +644,7 @@ def _get_average(tik_instance, grid_curr_h_f32, grid_curr_w_f32, val, c_valid,
         tik_instance.vec_muls(16, val, val, 1.0 / wh_tmp, c_valid * p_w, n_bust, n_bust)
 
 
+# 'pylint: disable=too-many-argument
 def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
     """
     :param tik_instance:
@@ -688,6 +703,7 @@ def _prepare_vbi_xn(tik_instance, c1_block_num):
     return vbi_addr
 
 
+# 'pylint: disable=too-many-arguments
 def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                           x_hi, y_lo, y_hi, raw_x, raw_y, sample_num_w,
                           sample_num_h, grid_h_num_f,
@@ -841,6 +857,7 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
             tik_instance.vec_dup(16, val, 0.0, fm_c1 * pw_s, n_bust)
 
 
+# 'pylint: disable=too-many-argument
 def _extract_roi_v200(tik_instance, rois, n_bust, block_i, block_num, roi_128_number, proposals_ub_x0, proposals_ub_y0,
                       proposals_ub_x1, proposals_ub_y1, roi_fm_index, dtype):
     rois_ub_n5 = tik_instance.Tensor(dtype, [128 * 5], name="rois_ub_n5", scope=tbe_platform.scope_ubuf)
@@ -901,6 +918,7 @@ def _extract_roi_v200(tik_instance, rois, n_bust, block_i, block_num, roi_128_nu
     tik_instance.vreduce(128, roi_fm_index[112], rois_ub_n5[128 * 4], src1_ub_uint16, 1, 1, 8, 0, 0, None, "normal")
 
 
+# 'pylint: disable=too-many-arguments
 def _extract_roi(tik_instance, rois_shape, dtype, rois, block_i, block_num, roi_128_number, n_bust, rois_ub,
                  cce_product, proposals_ub_x0, proposals_ub_y0, proposals_ub_x1, proposals_ub_y1):
     if rois_shape[1] == 5:
@@ -948,6 +966,7 @@ def _extract_roi(tik_instance, rois_shape, dtype, rois, block_i, block_num, roi_
             tik_instance.vextract(proposals_ub_y1[0, 0], rois_ub[0], 8, 4)
 
 
+# 'pylint: disable=too-many-arguments
 def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
                       proposals_ub_y0, pool_h, pool_w, dtype, roi_128_number,
                       rois_valid_in_block,
@@ -1067,6 +1086,7 @@ def roi_align_compute(tik_instance, feature_map, ret, proposals_ub_x0,
                                            fm_to_ub, w_number_ub, feature_map_ub)
 
 
+# 'pylint: disable=too-many-arguments
 def _compute_roi_with_single_point(tik_instance, feature_shape, dtype,
                                    fm_to_l1, fm_c1,
                                    block_i, index, roi_128_number, block_num,
@@ -1194,7 +1214,7 @@ def _compute_roi_with_single_point(tik_instance, feature_shape, dtype,
                                                    0, 1, n_bust, 0, 0)
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments
 def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                              proposals_ub_y0, grid_h_fp32, pool_n, grid_n, fm_h,
                              curr_roi, dtype, verify, w_h):
@@ -1321,7 +1341,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
     return roi_bin_ph_gh_ly_int32, low_y, roi_bin_ph_gh_hy_int32, high_y, verify
 
 
-# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments
 def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w, sample_ratio, roi_end_mode,
                    kernel_name):
     """

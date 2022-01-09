@@ -36,6 +36,7 @@ class ProdForceSeA:
     """Function: use to calc the force to those local atoms for all frames
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, net_deriv, in_deriv, nlist, natoms, nnei, kernel_name):
         """
         init ProdForceSeA.
@@ -87,7 +88,7 @@ class ProdForceSeA:
         self.nei_burst = 768
         self.nei_rep_times = self.nei_total // self.nei_burst
         self.nei_tail = 0
-        
+
         if self.nei_rep_times > 0:
             self.nei_tail = self.nei_total % self.nei_rep_times
 
@@ -112,6 +113,7 @@ class ProdForceSeA:
         self.force_gm = self.tik_inst.Tensor(self.op_data_type, (self.nframes * self.nall * 3,), name="force_gm",
                                              scope=tik.scope_gm, is_atomic_add=True)
 
+    # 'pylint: disable=too-many-locals
     def _init_ub_data_fp32(self):
         """
         init ub data
@@ -123,7 +125,7 @@ class ProdForceSeA:
                                      scope=tik.scope_ubuf)
         nlist_ub = self.tik_inst.Tensor(self.nlist_dtype, (self.nei_burst,), name="nlist_ub",
                                         scope=tik.scope_ubuf)
-        trans_ub = self.tik_inst.Tensor(self.op_data_type, op_ub_shape, name="trans_ub", 
+        trans_ub = self.tik_inst.Tensor(self.op_data_type, op_ub_shape, name="trans_ub",
                                         scope=tik.scope_ubuf)
 
         zero_scalar = self.tik_inst.Scalar(init_value=0, dtype=self.op_data_type)
@@ -141,6 +143,7 @@ class ProdForceSeA:
 
         return res
 
+    # 'pylint: disable=too-many-statements,too-many-locals
     def _compute_force_fp32(self, nn, ub_tuple):
         """
         Support shape/datatype:
@@ -286,6 +289,7 @@ class ProdForceSeA:
                                outputs=[self.force_gm])
 
 
+# 'pylint: disable=too-many-locals,too-many-arguments
 def _check_params(net_deriv, in_deriv, nlist, natoms, force, n_a_sel, n_r_sel, kernel_name):
     net_deriv_dtype = net_deriv.get("dtype").lower()
     para_check.check_dtype(net_deriv_dtype, ("float16", "float32", "float64"), param_name="net_deriv")
@@ -323,6 +327,7 @@ def _check_params(net_deriv, in_deriv, nlist, natoms, force, n_a_sel, n_r_sel, k
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule)
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator("ProdForceSeA")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
