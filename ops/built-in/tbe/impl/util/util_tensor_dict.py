@@ -405,7 +405,7 @@ def get_format_for_broardcast(tensor_cls_list,
         _run_match(match_key[0], match_key[1])
 
     # set all format base special_format_list
-    # example: 5HD + 5HD = 5HD,6HD + 6HD = 6HD,NZ + NZ = NZ
+    # `example: 5HD + 5HD = 5HD,6HD + 6HD = 6HD,NZ + NZ = NZ`
     for _format_list in result_list:
         _format_list += special_format_list
 

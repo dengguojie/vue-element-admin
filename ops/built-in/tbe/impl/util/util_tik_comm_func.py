@@ -549,8 +549,8 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
                     # ex: f32 value is 1.99998, cast int32 is 2, this step will reduce the error
                     # `step 1 int32 cast to fp32_new   2.0`
                     # `step 2 int32_sub_fp32_value = f32_old - fp32_new`
-                    # `step 3 int32_sub_fp32_value = 0 when int32_sub_fp32_value >= 0
-                    #         int32_sub_fp32_value = 1 when int32_sub_fp32_value < 0`
+                    # `step 3 int32_sub_fp32_value = 0 when int32_sub_fp32_value >= 0`
+                    #         `int32_sub_fp32_value = 1 when int32_sub_fp32_value < 0`
                     # `step 4 int32 - int32_sub_fp32_value`
                     if mini_mid_ub is None:
                         tmp_fp32_ub = tik_instance.Tensor(

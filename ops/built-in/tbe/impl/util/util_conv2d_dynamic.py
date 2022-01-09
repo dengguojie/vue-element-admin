@@ -29,7 +29,6 @@ from impl.util.util_cube_dynamic import CubeParaProcess
 from tbe.common.context import get_context
 from tbe.common.utils import log
 
-
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
@@ -208,10 +207,10 @@ def check_range_value(op_type, input_range, idx_h, idx_w):
     check if input range is < 0
     """
     if (input_range[idx_h][0] is not None and input_range[idx_h][0] <= 0) or \
-        (input_range[idx_h][1] is not None and input_range[idx_h][1] <= 0) or \
-        (input_range[idx_w][0] is not None and input_range[idx_w][0] <= 0) or \
-        (input_range[idx_w][1] is not None and input_range[idx_w][1] <= 0):
-            err_man.raise_err_specific_user(op_type, "input invalid range <= 0.")
+            (input_range[idx_h][1] is not None and input_range[idx_h][1] <= 0) or \
+            (input_range[idx_w][0] is not None and input_range[idx_w][0] <= 0) or \
+            (input_range[idx_w][1] is not None and input_range[idx_w][1] <= 0):
+        err_man.raise_err_specific_user(op_type, "input invalid range <= 0.")
 
 
 def check_conv2d_range(inputs, weights, strides, pads, dilations):
@@ -264,7 +263,7 @@ def correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, 
     correct range[low] for  output >= 1
     """
     padt, padd, padl, padr = pads
-    if DYNAMIC_FLAG in pads:# padding=same mode
+    if DYNAMIC_FLAG in pads:  # padding=same mode
         low_h = input_range[idx_h][0]
         low_w = input_range[idx_w][0]
     else:
@@ -432,7 +431,7 @@ class Conv2dParaProcess(CubeParaProcess):
         """
         correct in range
         """
-        #correct in_range when w_range=[1, None] or fuzz_build mode
+        # correct in_range when w_range=[1, None] or fuzz_build mode
         DYNAMIC_FMAP_W_MIN = 1
         DYNAMIC_FMAP_W_MAX = 4096
         fuzz_build = get_context().get_build_type() == "fuzzily_build"
@@ -464,7 +463,7 @@ class Conv2dParaProcess(CubeParaProcess):
                     w_right = current_w
                 else:
                     w_left = current_w
-                current_w = w_left + (w_right - w_left)//2
+                current_w = w_left + (w_right - w_left) // 2
 
                 if w_left == fmap_w_max:
                     break
@@ -541,7 +540,7 @@ class Conv2dParaProcess(CubeParaProcess):
             weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
             if self.bias:
                 bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor",
-                    dtype=self.bias.get("dtype"))
+                                              dtype=self.bias.get("dtype"))
             else:
                 bias_tensor = None
         else:
