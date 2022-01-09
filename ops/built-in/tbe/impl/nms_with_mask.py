@@ -1454,6 +1454,7 @@ class _NMSHelper():
         self._tailing_handle_vmaxs(self.xx1, self.xx1, self.zero_datatype_scalar, self.ceil_n)
 
         # reuse tmp tensor
+        # 'pylint: disable=attribute-defined-outside-init
         self.yy2 = self.xx2
         self._tailing_handle_vmaxs(self.yy1, self.y1_ub, self.y1i, self.ceil_n)
         self._tailing_handle_vmins(self.yy2, self.y2_ub, self.y2i, self.ceil_n)

@@ -7393,11 +7393,11 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     if len(input_ori_shape) >= 2:
         is_first_last_size_support = size[-1] % nz_format_align == 0 or input_ori_shape[-1] == size[-1] + begin[-1]
         is_second_last_size_support = size[-2] % nz_format_align == 0 or input_ori_shape[-2] == size[-2] + begin[-2]
-        # `info: condition:
-        # one: len >= 2;
-        # two: the value begin[-1] and begin[-2] is align
-        # three: -1 dim in size is align or size = shape - start
-        # four: -2 dim in size is align or size = shape - start
+        # `info: condition:`
+        # `one: len >= 2;`
+        # `two: the value begin[-1] and begin[-2] is align`
+        # `three: -1 dim in size is align or size = shape - start`
+        # `four: -2 dim in size is align or size = shape - start`
         if begin[-1] % nz_format_align == 0 and begin[-2] % nz_format_align == 0 \
                 and is_first_last_size_support and is_second_last_size_support:
             is_support_nz = True

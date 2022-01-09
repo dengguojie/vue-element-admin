@@ -16,9 +16,6 @@
 update_tensor_desc
 """
 from te import tik
-from te import platform as tbe_platform
-from te.utils import op_utils
-from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import para_check
 

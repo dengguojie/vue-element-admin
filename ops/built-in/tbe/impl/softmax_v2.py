@@ -2721,7 +2721,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 if axis[0] >= 0:
                     axis[0] = axis[0] + 1
 
-    
+
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     use_dynamic = True
     if input_format in ("NDC1HWC0",) and input_x.get("dtype").lower() == "float32":

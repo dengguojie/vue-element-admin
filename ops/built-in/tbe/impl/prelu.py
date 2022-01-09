@@ -276,7 +276,7 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
             shape, weight_shape_new = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
         else:
             weight_shape_new = [1]
-    # 'input_x:DIM = 2,3,4,5,6,7...'
+    # `input_x:DIM = 2,3,4,5,6,7...`
     else:
         if (weight_shape[0] != shape[1] and weight_shape[0] != 1) or (weight_dim not in (1, feature_dim - 1)):
             shape_list = shape_util.broadcast_shapes(shape,

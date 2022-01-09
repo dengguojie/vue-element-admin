@@ -31,10 +31,12 @@ class Constant:
     DTYPE_BYTES = {"float32": 4, "float16": 2}
 
 
+# 'pylint: disable=too-many-public-methods
 class ProdEnvMatA:
     """
     ProdEnvMatA class
     """
+    # 'pylint: disable=unused-argument
     def __init__(self, coord, types, natoms, box, mesh, davg, dstd, sel_a, rcut, rcut_smth, nlist,
                  split_count, split_index, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile())
@@ -423,6 +425,7 @@ class ProdEnvMatA:
 
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             descrpt_a_deriv_tensor = dstd_ub
+            # 'pylint: disable=unused-variable
             nnei_data_move_blocks = self.nnei_align // self.block_num
 
             self.tik_instance.vadds(self.nnei_align, descrpt_a_deriv_tensor,
@@ -528,6 +531,7 @@ class ProdEnvMatA:
         concat rij data in res ub buffer.
         """
         nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
+        # 'pylint: disable=unused-variable
         nnei_data_move_blocks = nnei_align // self.block_num
         rij_tensor = free_buffer
 
@@ -564,6 +568,7 @@ class ProdEnvMatA:
         concat rij descrpt descrpt_deriv data in res ub buffer.
         """
         nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
+        # 'pylint: disable=unused-variable
         nnei_data_move_blocks = nnei_align // self.block_num
 
         with self.tik_instance.new_stmt_scope(disable_sync=False):
@@ -698,8 +703,10 @@ class ProdEnvMatA:
         compute descrpt and descrpt_deriv last process.
         """
         compute_nums = self.nnei
+        # 'pylint: disable=unused-variable
         tail_mask = compute_nums % self.nnei_once_repeat_nums
         nnei_mask_repeat = compute_nums // self.nnei_once_repeat_nums
+        # 'pylint: disable=unused-variable
         tail_add_start = nnei_mask_repeat * self.nnei_once_repeat_nums
         nnei_repeat_times = (compute_nums + 63) // self.nnei_once_repeat_nums
 
@@ -848,6 +855,7 @@ class ProdEnvMatA:
 
         descrpt_a_tensors = [descrpt_a_0, descrpt_a_1, descrpt_a_2, descrpt_a_3]
 
+        # 'pylint: disable=unused-variable
         descrpt_a_deriv_tensors = [descrpt_a_deriv_0, descrpt_a_deriv_1, descrpt_a_deriv_2,
                                    descrpt_a_deriv_3, descrpt_a_deriv_4, descrpt_a_deriv_5,
                                    descrpt_a_deriv_6, descrpt_a_deriv_7, descrpt_a_deriv_8,
@@ -865,8 +873,10 @@ class ProdEnvMatA:
         the first vec compute process for descrpt and descrpt_deriv.
         """
         compute_nums = self.nnei
+        # 'pylint: disable=unused-variable
         tail_mask = compute_nums % self.nnei_once_repeat_nums
         nnei_mask_repeat = (compute_nums + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums
+        # 'pylint: disable=unused-variable
         tail_addr_start = nnei_mask_repeat * self.nnei_once_repeat_nums
 
         self.tik_instance.vec_dup(self.nnei_once_repeat_nums, sw_tensor, 0,
@@ -974,7 +984,7 @@ class ProdEnvMatA:
 
         revert_min = self.tik_instance.Scalar(dtype="float32", name="revert_min",
                                               init_value=self.rcut * (-1))
-
+        # 'pylint: disable=unused-variable
         max_sub_min = self.tik_instance.Scalar(dtype="float32", name="max_sub_min",
                                                init_value=self.rcut_smth - self.rcut)
 
@@ -1243,6 +1253,7 @@ class ProdEnvMatA:
         """
         sort proposal by score.
         """
+        # 'pylint: disable=unused-variable
         cur_type_neighbour_nums_align = self.tik_instance.Scalar(self.INT32_TYPE, "cur_type_neighbour_nums_align",
                                                                  init_value=(self.cur_type_neighbour_nums + 15)
                                                                             // 16 * 16)
@@ -1258,9 +1269,11 @@ class ProdEnvMatA:
                                 self.block_stride, self.block_stride,
                                 self.repeat_stride, self.repeat_stride,
                                 0, "counter")
-
+        # 'pylint: disable=unused-variable
         proposal_tensors = [dst_proposal, tensor_proposal]
+        # 'pylint: disable=unused-variable
         proposal_dst_point = self.tik_instance.Scalar(self.INT32_TYPE, "proposal_dst_point", init_value=0)
+        # 'pylint: disable=unused-variable
         proposal_src_point = self.tik_instance.Scalar(self.INT32_TYPE, "proposal_src_point", init_value=0)
         cur_range_target_nums = self.tik_instance.Scalar(self.INT32_TYPE, "cur_range_target_nums",
                                                          init_value=16 * 4)
@@ -1278,6 +1291,7 @@ class ProdEnvMatA:
         cur_sort = self.tik_instance.Scalar(self.INT32_TYPE, "cur_sort",
                                             init_value=self.max_nbor_size + 100)
 
+        # 'pylint: disable=unused-variable
         with self.tik_instance.for_range(cur_range_target_nums, cur_sort) as cur_times:
             vector_nums.set_as(self.max_nbor_size // cur_range_target_nums)
             dst_offset.set_as(0)
@@ -1648,7 +1662,7 @@ class ProdEnvMatA:
             sorted_dis_dot_tensor = self.tik_instance.Tensor(self.coord_dtype, [extract_length_align],
                                                              name="sorted_dis_dot_tensor",
                                                              scope=self.tik.scope_ubuf)
-            
+
             init_dis = self.tik_instance.Scalar("float32", "init_dis",
                                                 init_value=self.rcut_smth + 1)
 
@@ -1662,14 +1676,14 @@ class ProdEnvMatA:
             self.tik_instance.vector_dup(self.repeat_once_size, sorted_dis_dot_tensor, init_dis_dot,
                                          extract_length_align // self.nnei_once_repeat_nums, self.block_stride,
                                          self.repeat_stride)
-            
+
             cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "loc_idx",
                                                init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
 
             for_input_cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "for_input_cur_loc",
                                                          init_value=self.nloc_offset +
                                                                     block_idx * one_cor_nloc_num + loc_nei_idx)
-            
+
             cur_loc_index = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_index",
                                                      init_value=for_input_cur_loc + 1)
 
@@ -1922,6 +1936,7 @@ class ProdEnvMatA:
                                             self.rij_gm, self.nlist_gm], config={})
 
 
+# 'pylint: disable=unused-argument
 def _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
                   rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, kernel_name):
     """

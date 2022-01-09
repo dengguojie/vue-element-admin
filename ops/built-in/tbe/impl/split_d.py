@@ -17,7 +17,6 @@ split_d
 """
 import functools
 import numpy as np
-from numpy.core.fromnumeric import resize
 from tbe.dsl.compute.array import split_compute_com
 from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 import te.platform as tbe_platform

@@ -18,7 +18,6 @@ split_v_d
 
 import functools
 
-from numpy.core.fromnumeric import resize
 from te import tik
 from te import tvm
 from te import platform as tbe_platform

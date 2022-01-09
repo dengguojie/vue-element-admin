@@ -1030,7 +1030,7 @@ def filter_with_height_weight(tik_instance, data_tensor, filter_tensor, input_pa
 
     filter_repeat_data = ceil_div(input_param[CONFIG_TWO] * CONFIG_EIGHT, CONFIG_SIXTEEN)
 
-    # THE SIZE(topk_proposal_gm) = (1,1,6000+4,8) ,SIZE(filter_ub)= (6000 // 2 + 63) // 64 * 64
+    # `THE SIZE(topk_proposal_gm) = (1,1,6000+4,8) ,SIZE(filter_ub)= (6000 // 2 + 63) // 64 * 64`
     tik_instance.data_move(filter_tensor.filter_ub,
                            data_tensor.proposal_post_topk,
                            0,
@@ -1199,7 +1199,7 @@ def filter_with_height_weight(tik_instance, data_tensor, filter_tensor, input_pa
                           CONFIG_FOUR,
                           CONFIG_FOUR)
 
-        # mask_tensor.size = 382 uint16
+        # `mask_tensor.size = 382 uint16`
         tik_instance.vector_dup(CONFIG_MASK,
                                 filter_tensor.filter_height_ub,
                                 score_threshold,

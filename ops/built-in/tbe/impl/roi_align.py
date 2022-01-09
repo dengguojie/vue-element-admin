@@ -1692,7 +1692,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
     if dtype == "float32":
         dtype_num = 1
         mask_ub_dtype = "uint32"
-        mask_scalar = MODE_ZERO 
+        mask_scalar = MODE_ZERO
     else:
         dtype_num = 2
         mask_ub_dtype = "uint16"
@@ -3244,7 +3244,9 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     :param kernel_name:
     :return:
     """
+    # 'pylint: disable=global-variable-undefined
     global sup_vextract_fp32
+    # 'pylint: disable=global-variable-undefined
     global sup_vextract_fp16
     sup_vextract_fp32 = tbe_platform.api_check_support("tik.vextract", "float32")
     sup_vextract_fp16 = tbe_platform.api_check_support("tik.vextract", "float16")
@@ -3277,7 +3279,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
         n_bust = 2
     else:
         n_bust = 1
-    # only v300 support vgatherb 
+    # only v300 support vgatherb
     l1_size = 0 if tbe_platform.api_check_support("tik.vgatherb") else tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
     if roisn_dict:
         roisn_ub = tik_instance.Tensor(roisn_dtype, [1, 16], \

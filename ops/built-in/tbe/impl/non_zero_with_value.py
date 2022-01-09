@@ -360,6 +360,7 @@ class NonZero:
         tiling_loop = _ceil(cur_core_num, self.tiling)
         tiling_tail = cur_core_num - (tiling_loop - 1) * self.tiling
         # The number of non-zero elements in the current core
+        # 'pylint: disable=attribute-defined-outside-init
         self.res_blk_num_tensor = self.tik_instance.Tensor(Constant.SHAPE_DTYPE, (self.ub_minimum_num,),
                                                            name="res_blk_num_tensor",
                                                            scope=tik.scope_ubuf)
