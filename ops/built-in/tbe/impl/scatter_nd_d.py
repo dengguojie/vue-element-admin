@@ -26,7 +26,7 @@ from impl import constant_util
 from impl import common_util
 
 
-# 'pylint: diable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
     """
     when dtype not in ("float", "float32", "float16", "int32"), dynamic shape not support.

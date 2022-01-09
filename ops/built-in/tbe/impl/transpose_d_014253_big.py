@@ -28,8 +28,8 @@ PAD_IDX_LIST = (0, 1, 2)
 FRAME_LEVEL = 3
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-lines, too-many-return-statements,
-# pylint: disable=too-many-statements, unused-argument
+# 'pylint: disable=too-many-locals,inconsistent-return-statements,too-many-lines,too-many-return-statements
+# 'pylint: disable=too-many-statements,unused-argument
 def _renew_input_output_perm(in_shape, out_shape, perm):
     """
     renew shape and perm to adapt tiling process
@@ -43,7 +43,7 @@ def _renew_input_output_perm(in_shape, out_shape, perm):
     return [new_in_shape, new_out_shape, new_perm]
 
 
-# pylint: disable=too-many-statements, unused-variable
+# 'pylint: disable=too-many-statements,unused-variable
 def _get_mc_info_transpose(axis_lp_args, tp_info):
     """
     get multiple core axis position for transpose transform
@@ -123,7 +123,7 @@ def _get_mc_info_transpose(axis_lp_args, tp_info):
         tp_info["tp_lc_l_left"] = dst_l_left
 
 
-# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
+# 'pylint: disable=redefined-builtin,unbalanced-tuple-unpacking,too-many-branches
 def _tiling_params_transpose(args):
     """
     calculate real tiling params for transpose transform and last axis of target format is not c
@@ -172,7 +172,7 @@ def _tiling_params_transpose(args):
     tp_info["tp_dst_c_lp_step_in"] = tp_info.get("tp_dst_c_lp_unit") * tp_info.get("tp_dst_c_step_in")
     tp_info["tp_dst_c_lp_step_out"] = tp_info.get("tp_dst_c_lp_unit") * tp_info.get("tp_dst_c_step_out")
 
-    # count method: r_idx/dst_rsize%size*dst_asize
+    # `count method: r_idx/dst_rsize%size*dst_asize`
     dst_c_shape = out_shape[1:-1]
     tmp_dst_c_shape = dst_c_shape[:]
     tmp_dst_c_shape.append(1)
@@ -391,7 +391,7 @@ def _move_dst_c_in_for_three_dims(data_in_args, offset_args, c_beg):
                                    0, 1, right_dims_block_align_size // ele_per_block, 0, 0)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_in(in_offset_args, tik_args):
     """
     copy data from gm to ub for transpose
@@ -429,7 +429,7 @@ def _copy_data_in(in_offset_args, tik_args):
             _move_dst_c_in_for_three_dims(data_in_args, offset_args, c_beg)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm

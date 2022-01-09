@@ -188,9 +188,9 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         -------------
         Process:
             `1. input H/W = output H/W`
-            2. input H/W = (1,1)
-            3. output H/W = (1,1)
-            4. normal input/output H/W
+            `2. input H/W = (1,1)`
+            `3. output H/W = (1,1)`
+            `4. normal input/output H/W`
     """
     # get device version
     core_counts = tbe_platform.cce_conf.get_soc_spec("CORE_NUM")

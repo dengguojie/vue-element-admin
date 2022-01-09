@@ -141,7 +141,8 @@ def unsorted_segment_min_d(x, segment_ids, y, num_segments, kernel_name="unsorte
     if first_shape != ids_length:
         error_manager_vector.raise_err_specific_reson(
             kernel_name,
-            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"
+            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d,"
+            " segment_ids.shape[0] is %d"
             % (first_shape, ids_length))
 
     total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (

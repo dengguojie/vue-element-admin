@@ -21,6 +21,7 @@ from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform import platform_info
 
+
 def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     """
     calculating data
@@ -46,6 +47,7 @@ def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     inp_dtype = x.dtype
     compatible_dtype = x.dtype
     shape = x.shape
+    # 'pylint: disable=unused-variable
     kernel_name_var = kernel_name
 
     if inp_dtype in ("int8", "uint8", "int32"):
@@ -53,12 +55,12 @@ def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
             compatible_dtype = "float32"
         else:
             compatible_dtype = "float16"
-    
+
         x = tbe.cast_to(x, compatible_dtype)
         threshold = tbe.cast_to(threshold, compatible_dtype)
         if value is not None:
             value = tbe.cast_to(value, compatible_dtype)
-            
+
     threshold = tbe.broadcast(threshold, shape)
     if value is None:
         value = tbe.broadcast(tvm.const(0, compatible_dtype), shape)
@@ -72,10 +74,10 @@ def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     return data_res
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
-                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
     """
     Thresholds each element of the input Tensor
@@ -120,16 +122,14 @@ def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
         para_check.check_shape(value.get("shape"), max_dim=1, max_rank=1, param_name="value")
         data_value = tvm.placeholder(threshold_shape, dtype=dtype_x, name="data_value")
         tensor_list.append(data_value)
-    
+
     res = threshold_v2_compute(data_x, data_threshold, data_value, kernel_name)
     tensor_list.append(res)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
-    
+
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
 
     tbe.build(schedule, config)
-
-

@@ -406,7 +406,7 @@ def roi_align_tik(tik_instance, feature_map, rois, roisn, ret,
 
 
 # 'pylint: disable=unused-argument
-class RoiExtractor(object):
+class RoiExtractor:
     """
     roi_extractor op
     """
@@ -457,8 +457,8 @@ class RoiExtractor(object):
 
     def map_roi_levels(self, target_lvls, proc_num, roi_offset=0):
         """
-        calculate scale = torch.sqrt((rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
-        :return: target_lvls
+        `calculate scale = torch.sqrt((rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))`
+        `:return: target_lvls`
         """
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
 
@@ -784,6 +784,7 @@ def roi_extractor(feats, rois, roi_feats,
         roi_num = rois_shape[0]
         per_core = roi_num // core_num
         tail = roi_num % core_num
+        # 'pylint: disable=no-else-return
         if per_core and not tail:
             return rpn_instance.compute2()
         else:
