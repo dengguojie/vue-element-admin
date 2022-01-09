@@ -149,14 +149,14 @@ def power_scalar(input_x, base, power):
             res = tbe.vmuls(ones, math.pow(base, power))
             return res
 
-        # 'return abnormal value'
+        # `return abnormal value`
         res = tbe.vrec(zeros)
         return res
 
     if power > 0:
         return zeros
 
-    # 'return abnormal value'
+    # `return abnormal value`
     res = tbe.vrec(zeros)
 
     return res

@@ -460,7 +460,7 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
     else:
         repeat_times = NUM_BLOCK // BLOCK
         float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
-        int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf) 
+        int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
         with tik_instance.for_range(0, rounds) as i:
             with tik_instance.for_range(0, num_gm) as j:
                 tik_instance.data_move(float_ub[0], data_out[i * num_2048 + j * NUM_BLOCK], 0, 1,

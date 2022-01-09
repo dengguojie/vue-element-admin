@@ -113,7 +113,8 @@ class SplitEqual():
                                         self.last_dim - self.size_splits[i], 0)
         ub_a_src_list_2 = [ub_a[Constant.UNIT * i] for i in range(Constant.UNIT)]
         ub_b_dst_list_2 = [ub_b[self.x_unit * self.last_dim * i] for i in range(Constant.UNIT)]
-        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2, self.x_unit * self.last_dim // Constant.UNIT,
+        self.tik_instance.vnchwconv(True, True, ub_b_dst_list_2, ub_a_src_list_2,
+                                    self.x_unit * self.last_dim // Constant.UNIT,
                                     Constant.UNIT // self.block_ele, Constant.UNIT * Constant.UNIT // self.block_ele)
         for i in range(self.output_num):
             offset_ub_b = self.sum_size_list[i] * self.x_unit
@@ -139,12 +140,14 @@ class SplitEqual():
             for i in list_sixteen:
                 if self.size_splits[0] * i % 16 == 0:
                     return i
-        return (16 // self.resize)
+        return 16 // self.resize
 
+    # 'pylint:disable=missing-function-docstring
     @staticmethod
     def get_sum_list(size_splits):
         return list(map(lambda i:sum(size_splits[:i]), range(len(size_splits))))
 
+    # 'pylint:disable=missing-function-docstring
     @staticmethod
     def reinter_split_equal(new_shape, dtype_lower, new_size_splits):
         re_shape = new_shape

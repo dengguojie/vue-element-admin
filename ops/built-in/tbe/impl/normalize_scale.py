@@ -33,6 +33,7 @@ def get_op_support_info(x1, x2, x3, y, across_spatial=True, channel_shared=True,
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
     return op_cal_info_in_json
 
+    # 'pylint: disable=unreachable
     if format_x == "NCHW" or format_x == "NHWC":
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
                    util_select_op_base.SplitOutput([0, [0]])]
