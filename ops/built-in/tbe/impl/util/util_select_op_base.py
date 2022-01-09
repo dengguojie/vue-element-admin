@@ -155,7 +155,7 @@ def _split_multi_output_list(one_output_list):
     ------
     dict
     """
-    return {"idx":one_output_list[0],"axis":one_output_list[1]}
+    return {"idx":one_output_list[0], "axis":one_output_list[1]}
 
 
 def _multi_reduce_input_list(one_input_list):
@@ -175,7 +175,7 @@ def _multi_reduce_input_list(one_input_list):
     ------
     dict
     """
-    return {"idx":one_input_list[0],"axis":one_input_list[1]}
+    return {"idx":one_input_list[0], "axis":one_input_list[1]}
 
 
 def _multi_reduce_output_list(one_output_list):
@@ -197,7 +197,7 @@ def _multi_reduce_output_list(one_output_list):
     ------
     dict
     """
-    return {"idx":one_output_list[0],"reduceType":one_output_list[1],"isAtomic":one_output_list[2]}
+    return {"idx":one_output_list[0], "reduceType":one_output_list[1], "isAtomic":one_output_list[2]}
 
 
 def get_dynamic_param_in_json(param_desc_list):

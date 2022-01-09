@@ -442,10 +442,10 @@ def high_precision_floor(x_float, is_high_precision=True):
             # when the product not support f322s32, will cast to fp16 and to int32, will get error
             # ex: f32 value is 1.99998, cast int32 is 2, this step will reduce the error
             # step 1 int32 cast to fp32_new   2.0
-            # step 2 int32_sub_fp32_value = f32_old - fp32_new
-            # step 3 int32_sub_fp32_value = 0 when int32_sub_fp32_value >= 0
-            #        int32_sub_fp32_value = 1 when int32_sub_fp32_value < 0
-            # step 4 int32 - int32_sub_fp32_value
+            # `step 2 int32_sub_fp32_value = f32_old - fp32_new`
+            # `step 3 int32_sub_fp32_value = 0 when int32_sub_fp32_value >= 0`
+            #        `int32_sub_fp32_value = 1 when int32_sub_fp32_value < 0`
+            # `step 4 int32 - int32_sub_fp32_value`
             x_floor_fp32 = tbe.cast_to(x_floor, "float32")
             error_fp32 = tbe.vsub(x_floor_fp32, x_float)
             error_fp32 = tbe.vmaxs(error_fp32, 0)

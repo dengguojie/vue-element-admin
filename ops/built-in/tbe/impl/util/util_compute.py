@@ -55,6 +55,7 @@ def sign(input_data):
 
     return res
 
+
 def check_fc_fuse(input_tensor):
     """
     check if fused with fullyconnection
@@ -74,8 +75,9 @@ def check_fc_fuse(input_tensor):
         # the max dim size of fc is 4
         fc_fuse_max_dim_flag = len(item.shape) == 4 and item.op.attrs["format"] == "FRACTAL_NZ"
         if fc_fuse_min_dim_flag or fc_fuse_max_dim_flag:
-           return True
+            return True
     return False
+
 
 def check_batchmatmul_fuse(input_tensor):
     """
@@ -91,8 +93,8 @@ def check_batchmatmul_fuse(input_tensor):
     while queue:
         item = queue.pop(0)
         if len(item.shape) == BATCH_MATMUL_LENGTH and ("matmul" in item.op.tag) \
-           and item.op.attrs["format"] == "FRACTAL_NZ":
-           return True
+                and item.op.attrs["format"] == "FRACTAL_NZ":
+            return True
 
         for child in item.op.input_tensors:
             if child not in visited:
@@ -129,7 +131,7 @@ def batchmatmul_elem_nd2nz(batch_matmul, elem_input, para_dict, para_name):
         elem_input = tvm.compute(
             shape_elem_nz,
             lambda *indice: (elem_input(indice[-4]*16 + indice[-1]) if len(shape_elem) == 1 \
-                            else elem_input(*indice[0:-4], 0, indice[-4]*16 + indice[-1])),
+                                 else elem_input(*indice[0:-4], 0, indice[-4]*16 + indice[-1])),
             name="broadcast_nz2nd_" + para_name,
             tag="broadcast_nz2nd")
     return elem_input, shape_max
