@@ -487,6 +487,7 @@ class PadCompute:
         if tail_block != 0:
             _copy_ub2gm(tik_instance, tail, tail_block, dst_gm)
 
+    @staticmethod
     def copy_ubuf_2_ubuf_case0(self, tik_instance, nburst, burstlen, src_stride, dst_stride, ubuf, src_ub, dst_ub):
         """
         copy_ubuf_2_ubuf_case0

@@ -15,7 +15,6 @@
 """
 n_p_u_get_float_status_v2
 """
-import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 

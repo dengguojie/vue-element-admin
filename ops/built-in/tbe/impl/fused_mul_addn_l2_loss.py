@@ -21,11 +21,6 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import ReduceInput
-from impl.util.util_select_op_base import ReduceOutput
-from impl.util.util_select_op_base import get_op_cal_info
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_addn_l2loss")
