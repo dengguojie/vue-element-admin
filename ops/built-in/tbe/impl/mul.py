@@ -617,7 +617,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     if y_flag.get("5d") or y_flag.get("4d"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
-    # 'pylint: unused-variable
+    # 'pylint: disable=unused-variable
     common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
             not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
 

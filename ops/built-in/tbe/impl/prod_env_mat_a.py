@@ -2019,7 +2019,7 @@ def _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_
                             para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)
-def prod_env_mat_a(coord, type, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
+def prod_env_mat_a(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
                    rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, split_count=1, split_index=0,
                    kernel_name="prod_env_mat_a"):
     """
@@ -2045,9 +2045,9 @@ def prod_env_mat_a(coord, type, natoms, box, mesh, davg, dstd, descrpt, descrpt_
     -------
     None
     """
-    _check_params(coord, type, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
+    _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_deriv, rij, nlist,
                   rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, kernel_name)
-    prod_env_mat_a_obj = ProdEnvMatA(coord, type, natoms, box, mesh, davg, dstd, sel_a, rcut_r, rcut_r_smth, nlist,
+    prod_env_mat_a_obj = ProdEnvMatA(coord, types, natoms, box, mesh, davg, dstd, sel_a, rcut_r, rcut_r_smth, nlist,
                                      split_count, split_index, kernel_name)
 
     prod_env_mat_a_obj.compute_process()

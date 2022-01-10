@@ -707,7 +707,7 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         temp_output_num = 3
         col2img_ub_fp16_num = 2
         if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size * col2img_ub_fp16_num + fp32_data_size) + \
-                _cal_shape_ele( ori_output_shape) * fp16_data_size * temp_output_num + \
+                _cal_shape_ele(ori_output_shape) * fp16_data_size * temp_output_num + \
                 ori_input_size + bank_used_ub > SIZE_UB:
             atomic_flag = True
         return atomic_flag
