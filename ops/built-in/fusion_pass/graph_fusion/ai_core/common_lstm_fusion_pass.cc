@@ -450,48 +450,6 @@ void CommonLSTMFusionPass::SetTensorDescription(ge::GeTensorDesc &tensorDesc, ve
     return;
 }
 
-Status CommonLSTMFusionPass::AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
-                                            ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes,
-                                            std::string nodeName, int nodeIndex) {
-  ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  std::string operatorName = fusedDesc->GetName() + "/Reshape" + nodeName;
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Reshape");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error"),
-                    return FAILED);
-  auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
-  reshapeOp.BreakConnect();
-
-  ge::GeTensorDesc originTensorDesc = fusedDesc->GetOutputDesc(0);
-  reshape_desc->UpdateInputDesc("x", dynamicRnnOutputDesc);
-  reshape_desc->UpdateInputDesc("shape", originTensorDesc);
-  reshape_desc->UpdateOutputDesc("y", originTensorDesc);
-
-  ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(myReshape_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "myReshape_node node is null, fusion failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnNode->GetOutDataAnchor(nodeIndex),
-                                                        myReshape_node->GetInDataAnchor(0)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "add DynamicRNN edge to fusion myReshape_node x failed."),
-                    return FAILED);
-
-  newNodes.push_back(myReshape_node);
-  // Get Output Node
-  for (InDataAnchorPtr oriTopPeerAnchorPtri : fusedNode->GetOutDataAnchor(nodeIndex)->GetPeerInDataAnchors()) {
-    oriTopPeerAnchorPtri->UnlinkAll();
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(myReshape_node->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "add Reshape Node edge to fusion node output %s failed.",
-                                       nodeName.c_str()),
-        return FAILED);
-  }
-  return SUCCESS;
-}
-
 Status CommonLSTMFusionPass::AddExpandDimsNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
                                                ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes,
                                                std::string nodeName, int nodeIndex) {
@@ -554,6 +512,149 @@ Status CommonLSTMFusionPass::AddExpandDimsNode(ge::ComputeGraph &graph, ge::Node
         SUCCESS != ge::GraphUtils::AddEdge(ExpandDimNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
             "add ExpandDim Node edge to fusion node output %s failed.", nodeName.c_str()),
+        return FAILED);
+  }
+
+  return SUCCESS;
+}
+
+Status CommonLSTMFusionPass::AddExpandDimsConcatNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode,
+                                                     ge::NodePtr forwardRnnNode, ge::NodePtr backwardRnnNode,
+                                                     ge::GeTensorDesc dynamicRnnOutputDesc, std::string nodeName,
+                                                     vector<ge::NodePtr> &newNodes) {
+  ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  std::string forwardExdName = fusedDesc->GetName() + "/ExpandDims" + "Forward";
+  std::string backwardExdName = fusedDesc->GetName() + "/ExpandDims" + "Backward";
+  auto forwardExdOp = ge::OperatorFactory::CreateOperator(forwardExdName.c_str(), "ExpandDims");
+  auto backwardExdOp = ge::OperatorFactory::CreateOperator(backwardExdName.c_str(), "ExpandDims");
+
+  FUSION_PASS_CHECK(forwardExdOp.IsEmpty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create ExpandDims Forward Op error"),
+                    return FAILED);
+  auto forwardExdDesc = ge::OpDescUtils::GetOpDescFromOperator(forwardExdOp);
+  forwardExdOp.BreakConnect();
+
+  FUSION_PASS_CHECK(backwardExdOp.IsEmpty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create ExpandDims Backward Op error"),
+                    return FAILED);
+  auto backwardExdDesc = ge::OpDescUtils::GetOpDescFromOperator(backwardExdOp);
+  backwardExdOp.BreakConnect();
+
+  // create axis tensor for ExpandDims
+  ge::GeTensorDesc tensorDesc;
+  vector<int64_t> dimsIn = {1};
+  SetTensorDescription(tensorDesc, dimsIn, ge::FORMAT_ND, ge::DT_INT32);
+
+  ge::GeTensorDesc ExdTensorDesc = fusedDesc->GetOutputDesc(0).Clone();
+  std::vector<int64_t> dims = ExdTensorDesc.GetShape().GetDims();
+  dims[1] = 1;
+  ge::GeShape outputShape(dims);
+  ExdTensorDesc.SetShape(outputShape);
+  ExdTensorDesc.SetOriginShape(outputShape);
+
+  forwardExdDesc->UpdateInputDesc("x", dynamicRnnOutputDesc);
+  forwardExdDesc->UpdateInputDesc("axis", tensorDesc);
+  forwardExdDesc->UpdateOutputDesc("y", ExdTensorDesc);
+
+  backwardExdDesc->UpdateInputDesc("x", dynamicRnnOutputDesc);
+  backwardExdDesc->UpdateInputDesc("axis", tensorDesc);
+  backwardExdDesc->UpdateOutputDesc("y", ExdTensorDesc);
+
+  ge::GeTensorPtr AxisTensorPtr = nullptr;
+  vector<int32_t> axis = {1};
+  FUSION_PASS_MAKE_SHARED((AxisTensorPtr = std::make_shared<ge::GeTensor>(
+                               tensorDesc, reinterpret_cast<uint8_t *>(axis.data()), 1 * sizeof(int32_t))),
+                          return FAILED);
+  ge::OpDescPtr AxisDesc = ge::OpDescUtils::CreateConstOp(AxisTensorPtr);
+
+  // create ExpandDims and axis node
+  ge::NodePtr forwardExdNode = graph.AddNode(forwardExdDesc);
+  ge::NodePtr backwardExdNode = graph.AddNode(backwardExdDesc);
+  ge::NodePtr AxisNode = graph.AddNode(AxisDesc);
+
+  FUSION_PASS_CHECK(forwardExdNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create ExpandDims forward node failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(backwardExdNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create ExpandDims backward node failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(AxisNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Axis node is null, fusion failed."),
+                    return FAILED);
+
+  // set attr _op_infer_depends for ExpandDims
+  vector<std::string> original_names = {"axis"};
+  bool ret = ge::AttrUtils::SetListStr(forwardExdNode->GetOpDesc(), ATTR_NAME_OP_INFER_DEPENDS, original_names);
+  ret = ge::AttrUtils::SetListStr(backwardExdNode->GetOpDesc(), ATTR_NAME_OP_INFER_DEPENDS, original_names);
+  if (!ret) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "ExpandDimNode set ATTR_NAME_OP_INFER_DEPENDS error.");
+  }
+
+  newNodes.push_back(forwardExdNode);
+  newNodes.push_back(backwardExdNode);
+  newNodes.push_back(AxisNode);
+
+  // add forward rnn output y edge to expanddims node
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(forwardRnnNode->GetOutDataAnchor(0),
+                                                       forwardExdNode->GetInDataAnchor(0)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion ExpandDim x failed."),
+        return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(AxisNode->GetOutDataAnchor(0),
+                                                       forwardExdNode->GetInDataAnchor(1)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add axis edge to fusion ExpandDim axis failed."),
+        return FAILED);
+
+  // add backward rnn output y edge to expanddims node
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(backwardRnnNode->GetOutDataAnchor(0),
+                                                       backwardExdNode->GetInDataAnchor(0)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion ExpandDim x failed."),
+        return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(AxisNode->GetOutDataAnchor(0),
+                                                       backwardExdNode->GetInDataAnchor(1)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add axis edge to fusion ExpandDim axis failed."),
+        return FAILED);
+
+  // create concat node
+  std::string concatOpName = fusedDesc->GetName() + "/ConcatD_" + nodeName;
+  auto concatOp = ge::OperatorFactory::CreateOperator(concatOpName.c_str(), "ConcatD");
+  FUSION_PASS_CHECK(concatOp.IsEmpty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create y concat operator error"),
+                    return FAILED);
+  auto concatDesc = ge::OpDescUtils::GetOpDescFromOperator(concatOp);
+  concatOp.BreakConnect();
+
+  ge::GeTensorDesc originTensorDesc = fusedDesc->GetOutputDesc(0);
+  concatDesc->AddInputDesc("x0", ExdTensorDesc);
+  concatDesc->AddInputDesc("x1", ExdTensorDesc);
+  concatDesc->UpdateOutputDesc("y", originTensorDesc);
+
+  ge::AttrUtils::SetInt(concatDesc, "concat_dim", 1);
+  ge::AttrUtils::SetInt(concatDesc, "N", 2);
+
+  ge::NodePtr concatNode = graph.AddNode(concatDesc);
+  newNodes.push_back(concatNode);
+
+  // add ExpandDims edge to concat node
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(forwardExdNode->GetOutDataAnchor(0),
+                                         concatNode->GetInDataAnchor(0)),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "add expanddims forward edge to fusion concat node failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(backwardExdNode->GetOutDataAnchor(0),
+                                         concatNode->GetInDataAnchor(1)),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                     "add expanddims backward edge to fusion concat node failed."), return FAILED);
+
+  // add concat edge to output node
+  for (InDataAnchorPtr oriTopPeerAnchorPtri : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove concat output edge to output node failed."),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add concat output edge to output node failed."),
         return FAILED);
   }
 
@@ -655,9 +756,9 @@ Status CommonLSTMFusionPass::AddSliceConcatNode(ge::ComputeGraph &graph, ge::Nod
 
   slice_desc_forward->UpdateInputDesc("x", dynamicRnnOutputDesc);
   slice_desc_forward->UpdateOutputDesc("y", SliceTensorDesc);
-  ge::AttrUtils::SetListInt(slice_desc_forward, "begin", {0, 0, 0});
-  ge::AttrUtils::SetListInt(slice_desc_forward, "end", {1, slice_dims[1], slice_dims[2]});
-  ge::AttrUtils::SetListInt(slice_desc_forward, "strides", {1, 1, 1});
+  ge::AttrUtils::SetListInt(slice_desc_forward, "begin", {-1, 0, 0});
+  ge::AttrUtils::SetListInt(slice_desc_forward, "end", {-2, slice_dims[1], slice_dims[2]});
+  ge::AttrUtils::SetListInt(slice_desc_forward, "strides", {-1, 1, 1});
 
   ge::NodePtr slice_node_forward = graph.AddNode(slice_desc_forward);
   newNodes.push_back(slice_node_forward);
@@ -673,9 +774,9 @@ Status CommonLSTMFusionPass::AddSliceConcatNode(ge::ComputeGraph &graph, ge::Nod
 
   slice_desc_reverse->UpdateInputDesc("x", dynamicRnnOutputDesc);
   slice_desc_reverse->UpdateOutputDesc("y", SliceTensorDesc);
-  ge::AttrUtils::SetListInt(slice_desc_reverse, "begin", {0, 0, 0});
-  ge::AttrUtils::SetListInt(slice_desc_reverse, "end", {1, slice_dims[1], slice_dims[2]});
-  ge::AttrUtils::SetListInt(slice_desc_reverse, "strides", {1, 1, 1});
+  ge::AttrUtils::SetListInt(slice_desc_reverse, "begin", {-1, 0, 0});
+  ge::AttrUtils::SetListInt(slice_desc_reverse, "end", {-2, slice_dims[1], slice_dims[2]});
+  ge::AttrUtils::SetListInt(slice_desc_reverse, "strides", {-1, 1, 1});
 
   ge::NodePtr slice_node_reverse = graph.AddNode(slice_desc_reverse);
   newNodes.push_back(slice_node_reverse);
@@ -782,7 +883,7 @@ Status CommonLSTMFusionPass::AddSliceNode(ge::ComputeGraph &graph, ge::NodePtr f
 ge::OpDescPtr CommonLSTMFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge::OpDescPtr fusedDesc,
                                                     string tensorName, int64_t splitDim) {
   ge::GeTensorDesc tensorDesc = fusedDesc->GetInputDesc(tensorName).Clone();
-  splitDesc->AddInputDesc(tensorDesc);
+  splitDesc->AddInputDesc("x", tensorDesc);
   ge::AttrUtils::SetInt(splitDesc, "split_dim", splitDim);
   ge::AttrUtils::SetInt(splitDesc, "num_split", 2);
   vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
@@ -793,8 +894,8 @@ ge::OpDescPtr CommonLSTMFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge:
   tensorDesc.SetShape(tensorShape);
   tensorDesc.SetOriginShape(tensorShape);
 
-  splitDesc->AddOutputDesc(tensorDesc);
-  splitDesc->AddOutputDesc(tensorDesc);
+  splitDesc->AddOutputDesc("y0", tensorDesc);
+  splitDesc->AddOutputDesc("y1", tensorDesc);
 
   return splitDesc;
 }
@@ -1166,102 +1267,19 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     dynamicRnnDescReverse->UpdateOutputDesc("o", outputYDesc);
     dynamicRnnDescReverse->UpdateOutputDesc("tanhc", outputYDesc);
 
-    // create x forward reshape node
-    std::string reshapeOpForwardName = fusedDesc->GetName() + "/ReshapeForward";
-    auto reshapeOpForward = ge::OperatorFactory::CreateOperator(reshapeOpForwardName.c_str(), "Reshape");
-    FUSION_PASS_CHECK(reshapeOpForward.IsEmpty(),
+    FUSION_PASS_CHECK(AddExpandDimsConcatNode(graph, fusedNode, dynamicRnnForwardNode, dynamicRnnReverseNode,
+                                              outputYDesc, "Y", newNodes) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "create reshape op forward Op operator error"),
+                                                     "create ExpandDimsY Op operator error"),
                       return FAILED);
-    auto reshape_desc_forward = ge::OpDescUtils::GetOpDescFromOperator(reshapeOpForward);
-    reshapeOpForward.BreakConnect();
-
-    ge::GeTensorDesc ReshapeTensorDesc = fusedDesc->GetOutputDesc(0).Clone();
-    std::vector<int64_t> reshape_dims = ReshapeTensorDesc.GetShape().GetDims();
-
-    reshape_dims[1] = 1;
-    ge::GeShape r_shape(reshape_dims);
-    ReshapeTensorDesc.SetShape(r_shape);
-    ReshapeTensorDesc.SetOriginShape(r_shape);
-
-    reshape_desc_forward->UpdateInputDesc("x", outputYDesc);
-    reshape_desc_forward->UpdateInputDesc("shape", ReshapeTensorDesc);
-    reshape_desc_forward->UpdateOutputDesc("y", ReshapeTensorDesc);
-
-    ge::NodePtr Reshape_node_forward = graph.AddNode(reshape_desc_forward);
-    FUSION_PASS_CHECK(Reshape_node_forward == nullptr,
+    FUSION_PASS_CHECK(AddSliceConcatNode(graph, fusedNode, dynamicRnnForwardNode, dynamicRnnReverseNode,
+                                         outputYDesc, newNodes, "H", 1) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "reshape forward node node is null, fusion failed."),
-                      return FAILED);
-    newNodes.push_back(Reshape_node_forward);
-
-    // create x reverse reshape node
-    std::string reshapeOpReverseName = fusedDesc->GetName() + "/ReshapeReverse";
-    auto reshapeOpReverse = ge::OperatorFactory::CreateOperator(reshapeOpReverseName.c_str(), "Reshape");
-    FUSION_PASS_CHECK(reshapeOpReverse.IsEmpty(),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create reverse reshape node error"),
-                      return FAILED);
-    auto reshape_desc_reverse = ge::OpDescUtils::GetOpDescFromOperator(reshapeOpReverse);
-    reshapeOpReverse.BreakConnect();
-
-    reshape_desc_reverse->UpdateInputDesc("x", outputYDesc);
-    reshape_desc_reverse->UpdateInputDesc("shape", ReshapeTensorDesc);
-    reshape_desc_reverse->UpdateOutputDesc("y", ReshapeTensorDesc);
-
-    ge::NodePtr Reshape_node_reverse = graph.AddNode(reshape_desc_reverse);
-    FUSION_PASS_CHECK(Reshape_node_reverse == nullptr,
+                                                     "create slice H Op operator error"), return FAILED);
+    FUSION_PASS_CHECK(AddSliceConcatNode(graph, fusedNode, dynamicRnnForwardNode, dynamicRnnReverseNode,
+                                         outputYDesc, newNodes, "C", 2) != SUCCESS,
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "reshape reverse node is null, fusion failed."),
-                      return FAILED);
-    newNodes.push_back(Reshape_node_reverse);
-
-    // connect y to reshape
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnForwardNode->GetOutDataAnchor(0),
-                                                          Reshape_node_forward->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "add DynamicRNN edge to fusion Reshape_node_forward y failed."),
-                      return FAILED);
-
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnReverseNode->GetOutDataAnchor(0),
-                                                         Reshape_node_reverse->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "add DynamicRNN edge to fusion Reshape_node_reverse y failed."),
-                      return FAILED);
-
-    // create y concat node
-    std::string concatOpName = fusedDesc->GetName() + "/ConcatD_y";
-    auto concatOpY = ge::OperatorFactory::CreateOperator(concatOpName.c_str(), "ConcatD");
-    FUSION_PASS_CHECK(concatOpY.IsEmpty(),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create y concat operator error"),
-                      return FAILED);
-    auto concatDescY = ge::OpDescUtils::GetOpDescFromOperator(concatOpY);
-    concatOpY.BreakConnect();
-
-    ge::GeTensorDesc originTensorDesc = fusedDesc->GetOutputDesc(0);
-    concatDescY->AddInputDesc("x_forward", ReshapeTensorDesc);
-    concatDescY->AddInputDesc("x_reverse", ReshapeTensorDesc);
-    concatDescY->UpdateOutputDesc("y", originTensorDesc);
-
-    ge::AttrUtils::SetInt(concatDescY, "concat_dim", 1);
-    ge::AttrUtils::SetInt(concatDescY, "N", 2);
-
-    ge::NodePtr concatY_node = graph.AddNode(concatDescY);
-    newNodes.push_back(concatY_node);
-
-    // concat reshape y to concat
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(Reshape_node_forward->GetOutDataAnchor(0),
-                                           concatY_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "add reshape forward edge to fusion concat failed."), return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(Reshape_node_reverse->GetOutDataAnchor(0),
-                                           concatY_node->GetInDataAnchor(1)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                       "add reshape reverse edge to fusion concat failed."), return FAILED);
-
-    ge::OutDataAnchorPtr outputY = fusedNode->GetOutDataAnchor(0);
-    auto hOriTopPeerAnchors = outputY->GetPeerInDataAnchors();
+                                                     "create slice C Op operator error"), return FAILED);
 
     // unlink all control input of DynamicRNN
     if (fusedNode->GetInControlAnchor() != nullptr) {
@@ -1282,14 +1300,6 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
       }
     }
 
-    for (uint64_t i = 0; i < hOriTopPeerAnchors.size(); i++) {
-      ge::InDataAnchorPtr oriTopPeerAnchorPtri = hOriTopPeerAnchors.at(i);
-      ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-      FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::AddEdge(concatY_node->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                         "add concat Node edge to fusion node output failed."), return FAILED);
-    }
     Status retSetDumpData = SetOutputTensorDescAttr(0, 0, fusedNode, dynamicRnnForwardNode);
     if (retSetDumpData == FAILED) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "set forward dump origin data failed!");
@@ -1298,14 +1308,6 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     if (retSetDumpData == FAILED) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "set reverse dump origin data failed!");
     }
-    FUSION_PASS_CHECK(AddSliceConcatNode(graph, fusedNode, dynamicRnnForwardNode, dynamicRnnReverseNode,
-                                         outputYDesc, newNodes, "H", 1) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "create slice H Op operator error"), return FAILED);
-    FUSION_PASS_CHECK(AddSliceConcatNode(graph, fusedNode, dynamicRnnForwardNode, dynamicRnnReverseNode,
-                                         outputYDesc, newNodes, "C", 2) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                     "create slice C Op operator error"), return FAILED);
   } else if (is_single) {
     int32_t num_directions = 1;
     std::string dynamicRnnOpName = fusedDesc->GetName() + "/DynamicRnn";
