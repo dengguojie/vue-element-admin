@@ -29,17 +29,8 @@ case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 4
          "case_name": "TopkD_1",
          "expect": "success",
          "support_expect": True}
-case2 = {"params": [{"shape": (5000, ), "dtype": "float16", "ori_shape": (5000, ), "format": "ND", "ori_format": "ND", "range": ((1, 880),)},
-                    {"shape": (5000,), "dtype": "float16", "format": "ND", "ori_shape": (5000,),"ori_format": "ND", "range": ((8192,8192),)},
-                    {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "range": ((1, 880),)},
-                    {"shape": (16,), "dtype": "int32", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "range": ((1, 880),)},
-                    16,True,-1,True],
-         "case_name": "TopkD_2",
-         "expect": "success",
-         "support_expect": True}
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 
 def test_a100(test_arg):
     from te.platform.cce_conf import te_set_version

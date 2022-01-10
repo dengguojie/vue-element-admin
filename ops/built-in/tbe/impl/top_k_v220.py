@@ -20,6 +20,7 @@ top_k_v220
 from tbe import tik
 
 
+# 'pylint: disable=too-few-public-methods
 class Setting:
     """
     define some setting values
@@ -34,7 +35,7 @@ class Setting:
     part_1696 = 1696
 
 
-# 'pylint: disable=too-many-local-variables,too-many-arguments,line-too-long
+# 'pylint: disable=too-many-arguments,line-too-long,too-many-locals
 def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
     """
     sort 10w data to 13 part sorted list, 1~12 part has 8192 element, and last has 1696 elements
@@ -54,7 +55,7 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
         assist_ub_int32 = tik_instance.Tensor(
             "int32", (valid_assist_len, ), name="assist_ub_int32", scope=tik.scope_ubuf)
 
-        # 10W = 8192*12+1696
+        # `10W = 8192*12+1696`
         tik_instance.data_move(assist_ub_fp16, index_gm, 0, 1, valid_assist_len * 2 // 32, 0, 0)
         tik_instance.vconv(64, "round", assist_ub_int32, assist_ub_fp16, valid_assist_len // 64, 1, 1, 8, 4)
         burst_len = Setting.part_8192 * 2 // 32
@@ -68,7 +69,7 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
                 tik_instance.vadds(64, index_ub[j * valid_assist_len].reinterpret_cast_to("int32"), assist_ub_int32,
                                    i * Setting.part_8192 + j * valid_assist_len, valid_assist_len // 64, 1, 1, 8, 8)
 
-            # sort len = 32, repeat = 8192 // 32 = 256
+            # `sort len = 32, repeat = 8192 // 32 = 256`
             repeat = 255
             tik_instance.vsort32(sorted_ub, data_ub, index_ub, repeat)
             # repeat can not large than 255, so split repat 256 into 255 + 1
@@ -76,8 +77,8 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
             tik_instance.vsort32(sorted_ub[255 * part_32 * Setting.num_fp16_struc], data_ub[255 * part_32],
                                  index_ub[255 * part_32], repeat)
 
-            # merge_len = 32
-            # repeat 64 (4*32*64=8192)
+            # `merge_len = 32`
+            # `repeat 64 (4*32*64=8192)`
             repeat = 64
             tik_instance.vmrgsort(
                 sorted_ub_2,
@@ -85,14 +86,14 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
                  sorted_ub[part_32 * 2 * Setting.num_fp16_struc], sorted_ub[part_32 * 3 * Setting.num_fp16_struc]),
                 part_32, False, repeat)
 
-            # merge len = 32*4 =128, repeat 16
+            # `merge len = 32*4 =128, repeat 16`
             repeat = 16
             tik_instance.vmrgsort(sorted_ub, (sorted_ub_2, sorted_ub_2[part_128 * Setting.num_fp16_struc],
                                               sorted_ub_2[part_128 * 2 * Setting.num_fp16_struc],
                                               sorted_ub_2[part_128 * 3 * Setting.num_fp16_struc]), part_128, False,
                                   repeat)
 
-            # merge len = 128*4 = 512, repeat 4
+            # `merge len = 128*4 = 512, repeat 4`
             repeat = 4
             tik_instance.vmrgsort(
                 sorted_ub_2,
@@ -100,7 +101,7 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
                  sorted_ub[part_512 * 2 * Setting.num_fp16_struc], sorted_ub[part_512 * 3 * Setting.num_fp16_struc]),
                 part_512, False, repeat)
 
-            # merge len = 512*4 = 2048, repeat 1
+            # `merge len = 512*4 = 2048, repeat 1`
             repeat = 1
             tik_instance.vmrgsort(sorted_ub, (sorted_ub_2, sorted_ub_2[part_2048 * Setting.num_fp16_struc],
                                               sorted_ub_2[part_2048 * 2 * Setting.num_fp16_struc],
@@ -119,7 +120,7 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
         # for vsort32, to process 1696 element repeat is ceil_div(1696/32) = 53
         tik_instance.vsort32(sorted_ub, data_ub, index_ub, 53)
 
-        # first merge 32*4*13+32 = 1696, repeat 13
+        # `first merge 32*4*13+32 = 1696, repeat 13`
         repeat = 13
         tik_instance.vmrgsort(
             sorted_ub_2,
@@ -129,7 +130,7 @@ def _sort_8192(tik_instance, data_gm, index_gm, out_gm, out_gm2):
         tik_instance.data_move(sorted_ub_2[part_32 * 4 * 13 * Setting.num_fp16_struc],
                                sorted_ub[part_32 * 4 * 13 * Setting.num_fp16_struc], 0, 1, burst_len, 0, 0)
 
-        # second merge 128*4*3 + 128 + 32 = 1696, repeat 3
+        # `second merge 128*4*3 + 128 + 32 = 1696, repeat 3`
         repeat = 3
         tik_instance.vmrgsort(
             sorted_ub,
@@ -164,7 +165,7 @@ def _move_last_part(tik_instance, workspace_src, workspace_dst, part_size):
         tik_instance.data_move(workspace_dst, sorted_ub, 0, 1, part_size // Setting.num_fp16_struc, 0, 0)
 
 
-# 'pylint: disable=too-many-local-variables,too-many-arguments,line-too-long
+# 'pylint: disable=too-many-locals,too-many-arguments,line-too-long,too-many-statements,unused-variable
 def _merge_exhausted_mode(tik_instance, workspace_src, workspace_dst, merge_list, part_list):
     """
     use exhausted mode vmrg to merge 4 sorted list into one sorted list
@@ -483,8 +484,7 @@ def _extract_10w(tik_instance, sorted_gm, out_data_gm, out_index_gm):
         tik_instance.data_move(out_index_gm[12 * Setting.part_8192], index_ub, 0, 1, Setting.part_1696 // 8, 0, 0)
 
 
-# 'pylint: disable=too-many-arguments,unused-argument
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,redefined-builtin
 def build_topk_10w_v220(input_tensor,
                         indices_tensor,
                         out_tensor,
@@ -496,11 +496,12 @@ def build_topk_10w_v220(input_tensor,
                         kernel_name='top_k'):
     """
     build topk 10w data  sorted for v220, 10w = 8192 * 12 +1696
-    first use vsort and none exhaust vmrg to get 12 part sorted list  with 8192 elements and 1 part sorted list with 1696 elements,
+    first use vsort and none exhaust vmrg to get 12 part sorted list with 8192 elements
+    and 1 part sorted list with 1696 elements
     every elements contains 4 fp16 or 2 fp32
     then use exhausted mode vmrg to get 3 part sorted list with 32768 elements
     finaly used exhausted mode vmrg go merge 3 part 32768 list and 1 part 1696 list to a sorted list of size 10w
-    at the end , extract value and index from sorted  struct. 
+    at the end , extract value and index from sorted  struct.
     """
     tik_instance = tik.Tik()
     column = 100000
@@ -517,7 +518,7 @@ def build_topk_10w_v220(input_tensor,
     out_data_gm = tik_instance.Tensor("float16", (column, ), name="out_data_gm", scope=tik.scope_gm)
     out_indices_gm = tik_instance.Tensor("int32", (column, ), name="out_indices_ub", scope=tik.scope_gm)
 
-    # 10W = 8192*12 + 1696
+    # `10W = 8192*12 + 1696`
     _sort_8192(tik_instance, data_gm, indices_gm, workspace_1, workspace_1)
     # every part size if 8192
     count_list = (part_size, part_size, part_size, part_size)
