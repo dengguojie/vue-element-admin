@@ -881,8 +881,9 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
                     tvm.call_extern(
                         dst.dtype, "copy_ubuf_to_gm",
                         dst.access_ptr('w',
-                                    offset=block_index * param_ele_aligned_per_core +
-                                    param_ele_ub_aligned * current_last_core_tiling_times), output_ub.access_ptr("r"),
+                                       offset=block_index * param_ele_aligned_per_core + param_ele_ub_aligned * \
+                                              current_last_core_tiling_times),
+                        output_ub.access_ptr("r"),
                         0, 1, param_ub_last_len, 0, 0))
 
 
