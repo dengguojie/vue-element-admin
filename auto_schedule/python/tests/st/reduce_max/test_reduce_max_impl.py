@@ -133,6 +133,49 @@ case8 = {
     "support_expect": True
 }
 
+case9 = {
+    "params": [{"shape": (4, 42, 499, 1115), "ori_shape": (4, 42, 499, 1115), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               {"shape": (1, 1, 1, 1), "ori_shape": (1, 1, 1, 1), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               [0, 1, 2, 3],
+               True
+               ],
+    "case_name": "test_reduce_max_9",
+    "expect": "success",
+    "support_expect": True
+}
+
+case10 = {
+    "params": [{"shape": (578, 946), "ori_shape": (578, 946), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               {"shape": (946,), "ori_shape": (946,), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               [0],
+               False
+               ],
+    "case_name": "test_reduce_max_10",
+    "expect": "success",
+    "support_expect": True
+}
+
+case11 = {
+    "params": [{"shape": (16, 96, 96, 3), "ori_shape": (16, 96, 96, 3), "ori_format": "NHWC", "dtype": "float16", "format": "NHWC"},
+               {"shape": (96, 3), "ori_shape": (96, 3), "ori_format": "NHWC", "dtype": "float16", "format": "NHWC"},
+               [0, 1],
+               False
+               ],
+    "case_name": "test_reduce_max_11",
+    "expect": "success",
+    "support_expect": True
+}
+
+case12 = {
+    "params": [{"shape": (99, 622, 4, 12), "ori_shape": (99, 622, 4, 12), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               {"shape": (1,), "ori_shape": (1,), "ori_format": "ND", "dtype": "float16", "format": "ND"},
+               [0, 1, 2, 3],
+               False
+               ],
+    "case_name": "test_reduce_max_12",
+    "expect": "success",
+    "support_expect": True
+}
 compile_case_list = [
     case1,
     case2,
@@ -141,7 +184,11 @@ compile_case_list = [
     case5,
     case6,
     case7,
-    case8
+    case8,
+    case9,
+    case10,
+    case11,
+    case12
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

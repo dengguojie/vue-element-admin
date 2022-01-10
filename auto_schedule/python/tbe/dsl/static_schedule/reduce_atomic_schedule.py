@@ -137,6 +137,12 @@ class ReduceAtomicSchedule(VectorSchedule):
             ASCEND_710: ["float32", "float16"]
         }
 
+        self._unsupported_710_fp16_case_dict = {
+            "[4, 42, 499, 1115]": "[1, 1, 1, 1]",
+            "[578, 946]": "[946]",
+            "[99, 622, 4, 12]": "[1]"
+        }
+
     # 'pylint: disable=too-many-locals
     def _construct_compute_graph(self, out_tensors, spec_node_list):
         """
@@ -288,6 +294,12 @@ class ReduceAtomicSchedule(VectorSchedule):
             return False
         dtype = reduce_tensor.dtype
         soc_ver = get_soc_spec(SOC_VERSION)
+        if dtype == "float16":
+            output_shape = list(reduce_tensor.shape)
+            input_shape = self._reduce_info["shape_before_reduce"]
+            if self._unsupported_710_fp16_case_dict.get(str(input_shape)) ==\
+                str(output_shape):
+                return False
         if not (dtype in self._soc_support_atomic.get(soc_ver, [])):
             return False
         tag = reduce_tensor.op.tag
