@@ -158,6 +158,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
   graph_fusion/ai_core/confusion_softmax_grad_fusion_pass.cc
   graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.cc
+  graph_fusion/ai_core/conv2d_squeeze_biasadd_fusion_pass.cc
   graph_fusion/ai_core/conv2d_group_fusion_pass.cc
   graph_fusion/ai_core/conv_add_fusion_pass.cc
   graph_fusion/ai_core/conv_batchnorm_fusion_pass.cc
