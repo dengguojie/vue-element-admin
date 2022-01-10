@@ -92,10 +92,10 @@ Status TensorScatterUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   // add input and output
   ge::GeTensorDesc input_x = fusedNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(tensorMoveOpdesc->AddInputDesc(input_x) != SUCCESS,
+  FUSION_PASS_CHECK(tensorMoveOpdesc->AddInputDesc("x", input_x) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input x failed."), return FAILED);
   ge::GeTensorDesc output_y = fusedNode->GetOpDesc()->GetOutputDesc(0);
-  FUSION_PASS_CHECK(tensorMoveOpdesc->AddOutputDesc(output_y) != SUCCESS,
+  FUSION_PASS_CHECK(tensorMoveOpdesc->AddOutputDesc("y", output_y) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output y failed."), return FAILED);
   ge::NodePtr tensorMoveNode = graph.AddNode(tensorMoveOpdesc);
   FUSION_PASS_CHECK(tensorMoveNode == nullptr,
