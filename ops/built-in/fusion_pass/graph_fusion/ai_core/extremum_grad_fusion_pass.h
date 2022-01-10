@@ -43,7 +43,7 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
 
   bool MatchDy(ge::NodePtr nodeSelect, std::map<std::string, ge::NodePtr>& recordMap);
 
-  Status RunOnePatternFusion(ge::ComputeGraph& graph, ge::NodePtr nodeEqual);
+  Status RunOnePatternFusion(ge::ComputeGraph& graph, const ge::NodePtr& nodeEqual);
 
   Status DoFusion(ge::ComputeGraph& graph, const std::map<std::string, ge::NodePtr>& recordMap,
                   vector<ge::NodePtr>& fusionNodes);
@@ -74,7 +74,7 @@ class ExtremumGradFusionPass : public PatternFusionBasePass {
 
   bool CheckZeroConstantOp(ge::NodePtr nodeZeros) const;
 
-  bool CheckSelectOp(const ge::NodePtr nodeSelect, const ge::NodePtr nodeEqual);
+  bool CheckSelectOp(const ge::NodePtr& nodeSelect, const ge::NodePtr& nodeEqual) const;
 
   bool CheckSameZeroNode(ge::NodePtr nodeZeros, const map<string, ge::NodePtr>& recordMap);
 

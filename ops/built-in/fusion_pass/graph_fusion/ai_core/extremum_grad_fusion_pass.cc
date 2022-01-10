@@ -173,7 +173,7 @@ bool ExtremumGradFusionPass::CheckZeroConstantOp(ge::NodePtr nodeZeros) const {
   return true;
 }
 
-bool ExtremumGradFusionPass::CheckSelectOp(const ge::NodePtr nodeSelect, const ge::NodePtr nodeEqual) {
+bool ExtremumGradFusionPass::CheckSelectOp(const ge::NodePtr& nodeSelect, const ge::NodePtr& nodeEqual) const {
   if (nodeSelect == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "select node is null");
     return false;
@@ -449,7 +449,7 @@ bool ExtremumGradFusionPass::CheckEqualOp(ge::NodePtr nodeEqual) const {
   return true;
 }
 
-Status ExtremumGradFusionPass::RunOnePatternFusion(ge::ComputeGraph& graph, ge::NodePtr nodeEqual) {
+Status ExtremumGradFusionPass::RunOnePatternFusion(ge::ComputeGraph& graph, const ge::NodePtr& nodeEqual) {
   map<string, ge::NodePtr> recordMap;
   // Step1: check nodeEqual's validity, two input data anchor, one output data
   // anchor
