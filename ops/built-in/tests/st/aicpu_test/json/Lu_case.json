@@ -1,0 +1,383 @@
+[
+  {
+    "case_name": "Test_Lu_type_int32",
+    "op": "Lu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float",
+          "complex64"
+        ],
+        "shape": [
+          [
+            3,
+            6,
+            6
+          ]
+        ],
+        "value_range": [
+          [
+            -100.0,
+            100.0
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float",
+          "complex64"
+        ],
+        "shape": [
+          [
+            3,
+            6,
+            6
+          ]
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32",
+          "int32"
+        ],
+        "shape": [
+          [
+            3,
+            6
+          ]
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "output_idx_type",
+        "value": "int32",
+        "type": "data_type"
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Lu_type_int64",
+    "op": "Lu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float",
+          "complex64"
+        ],
+        "shape": [
+          [
+            2,
+            3,
+            6,
+            6
+          ]
+        ],
+        "value_range": [
+          [
+            -100.0,
+            100.0
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float",
+          "complex64"
+        ],
+        "shape": [
+          [
+            2,
+            3,
+            6,
+            6
+          ]
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64",
+          "int64"
+        ],
+        "shape": [
+          [
+            2,
+            3,
+            6
+          ]
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "output_idx_type",
+        "value": "int64",
+        "type": "data_type"
+      }
+    ]
+  },
+  {
+    "case_name": "Test_Lu_double",
+    "op": "Lu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "double"
+        ],
+        "shape": [
+          [
+            1,
+            8,
+            8
+          ],
+          [
+            2,
+            8,
+            8
+          ],
+          [
+            2,
+            16,
+            16
+          ],
+          [
+            1,
+            32,
+            32
+          ],
+          [
+            2,
+            32,
+            32
+          ],
+          [
+            4,
+            32,
+            32
+          ],
+          [
+            8,
+            32,
+            32
+          ],
+          [
+            16,
+            32,
+            32
+          ],
+          [
+            32,
+            32,
+            32
+          ],
+          [
+            64,
+            32,
+            32
+          ],
+          [
+            128,
+            32,
+            32
+          ],
+          [
+            256,
+            32,
+            32
+          ],
+          [
+            1024,
+            32,
+            32
+          ]
+        ],
+        "value_range": [
+          [
+            -1.0,
+            1.0
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "double"
+        ],
+        "shape": [
+          [
+            1,
+            8,
+            8
+          ],
+          [
+            2,
+            8,
+            8
+          ],
+          [
+            2,
+            16,
+            16
+          ],
+          [
+            1,
+            32,
+            32
+          ],
+          [
+            2,
+            32,
+            32
+          ],
+          [
+            4,
+            32,
+            32
+          ],
+          [
+            8,
+            32,
+            32
+          ],
+          [
+            16,
+            32,
+            32
+          ],
+          [
+            32,
+            32,
+            32
+          ],
+          [
+            64,
+            32,
+            32
+          ],
+          [
+            128,
+            32,
+            32
+          ],
+          [
+            256,
+            32,
+            32
+          ],
+          [
+            1024,
+            32,
+            32
+          ]
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          [
+            1,
+            8
+          ],
+          [
+            2,
+            8
+          ],
+          [
+            2,
+            16
+          ],
+          [
+            1,
+            32
+          ],
+          [
+            2,
+            32
+          ],
+          [
+            4,
+            32
+          ],
+          [
+            8,
+            32
+          ],
+          [
+            16,
+            32
+          ],
+          [
+            32,
+            32
+          ],
+          [
+            64,
+            32
+          ],
+          [
+            128,
+            32
+          ],
+          [
+            256,
+            32
+          ],
+          [
+            1024,
+            32
+          ]
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "output_idx_type",
+        "value": "int32",
+        "type": "data_type"
+      }
+    ]
+  }
+]

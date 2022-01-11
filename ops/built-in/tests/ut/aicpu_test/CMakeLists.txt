@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/svd.cc
@@ -308,6 +309,7 @@ set(_cpu_kernels_ut_files
   testcase/log_matrix_determinant/src/log_matrix_determinant_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/logsoftmaxv2/src/logsoftmaxv2_utest.cpp
+  testcase/lu/src/lu_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
   testcase/masked_select_grad/src/masked_select_grad_utest.cpp
   testcase/matmul/src/matmul_utest.cpp
