@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
@@ -298,6 +299,7 @@ set(_cpu_kernels_ut_files
   testcase/greater/src/greater_utest.cpp
   testcase/greater_equal/src/greater_equal_utest.cpp
   testcase/identity/src/identity_utest.cpp
+  testcase/ifft/src/ifft_utest.cpp
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp

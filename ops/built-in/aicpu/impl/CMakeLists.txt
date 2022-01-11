@@ -108,6 +108,7 @@ set(local_kernels_src_files
 )
 if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
+        kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/lu.cc
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/sigmoid_grad.cc
