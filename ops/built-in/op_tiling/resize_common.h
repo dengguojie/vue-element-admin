@@ -49,11 +49,11 @@ constexpr int64_t BIG_TO_SMALL_FLAG = 10;
 const char INNERTUNEPARAM[] = "_tune_param";
 const char TUNEPARAM[] = "tune_param";
 
-const int64_t INDEX_0 = 0;
-const int64_t INDEX_1 = 1;
-const int64_t INDEX_2 = 2;
-const int64_t INDEX_3 = 3;
-const int64_t MODE_5 = 5;
+constexpr int64_t INDEX_0 = 0;
+constexpr int64_t INDEX_1 = 1;
+constexpr int64_t INDEX_2 = 2;
+constexpr int64_t INDEX_3 = 3;
+constexpr int64_t MODE_5 = 5;
 
 struct ResizeClassTilingParams {
   int64_t tiling_key;
