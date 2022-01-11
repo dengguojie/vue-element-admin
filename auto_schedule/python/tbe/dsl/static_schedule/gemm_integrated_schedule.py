@@ -274,6 +274,8 @@ class GemmSchedule:
     def __init__(self, res, sch, dynamic_para):
         self.res_ori = res
         self.res = res[-1] if isinstance(res, list) else res
+        # to distinguish fuzzy_build from cache_tiling
+        self.res.op.attrs["cache_tiling"] = 0
         self.root_tensor = res[-1] if isinstance(res, list) else res
         self.sch = sch
         self.sch_agent = None
@@ -1779,6 +1781,7 @@ class GemmSchedule:
             return tiling
 
         self.split_mode = {"ceil_mode": False, "round_mode": "round_up"}
+        self.res.op.attrs["cache_tiling"] = 1
         skip_bound_check_list = [self.container.TENSOR_MAP.get("a_l1"), self.container.TENSOR_MAP.get("b_l1"),
             self.container.TENSOR_MAP.get("a_l0a"), self.container.TENSOR_MAP.get("b_l0b"),
             self.container.TENSOR_MAP.get("c_l0c")]

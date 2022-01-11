@@ -991,9 +991,9 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         "tensor_list": tensor_list,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
-    if get_none_range_flag(input_x1, input_x2, bias):
+    attr_cache_tiling = dict(res.get("op_res")[0].op.attrs.items()).get("cache_tiling", 0)
+    if get_none_range_flag(input_x1, input_x2, bias) and attr_cache_tiling == 1:
         config.get("build_args")["predicate_realize_bound"] = False
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
-        config.get("build_args")["double_buffer_no_tail"] = False
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")
