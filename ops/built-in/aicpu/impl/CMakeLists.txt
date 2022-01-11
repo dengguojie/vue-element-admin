@@ -112,6 +112,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/sigmoid_grad.cc
         kernels/normalized/custom/research/svd.cc
+        kernels/normalized/custom/research/unpack.cc
     )
 endif()
 message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src_files})
