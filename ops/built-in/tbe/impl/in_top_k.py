@@ -1044,14 +1044,10 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     else:
         row_split_num = (row + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE
         if row % Constant.BLOCK_SIZE == 0 and row_split_num > mini_cloud_core_nums:
-            block_size_times = row_split_num // mini_cloud_core_nums
-            tail_block = row_split_num % mini_cloud_core_nums
-            row_nums = Constant.BLOCK_SIZE * block_size_times
-            core_nums = mini_cloud_core_nums
-            if tail_block == 0:
-                row_remainder = block_size_times * Constant.BLOCK_SIZE
-            else:
-                row_remainder = (block_size_times - 1) * Constant.BLOCK_SIZE
+            row_nums = Constant.BLOCK_SIZE
+            core_nums = (row + row_nums - 1) // row_nums
+            tail_block = core_nums
+            row_remainder = Constant.BLOCK_SIZE
         else:
             # align row, and then split it
             row_nums = Constant.BLOCK_SIZE

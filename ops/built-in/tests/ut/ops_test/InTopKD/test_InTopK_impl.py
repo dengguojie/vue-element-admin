@@ -16,7 +16,7 @@ InTopK ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
-ut_case = OpUT("InTopKD", "impl.dynamic.in_top_k", "in_top_k")
+ut_case = OpUT("InTopKD", "impl.in_top_k", "in_top_k")
 
 case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "ori_shape":(1,1), "ori_format":"ND", "format":"ND"},
                     {"shape": (1, ), "dtype": "int32", "ori_shape":(1,), "ori_format":"ND", "format":"ND"},
@@ -99,6 +99,14 @@ case10 = {"params": [{"shape": (57, 18000), "dtype": "float32", "ori_shape":(57,
           "expect": "success",
           "format_expect": [],
           "support_expect": True}
+case11 = {"params": [{"shape": (1376, 5), "dtype": "float32", "ori_shape":(1376, 5), "ori_format":"ND", "format":"ND"},
+                    {"shape": (1376, ), "dtype": "int32", "ori_shape":(1376,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (1376, 5), "dtype": "float32", "ori_shape":(1376, 5), "ori_format":"ND", "format":"ND"},
+                    1],
+          "case_name": "in_top_k_11",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 
     
 
@@ -112,9 +120,9 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
 
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend310", "Ascend910A"])
-        exit(0)
+
+    ut_case.run(["Ascend310", "Ascend910A"])
+    exit(0)
