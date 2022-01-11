@@ -53,6 +53,7 @@ static const char kAttrEpsilon[] = "epsilon";
 static const char kCommInput[] = "x";
 static const char kCommoutput[] = "y";
 static const uint32_t kSupportAicoreNum = 32;
+static const int kBiasIndex = 2;
 
 /*!
   * @brief Define bnupdate+reluv2+conv2d+bnreduce pattern.
@@ -221,6 +222,10 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
       params.push_back(dim);
     }
   }
+  // not support bias now
+  FUSION_PASS_CHECK(conv_desc->GetInputsSize() > kBiasIndex,
+                    OP_LOGD(fused_op_type_.c_str(), "not support conv2d bias now"),
+                    return false);
   // gather attribute info
   std::vector<std::string> attr_list = {kAttrStrides, kAttrPads, kAttrDilations};
   for (auto attr : attr_list) {
@@ -237,22 +242,19 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
     };
   bool exist = false;
   for (auto item : white_list) {
-    // remove batch check
-    std::vector<int64_t> tmp_item = item;
-    tmp_item.erase(tmp_item.begin());
-    std::vector<int64_t> tmp_params = params;
-    tmp_params.erase(tmp_params.begin());
-    if (tmp_item == tmp_params) {
+    if (item == params) {
       exist = true;
     }
   }
+  std::string to_print;
+  for (auto i : params) {
+    to_print += std::to_string(i) + ", ";
+  }
   if (!exist) {
-    std::string to_print;
-    for (auto i : params) {
-      to_print += std::to_string(i) + ", ";
-    }
     OP_LOGD(fused_op_type_.c_str(), "params [%s] not in white list.", to_print.c_str());
     return false;
+  } else {
+    OP_LOGD(fused_op_type_.c_str(), "params [%s] in white list.", to_print.c_str());
   }
   return true;
 }
