@@ -181,6 +181,7 @@ def op_select_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     input_param_list = [input0_param, input1_param, input2_param, input3_param, output0_param]
     if support_l0c2out:
+        input2_param.get("datatype")[0] == "float32"
         for param in input_param_list:
             if param["classify"] == "input3":
                 param["datatype"] = param["datatype"] + ["int8", "int8"]
@@ -250,7 +251,7 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
         b_size = shape_b[1] * shape_b[4]
 
         # Check info
-        para_check.check_dtype(dtype_b, ['float16', 'int32'], param_name="b")
+        para_check.check_dtype(dtype_b, ['float16', 'int32', 'float32'], param_name="b")
         para_check.check_format(format_b, ('NC1HWC0'), param_name="b")
         if b_size != n_shape:
             error_manager_vector.raise_err_specific_reson("fully_connection",

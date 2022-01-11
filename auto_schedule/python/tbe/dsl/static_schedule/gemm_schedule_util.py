@@ -31,6 +31,7 @@ BATCH_MATMUL_LEN_ND = 3
 BATCH_MATMUL_LEN_NZ = 5
 MATMUL_LEN_ND = 2
 MATMUL_LEN_NZ = 4
+MULTI_FACTOR_BY_DTYPE = 2
 
 DATA_SIZE = {
     "float16": 2,
@@ -485,10 +486,10 @@ def get_aicore_factor(tiling, tensor_map):
 
     # out unit is 16*32 for int8
     if tensor_map["c_gm"].dtype == "int8":
-        l0c_tiling_factor[0] //= 2
+        l0c_tiling_factor[0] = max(1, l0c_tiling_factor[0] // MULTI_FACTOR_BY_DTYPE)
     # out unit is 16*8 for int32 and fp32
     if tensor_map["c_gm"].dtype ==  "float32" and tensor_map["a_l1"].dtype == "float32":
-        l0c_tiling_factor[0] *= 2
+        l0c_tiling_factor[0] *= MULTI_FACTOR_BY_DTYPE
 
     # patrs for GM to AL1, AL1_shape = [(batch), n/16, k/16, 16, 16]
     if tiling["AL1_shape"]:

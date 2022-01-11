@@ -441,6 +441,7 @@ ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_perm
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
 ut_case.add_cust_test_func(test_func=test_trans_data_fp32)
 
+
 def test_check_support(test_arg):
     from tbe.common.context import op_context
     def _test_supported(case):

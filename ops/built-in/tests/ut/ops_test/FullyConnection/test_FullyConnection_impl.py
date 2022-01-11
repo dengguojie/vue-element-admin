@@ -313,6 +313,7 @@ def test_fc_add_relu6_fusion_xbatch_910_input_y_case(test_arg):
         }
         cce_build_code(sch, config)
 
+
 ut_case.add_cust_test_func(test_func=test_split_fc)
 ut_case.add_cust_test_func(test_func=test_split_fc_1)
 ut_case.add_cust_test_func(test_func=test_split_fc_2)
@@ -369,6 +370,18 @@ def test_fc_fixpipe():
         output_dict = {"shape": (64, 128), "format": "ND", "dtype": "float32"}
         res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
         sch = auto_schedule(res)
+        
+def test_fc_fixpipe_nhwc():
+    with cce():
+        tensor_a = tvm.placeholder((12, 4, 16, 8), name="tensor_a", dtype="float32", attrs={
+            "format": "FRACTAL_NZ", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((12, 8, 16, 8), name="tensor_b", dtype="float32", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        output_dict = {"shape": (64, 1, 1, 128), "format": "NHWC", "dtype": "float32"}
+        res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
+        sch = auto_schedule(res)
 
 def test_split_fc_4(test_arg):
     x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 64)}
@@ -393,6 +406,7 @@ def test_mock_cases(test_args):
                 test_split_fc_1("")
                 test_split_fc_2("")
                 test_split_fc_4("")
+                test_fc_fixpipe_nhwc()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
         

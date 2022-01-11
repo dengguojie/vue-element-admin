@@ -17,7 +17,7 @@
 """
 fixpipe fusion with matmul
 """
-
+from functools import reduce
 from tbe import tvm
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
 
@@ -51,6 +51,8 @@ class FixpipeMatmul(FixpipeBase):
             fixpipe_name += "_nz2nd"
             m_block = self.input_shape[-1]
             n_block = self.input_shape[-2]
+            if self.output.get("format") == "NHWC":
+                self.output_shape = (reduce(lambda x, y: x * y, self.output_shape[:-2]), self.output_shape[-1])
             res_reform = tvm.compute(self.output_shape,
                                      lambda *indices: res(*indices[:-2],
                                                           indices[-1] // m_block,
