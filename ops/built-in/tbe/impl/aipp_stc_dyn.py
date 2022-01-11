@@ -541,9 +541,10 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                 ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0_1[0]))
                 ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr0_1[1]))
 
-                aipp_comm.set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp, offset=param_offset)
                 if cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST:
                     aipp_comm.set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=param_offset)
+                else:
+                    aipp_comm.set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp, offset=param_offset)
                 aipp_comm.get_dync_padding_size(ib, param_buf, tmp, padding_info, param_offset)
 
                 support_vertical_padding = cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST

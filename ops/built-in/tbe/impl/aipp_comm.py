@@ -1331,6 +1331,36 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4",
                                 tvm.const(spr4, dtype="uint64")))
 
+    spr8 = 0
+    if 'padding' in aipp_config and aipp_config.get('padding') == 1:
+        if dtype == "float16":
+            padding_value = get_fp16(float(aipp_config.get('padding_value', 0)))
+        else:
+            padding_value = aipp_config.get('padding_value', 0)
+        if aipp_config.get('input_format') in ('YUV400_U8',):
+            if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+                spr8 = spr8 | (padding_value & 0xffff) << 32
+            else:
+                spr8 = spr8 | (padding_value & 0xffff)
+        if aipp_config.get('input_format') in ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
+                                               "RGB888_U8", "XRGB8888_U8", "RGB16"):
+            spr8 = spr8 | (padding_value & 0xffff)
+            spr8 = spr8 | (padding_value & 0xffff) << 16
+            spr8 = spr8 | (padding_value & 0xffff) << 32
+        if aipp_config.get('input_format') in ("AYUV444_U8", "ARGB8888_U8"):
+            spr8 = spr8 | (padding_value & 0xffff)
+            spr8 = spr8 | (padding_value & 0xffff) << 16
+            spr8 = spr8 | (padding_value & 0xffff) << 32
+            spr8 = spr8 | (padding_value & 0xffff) << 48
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_8",
+                            tvm.const(spr8, dtype="uint64")))
+
+    spr9 = get_spr9(aipp_config, dtype, output_format)
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9",
+                            tvm.const(spr9, dtype="uint64")))
+
+    if cur_cce_product in Const.V300_SOC_VERSION_LIST:
+        return
     chn_0_position = 0
     chn_2_position = 32
     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
@@ -1396,34 +1426,6 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
         spr7 = spr7 | (var_reci_chn_3 & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7",
                             tvm.const(spr7, dtype="uint64")))
-
-    spr8 = 0
-    if 'padding' in aipp_config and aipp_config.get('padding') == 1:
-        if dtype == "float16":
-            padding_value = get_fp16(float(aipp_config.get('padding_value', 0)))
-        else:
-            padding_value = aipp_config.get('padding_value', 0)
-        if aipp_config.get('input_format') in ('YUV400_U8',):
-            if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                spr8 = spr8 | (padding_value & 0xffff) << 32
-            else:
-                spr8 = spr8 | (padding_value & 0xffff)
-        if aipp_config.get('input_format') in ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
-                                               "RGB888_U8", "XRGB8888_U8", "RGB16"):
-            spr8 = spr8 | (padding_value & 0xffff)
-            spr8 = spr8 | (padding_value & 0xffff) << 16
-            spr8 = spr8 | (padding_value & 0xffff) << 32
-        if aipp_config.get('input_format') in ("AYUV444_U8", "ARGB8888_U8"):
-            spr8 = spr8 | (padding_value & 0xffff)
-            spr8 = spr8 | (padding_value & 0xffff) << 16
-            spr8 = spr8 | (padding_value & 0xffff) << 32
-            spr8 = spr8 | (padding_value & 0xffff) << 48
-    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_8",
-                            tvm.const(spr8, dtype="uint64")))
-
-    spr9 = get_spr9(aipp_config, dtype, output_format)
-    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9",
-                            tvm.const(spr9, dtype="uint64")))
 
 
 def set_spr18_spr21(ib, aipp_config, dtype):
