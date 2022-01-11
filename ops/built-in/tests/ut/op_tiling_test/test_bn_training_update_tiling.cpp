@@ -52,7 +52,7 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdateTiling1)
   auto opParas = op::BNTrainingUpdate(op_name.c_str());
 
   vector<vector<int64_t>> input_shapes = {{32, 16, 26, 26, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16},
-                                          {1, 16, 1, 1, 16},    {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};
+                                          {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};
 
   vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT,
                                  ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
@@ -68,10 +68,10 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdateTiling1)
   vector<vector<int64_t>> output_shapes = {
       {32, 16, 26, 26, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, batch_mean, output_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, batch_variance, output_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, reserve_1, output_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, reserve_2, output_shapes[4], dtypes[4], ge::FORMAT_NC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, mean_out, output_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, variance_out, output_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, batch_mean, output_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, batch_variance, output_shapes[4], dtypes[4], ge::FORMAT_NC1HWC0, {});
 
   std::string compileInfo = R"({
                         "_fusion_index": [[0], [1], [2], [3], [4]],
@@ -152,12 +152,9 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdateTiling1)
                         "25": [10000, 10100, 10200, 10300, 10400, 20004, 30004]
                         }})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
-
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(runInfo.GetTilingKey(), 3);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 16 26 26 16 32 26 943842492 1065353604 ");
-
 }

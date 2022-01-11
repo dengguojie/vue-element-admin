@@ -33,20 +33,24 @@ namespace optiling {
                     return false);
 
     std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
-    int64_t N = shape_x[0];
-    int64_t H = shape_x[2];
-    int64_t W = shape_x[3];
 
-    float batch_var_scalar = 1.0;
+    int64_t N = 1;
+    int64_t H = 1;
+    int64_t W = 1;
+    if (shape_x.size() == 5) {
+      N = shape_x[0];
+      H = shape_x[2];
+      W = shape_x[3];
+    }
+
+    float batch_var_scalar = 0.0;
     float num_rec = 1.0;
     int64_t num = N * H * W;
-    if (num == 1) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "N, H, and W cannot all be one.");
-      return false;
+    if (num > 1) {
+      batch_var_scalar = static_cast<float>(num) / static_cast<float>((num) - 1);
     }
 
     num_rec = 1.0 / static_cast<float>(num);
-    batch_var_scalar = static_cast<float>(num) / static_cast<float>((num)-1);
 
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
     if (!ret) {

@@ -161,8 +161,6 @@ TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
                         "25": [10000, 10100, 10200, 10300, 20004, 30004]
                         }})";
 
-    optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
-
     optiling::utils::OpRunInfo runInfo;
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
     EXPECT_EQ(runInfo.GetBlockDim(), 32);
