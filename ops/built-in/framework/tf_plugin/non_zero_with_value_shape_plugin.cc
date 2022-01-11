@@ -47,7 +47,7 @@ Status ParseParamsNonZeroWithValueShape(const Message* op_src, ge::Operator& op)
   }
   ge::TensorUtils::SetReuseInput(*output_desc, true);
   ge::TensorUtils::SetReuseInputIndex(*output_desc, 0);
-  
+
   const auto output_desc1 = op_desc->MutableOutputDesc("out_index");
   if (output_desc1 == nullptr) {
     OP_LOGE(op.GetName().c_str(), "get output index failed.");

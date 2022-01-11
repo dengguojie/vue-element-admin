@@ -61,7 +61,7 @@ void TracePrintTilingParams(const std::string& op_type, const TraceTilingparam& 
 }
 
 bool TraceTiling(const std::string& op_type, const TeOpParas& op_paras,
-                const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
+                 const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
   using namespace nlohmann;
   GELOGI("==================TraceTiling Running==================");
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty()) {

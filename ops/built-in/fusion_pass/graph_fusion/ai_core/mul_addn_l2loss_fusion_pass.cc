@@ -236,7 +236,6 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   const std::vector<std::vector<NodePtr>> fusion_nodes = {mul_addn_l2loss_fusion_nodes};
   FUSION_PASS_CHECK(CycleDetection(graph, fusion_nodes),
                     OP_LOGW(kFusedOpType.c_str(), "There will be a cycle after fusion."), return NOT_CHANGED);
-                    
   // add control anchor between input node of Mul and out node of Mul.
   for (auto input_node_mul : mul_node->GetInAllNodes()) {
     for (auto mul_out_control_node : mul_node->GetOutControlNodes()) {

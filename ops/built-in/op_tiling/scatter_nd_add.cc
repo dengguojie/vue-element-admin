@@ -87,8 +87,8 @@ void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, i
                   return );
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesSize = 0 is not support"),
                   return );
-  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "coreNum = 0 is not support"), return );
-  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return );
+  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "coreNum = 0 is not support"), return);
+  OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return);
   OP_TILING_CHECK(runParams.indicesLastDim == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "runParams.indicesLastDim = 0 is not support"),
                   return );
@@ -96,10 +96,10 @@ void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, i
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "runParams.indicesLastDim = 0 is not support"),
                   return );
   OP_TILING_CHECK(varDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varDataEachBlock = 0 is not support"), return);
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
   OP_TILING_CHECK(halfUbIndicesNum == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "halfUbIndicesNum = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "halfUbIndicesNum = 0 is not support"), return);
   runParams.addsLoopNum = addDataNum / (halfUbSize / varSize);
   runParams.addsLastNum = addDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = (indicesNum / runParams.indicesLastDim) / (halfUbIndicesNum / runParams.indicesLastDim);

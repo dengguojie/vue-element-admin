@@ -745,9 +745,9 @@ static bool GetShapePerm(const string& opType, const ge::Operator& paras, Compil
     shapeInfo.outShape[i] = outShape[i];
   }
   OP_LOGI(opType.c_str(), "input_shape: [%s], output_shape: [%s], perm: [%s].",
-                          vec_to_string(inShape, inShape.size()).c_str(),
-                          vec_to_string(outShape, outShape.size()).c_str(),
-                          vec_to_string(perm, perm.size()).c_str());
+          vec_to_string(inShape, inShape.size()).c_str(),
+          vec_to_string(outShape, outShape.size()).c_str(),
+          vec_to_string(perm, perm.size()).c_str());
 
   return true;
 }
@@ -5294,7 +5294,7 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
     nVol *= shapeInfo.reducedInShape[i];
   }
   int64_t nFactor = nVol / nUnit;
-  nFactor = (nFactor == 0 ? 1: nFactor);
+  nFactor = (nFactor == 0 ? 1 : nFactor);
   nFactor = (nFactor > compilerInfo.coreNum ? compilerInfo.coreNum : nFactor);
   int64_t crFactor = compilerInfo.coreNum / nFactor;
   crFactor = (crFactor == 0 ? 1 : crFactor);

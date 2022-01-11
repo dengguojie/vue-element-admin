@@ -161,7 +161,7 @@ void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indi
                   VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "runParams.indicesLastDim = 0 is not support"),
                   return );
   OP_TILING_CHECK(updatesDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return);
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / updatesSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / updatesSize);
   runParams.indicesLoopNum =
@@ -213,7 +213,7 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
                   VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "runParams.indicesLastDim = 0 is not support"),
                   return );
   OP_TILING_CHECK(updatesDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return);
   runParams.varLoopNum = varNum / (varUbSize / updatesSize);
   runParams.varLastNum = varNum % (varUbSize / updatesSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / updatesSize);
@@ -282,12 +282,12 @@ void CalScatterNdHighPerfBranchParams(ScatterNdTilingParams& runParams, int64_t 
   }
   int64_t alloc_ub_indicesnum = alloc_indice_ubsize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim;
   OP_TILING_CHECK(alloc_indice_ubsize == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "alloc_indice_ubsize = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "alloc_indice_ubsize = 0 is not support"), return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "indicesSize = 0 is not support"),
-                  return );
-  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "coreNum = 0 is not support"), return );
+                  return);
+  OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "coreNum = 0 is not support"), return);
   OP_TILING_CHECK(updatesDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd", "updatesDataEachBlock = 0 is not support"), return);
   runParams.tilingMode = TILING_MODE_16;
   runParams.updatesDataNum = updateDataNum;
   runParams.indicesEachCoreData = ceil(float(indicesNum) / coreNum);

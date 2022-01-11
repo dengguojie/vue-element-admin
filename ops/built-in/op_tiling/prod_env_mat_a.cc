@@ -46,7 +46,7 @@ constexpr int64_t CUSTOM_VECTORCORE_NUM = 7;
  * @return bool: success or not
  */
 bool ProdEnvMatATiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                         OpRunInfo& runInfo) {
+                       OpRunInfo& runInfo) {
   OP_LOGD(opType.c_str(), "ProdEnvMatATiling run begin");
   int32_t blockDim = 8;
   runInfo.block_dim = blockDim;

@@ -98,10 +98,10 @@ void CalRunningParams(ScatterNdUpdateTilingParams& runParams, int64_t indicesNum
                   VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_sub", "runParams.indicesLastDim = 0 is not support"),
                   return );
   OP_TILING_CHECK(varDataEachBlock == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_sub", "varDataEachBlock = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_sub", "varDataEachBlock = 0 is not support"), return);
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
   OP_TILING_CHECK(halfUbIndicesNum == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_sub", "halfUbIndicesNum = 0 is not support"), return );
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_sub", "halfUbIndicesNum = 0 is not support"), return);
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = (indicesNum / runParams.indicesLastDim) / (halfUbIndicesNum / runParams.indicesLastDim);
