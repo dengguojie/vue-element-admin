@@ -562,13 +562,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             compile_info_str = info_f.read()
         return json.loads(compile_info_str)
 
-    @staticmethod
-    def _hase_dynamic_shape(op_params):
-        for param in op_params:
-            if isinstance(param, dict) and (-1 in param.get("shape") or -2 in param.get("shape")):
-                return True
-        return False
-
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         if not case_info.addition_params:
@@ -581,20 +574,15 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         err_msg = None
         try:
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
-                if self._hase_dynamic_shape(case_info.op_params):
-                    # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-                    import tbe  # 'pylint: disable=import-outside-toplevel
-                    import tbe.common.context.op_info as operator_info # 'pylint: disable=import-outside-toplevel
-                    with tbe.common.context.op_context.OpContext("dynamic"):
-                        op_info = operator_info.OpInfo(self.op_type, self.op_type)
-                        tbe.common.context.op_context.get_context().add_op_info(op_info)
-                        op_func(*case_info.op_params, **addition_params)
-                        compile_info = tbe.common.context.get_context().get_compile_info()
-                        self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
-                else:
-                    import tbe # 'pylint: disable=import-outside-toplevel
-                    with tbe.common.context.op_context.OpContext("static"):
-                        op_func(*case_info.op_params, **addition_params)
+                # there is a bug in te, we can't import te before tensorflow, so can't import te outside
+                import tbe  # 'pylint: disable=import-outside-toplevel
+                import tbe.common.context.op_info as operator_info # 'pylint: disable=import-outside-toplevel
+                with tbe.common.context.op_context.OpContext("dynamic"):
+                    op_info = operator_info.OpInfo(self.op_type, self.op_type)
+                    tbe.common.context.op_context.get_context().add_op_info(op_info)
+                    op_func(*case_info.op_params, **addition_params)
+                    compile_info = tbe.common.context.get_context().get_compile_info()
+                    self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
                 import tbe # 'pylint: disable=import-outside-toplevel
                 with tbe.common.context.op_context.OpContext("pre-static"):
