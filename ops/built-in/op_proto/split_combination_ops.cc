@@ -36,7 +36,7 @@
 
 namespace ge {
 // ----------------Split OP Begin-------------------
-static void CalcSplit(const Tensor& data, const DataType& dtype, std::vector<int64_t>& const_vec) {
+static void CalcSplit(const ge::TensorData& data, const DataType& dtype, std::vector<int64_t>& const_vec) {
   const uint8_t* const_data = data.GetData();
   size_t size = data.GetSize() / sizeof(int32_t);
   for (size_t n = 0; n < size; ++n) {
@@ -48,7 +48,9 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   const vector<string> depend_name = {"split_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_name);
 
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape start");
+  OP_LOGD(TbeGetName(op), "SplitInferShape start");
+  auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("split_dim"));
+  const GeTensor *split_dim_data = OpDescUtils::GetInputConstData(op, shape_idx);
   auto x_inputdesc = op.GetInputDesc("x");
   auto x_shape = x_inputdesc.GetShape();
   auto x_dtype = x_inputdesc.GetDataType();
@@ -57,11 +59,11 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   std::vector<std::pair<int64_t, int64_t>> x_shape_range;
   std::vector<std::pair<int64_t, int64_t>> out_range;
   x_inputdesc.GetShapeRange(x_shape_range);
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape x_shape range is %s", to_string(x_shape_range).c_str());
+  OP_LOGD(TbeGetName(op), "SplitInferShape x_shape range is %s", to_string(x_shape_range).c_str());
 
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    OP_LOGE(TbeGetName(op), "get attr num_split failed");
     OpsGetAttrErrReport(op.GetName(), "num_split");
     return GRAPH_FAILED;
   }
@@ -71,16 +73,15 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     td.SetShape(ge::Shape(UNKNOWN_RANK));
     td.SetDataType(x_dtype);
     for (auto i = 0; i < num_split; ++i) {
-      OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(td.GetShape()).c_str());
+      OP_LOGD(TbeGetName(op), "SplitInferShape output shape is %s", to_string(td.GetShape()).c_str());
       op.UpdateDynamicOutputDesc("y", i, td);
     }
     return GRAPH_SUCCESS;
   }
 
-  Tensor split_dim_data;
-  if (op.GetInputConstData("split_dim", split_dim_data) != GRAPH_SUCCESS) {
+  if (split_dim_data == nullptr) {
     // input split_dim is not const
-    OP_LOGD(op.GetName().c_str(), "Get constValue failed of [split_dim]");
+    OP_LOGD(TbeGetName(op), "Get constValue failed of [split_dim]");
     if (x_shape_range.size() == 1) {
       if (x_shape_range[0].second == -1) {
         out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[0].second));
@@ -101,21 +102,21 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     td.SetDataType(x_dtype);
     td.SetShapeRange(out_range);
     for (auto i = 0; i < num_split; ++i) {
-      OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
-      OP_LOGD(op.GetName().c_str(), "SplitInferShape out_range is %s", to_string(out_range).c_str());
+      OP_LOGD(TbeGetName(op), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
+      OP_LOGD(TbeGetName(op), "SplitInferShape out_range is %s", to_string(out_range).c_str());
       op.UpdateDynamicOutputDesc("y", i, td);
     }
     return GRAPH_SUCCESS;
   }
   auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
   std::vector<int64_t> split_dim_vec;
-  CalcSplit(split_dim_data, split_dim_dtype, split_dim_vec);
+  CalcSplit(split_dim_data->GetData(), split_dim_dtype, split_dim_vec);
 
   int64_t split_dim = -1;
   if(split_dim_vec.size() > 0){
     split_dim = split_dim_vec[0];
   } else {
-    OP_LOGE(op.GetName().c_str(), "size of split_dim_vec must be larger than 0");
+    OP_LOGE(TbeGetName(op), "size of split_dim_vec must be larger than 0");
     OpsInputShapeErrReport(op.GetName(), "size of split_dim_vec must be larger than 0",
                           "size of split_dim_vec", ConcatString(split_dim_vec.size()));
     return GRAPH_FAILED;
@@ -146,10 +147,10 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   }
 
   if (x_shape.GetDim(split_dim) == -1) {
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is -1");
+    OP_LOGD(TbeGetName(op), "shape at split_dim is -1");
   } else {
     auto length = x_shape.GetDim(split_dim) / num_split;
-    OP_LOGD(op.GetName().c_str(), "shape at split_dim is %d", x_shape.GetDim(split_dim));
+    OP_LOGD(TbeGetName(op), "shape at split_dim is %d", x_shape.GetDim(split_dim));
     x_shape.SetDim(split_dim, length);
   }
 
@@ -158,8 +159,8 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   td.SetShapeRange(out_range);
 
   for (auto i = 0; i < num_split; ++i) {
-    OP_LOGD(op.GetName().c_str(), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
-    OP_LOGD(op.GetName().c_str(), "SplitInferShape out_range is %s", to_string(out_range).c_str());
+    OP_LOGD(TbeGetName(op), "SplitInferShape output shape is %s", to_string(x_shape).c_str());
+    OP_LOGD(TbeGetName(op), "SplitInferShape out_range is %s", to_string(out_range).c_str());
     op.UpdateDynamicOutputDesc("y", i, td);
   }
    return GRAPH_SUCCESS;
@@ -1113,17 +1114,18 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
     return GRAPH_FAILED;
   }
 
-  Tensor data;
-  bool is_unknown_axis = op.GetInputConstData("concat_dim", data) != GRAPH_SUCCESS;
-  OP_LOGD(op.GetName().c_str(), "concat_dim is unknown[%s].", is_unknown_axis ? "true" : "false");
+  auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("concat_dim"));
+  const GeTensor *data = OpDescUtils::GetInputConstData(op, shape_idx);
+  bool is_unknown_axis = data == nullptr;
+  OP_LOGD(TbeGetName(op), "concat_dim is unknown[%s].", is_unknown_axis ? "true" : "false");
   int64_t axis = 0;
   if (!is_unknown_axis) {
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-    DataType dtype = op_info->MutableInputDesc("concat_dim")->GetDataType();
+    DataType dtype = op_info->MutableInputDesc(0)->GetDataType();
     std::vector<int64_t> const_vec;
     if (!GetConstValue(op, data, dtype, const_vec)) {
       is_unknown_axis = true;
-      OP_LOGW(op.GetName().c_str(), "Get concat_dim value failed.");
+      OP_LOGW(TbeGetName(op), "Get concat_dim value failed.");
     } else {
       axis = const_vec[0];
     }
@@ -1143,14 +1145,15 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
 
   int64_t N;
   if (op.GetAttr("N", N) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    OP_LOGE(TbeGetName(op), "get attr N failed");
     OpsGetAttrErrReport(op.GetName(), "N");
     return GRAPH_FAILED;
   }
 
-  Tensor data;
-  bool is_unknown_axis = op.GetInputConstData("concat_dim", data) != GRAPH_SUCCESS;
-  OP_LOGD(op.GetName().c_str(), "concat_dim is unknown[%s].", is_unknown_axis ? "true" : "false");
+  auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("concat_dim"));
+  const GeTensor *data = OpDescUtils::GetInputConstData(op, shape_idx);
+  bool is_unknown_axis = data == nullptr;
+  OP_LOGD(TbeGetName(op), "concat_dim is unknown[%s].", is_unknown_axis ? "true" : "false");
   int64_t axis = 0;
   if (!is_unknown_axis) {
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
@@ -1158,7 +1161,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
     std::vector<int64_t> const_vec;
     if (!GetConstValue(op, data, dtype, const_vec)) {
       is_unknown_axis = true;
-      OP_LOGW(op.GetName().c_str(), "Get concat_dim value failed.");
+      OP_LOGW(TbeGetName(op), "Get concat_dim value failed.");
     } else {
       axis = const_vec[0];
     }

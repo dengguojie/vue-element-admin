@@ -1624,13 +1624,18 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
-  auto input_desc = op.GetInputDesc("x");
-  const ge::Shape shape = input_desc.GetShape();
-  DataType input_dtype = input_desc.GetDataType();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc(0);
+  auto &shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
   int64_t begin_len = -1;
-  for (const auto& param : depend_names) {
-    begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
-  }
+  
+  auto input_begin = op_info->MutableInputDesc(1)->MutableShape().GetDim(0);
+  begin_len = std::max(input_begin, begin_len);
+  auto input_end = op_info->MutableInputDesc(2)->MutableShape().GetDim(0);
+  begin_len = std::max(input_end, begin_len);
+  auto input_strides = op_info->MutableInputDesc(3)->MutableShape().GetDim(0);
+  begin_len = std::max(input_strides, begin_len);
 
   // Get 'begin_list','end_list','stride_list' from const node
   struct SliceParameters slice_params = {};
@@ -1647,12 +1652,10 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
 
   OP_LOGD(op.GetName().c_str(), "begin_len:%lld", begin_len);
   if (shape.GetDims() == UNKNOWN_RANK || begin_len == -1 || !stride_valid) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetDataType(input_dtype);
-    ge::Shape outputShape = ge::Shape(UNKNOWN_RANK);
-    output_desc.SetShape(outputShape);
-    OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
-    (void) op.UpdateOutputDesc("y", output_desc);
+    auto output_desc = op_info->MutableOutputDesc(0);
+    output_desc->SetDataType(input_dtype);
+    output_desc->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc->GetShape()).c_str());
     return GRAPH_SUCCESS;
   }
 
@@ -1686,7 +1689,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
   }
 
   vector<pair<int64_t,int64_t>> input_ranges;
-  input_desc.GetShapeRange(input_ranges);
+  input_desc->GetShapeRange(input_ranges);
   if (input_ranges.empty()) {
     MakeUpShapeRange(shape.GetDims(), input_ranges);
   }
@@ -4162,13 +4165,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
   }
 
-  //check the ranks and get the len of final end list len start 
-  /*shape must be same with input ranks*/
+  // check the ranks and get the len of final end list len start 
+  /* shape must be same with input ranks */
   size_t rank_num = shape.GetDims().size();
-  //begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
-  /*read the axes values from const tensor*/
+  // begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
+  /* read the axes values from const tensor */
 
-  //check the ranks and get the len of final end list len end
+  // check the ranks and get the len of final end list len end
 
   // Get 'begin_list','end_list','stride_list' from const node
   struct SliceParameters slice_params = {};
@@ -4244,7 +4247,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     slice_params.stride_list.assign(begin_len, 1);
   }
 
-  //process end list and begin list accoring to the axes values start
+  // process end list and begin list accoring to the axes values start
   uint64_t axes_mask = 0;
   uint64_t ends_mask = 0;
   if(axes_valid){
@@ -4252,23 +4255,23 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     auto clamp = [=](int64_t x) {
       return x = x > MAX_INT ? MAX_INT : (x < MIN_INT ? MIN_INT : x);
     };
-    //pre fill the values to the vector
+    // pre fill the values to the vector
     std::vector<int64_t> processed_begin(rank_num, 0);
     std::vector<int64_t> processed_end = shape.GetDims();
     std::vector<int64_t> processed_stride(rank_num, 1);
-    //fill the begin end accoring to the axes values 
+    // fill the begin end accoring to the axes values 
     for (size_t i = 0; i < axes_list.size(); ++i){
       int64_t axes_index = axes_list[i];
-      //negative axes index
+      // negative axes index
       if(axes_index < 0){
         axes_list[i] = axes_index + rank_num;
       }
-      //axes out of boundary
+      // axes out of boundary
       if(axes_index >= rank_num){
         axes_index = rank_num - 1;
         OP_LOGD(op.GetName().c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(axes_list).c_str());
       }
-      //axes INT_MIN??? need to process
+      // axes INT_MIN??? need to process
       if(axes_index < 0){
         axes_index = 0;
         OP_LOGD(op.GetName().c_str(), "Neg Value Out Of Boudary:%s", to_string(axes_list).c_str());
@@ -4279,7 +4282,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
       processed_begin[axes_index] = clamp(slice_params.begin_list[i]);
       processed_stride[axes_index] = slice_params.stride_list[i];
     }
-    //assign the proceseed value back to slice params
+    // assign the proceseed value back to slice params
     axes_mask = ~axes_mask;
     ends_mask = axes_mask;
     constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
@@ -4458,7 +4461,7 @@ bool InferShapeAndTypeIndexFillD(Operator &op, const string &input_name, const s
   DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
   Format input_format = op.GetInputDesc(input_name).GetFormat();
 
-  //shape of output y is the same as input x
+  // shape of output y is the same as input x
   ge::Shape shape_input = op.GetInputDesc(input_name).GetShape();
   v_output_desc.SetShape(shape_input);
   v_output_desc.SetDataType(input_dtype);
@@ -4489,12 +4492,12 @@ IMPLEMT_COMMON_INFERFUNC(IndexFillDInferShape)
   return GRAPH_SUCCESS;
 }
 
-//Registered inferfunction
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(IndexFillD, IndexFillDInferShape);
 
-//Registered verify function
+// Registered verify function
 VERIFY_FUNC_REG(IndexFillD, IndexFillDVerify);
-//----------------IndexFillD END-------------------
+// ----------------IndexFillD END-------------------
 
 // ----------------AddRowRanges Begin-------------------
 bool InferShapeAndTypeAddRowRanges(Operator& op, const string& input_name1,
@@ -4658,7 +4661,7 @@ COMMON_INFER_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceInferShape);
 VERIFY_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceVerify);
 // ----------------InplaceTopKDistance END---------------------
 
-//-----------------TopKPQDistanceMerge Begin----------------------
+// -----------------TopKPQDistanceMerge Begin----------------------
 IMPLEMT_INFERFUNC(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape) {
   int32_t topK = 0;
   if(op.GetAttr("k", topK) != GRAPH_SUCCESS) {
@@ -4736,7 +4739,7 @@ IMPLEMT_VERIFIER(TopKPQDistanceMerge, TopKPQDistanceMergeVerify) {
 INFER_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape);
 // Registered verify function 
 VERIFY_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeVerify);
-//-----------------TopKPQDistanceMerge END----------------------
+// -----------------TopKPQDistanceMerge END----------------------
 
 // ----------------StridedSlicev3 Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
@@ -4752,11 +4755,11 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
   }
 
-  //check the ranks and get the len of final end list len start 
-  /*shape must be same with input ranks*/
+  // check the ranks and get the len of final end list len start 
+  /* shape must be same with input ranks */
   size_t rank_num = shape.GetDims().size();
-  //begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
-  /*read the axes values from const tensor*/
+  // begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
+  /* read the axes values from const tensor */
   bool has_axes = true;
   Tensor input_axes_tensor;
   std::vector<int64_t> input_axes_values;
@@ -4769,7 +4772,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     GetSliceConstValue(input_axes_tensor, input_axes_dtype, input_axes_values);
     OP_LOGD(op.GetName().c_str(), "Get Axes value:%s", to_string(input_axes_values).c_str());
   }
-  //check the ranks and get the len of final end list len end
+  // check the ranks and get the len of final end list len end
 
   // Get 'begin_list','end_list','stride_list' from const node
   struct SliceParameters slice_params = {};
@@ -4842,27 +4845,27 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     slice_params.stride_list.assign(begin_len, 1);
   }
 
-  //process end list and begin list accoring to the axes values start
+  // process end list and begin list accoring to the axes values start
   uint64_t axes_mask = 0;
   uint64_t ends_mask = 0;
   if(has_axes){
-    //pre fill the values to the vector
+    // pre fill the values to the vector
     std::vector<int64_t> processed_begin(rank_num, 0);
     std::vector<int64_t> processed_end = shape.GetDims();
     std::vector<int64_t> processed_stride(rank_num, 1);
-    //fill the begin end accoring to the axes values 
+    // fill the begin end accoring to the axes values 
     for (size_t i = 0; i < input_axes_values.size(); ++i){
       int64_t axes_index = input_axes_values[i];
-      //negative axes index
+      // negative axes index
       if(axes_index < 0){
         input_axes_values[i] = axes_index + rank_num;
       }
-      //axes out of boundary
+      // axes out of boundary
       if(axes_index >= rank_num){
         axes_index = rank_num - 1;
         OP_LOGD(op.GetName().c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
       }
-      //axes INT_MIN??? need to process
+      // axes INT_MIN??? need to process
       if(axes_index < 0){
         axes_index = 0;
         OP_LOGD(op.GetName().c_str(), "Neg Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
@@ -4872,7 +4875,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
       processed_begin[axes_index] = slice_params.begin_list[i];
       processed_stride[axes_index] = slice_params.stride_list[i];
     }
-    //assign the proceseed value back to slice params
+    // assign the proceseed value back to slice params
     axes_mask = ~axes_mask;
     ends_mask = axes_mask;
     constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
@@ -4885,7 +4888,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     slice_params.end_list.assign(processed_end.begin(),processed_end.end());
     slice_params.stride_list.assign(processed_stride.begin(),processed_stride.end());
   }
-  //process end list and begin list accoring to the axes values end
+  // process end list and begin list accoring to the axes values end
 
   vector<pair<int64_t,int64_t>> input_ranges;
   input_desc.GetShapeRange(input_ranges);

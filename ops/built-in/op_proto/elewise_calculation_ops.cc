@@ -418,14 +418,14 @@ IMPLEMT_COMMON_INFERFUNC(GreaterEqualInferShape) {
     return GRAPH_FAILED;
   }
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
+  auto vec_y = op_desc->MutableOutputDesc(0)->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
       return GRAPH_FAILED;
     }
   }
 
-  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
+  op_desc->MutableOutputDesc(0)->SetDataType(DT_BOOL);
   return GRAPH_SUCCESS;
 }
 

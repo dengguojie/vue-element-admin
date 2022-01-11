@@ -1532,14 +1532,14 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
       if (data_format == "NHWC") {
         if (ksize[0] != 1 || ksize[3] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),data_format, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(TbeGetName(op),data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[3] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(TbeGetName(op), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
          return GRAPH_FAILED;
@@ -1547,14 +1547,14 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
       } else {
         if (ksize[0] != 1 || ksize[1] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(TbeGetName(op), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[1] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(TbeGetName(op), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
@@ -1670,7 +1670,7 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
 }
 
 IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
-  OP_LOGD(op.GetName().c_str(), "Enter AvgPoolInferShape");
+  OP_LOGD(TbeGetName(op), "Enter AvgPoolInferShape");
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::ConstGeTensorDescPtr input_desc = op_desc->GetInputDescPtr(0);
   if (input_desc == nullptr) {
@@ -1736,7 +1736,7 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
 
   if (padding_mode != "SAME" && padding_mode != "VALID") {
     string expected_format_list = ConcatString("SAME,VALID");
-    std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, padding_mode);
+    std::string err_msg = GetInputFormatNotSupportErrMsg(TbeGetName(op), expected_format_list, padding_mode);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1842,9 +1842,9 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
   // fuzz build
   if ((!unknown_dim_num) && fuzz_build) {
-    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    OP_LOGD(TbeGetName(op), "start fuzz build.");
   }
-  OP_LOGD(op.GetName().c_str(), "Leave AvgPoolInferShape");
+  OP_LOGD(TbeGetName(op), "Leave AvgPoolInferShape");
   return GRAPH_SUCCESS;
 }
 
@@ -1864,7 +1864,7 @@ static void InferHWAvgpool(int64_t kernel,int64_t stride, vector<int64_t>& outpu
 }
 
 IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
-  OP_LOGD(op.GetName().c_str(), "Enter AvgPoolInferDataSlice.");
+  OP_LOGD(TbeGetName(op), "Enter AvgPoolInferDataSlice.");
   auto inputTensorDesc = op.GetInputDesc("x");
   auto shape = inputTensorDesc.GetShape();
   std::vector<int64_t> dims_input = shape.GetDims();
@@ -1876,7 +1876,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
     inputH = dims_input[2];
     inputW = dims_input[3];
   } else {
-    OP_LOGE(op.GetName().c_str(), "Invalid inputFormat.");
+    OP_LOGE(TbeGetName(op), "Invalid inputFormat.");
     return GRAPH_FAILED;
   }
 
@@ -1901,26 +1901,26 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
     windowW = ksizeList[3];
     strideH = stridesList[2];
   } else {
-    OP_LOGE(op.GetName().c_str(), "Invalid dataFormat.");
+    OP_LOGE(TbeGetName(op), "Invalid dataFormat.");
     return GRAPH_FAILED;
   }
 
   if (windowH == inputH && windowW == inputW) {
-    OP_LOGD(op.GetName().c_str(), "Global pool can't calculate over lap.");
+    OP_LOGD(TbeGetName(op), "Global pool can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
   if (paddingMode == "SAME") {
-    OP_LOGD(op.GetName().c_str(), "Padding mode is same, can't calculate over lap.");
+    OP_LOGD(TbeGetName(op), "Padding mode is same, can't calculate over lap.");
     return NO_OVERLAP_DIM;
   }
 
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
-  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc(0);
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc(0);
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGE(op.GetName().c_str(), "no data slice, use default.");
+    OP_LOGE(TbeGetName(op), "no data slice, use default.");
     return GRAPH_FAILED;
   }
 
@@ -1941,7 +1941,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
   for(unsigned i = 0; i < x_data_slice.size(); i++) {
     if (x_data_slice[i].size() > 0) {
       if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-        OP_LOGE(op.GetName().c_str(), "Set x data slice failed.");
+        OP_LOGE(TbeGetName(op), "Set x data slice failed.");
         return GRAPH_FAILED;
       }
       return GRAPH_SUCCESS;
@@ -3848,11 +3848,11 @@ static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides, int6
 
 IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_desc = op_info->MutableInputDesc(0);
   auto input_shape = input_desc->MutableShape();
   auto input_format = input_desc->GetFormat();
   auto input_dtype = input_desc->GetDataType();
-  auto output_desc = op_info->MutableOutputDesc("y");
+  auto output_desc = op_info->MutableOutputDesc(0);
   output_desc->SetDataType(input_dtype);
   // get input ksize
   std::vector<int32_t> ksize;
