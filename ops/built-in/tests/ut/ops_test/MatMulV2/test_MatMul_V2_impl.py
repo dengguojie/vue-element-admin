@@ -110,6 +110,7 @@ case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRA
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
 case2 = {"params": [{"shape": (2, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 32), "ori_format": "ND"},
                     {"shape": (6, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         64, 96), "ori_format": "ND"},

@@ -2088,12 +2088,15 @@ class GemmSchedule:
             return True
         return False
 
-    def _get_tiling_form_repository(self, current_tiling_type, info_dict):
+    def _get_tiling_from_repository(self, current_tiling_type, info_dict, new_fused_num):
         set_tiling_type("repository_tiling")
         tiling_res = get_tiling(info_dict)
+        info_dict["fused_double_operand_num"] = new_fused_num
+        tiling_res_new = get_tiling(info_dict)
         set_tiling_type(current_tiling_type)
         is_from_repository = not self._get_zero_tiling(tiling_res)
-        return tiling_res, is_from_repository
+        is_from_repository_new = not self._get_zero_tiling(tiling_res_new)
+        return tiling_res, tiling_res_new, is_from_repository, is_from_repository_new
 
     @staticmethod
     def _handle_bool_env(env_name, default_value):
@@ -2105,18 +2108,20 @@ class GemmSchedule:
     def _get_tiling_after_cmp(self, info_dict, new_fused_num):
         tiling_res = None
         current_tiling_type = get_tiling_type()
-        repeat_tune_mode = self._handle_bool_env("REPEAT_TUNE", False)
         enable_tune_bank = self._handle_bool_env("ENABLE_TUNE_BANK", True)
-        if current_tiling_type == "auto_tiling" and (not repeat_tune_mode) and enable_tune_bank:
-            tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
+        if current_tiling_type == "auto_tiling" and enable_tune_bank:
+            (
+                tiling_res,
+                tiling_res_new,
+                is_from_repository,
+                is_from_repository_new
+            ) = self._get_tiling_from_repository(current_tiling_type, info_dict, new_fused_num)
             if is_from_repository:
                 return tiling_res
             # the op gemm not use auto tiling
             if self.container.TENSOR_MAP.get("alpha") is None:
-                info_dict["fused_double_operand_num"] = new_fused_num
-                tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
-                if is_from_repository:
-                    return tiling_res
+                if is_from_repository_new:
+                    return tiling_res_new
                 else:
                     return self._auto_tiling(
                         self.container.fuse_num_group[0],
