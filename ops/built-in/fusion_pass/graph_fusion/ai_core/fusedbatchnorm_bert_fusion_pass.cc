@@ -41,8 +41,8 @@ const int32_t OUTPUTS_SIZE_ASTRICT = 5;
 const int32_t BATCH_NORM_SCALE_IDX = 3;
 const int32_t BATCH_NORM_INPUT_COUNT = 3;
 const int32_t SQUARE_SUM_SCALE_IDX = 2;
-const int32_t BATCH_NORM_UPDATE_SCALE_IDX= 2;
-const int32_t BATCH_NORM_NODE_SCALE_IDX= 2;
+const int32_t BATCH_NORM_UPDATE_SCALE_IDX = 2;
+const int32_t BATCH_NORM_NODE_SCALE_IDX = 2;
 const int32_t SUM_SCALE_IDX = 1;
 static const string PASS_OP_TYPE_BATCHNORM = "BatchNorm";
 static const string PATTERN_FUSEDBATCHNORM = "BatchNorm";
@@ -233,7 +233,8 @@ Status FusedBatchNormBertFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 4th index.",
           batchNormName.c_str(), batchNormUpdateV2Node->GetName().c_str());
   FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(BATCH_NORM_NODE_SCALE_IDX)->GetPeerOutAnchor(),
+      ge::GRAPH_SUCCESS != ge::GraphUtils::AddEdge(batchNormNode->GetInDataAnchor(
+                                                   BATCH_NORM_NODE_SCALE_IDX)->GetPeerOutAnchor(),
                                                    batchNormUpdateV2Node->GetInDataAnchor(OUT_ANCHOR_INDEX)),
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                      "Add edge from fused node:%s's 1st index to fusion node:%s's 5th index failed.",

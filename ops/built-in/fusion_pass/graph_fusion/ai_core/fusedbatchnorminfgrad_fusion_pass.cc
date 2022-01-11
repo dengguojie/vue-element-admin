@@ -123,7 +123,7 @@ Status FusedBatchNormInfGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc2 = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName() + "_Update",
                                                                         BNUPDATEGRAD);
-  FUSION_PASS_CHECK(newOpdesc2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(newOpdesc2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "newOpdesc2 is null, fusion failed."), return PARAM_INVALID);
 
   // add input for node2

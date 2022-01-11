@@ -128,7 +128,7 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of num_split of SplitVD node is less than 63."),
                     return SUCCESS);
 
-  if (num_split > SPLIT_MAX_NUM) {
+  if (num_split > SPLIT_MAX_NUM_INT64) {
     size_t nodes_num;
     size_t nodes_num1 = num_split % SPLIT_MAX_NUM;
     if (nodes_num1 == 0) {
