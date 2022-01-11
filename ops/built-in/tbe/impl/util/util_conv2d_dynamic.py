@@ -355,6 +355,7 @@ class Conv2dParaProcess(CubeParaProcess):
 
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
+        self.cache_tiling_flag = False
         self.valid_paras = {
             "n_min": 0,
             "hw_min": 1,
@@ -369,6 +370,13 @@ class Conv2dParaProcess(CubeParaProcess):
             H_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max")),
             W_DIM: (self.valid_paras.get("hw_min"), self.valid_paras.get("hw_max"))
         }
+
+    def check_dynamic_mode(self):
+        """
+        demo
+        """
+        if self.strides == (-1, -1, -1, -1):
+            self.cache_tiling_flag = True
 
     def check_support_valid(self, in_shape, w_shape):
         """
@@ -529,12 +537,77 @@ class Conv2dParaProcess(CubeParaProcess):
                 "correct_range_flag": correct_range_flag,
                 "new_in_range": new_in_range_nchw}
 
+    def define_tiling_var(self):
+        batch_single_core_var = operation.var("batch_single_core")
+        n_single_core_var = operation.var("n_single_core")
+
+        batch_dim_var = operation.var("batch_dim")
+        n_dim_var = operation.var("n_dim")
+        m_dim_var = operation.var("m_dim")
+
+        cub_n1_var = operation.var("cub_n1")
+        n_ub_l0c_factor_var = operation.var("n_ub_l0c_factor")
+        m_l0_var = operation.var("m_l0")
+        k_l0_var = operation.var("k_l0")
+        m_al1_factor_var = operation.var("m_al1_factor")
+        n_al1_factor_var = operation.var("n_bl1_factor")
+
+        kal1_16_var = operation.var("kal1_16")
+        kbl1_16_var = operation.var("kbl1_16")
+        kal1_factor_var = operation.var("kal1_factor")
+        kbl1_factor_var = operation.var("kbl1_factor")
+
+    def cache_tiling_paras_process(self):
+        """
+        config paras for cachetiling
+        """
+        dilation_h_var = operation.var("dilation_h")
+        dilation_w_var = operation.var("dilation_w")
+        stride_h_var = operation.var("stride_h")
+        stride_w_var = operation.var("stride_w")
+        self.dilations = [1, 1, dilation_h_var, dilation_w_var]
+        self.strides = [1, 1, stride_h_var, stride_w_var]
+
+        batch_n = operation.var("batch_n", [1, None])
+        fmap_h = operation.var("fmap_h", [1, None])
+        ho = operation.var("ho", [1, None])
+        fmap_w = operation.var("fmap_w", [1, None])
+        wo = operation.var("wo", [1, None])
+
+        c_in = operation.var("c_in")
+        c_out = operation.var("c_out")
+        k_h = operation.var("k_h")
+        k_w = operation.var("k_w")
+        pad_top = operation.var("pad_top")
+        pad_bottom = operation.var("pad_bottom")
+        pad_left = operation.var("pad_left")
+        pad_right = operation.var("pad_right")
+        self.pads = [pad_top, pad_bottom, pad_left, pad_right]
+
+        block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]["mac"][1:3]
+        input_shape = (batch_n, c_in*block_size_k, fmap_h, fmap_w)
+        input_shape_5hd = (batch_n, c_in, fmap_h, fmap_w, block_size_k)
+        w_shape = (c_out*block_size_n, c_in*block_size_n, k_h, k_w)
+        w_shape_fracz = (c_in*k_h*k_w, c_out, block_size_n, block_size_k)
+        group_para = {"enlarge": 1, "c1_opt": c_in, "cout1_opt": c_out, "group_opt": 1}
+
+        self.define_tiling_var()
+
+        return {"in_shape_nc1hwc0": input_shape_5hd, "w_shape_frac_z": w_shape_fracz,
+                "w_shape": w_shape, "group_para": group_para,
+                "correct_range_flag": False,
+                "new_in_range": [(1, None), (1, None), (1, None), (1, None)]}
+
+
     def config_paras(self):
         """
         config paras and placeholders
         """
-
-        param = self.check_paras()
+        self.check_dynamic_mode()
+        if self.cache_tiling_flag:
+            param = self.cache_tiling_paras_process()
+        else:
+            param = self.check_paras()
         if self.is_tensor is False:
             input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
             weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
@@ -551,4 +624,5 @@ class Conv2dParaProcess(CubeParaProcess):
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
-                "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range")}
+                "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range"),
+                "cache_tiling_flag": self.cache_tiling_flag}

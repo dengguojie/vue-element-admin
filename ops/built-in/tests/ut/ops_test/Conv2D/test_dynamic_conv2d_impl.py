@@ -14,8 +14,29 @@ def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads,
             }
 
 print("adding Conv2D dyanmic op testcases")
-for test_case  in tc.conv2D_dynamic_ut_testcase:
-    ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
+# for test_case  in tc.conv2D_dynamic_ut_testcase:
+#     ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
+
+# cache tiling ut testcases
+cache_tiling_ut_testcases = [
+    # case 0
+    ["Ascend910A",
+    {'ori_shape': (1, 32, -1, -1), 'shape': (1, 2, -1, -1, 16),'ori_format': 'NCHW', 'dtype': 'float16', "range": [(1, 1), (32, 32), (10, 25), (10, 25)]},
+    {"ori_shape": [64, 32, 3, 3], "dtype": "float16", "ori_format": "NCHW", "range": [(64, 64), (32, 32), (3, 3), (3, 3)]},
+    None, None,
+    {'ori_shape': (1, 32, -1, -1), 'ori_format': 'NCHW', 'dtype': 'float16'},
+    (-1, -1, -1, -1), (0, 0, 0, 0), (1, 1, 1, 1), 1, "NCHW", 0, "success", "cache_tiling_case0"]
+]
+
+def gen_cache_tilingcase_params(params):
+    inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect, casename = params
+    return {"params": [inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x],
+            "case_name": casename,
+            "expect": expect
+            }
+
+for test_case  in cache_tiling_ut_testcases:
+    ut_case.add_case(test_case[0], gen_cache_tilingcase_params(test_case[1:]))
 
 
 def test_conv2d_param_process(test_arg):
@@ -61,3 +82,5 @@ def test_conv2d_param_process_dynamic():
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic()
     ut_case.run("Ascend910A")
+
+

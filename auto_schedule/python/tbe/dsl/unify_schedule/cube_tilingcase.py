@@ -259,6 +259,10 @@ class TilingSelection:
         """
         batch_name, h_name, w_name = var_names
         tgt_area = [*target_area.get(batch_name), *target_area.get(h_name), *target_area.get(w_name)]
+        if self.op.op_type == "conv2d" and self.op._cache_tiling_flag:
+            template_candidates = self.op.get_cache_tiling()
+            tiling_cases = [self.op.assembly_case(v[1], v[0], k) for k, v in template_candidates.items()]
+            return tiling_cases
         if None in tgt_area:
             seed_cnt = next(self.seed_cnt)
             default_tiling = self.op.get_default_tiling(target_area.get(w_name)[0])

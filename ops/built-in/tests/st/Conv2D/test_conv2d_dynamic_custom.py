@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from te import tvm
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from impl.dynamic.conv2d import conv2d
 
 
 def test_conv2d_param_process():
@@ -25,5 +26,27 @@ def test_conv2d_param_process():
     proc.get_output_range([2, 1, 4096, 4096],[(1, None), (1, 1), (1, None), (1, None)])
 
 
+# cache tiling ut testcases
+cache_tiling_ut_testcases = [
+    # case 0
+    ["Ascend910A",
+    {'ori_shape': (1, 32, -1, -1), 'ori_format': 'NCHW', 'dtype': 'float16', "range": [(1, 1), (32, 32), (10, 25), (10, 25)]},
+    {"ori_shape": [64, 32, 3, 3], "dtype": "float16", "ori_format": "NCHW", "range": [(64, 64), (32, 32), (3, 3), (3, 3)]},
+    None, None,
+    {'ori_shape': (1, 32, -1, -1), 'ori_format': 'NCHW', 'dtype': 'float16'},
+    (-1, -1, -1, -1), (0, 0, 0, 0), (1, 1, 1, 1), 1, "NCHW", 0, "success", "cache_tiling_case0"]
+]
+
+
+def test_cachetiling_conv2d():
+    for test_case  in cache_tiling_ut_testcases:
+        inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect, casename = test_case[1:]
+        from tbe.common.context import op_context
+        import tbe.dsl.base.operation as operation
+        with op_context.OpContext():
+            with operation.dynamic():
+                conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, casename)
+
 if __name__ == '__main__':
     test_conv2d_param_process()
+    test_cachetiling_conv2d()

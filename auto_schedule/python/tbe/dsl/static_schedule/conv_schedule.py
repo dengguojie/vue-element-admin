@@ -29,6 +29,7 @@ from tbe.dsl.compute.conv_compute import shape_to_list
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_schedule_v2 import conv_v220_schedule
+from tbe.dsl.base.operation import get_te_var
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 from tbe import tvm
@@ -39,6 +40,7 @@ from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.common.utils import log
 from tbe.tvm.buffer_manager import get_buffer_manager
+
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
@@ -744,6 +746,8 @@ class CceConvOp:
         self._filter_muti_groups_in = False
         self._l0a_dma_flag = False
         self._dynamic_flag = False
+        self._cache_tiling_flag = False
+        self._cache_tiling = None
         self._flag_dict = {}
         self._channel_wise_optim_list = []
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
@@ -1489,8 +1493,13 @@ class CceConvOp:
 
                     tiling["manual_pingpong_buffer"] = tiling_new["manual_pingpong_buffer"]
                     tiling["n_bef_batch_flag"] = tiling_new["n_bef_batch_flag"]
-
-                    tiling_l1_shape_get()
+                    if not self._cache_tiling_flag:
+                        tiling_l1_shape_get()
+                    else:
+                        tiling["AL1_shape"] = tiling_new["AL1_shape"]
+                        tiling["AUB_shape"] = tiling_new["AUB_shape"]
+                        tiling["BL1_shape"] = tiling_new["BL1_shape"]
+                        tiling["attach_at_flag"] = tiling_new["attach_at_flag"]
 
                     tiling["block_dim"] = tiling_new["block_dim"]
                     if "CUB_channel_wise_flag" in tiling_new:
@@ -1535,6 +1544,119 @@ class CceConvOp:
                     err_man.raise_err_specific("conv2d", ("x(%s) of coeff not match pattern" % dtype))
                 return int_ceil_div(int(dtype_res.group(1)),
                                     int(base_res.group(1)))
+
+            def update_cache_tiling(tiling):
+                """
+                get cache tiling
+                """
+                self._cache_tiling = {
+                    "batch_single_core": get_te_var("batch_single_core").get_tvm_var(),
+                    "n_single_core": get_te_var("n_single_core").get_tvm_var(),
+                    "batch_dim": get_te_var("batch_dim").get_tvm_var(),
+                    "n_dim": get_te_var("n_dim").get_tvm_var(),
+                    "m_dim": get_te_var("m_dim").get_tvm_var(),
+                    "cub_n1": get_te_var("cub_n1").get_tvm_var(),
+                    "n_ub_l0c_factor": get_te_var("n_ub_l0c_factor").get_tvm_var(),
+                    "m_l0": get_te_var("m_l0").get_tvm_var(),
+                    "k_l0": get_te_var("k_l0").get_tvm_var(),
+                    "m_al1_factor": get_te_var("m_al1_factor").get_tvm_var(),
+                    "n_bl1_factor": get_te_var("n_bl1_factor").get_tvm_var(),
+                    "kal1_16": get_te_var("kal1_16").get_tvm_var(),
+                    "kbl1_16": get_te_var("kbl1_16").get_tvm_var(),
+                    "kal1_factor": get_te_var("kal1_factor").get_tvm_var(),
+                    "kbl1_factor": get_te_var("kbl1_factor").get_tvm_var(),
+                    "dilation_h": get_te_var("dilation_h").get_tvm_var(),
+                    "dilation_w": get_te_var("dilation_w").get_tvm_var(),
+                    "stride_h": get_te_var("stride_h").get_tvm_var(),
+                    "stride_w": get_te_var("stride_w").get_tvm_var(),
+                    "c_in": get_te_var("c_in").get_tvm_var(),
+                    "c_out": get_te_var("c_out").get_tvm_var(),
+                    "k_h": get_te_var("k_h").get_tvm_var(),
+                    "k_w": get_te_var("k_w").get_tvm_var(),
+                    "pad_top": get_te_var("pad_top").get_tvm_var(),
+                    "pad_bottom": get_te_var("pad_bottom").get_tvm_var(),
+                    "pad_left": get_te_var("pad_left").get_tvm_var(),
+                    "pad_right": get_te_var("pad_right").get_tvm_var(),
+                    "batch_n": get_te_var("batch_n").get_tvm_var(),
+                    "fmap_h": get_te_var("fmap_h").get_tvm_var(),
+                    "fmap_w": get_te_var("fmap_w").get_tvm_var(),
+                    "ho": get_te_var("ho").get_tvm_var(),
+                    "wo": get_te_var("wo").get_tvm_var(),
+                }
+                tiling["block_dim"] = [self._cache_tiling["batch_dim"], self._cache_tiling["n_dim"],
+                                       self._cache_tiling["m_dim"], 1]
+                tiling["AL0_matrix"][0] = self._cache_tiling["m_l0"]
+                tiling["AL0_matrix"][1] = self._cache_tiling["k_l0"]
+                tiling["CL0_matrix"][0] = self._cache_tiling["n_ub_l0c_factor"] * self._cache_tiling["cub_n1"]
+                tiling["CL0_matrix"][1] = self._cache_tiling["m_l0"]
+                tiling["CUB_matrix"][0] = self._cache_tiling["cub_n1"]
+                tiling["CUB_matrix"][1] = self._cache_tiling["m_l0"]
+                tiling["BL0_matrix"][0] = self._cache_tiling["k_l0"]
+                tiling["BL0_matrix"][1] = self._cache_tiling["n_ub_l0c_factor"] * self._cache_tiling["cub_n1"]
+                # L1 buffer tiling
+                reduce_al1 = ((self._cache_tiling["k_h"] - 1) * self._cache_tiling["dilation_h"] + 1) * \
+                                ((self._cache_tiling["k_w"] - 1) * self._cache_tiling["dilation_w"] + 1)
+                reduce_bl1 = self._cache_tiling["k_h"] * self._cache_tiling["k_h"]
+                tiling["AL1_shape"][0] = self._cache_tiling["kal1_16"]//reduce_al1
+                tiling["AL1_shape"][1] = self._cache_tiling["m_al1_factor"]
+                tiling["BL1_shape"][0] = self._cache_tiling["kbl1_16"]//reduce_bl1
+                tiling["BL1_shape"][1] = self._cache_tiling["n_bl1_factor"]
+
+                set_cache_tiling_var_range()
+                return tiling
+
+            def set_cache_tiling_var_range():
+                """
+                set var range for cache tiling
+                """
+                tiling_range = {
+                    "block_dim_range": [1, 32],
+                    "range_64":[1, 64],
+                    "range_128": [1, 128],
+                    "range_1024": [1, 1024],
+                    "dilation_range": [1, 255],
+                    "stride_range": [1, 63],
+                    "pad_range": [1, 255],
+                    "kernel_range": [1, 255]
+                }
+                tiling_var_range_dict = {
+                    "batch_single_core": tiling_range["range_64"],
+                    "n_single_core": tiling_range["range_64"],
+                    "batch_dim": tiling_range["block_dim_range"],
+                    "n_dim": tiling_range["block_dim_range"],
+                    "m_dim": tiling_range["block_dim_range"],
+                    "cub_n1": tiling_range["range_128"],
+                    "n_ub_l0c_factor": tiling_range["range_64"],
+                    "m_l0": tiling_range["range_128"],
+                    "k_l0": tiling_range["range_128"],
+                    "m_al1_factor": tiling_range["range_1024"],
+                    "n_bl1_factor": tiling_range["range_1024"],
+                    "kal1_16": tiling_range["range_64"],
+                    "kbl1_16": tiling_range["range_64"],
+                    "kal1_factor": tiling_range["range_64"],
+                    "kbl1_factor": tiling_range["range_64"],
+                    "dilation_h": tiling_range["dilation_range"],
+                    "dilation_w": tiling_range["dilation_range"],
+                    "stride_h": tiling_range["stride_range"],
+                    "stride_w": tiling_range["stride_range"],
+                    "c_in": tiling_range["range_1024"],
+                    "c_out": tiling_range["range_1024"],
+                    "k_h": tiling_range["kernel_range"],
+                    "k_w": tiling_range["kernel_range"],
+                    "pad_top": tiling_range["pad_range"],
+                    "pad_bottom": tiling_range["pad_range"],
+                    "pad_left": tiling_range["pad_range"],
+                    "pad_right": tiling_range["pad_range"],
+                }
+
+                for var_name, var_range in tiling_var_range_dict.items():
+                    sch.set_var_range(self._cache_tiling[var_name], *var_range)
+                sch.set_var_value(self._cache_tiling["batch_n"], self._cache_tiling["batch_dim"]*self._cache_tiling["batch_single_core"])
+                sch.set_var_value(self._cache_tiling["c_out"], self._cache_tiling["cub_n1"] * \
+                                  self._cache_tiling["n_ub_l0c_factor"] * self._cache_tiling["n_bl1_factor"] * \
+                                  self._cache_tiling["n_single_core"] * self._cache_tiling["n_dim"])
+                sch.set_var_value(self._cache_tiling["c_in"], self._cache_tiling["kbl1_16"] * \
+                                  self._cache_tiling["kbl1_factor"] // (self._cache_tiling["k_h"] * self._cache_tiling["k_w"]))
 
             fmap_shape_nc1hwc0 = ConvParam.tiling_query_param["fmap_shape_nc1hwc0"]
             shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
@@ -1692,6 +1814,9 @@ class CceConvOp:
             tiling = {}
             tiling = _config_tiling(tiling)
             get_compress_tiling_shape(tiling_ok_flag)
+            # get cache tiling
+            if self._cache_tiling_flag:
+                tiling = update_cache_tiling(tiling)
             return tiling
 
         def double_operand_num_fetch():
@@ -3917,6 +4042,16 @@ class CceConvOp:
                 al1_bound *= 2
             return al1_bound
 
+        def _get_bl1_bound():
+            """
+            for bl1 bound set for dynamic shape
+            """
+            n_bound_max = tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*CUBE_MKN[bl1.dtype]['mac'][2]
+            k_bound_max = tiling["BL1_shape"][0]*tiling["BL0_matrix"][0]*CUBE_MKN[bl1.dtype]['mac'][1]
+            bl1_bound_max_size = n_bound_max * k_bound_max
+
+            return bl1_bound_max_size
+
         def _update_load3dv1_split_for_largek():
             """
             for load3dv1 && c04, repeat time of k may exceed 255
@@ -3988,6 +4123,7 @@ class CceConvOp:
             self._preload = 0
             self._l0a_dma_flag = ConvParam.l0a_dma_flag
             self._dynamic_flag = ConvParam.dynamic_flag
+            self._cache_tiling_flag = ConvParam.cache_tiling_flag
             if ConvParam.invalid_data_rm_disable:
                 ConvParam.invalid_data_rm_flag = True
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
@@ -4494,7 +4630,7 @@ class CceConvOp:
             """
             set var_range for dynamic ops
             """
-            if tilingdict_flag:
+            if tilingdict_flag or self._cache_tiling_flag:
                 return
             if "fmap_h" in self._dyn_var_map:
                 fmap_h_range = self._var_range['fmap_h']
@@ -4515,7 +4651,7 @@ class CceConvOp:
                 sch.set_var_range(self._dyn_var_map['batch_n'], batch_range[0],
                                   batch_range[1])
 
-        def _handle_dynamic_scope():
+        def _handle_men_process():
             """
             handle dynamic scope and strorage bound
             """
@@ -4525,26 +4661,6 @@ class CceConvOp:
             sch.sequential_malloc(cce.scope_ca)
             sch.sequential_malloc(cce.scope_cb)
             sch.sequential_malloc(cce.scope_cc)
-            ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
-                                    tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
-            for lop in self._op_graph.body_ops:
-                if ("convolution" in lop["op"] or "mad" in lop["op"]) and \
-                    ("convolution_C" not in lop["op"] or "convolution_C_UB" not in lop["op"]):
-                    continue
-                if "fmap_l1" in lop["op"]:
-                    continue
-                if "bias_ub" in lop["op"]:
-                    continue
-                #  phony_insn tensor no need set_buffer_size for convbn fusion
-                if self._convbn1_flag and "cast1" in lop["op"]:
-                    continue
-                # elewise_single_relu is cloud, mini and es
-                if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
-                    continue
-                if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
-                    ub_storage_bound_size *= 2
-                sch[lop["dst_buffer"]].set_buffer_size(math.ceil(ub_storage_bound_size))
-
             # mem_unique
             sch[al1].mem_unique()
             sch[fmap_col].mem_unique()
@@ -4553,6 +4669,30 @@ class CceConvOp:
             sch[bl0].mem_unique()
             if "int32_bias" not in tensor_map.keys() and not ConvParam.convbn1_flag:
                 sch[c_col].mem_unique()
+            if not self._cache_tiling_flag:
+                ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
+                                         tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
+                for lop in self._op_graph.body_ops:
+                    if ("convolution" in lop["op"] or "mad" in lop["op"]) and \
+                        ("convolution_C" not in lop["op"] or "convolution_C_UB" not in lop["op"]):
+                        continue
+                    if "fmap_l1" in lop["op"]:
+                        continue
+                    if "bias_ub" in lop["op"]:
+                        continue
+                    #  phony_insn tensor no need set_buffer_size for convbn fusion
+                    if self._convbn1_flag and "cast1" in lop["op"]:
+                        continue
+                    # elewise_single_relu is cloud, mini and es
+                    if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
+                        continue
+                    if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
+                        ub_storage_bound_size *= 2
+                    sch[lop["dst_buffer"]].set_buffer_size(math.ceil(ub_storage_bound_size))
+            else:
+                sch[bl1].set_buffer_size(_get_bl1_bound())
+                sch.sequential_malloc(cce.scope_ubuf)
+                sch[c_ub].mem_unique()
 
         def _handle_transdata_ubfusion():
             if res.op.tag == "conv2d_data_rm" and res.op.input_tensors[0].op.tag == "5HD_trans_NCHW":
@@ -4636,6 +4776,123 @@ class CceConvOp:
             # dynamic dont't support inner_batch
             if self._dynamic_flag:
                 self._l0b_first_flag = False
+
+        def _get_c_factor():
+            """
+            get  cl0 cub factor
+            """
+            if self._cache_tiling_flag:
+                c_tiling_factor = [tiling["CL0_matrix"][0],
+                                   (tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2])]
+            else:
+                c_tiling_factor = [tiling["CL0_matrix"][0],
+                                   int(tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2])]
+            if len(tiling["CL0_matrix"]) == 4:
+                tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1] + [1]
+            elif len(tiling["CL0_matrix"]) == 5:
+                tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1]
+            if len(tiling["BL0_matrix"]) == 4:
+                tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1] + [1]
+            elif len(tiling["BL0_matrix"]) == 5:
+                tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1]
+
+            if (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1) or tiling["CL0_matrix"][5] > 1:
+                c_factor = [1, int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
+            else:
+                c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"], c_tiling_factor[0]),
+                            int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
+
+            c_ub_tiling_factor = tiling["CUB_matrix"]
+            c_ub_factor = [int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+                           int_ceil_div(c_tiling_factor[1], c_ub_tiling_factor[1] * c_ub_tiling_factor[2])]
+
+            if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
+                c_tiling_factor[1] = pooling_out[1]
+                c_factor[1] = pooling_out[0]
+
+            return c_tiling_factor, c_factor, c_ub_factor
+
+        def _get_abl1_factor():
+            """
+            get al1 bl1 factor
+            """
+            if tiling["AL1_shape"]:
+                if len(tiling["AL1_shape"]) == 1:
+                    tiling["AL1_shape"] = tiling["AL1_shape"] + [1]
+                if self._cache_tiling_flag:
+                    al1_factor = [(dim_map["img_shape"][1] // tiling["AL1_shape"][0]),
+                                  int_ceil_div(c_factor[1], tiling["AL1_shape"][1])]
+                else:
+                    al1_factor = [int(dim_map["img_shape"][1] // tiling["AL1_shape"][0]),
+                                  int_ceil_div(c_factor[1], tiling["AL1_shape"][1])]
+            else:
+                al1_factor = [1, 1]
+
+            if tiling["BL1_shape"]:
+                if len(tiling["BL1_shape"]) == 1:
+                    tiling["BL1_shape"] = tiling["BL1_shape"] + [1]
+                if not self._cache_tiling_flag:
+                    if len(tiling["BL1_shape"]) > 1:
+                        if c_factor[0] % tiling["BL1_shape"][1] != 0:
+                            err_man.raise_err_specific("conv2d",
+                                                       "second value of BL1_shape should "
+                                                       + "be factor of n block num")
+                        if tiling["BL1_shape"][1] > 1 and \
+                                tiling["BL1_shape"][1] % 2 != 0:
+                            err_man.raise_err_specific("conv2d",
+                                                       "second value of BL1_shape better to be even number")
+
+                    bl1_factor = [int((dim_map["img_shape"][1] +
+                                       tiling["BL1_shape"][0] - 1) //
+                                       tiling["BL1_shape"][0]),
+                                  (c_factor[0] + tiling["BL1_shape"][1] - 1) //
+                                  tiling["BL1_shape"][1]]
+                else:
+                    bl1_factor = [((dim_map["img_shape"][1] +
+                                    tiling["BL1_shape"][0] - 1) //
+                                    tiling["BL1_shape"][0]),
+                                  (c_factor[0] + tiling["BL1_shape"][1] - 1) //
+                                  tiling["BL1_shape"][1]]
+            else:
+                bl1_factor = [1, tiling["block_dim"][1]]
+
+            return al1_factor, bl1_factor
+
+        def _abl1_slice_with_cl0_process():
+            """
+            al1 and bl1 slice with cl0
+            """
+            k_outer_outer_size = c_col.op.reduce_axis[0].dom.extent // tiling['AL0_matrix'][1]
+            # ============ al1 and bl1 slice can be different with cub & CL0 =====
+            if not self._cache_tiling_flag:
+                outer_factor = max(al1_factor[0], bl1_factor[0])
+                inner_factor = min(al1_factor[0], bl1_factor[0])
+                if outer_factor % inner_factor != 0:
+                    err_man.raise_err_specific("conv2d",
+                                               "illegal value of AL1_shape & BL1_shape")
+                k_outer_outer_inner_size = int(k_outer_outer_size // outer_factor)
+                k_outer_outer_outer, k_outer_outer_inner = sch[c_col].split(
+                    k_outer_outer, nparts=outer_factor)
+                k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[
+                    c_col].split(k_outer_outer_outer, nparts=inner_factor)
+                if al1_factor[0] > bl1_factor[0]:
+                    al1_at_ccol_axis = k_outer_outer_outer_inner
+                    bl1_at_ccol_axis = k_outer_outer_outer_outer
+                else:
+                    al1_at_ccol_axis = k_outer_outer_outer_outer
+                    bl1_at_ccol_axis = k_outer_outer_outer_inner
+            else:
+                k_outer_outer_inner_size = k_outer_outer_size // al1_factor[0]
+                k_outer_outer_outer, k_outer_outer_inner = sch[c_col].split(
+                    k_outer_outer, nparts=al1_factor[0])
+                k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[
+                    c_col].split(k_outer_outer_outer, nparts=(bl1_factor[0]))
+                al1_at_ccol_axis = k_outer_outer_outer_inner
+                bl1_at_ccol_axis = k_outer_outer_outer_outer
+
+            k_split_axis_list = [k_outer_outer_inner_size, k_outer_outer_inner, k_outer_outer_outer_inner,
+                                 k_outer_outer_outer_outer, al1_at_ccol_axis, bl1_at_ccol_axis]
+            return k_split_axis_list
 
         self_init()
 
@@ -5022,60 +5279,9 @@ class CceConvOp:
                           sch[c_col].op.axis[3], sch[c_col].op.axis[4]]
         _, _, _, nn_axis = new_c_col_axis
 
-        c_tiling_factor = [tiling["CL0_matrix"][0],
-                           int(tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2])]
-        if len(tiling["CL0_matrix"]) == 4:
-            tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1] + [1]
-        elif len(tiling["CL0_matrix"]) == 5:
-            tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1]
-        if len(tiling["BL0_matrix"]) == 4:
-            tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1] + [1]
-        elif len(tiling["BL0_matrix"]) == 5:
-            tiling["BL0_matrix"] = tiling["BL0_matrix"] + [1]
-
-        if (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1) or tiling["CL0_matrix"][5] > 1:
-            c_factor = [1, int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
-        else:
-            c_factor = [int_ceil_div(ConvParam.para_dict["cout1_opt"], c_tiling_factor[0]),
-                        int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
-
-        c_ub_tiling_factor = tiling["CUB_matrix"]
-        c_ub_factor = [int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
-                       int_ceil_div(c_tiling_factor[1], c_ub_tiling_factor[1] * c_ub_tiling_factor[2])]
-
-        if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
-            c_tiling_factor[1] = pooling_out[1]
-            c_factor[1] = pooling_out[0]
-
-        if tiling["AL1_shape"]:
-            if len(tiling["AL1_shape"]) == 1:
-                tiling["AL1_shape"] = tiling["AL1_shape"] + [1]
-            al1_factor = [int(dim_map["img_shape"][1] // tiling["AL1_shape"][0]),
-                          int_ceil_div(c_factor[1], tiling["AL1_shape"][1])]
-        else:
-            al1_factor = [1, 1]
-
+        c_tiling_factor, c_factor, c_ub_factor = _get_c_factor()
+        al1_factor, bl1_factor = _get_abl1_factor()
         aub_factor = _get_aub_factor()
-
-        if tiling["BL1_shape"]:
-            if len(tiling["BL1_shape"]) > 1:
-                if c_factor[0] % tiling["BL1_shape"][1] != 0:
-                    err_man.raise_err_specific("conv2d",
-                                               "second value of BL1_shape should "
-                                               + "be factor of n block num")
-                if tiling["BL1_shape"][1] > 1 and \
-                        tiling["BL1_shape"][1] % 2 != 0:
-                    err_man.raise_err_specific("conv2d",
-                                               "second value of BL1_shape better to be even number")
-            if len(tiling["BL1_shape"]) == 1:
-                tiling["BL1_shape"] = tiling["BL1_shape"] + [1]
-            bl1_factor = [int((dim_map["img_shape"][1] +
-                               tiling["BL1_shape"][0] - 1) //
-                              tiling["BL1_shape"][0]),
-                          (c_factor[0] + tiling["BL1_shape"][1] - 1) //
-                          tiling["BL1_shape"][1]]
-        else:
-            bl1_factor = [1, tiling["block_dim"][1]]
 
         # --------------------------double buffer------------------------
         double_buffer_flag = {'AL1_pbuffer': False, 'BL1_pbuffer': False, 'AL0_pbuffer': False,
@@ -5374,20 +5580,27 @@ class CceConvOp:
             blocks = block_dim[0]*block_dim[1]*block_dim[2]*block_dim[3]
 
             if blocks != 1:
-                batch_cout_fused = sch[res_c].fuse(
-                    batch_outer,
-                    cout1_group_outer, c_outer_outer_outer_outer,
-                    m_outer_outer_outer_outer)
-                if self._dynamic_flag:
-                    noo_true, _ = sch[res_c].split(batch_cout_fused, factor=1)
+                if self._cache_tiling_flag:
+                    bido, bidi = sch[res_c].split(m_outer_outer_outer_outer, 1)
+                    bind_axis_list = [batch_outer, cout1_group_outer, c_outer_outer_outer_outer, bido]
+                    block = tvm.thread_axis("blockIdx.x")
+                    sch.bind_axes(bind_axis_list, block)
+                    mc_flag = True
                 else:
-                    noo_true, _ = sch[res_c].split(batch_cout_fused, nparts=blocks)
-                bido, bidi = sch[res_c].split(noo_true, 1)
-                block = tvm.thread_axis("blockIdx.x")
-                sch[res_c].bind(bido, block)
-                mc_flag = True
-                if blocks == block_dim[0]:
-                    sch[res_c].pragma(bidi, 'json_info_batchBindOnly', 1)
+                    batch_cout_fused = sch[res_c].fuse(
+                        batch_outer,
+                        cout1_group_outer, c_outer_outer_outer_outer,
+                        m_outer_outer_outer_outer)
+                    if self._dynamic_flag:
+                        noo_true, _ = sch[res_c].split(batch_cout_fused, factor=1)
+                    else:
+                        noo_true, _ = sch[res_c].split(batch_cout_fused, nparts=blocks)
+                    bido, bidi = sch[res_c].split(noo_true, 1)
+                    block = tvm.thread_axis("blockIdx.x")
+                    sch[res_c].bind(bido, block)
+                    mc_flag = True
+                    if blocks == block_dim[0]:
+                        sch[res_c].pragma(bidi, 'json_info_batchBindOnly', 1)
             else:
                 noo_true = batch_inner_outer
 
@@ -5407,9 +5620,9 @@ class CceConvOp:
                     (not self._l0b_first_flag):
                 sch[res_c].reorder(c_outer_outer_outer_inner, noo)
                 batch_cout_reorder_flag = True
-
-        axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
-        self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
+        if not self._cache_tiling_flag:
+            axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
+            self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
         if not self._dynamic_flag:
             set_overload_flag(self.overload_flag, self._schedule[res], bido)
 
@@ -5534,11 +5747,6 @@ class CceConvOp:
         # for reduce axis, al0 and bl0 should be the same
         k_outer_outer, k_outer_inner = sch[c_col].split(
             c_col.op.reduce_axis[0], tiling['AL0_matrix'][1])
-        k_outer_outer_size = c_col.op.reduce_axis[0].dom.extent // tiling['AL0_matrix'][1]
-        if int(al1_factor[0]) > int(bl1_factor[0]):
-            k_outer_outer_inner_size = int(k_outer_outer_size // al1_factor[0])
-        else:
-            k_outer_outer_inner_size = int(k_outer_outer_size // bl1_factor[0])
 
         # split N begin
         c_col_batch, cn_axis = sch[c_col].split(c_col.op.axis[1], 1)
@@ -5614,26 +5822,8 @@ class CceConvOp:
                                            DataFlowType.V200_GENERAL_FUSION):
             _handle_deq_and_bias(c_ub)
 
-        # ============ al1 and bl1 slice can be different with cub & CL0 =====
-        outer_factor = max(al1_factor[0], bl1_factor[0])
-        inner_factor = min(al1_factor[0], bl1_factor[0])
-        if outer_factor % inner_factor != 0:
-            err_man.raise_err_specific("conv2d",
-                                       "illegal value of AL1_shape & BL1_shape")
-        if al1_factor[0] > bl1_factor[0]:
-            k_outer_outer_outer, k_outer_outer_inner = sch[c_col].split(
-                k_outer_outer, nparts=al1_factor[0])
-            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[
-                c_col].split(k_outer_outer_outer, nparts=(bl1_factor[0]))
-            al1_at_ccol_axis = k_outer_outer_outer_inner
-            bl1_at_ccol_axis = k_outer_outer_outer_outer
-        else:
-            k_outer_outer_outer, k_outer_outer_inner = sch[c_col].split(
-                k_outer_outer, nparts=bl1_factor[0])
-            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[
-                c_col].split(k_outer_outer_outer, nparts=(al1_factor[0]))
-            al1_at_ccol_axis = k_outer_outer_outer_outer
-            bl1_at_ccol_axis = k_outer_outer_outer_inner
+        k_outer_outer_inner_size, k_outer_outer_inner, k_outer_outer_outer_inner, \
+            k_outer_outer_outer_outer, al1_at_ccol_axis, bl1_at_ccol_axis = _abl1_slice_with_cl0_process()
 
         # Nbuffer split axis
         not_convbn1_and_bef_flag = not self._convbn1_flag \
@@ -5879,7 +6069,7 @@ class CceConvOp:
         _remove_padded_column()
         _handle_transdata_ubfusion()
         if self._dynamic_flag:
-            _handle_dynamic_scope()
+            _handle_men_process()
             return True
 
         tensor_map.clear()

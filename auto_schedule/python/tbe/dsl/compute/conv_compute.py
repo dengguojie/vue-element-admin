@@ -265,10 +265,11 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     if not ConvParam.dynamic_flag:
         _check_fmap_range()
         utils.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
-    utils.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
 
-    if shape_in[1] != shape_w[1]:
-        err_man.raise_err_scene_equal_limitation("conv2d", "input feature map channel", "filter channel")
+    if not ConvParam.cache_tiling_flag:
+        utils.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
+        if shape_in[1] != shape_w[1]:
+            err_man.raise_err_scene_equal_limitation("conv2d", "input feature map channel", "filter channel")
 
     if optim_dict is None:
         optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False, "v220_c04_mode": "disabled"}
@@ -285,7 +286,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     w_k = shape_w[3]
 
     # dilateh, dilatew check
-    dilate_check()
+    if not ConvParam.cache_tiling_flag:
+        dilate_check()
 
     hk_dilation = (h_k - 1)*dilateh + 1
     wk_dilation = (w_k - 1)*dilatew + 1
@@ -363,9 +365,10 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "stridew", str(stridew))
         if stridew > STRIDE_MAX:
             ConvParam.l0a_dma_flag = True
-    _check_w_range()
-    _check_pad()
-    _check_stride()
+    if not ConvParam.cache_tiling_flag:
+        _check_w_range()
+        _check_pad()
+        _check_stride()
 
     config = CUBE_MKN[w_dtype]
     ci0 = config['mac'][1]
@@ -408,7 +411,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                 max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
             if not load2d_split_w_flag_set():
                 _l1_buffer_size_check(max_feature_map_l1)
-    _check_l1_size()
+    if not ConvParam.cache_tiling_flag:
+        _check_l1_size()
 
     def _check_dma_load3d_l1_size():
         """
@@ -476,6 +480,7 @@ class ConvParam:
         cls.bias_init_align_dim_flag = False
         cls.int4_width_out_align_flag = False
         cls.impl_mode = ""
+        cls.cache_tiling_flag = False
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
                            "slice_offset": (0, 0, 0, 0, 0),
@@ -526,6 +531,7 @@ class ConvParam:
     fmap_range = None
     kernel_name = None
     impl_mode = ""
+    cache_tiling_flag = False
 
 
 def shape_to_list(shape):
@@ -2540,6 +2546,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     slice_offset = para_dict["fusion_para"]["slice_offset"]
     ConvParam.fusion_para["slice_offset"] = slice_offset if slice_offset else (0, 0, 0, 0, 0)
+    ConvParam.cache_tiling_flag = para_dict.get("cache_tiling_flag", False)
     #===========================================================================================
     _int4_width_out_align_flag_set()
     _v200_width_out_1_flag_set()

@@ -341,7 +341,9 @@ def calc_conv2d(outs, option=None):
     tiling_dict = cce_conv_op.schedule(res_out, outs, [schedule], convbn1_flag=ConvParam.convbn1_flag,
                                        tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
-    add_compile_info("fmap_c1", ConvParam.dim_map["fmap_5hd_shape"][1])
+    tiling_dict["cache_tiling_flag"] = ConvParam.cache_tiling_flag
+    if not tiling_dict["cache_tiling_flag"]:
+        add_compile_info("fmap_c1", ConvParam.dim_map["fmap_5hd_shape"][1])
 
     tiling_cases = []
     total_info = {}
@@ -413,6 +415,36 @@ class Conv2dTiling(CubeTilingOp):
            ("virtual_res" in res.op.name or res.dtype == "int8"):
             self._quant_fusion_muti_groups_in_cl0 = True
         self._tiling_type = TILING_REPO_MODE
+        self._cache_tiling_flag = tiling_info.get("cache_tiling_flag")
+
+    def get_cache_tiling(self):
+        """
+        get cache tiling
+        """
+        cache_tiling_all = {}
+        base_tiling = {
+            "block_dim": [-1, -1, -1, 1],
+            "AL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+            "BL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+            "CL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+            "CUB_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+            "BUB_shape": None,
+            "AL1_shape": [-1, -1, 1, 1], 
+            "BL1_shape": [-1, -1, 1, 1], 
+            "AUB_shape": [],
+            "n_bef_batch_flag": 0, "n_bef_group_flag": 0, "batch_bef_group_flag": 0,
+            "A_overhead_opt_flag": 0, "B_overhead_opt_flag": 0,
+            "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,
+            "tbe_compile_para": 0,
+            "manual_pingpong_buffer": {"AUB_pbuffer": utils.DB_OFF, "BUB_pbuffer": utils.DB_OFF, \
+            "AL1_pbuffer": utils.DB_ON, "BL1_pbuffer": utils.DB_ON, \
+            "AL0_pbuffer": utils.DB_ON, "BL0_pbuffer": utils.DB_ON, "CL0_pbuffer": utils.DB_ON, \
+            "CUB_pbuffer": utils.DB_OFF, "UBG_pbuffer": utils.DB_OFF},
+            "attach_at_flag": {"bl0_attach_flag": -1, "al1_attach_flag": -1, "bl1_attach_flag": -1}
+        }
+        cache_tiling_all[10001] = [[], base_tiling, []]
+
+        return cache_tiling_all
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
@@ -589,19 +621,20 @@ class Conv2dTiling(CubeTilingOp):
 
     def assembly_case(self, tiling, coverage, cnt):
         var_range = OrderedDict()
-        if self.var_map.get("batch_n") is not None:
-            var_range['batch_n'] = (coverage[0], coverage[1])
-
-        if self.var_map.get("fmap_h") is not None:
-            var_range['fmap_h'] = (coverage[2], coverage[3])
-            var_range['ho'] = (self.get_output_h(var_range['fmap_h'][0]),
-                               self.get_output_h(var_range['fmap_h'][1]))
-
-        if self.var_map.get("fmap_w") is not None:
-            var_range['fmap_w'] = (coverage[4], coverage[5])
-            var_range['wo'] = (self.get_output_w(var_range['fmap_w'][0]),
-                               self.get_output_w(var_range['fmap_w'][1]))
         correct_range_flag = ConvParam.dynamic_para.get("correct_range_flag", False)
+        if coverage:
+            if self.var_map.get("batch_n") is not None:
+                var_range['batch_n'] = (coverage[0], coverage[1])
+
+            if self.var_map.get("fmap_h") is not None:
+                var_range['fmap_h'] = (coverage[2], coverage[3])
+                var_range['ho'] = (self.get_output_h(var_range['fmap_h'][0]),
+                                self.get_output_h(var_range['fmap_h'][1]))
+
+            if self.var_map.get("fmap_w") is not None:
+                var_range['fmap_w'] = (coverage[4], coverage[5])
+                var_range['wo'] = (self.get_output_w(var_range['fmap_w'][0]),
+                                self.get_output_w(var_range['fmap_w'][1]))
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range,
                 "correct_range_flag": correct_range_flag}

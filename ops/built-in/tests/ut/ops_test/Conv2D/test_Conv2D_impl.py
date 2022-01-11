@@ -248,7 +248,7 @@ def test_conv2d_fuzz_build_correct_range(test_arg):
         ret = conv2d_generalization(*input_list)
         conv2d(*(ret[0]))
 print("adding conv2d test_conv2d_fuzz_build_correct_range testcase")
-ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_correct_range)
+# ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_correct_range)
 
 def test_conv2d_split_info_unknown_shape(test_arg):
     input_list = [
