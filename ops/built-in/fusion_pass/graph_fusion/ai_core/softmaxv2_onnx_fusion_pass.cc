@@ -18,12 +18,12 @@
     Softmaxv2---->         data
                             |
                             |
-                          flatten
+                          reshape1
                             |
                             |
                           softmaxv2
                             |
-                          reshape
+                          reshape2
 */
 
 #include "softmaxv2_onnx_fusion_pass.h"
@@ -45,6 +45,7 @@
 using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "SoftmaxV2";
+static const vector<int64_t> SHAPE = {1000, 5, 64, 64};
 static const std::string PATTERN_FUSEDNODE = "SoftmaxV2";
 vector<FusionPattern*> ASoftmaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -64,47 +65,71 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return PARAM_INVALID);
 
   auto softmax_opdesc = softmax_node->GetOpDesc();
+  std::vector<int64_t> dims = softmax_opdesc->GetInputDesc(0).GetShape().GetDims();
   FUSION_PASS_CHECK(softmax_opdesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "softmax_opdesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  if (!CheckIsNeedFusion(softmax_node)) {
+  // helper 项目白名单
+  if (dims == SHAPE) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "ASoftmaxFusionPass is not support.");
     return NOT_CHANGED;
   }
 
-  ge::NodePtr flatten_node = nullptr;
-  FUSION_PASS_CHECK(CreateFlattenNode(graph, softmax_node, flatten_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateFlattenNode FAILED."),
-                    return PARAM_INVALID);
+  // only softmax-11 and x.dim > 2 need insert reshape node
+  int need_fusion = 0;
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(softmax_opdesc, "need_fusion", need_fusion) || (dims.size() < 3),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get ATTR need_fusion fail or dims.size() < 3"),
+                    return NOT_CHANGED);
 
-  ge::NodePtr reshape_node = nullptr;
-  FUSION_PASS_CHECK(CreateReshapeNode(graph, softmax_node, flatten_node, reshape_node) != SUCCESS,
+  // reshape input.shape = [x0, ..., xk, ..., xn] to [x0*...*x(k-1), xk*...*xn]=[dim_1, dim_2]
+  ge::NodePtr reshape1_node = nullptr;
+  ge::NodePtr shape1_node = nullptr;
+  std::vector<int32_t> axes;
+  ge::AttrUtils::GetListInt(softmax_opdesc, "axes", axes);
+  unsigned int axis = axes[0] > -1 ? axes[0] : axes[0] + dims.size();
+  int64_t dim_1 = 1;
+  int64_t dim_2 = 1;
+  for (size_t idx = 0; idx < dims.size(); idx++) {
+    if (idx < axis) {
+      dim_1 *= dims[idx];
+    } else {
+      dim_2 *= dims[idx];
+    }
+  }
+  FUSION_PASS_CHECK(CreateReshapeNode(graph, softmax_node, reshape1_node, shape1_node, {dim_1, dim_2}) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode FAILED."),
                     return PARAM_INVALID);
 
-  ge::NodePtr const_node = nullptr;
-  FUSION_PASS_CHECK(CreateConstNode(graph, softmax_node, const_node) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateConstNode FAILED."),
+  // reshape softmax.shape = [dim_1, dim_2] to origin shape
+  ge::NodePtr reshape2_node = nullptr;
+  ge::NodePtr shape2_node = nullptr;
+  FUSION_PASS_CHECK(CreateReshapeNode(graph, reshape1_node, reshape2_node, shape2_node, dims) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode FAILED."),
                     return PARAM_INVALID);
 
-  auto input_new_desc = flatten_node->GetOpDesc()->GetOutputDesc(0);
-  auto ouput_new_desc = reshape_node->GetOpDesc()->GetInputDesc(0);
+  // update softmax's tensordesc info
+  auto input_new_desc = reshape1_node->GetOpDesc()->GetOutputDesc(0);
+  auto ouput_new_desc = reshape2_node->GetOpDesc()->GetInputDesc(0);
   softmax_opdesc->UpdateInputDesc(0, input_new_desc);
   softmax_opdesc->UpdateOutputDesc(0, ouput_new_desc);
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(softmax_opdesc, "axes", {1}),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr axes failed"), return PARAM_INVALID);
 
+  // handle edge
   auto out_anchor = softmax_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_anchor, softmax_node->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge from fused first input FAILED."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(out_anchor, flatten_node->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge from fused first input FAILED."),
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(out_anchor, reshape1_node->GetInDataAnchor(0)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from fused first input FAILED."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(flatten_node->GetOutDataAnchor(0),
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshape1_node->GetOutDataAnchor(0),
                                             softmax_node->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "add edge from flatten to softmax input FAILED."),
+                                                   "Fail to add edge between reshape1 and softmax."),
                     return PARAM_INVALID);
 
   auto in_anchors = softmax_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
@@ -114,156 +139,82 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                                                    "remove edge from fused out to other FAILED."),
                     return PARAM_INVALID);
 
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), in_anchor) != SUCCESS,
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reshape2_node->GetOutDataAnchor(0), in_anchor) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                    "add edge from reshape to other FAILED."),
                     return PARAM_INVALID);
   }
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(softmax_node->GetOutDataAnchor(0),
-                                            reshape_node->GetInDataAnchor(0)) != SUCCESS,
+                                            reshape2_node->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                    "add edge from fused to reshape FAILED."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0),
-                                            reshape_node->GetInDataAnchor(1)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from fused to reshape FAILED."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(softmax_opdesc, "axes", {1}),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr axes failed"), return PARAM_INVALID);
-  return SUCCESS;
-}
-
-bool ASoftmaxFusionPass::CheckIsNeedFusion(ge::NodePtr& fused_node) {
-  auto opdesc = fused_node->GetOpDesc();
-  int need_fusion = 0;
-  if (!ge::AttrUtils::GetInt(opdesc, "need_fusion", need_fusion)) {
-    OP_LOGW("ASoftmaxFusionPass", "Get ATTR need_fusion fail");
-    return false;
-  }
-  auto dims = opdesc->GetInputDesc(0).GetShape().GetDims();
-  std::vector<int32_t> axis;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(opdesc, "axes", axis),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get attr axes failed"), return false);
-  if (axis.empty()) {
-    return true;
-  }
-
-  int dims_size = dims.size();
-  int dim = axis[0] >= 0 ? axis[0] : dims_size + axis[0];
-  if (dim == 1 || dim == dims_size - 1) {
-    return false;
-  }
-  return true;
-}
-
-Status ASoftmaxFusionPass::CreateFlattenNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& new_node) {
-  auto fused_desc = fused_node->GetOpDesc();
-  std::shared_ptr<ge::OpDesc> flatten_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    (flatten_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_flatten", "Flatten")),
-    return FAILED);
-
-  FUSION_PASS_CHECK(flatten_desc == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateFlattenNode node"),
-                    return FAILED);
-
-  std::vector<int32_t> axis;
-  if (!ge::AttrUtils::GetListInt(fused_desc, "axes", axis) || axis.empty()) {
-    axis.push_back(1);
-  }
-
-  auto input_desc = fused_desc->GetInputDesc(0);
-  flatten_desc->AddInputDesc("x", input_desc);
-
-  auto output_desc = input_desc.Clone();
-  auto dims = output_desc.GetShape().GetDims();
-  int dim = axis[0] >= 0 ? axis[0] : dims.size() + axis[0];
-  if (dim >= (int)dims.size()) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "attr axis %d is wron", axis[0]);
-    return FAILED;
-  }
-
-  std::vector<int64_t> new_dims;
-  int val = 1;
-  for (int i = 0; i < dim; ++i) {
-    val *= dims[i];
-  }
-  new_dims.push_back(val);
-  val = 1;
-  for (size_t i = dim; i < dims.size(); ++i) {
-    val *= dims[i];
-  }
-  new_dims.push_back(val);
-
-  output_desc.SetShape(ge::GeShape(new_dims));
-  flatten_desc->AddOutputDesc("y", output_desc);
-  ge::AttrUtils::SetListInt(flatten_desc, "axes", {dim});
-  new_node = graph.AddNode(flatten_desc);
-  FUSION_PASS_CHECK(new_node == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateFlattenNode new_node is nullptr"),
-                    return FAILED);
   return SUCCESS;
 }
 
 Status ASoftmaxFusionPass::CreateReshapeNode(ge::ComputeGraph& graph,
-                                             ge::NodePtr& fused_node,
-                                             ge::NodePtr& flatten_node,
-                                             ge::NodePtr& new_node) {
-  auto fused_desc = fused_node->GetOpDesc();
+                                             ge::NodePtr& anchor_node,
+                                             ge::NodePtr& reshape_node,
+                                             ge::NodePtr& const_node,
+                                             vector<int64_t> dims) {
+  auto anchor_desc = anchor_node->GetOpDesc();
   std::shared_ptr<ge::OpDesc> reshape_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    (reshape_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_reshape", "Reshape")),
-    return FAILED);
-
+  ge::GeTensorDesc x_desc;
+  ge::GeTensorDesc y_desc;
+  if (dims.size() == 2) {
+    // the first reshape
+    FUSION_PASS_MAKE_SHARED(
+      (reshape_desc = std::make_shared<ge::OpDesc>("Reshape_" + anchor_desc->GetName(), "Reshape")),
+      return FAILED);
+    x_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
+    y_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
+    y_desc.SetShape(ge::GeShape(dims));
+    y_desc.SetOriginShape(ge::GeShape(dims));
+  } else {
+    // the second reshape
+    FUSION_PASS_MAKE_SHARED(
+      (reshape_desc = std::make_shared<ge::OpDesc>(anchor_desc->GetName() + "_reshape", "Reshape")),
+      return FAILED);
+    x_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
+    y_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
+  }
   FUSION_PASS_CHECK(reshape_desc == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode reshape_desc is nullptr"),
                     return FAILED);
-  auto input_desc = flatten_node->GetOpDesc()->GetOutputDesc(0);
-  reshape_desc->AddInputDesc("x", input_desc);
 
-  auto input_desc1 = input_desc.Clone();
-  input_desc1.SetDataType(ge::DT_INT32);
-  std::vector<int64_t> dims = {(int)fused_desc->GetInputDesc(0).GetShape().GetDimNum()};
-  input_desc1.SetShape(ge::GeShape(dims));
-  reshape_desc->AddInputDesc("shape", input_desc1);
+  reshape_desc->AddInputDesc("x", x_desc);
+  reshape_desc->AddOutputDesc("y", y_desc);
 
-  auto output_desc = fused_desc->GetOutputDesc(0);
-  reshape_desc->AddOutputDesc("y", output_desc);
-  new_node = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(new_node == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode new_node is nullptr"),
+  ge::GeTensorDesc shape_desc = x_desc.Clone();
+  shape_desc.SetDataType(ge::DT_INT32);
+  shape_desc.SetOriginDataType(ge::DT_INT32);
+  shape_desc.SetShape(ge::GeShape({(int64_t)dims.size()}));
+  shape_desc.SetOriginShape(ge::GeShape({(int64_t)dims.size()}));
+  reshape_desc->AddInputDesc("shape", shape_desc);
+  ge::GeTensorPtr shape_tensor_ptr = nullptr;
+  FUSION_PASS_MAKE_SHARED((shape_tensor_ptr = std::make_shared<ge::GeTensor>(
+                               shape_desc, reinterpret_cast<uint8_t *>(dims.data()), dims.size() * sizeof(int64_t))),
+                          return FAILED);
+  ge::OpDescPtr shapeDesc = ge::OpDescUtils::CreateConstOp(shape_tensor_ptr);
+
+  reshape_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(reshape_node == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode reshape_node is nullptr"),
+                    return FAILED);
+
+  const_node = graph.AddNode(shapeDesc);
+  FUSION_PASS_CHECK(const_node == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode const_node is nullptr"),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0),
+                                            reshape_node->GetInDataAnchor(1)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add edge between reshape and const"),
                     return FAILED);
   return SUCCESS;
 }
 
-Status ASoftmaxFusionPass::CreateConstNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node, ge::NodePtr& new_node) {
-  auto fused_desc = fused_node->GetOpDesc();
-  std::shared_ptr<ge::OpDesc> const_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    (const_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_const", "Const")),
-    return FAILED);
-
-  FUSION_PASS_CHECK(const_desc == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
-                    return FAILED);
-  auto dims = fused_desc->GetOutputDesc(0).GetShape().GetDims();
-  int len = dims.size();
-  ge::GeShape shape({len});
-  ge::GeTensorDesc desc(shape, ge::FORMAT_ND, ge::DT_INT64);
-  ge::GeTensorPtr tensor_ptr = nullptr;
-  FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(dims.data()), len * sizeof(int64_t))),
-                          tensor_ptr = nullptr;
-                          return PARAM_INVALID);
-  ge::AttrUtils::SetTensor(const_desc, "value", tensor_ptr);
-  const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
-  new_node = graph.AddNode(const_desc);
-  FUSION_PASS_CHECK(new_node == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateConstNode node"),
-                    return FAILED);
-  return SUCCESS;
-}
 REGISTER_PASS("ASoftmaxFusionPass", BUILT_IN_GRAPH_PASS, ASoftmaxFusionPass);
 }  // fe

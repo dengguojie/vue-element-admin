@@ -27,7 +27,7 @@ Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest, std::vec
       v_axis.push_back(attr.i());
     }
   }
-  
+
   return SUCCESS;
 }
 
@@ -37,6 +37,9 @@ Status ParseParamsSoftmaxV11(const Message *op_src, ge::Operator &op_dest) {
   if (ret != SUCCESS) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "acquire attr from NodeProto failed.");
     return FAILED;
+  }
+  if (v_axis.empty()) {
+    v_axis.push_back(1);
   }
   op_dest.SetAttr("axes", v_axis);
   op_dest.SetAttr("need_fusion", 1);
