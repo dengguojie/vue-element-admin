@@ -98,8 +98,6 @@ set(_optiling_files
   reflection_pad_v3.cc
   prelu.cc
   reverse.cc
-  reduce_tiling.cc
-  reduce_tiling_v2.cc
   reduce_tiling_v3.cc
   norm.cc
   resize_common.cc
