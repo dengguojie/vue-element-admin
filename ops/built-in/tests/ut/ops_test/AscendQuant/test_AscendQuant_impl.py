@@ -136,18 +136,20 @@ ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dt
                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
                                               1.0, 0.0, False, "Floor"],
                                    "calc_expect_func": calc_expect_func,
+                                   "case_name": "ascend_quant_static_precision_case_001",
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
                                               1.0, 0.0, False, "Trunc"],
                                    "calc_expect_func": calc_expect_func,
+                                   "case_name": "ascend_quant_static_precision_case_002",
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 ut_case.add_precision_case("all", {"params": [{"shape": (2,1,1,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,1,1,16,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
                                               {"shape": (2,1,1,16,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (2,1,1,16,32),"ori_format": "NC1HWC0", "param_type": "output"},
                                               1.0, 0.0, False, "Round"],
                                    "calc_expect_func": calc_expect_func,
+                                   "case_name": "ascend_quant_static_precision_case_003",
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-
