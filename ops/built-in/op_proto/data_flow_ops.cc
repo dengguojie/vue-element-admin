@@ -2406,13 +2406,7 @@ int32_t Split(const std::string &s, std::vector<std::string> &result, const char
   return 0;
 }
 
-IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
-  Shape unused_shape;
-  if (WithRank(op.GetInputDesc("x"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input x must be 0-D");
-    return GRAPH_FAILED;
-  }
-
+graphStatus DynamicGetNextCommonInfer(Operator &op) {
   std::vector<ge::DataType> output_types;
   if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Op get attr output_types failed");
@@ -2564,11 +2558,25 @@ IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
       return GRAPH_FAILED;
     }
   }
-
+ 
   return GRAPH_SUCCESS;
 }
 
+
+IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
+  Shape unused_shape;
+  if (WithRank(op.GetInputDesc("x"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input x must be 0-D");
+    return GRAPH_FAILED;
+  }
+  return DynamicGetNextCommonInfer(op);
+}
 INFER_FUNC_REG(DynamicGetNext, DynamicGetNextInfer);
+
+IMPLEMT_INFERFUNC(DynamicGetNextV2, DynamicGetNextV2Infer) {
+  return DynamicGetNextCommonInfer(op);
+}
+INFER_FUNC_REG(DynamicGetNextV2, DynamicGetNextV2Infer);
 
 IMPLEMT_COMMON_INFERFUNC(FakeQueueInferShape) {
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);

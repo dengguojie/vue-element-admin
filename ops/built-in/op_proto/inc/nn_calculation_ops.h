@@ -731,8 +731,8 @@ REG_OP(Conv2DBackpropFilter)
  * Warning: THIS FUNCTION IS DEPRECATED. Please use Conv2DBackpropFilter instead.
 */
 REG_OP(Conv2DBackpropFilterD)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))
-    .INPUT(out_backprop, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(out_backprop, TensorType({DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT}))
     .REQUIRED_ATTR(filter_size, ListInt)
     .REQUIRED_ATTR(strides, ListInt)

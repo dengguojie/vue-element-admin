@@ -33,4 +33,11 @@ REGISTER_CUSTOM_OP("DynamicGetNext")
     .OriginOpType("DynamicGetNext")
     .ParseParamsFn(AutoMappingFnDynamicGetNext)
     .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("DynamicGetNextV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DynamicGetNextV2")
+    .ParseParamsFn(AutoMappingFnDynamicGetNext)
+    .ImplyType(ImplyType::AI_CPU);
+
 }  // namespace domi
