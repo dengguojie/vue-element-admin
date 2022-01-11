@@ -61,7 +61,7 @@ vector<FusionPattern*> RNNFusionPass::DefinePatterns() {
   return patterns;
 }
 
-ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num_output,
+ge::GeTensorDesc RNNFusionPass::ProcessStatic(const ge::NodePtr& fusedNode, const int32_t num_output,
                                               ge::NodePtr& innerproductNode,
                                               ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                               bool& failStatus) {
@@ -155,8 +155,8 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
   return outputTensorDesc;
 }
 
-vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::ComputeGraph& graph,
-                                                  ge::GeTensorDesc& outInnerProductTensorDesc,
+vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(const ge::NodePtr& fusedNode, ge::ComputeGraph& graph,
+                                                  const ge::GeTensorDesc& outInnerProductTensorDesc,
                                                   vector<ge::NodePtr>& newNodes, bool& failStatus,
                                                   const bool has_static) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProcessRnnCell:RNN->BasicRNNCell.");

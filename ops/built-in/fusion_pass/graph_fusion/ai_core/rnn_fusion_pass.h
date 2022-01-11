@@ -31,10 +31,10 @@ class RNNFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  ge::GeTensorDesc ProcessStatic(ge::NodePtr fusedNode, int32_t num_output, ge::NodePtr& innerproductNode,
+  ge::GeTensorDesc ProcessStatic(const ge::NodePtr& fusedNode, const int32_t num_output, ge::NodePtr& innerproductNode,
                                  ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
-  vector<ge::NodePtr> ProcessRnnCell(ge::NodePtr fusedNode, ge::ComputeGraph& graph,
-                                     ge::GeTensorDesc& outInnerProductTensorDesc, vector<ge::NodePtr>& newNodes,
+  vector<ge::NodePtr> ProcessRnnCell(const ge::NodePtr& fusedNode, ge::ComputeGraph& graph,
+                                     const ge::GeTensorDesc& outInnerProductTensorDesc, vector<ge::NodePtr>& newNodes,
                                      bool& failStatus, const bool has_static);
   const string FUSED_OP_TYPE = "SplitVD_BasicRNNCell_ConcatD";
 };

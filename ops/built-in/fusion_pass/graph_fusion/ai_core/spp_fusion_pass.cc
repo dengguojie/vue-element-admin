@@ -49,7 +49,7 @@ static const string PATTERN_SPP = "SPP";
 static const char* SPP = "SPP";
 
 Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc,
-                                 int64_t hyramidLevel, int64_t poolMethod) {
+                                 const int64_t hyramidLevel, const int64_t poolMethod) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make pooling layer");
   vector<int64_t> shapeDims = inputDesc.GetOriginShape().GetDims();
   if (shapeDims.empty() || shapeDims.size() < INT_NUM_FOUR) {
@@ -153,7 +153,8 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
   return SUCCESS;
 }
 
-Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPtr> fatherOp, int64_t concatDims) {
+Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, const vector<ge::OpDescPtr>& fatherOp,
+                                const int64_t concatDims) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make concat layer");
   uint64_t bottomSize = fatherOp.size();
   int64_t batchNum = 0;

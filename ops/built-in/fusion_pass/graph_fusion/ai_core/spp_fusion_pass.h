@@ -30,9 +30,9 @@ class SPPPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  Status MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPtr> fatherOp, int64_t concatDims);
-  Status MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc, int64_t hyramidLevel,
-                          int64_t poolMethod);
+  Status MakeConcatLayer(ge::OpDescPtr& concatOpDesc, const vector<ge::OpDescPtr>& fatherOp, const int64_t concatDims);
+  Status MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTensorDesc& inputDesc, const int64_t hyramidLevel,
+                          const int64_t poolMethod);
   const string FUSED_OP_TYPE = "SppPooling_ConcatD";
 };
 }  // namespace fe
