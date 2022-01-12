@@ -25,8 +25,8 @@ ut_case = OpUT("ProdVirialSeA", "impl.dynamic.prod_virial_se_a",
                "prod_virial_se_a")
 
 
-def simple_water_test(test_args, nframes: int, nloc: int, n_a_sel: int, n_r_sel: int, nall: int, natomsSize: int,
-                      split_count=1, split_index=0):
+def simple_test(test_args, nframes: int, nloc: int, n_a_sel: int, n_r_sel: int, nall: int, natoms_size: int,
+                split_count=1, split_index=0):
     nnei = n_a_sel + n_r_sel
 
     set_current_compile_soc_info("Ascend710")
@@ -43,14 +43,14 @@ def simple_water_test(test_args, nframes: int, nloc: int, n_a_sel: int, n_r_sel:
                          {"shape": (nframes, nloc * nnei), "dtype": "int32", "format": "ND",
                           "ori_shape": (nframes, nloc * nnei), "ori_format": "ND",
                           "range": ((nframes, nframes), (nloc * nnei, nloc * nnei))},
-                         {"shape": (natomsSize,), "dtype": "int32", "format": "ND",
-                          "ori_shape": (natomsSize,), "ori_format": "ND", "range": ((natomsSize, natomsSize))},
+                         {"shape": (natoms_size,), "dtype": "int32", "format": "ND",
+                          "ori_shape": (natoms_size,), "ori_format": "ND", "range": ((natoms_size, natoms_size))},
                          {"shape": (nframes, 9), "dtype": "float32", "format": "ND",
                           "ori_shape": (nframes, 9), "ori_format": "ND", "range": ((nframes, nframes), (9, 9))},
                          {"shape": (nframes, nall * 9), "dtype": "float32", "format": "ND",
                           "ori_shape": (nframes, nall * 9), "ori_format": "ND",
                           "range": ((nframes, nframes), (nall * 9, nall * 9))},
-                         nnei, 0, split_count, split_index)
+                         n_a_sel, n_r_sel, split_count, split_index)
     set_current_compile_soc_info(test_args)
 
 
@@ -60,14 +60,28 @@ def test_prod_virial_se_a_case001(test_args):
     n_a_sel = 138
     n_r_sel = 0
     nall = 28328
-    natomsSize = 4
+    natoms_size = 4
 
-    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natomsSize)
-    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natomsSize, 2, 0)
-    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natomsSize, 2, 1)
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
+
+
+def test_prod_virial_se_a_case002(test_args):
+    nframes = 1
+    nloc = 13500
+    n_a_sel = 138
+    n_r_sel = 0
+    nall = 30000
+    natoms_size = 4
+
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
+    simple_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
 
 
 ut_case.add_cust_test_func(test_func=test_prod_virial_se_a_case001)
+ut_case.add_cust_test_func(test_func=test_prod_virial_se_a_case002)
 
 if __name__ == '__main__':
     ut_case.run("Ascend710")

@@ -499,7 +499,7 @@ def gen_adc(query, code_book, centroids, bucket_list, adc_tables, distance_type=
         The shape is like (ns,). The value of ns in range(start=1, end=nc, step=1).
     adc_tables : dict
         shape and dtype of output data adc_tables
-        The shape is like (ns, ksub, dsub). Values of dimensions are the same as input tensors' dictionary.
+        The shape is like (ns, M, ksub). Values of dimensions are the same as input tensors' dictionary.
     distance_type: string
         The distance type to compute. Value is "l2sqr" or "inner_product".
     kernel_name : str

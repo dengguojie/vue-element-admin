@@ -127,13 +127,27 @@ class ProdVirialSeA:
         (net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, j_idx0, j_idx1, j_idx2, j_idx3) = ub_tuple
 
         with self.tik_inst.if_scope(nnei_ub < ProdVirialSeA.NNEI_UB):
+            self.tik_inst.data_move(drv_ub, self.net_deriv_gm[nei_start * 4], 0, 1, (nnei_ub * 4 + 7) // 8, 0, 0)
             self.tik_inst.vec_dup(64, trans_ub, 0, 16, 8)
-        self.tik_inst.data_move(trans_ub, self.net_deriv_gm[nei_start * 4], 0, 1, 128, 0, 0)
+            with self.tik_inst.if_scope(nnei_ub * 4 // 64 > 0):
+                self.tik_inst.vadds(64, trans_ub, drv_ub, 0, nnei_ub * 4 // 64, 1, 1, 8, 8)
+            with self.tik_inst.if_scope(nnei_ub * 4 % 64 > 0):
+                self.tik_inst.vadds(nnei_ub * 4 % 64, trans_ub[nnei_ub * 4 - nnei_ub * 4 % 64],
+                                    drv_ub[nnei_ub * 4 - nnei_ub * 4 % 64], 0, 1, 1, 1, 8, 8)
+        with self.tik_inst.else_scope():
+            self.tik_inst.data_move(trans_ub, self.net_deriv_gm[nei_start * 4], 0, 1, 128, 0, 0)
         self.tik_inst.v4dtrans(False, net_ub, trans_ub, ProdVirialSeA.NNEI_UB, 4)        # net_deriv -> (1, 4, 256)
 
         with self.tik_inst.if_scope(nnei_ub < ProdVirialSeA.NNEI_UB):
+            self.tik_inst.data_move(drv_ub, self.rij_gm[nei_start * 3], 0, 1, (nnei_ub * 3 + 7) // 8, 0, 0)
             self.tik_inst.vec_dup(64, trans_ub, 0, 12, 8)
-        self.tik_inst.data_move(trans_ub, self.rij_gm[nei_start * 3], 0, 1, 96, 0, 0)
+            with self.tik_inst.if_scope(nnei_ub * 3 // 64 > 0):
+                self.tik_inst.vadds(64, trans_ub, drv_ub, 0, nnei_ub * 3 // 64, 1, 1, 8, 8)
+            with self.tik_inst.if_scope(nnei_ub * 3 % 64 > 0):
+                self.tik_inst.vadds(nnei_ub * 3 % 64, trans_ub[nnei_ub * 3 - nnei_ub * 3 % 64],
+                                    drv_ub[nnei_ub * 3 - nnei_ub * 3 % 64], 0, 1, 1, 1, 8, 8)
+        with self.tik_inst.else_scope():
+            self.tik_inst.data_move(trans_ub, self.rij_gm[nei_start * 3], 0, 1, 96, 0, 0)
         self.tik_inst.v4dtrans(False, drv_ub, trans_ub, ProdVirialSeA.NNEI_UB, 3)        # rij -> (3, 1, 256)
 
         with self.tik_inst.for_range(0, 3, name="rij_row") as rij_row:
@@ -144,8 +158,15 @@ class ProdVirialSeA:
                                    4, 1, 1, 1, 8, 8, 8)                                  # tmpv -> (1, 3, 4, 256)
 
         with self.tik_inst.if_scope(nnei_ub < ProdVirialSeA.NNEI_UB):
+            self.tik_inst.data_move(drv_ub, self.in_deriv_gm[nei_start * 12], 0, 1, (nnei_ub * 12 + 7) // 8, 0, 0)
             self.tik_inst.vec_dup(64, tmpv_ub, 0, 48, 8)
-        self.tik_inst.data_move(tmpv_ub, self.in_deriv_gm[nei_start * 4 * 3], 0, 1, 384, 0, 0)
+            with self.tik_inst.if_scope(nnei_ub * 12 // 64 > 0):
+                self.tik_inst.vadds(64, tmpv_ub, drv_ub, 0, nnei_ub * 12 // 64, 1, 1, 8, 8)
+            with self.tik_inst.if_scope(nnei_ub * 12 % 64 > 0):
+                self.tik_inst.vadds(nnei_ub * 12 % 64, tmpv_ub[nnei_ub * 12 - nnei_ub * 12 % 64],
+                                    drv_ub[nnei_ub * 12 - nnei_ub * 12 % 64], 0, 1, 1, 1, 8, 8)
+        with self.tik_inst.else_scope():
+            self.tik_inst.data_move(tmpv_ub, self.in_deriv_gm[nei_start * 12], 0, 1, 384, 0, 0)
         self.tik_inst.v4dtrans(False, drv_ub, tmpv_ub, ProdVirialSeA.NNEI_UB, 12)        # in_deriv -> (4, 3, 256)
 
         with self.tik_inst.for_range(0, 3, name="mul_row") as mul_row:
@@ -181,57 +202,47 @@ class ProdVirialSeA:
         with self.tik_inst.for_range(0, 64, name="jj") as jj:
             with self.tik_inst.if_scope(jj * 4 < nnei_ub):
                 j_idx0.set_as(nlist_ub[jj * 4])
-                with self.tik_inst.if_scope(j_idx0 >= kk * self.nall * 9):
+                with self.tik_inst.if_scope(j_idx0 > kk * self.nall * 9 - 1):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx0], tmpv_ub[jj * 64], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 1 < nnei_ub):
                 j_idx1.set_as(nlist_ub[jj * 4 + 1])
-                with self.tik_inst.if_scope(j_idx1 >= kk * self.nall * 9):
+                with self.tik_inst.if_scope(j_idx1 > kk * self.nall * 9 - 1):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx1], tmpv_ub[jj * 64 + 16], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 2 < nnei_ub):
                 j_idx2.set_as(nlist_ub[jj * 4 + 2])
-                with self.tik_inst.if_scope(j_idx2 >= kk * self.nall * 9):
+                with self.tik_inst.if_scope(j_idx2 > kk * self.nall * 9 - 1):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx2], tmpv_ub[jj * 64 + 32], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 3 < nnei_ub):
                 j_idx3.set_as(nlist_ub[jj * 4 + 3])
-                with self.tik_inst.if_scope(j_idx3 >= kk * self.nall * 9):
+                with self.tik_inst.if_scope(j_idx3 > kk * self.nall * 9 - 1):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx3], tmpv_ub[jj * 64 + 48], 0, 1, 2, 0, 0)
         self.tik_inst.set_atomic_add(0)
 
-    def _compute_simple_fp32(self, nnei_start, nnei_end):
+    def _compute_fp32_with_tail(self, ub_tuple, nn):
         """
-        compute with tail
+        compute fp32 with tail
         """
-        ub_tuple = self._init_ub_data_fp32()
-        with self.tik_inst.if_scope(self.nnei_per_frame % ProdVirialSeA.NNEI_UB == 0):
-            kk_scalar = self.tik_inst.Scalar(dtype="int32")
-            with self.tik_inst.for_range(nnei_start, nnei_end, name="nn") as nn:
-                kk_scalar.set_as(nn * ProdVirialSeA.NNEI_UB // self.nnei_per_frame)
-                self._compute_virial_fp32(ub_tuple, kk_scalar, nn * ProdVirialSeA.NNEI_UB, ProdVirialSeA.NNEI_UB)
-        with self.tik_inst.elif_scope(self.nnei_per_frame > ProdVirialSeA.NNEI_UB):
-            pre_kk_scalar = self.tik_inst.Scalar(dtype="int32")
-            post_kk_scalar = self.tik_inst.Scalar(dtype="int32")
-            last_frame_tail = self.tik_inst.Scalar(dtype="int32")
-            next_frame_head = self.tik_inst.Scalar(dtype="int32")
-            with self.tik_inst.for_range(nnei_start, nnei_end, name="nn") as nn:
-                pre_kk_scalar.set_as(nn * ProdVirialSeA.NNEI_UB // self.nnei_per_frame)
-                post_kk_scalar.set_as((nn * ProdVirialSeA.NNEI_UB + ProdVirialSeA.NNEI_UB - 1) // self.nnei_per_frame)
-                with self.tik_inst.if_scope(pre_kk_scalar == post_kk_scalar):
-                    self._compute_virial_fp32(ub_tuple, pre_kk_scalar, nn * ProdVirialSeA.NNEI_UB,
-                                              ProdVirialSeA.NNEI_UB)
-                with self.tik_inst.else_scope():
-                    last_frame_tail.set_as(post_kk_scalar * self.nnei_per_frame - nn * ProdVirialSeA.NNEI_UB)
-                    self._compute_virial_fp32(ub_tuple, pre_kk_scalar, nn * ProdVirialSeA.NNEI_UB, last_frame_tail)
+        pre_kk_scalar = self.tik_inst.Scalar(dtype="int64")
+        post_kk_scalar = self.tik_inst.Scalar(dtype="int64")
+        last_frame_tail = self.tik_inst.Scalar(dtype="int64")
+        next_frame_head = self.tik_inst.Scalar(dtype="int64")
 
-                    with self.tik_inst.if_scope(post_kk_scalar < self.nframes):
-                        next_frame_head.set_as(ProdVirialSeA.NNEI_UB - last_frame_tail)
-                        self._compute_virial_fp32(ub_tuple, post_kk_scalar, post_kk_scalar * self.nnei_per_frame,
-                                                  next_frame_head)
+        pre_kk_scalar.set_as(nn * ProdVirialSeA.NNEI_UB // self.nnei_per_frame)
+        post_kk_scalar.set_as((nn * ProdVirialSeA.NNEI_UB + ProdVirialSeA.NNEI_UB - 1) // self.nnei_per_frame)
+        with self.tik_inst.if_scope(pre_kk_scalar == post_kk_scalar):
+            self._compute_virial_fp32(ub_tuple, pre_kk_scalar, nn * ProdVirialSeA.NNEI_UB,
+                                      ProdVirialSeA.NNEI_UB)
         with self.tik_inst.else_scope():
-            with self.tik_inst.for_range(nnei_start, nnei_end, name="kk") as kk:
-                self._compute_virial_fp32(ub_tuple, kk, kk * self.nnei_per_frame, self.nnei_per_frame)
+            last_frame_tail.set_as(post_kk_scalar * self.nnei_per_frame - nn * ProdVirialSeA.NNEI_UB)
+            self._compute_virial_fp32(ub_tuple, pre_kk_scalar, nn * ProdVirialSeA.NNEI_UB, last_frame_tail)
+
+            with self.tik_inst.if_scope(post_kk_scalar < self.nframes):
+                next_frame_head.set_as(ProdVirialSeA.NNEI_UB - last_frame_tail)
+                self._compute_virial_fp32(ub_tuple, post_kk_scalar, post_kk_scalar * self.nnei_per_frame,
+                                          next_frame_head)
 
     def _compute_fp32(self):
         """
@@ -243,24 +254,42 @@ class ProdVirialSeA:
             self.tik_inst.data_move(self.tiling_ub, self.tiling_gm, 0, 1, constant.SIZE_SIXTEEN * 8 // 32, 0, 0)
             self._tiling_args()
 
-            nnei_start = self.tik_inst.Scalar(dtype="int32")
-            nnei_end = self.tik_inst.Scalar(dtype="int32")
+            nnei_start = self.tik_inst.Scalar(dtype="int64")
+            nnei_end = self.tik_inst.Scalar(dtype="int64")
             with self.tik_inst.if_scope(block_i < self.pre_core_num):
                 nnei_start.set_as(self.rep_times_offset + block_i * self.nei_rep_times_pre_core)
-                nnei_end.set_as(nnei_start +  self.nei_rep_times_pre_core)
+                nnei_end.set_as(nnei_start + self.nei_rep_times_pre_core)
             with self.tik_inst.else_scope():
                 nnei_start.set_as(self.rep_times_offset + self.pre_core_num + block_i * self.nei_rep_times_post_core)
                 nnei_end.set_as(nnei_start + self.nei_rep_times_post_core)
 
             with self.tik_inst.if_scope(tik.all(self.nnei_per_frame % ProdVirialSeA.NNEI_UB == 0,
-                                                self.nei_rep_times >= self.ai_core_num * 2)):
+                                                self.nei_rep_times > self.ai_core_num * 2 - 1)):
                 with self.tik_inst.for_range(nnei_start, nnei_end, thread_num=2) as nn:
                     ub_tuple = self._init_ub_data_fp32()
-                    kk_scalar = self.tik_inst.Scalar(dtype="int32")
+                    kk_scalar = self.tik_inst.Scalar(dtype="int64")
                     kk_scalar.set_as(nn * ProdVirialSeA.NNEI_UB // self.nnei_per_frame)
-                    self._compute_virial_fp32(ub_tuple, kk_scalar, nn * ProdVirialSeA.NNEI_UB, ProdVirialSeA.NNEI_UB)
+                    self._compute_virial_fp32(ub_tuple, kk_scalar, nn * ProdVirialSeA.NNEI_UB,
+                                              ProdVirialSeA.NNEI_UB)
+            with self.tik_inst.elif_scope(tik.all(self.nnei_per_frame > ProdVirialSeA.NNEI_UB,
+                                                  self.nei_rep_times > self.ai_core_num * 2 - 1)):
+                with self.tik_inst.for_range(nnei_start, nnei_end, thread_num=2) as nn:
+                    ub_tuple = self._init_ub_data_fp32()
+                    self._compute_fp32_with_tail(ub_tuple, nn)
             with self.tik_inst.else_scope():
-                self._compute_simple_fp32(nnei_start, nnei_end)
+                ub_tuple = self._init_ub_data_fp32()
+                with self.tik_inst.if_scope(self.nnei_per_frame % ProdVirialSeA.NNEI_UB == 0):
+                    kk_scalar = self.tik_inst.Scalar(dtype="int64")
+                    with self.tik_inst.for_range(nnei_start, nnei_end, name="nn") as nn:
+                        kk_scalar.set_as(nn * ProdVirialSeA.NNEI_UB // self.nnei_per_frame)
+                        self._compute_virial_fp32(ub_tuple, kk_scalar, nn * ProdVirialSeA.NNEI_UB,
+                                                  ProdVirialSeA.NNEI_UB)
+                with self.tik_inst.elif_scope(self.nnei_per_frame > ProdVirialSeA.NNEI_UB):
+                    with self.tik_inst.for_range(nnei_start, nnei_end, name="nn") as nn:
+                        self._compute_fp32_with_tail(ub_tuple, nn)
+                with self.tik_inst.else_scope():
+                    with self.tik_inst.for_range(nnei_start, nnei_end, name="kk") as kk:
+                        self._compute_virial_fp32(ub_tuple, kk, kk * self.nnei_per_frame, self.nnei_per_frame)
 
     def compute(self):
         """
@@ -284,25 +313,25 @@ class ProdVirialSeA:
 def _check_params(net_deriv, in_deriv, rij, nlist, natoms, virial, atom_virial, n_a_sel, n_r_sel, split_count,
                   split_index, kernel_name):
     net_deriv_dtype = net_deriv.get("dtype").lower()
-    para_check.check_dtype(net_deriv_dtype, ("float32", ), param_name="net_deriv")
+    para_check.check_dtype(net_deriv_dtype, ("float32",), param_name="net_deriv")
 
     in_deriv_dtype = in_deriv.get("dtype").lower()
-    para_check.check_dtype(in_deriv_dtype, ("float32", ), param_name="in_deriv")
+    para_check.check_dtype(in_deriv_dtype, ("float32",), param_name="in_deriv")
 
     rij_dtype = rij.get("dtype").lower()
-    para_check.check_dtype(rij_dtype, ("float32", ), param_name="rij")
+    para_check.check_dtype(rij_dtype, ("float32",), param_name="rij")
 
     nlist_dtype = nlist.get("dtype").lower()
-    para_check.check_dtype(nlist_dtype, ("int32", ), param_name="nlist")
+    para_check.check_dtype(nlist_dtype, ("int32",), param_name="nlist")
 
     natoms_dtype = natoms.get("dtype").lower()
-    para_check.check_dtype(natoms_dtype, ("int32", ), param_name="natoms")
+    para_check.check_dtype(natoms_dtype, ("int32",), param_name="natoms")
 
     virial_dtype = virial.get("dtype").lower()
-    para_check.check_dtype(virial_dtype, ("float32", ), param_name="virial")
+    para_check.check_dtype(virial_dtype, ("float32",), param_name="virial")
 
     atom_virial_dtype = atom_virial.get("dtype").lower()
-    para_check.check_dtype(atom_virial_dtype, ("float32", ), param_name="atom_virial")
+    para_check.check_dtype(atom_virial_dtype, ("float32",), param_name="atom_virial")
 
     if any((net_deriv_dtype != in_deriv_dtype, net_deriv_dtype != rij_dtype)):
         rule = "Data type of {net_deriv, in_deriv, rij} is not match."

@@ -5,8 +5,6 @@
       {
         "shape": [32],
         "format": "ND",
-        "ori_shape": [32],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "query",
         "type": "float16"
@@ -14,8 +12,6 @@
       {
         "shape": [16,256,2],
         "format": "ND",
-        "ori_shape": [16,256,2],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "code_book",
         "type": "float16"
@@ -23,8 +19,6 @@
       {
         "shape": [1000000,32],
         "format": "ND",
-        "ori_shape": [1000000,32],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "centroids",
         "type": "float16"
@@ -46,8 +40,6 @@
         "typical_shape": [10, 16, 256],
         "shape_range": [[0, 300]],
         "format": "ND",
-        "ori_shape": [10, 16, 256],
-        "ori_format": "ND",
         "param_type": "output",
         "name": "adc_tables",
         "type": "float16"
@@ -68,8 +60,6 @@
       {
         "shape": [32],
         "format": "ND",
-        "ori_shape": [32],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "query",
         "type": "float16"
@@ -77,8 +67,6 @@
       {
         "shape": [16,256,2],
         "format": "ND",
-        "ori_shape": [16,256,2],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "code_book",
         "type": "float16"
@@ -86,8 +74,6 @@
       {
         "shape": [1000000,32],
         "format": "ND",
-        "ori_shape": [1000000,32],
-        "ori_format": "ND",
         "param_type": "input",
         "name": "centroids",
         "type": "float16"
@@ -109,8 +95,6 @@
         "typical_shape": [10, 16, 256],
         "shape_range": [[0, 300]],
         "format": "ND",
-        "ori_shape": [10, 16, 256],
-        "ori_format": "ND",
         "param_type": "output",
         "name": "adc_tables",
         "type": "float16"
