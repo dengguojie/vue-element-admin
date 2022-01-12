@@ -15,6 +15,7 @@
 """
 avg_pool_v2
 """
+import json
 import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
@@ -22,8 +23,6 @@ import te.platform as tbe_platform
 from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
-import json
-from tbe.common.utils import shape_util
 from impl.util import util_conv2d
 
 
@@ -637,7 +636,7 @@ def get_op_support_info(x, filter, bias, y, ksize, strides, padding="CALCULATED"
         """
         when glbal_pooling, remove corresponding H/W split info
         """
-        temp_global_pooling= []
+        temp_global_pooling = []
         for _, item in enumerate(temp_info):
             if item["inputList"][0]["axis"][0] == 0:
                 temp_global_pooling.append(item)
@@ -658,21 +657,21 @@ def get_op_support_info(x, filter, bias, y, ksize, strides, padding="CALCULATED"
             if -1 in input_shape or input_shape == [-2]:
                 dynamic_flag = True
         if dynamic_flag:
-            slice_info["_op_slice_info"]["splitMaps"].clear()
+            slice_info["_op_slice_info"]["splitMaps"] = []
 
 
     bias_idx = 2
     bias = None
     slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
 
-    temp_info = slice_info['_op_slice_info']["splitMaps"]
-    remove_cout_split_info(temp_info, slice_info)
-    check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling)
+    if slice_info.get('_op_slice_info'):
+        if slice_info['_op_slice_info'].get("splitMaps"):
+            temp_info = slice_info['_op_slice_info']["splitMaps"]
+            remove_cout_split_info(temp_info, slice_info)
+            check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling)
 
-    format_x = x.get("format")
-    if format_x != "NC1HWC0":
-        slice_info["_op_slice_info"]["splitMaps"].clear()
-
-    check_dynamic(x, slice_info)
-        
+            format_x = x.get("format")
+            if format_x != "NC1HWC0":
+                slice_info["_op_slice_info"]["splitMaps"] = []
+            check_dynamic(x, slice_info)
     return json.dumps(slice_info)

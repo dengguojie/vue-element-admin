@@ -2310,6 +2310,8 @@ static void calculate_pad(string padding, int64_t input_h, int64_t input_w, int6
 {
     if ((pads.size() < 4) || (dilations.size() < 4)) {
         OP_LOGE("Get pad_vec or  dilations failed.");
+    } else if ((stride_h == 0) || (stride_w == 0)) {
+        OP_LOGE("Divisor stride_h or  stride_w is 0.");
     } else {
         OP_LOGD("calculate_pad:", "stride_h:%d stride_w:%d ksize_h:%d ksize_w:%d\n", stride_h, stride_w, ksize_h, ksize_w);
         int64_t output_h = 0;
