@@ -2400,13 +2400,13 @@ REG_OP(DynamicGetNext)
 
 /**
 @brief DynamicGetNextV2, dynamic get next data
-*@par Inputs:
+* @par Inputs:
 *x: the iterator, all types are available
-*@par Outputs:
-*y: the date in iterator, all types are available
-*@par Attributes:
-*output_types: types of all outputs
-*output_shapes: shapes of all outputs
+* @par Outputs:
+* y: the date in iterator, all types are available
+* @par Attributes:
+* output_types: types of all outputs
+* output_shapes: shapes of all outputs
 *_dynamic_graph_execute_mode: dynamic graph execution mode,
 value is one of lazy_recompile and dynamic_execute
 *_getnext_inputs_shape_range: shape ranges of outputs,

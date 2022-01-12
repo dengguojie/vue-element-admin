@@ -39,5 +39,4 @@ REGISTER_CUSTOM_OP("DynamicGetNextV2")
     .OriginOpType("DynamicGetNextV2")
     .ParseParamsFn(AutoMappingFnDynamicGetNext)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi
