@@ -1,0 +1,589 @@
+[
+  {
+    "case_name": "Perf_512",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 64 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 64 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 64 ]
+      }
+    ]
+  }
+  
+  
+  ,
+
+
+
+  {
+    "case_name": "Perf_1K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 128 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1,128 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 128 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_4K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 512 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 512 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 512 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_8K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_16K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 2, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 2, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 2, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_32K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 4, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 4,1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 4, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_64K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 8, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 8, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 8, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_128K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 16, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 16, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 16, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_256K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 32, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 32, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 32, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_512K",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 64, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 64, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 64, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_1M",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 128, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 128, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 128, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_2M",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 256,1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 256, 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 256, 1024 ]
+      }
+    ]
+  }
+
+  ,
+
+  {
+    "case_name": "Perf_8M",
+    "op": "Minimum",
+    "input_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 , 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 , 1024 ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": [ "ND" ],
+        "type": [ "int64", "double" ],
+        "shape": [ 1, 1024 , 1024 ]
+      }
+    ]
+  }
+
+  
+]

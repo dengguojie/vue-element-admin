@@ -56,10 +56,10 @@ set(local_kernels_src_files
     kernels/normalized/logsoftmaxv2.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
-    kernels/normalized/nms_with_mask.cc
     kernels/normalized/mul.cc
     kernels/normalized/multinomial_alias_draw.cc
     kernels/normalized/neg.cc
+    kernels/normalized/nms_with_mask.cc
     kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/non_zero_with_value_shape.cc
     kernels/normalized/not_equal.cc
@@ -112,6 +112,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
         kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/lu.cc
+        kernels/normalized/custom/research/minimum.cc
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/sigmoid_grad.cc
         kernels/normalized/custom/research/svd.cc
