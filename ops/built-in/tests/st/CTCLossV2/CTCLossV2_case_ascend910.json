@@ -108,11 +108,16 @@
         "name": "zero_infinity",
         "type": "bool",
         "value": false
+      },
+      {
+        "name": "label_max",
+        "type": "int",
+        "value": 0
       }
     ],
     "case_name": "test_CTCLossV2_000"
   },
-    {
+  {
     "op": "CTCLossV2",
     "input_desc": [
       {
@@ -221,8 +226,135 @@
         "name": "zero_infinity",
         "type": "bool",
         "value": false
+      },
+      {
+        "name": "label_max",
+        "type": "int",
+        "value": 0
       }
     ],
     "case_name": "test_CTCLossV2_001"
+  },
+  {
+    "op": "CTCLossV2",
+    "input_desc": [
+      {
+        "ori_shape": [
+          5,
+          2,
+          3
+        ],
+        "shape": [
+          5,
+          2,
+          3
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "log_probs",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          7
+        ],
+        "shape": [
+          7
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "targets",
+        "type": "int32",
+        "value": [1,2,1,2,1,2,1],
+        "is_const": true
+      },
+      {
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_lengths",
+        "type": "int32",
+        "value": [5,5],
+        "is_const": true
+      },
+      {
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "input",
+        "name": "target_lengths",
+        "type": "int32",
+        "value": [3,4],
+        "is_const": true
+      }
+    ],
+    "output_desc": [
+		{
+        "ori_shape": [
+          2
+        ],
+        "shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "output",
+        "name": "neg_log_likelihood",
+        "type": "float"
+      },
+      {
+        "ori_shape": [
+          2,
+          5,
+          9
+        ],
+        "shape": [
+          2,
+          5,
+          9
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "param_type": "output",
+        "name": "log_alpha",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "blank",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      },
+      {
+        "name": "zero_infinity",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "label_max",
+        "type": "int",
+        "value": 4
+      }
+    ],
+    "case_name": "test_CTCLossV2_002"
   }
 ]

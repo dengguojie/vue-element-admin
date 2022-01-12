@@ -54,17 +54,23 @@ class CTCLossV2Grad():
     Function: Class CTCLossV2Grad.
     Modify : 2021-5-26
     """
-    def __init__(self, log_probs, targets, blank, kernel_name):
+    def __init__(self, log_probs, targets, blank, label_max, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.kernel_name = kernel_name
-        params = self.paras_check(log_probs, targets, kernel_name)
+        self.mode_align = True if label_max > 0 else False
+        params = self.paras_check(log_probs, targets, self.mode_align, kernel_name)
         self.blank = blank
         self.T = params[0]
         self.N = params[1]
         self.C = params[2]
-        self.S = params[3]
+        if self.mode_align:
+            self.sum_targets = params[3]
+            self.S = label_max
+        else:
+            self.S = params[3]
         self.S_BLOCK = (self.S + Constant.BLOCK - 1) // Constant.BLOCK * Constant.BLOCK
         self.C_BLOCK = (self.C + Constant.BLOCK - 1) // Constant.BLOCK * Constant.BLOCK
+        self.N_BLOCK = (self.N + Constant.BLOCK - 1) // Constant.BLOCK * Constant.BLOCK
         self.rounds = self.C_BLOCK // (Constant.BLOCK * Constant.REPEAT_OFFSET)
 
         self.output_size = 2 * self.S + 1
@@ -74,7 +80,12 @@ class CTCLossV2Grad():
         self.grad_out = self.tik_instance.Tensor("float32", [self.N], name="grad_out", scope=tik.scope_gm)
         self.log_probs = self.tik_instance.Tensor("float32", [self.T, self.N, self.C], name="log_probs",
                                                   scope=tik.scope_gm)
-        self.targets = self.tik_instance.Tensor("int32", [self.N, self.S], name="targets", scope=tik.scope_gm)
+        if self.mode_align:
+            self.targets = self.tik_instance.Tensor("int32", [self.sum_targets], name="targets", scope=tik.scope_gm)
+            self.offset_gm = self.tik_instance.Tensor("int32", [self.N_BLOCK], name="offset_gm", scope=tik.scope_gm,
+                                                      is_workspace=True)
+        else:
+            self.targets = self.tik_instance.Tensor("int32", [self.N, self.S], name="targets", scope=tik.scope_gm)
         self.input_lengths = self.tik_instance.Tensor("int32", [self.N], name="input_lengths", scope=tik.scope_gm)
         self.target_lengths = self.tik_instance.Tensor("int32", [self.N], name="target_lengths", scope=tik.scope_gm)
 
@@ -93,7 +104,7 @@ class CTCLossV2Grad():
         self.batch_tail = self.N % self.used_aicore_num
 
     @staticmethod
-    def paras_check(log_probs, targets, kernel_name):
+    def paras_check(log_probs, targets, mode_align, kernel_name):
         """
         Function: paras_check.
         Modify : 2021-5-26
@@ -110,13 +121,35 @@ class CTCLossV2Grad():
 
         para_check.check_kernel_name(kernel_name)
 
-        return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[1]]
+        if mode_align:
+            return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[0]]
+        else:
+            return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[1]]
+
 
     def ctc_loss_grad_compute(self):
         """
         Function: ctc_loss_grad_compute.
         Modify : 2021-5-26
         """
+        if self.mode_align:
+            target_length_ub = self.tik_instance.Tensor("int32", [self.N_BLOCK], name="target_length_ub",
+                                                        scope=tik.scope_ubuf)
+            offset_ub = self.tik_instance.Tensor("int32", [self.N_BLOCK], name="offset_ub",
+                                                 scope=tik.scope_ubuf)
+            offset = self.tik_instance.Scalar("int32", init_value=0)
+            offset_tmp = self.tik_instance.Scalar("int32")
+            offset_ub[0].set_as(offset)
+
+            self.tik_instance.data_move(target_length_ub, self.target_lengths, 0, 1,
+                                        self.N_BLOCK // Constant.BLOCK, 0, 0)
+
+            with self.tik_instance.for_range(0, self.N - 1) as task_idx:
+                offset_tmp.set_as(target_length_ub[task_idx])
+                offset.set_as(offset + offset_tmp)
+                offset_ub[task_idx + 1].set_as(offset)
+            self.tik_instance.data_move(self.offset_gm, offset_ub, 0, 1, self.N_BLOCK // Constant.BLOCK, 0, 0)
+
         with self.tik_instance.for_range(0, self.used_aicore_num, block_num=self.used_aicore_num) as i:
             with self.tik_instance.for_range(0, self.batch_num_per_aicore) as j:
                 self.ctc_loss_grad_compute_core(i + j * self.used_aicore_num)
@@ -158,8 +191,14 @@ class CTCLossV2Grad():
                                      1, 1)
 
         self.tik_instance.data_move(grad_out_ub, self.grad_out[task_idx], 0, 1, 1, 0, 0)
-        self.tik_instance.data_move(targets_ub, self.targets[task_idx * self.S], 0, 1, self.S_BLOCK // Constant.BLOCK,
-                                    0, 0)
+        if self.mode_align:
+            self.tik_instance.data_move(target_length_ub, self.offset_gm[task_idx], 0, 1, 1, 0, 0)
+            offset = self.tik_instance.Scalar("int32", init_value=target_length_ub[0])
+            self.tik_instance.data_move(targets_ub, self.targets[offset], 0, 1,
+                                        self.S_BLOCK // Constant.BLOCK, 0, 0)
+        else:
+            self.tik_instance.data_move(targets_ub, self.targets[task_idx * self.S], 0, 1,
+                                        self.S_BLOCK // Constant.BLOCK, 0, 0)
         self.tik_instance.data_move(input_length_ub, self.input_lengths[task_idx], 0, 1, 1, 0, 0)
         self.tik_instance.data_move(target_length_ub, self.target_lengths[task_idx], 0, 1, 1, 0, 0)
         self.tik_instance.data_move(neg_log_likelihood_ub, self.neg_log_likelihood[task_idx], 0, 1, 1, 0, 0)
@@ -584,9 +623,10 @@ class CTCLossV2Grad():
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def ctc_loss_v2_grad(grad_out, log_probs, targets, input_lengths, target_lengths, neg_log_likelihood, log_alpha, grad,
-                     blank=0, reduction="mean", zero_infinity=False, kernel_name="ctc_loss_v2_grad"):
+                     blank=0, reduction="mean", zero_infinity=False, label_max=0, kernel_name="ctc_loss_v2_grad"):
     """
     Function: The grad of Connectionist Temporal Classification loss.
     Modify : 2021-5-26
@@ -616,6 +656,6 @@ def ctc_loss_v2_grad(grad_out, log_probs, targets, input_lengths, target_lengths
     ----------
     """
 
-    op_obj = CTCLossV2Grad(log_probs, targets, blank, kernel_name)
+    op_obj = CTCLossV2Grad(log_probs, targets, blank, label_max, kernel_name)
 
     return op_obj.ctc_loss_grad_compute()

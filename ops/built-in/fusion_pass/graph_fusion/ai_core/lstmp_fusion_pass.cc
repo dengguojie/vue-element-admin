@@ -119,7 +119,8 @@ Status LSTMPFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   return SUCCESS;
 }
 
-Status LSTMPFusionPass::CreateWcConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc, ge::NodePtr& new_node) {
+Status LSTMPFusionPass::CreateWcConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc,
+                                          ge::NodePtr& new_node) {
   std::shared_ptr<ge::OpDesc> wc_const_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
     (wc_const_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_const", "Const")),
@@ -166,7 +167,8 @@ Status LSTMPFusionPass::CreateWcConstNode(ge::ComputeGraph&graph, const ge::OpDe
   return SUCCESS;
 }
 
-Status LSTMPFusionPass::CreateConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc, ge::NodePtr& new_node) {
+Status LSTMPFusionPass::CreateConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc,
+                                        ge::NodePtr& new_node) {
   std::shared_ptr<ge::OpDesc> mask_const_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
     (mask_const_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_mask_const", "Const")),
@@ -689,13 +691,13 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
 
   FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(0), trans_y->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add x input edge to trans_x failed."),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add y output edge to trans_y failed."),
         return FAILED);
 
   for (auto in_anchor : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), in_anchor),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for x fail"),
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for y fail"),
           return FAILED);
       FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(trans_y->GetOutDataAnchor(0), in_anchor),

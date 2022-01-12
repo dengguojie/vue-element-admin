@@ -238,7 +238,18 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
 
   int64_t T = dims_log_probs[0];
   int64_t N = dims_log_probs[1];
-  int64_t S = dims_targets[1];
+  int64_t S;
+
+  if (dims_targets.size() == 2) {
+    S = dims_targets[1];
+  } else {
+    int32_t label_max = 0;
+    if ((op.GetAttr("label_max", label_max) != GRAPH_SUCCESS) || (label_max == 0)) {
+      GE_OP_LOGE(op.GetName().c_str(), "attr label_max get fail, when targets.size() == 1.");
+      return GRAPH_FAILED;
+    }
+    S = label_max;
+  }
 
   TensorDesc tensordesc_neg_log_likelihood = op.get_output_desc_neg_log_likelihood();
   TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
