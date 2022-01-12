@@ -131,6 +131,13 @@ IMPLEMT_INFERFUNC(Unique, UniqueInfer) {
   y_desc->SetDataType(x_input->GetDataType());
   if (x_shape.GetShapeSize() == UNKNOWN_DIM) {
     return GRAPH_SUCCESS;
+  } else if (x_shape.GetShapeSize() == 1) {
+    /*
+     * 对于Unique算子的InferShape，如果输入的shape大小为1时，输出的shape大小肯定也为1
+     */
+    y_desc->SetShape(GeShape({1}));
+    y_desc->SetOriginShape(GeShape({1}));
+    return GRAPH_SUCCESS;
   } else {
     std::vector<std::pair<int64_t, int64_t>> range;
     int64_t max_dim = x_shape.GetDim(0);

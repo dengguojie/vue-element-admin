@@ -39,3 +39,10 @@ TEST_F(UNIQUE_UT, InferShape) {
   op.UpdateInputDesc("x", create_desc({2, 16}, ge::DT_INT32));
   auto ret = op.InferShapeAndType();
 }
+
+TEST_F(UNIQUE_UT, InferShape_OneShapeSize) {
+  ge::op::Unique op;
+  op.UpdateInputDesc("x", create_desc({1}, ge::DT_INT32));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
