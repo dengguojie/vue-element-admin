@@ -76,7 +76,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   std::string dtype;
   parsed_info.has_reduce_mean_cof_dtype = false;
-  
+
   if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
     parsed_info.has_reduce_mean_cof_dtype = true;
     parsed_info.reduce_mean_cof_dtype = (dtype == "float16") ? ge::DT_FLOAT16 : ge::DT_FLOAT;
