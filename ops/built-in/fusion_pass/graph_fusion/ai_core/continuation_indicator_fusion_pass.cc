@@ -20,7 +20,6 @@
  */
 #include <string>
 #include <vector>
-#include "continuation_indicator_fusion_pass.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"
@@ -30,8 +29,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include <string>
-#include <vector>
+#include "continuation_indicator_fusion_pass.h"
 
 namespace fe {
   static const int64_t INVALID_NUM = 0;

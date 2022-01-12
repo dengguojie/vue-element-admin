@@ -258,7 +258,7 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   if (transdata1_origin_shape[transdata1_origin_shape.size() - 1] % BLOCK_ALLIGN != 0 ||
       transdata1_origin_shape[transdata1_origin_shape.size() - 2] % BLOCK_ALLIGN != 0 ||
       reshapediminfo[reshapediminfo.size() - 1] % BLOCK_ALLIGN != 0 ||
-      reshapediminfo[reshapediminfo.size() - 2] % BLOCK_ALLIGN != 0) {
+      reshapediminfo[reshapediminfo.size() - LAST_SECOND_INDEX] % BLOCK_ALLIGN != 0) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "last two dimension should be divisible by 16, but actually is [%ld] and [%ld].",
             transdata1_origin_shape[transdata1_origin_shape.size() - LAST_SECOND_INDEX],
             transdata1_origin_shape[transdata1_origin_shape.size() - 1]);
@@ -272,7 +272,7 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   vector<int64_t> permValue_cond2({2, 1, 0, 3, 4});
   vector<int64_t> trans_after_reshape_cond2(
       {transdata_diminfo1_shape[0], transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * 16 * 16});
-  vector<int64_t> transpose_out_shape2({transdata_diminfo1_shape[1] * transdata_diminfo1_shape[2] * BLOCK_ALLIGN,
+  vector<int64_t> transpose_out_shape2({transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * BLOCK_ALLIGN,
                                         transdata_diminfo1_shape[0] / BLOCK_ALLIGN, 16, 16});
   vector<int64_t> permValue_cond3({0, 1, 2, 3, 4});
   vector<int64_t> transpose_out_shape3(TRANSOPSE_OUT_LEN);
