@@ -708,7 +708,8 @@ def layer_norm(input_x,
 
             if input_format == "FRACTAL_NZ":
                 mean, variance, res = layer_norm_compute_nz(data_x, data_gamma, data_beta, output_y, output_mean,
-                                                            output_variance, ori_reduce_axis, dy_reduce_axis, begin_params_axis, epsilon, kernel_name, impl_mode)
+                                                            output_variance, ori_reduce_axis, dy_reduce_axis,
+                                                            begin_params_axis, epsilon, kernel_name, impl_mode)
             else:
                 mean, variance, res = layer_norm_compute(
                     data_x, data_gamma, data_beta, output_y, output_mean, output_variance, dy_reduce_axis,

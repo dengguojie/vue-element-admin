@@ -22,7 +22,6 @@
 #include "vector_tiling_log.h"
 
 namespace optiling {
-
 struct layerNormOpInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   string reduce_mean_cof_dtype;
