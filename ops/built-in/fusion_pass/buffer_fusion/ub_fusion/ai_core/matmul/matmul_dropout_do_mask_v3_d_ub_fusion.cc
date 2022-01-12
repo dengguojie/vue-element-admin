@@ -54,7 +54,7 @@ vector<BufferFusionPattern*> MatmulDropOutDoMaskV3DFusionPass::DefinePatterns() 
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."),
                     return patterns);
 
-  pattern->AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL})
+  pattern->AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM})
     .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(PATTERN_DROPOUTDOMASKV3D, {OP_PATTERN_DROPOUTDOMASKV3D})

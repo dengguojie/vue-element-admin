@@ -56,7 +56,7 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
   pattern->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_MATMUL})
       .SetOutputs(PATTERN_MATMUL, {PATTERN_ELTWISE});
   patterns.push_back(pattern);
@@ -69,7 +69,7 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
   // define pattern rules
   pattern1->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_MATMUL})
       .SetOutputs(PATTERN_MATMUL, {PATTERN_ELTWISE, PATTERN_OUTPUT}, TBE_OUTPUT_BRANCH_MULTI);
