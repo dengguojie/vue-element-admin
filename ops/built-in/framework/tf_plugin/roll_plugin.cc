@@ -21,9 +21,9 @@
 #include "register/register.h"
 
 namespace domi {
-REGISTER_CUSTOM_OP("Roll")
+REGISTER_CUSTOM_OP("RollV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Roll")
     .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::TVM);
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
