@@ -391,6 +391,7 @@ def test_split_fc_4(test_arg):
     get_op_support_info(x, w, b, None, y, 32, False, 1)
     op_select_format(x, w, b, None, y, 32, False, 1, 0)
 
+
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):

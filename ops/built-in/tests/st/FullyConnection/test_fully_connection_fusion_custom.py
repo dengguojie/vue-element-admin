@@ -234,6 +234,7 @@ def test_fc_fixpipe_nhwc():
                     res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
                     sch = auto_schedule(res)
 
+
 if __name__ == '__main__':
     with op_context.OpContext():
         test_fc_add_relu6_fusion_1batch_910_case1()
