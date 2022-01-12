@@ -173,7 +173,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumCompute2(CpuKernelContext &ctx) {
   int64_t output_num = ctx.Output(0)->NumElements();
   uint32_t axes_idx = 0;
   KERNEL_HANDLE_ERROR((ReduceSumOneAxes2<T, T2>(input_data, input_num, input_shape,
-                      output_data, output_num, axes, axes_idx)),
+                                                output_data, output_num, axes, axes_idx)),
                       "Reduce sum compute failed.");
   return KERNEL_STATUS_OK;
 }
