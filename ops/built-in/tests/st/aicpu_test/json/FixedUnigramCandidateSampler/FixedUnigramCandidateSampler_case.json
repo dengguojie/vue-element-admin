@@ -1,0 +1,1724 @@
+[
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_UNIQUE_FALSE",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          6
+        ],
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          6
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": 6,
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": 6,
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": 1.0,
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": 0,
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": 0,
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": [
+          0.1,
+          0.4,
+          0.5,
+          0.7,
+          0.6,
+          0.3
+        ],
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": 87654321,
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_UNIQUE_TRUE",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          6
+        ],
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          6
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": 6,
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": 6,
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": 1.0,
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": 0,
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": 0,
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": [
+          0.9,
+          0.6,
+          0.4,
+          0.7,
+          0.1,
+          0.5
+        ],
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": 87654321,
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": 1,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_512B",
+    "fuzz_impl": "./FUCS_512B.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          64
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_1K",
+    "fuzz_impl": "./FUCS_1K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          128
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_4K",
+    "fuzz_impl": "./FUCS_4K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          512
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_8K",
+    "fuzz_impl": "./FUCS_8K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          1024
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_16K",
+    "fuzz_impl": "./FUCS_16K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          2048
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_32K",
+    "fuzz_impl": "./FUCS_32K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          4096
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_64K",
+    "fuzz_impl": "./FUCS_64K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          8192
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_128K",
+    "fuzz_impl": "./FUCS_128K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          16384
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_256K",
+    "fuzz_impl": "./FUCS_256K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          32768
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_512K",
+    "fuzz_impl": "./FUCS_512K.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          65536
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_1M",
+    "fuzz_impl": "./FUCS_1M.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          131072
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_2M",
+    "fuzz_impl": "./FUCS_2M.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          262144
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "FixedUnigramCandidateSampler",
+    "case_name": "DATA_TYPE_INT64_8M",
+    "fuzz_impl": "./FUCS_8M.py",
+    "fuzz_case_num": 1,
+    "input_desc": [
+      {
+        "name": "true_classes",
+        "format": "ND",
+        "shape": "fuzz",
+        "type": [
+          "int64"
+        ],
+        "value_range": [
+          1,
+          6
+        ],
+        "data_distribute": "uniform",
+        "value": "fuzz"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "int64"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1,
+          1048576
+        ],
+        "type": [
+          "float"
+        ]
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3
+        ],
+        "type": [
+          "float"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_true",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_sampled",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unique",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "range_max",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "vocab_file",
+        "value": "fuzz",
+        "type": "string"
+      },
+      {
+        "name": "distortion",
+        "value": "fuzz",
+        "type": "float"
+      },
+      {
+        "name": "num_reserved_ids",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "num_shards",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "shard",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "unigrams",
+        "value": "fuzz",
+        "type": "list_float"
+      },
+      {
+        "name": "seed",
+        "value": "fuzz",
+        "type": "int"
+      },
+      {
+        "name": "seed2",
+        "value": "fuzz",
+        "type": "int"
+      }
+    ]
+  }
+]

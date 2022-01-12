@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
@@ -293,6 +294,7 @@ set(_cpu_kernels_ut_files
   testcase/equal/src/equal_utest.cpp
   testcase/exponential/src/exponential_utest.cpp
   testcase/fill/src/fill_utest.cpp
+  testcase/fixed_unigram_candidate_sampler/src/fixed_unigram_candidate_sampler_utest.cpp
   testcase/floor/src/floor_utest.cpp
   testcase/floordiv/src/floordiv_utest.cpp
   testcase/gatherv2/src/gatherv2_utest.cpp
