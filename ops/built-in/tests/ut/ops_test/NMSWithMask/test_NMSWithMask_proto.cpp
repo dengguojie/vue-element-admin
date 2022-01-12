@@ -31,15 +31,16 @@ TEST_F(NMSWithMaskTest, nms_with_mask_test_case_1) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_boxes_desc = op.GetOutputDesc("selected_boxes");
+    auto output_boxes_desc = op.GetOutputDescByName("selected_boxes");
     EXPECT_EQ(output_boxes_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_boxes_shape = {16, 5};
+
     EXPECT_EQ(output_boxes_desc.GetShape().GetDims(), expected_boxes_shape);
-    auto output_idx_desc = op.GetOutputDesc("selected_idx");
+    auto output_idx_desc = op.GetOutputDescByName("selected_idx");
     EXPECT_EQ(output_idx_desc.GetDataType(), ge::DT_INT32);
     std::vector<int64_t> expected_idx_shape = {16};
     EXPECT_EQ(output_idx_desc.GetShape().GetDims(), expected_idx_shape);
-    auto output_mask_desc = op.GetOutputDesc("selected_mask");
+    auto output_mask_desc = op.GetOutputDescByName("selected_mask");
     EXPECT_EQ(output_mask_desc.GetDataType(), ge::DT_BOOL);
     std::vector<int64_t> expected_mask_shape = {16};
     EXPECT_EQ(output_mask_desc.GetShape().GetDims(), expected_mask_shape);
@@ -60,15 +61,15 @@ TEST_F(NMSWithMaskTest, nms_with_mask_test_case_2) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_boxes_desc = op.GetOutputDesc("selected_boxes");
+    auto output_boxes_desc = op.GetOutputDescByName("selected_boxes");
     EXPECT_EQ(output_boxes_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_boxes_shape = {720, 5};
     EXPECT_EQ(output_boxes_desc.GetShape().GetDims(), expected_boxes_shape);
-    auto output_idx_desc = op.GetOutputDesc("selected_idx");
+    auto output_idx_desc = op.GetOutputDescByName("selected_idx");
     EXPECT_EQ(output_idx_desc.GetDataType(), ge::DT_INT32);
     std::vector<int64_t> expected_idx_shape = {720};
     EXPECT_EQ(output_idx_desc.GetShape().GetDims(), expected_idx_shape);
-    auto output_mask_desc = op.GetOutputDesc("selected_mask");
+    auto output_mask_desc = op.GetOutputDescByName("selected_mask");
     EXPECT_EQ(output_mask_desc.GetDataType(), ge::DT_BOOL);
     std::vector<int64_t> expected_mask_shape = {720};
     EXPECT_EQ(output_mask_desc.GetShape().GetDims(), expected_mask_shape);

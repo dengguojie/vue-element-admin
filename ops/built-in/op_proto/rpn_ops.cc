@@ -64,7 +64,12 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
   out_mask_shape.SetDimNum(1);
   out_mask_shape.SetDim(0, in_shape.GetDim(0));
 
-  out_box_desc_ptr->SetShape(in_desc->GetShape());
+  // set output shape (N, 5)
+  size_t dim_size = in_shape.GetDimNum();
+  out_box_shape.SetDimNum(dim_size);
+  out_box_shape.SetDim(0, in_shape.GetDim(0));
+  out_box_shape.SetDim(1, 5);
+  out_box_desc_ptr->SetShape(out_box_shape);
 
   out_box_desc_ptr->SetDataType(in_desc->GetDataType());
   out_idx_desc_ptr->SetDataType(DT_INT32);

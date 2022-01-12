@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+import tbe.common.register as tbe_register
 
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
@@ -132,8 +133,8 @@ def _get_src_tensor(ib):
     """
     one_scalar = ib.Scalar(dtype="float16", name="one_scalar", init_value=1.0)
     zero_scalar = ib.Scalar(dtype="float16", name="zero_scalar", init_value=0.0)
-    src0_ub = ib.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,), name="src0_ub", scope=tik.scope_ubuf)
-    src1_ub = ib.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,), name="src1_ub", scope=tik.scope_ubuf)
+    src0_ub = ib.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, ), name="src0_ub", scope=tik.scope_ubuf)
+    src1_ub = ib.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, ), name="src1_ub", scope=tik.scope_ubuf)
     ib.vector_dup(128, src0_ub, zero_scalar, 1, 1, 8)
     ib.vector_dup(128, src1_ub, one_scalar, 1, 1, 8)
 
@@ -227,16 +228,16 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                               scope=tik.scope_gm)
 
     # address is 32B aligned
-    out_index = tik_instance.Tensor("int32", (_ceiling(proposal_num_align16, Constant.ELEMENT_NUM),),
+    out_index = tik_instance.Tensor("int32", (_ceiling(proposal_num_align16, Constant.ELEMENT_NUM), ),
                                     name="out_index",
                                     scope=tik.scope_gm)
-    out_mask = tik_instance.Tensor("uint8", (_ceiling(proposal_num_align16, Constant.CONFIG_DATA_ALIGN),),
+    out_mask = tik_instance.Tensor("uint8", (_ceiling(proposal_num_align16, Constant.CONFIG_DATA_ALIGN), ),
                                    name="out_mask",
                                    scope=tik.scope_gm)
-    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM,),
+    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM, ),
                                           name="output_index_ub",
                                           scope=tik.scope_ubuf)
-    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM,),
+    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM, ),
                                          name="output_mask_ub",
                                          scope=tik.scope_ubuf)
     output_proposals_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, Constant.VALID_COLUMN_NUM),
@@ -257,15 +258,15 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                                                         name="selected_reduced_proposals_ub",
                                                         scope=tik.scope_ubuf)
     # init middle selected area
-    selected_area_ub = tik_instance.Tensor("float16", (proposal_num_align16,),
+    selected_area_ub = tik_instance.Tensor("float16", (proposal_num_align16, ),
                                            name="selected_area_ub",
                                            scope=tik.scope_ubuf)
     # init middle sup_vec
-    sup_vec_ub = tik_instance.Tensor("uint16", (proposal_num_align16,), name="sup_vec_ub", scope=tik.scope_ubuf)
+    sup_vec_ub = tik_instance.Tensor("uint16", (proposal_num_align16, ), name="sup_vec_ub", scope=tik.scope_ubuf)
     tik_instance.vector_dup(16, sup_vec_ub[0], 1, 1, 1, 8)
 
     # init nms tensor
-    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,),
+    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, ),
                                        name="temp_area_ub",
                                        scope=tik.scope_ubuf)
     temp_iou_ub = tik_instance.Tensor("float16", (proposal_num_align16, Constant.RPN_PROPOSAL_NUM),
@@ -274,15 +275,15 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     temp_join_ub = tik_instance.Tensor("float16", (proposal_num_align16, Constant.RPN_PROPOSAL_NUM),
                                        name="temp_join_ub",
                                        scope=tik.scope_ubuf)
-    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (proposal_num_align16,),
+    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (proposal_num_align16, ),
                                              name="temp_sup_matrix_ub",
                                              scope=tik.scope_ubuf)
-    temp_sup_vec_ub = tik_instance.Tensor("uint16", (Constant.BURST_PROPOSAL_NUM,),
+    temp_sup_vec_ub = tik_instance.Tensor("uint16", (Constant.BURST_PROPOSAL_NUM, ),
                                           name="temp_sup_vec_ub",
                                           scope=tik.scope_ubuf)
 
     if support_vreduce and support_v4dtrans:
-        output_mask_f16 = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,),
+        output_mask_f16 = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, ),
                                               name="output_mask_f16",
                                               scope=tik.scope_ubuf)
         data_zero, data_one = _get_src_tensor(tik_instance)
@@ -293,7 +294,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
 
         # init v200 reduce param
         nms_tensor_pattern = tik_instance.Tensor(dtype="uint16",
-                                                 shape=(Constant.ELEMENT_NUM,),
+                                                 shape=(Constant.ELEMENT_NUM, ),
                                                  name="nms_tensor_pattern",
                                                  scope=tik.scope_ubuf)
         # init ori coord
@@ -378,8 +379,8 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                                               _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             with tik_instance.if_scope(i > 0):
                 rpn_cor_ir = tik_instance.rpn_cor(
-                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub,
-                    1, 1, i)
+                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub, 1,
+                    1, i)
             # diagonal
             tik_instance.rpn_cor_diag(temp_sup_vec_ub[i * Constant.RPN_PROPOSAL_NUM],
                                       temp_sup_matrix_ub[length - Constant.RPN_PROPOSAL_NUM], rpn_cor_ir)
@@ -426,8 +427,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                 with tik_instance.if_scope(temp_sup_vec_ub[i] == 0):
                     with tik_instance.for_range(0, Constant.ELEMENT_NUM) as j:
                         # update selected_reduced_proposals_ub
-                        selected_reduced_proposals_ub[selected_proposals_cnt, j].set_as(temp_reduced_proposals_ub[i,
-                                                                                                                  j])
+                        selected_reduced_proposals_ub[selected_proposals_cnt, j].set_as(temp_reduced_proposals_ub[i, j])
                     # update selected_area_ub
                     selected_area_ub[selected_proposals_cnt].set_as(temp_area_ub[i])
                     # update sup_vec_ub
@@ -442,9 +442,9 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
 
         left_proposal_cnt.set_as(left_proposal_cnt - handling_proposals_cnt)
         # mov target proposals to out - mte3
-        tik_instance.data_move(
-            ret[burst_index * Constant.BURST_PROPOSAL_NUM, 0], output_proposals_ub, 0, 1,
-            _ceil_div(handling_proposals_cnt * Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0, 0)
+        tik_instance.data_move(ret[burst_index * Constant.BURST_PROPOSAL_NUM, 0], output_proposals_ub, 0, 1,
+                               _ceil_div(handling_proposals_cnt * Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM),
+                               0, 0, 0)
         tik_instance.data_move(out_index[burst_index * Constant.BURST_PROPOSAL_NUM], output_index_ub, 0, 1,
                                _ceil_div(handling_proposals_cnt, Constant.ELEMENT_NUM), 0, 0, 0)
         tik_instance.data_move(out_mask[burst_index * Constant.BURST_PROPOSAL_NUM], output_mask_ub, 0, 1,
@@ -452,10 +452,48 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     tik_instance.BuildCCE(kernel_name=kernel_name_var,
                           inputs=[proposals],
                           outputs=[ret, out_index, out_mask],
-                          flowtable=(tiling_gm,),
+                          flowtable=(tiling_gm, ),
                           output_files_path=None,
                           enable_l2=False)
     return tik_instance
+
+
+# 'pylint:disable=dangerous-default-value
+@tbe_register.register_param_generalization("NMSWithMask")
+def nms_with_mask_generalization(box_scores,
+                                 selected_boxes,
+                                 selected_idx,
+                                 selected_mask,
+                                 iou_thr,
+                                 generalize_config={"mode": "keep_rank"}):
+    """
+    support input (-1, 8), and selected_boxes is (-1, 5), selected_idx is (-1,), selected_mask is (-1,)
+    """
+    result = []
+    # fuzzy compile
+    if generalize_config["mode"] == "keep_rank":
+        last_dim = box_scores["shape"][-1]
+        box_scores_shape_in = (-1, last_dim)
+        box_scores_range_in = [(1, -1), (last_dim, last_dim)]
+        # `output is (N, 5)`
+        selected_boxes_shape_out = (-1, 5)
+        selected_boxes_range_out = [(1, -1), (5, 5)]
+        selected_idx_shape_out = (-1, )
+        selected_idx_range_out = [(1, -1)]
+        selected_mask_shape_out = (-1, )
+        selected_mask_range_out = [(1, -1)]
+
+        box_scores["shape"], box_scores["ori_shape"] = box_scores_shape_in, box_scores_shape_in
+        box_scores["range"], box_scores["ori_range"] = box_scores_range_in, box_scores_range_in
+        selected_boxes["shape"], selected_boxes["ori_shape"] = selected_boxes_shape_out, selected_boxes_shape_out
+        selected_boxes["range"], selected_boxes["ori_range"] = selected_boxes_range_out, selected_boxes_range_out
+        selected_idx["shape"], selected_idx["ori_shape"] = selected_idx_shape_out, selected_idx_shape_out
+        selected_idx["range"], selected_idx["ori_range"] = selected_idx_range_out, selected_idx_range_out
+        selected_mask["shape"], selected_mask["ori_shape"] = selected_mask_shape_out, selected_mask_shape_out
+        selected_mask["range"], selected_mask["ori_range"] = selected_mask_range_out, selected_mask_range_out
+
+        result.append([box_scores, selected_boxes, selected_idx, selected_mask, iou_thr])
+    return result
 
 
 # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
@@ -511,10 +549,10 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
                                                           "box_scores.shape", input_shape)
 
     tik_instance = tik.Tik()
-    tiling_gm = tik_instance.Tensor(Constant.DTYPE_INT32, (Constant.TILING_PARAMS_NUM,),
+    tiling_gm = tik_instance.Tensor(Constant.DTYPE_INT32, (Constant.TILING_PARAMS_NUM, ),
                                     name="tiling_gm",
                                     scope=tik.scope_gm)
-    tiling_ub = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+    tiling_ub = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM, ),
                                     name="tiling_ub",
                                     scope=tik.scope_ubuf)
     tik_instance.data_move(tiling_ub, tiling_gm, 0, 1, Constant.TILING_PARAMS_NUM // Constant.BLOCK_INT32, 0, 0)

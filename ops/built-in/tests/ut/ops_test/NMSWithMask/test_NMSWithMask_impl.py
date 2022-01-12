@@ -133,9 +133,9 @@ case_aligned_with_iou_equal_one = {
     "expect": "success"
 }
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_small_shape_not_aligned)
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_big_shape_not_aligned)
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend920A"], case_aligned_with_iou_equal_one)
+ut_case.add_case(["Ascend910A", "Ascend310"], case_small_shape_not_aligned)
+ut_case.add_case(["Ascend910A", "Ascend310"], case_big_shape_not_aligned)
+ut_case.add_case(["Ascend910A", "Ascend310"], case_aligned_with_iou_equal_one)
 
 
 def nms_proposals_reduce(proposals, downscale):
@@ -472,9 +472,4 @@ def test_a100_fp32_big_shape(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-#ut_case.add_cust_test_func(test_func=test_a100_fp16_small_shape)
-#ut_case.add_cust_test_func(test_func=test_a100_fp16_big_shape)
-#ut_case.add_cust_test_func(test_func=test_a100_fp32_small_shape)
-#ut_case.add_cust_test_func(test_func=test_a100_fp32_big_shape)
-
-ut_case.run(['Ascend920A', 'Ascend910A', 'Ascend310'])
+ut_case.run(['Ascend910A', 'Ascend310'])
