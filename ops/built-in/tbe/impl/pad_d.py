@@ -501,7 +501,9 @@ def _mask_copy(out_ubuf, data_buf, data_offset, data_len, params):
         dup_len = 64
     dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
 
-    params.ib_.emit(tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+    params.ib_.emit(
+        tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), tvm.const(0, params.dtype), 1,
+                        1, 1, 8, 8))
 
     params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, mask))
 
@@ -818,7 +820,8 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
 
         dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
         params.ib_.emit(
-            tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+            tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), tvm.const(0, params.dtype),
+                            1, 1, 1, 8, 8))
 
         masks = _get_masks(data_len, out_data_len + n_align)
         intrin_param = _get_mask_and_repeat(masks)
@@ -1207,20 +1210,22 @@ def _zero_ub(tvm_ir, buf_addr, buf_len, dtype):
         repeat_255 = repeat // 255
         with tvm_ir.for_range(0, repeat_255, name='i0') as i:
             tvm_ir.emit(
-                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=i * 255 * dup_len), 0, 255, 1, 1,
-                                8, 8))
+                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=i * 255 * dup_len),
+                                tvm.const(0, dtype), 255, 1, 1, 8, 8))
         if repeat % 255 > 0:
             tvm_ir.emit(
-                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat_255 * 255 * dup_len), 0,
-                                repeat % 255, 1, 1, 8, 8))
+                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat_255 * 255 * dup_len),
+                                tvm.const(0, dtype), repeat % 255, 1, 1, 8, 8))
 
     else:
-        tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w'), 0, repeat, 1, 1, 8, 8))
+        tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w'), tvm.const(0, dtype),
+                                    repeat, 1, 1, 8, 8))
 
     if remain > 0:
         _set_mask_insn(tvm_ir, dtype, remain)
         tvm_ir.emit(
-            tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat * dup_len), 0, 1, 1, 1, 8, 8))
+            tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat * dup_len),
+                            tvm.const(0, dtype), 1, 1, 1, 8, 8))
         _set_mask_insn(tvm_ir, dtype, 128)
 
 
@@ -1236,7 +1241,9 @@ def _zero_ub_tail(tvm_ir, buf_addr, buf_offset, zero_len, dtype):
     tvm_ir.emit(
         tvm.call_extern(dtype, 'set_vector_mask', tvm.const(mask1, dtype='uint64'), tvm.const(mask2, dtype='uint64')))
 
-    tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=buf_offset), 0, 1, 1, 1, 8, 8))
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=buf_offset), tvm.const(0, dtype), 1, 1, 1,
+                        8, 8))
     _set_mask_insn(tvm_ir, dtype, 128)
 
 

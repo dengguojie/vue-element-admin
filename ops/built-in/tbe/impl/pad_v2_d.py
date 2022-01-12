@@ -469,7 +469,9 @@ def _mask_copy(out_ubuf, data_buf, data_offset, data_len, params):
         dup_len = 64
     dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
 
-    params.ib_.emit(tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+    params.ib_.emit(
+        tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), tvm.const(0, params.dtype), 1,
+                        1, 1, 8, 8))
 
     params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, mask))
 
@@ -786,7 +788,8 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
 
         dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
         params.ib_.emit(
-            tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+            tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), tvm.const(0, params.dtype),
+                            1, 1, 1, 8, 8))
 
         masks = _get_masks(data_len, out_data_len + n_align)
         intrin_param = _get_mask_and_repeat(masks)

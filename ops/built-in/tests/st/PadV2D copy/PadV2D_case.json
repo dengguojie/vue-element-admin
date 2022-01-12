@@ -1,0 +1,51 @@
+[
+    {
+      "op": "PadV2D",
+      "input_desc": [
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [2,2,9],
+          "typical_shape": [2,2,9],
+          "ori_shape":[2,2,9],
+          "shape_range": [[1, 9]],
+          "type": "float16",
+          "name": "input_x",
+          "data_distribute": "uniform",
+          "value_range": [[0, 9]]
+        },
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [8],
+          "typical_shape": [8],
+          "ori_shape":[8],
+          "shape_range": [[1, 8]],
+          "type": "float16",
+          "name": "constant_values",
+          "data_distribute": "uniform",
+          "value_range": [[0, 8]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [2,18,9],
+          "typical_shape": [2,18,9],
+          "ori_shape":[2,18,9],
+          "shape_range": [[1, 9]],
+          "type": "float16",
+          "name": "output_x"
+        }
+      ],
+      "attr": [
+        {
+          "value": [[0,0],[9,7],[0,0]],
+          "type": "list_list_int",
+          "name": "paddings"
+        }
+      ],
+      "case_name": "test_PadV2D_000"
+    }
+  ]
