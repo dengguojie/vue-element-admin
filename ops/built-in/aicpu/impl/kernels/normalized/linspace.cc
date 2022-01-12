@@ -13,6 +13,8 @@
 
 namespace {
 const char *kLinSpace = "LinSpace";
+const uint32_t kInputNum = 3;
+const uint32_t kOutputNum = 1;
 }
 namespace aicpu {
 uint32_t LinSpaceParaCheck(CpuKernelContext &ctx, int64_t &num_value) {
@@ -74,7 +76,7 @@ uint32_t LinSpaceCompute(CpuKernelContext &ctx, int64_t num_value) {
 
 uint32_t LinSpaceCpuKernel::Compute(CpuKernelContext &ctx) {
   int64_t num_value = 0;
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, 3, 1), "LinSpace NormalCheck fail.");
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum), "LinSpace NormalCheck fail.");
   KERNEL_HANDLE_ERROR(LinSpaceParaCheck(ctx, num_value), "LinSpace LinSpaceParaCheck fail.");
 
   auto data_type = static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
