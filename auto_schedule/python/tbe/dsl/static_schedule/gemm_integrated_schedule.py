@@ -274,8 +274,6 @@ class GemmSchedule:
     def __init__(self, res, sch, dynamic_para):
         self.res_ori = res
         self.res = res[-1] if isinstance(res, list) else res
-        # to distinguish fuzzy_build from cache_tiling
-        self.res.op.attrs["cache_tiling"] = 0
         self.root_tensor = res[-1] if isinstance(res, list) else res
         self.sch = sch
         self.sch_agent = None

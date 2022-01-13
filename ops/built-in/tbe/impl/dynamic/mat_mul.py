@@ -280,7 +280,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
     attr_cache_tiling = dict(res.get("op_res")[0].op.attrs.items()).get("cache_tiling", 0)
-    if get_none_range_flag(input_x1, input_x2, bias) and attr_cache_tiling == 1:
+    if get_none_range_flag(input_x1, input_x2, bias) and int(attr_cache_tiling) == 1:
         config.get("build_args")["predicate_realize_bound"] = False
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)
