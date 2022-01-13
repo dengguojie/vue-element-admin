@@ -199,6 +199,7 @@ graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_r
   std::vector<AscendString> marks;
   context->GetMarks(marks);
   if (!marks.empty()) {
+    OP_LOGI(op.GetName().c_str(), "Set marks[0] = %s", marks[0].GetString());
     bool shape_changed = false;
     auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
       context->GetResourceContext(marks[0]));
@@ -243,6 +244,7 @@ graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted, Infe
   std::vector<AscendString> marks;
   infer_context->GetMarks(marks);
   if (!marks.empty()) {
+    OP_LOGI(op.GetName().c_str(), "Get marks[0] = %s", marks[0].GetString());
     if (infer_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("register relied on resource key failed."));
       return GRAPH_FAILED;
@@ -588,8 +590,9 @@ INFER_FUNC_REG(StageSize, StageSizeInfer);
 
 IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
   auto operator_context = op.GetInferenceContext();
-  Shape unknown_shape(ge::UNKNOWN_SHAPE);
+  Shape unknown_rank(ge::UNKNOWN_RANK);
 
+  OP_LOGI(op.GetName().c_str(), "StackPopInfer");
   DataType type;
   if (op.GetAttr("elem_type", type) != GRAPH_SUCCESS) {
     std::string err_msg("op get attr[elem_type] failed.");
@@ -598,13 +601,13 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
   }
 
   TensorDesc output_desc = op.GetOutputDesc("element");
-  output_desc.SetShape(unknown_shape);
+  output_desc.SetShape(unknown_rank);
 
   if (operator_context->GetMarks().size() != 0) {
     ShapeAndRange shape_and_range;
     bool geted = false;
     if (GetShapeAndRange(op, shape_and_range, geted, operator_context) != GRAPH_SUCCESS) {
-	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), 
+	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
          std::string("context is empty, you should call stack push first."));
       return GRAPH_FAILED;
     }
@@ -613,9 +616,10 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
       output_desc.SetShape(shape_and_range.shape_);
       output_desc.SetShapeRange(shape_and_range.shape_range_);
     } else {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("Stack is empty"));
-      return GRAPH_FAILED;
+      OP_LOGW(op.GetName().c_str(), "Stack is empty");
     }
+  } else {
+    OP_LOGW(op.GetName().c_str(), "Stack marks is empty");    
   }
 
   output_desc.SetDataType(type);
@@ -629,13 +633,14 @@ IMPLEMT_INFERFUNC(StackPush, StackPushInfer) {
   Shape elsShape = op.GetInputDesc("element").GetShape();
   DataType type = op.GetInputDesc("element").GetDataType();
 
+  OP_LOGI(op.GetName().c_str(), "StackPushInfer");
   if (operator_context->GetMarks().size() != 0) {
     std::vector<std::pair<int64_t, int64_t>> shape_range;
     op.GetInputDesc("element").GetShapeRange(shape_range);
     ShapeAndRange feed_shape_and_range{elsShape, shape_range};
     if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
 	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("SetShapeAndRange failed"));
-      return GRAPH_FAILED;  
+      return GRAPH_FAILED;
     }
   }
 
@@ -662,6 +667,8 @@ INFER_FUNC_REG(StackClose, StackCloseInfer);
 
 IMPLEMT_INFERFUNC(Stack, StackInfer) {
   Shape out;
+
+  OP_LOGI(op.GetName().c_str(), "StackInfer");
   (void)Vector(2, out);
   auto operator_context = op.GetInferenceContext();
   std::vector<std::string> marks = {op.GetName()};
