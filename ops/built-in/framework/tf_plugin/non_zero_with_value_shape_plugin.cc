@@ -39,7 +39,7 @@ Status ParseParamsNonZeroWithValueShape(const Message* op_src, ge::Operator& op)
       CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
       return FAILED;
   }
-  
+
   const auto output_desc = op_desc->MutableOutputDesc("out_value");
   if (output_desc == nullptr) {
     OP_LOGE(op.GetName().c_str(), "get output value failed.");

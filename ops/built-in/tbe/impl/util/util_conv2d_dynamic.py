@@ -135,6 +135,7 @@ def create_fuzz_range(op_type, dim_value, grade_item):
     """
     # dim_value must less than grade max_value
     if dim_value > grade_item[-1]:
+        # 'pylint: disable=too-many-function-args
         err_man.raise_err_specific_user(op_type, "input value {} is out the range of {}", dim_value, grade_item[-1])
         err_man.raise_err_attr_range_invalid(op_type, "[1, 4096]", "input shape", str(dim_value))
 

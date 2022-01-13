@@ -275,7 +275,7 @@ void CalScatterNdHighPerfBranchParams(ScatterNdTilingParams& runParams, int64_t 
                                       int64_t indicesSize, int64_t updatesSize, int64_t need_cast) {
   const int64_t UB_NUM = 2;
   const int64_t UB_NEEDCAST_NUM = 4;
-  
+
   int64_t alloc_indice_ubsize = ubSize / UB_NUM;
   if (need_cast == 1) {
     alloc_indice_ubsize = ubSize / UB_NEEDCAST_NUM;

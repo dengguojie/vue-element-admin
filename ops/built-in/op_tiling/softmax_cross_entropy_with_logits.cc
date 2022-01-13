@@ -154,6 +154,13 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
 }
 
 void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
+  constexpr int key_10 = 10;
+  constexpr int key_1 = 1;
+  constexpr int key_4= 4;
+  constexpr int key_2 = 2;
+  constexpr int key_8 = 8;
+  constexpr int key_9 = 9;
+  constexpr int key_6 = 6;
   int64_t key = 0;
   std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
   std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
@@ -167,25 +174,25 @@ void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_
   bool broadcast_dim11_to_dim01 = (dim11 == 1 && dim01 > 1);
   if (dim00 == dim10 && dim01 == dim11) {
     // copy: [a, b] [a, b] choose no_stride=0, but [a, 1] [a, 1] choose no_stride=1
-    key = 10;
+    key = key_10;
   } else if (broadcast_dim00_to_dim10 && dim01 == dim11) {
     // 1 common, large common
-    key = 1;
+    key = key_1;
   } else if (broadcast_dim10_to_dim00 && dim01 == dim11) {
     // large common, 1 common
-    key = 4;
+    key = key_4;
   } else if (broadcast_dim01_to_dim11 && dim00 == dim10) {
     // common 1, common large
-    key = 2;
+    key = key_2;
   } else if (broadcast_dim11_to_dim01 && dim00 == dim10) {
     // common large, common 1
-    key = 8;
+    key = key_8;
   } else if (broadcast_dim00_to_dim10 && broadcast_dim11_to_dim01) {
     // 1 large, large, 1
-    key = 9;
+    key = key_9;
   } else if (broadcast_dim01_to_dim11 && broadcast_dim10_to_dim00) {
     // large 1, 1, large
-    key = 6;
+    key = key_6;
   }
   tiling_info.key = key;
 }
