@@ -308,20 +308,17 @@ def compress_fully_connection_compute(
     format_out = None
     if axis == 2:
         format_a = 'FRACTAL_NZ'
-        format_b = 'fractal'
         trans_a = True
     else:
         if format_x == 'NC1HWC0':
             format_a = 'ND'
-            format_b = 'fractal'
             trans_a = False
             if x.shape[0].value == 1:
                 format_out = 'FRACTAL_NZ'
         else:
             format_a = 'FRACTAL_NZ'
-            format_b = 'fractal'
             trans_a = True
-
+    format_b = "FRACTAL_Z"
     out_type = y.get('dtype')
     out_format = y.get('format')
     quantize_params = None
