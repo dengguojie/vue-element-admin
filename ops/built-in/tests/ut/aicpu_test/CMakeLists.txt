@@ -110,6 +110,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/svd.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unpack.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
@@ -348,6 +349,7 @@ set(_cpu_kernels_ut_files
   testcase/sigmoid/src/sigmoid_utest.cpp
   testcase/sign/src/sign_utest.cpp
   testcase/sigmoid_grad/src/sigmoid_grad_utest.cpp
+  testcase/sinh/src/sinh_utest.cpp
   testcase/slice_write/src/slice_write_utest.cpp
   testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
