@@ -71,7 +71,7 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
                                             c_idx // fmap_c0 * hk_wk + hw_idx,
                                             n_idx % cout_g,
                                             c_idx % fmap_c0),
-                                     name=fixpipe_op_tag,
+                                     name=fixpipe_op_tag + "_nz2nd",
                                      tag=fixpipe_reform_tag,
                                      attrs=self.attrs)
 
@@ -79,7 +79,7 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
 
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
-                                 name=fixpipe_op_tag,
+                                 name=fixpipe_op_tag + "_out",
                                  tag=fixpipe_no_trans_tag,
                                  attrs=self.attrs)
         return res_reform

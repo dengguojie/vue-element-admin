@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from impl.conv2d_backprop_filter_d import conv2d_backprop_filter_compute
 from impl.deconvolution import deconvolution_compute
+from impl.mat_mul import mat_mul_compute
 from te.tvm.target import cce
 
 
@@ -189,6 +190,19 @@ def fixpipe_deconv_shape_error():
         print("exception:", e)
 
 
+def test_matmul_fixpipe_op_name():
+    with cce():
+        x1 = tvm.placeholder((4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        bias = tvm.placeholder((32,), name="tensor_bias", dtype="float32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+        output_y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+        y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
+        tensor_list = [x1, x2, bias, res]
+        sch = auto_schedule(res)
+        assert res.op.name != res.op.input_tensors[0].op.name
+
 def test_fixpipe_cases(test_args):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=get_soc_mock)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
@@ -201,6 +215,8 @@ def test_fixpipe_cases(test_args):
                     fixpie_deconv_case0()
                     fixpipe_deconv_channel_split()
                     fixpipe_deconv_shape_error()
+                    test_matmul_fixpipe_op_name()
+
 
 ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 

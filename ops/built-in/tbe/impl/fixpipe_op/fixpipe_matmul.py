@@ -74,6 +74,7 @@ class FixpipeMatmul(FixpipeBase):
                                      name=fixpipe_name,
                                      tag=fixpipe_tag)
         else:
+            fixpipe_name += "_out"
             res_reform = tvm.compute(self.output_shape,
                                     lambda *indice: res(*indice),
                                     name=fixpipe_name,
