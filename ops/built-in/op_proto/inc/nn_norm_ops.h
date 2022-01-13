@@ -1487,6 +1487,30 @@ REG_OP(Roll)
     .OP_END_FACTORY_REG(Roll)
 
 /**
+*@brief Roll the tensor along the given dimension(s).
+
+*@par Inputs:
+*One inputs, including:
+* x: A tensor
+
+*@par Attributes:
+* @li shifts: The number of places by which the elements of the tensor are shifted. \n
+* @li dims: Axis along which to roll. \n
+
+*@par Outputs:
+* y: A Tensor with the same type and shape of x's. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator Roll. \n
+*/
+REG_OP(RollV2)
+    .INPUT(input, TensorType::ALL())
+    .INPUT(shift, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(axis, TensorType({DT_INT32,DT_INT64}))
+    .OUTPUT(output, TensorType::ALL())
+    .OP_END_FACTORY_REG(RollV2)
+
+/**
  *@brief Calculate the loss. Creates a criterion that optimizes a two-class classification
  logistic loss between input_x and input_y (containing 1 or -1). \n
 

@@ -177,6 +177,20 @@ IMPLEMT_COMMON_INFERFUNC(RollInferShape) {
 COMMON_INFER_FUNC_REG(Roll, RollInferShape);
 // ----------------Roll END---------------------
 
+// ----------------RollV2 Begin---------------------
+IMPLEMT_COMMON_INFERFUNC(RollV2InferShape) {
+  TensorDesc output_desc_y = op.GetOutputDesc("output");
+  ge::Shape output_shape = op.GetInputDesc("input").GetShape();
+  DataType predict_dtype = op.GetInputDesc("input").GetDataType();
+
+  output_desc_y.SetDataType(predict_dtype);
+  output_desc_y.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("output", output_desc_y);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(RollV2, RollV2InferShape);
+// ----------------RollV2 END---------------------
+
 // ----------------SmoothL1Loss-------------------
 IMPLEMT_COMMON_INFERFUNC(SmoothL1LossInferShape) {
   if (OneInOneOutDynamicInfer(op, "predict", {"loss"})) {
