@@ -368,7 +368,8 @@ def _broadcast_nz(tensor, shape):
 
 def _is_special_cases(input_shape, compare_type):
     white_list_shape = [[8, 8732, 81], [16, 8732, 81], [96, 50, 50],
-                        [192, 50, 50], [384, 50, 50], [768, 50, 50]]
+                        [192, 50, 50], [384, 50, 50], [768, 50, 50],
+                        [192, 197, 197], [384, 197, 197], [96, 197, 197]]
     shape_t = list(input_shape)
     if compare_type == 0:
         if shape_t in white_list_shape:
