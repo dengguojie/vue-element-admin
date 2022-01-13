@@ -34,22 +34,9 @@ def check_supported(indices, x, y, shape, kernel_name="scatter_nd_d"):
     when update_slice not 32b align, static not support
     """
     x_dtype = x.get('dtype')
-    data_size = 4
-    if x_dtype in ("float32", "int32"):
-        data_size = 4
-    elif x_dtype in ("float16",):
-        data_size = 2
-    elif x_dtype in ("int8", "uint8"):
-        data_size = 1
-    indices_shape = list(indices.get('ori_shape'))
-    shape_value = list(shape)
-    if indices_shape[-1] == 1 and x_dtype in ("float", "float32", "float16", "int32"):
-        return False, "279424, dynamic shape high perm branch."
-    shape_value += [1]
-    update_slice = reduce(lambda a, b: a * b, shape_value[indices_shape[-1]:])
-    if data_size > 0 and 0 < update_slice < (32 / data_size):
-        return False, "ScatterNdD update slice < 32byte, graph not changed."
-    return True, ""
+    if x_dtype in ('int8', 'uint8'):
+        return True, "x's dtype int8 and uint8 , Dynamic ScatterNd not support"
+    return False, "Dynamic ScatterNd support"
 
 
 # 'pylint: disable=invalid-name, too-many-locals

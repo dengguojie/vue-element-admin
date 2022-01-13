@@ -15,8 +15,6 @@
 """
 scatter_nd
 """
-from functools import reduce
-
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -44,6 +42,8 @@ class Constant:
     VECTOR_BYTE_SIZE = 256
     # MASK for vnchw
     MASK_CAST = 64
+    # max_repeat 255
+    MAX_REPEAT = 255
 
 
 def ceil_div(value_x, value_y):
@@ -633,17 +633,17 @@ class ScatterNd():
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope(max_indice > self.var_read_index):
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
-                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
+                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * Constant.MAX_REPEAT):
                             self.tik_instance.vec_add(
                                 self.data_num_one_repeat,
                                 self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
                                             self.update_data_num],
                                 self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
                                             self.update_data_num],
-                                self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num], 255, 8,
+                                self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num], Constant.MAX_REPEAT, 8,
                                 8, 8)
-                            self.var_offset.set_as(255 * self.data_num_one_repeat)
-                            self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
+                            self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                            self.last_var_num.set_as(self.update_data_num - Constant.MAX_REPEAT * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(
@@ -733,15 +733,15 @@ class ScatterNd():
                         self.updates_ub, self.updates_gm[(indices_in_index + indices_ub_index) * self.update_data_num],
                         0, 1, self.update_data_num // self.updates_data_each_block, 0, 0)
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
-                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
+                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * Constant.MAX_REPEAT):
                             self.tik_instance.vec_add(
                                 self.data_num_one_repeat,
                                 self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
                                             self.update_data_num],
                                 self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
-                                            self.update_data_num], self.updates_ub, 255, 8, 8, 8)
-                            self.var_offset.set_as(255 * self.data_num_one_repeat)
-                            self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
+                                            self.update_data_num], self.updates_ub, Constant.MAX_REPEAT, 8, 8, 8)
+                            self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                            self.last_var_num.set_as(self.update_data_num - Constant.MAX_REPEAT * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(
@@ -798,13 +798,13 @@ class ScatterNd():
                     self.tik_instance.data_move(self.var_ub, self.out_gm[self.var_read_index * self.update_data_num],
                                                 0, 1, updates_burst_len, 0, 0)
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
-                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
+                        with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * Constant.MAX_REPEAT):
                             self.tik_instance.vec_add(
                                 self.data_num_one_repeat, self.var_ub, self.var_ub,
-                                self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num], 255, 8,
+                                self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num], Constant.MAX_REPEAT, 8,
                                 8, 8)
-                            self.var_offset.set_as(255 * self.data_num_one_repeat)
-                            self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
+                            self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                            self.last_var_num.set_as(self.update_data_num - Constant.MAX_REPEAT * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
                         self.tik_instance.vec_add(
@@ -937,11 +937,11 @@ class ScatterNd():
         self.var_offset.set_as(0)
 
         with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat):
-            with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat * 255):
-                self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub, self.var_ub, self.updates_ub, 255, 8,
+            with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat * Constant.MAX_REPEAT):
+                self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub, self.var_ub, self.updates_ub, Constant.MAX_REPEAT, 8,
                                           8, 8)
-                self.var_offset.set_as(255 * self.data_num_one_repeat)
-                self.last_var_num.set_as(var_num - 255 * self.data_num_one_repeat)
+                self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                self.last_var_num.set_as(var_num - Constant.MAX_REPEAT * self.data_num_one_repeat)
             self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
             self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
             self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub[self.var_offset],
@@ -993,12 +993,12 @@ class ScatterNd():
             self.var_offset.set_as(0)
 
             with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat):
-                with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat * 255):
+                with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat * Constant.MAX_REPEAT):
                     self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
-                    self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub, self.var_ub, self.updates_ub, 255,
+                    self.tik_instance.vec_add(self.data_num_one_repeat, self.var_ub, self.var_ub, self.updates_ub, Constant.MAX_REPEAT,
                                               8, 8, 8)
-                    self.var_offset.set_as(255 * self.data_num_one_repeat)
-                    self.last_var_num.set_as(var_forward_offset - 255 * self.data_num_one_repeat)
+                    self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                    self.last_var_num.set_as(var_forward_offset - Constant.MAX_REPEAT * self.data_num_one_repeat)
                 self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                 self.mask.set_as(self.last_var_num - self.repeat * self.data_num_one_repeat)
                 self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
@@ -1214,10 +1214,10 @@ class ScatterNd():
         None
         """
         with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat):
-            with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat * 255):
-                self.tik_instance.vector_dup(self.data_num_one_repeat, self.var_ub, 0, 255, 8, 8)
-                self.var_offset.set_as(255 * self.data_num_one_repeat)
-                self.last_var_num.set_as(var_num - 255 * self.data_num_one_repeat)
+            with self.tik_instance.if_scope(var_num >= self.data_num_one_repeat * Constant.MAX_REPEAT):
+                self.tik_instance.vector_dup(self.data_num_one_repeat, self.var_ub, 0, Constant.MAX_REPEAT, 8, 8)
+                self.var_offset.set_as(Constant.MAX_REPEAT * self.data_num_one_repeat)
+                self.last_var_num.set_as(var_num - Constant.MAX_REPEAT * self.data_num_one_repeat)
             self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
             self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
             self.tik_instance.vector_dup(self.data_num_one_repeat, self.var_ub[self.var_offset], 0, self.repeat, 8, 8)
@@ -1356,29 +1356,29 @@ class ScatterNd():
     def atomic_datamove_32B(self, var_read_index, update_read_index, update_data_num):
         # data move 32B align
         if self.need_cast:
-            max_repeat_loop_num = update_data_num // Constant.MASK_CAST // 255
-            max_repeat_loop_last = update_data_num // Constant.MASK_CAST % 255
+            max_repeat_loop_num = update_data_num // Constant.MASK_CAST // Constant.MAX_REPEAT
+            max_repeat_loop_last = update_data_num // Constant.MASK_CAST % Constant.MAX_REPEAT
             repeat_loop_left = update_data_num % Constant.MASK_CAST
             self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_read_index], 0, 1,
                                         update_data_num // self.updates_data_each_block, 0, 0)
             with self.tik_instance.for_range(0, max_repeat_loop_num) as max_repeat_loop_index:
-                updates_fp32_ub_index = 255 * max_repeat_loop_index * Constant.MASK_CAST
-                updates_ub_index = 255 * max_repeat_loop_index * Constant.MASK_CAST
+                updates_fp32_ub_index = Constant.MAX_REPEAT * max_repeat_loop_index * Constant.MASK_CAST
+                updates_ub_index = Constant.MAX_REPEAT * max_repeat_loop_index * Constant.MASK_CAST
                 self.tik_instance.vconv(Constant.MASK_CAST, "none", self.updates_fp32_ub[updates_fp32_ub_index],
-                                        self.updates_ub[updates_ub_index], 255, 1, 1, 8, 4)
+                                        self.updates_ub[updates_ub_index], Constant.MAX_REPEAT, 1, 1, 8, 4)
             with self.tik_instance.if_scope(max_repeat_loop_last > 0):
-                updates_fp32_ub_index = 255 * max_repeat_loop_num * Constant.MASK_CAST
-                updates_ub_index = 255 * max_repeat_loop_num * Constant.MASK_CAST
+                updates_fp32_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST
+                updates_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST
                 self.tik_instance.vconv(Constant.MASK_CAST, "none", self.updates_fp32_ub[updates_fp32_ub_index],
                                         self.updates_ub[updates_ub_index], max_repeat_loop_last, 1, 1, 8, 4)
             with self.tik_instance.if_scope(repeat_loop_left > 0):
-                updates_fp32_ub_index = 255 * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
-                updates_ub_index = 255 * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
+                updates_fp32_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
+                updates_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
                 self.tik_instance.vconv(repeat_loop_left, "none", self.updates_fp32_ub[updates_fp32_ub_index],
                                         self.updates_ub[updates_ub_index], 1, 1, 1, 8, 4)
             self.tik_instance.set_atomic_add(1)
             self.tik_instance.data_move(self.out_gm[var_read_index], self.updates_fp32_ub, 0, 1,
-                                        update_data_num // self.updates_data_each_block, 0, 0)
+                                        update_data_num // self.updates_data_each_block * 2, 0, 0)
             self.tik_instance.set_atomic_add(0)
         else:
             self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_read_index], 0, 1,
@@ -1397,7 +1397,7 @@ class ScatterNd():
             self.tik_instance.vconv(self.updates_data_each_block, "none", self.zero_fp32_ub, self.zero_ub, 1, 1, 1, 8,
                                     4)
             self.tik_instance.set_atomic_add(1)
-            self.tik_instance.data_move(self.out_gm[var_read_index], self.zero_fp32_ub, 0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.out_gm[var_read_index], self.zero_fp32_ub, 0, 1, 2, 0, 0)
             self.tik_instance.set_atomic_add(0)
         else:
             self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[update_read_index], 0, 1, 1, 0, 0)
