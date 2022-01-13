@@ -35,6 +35,7 @@ namespace ge {
 struct ShapeAndRange {
   Shape shape_;
   std::vector<std::pair<int64_t, int64_t>> shape_range_;
+  DataType shape_type_;
 };
 
 struct AicpuResourceContext : ResourceContext {
@@ -454,6 +455,10 @@ void InferShapeErrorReport(const std::string& op_name, const std::string& op_typ
  * @return string of data type
  */
 std::string DTypeStr(DataType dtype);
+
+graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_range);
+
+graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted, InferenceContextPtr infer_context);
 
 }  // namespace ge
 

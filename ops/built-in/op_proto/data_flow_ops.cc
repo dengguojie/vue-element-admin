@@ -192,80 +192,6 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
   return GRAPH_SUCCESS;
 }
 
-graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_range) {
-  AscendString op_name;
-  op.GetName(op_name);
-  auto context = op.GetInferenceContext();
-  std::vector<AscendString> marks;
-  context->GetMarks(marks);
-  if (!marks.empty()) {
-    OP_LOGI(op.GetName().c_str(), "Set marks[0] = %s", marks[0].GetString());
-    bool shape_changed = false;
-    auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
-      context->GetResourceContext(marks[0]));
-    if (aicpu_resource_context == nullptr) {
-      aicpu_resource_context = new (std::nothrow) AicpuResourceContext();
-      if (aicpu_resource_context == nullptr) {
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("new AicpuResourceContext failed."));
-        return GRAPH_FAILED;
-      }
-      aicpu_resource_context->shape_and_range_.push_back(feed_shape_and_range);
-      if (context->SetResourceContext(marks[0], aicpu_resource_context) != GRAPH_SUCCESS) {
-        delete aicpu_resource_context;
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("set resource context failed."));
-        return GRAPH_FAILED;
-      }
-      shape_changed = true;
-    } else {
-      auto &shape_and_range = aicpu_resource_context->shape_and_range_;
-      if (shape_and_range.empty()) {
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get resource context shape and ranges failed."));
-        return GRAPH_FAILED;
-      }
-      if (MergeShapeAndRange(shape_and_range[0], feed_shape_and_range, shape_and_range[0],
-                             shape_changed, op_name.GetString()) != GRAPH_SUCCESS) {
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("merge shape and range failed."));
-        return GRAPH_FAILED;
-      }
-    }
-    if (shape_changed) {
-      if (context->AddChangedResourceKey(marks[0]) != GRAPH_SUCCESS) {
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("add change resource key failed."));
-        return GRAPH_FAILED;
-      }
-    }
-  }
-  return GRAPH_SUCCESS;
-}
-
-graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted, InferenceContextPtr infer_context) {
-  AscendString op_name;
-  op.GetName(op_name);
-  std::vector<AscendString> marks;
-  infer_context->GetMarks(marks);
-  if (!marks.empty()) {
-    OP_LOGI(op.GetName().c_str(), "Get marks[0] = %s", marks[0].GetString());
-    if (infer_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("register relied on resource key failed."));
-      return GRAPH_FAILED;
-    }
-    auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
-      infer_context->GetResourceContext(marks[0]));
-    if (aicpu_resource_context != nullptr) {
-      auto &shape_and_range = aicpu_resource_context->shape_and_range_;
-      if (shape_and_range.empty()) {
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()),
-          std::string("get resource context shape and ranges failed."));
-        return GRAPH_FAILED;
-      }
-      out.shape_ = shape_and_range[0].shape_;
-      out.shape_range_ = shape_and_range[0].shape_range_;
-      geted = true;
-    }
-  }
-  return GRAPH_SUCCESS;
-}
-
 graphStatus GetStageKeyMarks(Operator &op, std::vector<AscendString> &marks) {
   std::string containerStr;
   std::string sharedNameStr;
@@ -2568,7 +2494,6 @@ graphStatus DynamicGetNextCommonInfer(Operator &op) {
  
   return GRAPH_SUCCESS;
 }
-
 
 IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
   Shape unused_shape;

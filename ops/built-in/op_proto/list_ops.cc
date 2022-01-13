@@ -29,6 +29,44 @@
 
 namespace ge {
 namespace {
+graphStatus SetShapeAndType(Operator& op, Shape element_shape, DataType element_dtype) {
+  const char *op_name = op.GetName().c_str();
+  std::vector<std::pair<int64_t, int64_t>> value_shape_range;
+  op.GetInputDesc(0).GetShapeRange(value_shape_range);
+  ShapeAndRange feed_shape_and_range = {element_shape, value_shape_range, element_dtype};
+  if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "SetShapeAndType: SetShapeAndRange failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus GetShapeAndType(Operator& op, ShapeAndType& out, bool& is_shape_and_type_empty, InferenceContextPtr infer_context) {
+  const char *op_name = op.GetName().c_str();
+  ShapeAndRange shape_and_range_out;
+  std::vector<AscendString> marks;
+  is_shape_and_type_empty = false;
+  
+  infer_context->GetMarks(marks);
+  if (marks.empty()) {
+    is_shape_and_type_empty = true;
+    return GRAPH_FAILED;
+  }
+  bool geted = false;
+  if (GetShapeAndRange(op, shape_and_range_out, geted, infer_context) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "GetShapeAndType: GetShapeAndRange failed.");
+    return GRAPH_FAILED;
+  }
+  if (!geted) {
+    OP_LOGE(op_name, "GetShapeAndType: GetShapeAndRange failed, marks is empty.");
+    return GRAPH_FAILED; 
+  }
+  out.SetShape(shape_and_range_out.shape_);
+  out.SetType(shape_and_range_out.shape_type_);
+
+  return GRAPH_SUCCESS;
+}
+
 graphStatus TensorListConcatShapeInference(
     Operator &op, Shape element_shape, const char *op_name) {
   DataType element_dtype;
@@ -466,6 +504,14 @@ IMPLEMT_INFERFUNC(TensorListReserve, TensorListReserveInfer) {
   }
   context->SetOutputHandleShapesAndTypes(shapes_and_types);
 
+  std::vector<AscendString> marks = {op_name};
+  context->SetMarks(marks);
+  OP_LOGI(op_name, "SetShapeAndType: shape = %s, dtype = %d.",
+    DebugString(element_shape.GetDims()).c_str(), element_dtype);
+  if (SetShapeAndType(op, element_shape, element_dtype) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "SetShapeAndType failed.");
+  }
+
   if (op.UpdateOutputDesc("handle", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Update handle desc failed.");
     return GRAPH_FAILED;
@@ -489,14 +535,26 @@ IMPLEMT_INFERFUNC(TensorListGetItem, TensorListGetItemInfer) {
     OP_LOGE(op_name, "Get context failed, it is null.");
     return GRAPH_FAILED;
   }
+  ShapeAndType handle_data;
+  bool is_shape_and_type_empty = false;
   const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
   if (shapes_and_types.size() == 0) {
     OP_LOGE(op_name, "Get shapes_and_types failed, it must not be equal 0.");
-    return GRAPH_FAILED;
+    ShapeAndType shape_and_type;
+    if (GetShapeAndType(op, shape_and_type, is_shape_and_type_empty, p_context) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "GetShapeAndType get shape and type failed.");
+      return GRAPH_FAILED;
+    }
+    handle_data = shape_and_type;
+    OP_LOGI(op_name, "GetShapeAndType: shape = %s, dtype = %d.",
+      DebugString(handle_data.GetShape().GetDims()).c_str(), handle_data.GetDataType());
+  } else {
+    auto handle_data_tmp = shapes_and_types[0];
+    handle_data = handle_data_tmp[0];
+    is_shape_and_type_empty = (shapes_and_types.empty()) ? true : false;
   }
-  auto handle_data = shapes_and_types[0];
-  if (!shapes_and_types.empty()) {
-    const ShapeAndType& list_shape_type = handle_data[0];
+  if (!is_shape_and_type_empty) {
+    const ShapeAndType& list_shape_type = handle_data;
     element_shape = list_shape_type.GetShape();
     if (list_shape_type.GetDataType() != element_dtype) {
       OP_LOGE(op_name,
@@ -530,7 +588,6 @@ IMPLEMT_INFERFUNC(TensorListGetItem, TensorListGetItemInfer) {
     OP_LOGE(op_name, "Update item desc failed.");
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(TensorListGetItem, TensorListGetItemInfer);
@@ -558,25 +615,40 @@ IMPLEMT_INFERFUNC(TensorListSetItem, TensorListSetItemInfer) {
     OP_LOGE(op_name, "Get context failed, it is null.");
     return GRAPH_FAILED;
   }
+  bool is_shape_and_type_empty = false;
+  ShapeAndType handle_data;
   const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
   if (shapes_and_types.size() == 0) {
-    OP_LOGE(op_name, "Get shapes_and_types failed, it must not be equal 0.");
-    return GRAPH_FAILED;
+    OP_LOGI(op_name, "Get shapes_and_types failed, it must not be equal 0");
+    ShapeAndType shape_and_type;
+    if (GetShapeAndType(op, shape_and_type, is_shape_and_type_empty, p_context) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "GetShapeAndType get shape and type failed.");
+      return GRAPH_FAILED;
+    }
+    handle_data = shape_and_type;
+    OP_LOGI(op_name, "GetShapeAndType: shape = %s, dtype = %d.",
+      DebugString(handle_data.GetShape().GetDims()).c_str(), handle_data.GetDataType());
+  } else {
+    auto handle_data_tmp = shapes_and_types[0];
+    handle_data = handle_data_tmp[0];
+    is_shape_and_type_empty = (shapes_and_types.empty()) ? true : false;
   }
-  auto handle_data = shapes_and_types[0];
-  if (shapes_and_types.empty()) {
+
+  if (is_shape_and_type_empty) {
     std::vector<std::vector<ShapeAndType>> key_value_vec;
     std::vector<ShapeAndType> key_value;
     ShapeAndType key(element_shape, element_dtype);
     key_value.emplace_back(key);
     key_value_vec.emplace_back(key_value);
     p_context->SetOutputHandleShapesAndTypes(std::move(key_value_vec));
-
     return GRAPH_SUCCESS;
   }
 
-  const ShapeAndType& list_shape_type = handle_data[0];
+  const ShapeAndType& list_shape_type = handle_data;
   Shape item_shape = op.GetInputDesc(2).GetShape();
+  OP_LOGE(op_name, "list_shape_type.shape = %s, item_shape = %s.",
+    DebugString(list_shape_type.GetShape().GetDims()).c_str(), DebugString(item_shape.GetDims()).c_str());
+
   if (Merge(item_shape, list_shape_type.GetShape(), item_shape, op_name)
       != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Merge item_shape and list_shape_type failed.");
@@ -584,11 +656,17 @@ IMPLEMT_INFERFUNC(TensorListSetItem, TensorListSetItemInfer) {
   }
   p_context->SetOutputHandleShapesAndTypes(shapes_and_types);
 
+  OP_LOGI(op_name, "SetShapeAndType: shape = %s, dtype = %d.",
+    DebugString(list_shape_type.GetShape().GetDims()).c_str(), element_dtype);
+  
+  if (SetShapeAndType(op, list_shape_type.GetShape(), element_dtype) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "SetShapeAndType failed.");
+  }
+
   if (op.UpdateOutputDesc("output_handle", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Update handle desc failed.");
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -672,7 +750,6 @@ INFER_FUNC_REG(TensorListPushBackBatch, TensorListPushBackBatchInfer);
 
 IMPLEMT_INFERFUNC(TensorListStack, TensorListStackInfer) {
   const char *op_name = op.GetName().c_str();
-
   DataType element_dtype;
   if (op.GetAttr("element_dtype", element_dtype) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Get attr element_dtype failed.");
@@ -685,27 +762,37 @@ IMPLEMT_INFERFUNC(TensorListStack, TensorListStackInfer) {
     OP_LOGE(op_name, "Get context failed, it is null.");
     return GRAPH_FAILED;
   }
+  bool is_shape_and_type_empty = false;
+  ShapeAndType handle_data;
   const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
   if (shapes_and_types.size() == 0) {
     OP_LOGE(op_name, "Get shapes_and_types failed, it must not be equal 0.");
-    return GRAPH_FAILED;
+    ShapeAndType shape_and_type;
+    if (GetShapeAndType(op, shape_and_type, is_shape_and_type_empty, p_context) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "GetShapeAndType get shape and type failed.");
+      return GRAPH_FAILED;
+    }
+    handle_data = shape_and_type;
+    OP_LOGI(op_name, "GetShapeAndType: shape = %s, dtype = %d.",
+      DebugString(handle_data.GetShape().GetDims()).c_str(), handle_data.GetDataType());
+  } else {
+    auto handle_data_tmp = shapes_and_types[0];
+    handle_data = handle_data_tmp[0];
+    is_shape_and_type_empty = (shapes_and_types.empty()) ? true : false;
   }
-  auto handle_data = shapes_and_types[0];
-  if ((!shapes_and_types.empty()) && (handle_data.size() > 1)) {
+
+  if ((!is_shape_and_type_empty) && (shapes_and_types.size() > 1)) {
     OP_LOGE(op_name, "Trying to read from list with wrong variant data.");
     return GRAPH_FAILED;
   }
-  if ((!shapes_and_types.empty()) && (handle_data.size() == 1)) {
-    const ShapeAndType& list_shape_type = handle_data[0];
+  if ((!is_shape_and_type_empty) && (shapes_and_types.size() == 1)) {
+    const ShapeAndType& list_shape_type = handle_data;
     if (list_shape_type.GetDataType() != element_dtype) {
-      OP_LOGE(op_name,
-              "List has type [%d], but expected type [%d].",
-              list_shape_type.GetDataType(), element_dtype);
+      OP_LOGE(op_name, "List has type [%d], but expected type [%d].", list_shape_type.GetDataType(), element_dtype);
       return GRAPH_FAILED;
     }
     Shape ignored;
-    if (Merge(element_shape, list_shape_type.GetShape(), ignored, op_name)
-        != GRAPH_SUCCESS) {
+    if (Merge(element_shape, list_shape_type.GetShape(), ignored, op_name) != GRAPH_SUCCESS) {
       OP_LOGE(op_name, "Merge element_shape and list_shape_type failed.");
       return GRAPH_FAILED;
     }
@@ -721,14 +808,12 @@ IMPLEMT_INFERFUNC(TensorListStack, TensorListStackInfer) {
   } else {
     if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(
           input_tensor, element_shape_input, op_name) != GRAPH_SUCCESS) {
-      OP_LOGE(op_name,
-              "Do makeShapeFromShapeTensorTreatScalarAsUnknownShape failed.");
+      OP_LOGE(op_name, "Do makeShapeFromShapeTensorTreatScalarAsUnknownShape failed.");
       return GRAPH_FAILED;
     }
   }
 
-  if (Merge(element_shape, element_shape_input, element_shape, op_name)
-      != GRAPH_SUCCESS) {
+  if (Merge(element_shape, element_shape_input, element_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Merge element_shape and element_shape_input failed.");
     return GRAPH_FAILED;
   }
@@ -931,17 +1016,26 @@ IMPLEMT_INFERFUNC(TensorListFromTensor, TensorListFromTensorInfer) {
   }
   context->SetOutputHandleShapesAndTypes(shapes_and_types);
 
+  std::vector<AscendString> marks = {op_name};
+  context->SetMarks(marks);
+
+  OP_LOGI(op_name, "SetShapeAndType: shape = %s, dtype = %d.",
+    DebugString(element_shape.GetDims()).c_str(), element_dtype);
+  if (SetShapeAndType(op, element_shape, element_dtype) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "SetShapeAndType failed.");
+  }
+
   if (op.UpdateOutputDesc("output_handle", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Update output output_handle desc failed.");
     return GRAPH_FAILED;
   }
+
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(TensorListFromTensor, TensorListFromTensorInfer);
 
 IMPLEMT_INFERFUNC(TensorListResize, TensorListResizeInfer) {
   const char *op_name = op.GetName().c_str();
-
   Shape unused;
   if (WithRank(op.GetInputDesc(1), 0, unused, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input size shape must be 0D.");
@@ -981,7 +1075,6 @@ INFER_FUNC_REG(TensorListResize, TensorListResizeInfer);
 
 IMPLEMT_INFERFUNC(TensorListGather, TensorListGatherInfer) {
   const char *op_name = op.GetName().c_str();
-
   DataType element_dtype;
   if (op.GetAttr("element_dtype", element_dtype) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Get attr element_dtype failed.");
@@ -1100,7 +1193,6 @@ INFER_FUNC_REG(TensorListScatterV2, TensorListScatterV2Infer);
 
 IMPLEMT_INFERFUNC(TensorListScatterIntoExistingList, TensorListScatterIntoExistingListInfer) {
   const char *op_name = op.GetName().c_str();
-
   Shape ignored;
   if (WithRankAtLeast(op.GetInputDesc(1), 1, ignored, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input tensor must be at least 1-D.");
@@ -1173,7 +1265,6 @@ INFER_FUNC_REG(TensorListScatterIntoExistingList, TensorListScatterIntoExistingL
 
 IMPLEMT_INFERFUNC(TensorListConcatLists, TensorListConcatListsInfer) {
   const char *op_name = op.GetName().c_str();
-
   auto input_a = op.GetInputDesc(0).GetShape();
   auto input_b = op.GetInputDesc(1).GetShape();
 
