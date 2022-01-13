@@ -35,7 +35,7 @@ class Constant:
     """
     the class for constant.
     """
-    AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
+    AVG_KERNEL_SIZE_H_MUL_W = 255 # kernel_h * kernel_w
     AVG_KERNEL_SIZE = 20 # maximum ksieze
     AVG_STRIDE_SIZE = 63 # maximum strides
 
