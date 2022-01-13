@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,24 +27,21 @@
  *                       |                                     |
  *                     output                                output
  */
-
+#include "conv2d_squeeze_biasadd_fusion_pass.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <map>
-
-#include "conv2d_squeeze_biasadd_fusion_pass.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
-#include "graph/utils/attr_utils.h"
-#include "graph/utils/graph_utils.h"
-#include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/tensor_utils.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-#include "error_util.h"
+#include "graph/utils/attr_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/node_utils.h"
 
 using namespace ge;
 namespace fe {
@@ -55,12 +52,13 @@ static const string kOpTypeConv = "Conv2D";
 static const string kOpTypeSqueeze = "Squeeze";
 static const string kOpTypeBiasadd = "BiasAdd";
 
-vector<FusionPattern*> Conv2DSqueezeBiasaddFusionPass::DefinePatterns() 
+vector<FusionPattern*> Conv2DSqueezeBiasaddFusionPass::DefinePatterns()
 {
     vector<FusionPattern*> patterns;
     string pass_name = "Conv2DSqueezeBiasaddFusionPass";
     FusionPattern* pattern = new (std::nothrow) FusionPattern(pass_name);
-    FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+    FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "new an object failed."),
+                      return patterns);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
     pattern->AddOpDesc(kDescConv, {kOpTypeConv})
         .AddOpDesc(kDesSqueeze, {kOpTypeSqueeze})
@@ -73,25 +71,32 @@ vector<FusionPattern*> Conv2DSqueezeBiasaddFusionPass::DefinePatterns()
     return patterns;
 }
 
-Status Conv2DSqueezeBiasaddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
+Status Conv2DSqueezeBiasaddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                              vector<ge::NodePtr>& new_nodes)
+{
+    (void) graph;
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter Conv2DSqueezeBiasaddFusionPass");
     ge::NodePtr conv_node = GetNodeFromMapping(kDescConv, mapping);
     ge::NodePtr squeeze_node = GetNodeFromMapping(kDesSqueeze, mapping);
     ge::NodePtr biasadd_node = GetNodeFromMapping(kDescBiasadd, mapping);
 
-    FUSION_PASS_CHECK(conv_node == nullptr, 
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(squeeze_node == nullptr, 
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node squeeze is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(biasadd_node == nullptr, 
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node biasadd is null, fusion failed."), return PARAM_INVALID);           
+    FUSION_PASS_CHECK(conv_node == nullptr,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."),
+                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(squeeze_node == nullptr,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node squeeze is null, fusion failed."),
+                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(biasadd_node == nullptr,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node biasadd is null, fusion failed."),
+                      return PARAM_INVALID);
     ge::OpDescPtr out_op_conv_ptr = conv_node->GetOpDesc();
     ge::OpDescPtr in_op_biasadd_ptr = biasadd_node->GetOpDesc();
-    FUSION_PASS_CHECK(out_op_conv_ptr == nullptr, 
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node conv2d OpDesc is null, fusion failed."), return PARAM_INVALID);
-    FUSION_PASS_CHECK(in_op_biasadd_ptr == nullptr, 
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node biasadd OpDesc is null, fusion failed."), return PARAM_INVALID);
-         
+    FUSION_PASS_CHECK(out_op_conv_ptr == nullptr,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node conv2d OpDesc is null, fusion failed."),
+                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(in_op_biasadd_ptr == nullptr,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Node biasadd OpDesc is null, fusion failed."),
+                      return PARAM_INVALID);
     vector<int64_t> biasadd_input_shape = biasadd_node->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
     if (biasadd_input_shape.size() != 1) {
         OP_LOGW(FUSED_OP_TYPE.c_str(), "when biasadd's second inputdata's dimension is not 1 does not need changed");
@@ -110,25 +115,28 @@ Status Conv2DSqueezeBiasaddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
 
     // unlink and link edge
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(squeeze_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                               squeeze_node->GetInDataAnchor(0)) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove conv2d-squeeze edge failed."), return FAILED);
+                                                 squeeze_node->GetInDataAnchor(0)) != SUCCESS,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove conv2d-squeeze edge failed"), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(biasadd_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                               biasadd_node->GetInDataAnchor(0)) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove squeeze-biasadd edge failed."), return FAILED);
+                                                 biasadd_node->GetInDataAnchor(0)) != SUCCESS,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove squeeze-biasadd edge failed"), return FAILED);
 
     for (auto inDataAnchor : biasadd_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
         FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(biasadd_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove all and outnode edge failed."), 
-                      return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove outnode edges failed"),
+                          return FAILED);
         FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(biasadd_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), 
-                      return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add outnode edge failed"),
+                          return FAILED);
     }
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0), biasadd_node->GetInDataAnchor(0)) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Add edge from conv2d to biasadd failed."), return FAILED);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(biasadd_node->GetOutDataAnchor(0), squeeze_node->GetInDataAnchor(0)) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Add edge from biasadd to squeeze failed."), return FAILED);
-
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0),
+                                              biasadd_node->GetInDataAnchor(0)) != SUCCESS,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Add edge from conv2d to biasadd failed"),
+                      return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(biasadd_node->GetOutDataAnchor(0),
+                                              squeeze_node->GetInDataAnchor(0)) != SUCCESS,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Add edge from biasadd to squeeze failed."),
+                      return FAILED);
     return SUCCESS;
 }
 REGISTER_PASS("Conv2DSqueezeBiasaddFusionPass", BUILT_IN_GRAPH_PASS, Conv2DSqueezeBiasaddFusionPass);

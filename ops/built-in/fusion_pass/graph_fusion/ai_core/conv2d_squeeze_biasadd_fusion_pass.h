@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,15 +24,14 @@
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
-
 namespace fe {
 class Conv2DSqueezeBiasaddFusionPass : public PatternFusionBasePass {
- protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+protected:
+    vector<FusionPattern*> DefinePatterns() override;
+    Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
- private:
-  const string FUSED_OP_TYPE = "Conv2D";
+private:
+    const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H_
