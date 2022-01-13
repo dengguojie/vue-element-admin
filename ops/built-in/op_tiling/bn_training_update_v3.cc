@@ -34,13 +34,17 @@ namespace optiling {
 
     std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
 
+    constexpr int n_dim = 0;
+    constexpr int h_dim = 2;
+    constexpr int w_dim = 3;
+    constexpr int len_shape = 5;
     int64_t N = 1;
     int64_t H = 1;
     int64_t W = 1;
-    if (shape_x.size() == 5) {
-      N = shape_x[0];
-      H = shape_x[2];
-      W = shape_x[3];
+    if (shape_x.size() == len_shape) {
+      N = shape_x[n_dim];
+      H = shape_x[h_dim];
+      W = shape_x[w_dim];
     }
 
     float batch_var_scalar = 0.0;
