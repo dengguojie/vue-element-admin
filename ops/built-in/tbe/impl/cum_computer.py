@@ -726,14 +726,11 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        if mov_length % (VECTOR_BYTE_SIZE // self.rdsize) != Constant.VALUE_ZERO:
-            align_repeat = mov_length * self.rdsize // VECTOR_BYTE_SIZE
-            if align_repeat != Constant.VALUE_ZERO:
-                self.prod_mul(self.mask, align_repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
-            mask_vector = mov_length % (VECTOR_BYTE_SIZE // self.rdsize)
-            self.prod_mul(mask_vector, DEFAULT_REPEAT_TIME, last_ret, input_x_ub, self.mask * align_repeat)
-        else:
-            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
+        align_repeat = mov_length * self.rdsize // VECTOR_BYTE_SIZE
+        if align_repeat != Constant.VALUE_ZERO:
+            self.prod_mul(self.mask, align_repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
+        mask_vector = mov_length % (VECTOR_BYTE_SIZE // self.rdsize)
+        self.prod_mul(mask_vector, DEFAULT_REPEAT_TIME, last_ret, input_x_ub, self.mask * align_repeat)
 
     def prod_process(self, mov_length, repeat, e_cycle, last_ret, input_x_ub):
         """
@@ -744,8 +741,7 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        with self.tik_instance.if_scope((tik.Expr(self.reverse) & (e_cycle == Constant.VALUE_ONE)) |
-                                        (tik.Expr(not self.reverse) & (e_cycle == self.each_loop - 1))):
+        with self.tik_instance.if_scope(mov_length % (VECTOR_BYTE_SIZE // self.rdsize) != Constant.VALUE_ZERO):
             self.prod_tail_process(mov_length, repeat, last_ret, input_x_ub)
         with self.tik_instance.else_scope():
             self.prod_mul(self.mask, repeat, last_ret, input_x_ub, Constant.VALUE_ZERO)
