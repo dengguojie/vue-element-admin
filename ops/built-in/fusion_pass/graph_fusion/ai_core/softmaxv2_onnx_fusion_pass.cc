@@ -30,12 +30,14 @@
 #include <vector>
 #include <string>
 
+#include "external/graph/operator_factory.h"
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
+#include "graph/operator_factory_impl.h"
 #include "op_log.h"
 #include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
@@ -45,7 +47,8 @@
 using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "SoftmaxV2";
-static const vector<int64_t> SHAPE = {1000, 5, 64, 64};
+static const vector<vector<int64_t>> SHAPES = {{1000, 5, 64, 64},
+                                              {1000, 12, 48, 48}};
 static const std::string PATTERN_FUSEDNODE = "SoftmaxV2";
 vector<FusionPattern*> ASoftmaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -71,9 +74,11 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return PARAM_INVALID);
 
   // helper 项目白名单
-  if (dims == SHAPE) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "ASoftmaxFusionPass is not support.");
-    return NOT_CHANGED;
+  for (auto SHAPE : SHAPES) {
+    if (dims == SHAPE) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "ASoftmaxFusionPass is not support.");
+      return NOT_CHANGED;
+    }
   }
 
   // only softmax-11 and x.dim > 2 need insert reshape node
@@ -160,46 +165,45 @@ Status ASoftmaxFusionPass::CreateReshapeNode(ge::ComputeGraph& graph,
                                              ge::NodePtr& const_node,
                                              vector<int64_t> dims) {
   auto anchor_desc = anchor_node->GetOpDesc();
-  std::shared_ptr<ge::OpDesc> reshape_desc = nullptr;
+  ge::Operator reshape_op;
   ge::GeTensorDesc x_desc;
   ge::GeTensorDesc y_desc;
   if (dims.size() == 2) {
     // the first reshape
-    FUSION_PASS_MAKE_SHARED(
-      (reshape_desc = std::make_shared<ge::OpDesc>("Reshape_" + anchor_desc->GetName(), "Reshape")),
-      return FAILED);
+    reshape_op = ge::OperatorFactory::CreateOperator("Reshape_" + anchor_desc->GetName(), "Reshape");
     x_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
     y_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
     y_desc.SetShape(ge::GeShape(dims));
     y_desc.SetOriginShape(ge::GeShape(dims));
   } else {
     // the second reshape
-    FUSION_PASS_MAKE_SHARED(
-      (reshape_desc = std::make_shared<ge::OpDesc>(anchor_desc->GetName() + "_reshape", "Reshape")),
-      return FAILED);
+    reshape_op = ge::OperatorFactory::CreateOperator(anchor_desc->GetName() + "_reshape", "Reshape");
     x_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
     y_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
   }
-  FUSION_PASS_CHECK(reshape_desc == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode reshape_desc is nullptr"),
+
+  FUSION_PASS_CHECK(reshape_op.IsEmpty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create fusion node %s failed", FUSED_OP_TYPE.c_str()),
                     return FAILED);
 
-  reshape_desc->AddInputDesc("x", x_desc);
-  reshape_desc->AddOutputDesc("y", y_desc);
+  auto reshapeOpDescPtr = ge::OpDescUtils::GetOpDescFromOperator(reshape_op);
+
+  reshapeOpDescPtr->UpdateInputDesc("x", x_desc);
+  reshapeOpDescPtr->UpdateOutputDesc("y", y_desc);
 
   ge::GeTensorDesc shape_desc = x_desc.Clone();
   shape_desc.SetDataType(ge::DT_INT32);
   shape_desc.SetOriginDataType(ge::DT_INT32);
   shape_desc.SetShape(ge::GeShape({(int64_t)dims.size()}));
   shape_desc.SetOriginShape(ge::GeShape({(int64_t)dims.size()}));
-  reshape_desc->AddInputDesc("shape", shape_desc);
+  reshapeOpDescPtr->UpdateInputDesc("shape", shape_desc);
   ge::GeTensorPtr shape_tensor_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((shape_tensor_ptr = std::make_shared<ge::GeTensor>(
                                shape_desc, reinterpret_cast<uint8_t *>(dims.data()), dims.size() * sizeof(int64_t))),
                           return FAILED);
   ge::OpDescPtr shapeDesc = ge::OpDescUtils::CreateConstOp(shape_tensor_ptr);
 
-  reshape_node = graph.AddNode(reshape_desc);
+  reshape_node = graph.AddNode(reshapeOpDescPtr);
   FUSION_PASS_CHECK(reshape_node == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateReshapeNode reshape_node is nullptr"),
                     return FAILED);
