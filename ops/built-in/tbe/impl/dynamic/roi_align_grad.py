@@ -239,11 +239,11 @@ class RoiAlignGrad():
 
         if sum_in_ub_flag:
             repeat_str = 2 * w_num * 16 // 8
-            if repeat_str <= 255:
+            with tik_instance.if_scope(repeat_str <= 255):
                 x_offset = self._get_temp_ub_offset(image_index, start_c1, h_index, w_index)
                 tik_instance.vadd(16, x_diff[x_offset], x_diff[x_offset], x_diff_ub[0, 0, 0], c1_num, 1, 1, 1,
                                   repeat_str, repeat_str, 8)
-            else:
+            with tik_instance.else_scope():
                 with tik_instance.for_range(0, c1_num) as i:
                     x_offset = self._get_temp_ub_offset(image_index, start_c1 + i, h_index, w_index)
                     tik_instance.vadd(16, x_diff[x_offset], x_diff[x_offset], x_diff_ub[i, 0, 0], 1, 1, 1, 1, 8, 8, 8)
