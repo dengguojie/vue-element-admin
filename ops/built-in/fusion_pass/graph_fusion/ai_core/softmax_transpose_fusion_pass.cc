@@ -68,7 +68,8 @@ Status softmaxTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   return INFuison(graph, inNode, newNodes);
 }
 
-Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, const int64_t shapeSize, const int32_t transfer) {
+Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, const int64_t shapeSize,
+                                            const int32_t transfer) const {
   // transfer the total image axis -2 and axis -1 for this case
   if (transfer == 1) {
     vector<int32_t> permValue;
@@ -89,7 +90,7 @@ Status softmaxTransFusionPass::SetAttrValue(const ge::OpDescPtr& OpDescPtr, cons
   return FAILED;
 }
 
-Status softmaxTransFusionPass::CheckParameter(const ge::NodePtr& inNodePtr) {
+Status softmaxTransFusionPass::CheckParameter(const ge::NodePtr& inNodePtr) const {
   // get psroipooling node inputs.
   Node::Vistor<NodePtr> inNodes = inNodePtr->GetInDataNodes();
   FUSION_PASS_CHECK((inNodes.size() != 1),
@@ -98,7 +99,7 @@ Status softmaxTransFusionPass::CheckParameter(const ge::NodePtr& inNodePtr) {
   return SUCCESS;
 }
 
-Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, ge::OpDescPtr& newOpDescPtr,
+Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, const ge::OpDescPtr& newOpDescPtr,
                                                       const int64_t shapeSize) {
   vector<int32_t> axisValue;
   ge::AttrUtils::GetListInt(preOpDescPtr, AXIS, axisValue);
@@ -117,8 +118,9 @@ Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOp
   return SUCCESS;
 }
 
-bool softmaxTransFusionPass::CheckStatus(ge::OpDescPtr& inOpDescPtr, vector<int64_t> inputShape, const uint32_t lastDimsVal,
-                                         const uint32_t times, const uint32_t maxDimsVal) {
+bool softmaxTransFusionPass::CheckStatus(const ge::OpDescPtr& inOpDescPtr, const vector<int64_t> inputShape,
+                                         const uint32_t lastDimsVal,const uint32_t times,
+                                         const uint32_t maxDimsVal) {
   uint32_t shapeSize = inputShape.size();
   vector<int32_t> axisValue;
   vector<int32_t>::iterator iterNegAxis, iterPosAxis;

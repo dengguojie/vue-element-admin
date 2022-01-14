@@ -76,7 +76,8 @@ Status IsPadZero(vector<int64_t> pad, bool& flag) {
 }
 
 Status PoolingGenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride,
-                                const vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1, const bool isInt8) {
+                                const vector<int64_t> pad, const int64_t dimH, const int64_t dimW,
+                                uint16_t& output1, const bool isInt8) {
   uint16_t* output = &output1;
   int64_t h_start = 0;
   int64_t w_start = 0;
@@ -189,8 +190,8 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, const ge::NodePtr& Po
 }
 
 Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, const vector<int64_t> pad,
-                                   const vector<int64_t>& dimInfo, const vector<int64_t> window, const vector<int64_t> stride,
-                                   std::string& recode, const bool isInt8) {
+                                   const vector<int64_t>& dimInfo, const vector<int64_t> window,
+                                   const vector<int64_t> stride, std::string& recode, const bool isInt8) {
   int64_t outputH = 0;
   int64_t outputW = 0;
   int64_t outputC = 0;
