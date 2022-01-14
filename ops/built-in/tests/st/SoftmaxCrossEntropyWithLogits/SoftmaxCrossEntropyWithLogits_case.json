@@ -435,5 +435,68 @@
     ],
     "attr": [],
     "case_name": "test_SoftmaxCrossEntropyWithLogits_014"
+  },
+  {
+    "op": "SoftmaxCrossEntropyWithLogits",
+    "input_desc": [
+      {
+        "shape": [
+          6272,
+          19710
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6272,
+          19710
+        ],
+        "ori_format": "ND",
+        "name": "input_features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6272,
+          19710
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6272,
+          19710
+        ],
+        "ori_format": "ND",
+        "name": "input_labels",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          6272
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6272
+        ],
+        "ori_format": "ND",
+        "name": "output_loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          6272,
+          19710
+        ],
+        "format": "ND",
+        "ori_shape": [
+          6272,
+          19710
+        ],
+        "ori_format": "ND",
+        "name": "output_backprop",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_SoftmaxCrossEntropyWithLogits_015"
   }
 ]

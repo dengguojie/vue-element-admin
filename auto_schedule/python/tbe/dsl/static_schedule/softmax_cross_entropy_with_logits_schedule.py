@@ -38,7 +38,7 @@ softmax_cross_logits_nhw = [11842605]
 softmax_cross_logits_nd = [2105352]
 
 # softmax_logits_2d_csize includes shapes that auto tiling can not support
-softmax_logits_2d_csize = [11760]
+softmax_logits_2d_csize = [11760, 14320]
 
 def get_mask_fp16_skip_one(length):
     """
@@ -974,18 +974,20 @@ def get_ub_tiling_large_2d(shape, dtype, not_aligned, block_split_factor, block_
     n, c = int(shape[0]), int(shape[1])
     large_batch_flag = 0
     ub_factor = n
+    num_per_block = 32 // (dtype_size * 2)
+    c_align = (c + num_per_block - 1) // num_per_block * num_per_block
     # coexisting tensor has three common tensors and two reduce tensors,
     # a reduce tensor occupies one shares of space, and a common tensor occupies c shares of space
     if not_aligned and \
-        c * max_coexisting_common_num + max_coexisting_reduce_num + block_split_factor > total_num:
+        c_align * max_coexisting_common_num + \
+            max_coexisting_reduce_num * num_per_block + block_split_factor > total_num:
         large_batch_flag = 1
-    if not not_aligned and \
-        c * max_coexisting_common_num + max_coexisting_reduce_num + \
+    if not not_aligned and c_align * max_coexisting_common_num + max_coexisting_reduce_num * num_per_block + \
             ((n + block_split_nparts - 1) // block_split_nparts) > total_num:
         large_batch_flag = 1
     if large_batch_flag:
-        ub_factor = \
-            (total_num - max_coexisting_reduce_num - c * max_coexisting_common_num) // align_factor * align_factor
+        ub_factor = (total_num - max_coexisting_reduce_num * num_per_block -
+                     c_align * max_coexisting_common_num) // align_factor * align_factor
     return ub_factor, large_batch_flag
 
 
