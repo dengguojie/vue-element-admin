@@ -47,6 +47,25 @@ def test_cachetiling_conv2d():
             with operation.dynamic():
                 conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, casename)
 
+def test_conv2d_param_process_dynamic_cdim():
+    fmap = {"ori_shape": (1, -1, 8, 8), "shape": (1, -1, 8, 8, 16), "format": "NC1HWC0", "ori_format": "NCHW", "dtype": "float16", "range": [(1, 1), (1, 32), (8, 8), (8, 8), (16, 16)],  "ori_range": [(1, 1), (1, 32), (8, 8), (8, 8)]}
+    weight = {"shape": (8, 2, 16, 16), "ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW", "dtype": "float16"}
+    bias_tensor = None
+    offset_w_tensor = None
+    strides = [1, 1, 1, 1]
+    pads = [0, 0, 0, 0]
+    dilations = [1, 1, 1, 1]
+    outputs = {'shape':(2, 2, 7, 7, 16), 'ori_shape':(32, 32, 7, 7), "format": "NC1HWC0",  'ori_format': 'NCHW', "param_type": "output", 'dtype': 'float16'}
+
+    ori_paras = {
+        "inputs": fmap, "weights": weight, "bias": bias_tensor, "offset_w": offset_w_tensor,
+        "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
+        "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d","dtype": "float16"
+    }
+    proc = Conv2dParaProcess(ori_paras)
+    proc.check_only_cdim_dynamic(fmap)
+
 if __name__ == '__main__':
+    test_conv2d_param_process_dynamic_cdim()
     test_conv2d_param_process()
     test_cachetiling_conv2d()

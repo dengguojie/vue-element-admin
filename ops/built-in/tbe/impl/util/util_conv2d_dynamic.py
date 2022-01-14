@@ -483,11 +483,45 @@ class Conv2dParaProcess(CubeParaProcess):
 
         return new_in_range_nchw
 
+    def check_only_cdim_dynamic(self, inputs):
+        """
+        check cdim_dynamic
+        """
+        if inputs.get("shape"):
+            in_shape_5hd = list(inputs.get("shape"))
+        if inputs.get("ori_range"):
+            ori_range = list(inputs.get("ori_range"))
+        if inputs.get("range"):
+            in_range = list(inputs.get("range"))
+        if inputs.get("ori_format"):
+            ori_format = inputs.get("ori_format")
+            n_index = ori_format.find("N")
+            c_index = ori_format.find("C")
+            h_index = ori_format.find("H")
+            w_index = ori_format.find("W")
+            if inputs.get("ori_shape"):
+                ori_shape = list(inputs.get("ori_shape"))
+                if DYNAMIC_FLAG == ori_shape[c_index] and \
+                    DYNAMIC_FLAG not in (ori_shape[n_index], ori_shape[h_index], ori_shape[w_index]):
+                    in_range[0] = (ori_shape[n_index], ori_shape[n_index])
+                    if inputs.get("shape"):
+                        in_shape_5hd[n_index] = DYNAMIC_FLAG
+                        self.inputs["shape"] = in_shape_5hd
+                    if inputs.get("ori_range"):
+                        ori_range[n_index] = (ori_range[n_index], ori_range[n_index])
+                        self.inputs["ori_range"] = ori_range
+                    if inputs.get("ori_range"):
+                        ori_shape[n_index] = DYNAMIC_FLAG
+                        self.inputs["ori_shape"] = ori_shape
+                    if inputs.get("range"):
+                        self.inputs["range"] = in_range
+
     # 'pylint: disable= too-many-locals
     def check_paras(self):
         """
         check original paras
         """
+        self.check_only_cdim_dynamic(self.inputs)
         self.check_input_dict(self.inputs, "inputs", True)
         self.check_input_dict(self.weights, "weights", False)
         para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
