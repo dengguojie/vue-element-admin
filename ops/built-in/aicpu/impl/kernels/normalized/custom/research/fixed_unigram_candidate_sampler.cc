@@ -15,6 +15,7 @@
  */
 #include "fixed_unigram_candidate_sampler.h"
 
+#include <securec.h>
 #include <cmath>
 #include <fstream>
 #include <sstream>
@@ -157,7 +158,7 @@ float FUCSCpuKernel::RandFloat() {
   uint32_t exp = static_cast<uint32_t>(127);
   uint32_t val = (exp << 23) | man;
   float result;
-  memcpy(&result, &val, sizeof(val));
+  memcpy_s(&result, sizeof(val), &val, sizeof(val));
   return result - 1.0f;
 }
 
