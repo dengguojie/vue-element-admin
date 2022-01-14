@@ -40,6 +40,7 @@ vals = {("CORE_NUM", ): 48,
         ("Intrinsic_fix_pipe_unit_list",): True,
         ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
         }
+
 def side_effects(*args):
     return vals[args]
 

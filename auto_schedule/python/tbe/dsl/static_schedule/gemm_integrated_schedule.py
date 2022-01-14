@@ -2120,11 +2120,11 @@ class GemmSchedule:
             if self.container.TENSOR_MAP.get("alpha") is None:
                 if is_from_repository_new:
                     return tiling_res_new
-                else:
-                    return self._auto_tiling(
-                        self.container.fuse_num_group[0],
-                        self.container.fuse_num_group[1],
-                        self.container.fuse_num_group[2])
+
+                return self._auto_tiling(
+                    self.container.fuse_num_group[0],
+                    self.container.fuse_num_group[1],
+                    self.container.fuse_num_group[2])
 
         info_dict["fused_double_operand_num"] = new_fused_num
         tiling_res = get_tiling(info_dict)
