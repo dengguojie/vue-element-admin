@@ -20,6 +20,7 @@
  */
 #include "argmax_onehot_fusion_pass.h"
 
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -113,13 +114,13 @@ Status ArgmaxOneHotFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   }
 
   OP_LOGD(PASS_NAME, "%s's dimension is %ld.", argmax_node->GetName().c_str(), dimension[0]);
-  if (dimension[0] > argmax_first_input_shape.GetDimNum() || dimension[0] < 0) {
-    OP_LOGD(PASS_NAME, "%s dimension[%ld] is invalid, fusion not change.",
-    argmax_node->GetName().c_str(), dimension[0]);
+  if (dimension[0] > static_cast<int64_t>(argmax_first_input_shape.GetDimNum()) || dimension[0] < 0) {
+    OP_LOGD(PASS_NAME, "%s dimension[%ld] is invalid, fusion not change.", argmax_node->GetName().c_str(),
+            dimension[0]);
     return NOT_CHANGED;
   }
 
-  auto dim_value = static_cast<size_t>(dimension[0]);
+  auto dim_value = dimension[0];
   if (dim_value == ge::UNKNOWN_DIM) {
     OP_LOGD(PASS_NAME, "%s's shape is %s, dimension[%ld] is UNKNOWN_DIM, fusion not change.",
             argmax_node->GetName().c_str(),
