@@ -465,6 +465,7 @@ def nms_with_mask_generalization(box_scores,
                                  selected_idx,
                                  selected_mask,
                                  iou_thr,
+                                 kernel_name="nms_with_mask",
                                  generalize_config={"mode": "keep_rank"}):
     """
     support input (-1, 8), and selected_boxes is (-1, 5), selected_idx is (-1,), selected_mask is (-1,)
