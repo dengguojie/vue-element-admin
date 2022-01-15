@@ -171,24 +171,21 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
     para_check.check_shape(shape_grads, param_name="grads")
     para_check.check_shape(shape_diff_scale, param_name="diff_scale")
     dim_c0 = 0
-    dim_c1 = 0
     if data_format == "NDC1HWC0":
-        dim_c1 = shape_grads[2]
         dim_c0 = shape_grads[5]
         n_shape = shape_diff_scale[0] * shape_diff_scale[1]
         if n_shape != 1 or shape_diff_scale[3] != 1 or shape_diff_scale[4] != 1:
             error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
             error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[2] != dim_c1 or shape_diff_scale[5] != dim_c0:
+        if shape_diff_scale[5] != dim_c0:
             error_reson = "Dimension C must be equal"
             error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
     else:
-        dim_c1 = shape_grads[1]
         dim_c0 = shape_grads[4]
         if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
             error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
             error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[1] != dim_c1 or shape_diff_scale[4] != dim_c0:
+        if shape_diff_scale[4] != dim_c0:
             error_reson = "Dimension C must be equal"
             error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 

@@ -1,0 +1,381 @@
+[
+    {
+      "op": "BNTrainingReduceGrad",
+      "input_desc": [
+        {
+          "shape": [
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "grads",
+          "param_name": "grads",
+          "type": "float16",
+          "typical_shape": [1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]],
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "x",
+          "param_name": "x",
+          "type": "float16",
+          "typical_shape": [1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]],
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "diff_scale",
+          "param_name": "diff_scale",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "diff_offset",
+          "param_name": "diff_offset",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "scale",
+          "param_name": "scale",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "batch_mean",
+          "param_name": "batch_mean",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "batch_variance",
+          "param_name": "batch_variance",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 64, 1, 1, 16]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "y",
+          "param_name": "y",
+          "type": "float16",
+          "typical_shape": [1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]]
+        }
+      ],
+      "attr": [
+        {
+          "name": "epsilon",
+          "type": "float",
+          "value": 9.999999747378752e-06
+        }
+      ],
+      "case_name": "test_BNTrainingReduceGrad_000"
+    },
+    {
+      "op": "BNTrainingReduceGrad",
+      "input_desc": [
+        {
+          "shape": [
+            1,
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "grads",
+          "param_name": "grads",
+          "type": "float16",
+          "typical_shape": [1, 1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]],
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "x",
+          "param_name": "x",
+          "type": "float16",
+          "typical_shape": [1, 1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]],
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "diff_scale",
+          "param_name": "diff_scale",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform"
+        },
+        {
+          "shape": [
+            1,
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "diff_offset",
+          "param_name": "diff_offset",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "scale",
+          "param_name": "scale",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "batch_mean",
+          "param_name": "batch_mean",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 1, 64, 1, 1, 16]
+        },
+        {
+          "shape": [
+            1,
+            1,
+            64,
+            1,
+            1,
+            16
+          ],
+          "ori_shape": [
+            1024
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "batch_variance",
+          "param_name": "batch_variance",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "typical_shape": [1, 1, 64, 1, 1, 16]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            1,
+            1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "format": "NDC1HWC0",
+          "ori_format": "NDHWC",
+          "name": "y",
+          "param_name": "y",
+          "type": "float16",
+          "typical_shape": [1, 1, 64, 128, 128, 16],
+          "shape_range": [[1, -1],[1, -1],[1, -1]]
+        }
+      ],
+      "attr": [
+        {
+          "name": "epsilon",
+          "type": "float",
+          "value": 9.999999747378752e-06
+        }
+      ],
+      "case_name": "test_BNTrainingReduceGrad_001"
+    }
+  ]
