@@ -429,12 +429,12 @@ graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
                                bool &shape_changed,
                                const char* op_name) {
   if (!RankKnown(shared_shape_and_range.shape_)) {
-    out = {Shape(UNKNOWN_RANK), {}};
+    out = {Shape(UNKNOWN_RANK), {}, value_shape_and_range.shape_type_};
     return GRAPH_SUCCESS;
   }
   if (!RankKnown(value_shape_and_range.shape_) ||
       (shared_shape_and_range.shape_.GetDimNum() != value_shape_and_range.shape_.GetDimNum())) {
-    out = {Shape(UNKNOWN_RANK), {}};
+    out = {Shape(UNKNOWN_RANK), {}, value_shape_and_range.shape_type_};
     shape_changed = true;
     return GRAPH_SUCCESS;
   }
@@ -465,7 +465,7 @@ graphStatus MergeShapeAndRange(const ShapeAndRange &shared_shape_and_range,
   std::vector<std::pair<int64_t, int64_t>> shape_range(rank);
   MergeShape(shared_shape_and_range.shape_, value_shape_and_range.shape_, dims, shape_changed);
   MergeRange(actual_shared_range, actual_value_range, shape_range, shape_changed);
-  out = {Shape(dims), shape_range};
+  out = {Shape(dims), shape_range, value_shape_and_range.shape_type_};
   return GRAPH_SUCCESS;
 }
 
@@ -1146,6 +1146,7 @@ graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_r
   auto context = op.GetInferenceContext();
   std::vector<AscendString> marks;
   context->GetMarks(marks);
+
   if (!marks.empty()) {
     OP_LOGI(op.GetName().c_str(), "Set marks[0] = %s", marks[0].GetString());
     bool shape_changed = false;

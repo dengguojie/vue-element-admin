@@ -563,7 +563,7 @@ IMPLEMT_INFERFUNC(StackPush, StackPushInfer) {
   if (operator_context->GetMarks().size() != 0) {
     std::vector<std::pair<int64_t, int64_t>> shape_range;
     op.GetInputDesc("element").GetShapeRange(shape_range);
-    ShapeAndRange feed_shape_and_range{elsShape, shape_range};
+    ShapeAndRange feed_shape_and_range{elsShape, shape_range, type};
     if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
 	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("SetShapeAndRange failed"));
       return GRAPH_FAILED;
@@ -961,7 +961,7 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
   } else {
     std::vector<std::pair<int64_t, int64_t>> value_shape_range;
     op.GetInputDesc(2).GetShapeRange(value_shape_range);
-    ShapeAndRange feed_shape_and_range = {value_shape, value_shape_range};
+    ShapeAndRange feed_shape_and_range = {value_shape, value_shape_range, DT_FLOAT};
     if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
       AscendString op_name;
       op.GetName(op_name);
@@ -1187,7 +1187,7 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
     for (size_t i = 1; i < value_shape_range.size(); ++i) {
       feed_shape_range.push_back(value_shape_range[i]);
     }
-    ShapeAndRange feed_shape_and_range = {fed_shape, feed_shape_range};
+    ShapeAndRange feed_shape_and_range = {fed_shape, feed_shape_range, DT_FLOAT};
     if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("set shape and range failed."));
       return GRAPH_FAILED;

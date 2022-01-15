@@ -184,6 +184,21 @@ TEST_F(TENSOR_LIST_UT, SetItemInferShapeMarksFail) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+TEST_F(TENSOR_LIST_UT, SetItemInferShapeMarksEmpty) {
+  std::vector<std::string> marks = {std::string("SetItemInferShapeMarksEmpty")};
+  ge::op::TensorListSetItem op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("item", create_desc({2, 2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 TEST_F(TENSOR_LIST_UT, GetItemInferShape) {
   ge::op::TensorListGetItem op;
   op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
@@ -313,6 +328,45 @@ TEST_F(TENSOR_LIST_UT, StackInferShape) {
 
   auto y_desc = op.GetOutputDesc("tensor");
   EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
+}
+TEST_F(TENSOR_LIST_UT, StackInferShapeMarksOk) {
+
+
+std::vector<std::string> marks = {std::string("GetItemInferShapeMarksOk")};
+
+  ge::op::TensorListSetItem op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("index", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("item", create_desc({2, 2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::ResourceContextMgr resource_mgr;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create(&resource_mgr));
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  inferCtxPtr->SetMarks(marks);
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+
+  ge::op::TensorListStack op2;
+  op2.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op2.UpdateInputDesc("element_shape", create_desc({2, 2}, ge::DT_INT32));
+  op2.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr2 = std::move(ge::InferenceContext::Create(&resource_mgr));
+  inferCtxPtr2->SetMarks(marks);
+  op2.SetInferenceContext(inferCtxPtr2);
+  auto ret2 = op2.InferShapeAndType();
+  EXPECT_EQ(ret2, ge::GRAPH_SUCCESS);
+  auto y_desc2 = op2.GetOutputDesc("tensor");
+  EXPECT_EQ(y_desc2.GetDataType(), ge::DT_INT32);
 }
 
 TEST_F(TENSOR_LIST_UT, StackInferShapeMarksFail) {

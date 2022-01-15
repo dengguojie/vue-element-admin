@@ -595,6 +595,7 @@ COMMON_INFER_FUNC_REG(LinSpaceD, LinSpaceDInferShape);
 template <typename T>
 static void GetLinSpaceConstValue(const Operator& op, const Tensor& const_tensor, std::vector<int64_t>& const_data) {
   size_t size = 0;
+
   T* const_data_ptr = (T*)const_tensor.GetData();
   size = const_tensor.GetSize() / sizeof(T);
   for (size_t i = 0; i < size; ++i) {
@@ -611,14 +612,16 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
   if (op.GetInputConstData("num", input_num_tensor) != GRAPH_SUCCESS) {
-    std::vector<int64_t> shape_vec;
-    Shape shape_start = op.GetInputDesc("num").GetShape();
-    for (size_t dim = 0; dim < shape_start.GetDimNum(); dim++) {
-      shape_vec.push_back(-1);
-    }
+    OP_LOGI(op_name.GetString(), "LinSpaceInferShape: GetInputConstData fail!");
+    std::cout<< "LinSpaceInferShape: GetInputConstData fail" <<std::endl;
     DataType input_dtype = op.GetInputDescByName("start").GetDataType();
+    std::cout<< "LinSpaceInferShape: input_dtype = " << input_dtype <<std::endl;
+    std::vector<std::string> input_infer_depends = {"num"};
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    op_desc->SetOpInferDepends(input_infer_depends);
+
     TensorDesc td = op.GetOutputDesc("output");
-    td.SetShape(ge::Shape(shape_vec));
+    td.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     td.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("output", td);
     return GRAPH_SUCCESS;
@@ -627,6 +630,7 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   if (num_shape_vec.empty()) {
     OP_LOGI(op_name.GetString(), "num_shape_vec is empty!");
   }
+
   DataType data_type = op.GetInputDescByName("num").GetDataType();
   switch (data_type) {
     case DT_INT32:
@@ -646,7 +650,6 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   td.SetShape(ge::Shape(num_shape_vec));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output", td);
-
   return GRAPH_SUCCESS;
 }
 
