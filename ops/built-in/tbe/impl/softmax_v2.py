@@ -392,7 +392,7 @@ def _is_special_cases(input_shape, compare_type):
 
 # 'pylint: disable=variable_type_changed
 @fusion_manager.register("softmax_v2")
-def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
+def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="high_performance"):
     """
     calculating data's softmax, produces an output tensor with shape
     the result equals the sum of the x power of e over the sum of
@@ -415,11 +415,11 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         the result of softmax
     """
 
-    shape = te.lang.cce.util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
+    shape = te.lang.cce.util.shape_to_list(input_x.shape)
     axis = list(axis)
-    last_dim = len(input_x.shape) - 1
     vcmax_flag = False
+    last_dim = len(input_x.shape) - 1
 
     for i in axis:
         if i in (-1, last_dim):
@@ -446,7 +446,10 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             "te.lang.cce.reduce_max", "float32") and len(axis) == 1:
         data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True, priority_flag=True)
     else:
-        data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True)
+        if impl_mode == "high_precision":
+            data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True, priority_flag=True)
+        else:
+            data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True)
 
     data_max = _broadcast_nz(data_max, shape)
     data_subtrac = te.lang.cce.vsub(input_x, data_max)
@@ -2792,7 +2795,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
 
         attr = {"ori_shape": input_x.get("ori_shape")}
         data_input = tvm.placeholder(shape, dtype=dtype, name="data", attrs=attr)
-        output = softmax_v2_compute(data_input, output_y, axis, kernel_name)
+        output = softmax_v2_compute(data_input, output_y, axis, kernel_name, impl_mode)
         with tvm.target.cce():
             result = te.lang.cce.auto_schedule(output)
 
