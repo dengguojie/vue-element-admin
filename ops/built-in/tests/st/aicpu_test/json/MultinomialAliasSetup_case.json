@@ -1,0 +1,602 @@
+[
+  {
+    "case_name": "Test_MultinomialAliasSetup_001",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [1000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [1000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [1000]
+      }
+    ]
+  },
+  {
+    "case_name": "Test_MultinomialAliasSetup_002",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [100],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [100]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [100]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_512",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [128],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [128]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [128]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_1k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [256],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [256]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [256]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_4k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [1024],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [1024]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [1024]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_8k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [2000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [2000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [2000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_16k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [4000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [4000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [4000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_32k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [8000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [8000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [8000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_64k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [16000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [16000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [16000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_128k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [32000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [32000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [32000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_256k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [64000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [64000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [64000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_512k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [128000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [128000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [128000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_1M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [256000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [256000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [256000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_8M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [2000000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [2000000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [2000000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_FLOAT_16M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [4000000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [4000000]
+      },
+      {
+        "format": "ND",
+        "type": ["float"],
+        "shape": [4000000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_512",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [64],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [64]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [64]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_1k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [128],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [128]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [128]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_4k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [256],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [256]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [256]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_8k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [512],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [512]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [512]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_16k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [1024],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [1024]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [1024]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_32k",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [2000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [2000]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [2000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_1M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [128000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [128000]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [128000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_8M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [1000000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [1000000]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [1000000]
+      }
+    ]
+  },
+  {
+    "case_name": "DATA_TYPE_DT_DOUBLE_16M",
+    "op": "MultinomialAliasSetup",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [2000000],
+        "data_distribute": "uniform",
+        "value_range": [[0.0, 0.001]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": ["int64"],
+        "shape": [2000000]
+      },
+      {
+        "format": "ND",
+        "type": ["double"],
+        "shape": [2000000]
+      }
+    ]
+  }
+]

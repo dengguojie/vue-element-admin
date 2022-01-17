@@ -89,6 +89,26 @@ IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
 
 INFER_FUNC_REG(MultinomialAliasDraw, MultinomialAliasDrawInfer);
 
+IMPLEMT_INFERFUNC(MultinomialAliasSetup, MultinomialAliasSetupInfer) {
+  TensorDesc x_input = op.GetInputDesc("probs");
+  Shape x_shape;
+  if (WithRankAtLeast(x_input, 1, x_shape, "MultinomialAliasSetup") != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  
+  TensorDesc output_desc_q = op.GetOutputDesc("q");
+  TensorDesc output_desc_j = op.GetOutputDesc("j");
+  auto type = op.GetInputDesc("probs").GetDataType();
+  output_desc_q.SetDataType(type);
+  output_desc_q.SetShape(x_shape);
+  output_desc_j.SetDataType(DT_INT64);
+  output_desc_j.SetShape(x_shape);
+  op.UpdateOutputDesc("q", output_desc_q);
+  op.UpdateOutputDesc("j", output_desc_j);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MultinomialAliasSetup, MultinomialAliasSetupInfer);
 
 IMPLEMT_INFERFUNC(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer) {
   Shape unused;
