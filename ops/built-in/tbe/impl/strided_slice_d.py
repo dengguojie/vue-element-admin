@@ -769,6 +769,40 @@ def _update_params_for_other_format(input_shape, begin, end, strides, input_form
         strides_new = [strides_ndchw[0], strides_ndchw[1],
                        strides_c1, strides_ndchw[3], strides_ndchw[4], strides_c0]
         return begin_new, end_new, strides_new
+
+    if input_format in ["NC1HWC0"]:
+        # when NC1HWC0 will update the C1 and C0 for begin, end and strides
+        # ex: begin [N, C, H, W] -> [N, C // 16, H, W, 0]
+        #     end  [N, C, H, W] -> [N, (C + 15) // 16, H, W, 16]
+        #     strides  [N, C, H, W] -> [N, 1, H, W, 1]
+        #     strides[c] only support 1
+        begin_nchw = [begin[input_ori_format.index("N")], begin[input_ori_format.index("C")],
+                       begin[input_ori_format.index("H")], begin[input_ori_format.index("W")]]
+        end_nchw = [end[input_ori_format.index("N")], end[input_ori_format.index("C")],
+                     end[input_ori_format.index("H")], end[input_ori_format.index("W")]]
+        strides_nchw = [strides[input_ori_format.index("N")], strides[input_ori_format.index("C")],
+                         strides[input_ori_format.index("H")], strides[input_ori_format.index("W")]]
+        input_shape_nchw = [input_shape[input_ori_format.index("N")], input_shape[input_ori_format.index("C")],
+                             input_shape[input_ori_format.index("H")], input_shape[input_ori_format.index("W")]]
+        # strides[c] ！= 1，raise exception
+        # begin[c] is not c0 align, raise exception
+        # end[c] is not c0 align and end[c] != input_shape[c], raise exception
+        if strides_nchw[1] != 1 or begin_nchw[1] % align_c0 != 0 or (
+                end_nchw[1] % align_c0 != 0 and end_nchw[1] != input_shape_nchw[1]):
+            error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
+
+        begin_c1 = begin_nchw[1] // align_c0
+        begin_c0 = 0
+        end_c1 = _ceil_div(end_nchw[1], align_c0)
+        end_c0 = 16
+        strides_c1 = 1
+        strides_c0 = 1
+
+        begin_new = [begin_nchw[0], begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
+        end_new = [end_nchw[0], end_c1, end_nchw[2], end_nchw[3], end_c0]
+        strides_new = [strides_nchw[0], strides_c1, strides_nchw[2], strides_nchw[3], strides_c0]
+        return begin_new, end_new, strides_new
+    
     return begin, end, strides
 
 
@@ -814,8 +848,29 @@ def op_select_format(input_x,
         > new_axis_mask : 0
         > shrink_axis_mask : 0
         > the Op StridedSliceD can process with NDC1HWC0:
-        > input_x : Tensor of (shape=(16, 16, 2, 16, 16, 16), "NDC1HWC0")
-        > output_x: Tensor of (shape=(16, 16, 1, 16, 16, 16), "NDC1HWC0")
+        > input_x : Tensor of (shape=(16, 2, 16, 16, 16), "NC1HWC0")
+        > output_x: Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+        2. when:
+        input x's ori_shape 's length is 4
+        strides[c] = 1, begins[c] is c0 align
+        end[c] is c0 align or end[c] = ori_shape[c]
+        The Op stridedSliceD can support 5HD
+        > for example:
+        > input_x : Tensor (shape=(16, 16, 16, 32), "NHWC")
+        > begin : [0, 0, 0, 0]
+        > end : [0, 0, 0, 16]
+        > strides : [1, 1, 1, 1]
+        > begin_mask : 0
+        > end_mask : 0
+        > ellipsis_mask : 0
+        > new_axis_mask : 0
+        > shrink_axis_mask : 0
+        > the Op StridedSliceD can process with NDC1HWC0:
+        > input_x : Tensor of (shape=(16, 2, 16, 16, 16), "NC1HWC0")
+        > output_x: Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        
+
 
         2. In other scenes, The Op StridedSliceD only support ND
         > for example:
@@ -858,9 +913,11 @@ def op_select_format(input_x,
             # 1.C dim in begin is c0 align
             # 2.C dim in end is c0 align or C dim in end is equal to C dim in shape
             # 3.C dim in strides is 1
-            hd_support_format = get_fused_str(["N", "D", "C", "H", "W"])
+            hd_support_format_5d = get_fused_str(["N", "D", "C", "H", "W"])
+            hd_support_format_4d = get_fused_str(["N", "C", "H", "W"])
             if list(input_shape) == list(input_ori_shape) and len(input_ori_format) == len(input_ori_shape) and \
-                input_ori_format in hd_support_format and len(input_shape) == len(output_shape):
+                (input_ori_format in hd_support_format_5d or input_ori_format in hd_support_format_4d) and \
+                len(input_shape) == len(output_shape):
                 dict_zip_begin = dict(zip(list(input_ori_format), begin))
                 dict_zip_end = dict(zip(list(input_ori_format), end))
                 dict_zip_strides = dict(zip(list(input_ori_format), strides))
@@ -870,7 +927,10 @@ def op_select_format(input_x,
                 strides_c_align_flag = dict_zip_strides["C"] == 1
                 if begin_c_align_flag and end_c_align_flag and strides_c_align_flag:
                     dtype_base_out = dtype_base_out + other_data_type
-                    format_base_out = format_base_out + ["NDC1HWC0"] * len(other_data_type)
+                    if input_ori_format in hd_support_format_5d:
+                        format_base_out = format_base_out + ["NDC1HWC0"] * len(other_data_type)
+                    if input_ori_format in hd_support_format_4d:
+                        format_base_out = format_base_out + ["NC1HWC0"] * len(other_data_type)
 
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
@@ -1065,7 +1125,7 @@ def strided_slice_d(input_x,
     else:
         strides = list(strides)
     # update begin, end, strides according to format
-    if input_format == "NDC1HWC0":
+    if input_format in ["NDC1HWC0", "NC1HWC0"]:
         begin, end, strides = _update_params_for_other_format(input_ori_shape, begin, end,
                                                               strides, input_format, input_ori_format)
     else:

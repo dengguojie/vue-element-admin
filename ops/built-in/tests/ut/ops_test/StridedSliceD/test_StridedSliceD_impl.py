@@ -441,6 +441,15 @@ case46 = {"params": [{"shape": (1, 1088, 1920, 18), "dtype": "float16", "format"
           "expect": "success",
           "support_expect": True}
 
+case47 = {"params": [{"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (16, 16, 16, 32), "ori_format": "NHWC"},
+                     {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (16, 16, 16, 16), "ori_format": "NHWC"},
+                     [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_47",
+          "expect": "success",
+          "support_expect": True}
+
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
     op_select_format(
@@ -465,6 +474,12 @@ def test_op_select_format(test_arg):
                       "ori_shape": (1, 120), "ori_format": "ND"},
                      {"shape": (1, 80), "dtype": "float32", "format": "ND", "ori_shape": (1, 80), "ori_format": "ND"},
                      [0, 40], [1, 120], [1, 1], 0, 0, 0, 0, 0)
+    op_select_format(
+        {"shape": (16, 16, 16, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 0)
 
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
@@ -512,6 +527,8 @@ ut_case.add_case(["all"], case43)
 ut_case.add_case(["all"], case44)
 ut_case.add_case(["all"], case45)
 ut_case.add_case(["all"], case46)
+ut_case.add_case(["all"], case47)
+
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):
