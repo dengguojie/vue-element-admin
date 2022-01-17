@@ -1,5 +1,6 @@
 # # -*- coding:utf-8 -*-
 import sys
+import os
 from op_test_frame.ut import BroadcastOpUT
 import numpy as np
 import pprint
@@ -82,31 +83,30 @@ def max_pooling_forward(input_data, output_data, ksize, strides, padding_mode="C
     return pool_z
 
 
-# ut_case.add_case(["Ascend910"], case={
-#     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
-#                 "shape": (1, 4, 56, 56, 16),
-#                 "param_type": "input"},
-#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
-#                 "shape": (1, 4, 28, 28, 16),
-#                 "param_type": "output"}, [1, 1, 3, 3], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1), "NC1HWC0", False,
-#                False],
-# })
+ut_case.add_case(["all"], case={
+     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
+                 "shape": (1, 4, 56, 56, 16),
+                 "param_type": "input"},
+                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
+                 "shape": (1, 4, 28, 28, 16),
+                 "param_type": "output"}, [1, 1, 3, 3], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1), "NC1HWC0", False,
+                False],
+ })
 
 # coding cases here
-# ut_case.add_precision_case("all", {
-#     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
-#                 "shape": (1, 4, 56, 56, 16),
-#                 "param_type": "input"},
-#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
-#                 "shape": (1, 4, 28, 28, 16),
-#                 "param_type": "output"}, [1, 1, 3, 3], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1), "NC1HWC0", False,
-#                False],
-#     "calc_expect_func": max_pooling_forward,
-#     # "case_name": "test+_max_pool_v3_impl_1",
-#     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-# })
+ut_case.add_precision_case("all", {
+     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
+                 "shape": (1, 4, 56, 56, 16),
+                 "param_type": "input"},
+                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
+                 "shape": (1, 4, 28, 28, 16),
+                 "param_type": "output"}, [1, 1, 3, 3], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1), "NC1HWC0", False,
+                False],
+     "calc_expect_func": max_pooling_forward,
+     "case_name": "test_max_pool_v3_impl_1",
+     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+ })
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
-    # ut_case.run()
+    ut_case.run("Ascend910A",simulator_mode="pv",simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
     exit(0)

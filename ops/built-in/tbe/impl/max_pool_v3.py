@@ -83,69 +83,9 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
         error_manager_vector.raise_err_pad_mode_invalid("max_pool_v3", "SAME, VALID or CALCULATED",
                                                         str(padding_mode))
 
-
+# 'pylint: disable=unnecessary-lambda,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("max_pool_v3")
-def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
-                          data_format="NC1HWC0", kernel_name="max_pool_v3"):
-    """
-    Performs max pooling on the input.
-
-    Parameters
-    ----------
-    input_data: TVM tensor
-        A `Tensor`. Must be one of the following types: `float16`.
-        4-D input to pool over.
-    output_data: dict
-        dict of output_data, include keys(shape and dtype).
-    ksize: list or tuple
-        A list of `ints` that has length 2.
-        The size of the window for H, W dimension of the input tensor.
-    strides: list or tuple
-        A list of `ints` that has length 2.
-        The stride of the sliding window for H, W .
-    padding: str
-         A `string` from: `"SAME", "VALID"`.The type of padding.
-    data_format: str
-        A `string` from: "NC1HWC0"
-    kernel_name: str
-        kernel name, default value is 'max_pool'
-
-    Returns:
-    -------
-    res: TVM tensor
-        output tensor. Has the same type as `input_data`.
-    """
-    if data_format in ("NHWC",):
-        window_h, window_w = ksize[1], ksize[2]
-        stride_h, stride_w = strides[1], strides[2]
-    elif data_format in ("NC1HWC0", "NCHW"):
-        window_h, window_w = ksize[2], ksize[3]
-        stride_h, stride_w = strides[2], strides[3]
-    else:
-        error_manager_vector.raise_err_input_format_invalid("max_pool_v3", "data_format",
-                                                            "NHWC, NC1HWC0 or NCHW", str(data_format))
-
-    conv_pooling_flag = False
-    temp_tensor = input_data
-    while temp_tensor.op.input_tensors:
-        if temp_tensor.op.tag == "convolution_C":
-            conv_pooling_flag = True
-            break
-        temp_tensor = temp_tensor.op.input_tensors[0]
-    if conv_pooling_flag:
-        res = te.lang.cce.max_pool_compute(input_data, (window_h, window_w),
-                                           (stride_h, stride_w), padding,
-                                           data_mode=0)
-    else:
-        # call pooling2d for max(pooling)&gmp
-        res = te.lang.cce.pooling2d(input_data, (window_h, window_w), (stride_h, stride_w),
-                                    "MAX", padding, pad=(0, 0, 0, 0))
-
-    return res
-
-
-# 'pylint: disable=unnecessary-lambda,too-many-locals
 def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads,
                      data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
     """
@@ -232,34 +172,46 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
                      "out_shape": out_shape,
                      "out_slice_offset": out_slice_offset}
 
-    if in_select_read_flag:
-        select_tensor_in = tvm.compute(in_valid_shape,
-                                       lambda n, c1, h, w, c0: input_data(n, c1, h + in_slice_offset[2], w, c0),
-                                       name="tensor_read_select",
-                                       attrs=input_data.op.attrs)
-        res = te.lang.cce.pooling2d(select_tensor_in, (window_h, window_w),
-                                    (stride_h, stride_w),
-                                    "MAX", padding_mode, pad=pads,
-                                    fusion_params=fusion_params, data_mode=data_mode, ceil_mode=ceil_mode)
-    elif l1_fusion_type == 1:
-        input_data.op.attrs["addr_type"].value = 1
-        in_l1_flag = True
-        fusion_params["in_l1_flag"] = in_l1_flag
-
-        l1_width_fusion_in = tvm.compute(input_data.shape,
-                                         lambda n, c1, h, w, c0: input_data(n, c1, h, w, c0),
-                                         name="l1_width_fusion_tensor_in",
-                                         attrs=input_data.op.attrs)
-        res = te.lang.cce.pooling2d(l1_width_fusion_in, (window_h, window_w),
-                                    (stride_h, stride_w), "MAX", padding_mode,
-                                    pad=pads,
-                                    fusion_params=fusion_params, ceil_mode=ceil_mode)
+    conv_pooling_flag = False
+    temp_tensor = input_data
+    while temp_tensor.op.input_tensors:
+        if temp_tensor.op.tag == "convolution_C":
+            conv_pooling_flag = True
+            break
+        temp_tensor = temp_tensor.op.input_tensors[0]
+    if conv_pooling_flag:
+        res = te.lang.cce.max_pool_compute(input_data, (window_h, window_w),
+                                           (stride_h, stride_w), padding,
+                                           data_mode=0)
     else:
-        res = te.lang.cce.pooling2d(input_data, (window_h, window_w),
-                                    (stride_h, stride_w),
-                                    "MAX", padding_mode, pads,
-                                    fusion_params=fusion_params, data_mode=data_mode, ceil_mode=ceil_mode)
-
+        if in_select_read_flag:
+            select_tensor_in = tvm.compute(in_valid_shape,
+                                           lambda n, c1, h, w, c0: input_data(n, c1, h + in_slice_offset[2], w, c0),
+                                           name="tensor_read_select",
+                                           attrs=input_data.op.attrs)
+            res = te.lang.cce.pooling2d(select_tensor_in, (window_h, window_w),
+                                        (stride_h, stride_w),
+                                        "MAX", padding_mode, pad=pads,
+                                        fusion_params=fusion_params, data_mode=data_mode, ceil_mode=ceil_mode)
+        elif l1_fusion_type == 1:
+            input_data.op.attrs["addr_type"].value = 1
+            in_l1_flag = True
+            fusion_params["in_l1_flag"] = in_l1_flag
+    
+            l1_width_fusion_in = tvm.compute(input_data.shape,
+                                             lambda n, c1, h, w, c0: input_data(n, c1, h, w, c0),
+                                             name="l1_width_fusion_tensor_in",
+                                             attrs=input_data.op.attrs)
+            res = te.lang.cce.pooling2d(l1_width_fusion_in, (window_h, window_w),
+                                        (stride_h, stride_w), "MAX", padding_mode,
+                                        pad=pads,
+                                        fusion_params=fusion_params, ceil_mode=ceil_mode)
+        else:
+            res = te.lang.cce.pooling2d(input_data, (window_h, window_w),
+                                        (stride_h, stride_w),
+                                        "MAX", padding_mode, pads,
+                                        fusion_params=fusion_params, data_mode=data_mode, ceil_mode=ceil_mode)
+    
     return res
 
 
