@@ -19,6 +19,7 @@
 #include <vector>
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "graph/types.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "anchor_util.h"
 
@@ -98,8 +99,17 @@ vector<BufferFusionPattern *> Conv2DBackpropElemwiseFusionPass::DefinePatterns()
 Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
                                                         vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do Conv2dBackpropInputElemwiseFusion!");
+  vector<ge::NodePtr> dx_nodes = GetMatchedNodesByDescName(kPatternDx, mapping);
   vector<ge::NodePtr> elem1_node = GetMatchedNodesByDescName(kPatternEltwise1, mapping);
   vector<ge::NodePtr> elem_node = GetMatchedNodesByDescName(kPatternEltwise, mapping);
+  FUSION_PASS_CHECK(dx_nodes.empty(),
+                    OP_LOGD(kFusedOpType.c_str(), "dx node is no matched"),
+                    return SUCCESS);
+
+  FUSION_PASS_CHECK(dx_nodes[0]->GetOpDesc()->MutableOutputDesc(0)->GetDataType() == DT_FLOAT,
+                    OP_LOGD(kFusedOpType.c_str(), "fusion with fp32, may be slower"),
+                    return SUCCESS);
+
   if (elem_node.empty()) {
     OP_LOGD(kFusedOpType.c_str(), "Elemwise node not matched.");
     return SUCCESS;
