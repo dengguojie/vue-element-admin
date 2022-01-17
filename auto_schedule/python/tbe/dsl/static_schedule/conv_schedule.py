@@ -1268,7 +1268,9 @@ class CceConvOp:
                     (fusion_type == 68186112)
                     and is_support_v200(), # conv + dequant + tanh
                     (fusion_type == 33832960)
-                    and is_support_v200() # conv + accumulate_nv2 + relu
+                    and is_support_v200(), # conv + accumulate_nv2 + relu
+                    (fusion_type == 134496256)
+                    and is_support_v200() # conv + dequant + accumulate_nv2 + relu + quant
                 ]
                 for case in triggered_condition_list:
                     if case:
