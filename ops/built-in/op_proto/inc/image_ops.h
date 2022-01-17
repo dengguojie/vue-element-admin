@@ -888,10 +888,10 @@ Defaults to false . \n
 *@li half_pixel_centers: An optional bool. Defaults to False . \n
 
 *@par Outputs:
-*y: 4-D with shape [batch, new_height, new_width, channels] . \n
+*y: A Tensor with the same type and format as input "images" . \n
 
 *@par Third-party framework compatibility
-*Compatible with tensorflow ResizeNearestNeighborV2 operator.
+*Compatible with tensorflow ResizeNearestNeighbor operator.
 */
 
 REG_OP(ResizeNearestNeighborV2)
