@@ -228,7 +228,7 @@ def _nd_to_nz_shape_mismatch(input_x, output_y):
     if (x_format == "ND") and (y_format == "FRACTAL_NZ"):
         if (len(x_shape_t) == 5) and (len(y_shape_t) == 4):
             return True
-    return False 
+    return False
 
 def _by_dynamic_static_union_version(shape, core_num):
     """

@@ -113,7 +113,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         dim_c0 = shape_x[5]
         i = 2
         j = 5
-    
+
     if dim_c1 != -1 and dim_c0 != -1:
         if shape_sum[i] != -1 and shape_sum[j] != -1 and (shape_sum[i] != dim_c1 or shape_sum[j] != dim_c0):
             error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")

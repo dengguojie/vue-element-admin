@@ -73,7 +73,7 @@ vector<FusionPattern *> AvgPoolV2FusionPass::DefinePatterns() {
   return patterns;
 }
 
-NodePtr AvgPoolV2FusionPass::AddMul(ComputeGraph &graph, NodePtr &avgPoolNode, Format &inputOriginFormat) {
+NodePtr AvgPoolV2FusionPass::AddMul(ComputeGraph &graph, const NodePtr &avgPoolNode, Format &inputOriginFormat) {
   OutDataAnchorPtr avgPoolAnchorPtr1 = avgPoolNode->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(avgPoolAnchorPtr1 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolAnchorPtr1 is null, fusion failed."),
@@ -193,7 +193,7 @@ Status AvgPoolV2FusionPass::GenCoffeFP16(const vector<int64_t> shape, vector<int
   return SUCCESS;
 }
 
-Status AvgPoolV2FusionPass::AddCoffe(ComputeGraph &graph, NodePtr &mulNode, string &padding, vector<int64_t> &dimInfo,
+Status AvgPoolV2FusionPass::AddCoffe(NodePtr &mulNode, const string &padding, vector<int64_t> &dimInfo,
                                      vector<int64_t> ksize, vector<int64_t> stride, vector<int64_t> pads) {
   int64_t outputN = 0;
   int64_t outputH = 0;
@@ -458,8 +458,8 @@ Status AvgPoolV2FusionPass::GetWeightOfConvAvgpool(const string &opName, const i
 }
 
 Status AvgPoolV2FusionPass::DoBiasOptimizeAvgpool(ComputeGraph &graph, NodePtr poolingNode,
-                                                  vector<NodePtr> &fusionNodes, int64_t &ksizeH, int64_t &ksizeW,
-                                                  int64_t &inputC) {
+                                                  vector<NodePtr> &fusionNodes, const int64_t &ksizeH, const int64_t &ksizeW,
+                                                  const int64_t &inputC) {
   FUSION_PASS_CHECK(poolingNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);
@@ -476,7 +476,7 @@ Status AvgPoolV2FusionPass::DoBiasOptimizeAvgpool(ComputeGraph &graph, NodePtr p
   int32_t offsetA = 0;
   (void)AttrUtils::GetInt(poolingOp, ATTR_OFFSET_X, offsetA);
 
-  offsetA = (int8_t)offsetA;
+  offsetA = static_cast<int8_t>(offsetA);
 
   /* Get pooling Weight filter */
   vector<GeTensorPtr> weights_pooling = OpDescUtils::MutableWeights(poolingNode);
@@ -582,7 +582,7 @@ Status AvgPoolV2FusionPass::DoBiasOptimizeAvgpool(ComputeGraph &graph, NodePtr p
   return SUCCESS;
 }
 
-Status AvgPoolV2FusionPass::UpdateDequantConst(ComputeGraph &graph, NodePtr &const_node, float &area_factor) {
+Status AvgPoolV2FusionPass::UpdateDequantConst(const NodePtr &const_node, const float &area_factor) const {
   vector<GeTensorPtr> const_dequant = OpDescUtils::MutableWeights(const_node);
   FUSION_PASS_CHECK(const_dequant.empty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_dequant is null ptr!"),
@@ -803,7 +803,7 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
         FUSION_PASS_CHECK(!AttrUtils::SetFloat(HostcpuNode->GetOpDesc(), "area_factor", areaFactor),
                           OP_LOGI(FUSED_OP_TYPE.c_str(), "Set area_factor attr failed."), return FAILED);
       } else {
-        FUSION_PASS_CHECK(UpdateDequantConst(graph, HostcpuNode, areaFactor) != SUCCESS,
+        FUSION_PASS_CHECK(UpdateDequantConst(HostcpuNode, areaFactor) != SUCCESS,
                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update dequant const failed."),
                           return FAILED);
       }
@@ -838,7 +838,7 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
           return NOT_CHANGED;
         }
       }
-      FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
+      FUSION_PASS_CHECK(AddCoffe(mulNode, padding, dimInfo, window, stride) != SUCCESS,
                         CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else if (padding == "CALCULATED") {
       // judge for unknown shape
@@ -872,7 +872,7 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
           return NOT_CHANGED;
         }
       }
-      FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride, pads) != SUCCESS,
+      FUSION_PASS_CHECK(AddCoffe(mulNode, padding, dimInfo, window, stride, pads) != SUCCESS,
                         CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else {
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
@@ -908,7 +908,6 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
     ret = DoBiasOptimizeAvgpool(graph, avgPoolNode, fusionNodes, ksizeH, ksizeW, inputC);
     FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "do fusion failed!"),
                       return ret);
-
   } else {
     int64_t matrixSize = inputC * 1 * ksizeH * ksizeW;
     int64_t inputC1 = (inputC + COUT - 1) / COUT;
@@ -979,7 +978,7 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
             return NOT_CHANGED;
           }
         }
-        FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
+        FUSION_PASS_CHECK(AddCoffe(mulNode, padding, dimInfo, window, stride) != SUCCESS,
                           CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
       }
     } else if (padding == "CALCULATED") {
@@ -1023,7 +1022,7 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
             return NOT_CHANGED;
           }
         }
-        FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride, pads) != SUCCESS,
+        FUSION_PASS_CHECK(AddCoffe(mulNode, padding, dimInfo, window, stride, pads) != SUCCESS,
                           CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
       }
     } else {
