@@ -90,12 +90,6 @@ class AttrValueImpl {
   std::vector<int64_t> GetListInt() const;
 
   /*
-   * get int list list value of attr.
-   * @return vector<vector<int64_t>>: int list list value of attr
-   */
-  std::vector<std::vector<int64_t>> GetListListInt() const;
-
-  /*
    * attr add int value to list.
    * @param i: int value need to add to list
    */
@@ -118,12 +112,6 @@ class AttrValueImpl {
    * @param vector<int64_t>: int list value need to set to attr
    */
   void SetListInt(const std::vector<int64_t> &i);
-
-  /*
-   * set int list list value to attr.
-   * @param vector<vector<int64_t>>: int list list value need to set to attr
-   */
-  void SetListListInt(const std::vector<std::vector<int64_t>> &i);
 
   /*
    * get float value of attr.
