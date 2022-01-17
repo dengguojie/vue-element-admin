@@ -1,0 +1,78 @@
+[
+  {  
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          32,48,13,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          32,197,768
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          768
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          768
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,48,13,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          32,197,768
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,197,1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,197,1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_001"
+  }
+]

@@ -319,9 +319,9 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
     def _check_shape_and_dtype():
         if dtype != "float16":
             return False
-        if len(ori_shape_x) not in (2, 3) or ori_shape_x[-1] not in (1024, 768):
+        if len(ori_shape_x) not in (2, 3) or ori_shape_x[-1] not in (1024, 768, 96, 384, 192, 128, 512, 256):
             return False
-        if len(shape_x) not in (4, 5) or shape_x[-4] not in (64, 48):
+        if len(shape_x) not in (4, 5) or shape_x[-4] not in (64, 48, 6, 12, 24, 16, 32):
             return False
         if "Ascend910" not in get_soc_spec(SOC_VERSION) and "Ascend710" not in get_soc_spec(SOC_VERSION):
             return False
