@@ -39,6 +39,7 @@ set(local_kernels_src_files
     kernels/normalized/floor.cc
     kernels/normalized/floordiv.cc
     kernels/normalized/gatherv2.cc
+    kernels/normalized/geometric.cc
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/greater.cc
     kernels/normalized/greater_equal.cc

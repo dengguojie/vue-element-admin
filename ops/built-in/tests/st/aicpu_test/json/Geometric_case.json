@@ -1,0 +1,82 @@
+[
+    {
+        "case_name": "Test_Geometric_001",
+        "op": "Geometric",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float","float16"],
+                "shape": [3,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float","float16"],
+                "shape": [3,3]
+            }
+        ],
+        "attr": [
+            {
+                "name": "p",
+                "type": "float",
+                "value": 0.9
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 10
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_FLOAT",
+        "op": "Geometric",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [[128],[256],[1024],[2,1024],[4,1024],[8,1024],[16,1024],[32,1024],[64,1024],[128,1024],
+                         [256,1024],[512,1024],[2,1024,1024]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [[128],[256],[1024],[2,1024],[4,1024],[8,1024],[16,1024],[32,1024],[64,1024],[128,1024],
+                         [256,1024],[512,1024],[2,1024,1024]]
+            }
+        ],
+        "attr": [
+            {
+                "name": "p",
+                "type": "float",
+                "value": 0.99
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 10
+            }
+        ]
+    }
+]

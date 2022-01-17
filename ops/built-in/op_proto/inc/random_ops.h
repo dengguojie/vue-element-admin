@@ -839,5 +839,29 @@ REG_OP(Exponential)
     .ATTR(lambda, Float, 1)
     .ATTR(seed, Int, 0)
     .OP_END_FACTORY_REG(Exponential)
+
+/**
+*@brief Fills a tensor with elements drawn from the geometric distribution. \n
+
+*@par Inputs:
+*x:  A Tensor. Must be one of the following types: float16, float. \n
+
+*@par Attributes:
+*@li p: The probability of experimental success in Bernoulli's experiment.
+*@li seed: An optional int. Defaults to 0. \n
+
+*@par Outputs:
+*y: A Tensor list with same type as "x" . \n
+
+*@par Third-party framework compatibility
+*@ Compatible with the Pytorch operator Geometric.
+*/
+REG_OP(Geometric)
+    .INPUT(x, TensorType({ DT_FLOAT16,DT_FLOAT }))
+    .OUTPUT(y, TensorType({ DT_FLOAT16,DT_FLOAT }))
+    .REQUIRED_ATTR(p, Float)
+    .ATTR(seed, Int, 0)
+    .OP_END_FACTORY_REG(Geometric)
+
 }   // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RANDOM_OPS_H_

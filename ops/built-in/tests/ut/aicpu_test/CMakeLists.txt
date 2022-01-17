@@ -128,6 +128,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/floor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/floordiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/gatherv2.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/geometric.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
@@ -308,6 +309,7 @@ set(_cpu_kernels_ut_files
   testcase/floordiv/src/floordiv_utest.cpp
   testcase/gatherv2/src/gatherv2_utest.cpp
   testcase/gemm/src/gemm_utest.cpp
+  testcase/geometric/src/geometric_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/greater/src/greater_utest.cpp
   testcase/greater_equal/src/greater_equal_utest.cpp

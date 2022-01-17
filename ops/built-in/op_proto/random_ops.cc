@@ -906,4 +906,15 @@ IMPLEMT_INFERFUNC(Poisson, PoissonInfer) {
 }
 
 INFER_FUNC_REG(Poisson, PoissonInfer);
+
+IMPLEMT_INFERFUNC(Geometric, GeometricInfer) {
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(Geometric, GeometricInfer);
+
 }  // namespace ge
