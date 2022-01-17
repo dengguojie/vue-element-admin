@@ -15,16 +15,20 @@
 """
 mvn_v2
 """
-import te.platform as tbe_platform
-from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe
+import te.platform as tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
+from impl.util import util_select_op_base
+
+# const value
+CONST_HALF = 0.5
+CONST_SQRT_ITER = 3
 
 
-# 'pylint: disable = unused-argument
-# 'pylint: disable=invalid-name,too-many-arguments
+# pylint: disable = unused-argument
+# pylint: disable=invalid-name,too-many-arguments
 def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """
     get_op_support_info
@@ -37,7 +41,7 @@ def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     if format_x == "NCHW":
         split_axis = list({0, 1, 2, 3} - set(axis))
         for i in split_axis:
-            split_i = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
+            split_i = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]), 
                        util_select_op_base.SplitOutput([0, [i]])]
             axis_split_list.append(split_i)
     else:
@@ -48,7 +52,7 @@ def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     return op_cal_info_in_json
 
 
-# 'pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods
 def _check_format_shape(data_format, shape):
     """
     Function to check format and shape of input data.
@@ -86,15 +90,15 @@ def _check_dtype(input_dtype):
         if input_dtype == "float32":
             error_info = {'errCode': 'E81006', 'param_name': 'dtype', 'op_name': 'mvn_v2', 'real_value': input_dtype}
             raise RuntimeError("In op[%s], %s is not supported while the [%s] of input is [%s]."
-                               % (error_info['op_name'], soc_version,
+                               % (error_info['op_name'], soc_version, 
                                   error_info['param_name'], error_info['real_value']))
         para_check.check_dtype(input_dtype, ("float16",), param_name="x")
     else:
         para_check.check_dtype(input_dtype, ("float16", "float32",), param_name="x")
 
 
-# 'pylint: disable=too-many-arguments,too-many-locals,protected-access
-# 'pylint: disable=too-many-branches,unused-argument,invalid-name
+# pylint: disable=too-many-arguments,too-many-locals,protected-access
+# pylint: disable=too-many-branches,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("mvn_v2")
 def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """
@@ -120,8 +124,7 @@ def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """
     dtype_x = x.dtype
     is_cast = False
-    const_half = 0.5
-    const_sqrt_iter = 3
+
     if tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         if dtype_x == "float16":
             is_cast = True
@@ -163,10 +166,10 @@ def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     else:
         y_sqrt = tbe.vsqrt(var)
 
-        for _ in range(const_sqrt_iter):
+        for _ in range(CONST_SQRT_ITER):
             data_sqrt = tbe.vdiv(var, y_sqrt)
             data_sqrt = tbe.vadd(data_sqrt, y_sqrt)
-            data_sqrt = tbe.vmuls(data_sqrt, tvm.const(const_half, var.dtype))
+            data_sqrt = tbe.vmuls(data_sqrt, tvm.const(CONST_HALF, var.dtype))
             y_sqrt = data_sqrt
 
         y_add = tbe.vadds(y_sqrt, eps)

@@ -140,3 +140,4 @@ class OpSpecTypes(Enum):
     MVN = "mvn"
     BN_EXT2 = "bn_ext2"
     REDUCE_MEAN_2D_ALIGNED_MID_REDUCE_NO_CAST = "reduce_mean_2d_aligned_mid_reduce_no_cast"
+    MVNV2 = "mvnv2"

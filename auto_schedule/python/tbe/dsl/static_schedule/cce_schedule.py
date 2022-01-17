@@ -178,6 +178,9 @@ def get_op_info(outs):  # 'pylint: disable=R0912, R0914, R0915
         op_subpattern = op_subpattern.value
     if op_spectype:
         op_info['type'] = op_spectype
+        if op_spectype == OpSpecTypes.MVN and "op_name" in input_tensors[0].op.attrs and \
+                input_tensors[0].op.attrs["op_name"] == "mvn_v2":
+            op_info['type'] = OpSpecTypes.MVNV2
         op_spectype = op_spectype.value
     # write the tensors
     op_info['input_tensors'] = input_tensors
@@ -992,8 +995,11 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
         if tensor.op.tag.find("tuple_reduce_sum") != -1:
             tuple_reduce_flag = True
             break
-    is_reduce_multi_pattern = not tuple_reduce_flag and len(
-        outs[0].shape) != 1 and pattern != OpPatterns.POOL2D_PATTERN and pattern != OpPatterns.ELEMWISE_PATTERN
+    is_reduce_multi_pattern = not tuple_reduce_flag and \
+        len(outs[0].shape) != 1 and \
+        pattern != OpPatterns.POOL2D_PATTERN and \
+        pattern != OpPatterns.ELEMWISE_PATTERN and \
+        op_info.get('type') != OpSpecTypes.MVNV2
 
     if is_reduce_multi_pattern:
         # try use multi reduce template
