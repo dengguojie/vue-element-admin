@@ -4142,4 +4142,32 @@ COMMON_INFER_FUNC_REG(Trace, TraceInferShape);
 VERIFY_FUNC_REG(Trace, TraceVerify);
 // ---------------------Trace END----------------------
 
+// ----------------Pinverse Begin------------------------
+IMPLEMT_COMMON_INFERFUNC(PinverseInferShape) {
+  Shape input_shape = op.GetInputDesc(0).GetShape();
+  DataType input_dtype = op.GetInputDesc(0).GetDataType();
+  TensorDesc td = op.GetOutputDesc(0);
+  td.SetShape(ge::Shape(input_shape));
+  auto size = input_shape.GetDimNum();
+  int64_t dim_num1 = input_shape.GetDim(size - 2);
+  int64_t dim_num2 = input_shape.GetDim(size - 1);
+  std::vector<int64_t> dim_vector;
+  dim_vector.push_back(dim_num2);
+  dim_vector.push_back(dim_num1); 
+  Shape output_shape(dim_vector);
+  td.SetDataType(input_dtype);
+  td.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Pinverse, PinverseVerify)
+{
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Pinverse, PinverseInferShape);
+VERIFY_FUNC_REG(Pinverse, PinverseVerify);
+// ----------------Pinverse END---------------------------------
+
 }  // namespace ge

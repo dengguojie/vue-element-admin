@@ -1379,6 +1379,26 @@ REG_OP(Trace)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(Trace)
 
+/**
+*@brief  Computes the generalized inverse of any matrix. \n
+
+*@par Inputs:
+* @li x: input matrix. Must be one of the following types:
+*     double, float. \n
+
+*@par Attributes:
+* @li rcond: An optional float >= 0 or inf. Defaults to 1e-15. \n
+
+*@par Outputs:
+* y: A Tensor with the same type and shape of x's transpose. \n
+
+*/
+REG_OP(Pinverse)
+    .INPUT(x, TensorType({ DT_FLOAT, DT_DOUBLE }))        
+    .OUTPUT(y, TensorType({ DT_FLOAT, DT_DOUBLE })) 
+    .ATTR(rcond, Float, 1e-15)
+    .OP_END_FACTORY_REG(Pinverse)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_
