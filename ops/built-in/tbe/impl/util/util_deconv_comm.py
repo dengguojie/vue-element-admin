@@ -444,6 +444,25 @@ def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
                            err_man.get_error_message(args_dict))
 
 
+def need_exchange_hw_axis(shape_filter, shape_out_backprop, input_sizes, strides, pads):
+    """
+    check for special case, whether need to exchange h and w
+    """
+    fmap_w = input_sizes[-1]
+    _, _, dedy_h, dedy_w = shape_out_backprop
+    _, _, filter_h, filter_w = shape_filter
+    stride_h, stride_w = strides
+    _, _, pad_left, pad_right = pads
+
+    need_change = False
+    if fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0:
+        if filter_h == 1 and filter_w == 1:
+            need_change = DEDY_HW_MIN <= dedy_h * stride_h * stride_w <= DEDY_W_MAX
+        else:
+            need_change = DEDY_HW_MIN <= dedy_h * stride_h <= DEDY_W_MAX
+    return need_change
+
+
 @para_check.check_input_type(  # pylint: disable=R0913, R0914, R0915
     (list, tuple), (list, tuple), (list, tuple),
     (list, tuple), (str, list, tuple), (list, tuple),
@@ -682,9 +701,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             fmap_w_max = CONV1D_W_MAX
         return dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max
 
-    def _need_change_hw():
-        return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
-
     # First : Base check, Mainly required by interface appearance
     # util check
     para_check.check_kernel_name(kernel_name)
@@ -750,30 +766,21 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     shape_out_backprop = (dedy_batch, dedy_channel, dedy_h, dedy_w)
 
     # exchange h and w will not change date in memmory
-    if _need_change_hw():
-        need_change = False
-        if filter_h == 1 and filter_w == 1:
-            if dedy_hw_min <= dedy_h * stride_h * stride_w <= dedy_w_max:
-                need_change = True
-        else:
-            if dedy_hw_min <= dedy_h * stride_h <= dedy_w_max:
-                need_change = True
-
-        if need_change:
-            input_sizes = (fmap_batch, fmap_channel, fmap_w, fmap_h)
-            shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
-            shape_filter = (filter_batch, filter_channel, filter_w, filter_h)
-            strides = stride_w, stride_h
-            stride_h, stride_w = stride_w, stride_h
-            dilations = dilation_n, dilation_c, dilation_w, dilation_h
-            fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
-            dedy_h, dedy_w = dedy_w, dedy_h
-            fmap_h, fmap_w = fmap_w, fmap_h
-            filter_h, filter_w = filter_w, filter_h
-            filter_h_dilation, filter_w_dilation = filter_w_dilation,\
-                                                filter_h_dilation
-            pad_left, pad_right, pad_up, pad_down = pads
-            pads = pad_up, pad_down, pad_left, pad_right
+    if need_exchange_hw_axis(shape_filter, shape_out_backprop, input_sizes, strides, pads):
+        input_sizes = (fmap_batch, fmap_channel, fmap_w, fmap_h)
+        shape_out_backprop = (dedy_batch, dedy_channel, dedy_w, dedy_h)
+        shape_filter = (filter_batch, filter_channel, filter_w, filter_h)
+        strides = stride_w, stride_h
+        stride_h, stride_w = stride_w, stride_h
+        dilations = dilation_n, dilation_c, dilation_w, dilation_h
+        fmap_h_padding, fmap_w_padding = fmap_w_padding, fmap_h_padding
+        dedy_h, dedy_w = dedy_w, dedy_h
+        fmap_h, fmap_w = fmap_w, fmap_h
+        filter_h, filter_w = filter_w, filter_h
+        filter_h_dilation, filter_w_dilation = filter_w_dilation,\
+                                            filter_h_dilation
+        pad_left, pad_right, pad_up, pad_down = pads
+        pads = pad_up, pad_down, pad_left, pad_right
 
     dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max = \
         _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max)

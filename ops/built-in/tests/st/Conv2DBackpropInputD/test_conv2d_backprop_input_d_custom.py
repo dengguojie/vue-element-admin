@@ -62,7 +62,7 @@ def _test_conv2d_bp_input_fp32_case_1():
                 with cce():
                     x = tvm.placeholder((16, 2, 2, 32), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC", 
+                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -79,13 +79,13 @@ def _test_conv2d_bp_input_fp32_case_1():
                     sch = auto_schedule(out)
 
 def _test_conv2d_bp_input_fp32_case_2():
-   with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
             with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
                 with cce():
                     x = tvm.placeholder((2, 7, 7, 2048), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC", 
+                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -102,13 +102,13 @@ def _test_conv2d_bp_input_fp32_case_2():
                     sch = auto_schedule(out)
 
 def _test_conv2d_bp_input_opti_fp16_case_1():
-   with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
             with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
                 with cce():
                     x = tvm.placeholder((2, 7, 7, 2048), name="x", dtype="float16",
                                         attrs={
-                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC", 
+                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -125,7 +125,36 @@ def _test_conv2d_bp_input_opti_fp16_case_1():
                     sch = auto_schedule(out)
 
 
+def _test_conv2d_bp_input_not_support_fusion_case_1():
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+                with cce():
+                    x = tvm.placeholder((1, 4, 1, 4), name="x", dtype="float16",
+                                        attrs={
+                                            "ori_shape": (1, 4, 1, 4), "format": "NHWC",
+                                            "ori_format": "NHWC"
+                                        })
+                    x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
+                    weight = tvm.placeholder((17, 1, 16, 16), name="filter", dtype="float16",
+                                                attrs={
+                                                    "ori_shape": (17, 1, 5, 4),
+                                                    "format": "FRACTAL_Z",
+                                                    "ori_format": "HWCN"
+                                                })
+                    y = {"shape": (1, 1, 4, 1, 16), "ori_shape": (1, 4, 1, 5), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                    fusion_fail = False
+                    try:
+                        conv2d_backprop_input_d_compute(weight, x_5hd, y, (1, 4, 1, 5), (1, 1), "SAME", (1, 1, 1, 1))
+                    except RuntimeError:
+                        fusion_fail = True
+
+                    if not fusion_fail:
+                        raise RuntimeError("_test_conv2d_bp_input_not_support_fusion_case_1 failed, not get RuntimeError")
+
+
 if __name__ == "__main__":
     _test_conv2d_bp_input_fp32_case_1()
     _test_conv2d_bp_input_fp32_case_2()
     _test_conv2d_bp_input_opti_fp16_case_1()
+    _test_conv2d_bp_input_not_support_fusion_case_1()

@@ -125,13 +125,12 @@ Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMappin
                   return FAILED);
     auto input0Dims = input0desc->GetShape().GetDims();
     auto input1Dims = input1desc->GetShape().GetDims();
-    bool check_elemwise = elem1_node[0]->GetType() == "ReluGradV2" && elem_node[0]->GetType() == "AddN" &&
-                          (input0desc->GetDataType() ==
-                           input1desc->GetDataType()) &&
-                          (input0Dims == input1Dims);
+    bool check_elemwise = elem1_node[0]->GetType() == "ReluGradV2" &&
+                          (elem_node[0]->GetType() == "AddN" || elem_node[0]->GetType() == "Add") &&
+                          (input0desc->GetDataType() == input1desc->GetDataType()) && (input0Dims == input1Dims);
     if (!check_elemwise) {
       OP_LOGD(kFusedOpType.c_str(),
-          "The optype of node[%s] and [%s] should be AddN and ReluGradV2,but actually is [%s] and [%s]."
+          "The optype of node[%s] and [%s] should be AddN/Add and ReluGradV2,but actually is [%s] and [%s]."
           "The datatype of node[%s]'s two inputs should be equal, but actually is [%d] and [%d], no need to do fusion.",
           elem_node[0]->GetName().c_str(), elem1_node[0]->GetName().c_str(), elem_node[0]->GetType().c_str(),
           elem1_node[0]->GetType().c_str(), elem_node[0]->GetName().c_str(),
@@ -140,8 +139,8 @@ Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMappin
       return SUCCESS;
     }
   } else {
-    if (elem_node[0]->GetType() != "ReluGradV2") {
-      OP_LOGD(kFusedOpType.c_str(), "The optype of node[%s] should be ReluGradV2,"
+    if (elem_node[0]->GetType() != "ReluGradV2" && elem_node[0]->GetType() != "Add") {
+      OP_LOGD(kFusedOpType.c_str(), "The optype of node[%s] should be ReluGradV2/Add,"
                                       "but actually is [%s], no need to do fusion.",
           elem_node[0]->GetName().c_str(), elem_node[0]->GetType().c_str());
       return SUCCESS;

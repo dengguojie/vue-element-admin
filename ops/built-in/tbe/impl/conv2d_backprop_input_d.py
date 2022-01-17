@@ -705,6 +705,12 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         pads, shape_res, strides, shape_filters, dilations
     )
 
+    if util_deconv_comm.need_exchange_hw_axis(shape_filters, shape_out_backprop, shape_res, strides, pads):
+        dict_args = {}
+        dict_args["errCode"] = "E50058"
+        dict_args["description"] = "not support to exchange HW axis in fusion mode"
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+
     para_dict = {
         "strides": strides,
         "padding": pads,
