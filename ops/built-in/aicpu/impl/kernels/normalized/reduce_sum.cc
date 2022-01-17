@@ -117,7 +117,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumCompute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 template <typename T>
-uint32_t ReduceSumCpuKernel::ReduceSumOneAxes(T *input_data, std::vector<int64_t> &input_shape,
+uint32_t ReduceSumCpuKernel::ReduceSumOneAxes(const T *input_data, std::vector<int64_t> &input_shape,
                                               T *output_data, int64_t output_num,
                                               std::vector<int64_t> &axes, uint32_t &axes_idx) {
   if (axes_idx >= axes.size()) {
@@ -178,7 +178,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumCompute2(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 template <typename T, typename T2>
-uint32_t ReduceSumCpuKernel::ReduceSumOneAxes2(T *input_data, int64_t input_num, std::vector<int64_t> input_shape,
+uint32_t ReduceSumCpuKernel::ReduceSumOneAxes2(const T *input_data, int64_t input_num, std::vector<int64_t> input_shape,
                                                T *output_data, int64_t output_num,
                                                std::vector<int64_t> &axes, uint32_t &axes_idx) {
   if (axes_idx >= axes.size()) {

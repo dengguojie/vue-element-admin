@@ -35,7 +35,7 @@ class ReduceSumCpuKernel : public CpuKernel {
   uint32_t ReduceSumCompute(CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t ReduceSumOneAxes(T *input_data, std::vector<int64_t> &input_shape,
+  uint32_t ReduceSumOneAxes(const T *input_data, std::vector<int64_t> &input_shape,
                             T *output_data, int64_t output_num,
                             std::vector<int64_t> &axes, uint32_t &axes_idx);
 
@@ -43,7 +43,7 @@ class ReduceSumCpuKernel : public CpuKernel {
   uint32_t ReduceSumCompute2(CpuKernelContext &ctx);
 
   template <typename T, typename T2>
-  uint32_t ReduceSumOneAxes2(T *input_data, int64_t input_num, std::vector<int64_t> input_shape,
+  uint32_t ReduceSumOneAxes2(const T *input_data, int64_t input_num, std::vector<int64_t> input_shape,
                              T *output_data, int64_t output_num,
                              std::vector<int64_t> &axes, uint32_t &axes_idx);
 
