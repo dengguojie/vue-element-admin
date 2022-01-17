@@ -21,7 +21,7 @@ namespace aicpu {
 uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
                                           std::vector<int64_t> shape,
                                           std::vector<int64_t> order) {
-  KERNEL_LOG_INFO("Start to execute CreateSparseTensor.");
+  KERNEL_LOG_INFO("Start to execute CreateSparseTensor");
   if (ix == nullptr || ix->GetData() == nullptr) {
     KERNEL_LOG_ERROR("Ix is nullptr.");
     return KERNEL_STATUS_INNER_ERROR;
@@ -70,12 +70,12 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
   shape_.assign(shape.begin(), shape.end());
   order_.assign(order.begin(), order.end());
   dims_ = dims;
-  KERNEL_LOG_INFO("execute CreateSparseTensor end.");
+  KERNEL_LOG_INFO("execute CreateSparseTensor end");
   return KERNEL_STATUS_OK;
 }
 
 uint32_t SparseTensor::IndicesValid() const {
-  KERNEL_LOG_INFO("Start to execute IndicesValid.");
+  KERNEL_LOG_INFO("Start to execute IndicesValid");
   for (auto ord : order_) {
     if (ord < 0) {
       KERNEL_LOG_ERROR("Order was not provided.");
@@ -98,7 +98,7 @@ uint32_t SparseTensor::IndicesValid() const {
       }
     }
   }
-  KERNEL_LOG_INFO("Execute IndicesValid end.");
+  KERNEL_LOG_INFO("Execute IndicesValid end");
   return KERNEL_STATUS_OK;
 }
 

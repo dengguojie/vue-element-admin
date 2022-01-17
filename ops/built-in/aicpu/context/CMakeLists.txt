@@ -173,7 +173,7 @@ add_dependencies(cpu_kernels_context aicpu_proto)
 
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
-    ${local_context_stub_files}
+    $<$<NOT:$<STREQUAL:${PRODUCT_SIDE},device>>:${local_context_stub_files}>
 )
 add_dependencies(cpu_kernels_context_static aicpu_proto)
 

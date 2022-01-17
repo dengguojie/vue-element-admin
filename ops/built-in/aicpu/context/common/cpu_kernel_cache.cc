@@ -587,6 +587,9 @@ int32_t CpuKernelCache::RunKernel(void *param) {
     }
     ret = UpdateFWKOutputShape(*ext_info_msg, *ctx);
   }
+  if (ret == KERNEL_STATUS_END_OF_SEQUENCE) {
+    return ret;
+  }
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
