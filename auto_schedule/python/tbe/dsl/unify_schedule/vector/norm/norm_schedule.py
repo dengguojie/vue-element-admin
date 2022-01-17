@@ -522,8 +522,8 @@ class NormNormalSchedule:
 
     def _calc_storage_align(self):
         def __judge_need_storage_align(_ori_tensor):
-            # last broadcast tensors in broadcast fork do not need storage align
-            if _ori_tensor in self._graph_info.broadcast_fork_tensor_set and \
+            # last broadcast tensors in broadcast fork but not broadcast tensors do not need storage align
+            if _ori_tensor in self._graph_info.broadcast_fork_tensor_set - self._graph_info.broadcast_tensor_set and \
                     util.expr_equal(_ori_tensor.shape[-1], 1):
                 return False
             # after reduce tensors do not storage align when last axis reduce
@@ -1338,8 +1338,8 @@ class NormWorkspaceSchedule:
 
     def _calc_storage_align(self):
         def __judge_need_storage_align(_ori_tensor):
-            # last broadcast tensors in broadcast fork do not need storage align
-            if _ori_tensor in self._graph_info.broadcast_fork_tensor_set and \
+            # last broadcast tensors in broadcast fork but not broadcast tensors do not need storage align
+            if _ori_tensor in self._graph_info.broadcast_fork_tensor_set - self._graph_info.broadcast_tensor_set and \
                     util.expr_equal(_ori_tensor.shape[-1], 1):
                 return False
             # after reduce tensors do not storage align when last axis reduce

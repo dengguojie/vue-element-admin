@@ -165,11 +165,13 @@ def _infer_negative_two_and_pre_process(ins, reduce_axis, broadcast_axis_list, i
              {"errCode": "E90001",
               "detailed_cause": "max of reduce axis in norm classifier should be less than dim len"})
 
-    max_dim_len = min_dim_len if is_fuse else dim_len
+    max_dim_len = min_dim_len + 1 if is_fuse else dim_len
     # input are all -2
     # include last reduce and nlast reduce
     if exist_negative_two:
-        for opt_dim_len in range(min_dim_len, max_dim_len + 1):
+        for opt_dim_len in range(min_dim_len, max_dim_len):
+            if opt_dim_len == dim_len:
+                continue
             local_ins = copy.deepcopy(ins)
             for single_input in local_ins:
                 if tuple(single_input.get("shape")) == (-2, ):
@@ -207,6 +209,10 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
 
         return _remove_axis_list
 
+    remove_one_ins = copy.deepcopy(ins)
+    remove_one_reduce_axis = reduce_axis[:]
+    remove_one_broadcast_axis = copy.deepcopy(broadcast_axis)
+
     is_no_after_broadcast_input = 0 not in input_type_list
     is_no_fuse_axis = not is_fuse_axis
     is_disable_fuse_axes = len(disable_fuse_axes) > 0
@@ -214,28 +220,30 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
     is_cannot_remove_one = is_no_after_broadcast_input or is_no_fuse_axis or \
         is_unify_broadcast_axis_unknown or is_disable_fuse_axes
     if is_cannot_remove_one:
-        return False, False
+        return False, False, ins, reduce_axis, broadcast_axis
 
     input_after_bro_index = input_type_list.index(0)
-    shape_after_bro = ins[input_after_bro_index].get("shape")
+    shape_after_bro = remove_one_ins[input_after_bro_index].get("shape")
     remove_axis_list = __possible_remove_axis(len(shape_after_bro) - 1)
+
+    # all reduce axis cases do not need remove one
+    if len(shape_after_bro) == len(remove_axis_list):
+        return False, False, ins, reduce_axis, broadcast_axis
 
     # origin case should be deserted when dims of remove axes are all 1
     is_compile_known_all_one = True
     for remove_axis_idx in remove_axis_list:
-        for single_input in ins:
-            single_shape = list(single_input.get("shape"))
-            is_compile_known_all_one = is_compile_known_all_one and single_shape[remove_axis_idx] == 1
+        is_compile_known_all_one = is_compile_known_all_one and shape_after_bro[remove_axis_idx] == 1
 
     for remove_axis_idx in remove_axis_list:
-        if remove_axis_idx in reduce_axis:
-            reduce_axis.remove(remove_axis_idx)
+        if remove_axis_idx in remove_one_reduce_axis:
+            remove_one_reduce_axis.remove(remove_axis_idx)
         # A -> (1, A) and reduce axis is [0]
-        is_all_common_axis = len(reduce_axis) == 0
-        for single_input in ins:
+        is_all_common_axis = len(remove_one_reduce_axis) == 0
+        for single_input in remove_one_ins:
             single_shape = list(single_input.get("shape"))
             if single_shape[remove_axis_idx] > 1:
-                return False, False
+                return False, False, ins, reduce_axis, broadcast_axis
             single_range = list(single_input.get("range"))
             single_shape.pop(remove_axis_idx)
             single_range.pop(remove_axis_idx)
@@ -245,15 +253,26 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
             single_input["shape"] = single_shape
             single_input["range"] = single_range
         if is_all_common_axis:
-            reduce_axis.append(0)
-        if broadcast_axis is not None:
-            if remove_axis_idx in broadcast_axis:
-                broadcast_axis.remove(remove_axis_idx)
+            remove_one_reduce_axis.append(0)
+        if remove_one_broadcast_axis is not None:
+            if remove_axis_idx in remove_one_broadcast_axis:
+                remove_one_broadcast_axis.remove(remove_axis_idx)
             if is_all_common_axis:
-                for idx, axis in enumerate(broadcast_axis):
-                    broadcast_axis[idx] = axis + 1
+                for idx, axis in enumerate(remove_one_broadcast_axis):
+                    remove_one_broadcast_axis[idx] = axis + 1
 
-    return True, is_compile_known_all_one
+    return True, is_compile_known_all_one, remove_one_ins, remove_one_reduce_axis, remove_one_broadcast_axis
+
+
+def _update_broadcast_axis_list_after_remove_one(broadcast_axis_list, remove_one_broadcast_axis):
+    remove_one_broadcast_axis_list = copy.deepcopy(broadcast_axis_list)
+    input_num = len(broadcast_axis_list)
+    if remove_one_broadcast_axis is not None:
+        for index in range(input_num):
+            if broadcast_axis_list[index] is not None:
+                remove_one_broadcast_axis_list[index] = remove_one_broadcast_axis
+
+    return remove_one_broadcast_axis_list
 
 
 def _process_extra_params(input_num, extra_params):
@@ -317,7 +336,7 @@ def _process_extra_params(input_num, extra_params):
                       "detailed_cause": "norm classifier do not support same_input_shape_group with intersection"})
             input_type_list[single_index] = input_type_flag
 
-    input_type_flag = max(input_type_flag, 1)
+    input_type_flag = max(input_type_flag + 1, 1)
     for index in range(input_num):
         remain_partial_shape = ori_input_type_list[index] == 1 and input_type_list[index] == 0
         if remain_partial_shape:
@@ -408,9 +427,10 @@ def classify(ins: list, extra_params: dict):
         if unify_broadcast_axis is not None:
             unify_broadcast_axis = list(unify_broadcast_axis)
             add_compile_info_inner("_ori_broadcast_axis", unify_broadcast_axis[:])
-        is_append_remove_one, is_desert_origin = _add_remove_last_one(single_ins, input_type_list, ins_reduce_axis,
-                                                                      unify_broadcast_axis, is_fuse_axis,
-                                                                      disable_fuse_axes)
+        # judge whether to add remove last 1 ins
+        is_append_remove_one, is_desert_origin, remove_one_ins, remove_one_reduce_axis, remove_one_broadcast_axis = \
+            _add_remove_last_one(single_ins, input_type_list, ins_reduce_axis,
+                                 unify_broadcast_axis, is_fuse_axis, disable_fuse_axes)
         # before remove last 1
         if not is_desert_origin:
             classify_out = norm_classifier.classify()
@@ -425,8 +445,11 @@ def classify(ins: list, extra_params: dict):
                         disable_fuse_axes_new_idx.append(disable_fuse_axes_l[idx])
         # after remove last 1
         if is_append_remove_one:
-            for single_classify_out in NormClassifier(single_ins, ins_reduce_axis, is_fuse_axis, input_type_list,
-                                                      broadcast_axis_list, disable_fuse_axes).classify():
+            remove_one_broadcast_axis_list = _update_broadcast_axis_list_after_remove_one(broadcast_axis_list,
+                                                                                          remove_one_broadcast_axis)
+            for single_classify_out in NormClassifier(remove_one_ins, remove_one_reduce_axis, is_fuse_axis,
+                                                      input_type_list, remove_one_broadcast_axis_list,
+                                                      disable_fuse_axes).classify():
                 # if the same pattern exists in norm classify output, this single output should be deserted
                 norm_pattern = single_classify_out[0].get("norm_pattern")
                 if norm_pattern not in norm_pattern_non_duplicate_list:
@@ -865,6 +888,10 @@ class NormClassifier:
             if set(_input_mode_list) & {ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE, ModeType.BROADCAST_UNKNOWN}\
                     and set(_input_mode_list) & {ModeType.ALL_BROADCAST, ModeType.BROADCAST_REDUCE_EQUAL,
                                                  ModeType.BROADCAST_REDUCE_OPPOSITE, ModeType.NO_BROADCAST}:
+                return True
+
+            if set(_input_mode_list) & {ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE, ModeType.BROADCAST_UNKNOWN}\
+                    and ModeType.COMMON in _input_mode_list:
                 return True
 
             _input_type_list = [x.get("input_type") for x in _input_dict]

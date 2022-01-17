@@ -58,21 +58,27 @@ struct NormCompileInfo {
   std::vector<int32_t> input_type;
   bool exist_output_after_reduce{false};
   bool exist_workspace_after_reduce{false};
-  std::unordered_map<std::string, std::vector<int32_t>> available_ub_size;
+  std::unordered_map<int32_t, std::vector<int32_t>> available_ub_size;
   // common info
   int32_t core_num{-1};
   int32_t min_block_size{-1};
   int32_t pad_max_entire_size{-1};
   // workspace info
-  std::unordered_map<std::string, std::vector<int32_t>> workspace_info;
+  std::unordered_map<int32_t, std::vector<int32_t>> workspace_info;
   // norm vars
-  std::unordered_map<std::string, std::vector<int32_t>> norm_vars;
+  std::unordered_map<int32_t, std::vector<int32_t>> norm_vars;
   // fuse axis
   bool is_fuse_axis{true};
   // const
   bool is_const{false};
   bool is_const_post{false};
-  std::unordered_map<std::string, int32_t> const_block_dims;
+  std::unordered_map<int32_t, int32_t> const_block_dims;
+
+  private:
+    void ParseAxisInfo(const nlohmann::json& compile_info);
+    void ParseGraphInfo(const nlohmann::json& compile_info);
+    void ParseCommonInfo(const nlohmann::json& compile_info);
+    void ParseOtherInfo(const nlohmann::json& compile_info);
 };
 
 struct NormTilingInfo {
@@ -201,7 +207,6 @@ class Norm {
     int32_t block_size{-1};
     int64_t ub_size{-1};
     int32_t tiling_key{0};
-    std::string tiling_key_str;
     std::size_t max_dim_len{0};
     std::size_t before_broadcast_input_num{0};
 

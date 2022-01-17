@@ -179,9 +179,9 @@ TEST_F(NormTilingTest, ParseTest1) {
   expect_struct.pad_max_entire_size = 128;
   expect_struct.exist_output_after_reduce = false;
   expect_struct.exist_workspace_after_reduce = false;
-  expect_struct.available_ub_size = {{"4000", {15792, 16120, 15792}}};
-  expect_struct.workspace_info = {{"200400000", {32}}};
-  expect_struct.norm_vars = {{"200400000", {20000, 20001, 30000, 40000}}};
+  expect_struct.available_ub_size = {{4000, {15792, 16120, 15792}}};
+  expect_struct.workspace_info = {{200400000, {32}}};
+  expect_struct.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   expect_struct.is_fuse_axis = true;
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
@@ -201,7 +201,7 @@ TEST_F(NormTilingTest, ParseTest2) {
   expect_struct.pad_max_entire_size = 128;
   expect_struct.exist_output_after_reduce = false;
   expect_struct.exist_workspace_after_reduce = false;
-  expect_struct.available_ub_size = {{"4000", {15792, 16120, 15792}}};
+  expect_struct.available_ub_size = {{4000, {15792, 16120, 15792}}};
   expect_struct.is_fuse_axis = false;
   expect_struct.is_const = true;
   expect_struct.is_const_post = false;
@@ -223,11 +223,11 @@ TEST_F(NormTilingTest, ParseTest3) {
   expect_struct.pad_max_entire_size = 128;
   expect_struct.exist_output_after_reduce = false;
   expect_struct.exist_workspace_after_reduce = false;
-  expect_struct.available_ub_size = {{"4000", {15792, 16120, 15792}}};
+  expect_struct.available_ub_size = {{4000, {15792, 16120, 15792}}};
   expect_struct.is_fuse_axis = false;
   expect_struct.is_const = true;
   expect_struct.is_const_post = true;
-  expect_struct.const_block_dims = {{"4000", 25}};
+  expect_struct.const_block_dims = {{4000, 25}};
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
 
@@ -257,9 +257,9 @@ TEST_F(NormTilingTest, TilingTest1) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4000", {15792, 16120, 15792}}};
-  op_compile_info.workspace_info = {{"200400000", {32}}};
-  op_compile_info.norm_vars = {{"200400000", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792}}};
+  op_compile_info.workspace_info = {{200400000, {32}}};
+  op_compile_info.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -294,9 +294,9 @@ TEST_F(NormTilingTest, TilingTest2) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4000", {15792, 16120, 15792}}};
-  op_compile_info.workspace_info = {{"400001", {4}}};
-  op_compile_info.norm_vars = {{"400001", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792}}};
+  op_compile_info.workspace_info = {{400001, {4}}};
+  op_compile_info.norm_vars = {{400001, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -331,9 +331,9 @@ TEST_F(NormTilingTest, TilingTest3) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"9000", {21784, 16360, 16336}}};
-  op_compile_info.workspace_info = {{"900021", {4}}};
-  op_compile_info.norm_vars = {{"900021", {20000, 20001, 20002, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336}}};
+  op_compile_info.workspace_info = {{900021, {4}}};
+  op_compile_info.norm_vars = {{900021, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -368,9 +368,9 @@ TEST_F(NormTilingTest, TilingTest4) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4000", {21448, 16120, 16088}}};
-  op_compile_info.workspace_info = {{"200400000", {32}}};
-  op_compile_info.norm_vars = {{"200400000", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4000, {21448, 16120, 16088}}};
+  op_compile_info.workspace_info = {{200400000, {32}}};
+  op_compile_info.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -405,9 +405,9 @@ TEST_F(NormTilingTest, TilingTest5) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
-  op_compile_info.available_ub_size = {{"12000", {16216, 13000, 16216}}};
-  op_compile_info.workspace_info = {{"101200010", {4, -4, -4}}};
-  op_compile_info.norm_vars = {{"101200010", {20000, 20001, 20002, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{12000, {16216, 13000, 16216}}};
+  op_compile_info.workspace_info = {{101200010, {4, -4, -4}}};
+  op_compile_info.norm_vars = {{101200010, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -442,7 +442,7 @@ TEST_F(NormTilingTest, TilingTest6) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"9000", {21784, 16360, 16336}}};
+  op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336}}};
   op_compile_info.is_fuse_axis = false;
   op_compile_info.is_const = true;
   op_compile_info.is_const_post = false;
@@ -477,12 +477,12 @@ TEST_F(NormTilingTest, TilingTest7) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"9000", {21784, 16360, 16336}}};
+  op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336}}};
   op_compile_info.is_fuse_axis = false;
   op_compile_info.is_const = true;
   op_compile_info.is_const_post = true;
-  op_compile_info.const_block_dims = {{"9000", 28}};
-  op_compile_info.workspace_info = {{"9000", {4}}};
+  op_compile_info.const_block_dims = {{9000, 28}};
+  op_compile_info.workspace_info = {{9000, {4}}};
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
   ASSERT_TRUE(norm.DoTiling());
@@ -515,9 +515,9 @@ TEST_F(NormTilingTest, TilingTest8) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4000", {15792, 16120, 15792}}};
-  op_compile_info.workspace_info = {{"200400000", {32}}};
-  op_compile_info.norm_vars = {{"200400000", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792}}};
+  op_compile_info.workspace_info = {{200400000, {32}}};
+  op_compile_info.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -552,9 +552,9 @@ TEST_F(NormTilingTest, TilingTest9) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"14000", {16216, 13000, 16216}}};
-  op_compile_info.workspace_info = {{"1400090", {4}}};
-  op_compile_info.norm_vars = {{"1400090", {20000, 20001, 20002, 40000}}};
+  op_compile_info.available_ub_size = {{14000, {16216, 13000, 16216}}};
+  op_compile_info.workspace_info = {{1400090, {4}}};
+  op_compile_info.norm_vars = {{1400090, {20000, 20001, 20002, 40000}}};
   op_compile_info.is_fuse_axis = false;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -589,9 +589,9 @@ TEST_F(NormTilingTest, TilingTest10) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"5000", {21784, 16360, 16336}}};
-  op_compile_info.workspace_info = {{"500011", {32}}};
-  op_compile_info.norm_vars = {{"500011", {20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{5000, {21784, 16360, 16336}}};
+  op_compile_info.workspace_info = {{500011, {32}}};
+  op_compile_info.norm_vars = {{500011, {20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -626,9 +626,9 @@ TEST_F(NormTilingTest, TilingTest11) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4012", {10552, 10744, 10552}}};
-  op_compile_info.workspace_info = {{"401201", {4, 4, 4, 4, 4}}};
-  op_compile_info.norm_vars = {{"401201", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4012, {10552, 10744, 10552}}};
+  op_compile_info.workspace_info = {{401201, {4, 4, 4, 4, 4}}};
+  op_compile_info.norm_vars = {{401201, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -663,9 +663,9 @@ TEST_F(NormTilingTest, TilingTest12) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
-  op_compile_info.available_ub_size = {{"20000", {16216, 13000, 16216}}};
-  op_compile_info.workspace_info = {{"102000001", {4, -4, -4}}};
-  op_compile_info.norm_vars = {{"102000001", {20000, 20001, 20002, 20003, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{20000, {16216, 13000, 16216}}};
+  op_compile_info.workspace_info = {{102000001, {4, -4, -4}}};
+  op_compile_info.norm_vars = {{102000001, {20000, 20001, 20002, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -702,9 +702,9 @@ TEST_F(NormTilingTest, TilingTest13) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{"4005", {21152, 16120, 15864}}};
-  op_compile_info.workspace_info = {{"1000400500", {32}}};
-  op_compile_info.norm_vars = {{"1000400500", {20000, 20001, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864}}};
+  op_compile_info.workspace_info = {{1000400500, {32}}};
+  op_compile_info.norm_vars = {{1000400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -740,13 +740,87 @@ TEST_F(NormTilingTest, TilingTest14) {
   op_compile_info.pad_max_entire_size = 128;
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
-  op_compile_info.available_ub_size = {{"42000", {15920, 12840, 15920}}};
-  op_compile_info.workspace_info = {{"4200000", {32}}};
-  op_compile_info.norm_vars = {{"4200000", {20000, 20003, 30000, 40000}}};
+  op_compile_info.available_ub_size = {{42000, {15920, 12840, 15920}}};
+  op_compile_info.workspace_info = {{4200000, {32}}};
+  op_compile_info.norm_vars = {{4200000, {20000, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
   ASSERT_TRUE(norm.DoTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "95 87 3 1 ");
+}
+
+TEST_F(NormTilingTest, TilingTest15) {
+  std::vector<std::vector<int64_t>> inputs {
+    {1, 23, 512}, {1, 23, 512}, {1, 23, 1}, {1, 23, 1}, {512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {1, 23, 512}, {1, 23, 512}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0, 0, 1, 1, 2};
+  op_compile_info.ori_reduce_axis = {2};
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{4012, {9056, 7048, 9056}}};
+  op_compile_info.workspace_info = {{401200, {32, 32}}};
+  op_compile_info.norm_vars = {{401200, {20000, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(runInfo.GetBlockDim(), 23);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "23 1 1 ");
+}
+
+TEST_F(NormTilingTest, TilingTest16) {
+  std::vector<std::vector<int64_t>> inputs {
+    {21, 93, 143}, {21, 93, 143}, {21, 1, 1}, {21, 1, 1}, {143}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {21, 93, 143}, {21, 93, 143}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0, 0, 1, 1, 2};
+  op_compile_info.ori_reduce_axis = {1, 2};
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{10044, {9056, 7048, 9056}}, {12044, {9056, 7048, 9056}}};
+  op_compile_info.workspace_info = {{1004401, {4, 4}}};
+  op_compile_info.norm_vars = {{1004401, {20000, 20001, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(runInfo.GetBlockDim(), 21);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "21 93 1 47 ");
 }

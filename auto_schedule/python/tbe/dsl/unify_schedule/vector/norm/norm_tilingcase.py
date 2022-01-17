@@ -900,7 +900,7 @@ class NormComputeGraphInfo:
             # update fake_node's shape and dtype
             for tensor_i in tensors:
                 if DTYPE_BYTE_MAPPING.get(tensor_i.dtype) > DTYPE_BYTE_MAPPING.get(dtype):
-                    dtype = tensor_i.type
+                    dtype = tensor_i.dtype
                 shape_i = util.shape_to_list(tensor_i.shape)
                 diff_length = dim_length - len(shape_i)
                 shape_i = [1] * diff_length + shape_i

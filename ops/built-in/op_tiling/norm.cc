@@ -315,31 +315,35 @@ bool Norm::EliminateOne() {
   if (is_cannot_eliminate_one) {
     return true;
   }
-
   // back is not 1
   if (input_shape_ori.back() != 1) {
     return true;
   }
+
   int32_t min_index = CalcMinEliminateOneIndex();
   for (int32_t i = static_cast<int32_t>(max_dim_len) - 1; i >= min_index; i--) {
-    // last dim is one
-    if (input_shape_ori[i] == 1) {
-      if (reduce_axis_ori.empty()) {
-        break;
-      }
-      if (compileInfo.is_broadcast_axis_known && broadcast_axis_ori.empty()) {
-        break;
-      }
-      input_shape_ori.pop_back();
-      if (reduce_axis_ori.back() == i) {
-        reduce_axis_ori.pop_back();
-      }
-      if (compileInfo.is_broadcast_axis_known && broadcast_axis_ori.back() == i) {
+    // dim is not one
+    if (input_shape_ori[i] != 1) {
+      return true;
+    }
+  }
+
+  bool ori_broadcast_axis_is_empty = false;
+  for (int32_t i = static_cast<int32_t>(max_dim_len) - 1; i >= min_index; i--) {
+    if (reduce_axis_ori.empty()) {
+      break;
+    }
+    input_shape_ori.pop_back();
+    if (reduce_axis_ori.back() == i) {
+      reduce_axis_ori.pop_back();
+    }
+    if (compileInfo.is_broadcast_axis_known) {
+      if (broadcast_axis_ori.empty()) {
+        ori_broadcast_axis_is_empty = true;
+      } else if (broadcast_axis_ori.back() == i) {
         broadcast_axis_ori.pop_back();
       }
-      continue;
     }
-    break;
   }
 
   // after remove 1, reduce axis is empty
@@ -352,7 +356,8 @@ bool Norm::EliminateOne() {
     for (auto& j : broadcast_axis_ori) {
       j++;
     }
-    if (compileInfo.is_broadcast_axis_known) {
+    bool is_broadcast_insert_zero = compileInfo.is_broadcast_axis_known && !ori_broadcast_axis_is_empty;
+    if (is_broadcast_insert_zero) {
       broadcast_axis_ori.insert(broadcast_axis_ori.begin(), 0);
     }
   }
@@ -438,17 +443,44 @@ bool Norm::FusedAxis() {
 }
 
 bool Norm::GetNormPattern() {
+  bool is_can_not_fuse = false;
+  int32_t weight = 10;
+
   if (compileInfo.is_broadcast_axis_known) {
     broadcast_pattern = CalcPattern(input_shape, broadcast_axis);
   } else {
+    // if there is only one norm pattern, norm pattern is no need to calculate
+    if (compileInfo.available_ub_size.size() == 1) {
+      norm_pattern = compileInfo.available_ub_size.begin()->first;
+      int32_t local_broadcast_pattern = norm_pattern % NORM_REDUCE_PATTERN_WEIGHT;
+      while (local_broadcast_pattern != 0) {
+        int32_t single_pattern = local_broadcast_pattern % weight;
+        if (single_pattern == static_cast<int32_t>(NormBroadcastMode::OTHERS)) {
+          input_shape = input_shape_ori;
+          reduce_axis = reduce_axis_ori;
+          break;
+        }
+        local_broadcast_pattern = local_broadcast_pattern / weight;
+      }
+
+      return true;
+    }
     for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
       auto single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
-      int32_t weight = 10;
       broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(single_mode);
       // cannot fuse axis
       if (single_mode == NormBroadcastMode::OTHERS) {
         input_shape = input_shape_ori;
         reduce_axis = reduce_axis_ori;
+        is_can_not_fuse = true;
+        break;
+      }
+    }
+
+    if (is_can_not_fuse) {
+      broadcast_pattern = 0;
+      for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
+        broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(NormBroadcastMode::OTHERS);
       }
     }
   }
@@ -461,7 +493,7 @@ bool Norm::GetNormPattern() {
 
 bool Norm::GetUbSizeInfo() {
   try {
-    const auto& available_ub_size_vec = compileInfo.available_ub_size.at(std::to_string(norm_pattern));
+    const auto& available_ub_size_vec = compileInfo.available_ub_size.at(norm_pattern);
     std::size_t expect_vec_len = 3;
     V_OP_TILING_CHECK((available_ub_size_vec.size() == expect_vec_len),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of available_ub_size_vec is %zu that is illegal",
@@ -555,11 +587,6 @@ bool Norm::IsNeedAlignedInUb() const {
 
   // last dim is not align
   if (input_shape.back() % block_size == 0) {
-    return false;
-  }
-
-  // num of common axis should be less than or equal to 1
-  if (input_shape.size() - reduce_axis.size() > 1) {
     return false;
   }
 
@@ -1283,8 +1310,6 @@ bool Norm::CalcTilingKey() {
   int32_t ub_key = (tilingInfo.ub_tiling_axis == -1) ? NORM_NONE_SPLIT_KEY : tilingInfo.ub_tiling_axis;
   tiling_key += ub_key;
 
-  tiling_key_str = std::to_string(tiling_key);
-
   return true;
 }
 
@@ -1296,7 +1321,7 @@ bool Norm::CalcWorkspace() {
 
   std::size_t workspace_count = 0;
   try {
-    const auto& workspace_info = compileInfo.workspace_info.at(tiling_key_str);
+    const auto& workspace_info = compileInfo.workspace_info.at(tiling_key);
     workspace_count = workspace_info.size();
     if (workspace_count == 0) {
       workspace.clear();
@@ -1345,7 +1370,7 @@ bool Norm::GetVarValue() {
     int32_t known_broadcast_encode = 20000;
     int32_t unknown_broadcast_encode = 10000;
     int32_t dim_encode = 100;
-    const auto& var_pattern = compileInfo.norm_vars.at(tiling_key_str);
+    const auto& var_pattern = compileInfo.norm_vars.at(tiling_key);
     for (const auto& var : var_pattern) {
       if (var >= ub_tiling_factor_encode) {
         var_value[count_var] = static_cast<int32_t>(tilingInfo.ub_tiling_factor);
@@ -1376,7 +1401,6 @@ bool Norm::ConstPostCalcTiling() {
   ret = ret && FusedAxis();
   ret = ret && GetNormPattern();
   tiling_key = norm_pattern;
-  tiling_key_str = std::to_string(tiling_key);
   ret = ret && CalcInputAlignShape();
   ret = ret && CalcWorkspace();
 
@@ -1403,7 +1427,8 @@ bool Norm::CalcNormInfo() {
   // calculate is_partial_reorder and is_discontinuous_reduce_axis
   is_partial_reorder = IsNeedPartialReorder();
   is_need_workspace = IsNeedWorkspace();
-  is_continuous_data_move = is_last_axis_reduce && (!is_discontinuous_reduce_axis);
+  is_continuous_data_move =
+    is_last_axis_reduce && (!is_discontinuous_reduce_axis) && (input_shape.size() - reduce_axis.size() <= 1);
   is_align_and_remove_pad = IsNeedAlignedInUb();
   // determine ub size
   if (is_need_workspace) {
@@ -1470,7 +1495,7 @@ bool Norm::CalcTiling() {
 bool Norm::ConstPostWriteTilingData() {
   // runtime
   try {
-    run_info.SetBlockDim(compileInfo.const_block_dims.at(tiling_key_str));
+    run_info.SetBlockDim(compileInfo.const_block_dims.at(tiling_key));
     run_info.SetTilingKey(tiling_key);
     for (const auto& item : workspace) {
       run_info.AddWorkspace(item);
@@ -1548,8 +1573,7 @@ bool NormCompileInfo::Check(const std::string& op_type) const {
   return true;
 }
 
-NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::json& parsed_json_obj) {
-  OP_LOGD(op_type.c_str(), "norm compile info construct func running");
+void NormCompileInfo::ParseAxisInfo(const nlohmann::json& parsed_json_obj) {
   // reduce and broadcast axis
   ori_reduce_axis = parsed_json_obj.at("_ori_reduce_axis").get<std::vector<int32_t>>();
   if (parsed_json_obj.contains("_ori_broadcast_axis")) {
@@ -1559,12 +1583,29 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
   if (parsed_json_obj.contains("_disable_fuse_axes")) {
     ori_disable_fuse_axes = parsed_json_obj.at("_disable_fuse_axes").get<std::vector<int32_t>>();
   }
+}
+
+void NormCompileInfo::ParseGraphInfo(const nlohmann::json& parsed_json_obj) {
   // graph info
   input_type = parsed_json_obj.at("_input_type").get<std::vector<int32_t>>();
   exist_output_after_reduce = parsed_json_obj.at("_exist_output_after_reduce").get<bool>();
   exist_workspace_after_reduce = parsed_json_obj.at("_exist_workspace_after_reduce").get<bool>();
-  available_ub_size =
+  const auto& local_available_ub_size =
     parsed_json_obj.at("_available_ub_size").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+  for (const auto& single_item : local_available_ub_size) {
+    available_ub_size[std::stoi(single_item.first)] = single_item.second;
+  }
+  // workspace info
+  if (parsed_json_obj.contains("_workspace_info")) {
+    const auto& local_workspace_info =
+      parsed_json_obj.at("_workspace_info").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+    for (const auto& single_item : local_workspace_info) {
+      workspace_info[std::stoi(single_item.first)] = single_item.second;
+    }
+  }
+}
+
+void NormCompileInfo::ParseCommonInfo(const nlohmann::json& parsed_json_obj) {
   // common info
   const auto& common_info = parsed_json_obj.at("_common_info").get<std::vector<int32_t>>();
   std::size_t expect_common_info_len = 3;
@@ -1576,11 +1617,9 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
     min_block_size = common_info[min_block_size_index];
     pad_max_entire_size = common_info[pad_max_entire_size_index];
   }
-  // workspace info
-  if (parsed_json_obj.contains("_workspace_info")) {
-    workspace_info =
-      parsed_json_obj.at("_workspace_info").get<std::unordered_map<std::string, std::vector<int32_t>>>();
-  }
+}
+
+void NormCompileInfo::ParseOtherInfo(const nlohmann::json& parsed_json_obj) {
   // fuse axis
   if (parsed_json_obj.contains("_fuse_axis")) {
     is_fuse_axis = parsed_json_obj.at("_fuse_axis").get<bool>();
@@ -1592,11 +1631,27 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
   if (is_const) {
     is_const_post = parsed_json_obj.at("_const_shape_post").get<bool>();
     if (is_const_post) {
-      const_block_dims = parsed_json_obj.at("_const_block_dims").get<std::unordered_map<std::string, int32_t>>();
+      const auto& local_const_block_dims =
+        parsed_json_obj.at("_const_block_dims").get<std::unordered_map<std::string, int32_t>>();
+      for (const auto& single_item : local_const_block_dims) {
+        const_block_dims[std::stoi(single_item.first)] = single_item.second;
+      }
     }
   } else {
-    norm_vars = parsed_json_obj.at("_norm_vars").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+    const auto& local_norm_vars =
+      parsed_json_obj.at("_norm_vars").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+    for (const auto& single_item : local_norm_vars) {
+      norm_vars[std::stoi(single_item.first)] = single_item.second;
+    }
   }
+}
+
+NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::json& parsed_json_obj) {
+  OP_LOGD(op_type.c_str(), "norm compile info construct func running");
+  ParseAxisInfo(parsed_json_obj);
+  ParseGraphInfo(parsed_json_obj);
+  ParseCommonInfo(parsed_json_obj);
+  ParseOtherInfo(parsed_json_obj);
   check_success = Check(op_type);
 }
 
