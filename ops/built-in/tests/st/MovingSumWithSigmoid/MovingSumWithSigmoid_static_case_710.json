@@ -1,0 +1,65 @@
+[
+  {
+    "op": "MovingSumWithSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          51200
+        ],
+        "ori_shape": [
+          51200
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float"
+      },
+      {
+        "shape": [
+          51200
+        ],
+        "ori_shape": [
+          51200
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "energy",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "frame_size",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          51200
+        ],
+        "format": "ND",
+        "ori_shape": [
+          51200
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "window_size",
+        "type": "int",
+        "value": 512
+      }
+    ],
+    "case_name": "test_MovingSumWithSigmoid_000"
+  }
+]

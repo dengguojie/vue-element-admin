@@ -360,7 +360,6 @@ from .ifmr import ifmr
 from .inplace_index_add import inplace_index_add
 from .square_sum_all import square_sum_all
 from .pad_v2 import pad_v2
-
 from .scan_pq_codes import scan_pq_codes
 from .tabulate_fusion_grad import tabulate_fusion_grad
 from .ascend_dequant import ascend_dequant
@@ -392,3 +391,4 @@ from .sync_bn_training_update import sync_bn_training_update
 from .sync_batch_norm_gather_stats_with_counts import sync_batch_norm_gather_stats_with_counts
 from .reduce_mean_with_count import reduce_mean_with_count
 from .prod_force_se_a import prod_force_se_a
+from .moving_sum_with_sigmoid import moving_sum_with_sigmoid

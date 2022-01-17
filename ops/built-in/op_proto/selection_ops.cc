@@ -4977,6 +4977,32 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 COMMON_INFER_FUNC_REG(StridedSliceV3, StridedSliceV3InferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV3);
 // ----------------StridedSlicev3 Op End-------------------
+// ----------------InplaceTopKDistance Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape work");
+  ge::TensorDesc alphaTensorDesc = op.GetInputDescByName("alpha");
+  ge::TensorDesc energyTensorDesc = op.GetInputDescByName("energy");
+  ge::TensorDesc frameTensorDesc = op.GetInputDescByName("frame_size");
+  DataType alphaDtype = alphaTensorDesc.GetDataType();
+  DataType energyDtype = energyTensorDesc.GetDataType();
+  DataType frameDtype = frameTensorDesc.GetDataType();
+  auto alphaShape = alphaTensorDesc.GetShape();
+  std::vector<std::pair<int64_t, int64_t>> in_range;
+  auto alphaShapeRange = alphaTensorDesc.GetShapeRange(in_range);
+  
+  ge::TensorDesc yDesc = op.GetOutputDescByName("y");
 
+  yDesc.SetShape(ge::Shape(alphaShape));
+  yDesc.SetShapeRange(in_range);
+
+  yDesc.SetDataType(alphaDtype);
+
+ (void) op.UpdateOutputDesc("y", yDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MovingSumWithSigmoid, MovingSumWithSigmoidInferShape);
+// ----------------InplaceTopKDistance END---------------------
 }  // namespace ge
 

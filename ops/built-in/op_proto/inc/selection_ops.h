@@ -2531,6 +2531,32 @@ REG_OP(StridedSliceV3)
     .OPTIONAL_INPUT(strides, TensorType::IndexNumberType())
     .OUTPUT(y, TensorType::BasicType())
     .OP_END_FACTORY_REG(StridedSliceV3)
+
+/**
+*@brief MovingSumWithSigmoid.
+
+*@par Inputs:
+*Four inputs, including:
+* @li alpha: A Tensor. Must be one of the following types: float32, float16.
+* @li energy: A Tensor. Must be one of the following types: float32, float16.
+* @li frame_szie: A Tensor of type int32. \n
+
+*@par Outputs:
+* y: A Tensor. Has the same type as "alpha". \n
+*
+* @par Attributes:
+* window_size: get the first k data of sorted_distance. \n
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(MovingSumWithSigmoid)
+    .INPUT(alpha, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(energy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(frame_szie, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(window_size, Int)
+    .OP_END_FACTORY_REG(MovingSumWithSigmoid)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SELECTION_OPS_H_

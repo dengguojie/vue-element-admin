@@ -191,6 +191,7 @@ set(_optiling_files
   tiling_handler.h
   prod_force_se_a.cc
   trace.cc
+  moving_sum_with_sigmoid.cc
 )
 
 set(_op_tiling_include
