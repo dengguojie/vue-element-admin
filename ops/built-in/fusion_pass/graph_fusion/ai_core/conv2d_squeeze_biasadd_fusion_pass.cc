@@ -125,7 +125,7 @@ Status Conv2DSqueezeBiasaddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
         FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(biasadd_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove outnode edges failed"),
                           return FAILED);
-        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(biasadd_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(squeeze_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add outnode edge failed"),
                           return FAILED);
     }
