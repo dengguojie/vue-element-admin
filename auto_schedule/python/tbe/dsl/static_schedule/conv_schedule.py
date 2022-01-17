@@ -5156,7 +5156,7 @@ class CceConvOp:
         _cal_channel_wise_input_optim_list(tiling)
 
         filter_matrix = list(dim_map["filter_matrix_dim"])
-        filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
+        filter_matrix[1] = int_ceil_div(filter_matrix[1], tiling["block_dim"][1])
         if tiling["BL0_matrix"][0:4] == filter_matrix and (len(tiling["BL0_matrix"]) > 5 \
             and tiling["BL0_matrix"][5] == 1):
             tiling["BL0_matrix"] = []
