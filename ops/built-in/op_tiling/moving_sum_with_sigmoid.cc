@@ -57,15 +57,15 @@ namespace optiling {
         OP_LOGD("SetRunningInfo is running");
         ByteBufferPut(run_info.tiling_data, tiling_params.tiling_mode);
         ByteBufferPut(run_info.tiling_data, tiling_params.core_num);
-	}
+    }
 
-	void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
-	{
-		OP_LOGD("PrintTilingParams is running");
-		OP_LOGD("op [RnnGenMaskV2Tiling] : cal_mode=%d.", tiling_params.cal_mode);
-		OP_LOGD("op [RnnGenMaskV2Tiling] : core_used=%d.", tiling_params.core_used);
-	}
-  
+    void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
+    {
+        OP_LOGD("PrintTilingParams is running");
+        OP_LOGD("op [RnnGenMaskV2Tiling] : cal_mode=%d.", tiling_params.cal_mode);
+        OP_LOGD("op [RnnGenMaskV2Tiling] : core_used=%d.", tiling_params.core_used);
+    }
+
     bool MovingSumWithSigmoidTiling(const std::string & op_type, const TeOpParas & op_paras,
                                     const nlohmann::json & op_compile_info, OpRunInfo & run_info)
     {
