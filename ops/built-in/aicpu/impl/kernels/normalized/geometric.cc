@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ namespace {
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 const char *kGeometric = "Geometric";
+const double PATTRDEFAULT = 0.5;
 
 #define Geometric_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                           \
@@ -44,7 +45,7 @@ uint32_t GeometricCpuKernel::DoCompute(CpuKernelContext &ctx) {
   auto output_tensor = ctx.Output(0);
   auto output_y = reinterpret_cast<T *>(output_tensor->GetData());
   AttrValue *p = ctx.GetAttr("p");
-  p_ = (p == nullptr) ? 0.5 : (p->GetFloat());
+  p_ = (p == nullptr) ? PATTRDEFAULT : (p->GetFloat());
   AttrValue *attr_seed = ctx.GetAttr("attr_seed");
   attr_seed_ = (attr_seed == nullptr) ? 0 : (attr_seed->GetInt());
   srand(attr_seed_);
@@ -91,7 +92,7 @@ uint32_t GeometricCpuKernel::ExtraParamCheck(CpuKernelContext &ctx) {
                      KERNEL_STATUS_PARAM_INVALID,
                      "The data type of [x] need be DT_FLOAT or DT_FLOAT16.")
   AttrValue *p = ctx.GetAttr("p");
-  p_ = (p == nullptr) ? 0.5 : (p->GetFloat());
+  p_ = (p == nullptr) ? PATTRDEFAULT : (p->GetFloat());
   KERNEL_CHECK_FALSE(
       (p_ < 1 && p_ > 0), KERNEL_STATUS_PARAM_INVALID,
       "The value of p must be in the range of(0, 1), but got: [%f]", p_);

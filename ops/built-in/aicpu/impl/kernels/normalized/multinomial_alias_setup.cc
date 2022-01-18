@@ -23,6 +23,7 @@ namespace {
 const uint32_t kOutputNum = 2;
 const uint32_t kInputNum = 1;
 const char *kMultinomialAliasSetup = "MultinomialAliasSetup";
+const double ZERO = 0.;
 
 #define MULTINOMIAL_ALIAS_SETUP_COMPUTE_CASE(DTYPE, TYPE, CTX)              \
   case (DTYPE): {                                                           \
@@ -66,13 +67,13 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKern
   if (probs_type == DT_DOUBLE) {
     auto probs_x = reinterpret_cast<double *>(ctx.Input(0)->GetData());
     for (int64_t i = 0; i < data_num; i++) {
-      KERNEL_CHECK_FALSE((*(probs_x + i)) >= (0.), KERNEL_STATUS_PARAM_INVALID,
+      KERNEL_CHECK_FALSE((*(probs_x + i)) >= (ZERO), KERNEL_STATUS_PARAM_INVALID,
                          "probs[%llu] must be at least more than 0.", i);
     }
   } else {
     auto probs_x = reinterpret_cast<float *>(ctx.Input(0)->GetData());
     for (int64_t i = 0; i < data_num; i++) {
-      KERNEL_CHECK_FALSE((*(probs_x + i)) >= (0.), KERNEL_STATUS_PARAM_INVALID,
+      KERNEL_CHECK_FALSE((*(probs_x + i)) >= (ZERO), KERNEL_STATUS_PARAM_INVALID,
                          "probs[%llu] must be at least more than 0.", i);
     }
   }

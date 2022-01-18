@@ -28,6 +28,7 @@ namespace {
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 const char *kPinverse = "Pinverse";
+const uint32_t SHAPEDIM = 2;
 }  // namespace
 
 namespace aicpu {
@@ -40,7 +41,7 @@ uint32_t PinverseCpuKernel::DoCompute(CpuKernelContext &ctx) {
                      KERNEL_STATUS_PARAM_INVALID, "Input[x] must be a matrix");
 
   auto input_shape = input_tensor_shape->GetDimSizes();
-  KERNEL_CHECK_FALSE((input_shape.size() == 2), KERNEL_STATUS_PARAM_INVALID, "Input[x] must be 2D.");
+  KERNEL_CHECK_FALSE((input_shape.size() == SHAPEDIM), KERNEL_STATUS_PARAM_INVALID, "Input[x] must be 2D.");
   using MatrixMap = Eigen::Map<
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
   MatrixMap input(reinterpret_cast<T *>(input_tensor->GetData()),
@@ -57,7 +58,7 @@ uint32_t PinverseCpuKernel::DoCompute(CpuKernelContext &ctx) {
   // defination of output tensor
   auto output_tensor = ctx.Output(kFirstOutputIndex);
   auto output_shape = output_tensor->GetTensorShape()->GetDimSizes();
-  KERNEL_CHECK_FALSE((output_shape.size() == 2), KERNEL_STATUS_PARAM_INVALID, "Output[x] must be 2D.");
+  KERNEL_CHECK_FALSE((output_shape.size() == SHAPEDIM), KERNEL_STATUS_PARAM_INVALID, "Output[x] must be 2D.");
   MatrixMap output(reinterpret_cast<T *>(output_tensor->GetData()),
                     output_shape[0], output_shape[1]);
   
