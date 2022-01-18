@@ -27,7 +27,7 @@
 
 #include "framework/common/ge_inner_error_codes.h"
 #include "framework/common/ge_types.h"
-#include "framework/common/l2_cache_optimize.h"
+#include "framework/common/util.h"
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"
 #include "graph/tensor.h"
