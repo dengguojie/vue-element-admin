@@ -19,15 +19,15 @@ OP_TEST(Add, Test_Add_001_case_001)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{4}, {1}};
-    opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
-    opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
+    opTestDesc.inputShape = {{4}, {4}};
+    opTestDesc.inputDataType = {ACL_INT32, ACL_INT32};
+    opTestDesc.inputFormat = {(aclFormat)1, (aclFormat)1};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_case_001_input_0", "test_data/data/Test_Add_001_case_001_input_1"};
     opTestDesc.inputConst = {false, false};
     // output parameter init
     opTestDesc.outputShape = {{4}};
-    opTestDesc.outputDataType = {ACL_FLOAT16};
-    opTestDesc.outputFormat = {(aclFormat)2};
+    opTestDesc.outputDataType = {ACL_INT32};
+    opTestDesc.outputFormat = {(aclFormat)1};
     opTestDesc.outputFilePath = {"result_files/Test_Add_001_case_001_output_0"};
     // attr parameter init
     

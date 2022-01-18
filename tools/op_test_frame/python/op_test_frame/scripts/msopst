@@ -174,7 +174,7 @@ def _gen_build_convert_run(args, report):
         _runner_and_compare(args, case_list, report, get_advance_args)
     elif acl_mode == ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
-        _generate_run_cmd_op_project(args, report, False)
+        _generate_run_cmd_op_project(args, report, False, get_advance_args)
     elif acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
             acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
