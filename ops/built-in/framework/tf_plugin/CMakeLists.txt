@@ -185,6 +185,7 @@ set(_tf_plugins
   fake_quant_with_min_max_vars_plugin.cc
   fast_gelu_grad_plugin.cc
   fast_gelu_plugin.cc
+  fast_gelu_v2_plugin.cc
   fastrcnn_predictions_plugin.cc
   fifo_queue_plugin.cc
   fill_plugin.cc
