@@ -77,35 +77,6 @@ class AutoTilingHandler {
   const std::string pattern;
 };
 
-/*
- * @brief: tiling function of reduce operator
- * @param [in] op_type: op_type of the reduce operator
- * @param [in] op_paras: inputs/outputs/attrs of the reduce operator
- * @param [in] json_info: compile time generated info of the reduce operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& json_info,
-                  OpRunInfo& run_info);
-bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& json_info,
-                  utils::OpRunInfo& run_info);
-bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& json_info,
-                  utils::OpRunInfo& run_info, const OpInfo& op_info);
-/*
- * @brief: tiling function of element-wise operator
- * @param [in] op_type: op_type of the element-wise operator
- * @param [in] op_paras: inputs/outputs/attrs of the element-wise operator
- * @param [in] compile_info: compile time generated info of the element-wise operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& compile_info,
-                    OpRunInfo& run_info);
-bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                    utils::OpRunInfo& run_info);
-bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                    utils::OpRunInfo& run_info, const OpInfo& op_info);
-
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                            const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
