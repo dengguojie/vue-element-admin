@@ -888,6 +888,7 @@ if __name__ == "__main__":
     print("====> conv2d v300 ut start")
     run_v300_cases("")
     print("====> end v300 ut start")
+    exit(0)
 
 
 

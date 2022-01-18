@@ -121,7 +121,7 @@ class FixpipeFusionNew(object):
         self.nz2nd_flag = False
         self.cache_read_tensors = []
         self.cache_read_tensors_channelwise = []
-    
+
     def fetch_quant_relu_flag(self):
         """
         fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
@@ -133,7 +133,7 @@ class FixpipeFusionNew(object):
         return eltwise src info
         """
         return self.eltwise_flag, self.eltwise_dtype
-    
+
     def get_eltwise_info(self):
         """
         get eltwise src info
@@ -197,11 +197,11 @@ class FixpipeFusionNew(object):
                 input_l1 = sch.cache_read(tensor, scope, next_op_map[tensor])
                 self.cache_read_tensors_channelwise.extend([input_l1])
                 continue
-            
+
             input_fb = sch.cache_read(tensor, scope, next_op_map[tensor])
             input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
             self.cache_read_tensors.extend([input_fb, input_l1])
-        
+
     def fixpipe_inputs_emit_insn(self,sch):
         """
         Dma for the inputs of fixpipe fusion ops.
@@ -210,22 +210,22 @@ class FixpipeFusionNew(object):
             sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
 
         for tensor in self.cache_read_tensors_channelwise:
-            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy", {"mem_align":1})
-    
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
+
     def inline_fixpipe_tensor(self, sch):
         """
         Inline the body tensors in fixpipe fusion compute.
         """
         for tensor in self.inline_tensors:
             sch[tensor].compute_inline()
-    
+
     def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
         """
         Attach the inputs of fixpipe fusion ops to res tensor.
         """
         for tensor in self.cache_read_tensors:
             sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
-        
+
         for tensor in self.cache_read_tensors_channelwise:
             sch[tensor].compute_at(sch[res], cl0_at_res_axis)
 
@@ -311,7 +311,7 @@ class FixpipeFusion:
         _ = cl0_at_res_axis
         for tensor in self.cache_read_tensors:
             sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
-            
+
     def inline_fixpipe_tensor(self, sch):
         """
         Inline the body tensors in fixpipe fusion compute.
@@ -1451,6 +1451,13 @@ class Conv2dSchedule:
                 sch[bias_l1].compute_at(sch[res], fixpipe_slice_axis)
                 sch[bias_bt].compute_at(sch[res], fixpipe_slice_axis)
 
+        def anti_quant_spilt_flag(res):
+            if res.dtype == "float16" and not self._fixpipe_fusion.nz2nd_flag and \
+                    self._fixpipe_fusion.anti_quant_flag:
+                return True
+
+            return False
+
         #==========================parse tiling==================================
         al1_tiling = self._tiling["AL1_shape"]
         bl1_tiling = self._tiling["BL1_shape"]
@@ -1609,6 +1616,10 @@ class Conv2dSchedule:
         else:
             res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt)
             res_cio, res_cii = sch[res].split(res_co1_ori, nc_cl0)
+            # fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride
+            if anti_quant_spilt_flag(res):
+                res_cii_ori = res_cii
+                res_cii, res_ciii = sch[res].split(res_cii_ori, 2)
 
         res_mo, res_mi = sch[res].split(res_hw_axis, mc_cl0*m0_cl0)
 
@@ -1628,10 +1639,23 @@ class Conv2dSchedule:
                              res_mi)        # mc*m0
             # [n, group_opt, co1_opt // 2*nc, howo // (mc*m0), ||| nc, 2, mc*m0, co0]
         else:
-            sch[res].reorder(res_cio, # co1_opt // nc
-                             res_mo,  # howo // (mc*m0)
-                             res_cii, # nc
-                             res_mi)  # mc*m0
+            if res.dtype == "float16":
+                if anti_quant_spilt_flag(res):
+                    sch[res].reorder(res_cio,   # co1_opt // nc
+                                     res_mo,    # howo // (mc*m0)
+                                     res_cii,  # nc // 2
+                                     res_ciii,  # 2
+                                     res_mi)    # mc*m0
+                else:
+                    sch[res].reorder(res_cio,  # co1_opt // nc
+                                     res_mo,  # howo // (mc*m0)
+                                     res_cii,  # nc
+                                     res_mi)  # mc*m0
+            else:
+                sch[res].reorder(res_cio, # co1_opt // nc
+                                 res_mo,  # howo // (mc*m0)
+                                 res_cii, # nc
+                                 res_mi)  # mc*m0
             # [n, group_opt, co1_opt // nc, howo // (mc*m0), ||| nc, mc*m0, co0]
 
         res_moo, res_moi = sch[res].split(res_mo, nparts=al1_nparts[1])
@@ -1681,20 +1705,37 @@ class Conv2dSchedule:
                                  res_co1_ori_i, # third axis from bottom must be 2 for fp32
                                  res_mi)
             else:
-                sch[res].reorder(res_no,
-                                 res_go,
-                                 res_ciooo,
-                                 res_mooo,
-                                 res_gio,
-                                 res_gii,
-                                 res_nio,
-                                 res_ciooi,
-                                 res_mooi,
-                                 res_cioi,
-                                 res_moi,
-                                 res_cii,
-                                 res_nii,
-                                 res_mi)
+                if anti_quant_spilt_flag(res):
+                    sch[res].reorder(res_no,
+                                     res_go,
+                                     res_ciooo,
+                                     res_mooo,
+                                     res_gio,
+                                     res_gii,
+                                     res_nio,
+                                     res_ciooi,
+                                     res_mooi,
+                                     res_cioi,
+                                     res_moi,
+                                     res_cii,
+                                     res_ciii,
+                                     res_nii,
+                                     res_mi)
+                else:
+                    sch[res].reorder(res_no,
+                                     res_go,
+                                     res_ciooo,
+                                     res_mooo,
+                                     res_gio,
+                                     res_gii,
+                                     res_nio,
+                                     res_ciooi,
+                                     res_mooi,
+                                     res_cioi,
+                                     res_moi,
+                                     res_cii,
+                                     res_nii,
+                                     res_mi)
         else:
             sch[res].reorder(res_no,
                              res_go,
