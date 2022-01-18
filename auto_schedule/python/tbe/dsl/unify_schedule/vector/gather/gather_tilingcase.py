@@ -49,20 +49,19 @@ class GatherCompileInfo:
     Built-in Compile info keys
     """
     CUSTOM_INFO = "_custom_info"
-    L1_SIZE = "_l1_size"
     GATHER_TYPE = "_gather_type"
     PARAMS_DTYPE_SIZE = "_params_dtype_size"
     INDICES_DTYPE_SIZE = "_indices_dtype_size"
     PARAMS_NUM = "_params_num"
     INDICES_NUM = "_indices_num"
     PARAMS_UB_NUM = "_params_ub_num"
-    PARAMS_L1_NUM = "_params_l1_num"
     BATCH_DIMS = "_batch_dims"
     SPECIAL_PATTERN = "_special_pattern"
     CONST_AXIS = "_const_axis"
     TENSOR_SIZES = "_tensor_sizes"
     FAKE_SCHEDULE = "_fake_schedule"
     STATIC_SUCCESS = "_static_success"
+    STATIC_CLOSE_PASS = "_static_close_pass"
     BASE_SCHEDULE_PATTERN = 0
     ZERO_SCHEDULE_PATTERN = 9
 
@@ -115,6 +114,103 @@ class GatherComputation(Computation):
             return GatherPattern.ZERO_SCHEDULE
         return GatherPattern.NORMAL_SCHEDULE
 
+    @staticmethod
+    def gen_remov_pad_cases(dim_len, base_key, strategy, batch_dims, axis):
+        remov_pad_cases = []
+        for i in range(dim_len):
+            for j in range(i, dim_len):
+                tiling_key = base_key + i * dim_len + j
+                # remove pad schedule
+                # base_key + 7010
+                remov_pad_cases.append({
+                    "key": tiling_key + 7000,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": strategy,
+                    "remove_pad": True,
+                    "batch_dims": batch_dims,
+                    "axis": axis,
+                    "store_area": 0,
+                    "is_params_align": False,
+                    "is_need_align": True,
+                })
+        return remov_pad_cases
+
+    @staticmethod
+    def gen_store_ub_cases(dim_len, base_key, strategy, batch_dims, axis):
+        store_ub_cases = []
+        # scalar mode
+        # pattern 6000
+        for i in range(dim_len):
+            for j in range(i, dim_len):
+                tiling_key = base_key + i * dim_len + j
+                store_ub_cases.append({
+                    "key": tiling_key + 6000,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": strategy,
+                    "scalar_mode": True,
+                    "batch_dims": batch_dims,
+                    "axis": axis,
+                    "store_area": 1,
+                    "is_params_align": False,
+                    "is_need_align": False
+                })
+
+        for i in range(dim_len):
+            for j in range(i, dim_len):
+                tiling_key = base_key + i * dim_len + j
+                # params store in ub and params no need align
+                # pattern 1000
+                store_ub_cases.append({
+                    "key": tiling_key + 1000,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": strategy,
+                    "batch_dims": batch_dims,
+                    "axis": axis,
+                    "store_area": 1,
+                    "is_params_align": False,
+                    "is_need_align": False
+                })
+
+                # params store in ub and params need align
+                # pattern 2000
+                store_ub_cases.append({
+                    "key": tiling_key + 2000,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": strategy,
+                    "batch_dims": batch_dims,
+                    "axis": axis,
+                    "store_area": 1,
+                    "is_params_align": True,
+                    "is_need_align": True
+                })
+
+        return store_ub_cases
+
+    @staticmethod
+    def gen_db_cases(dim_len, base_key, strategy, batch_dims, axis):
+        db_cases = []
+        for i in range(dim_len):
+            for j in range(i, dim_len):
+                tiling_key = base_key + i * dim_len + j
+                # db
+                # pattern 5000
+                db_cases.append({
+                    "key": tiling_key + 5000,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "tiling_strategy": strategy,
+                    "batch_dims": batch_dims,
+                    "axis": axis,
+                    "is_db": True,
+                    "is_need_align": False
+                })
+
+        return db_cases
+
     @classmethod
     def get_instance(cls, outs, option):  # type: (list[Any], dict[str, Any]) -> "Computation"
         return cls(outs, option)
@@ -141,113 +237,21 @@ class GatherComputation(Computation):
         params_total_size = abs(reduce(lambda x, y: x * y, params_shape)) * DTYPE_BYTE_MAPPING.get(out_dtype)
 
         total_ub_size = util.get_ub_size()
-        total_l1_size = util.get_l1_size()
 
         cases = []
 
         # special pattern
         # gather nd will generate too much tiling cases
         if rank == 1:
-            if params_total_size <= total_ub_size // 2:
-                # params store in ub and params no need align
-                # pattern 1000
-                cases.append({
-                    "key": base_key + 1000 + (dim_len - 2) * dim_len + dim_len - 2,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 2,
-                    "tiling_strategy": strategy,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "store_area": 1,
-                    "is_params_align": False,
-                    "is_need_align": False
-                })
-
-                # params store in ub and params need align
-                # pattern 2000
-                cases.append({
-                    "key": base_key + 2000 + (dim_len - 2) * dim_len + dim_len - 2,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 2,
-                    "tiling_strategy": strategy,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "store_area": 1,
-                    "is_params_align": True,
-                    "is_need_align": True
-                })
-
-                # scalar mode
-                # pattern 6000
-                cases.append({
-                    "key": base_key + 6000 + (dim_len - 2) * dim_len + dim_len - 2,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 2,
-                    "tiling_strategy": strategy,
-                    "scalar_mode": True,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "store_area": 1,
-                    "is_params_align": False,
-                    "is_need_align": False
-                })
-
-            if params_total_size <= total_l1_size:
-                # params store in l1 and params noneed align
-                # pattern 4000
-                cases.append({
-                    "key": base_key + 4000 + (dim_len - 2) * dim_len + dim_len - 2,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 2,
-                    "tiling_strategy": strategy,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "store_area": 2,
-                    "is_params_align": False,
-                    "is_need_align": False
-                })
-
-            if isinstance(shape[-1], Var) or (isinstance(shape[-1], int) and shape[-1] != 1):
-                # db
-                # pattern 5000
-                cases.append({
-                    "key": base_key + 5000 + (dim_len - 2) * dim_len + dim_len - 1,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 1,
-                    "tiling_strategy": strategy,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "is_db": True,
-                    "is_need_align": False
-                })
-
-                cases.append({
-                    "key": base_key + 5000 + (dim_len - 1) * dim_len + dim_len - 1,
-                    "block_tiling_axis": dim_len - 1,
-                    "ub_tiling_axis": dim_len - 1,
-                    "tiling_strategy": strategy,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "is_db": True,
-                    "is_need_align": False
-                })
-
             if out.dtype in REMOVE_PAD_DTYPE.keys() and (isinstance(shape[-1], Var) or (
                     isinstance(shape[-1], int) and shape[-1] <= REMOVE_PAD_DTYPE.get(out_dtype))):
-                # remove pad schedule
-                # base_key + 7010
-                cases.append({
-                    "key": base_key + 7000 + (dim_len - 2) * dim_len + dim_len - 2,
-                    "block_tiling_axis": dim_len - 2,
-                    "ub_tiling_axis": dim_len - 2,
-                    "tiling_strategy": strategy,
-                    "remove_pad": True,
-                    "batch_dims": batch_dims,
-                    "axis": axis,
-                    "store_area": 0,
-                    "is_params_align": False,
-                    "is_need_align": True,
-                })
+                cases.extend(self.gen_remov_pad_cases(dim_len, base_key, strategy, batch_dims, axis))
+
+            if params_total_size <= total_ub_size // 2:
+                cases.extend(self.gen_store_ub_cases(dim_len, base_key, strategy, batch_dims, axis))
+
+            if isinstance(shape[-1], Var) or (isinstance(shape[-1], int) and shape[-1] != 1):
+                cases.extend(self.gen_db_cases(dim_len, base_key, strategy, batch_dims, axis))
 
         # base tiling case, cover all condition
         for i in range(dim_len):
@@ -303,6 +307,12 @@ def _pre_build(schedules_list):
 
     # set special build cfg
     operation.add_build_arg("double_buffer_non_reuse", True)
+
+    # static buildcfg
+    is_close_pass = operation.get_context().get(GatherCompileInfo.STATIC_CLOSE_PASS)
+    if operation.get_op_mode() == "static" and is_close_pass:
+        operation.add_build_arg("out_of_bound_sync_check", False)
+
     cpt_computes = operation.get_context().get_computes()
 
     schedules = []
@@ -310,8 +320,8 @@ def _pre_build(schedules_list):
 
     te_vars_list = []
     op_vars = operation.get_context().get_vars()
-    cpt_cores, cpt_ub_size, cpt_l1_size, cpt_params_dtype, cpt_indices_dtype, cpt_gather_type = [], [], [], [], [], []
-    params_ub_num, l1_num, batch_dims = [], [], []
+    cpt_cores, cpt_ub_size, cpt_params_dtype, cpt_indices_dtype, cpt_gather_type = [], [], [], [], []
+    params_ub_num, batch_dims = [], []
     tensor_sizes = {}
 
     for cpt in cpt_computes:
@@ -321,13 +331,11 @@ def _pre_build(schedules_list):
                 continue
             cpt_cores.append(sch_context.get(CompileInfo.CORE_NUM))
             cpt_ub_size.append(sch_context.get(CompileInfo.UB_SIZE))
-            cpt_l1_size.append(sch_context.get(GatherCompileInfo.L1_SIZE))
             cpt_params_dtype.append(sch_context.get(GatherCompileInfo.PARAMS_DTYPE_SIZE))
             cpt_indices_dtype.append(sch_context.get(GatherCompileInfo.INDICES_DTYPE_SIZE))
             cpt_gather_type.append(sch_context.get(GatherCompileInfo.GATHER_TYPE))
 
             params_ub_num.append(sch_context.get(GatherCompileInfo.PARAMS_UB_NUM))
-            l1_num.append(sch_context.get(GatherCompileInfo.PARAMS_L1_NUM))
             batch_dims.append(sch_context.get(GatherCompileInfo.BATCH_DIMS))
             special_pattern = sch_context.get(GatherCompileInfo.SPECIAL_PATTERN)
             params_num = sch_context.get(GatherCompileInfo.PARAMS_NUM)
@@ -339,7 +347,7 @@ def _pre_build(schedules_list):
             if special_pattern not in tensor_sizes.keys():
                 tensor_sizes[special_pattern] = [params_num, indices_num]
 
-        base_info = [max(cpt_cores), min(cpt_ub_size), min(cpt_l1_size), max(cpt_gather_type), max(cpt_params_dtype),
+        base_info = [max(cpt_cores), min(cpt_ub_size), max(cpt_gather_type), max(cpt_params_dtype),
                      max(cpt_indices_dtype)]
         operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 
@@ -348,7 +356,7 @@ def _pre_build(schedules_list):
             org_batch_dims = operation.get_context().get("_org_batch_dims")
         else:
             org_batch_dims = max(batch_dims)
-        custom_info = [min(l1_num), min(params_ub_num), max(batch_dims), is_binary_shape, org_batch_dims]
+        custom_info = [min(params_ub_num), max(batch_dims), is_binary_shape, org_batch_dims]
         operation.add_compile_info_inner(GatherCompileInfo.CUSTOM_INFO, custom_info)
 
         operation.add_compile_info_inner(GatherCompileInfo.TENSOR_SIZES, tensor_sizes)

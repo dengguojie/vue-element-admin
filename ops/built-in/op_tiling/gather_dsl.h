@@ -29,6 +29,9 @@
 #include "external/graph/operator.h"
 
 namespace optiling {
+  constexpr std::size_t GATHER_INIT_DIM_LEN = 11;
+  constexpr std::size_t INDICES_INIT_DIM_LEN = 3;
+  constexpr std::size_t OUTPUT_INIT_DIM_LEN = 4;
   struct GatherDslCompileInfo {
     // construct func
     GatherDslCompileInfo() = default;
@@ -37,15 +40,13 @@ namespace optiling {
     // base info
     int64_t core_num{0};
     int64_t ub_size{1};
-    int64_t l1_size{0};
     int64_t gather_type{0};
     int64_t params_dtype{0};
     int64_t params_align{32};
     int64_t indices_dtype{0};
 
     // custom info
-    int64_t params_l1_num{1};
-    int64_t params_ub_half_num{1};
+    int64_t params_ub_store_num{1};
     int64_t batch_dims{0};
     bool is_binary_shape{false};
     int64_t org_batch_dims{0};
@@ -75,8 +76,7 @@ namespace optiling {
     private:
       bool Init();
 
-      void SimplyParamsAndIndices(std::vector <int64_t> org_params_shape,
-                                  std::vector <int64_t> org_indices_shape);
+      void SimplyParamsAndIndices();
       bool IsZeroShapeTiling();
       bool DoZeroShapeTiling();
 
@@ -89,13 +89,9 @@ namespace optiling {
       bool DoScalarTiling();
 
       bool IsStoreUB(int64_t params_total);
-      bool IsStoreL1(int64_t params_total);
 
       bool IsParamsUbTiling();
       bool DoParamsUbTiling();
-
-      bool IsParamsL1Tiling();
-      bool DoParamsL1Tiling();
 
       bool IsDbModule();
       bool DoDbModule();
@@ -107,7 +103,7 @@ namespace optiling {
       void BlockThirdAxis();
       void BlockLastAxis();
       void EnsureBlockUBTiling();
-
+      void SafeTiling();
       bool DoBaseTiling();
 
       bool CalcKey();
@@ -119,18 +115,25 @@ namespace optiling {
       const GatherDslCompileInfo &gather_compile_info;
       utils::OpRunInfo &run_info;
 
-      std::vector <int64_t> params_shape{};
-      std::vector <int64_t> indices_shape{};
-      std::vector <int64_t> output_shape{};
+      std::array <int64_t, GATHER_INIT_DIM_LEN> org_params_shape{};
+      std::array <int64_t, GATHER_INIT_DIM_LEN> org_indices_shape{};
+      size_t cur_params_dim_len{0};
+      size_t cur_indices_dim_len{0};
+
+      std::vector <int64_t> params_shape{std::vector<int64_t>(GATHER_INIT_DIM_LEN, 0)};
+      std::vector <int64_t> indices_shape{std::vector<int64_t>(INDICES_INIT_DIM_LEN, 0)};
+      std::vector <int64_t> output_shape{std::vector<int64_t>(OUTPUT_INIT_DIM_LEN, 0)};
 
       int64_t rank{1};
       int64_t axis{0};
       int64_t params_rows{1};
-      int64_t real_batch_dims{0};
+      int64_t params_rows_align{1};
+      size_t real_batch_dims{0};
 
       int64_t params_size_total{1};
       int64_t indices_size_total{1};
       int64_t total_size{1};
+      int64_t output_size{1};
 
       int64_t key{-1};
 

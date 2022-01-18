@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <cmath>
+#include <iostream>
 
 #include "tiling_handler.h"
 #include "op_tiling_util.h"
@@ -43,13 +44,16 @@ constexpr size_t PARAMS_BATCH_DIM_IDX = 0;
 constexpr size_t PARAMS_LOOP_IDX = 1;
 constexpr size_t PARAMS_AXIS_IDX = 2;
 constexpr size_t PARAMS_ROWS_IDX = 3;
+constexpr size_t PARAMS_SHAPE_SIZE = 4;
 constexpr size_t INDICES_BATCH_DIM_IDX = 0;
 constexpr size_t INDICES_LOOP_IDX = 1;
 constexpr size_t INDICES_RANK_IDX = 2;
+constexpr size_t INDICES_SHAPE_SIZE = 3;
 constexpr size_t OUTPUT_BATCH_DIM_IDX = 0;
 constexpr size_t OUTPUT_PARAMS_PRE_LOOP_IDX = 1;
 constexpr size_t OUTPUT_INDICES_LOOP_IDX = 2;
 constexpr size_t OUTPUT_PARAMS_ROW_IDX = 3;
+constexpr size_t OUTPUT_SHAPE_SIZE = 4;
 constexpr int64_t INPUT_AXIS_IDX = 2;
 
 // TENSOR_SIZE
@@ -73,7 +77,6 @@ constexpr size_t UB_TILING_LAST_AXIS = 3;
 const std::string BASE_SCHEDULE = "0";
 const std::string PARAMS_UB_ALIGN_SCHEDULE = "1";
 const std::string PARAMS_UB_NOT_ALIGN_SCHEDULE = "2";
-const std::string PARAMS_L1_SCHEDULE = "3";
 const std::string DB_SCHEDULE = "5";
 const std::string SCALAR_SCHEDULE = "6";
 const std::string DEPAD_SCHEDULE = "7";
@@ -81,7 +84,6 @@ const std::string DEPAD_SCHEDULE = "7";
 // KEY && TILING_KEY
 constexpr int32_t PARAMS_UB_ALIGN_KEY = 1000;
 constexpr int32_t PARAMS_UB_NO_ALIGN_KEY = 2000;
-constexpr int32_t PARAMS_L1_TILING_KEY = 3000;
 constexpr int32_t DB_MODULE_TILING_KEY = 5000;
 constexpr int32_t SCALAR_TILING_KEY = 6000;
 constexpr int32_t DEPAD_TILING_KEY = 7000;
@@ -100,25 +102,24 @@ constexpr int32_t DECIMAL_TEN = 10;
 constexpr int32_t INDICES_SHAPE_IDX = 20000;
 constexpr int32_t MIN_BLOCK_FACTOR_IDX = 30000;
 constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
+constexpr int32_t BLOCK_SPLIT_VALUE = 16;
 }
-  GatherDslCompileInfo::GatherDslCompileInfo(const std::string& op_type, const nlohmann::json& org_compile_info) {
+  GatherDslCompileInfo::GatherDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
     try {
       // parse base info
       const auto &base_info = org_compile_info.at("_base_info");
-      constexpr size_t base_info_size = 6;
+      constexpr size_t base_info_size = 5;
       V_CHECK_EQ(base_info.size(), base_info_size,
                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be 6 element"),
                  return);
       constexpr size_t core_number_idx = 0;
       constexpr size_t ub_size_idx = 1;
-      constexpr size_t l1_size_idx = 2;
-      constexpr size_t gather_type_idx = 3;
-      constexpr size_t params_dtype_idx = 4;
-      constexpr size_t indices_dtype_idx = 5;
+      constexpr size_t gather_type_idx = 2;
+      constexpr size_t params_dtype_idx = 3;
+      constexpr size_t indices_dtype_idx = 4;
       constexpr int64_t block_size = 32;
       core_num = base_info[core_number_idx];
       ub_size = base_info[ub_size_idx];
-      l1_size = base_info[l1_size_idx];
       gather_type = base_info[gather_type_idx];
       params_dtype = base_info[params_dtype_idx];
       params_align = block_size / params_dtype;
@@ -126,17 +127,15 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
       // parse custom info
       const auto &custom_info = org_compile_info.at("_custom_info");
-      constexpr size_t custom_info_size = 5;
+      constexpr size_t custom_info_size = 4;
       V_CHECK_EQ(custom_info.size(), custom_info_size,
                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "custom info must be 5 element"),
                  return);
-      constexpr size_t params_l1_num_idx = 0;
-      constexpr size_t params_ub_half_num_idx = 1;
-      constexpr size_t batch_dims_idx = 2;
-      constexpr size_t is_binary_shape_idx = 3;
-      constexpr size_t org_batch_dims_idx = 4;
-      params_l1_num = custom_info[params_l1_num_idx];
-      params_ub_half_num = custom_info[params_ub_half_num_idx];
+      constexpr size_t params_ub_store_num_idx = 0;
+      constexpr size_t batch_dims_idx = 1;
+      constexpr size_t is_binary_shape_idx = 2;
+      constexpr size_t org_batch_dims_idx = 3;
+      params_ub_store_num = custom_info[params_ub_store_num_idx];
       batch_dims = custom_info[batch_dims_idx];
       is_binary_shape = custom_info[is_binary_shape_idx];
       org_batch_dims = custom_info[org_batch_dims_idx];
@@ -162,26 +161,36 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::Init() {
-    std::vector <int64_t> org_params_shape = op_paras.GetInputDesc(0).GetShape().GetDims();
-    if (org_params_shape.empty()) {
+    const ge::GeShape &org_params_ge_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->
+            MutableInputDesc(0)->MutableShape();
+    cur_params_dim_len = org_params_ge_shape.GetDimNum();
+    if (cur_params_dim_len == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather org_params_shape values is empty.");
       return false;
     }
+    for (size_t j = 0; j < cur_params_dim_len; j++) {
+      org_params_shape[j] = org_params_ge_shape.GetDim(j);
+    }
 
-    std::vector <int64_t> org_indices_shape = op_paras.GetInputDesc(1).GetShape().GetDims();
-    if (org_indices_shape.empty()) {
+    const ge::GeShape &org_indices_ge_shape =
+      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(1)->MutableShape();
+    cur_indices_dim_len = org_indices_ge_shape.GetDimNum();
+    if (cur_indices_dim_len == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather org_indices_shape values is empty.");
       return false;
+    }
+    for (size_t j = 0; j < cur_indices_dim_len; j++) {
+      org_indices_shape[j] = org_indices_ge_shape.GetDim(j);
     }
 
     // gather rank
     if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
-      rank = org_indices_shape[org_indices_shape.size() - 1];
+      rank = org_indices_shape[cur_indices_dim_len - 1];
     }
 
     // batch dims
     if ((gather_compile_info.is_binary_shape) && (gather_compile_info.org_batch_dims < 0)) {
-      real_batch_dims = gather_compile_info.org_batch_dims + org_indices_shape.size();
+      real_batch_dims = gather_compile_info.org_batch_dims + cur_indices_dim_len;
     } else {
       real_batch_dims = gather_compile_info.org_batch_dims;
     }
@@ -193,48 +202,58 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
       // const condition
       if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
         // gather nd [batch, axes, row] [batch, loops, rank]
-        params_shape.push_back(org_params_shape[PARAMS_BATCH_DIM_IDX]);
-        params_shape.push_back(1);
-        for (size_t i = 1; i < org_params_shape.size(); i++) {
-          params_shape.push_back(org_params_shape[i]);
+        params_shape[PARAMS_BATCH_DIM_IDX] = org_params_shape[PARAMS_BATCH_DIM_IDX];
+        params_shape[PARAMS_LOOP_IDX] = 1;
+        for (size_t i = 1; i < cur_params_dim_len; i++) {
+          params_shape[PARAMS_LOOP_IDX + i] = org_params_shape[i];
         }
+        params_shape.resize(cur_params_dim_len + 1);
 
-        indices_shape.push_back(org_indices_shape[INDICES_BATCH_DIM_IDX]);
-        indices_shape.push_back(org_indices_shape[INDICES_LOOP_IDX]);
-        indices_shape.push_back(org_indices_shape[INDICES_RANK_IDX]);
+        indices_shape[INDICES_BATCH_DIM_IDX] = org_indices_shape[INDICES_BATCH_DIM_IDX];
+        indices_shape[INDICES_LOOP_IDX] = org_indices_shape[INDICES_LOOP_IDX];
+        indices_shape[INDICES_RANK_IDX] = org_indices_shape[INDICES_RANK_IDX];
+
+        params_rows = params_shape[cur_params_dim_len];
       } else {
         // gather/gather v2 [batch, pre_loops, axis, row] [batch, loops]
-        params_shape.push_back(org_params_shape[PARAMS_BATCH_DIM_IDX]);
-        params_shape.push_back(org_params_shape[PARAMS_LOOP_IDX]);
-        params_shape.push_back(org_params_shape[PARAMS_AXIS_IDX]);
-        params_shape.push_back(org_params_shape[PARAMS_ROWS_IDX]);
+        params_shape[PARAMS_BATCH_DIM_IDX] = org_params_shape[PARAMS_BATCH_DIM_IDX];
+        params_shape[PARAMS_LOOP_IDX] = org_params_shape[PARAMS_LOOP_IDX];
+        params_shape[PARAMS_AXIS_IDX] = org_params_shape[PARAMS_AXIS_IDX];
+        params_shape[PARAMS_ROWS_IDX] = org_params_shape[PARAMS_ROWS_IDX];
+        params_shape.resize(PARAMS_SHAPE_SIZE);
 
-        indices_shape.push_back(org_indices_shape[INDICES_BATCH_DIM_IDX]);
-        indices_shape.push_back(org_indices_shape[INDICES_LOOP_IDX]);
-        indices_shape.push_back(1);
+        indices_shape[INDICES_BATCH_DIM_IDX] = org_indices_shape[INDICES_BATCH_DIM_IDX];
+        indices_shape[INDICES_LOOP_IDX] = org_indices_shape[INDICES_LOOP_IDX];
+        indices_shape[INDICES_RANK_IDX] = 1;
+
+        params_rows = params_shape[PARAMS_SHAPE_SIZE - 1];
       }
 
-      params_rows = params_shape[params_shape.size() - 1];
+
     } else {
       // dynamic
       // gather_type = 0 gather
       // gather_type = 1 gather nd
       // gather_type = 2 gather v2
-      SimplyParamsAndIndices(org_params_shape, org_indices_shape);
+      SimplyParamsAndIndices();
     }
 
     // output shape
-    output_shape.push_back(params_shape[PARAMS_BATCH_DIM_IDX]);
-    output_shape.push_back(params_shape[PARAMS_LOOP_IDX]);
-    output_shape.push_back(indices_shape[INDICES_LOOP_IDX]);
-    output_shape.push_back(params_rows);
+    output_shape[OUTPUT_BATCH_DIM_IDX] = params_shape[PARAMS_BATCH_DIM_IDX];
+    output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] = params_shape[PARAMS_LOOP_IDX];
+    output_shape[OUTPUT_INDICES_LOOP_IDX] = indices_shape[INDICES_LOOP_IDX];
+    output_shape[OUTPUT_PARAMS_ROW_IDX] = params_rows;
+
+    params_rows_align = (params_rows + gather_compile_info.params_align - 1) /
+                         gather_compile_info.params_align * gather_compile_info.params_align;
 
     // cal total size
-    params_size_total = params_shape[PARAMS_BATCH_DIM_IDX] * params_shape[PARAMS_LOOP_IDX]
-                        * params_shape[PARAMS_AXIS_IDX] * params_shape[PARAMS_ROWS_IDX];
+    params_size_total = std::accumulate(params_shape.begin(), params_shape.end(), 1LL, std::multiplies<int64_t>());
     indices_size_total = indices_shape[INDICES_BATCH_DIM_IDX] * indices_shape[INDICES_LOOP_IDX]
                          * indices_shape[INDICES_RANK_IDX];
     total_size = params_size_total * indices_shape[INDICES_LOOP_IDX];
+    output_size = output_shape[OUTPUT_BATCH_DIM_IDX] * output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] *
+                  output_shape[OUTPUT_INDICES_LOOP_IDX] * output_shape[OUTPUT_PARAMS_ROW_IDX];
 
     OP_LOGD(op_type.c_str(), "GatherDsl output_shape:%lld %lld %lld %lld",
             output_shape[OUTPUT_BATCH_DIM_IDX], output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX],
@@ -242,13 +261,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     return true;
   }
 
-  void GatherDsl::SimplyParamsAndIndices(std::vector <int64_t> org_params_shape,
-                                         std::vector <int64_t> org_indices_shape) {
-    if (org_indices_shape.empty()) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather org_indices_shape values is empty.");
-      return;
-    }
-
+  void GatherDsl::SimplyParamsAndIndices() {
     uint32_t inputs_num = op_paras.GetInputsSize();
     if (inputs_num == GATHER_V2_INPUTS_NUM) {
       std::vector <int64_t> values;
@@ -265,51 +278,54 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
       axis = values[0];
       if (axis < 0) {
-        axis = axis + org_params_shape.size();
+        axis = axis + cur_params_dim_len;
       }
     } else {
       axis = real_batch_dims;
     }
     // params batch dims
     int64_t params_batch_dims = 1;
-    for (int i = 0; i < real_batch_dims; i++) {
-      params_batch_dims = params_batch_dims * org_params_shape[i];
-    }
-    params_shape.push_back(params_batch_dims);
+    params_batch_dims = std::accumulate(org_params_shape.begin(), org_params_shape.begin() + real_batch_dims, 1LL,
+                                        std::multiplies<int64_t>());
+    params_shape[PARAMS_BATCH_DIM_IDX] = params_batch_dims;
 
     // params pre loop
-    int64_t params_pre_loop = 1;
-    for (int k = real_batch_dims; k < axis; k++) {
-      params_pre_loop = params_pre_loop * org_params_shape[k];
-    }
-    params_shape.push_back(params_pre_loop);
+    params_shape[PARAMS_LOOP_IDX] = std::accumulate(org_params_shape.begin() + real_batch_dims,
+                                                    org_params_shape.begin() + axis,
+                                                    1LL,
+                                                    std::multiplies<int64_t>());
 
     // params gather axis
     for (int k = axis; k < axis + rank; k++) {
-      params_shape.push_back(org_params_shape[k]);
+      params_shape[k - axis + PARAMS_AXIS_IDX] = org_params_shape[k];
     }
 
     // params rows
-    params_rows = 1;
-    for (size_t k = axis + rank; k < org_params_shape.size(); k++) {
-      params_rows = params_rows * org_params_shape[k];
-    }
-    params_shape.push_back(params_rows);
+    params_rows = std::accumulate(org_params_shape.begin() + axis + rank,
+                                  org_params_shape.begin() + cur_params_dim_len,
+                                  1LL,
+                                  std::multiplies<int64_t>());
+
+    params_shape[PARAMS_AXIS_IDX + rank] = params_rows;
+    params_shape.resize(PARAMS_AXIS_IDX + rank + 1);
 
     // indices batch dims
-    indices_shape.push_back(params_batch_dims);
+    indices_shape[INDICES_BATCH_DIM_IDX] = params_batch_dims;
 
     int64_t indices_loops = 1;
-    for (size_t j = real_batch_dims; j < org_indices_shape.size() - 1; j++) {
-      indices_loops = indices_loops * org_indices_shape[j];
+    if (real_batch_dims < cur_indices_dim_len) {
+      indices_loops = std::accumulate(org_indices_shape.begin() + real_batch_dims,
+                                      org_indices_shape.begin() + cur_indices_dim_len - 1,
+                                      1LL,
+                                      std::multiplies<int64_t>());
     }
 
-    if (gather_compile_info.gather_type != GATHER_ND_COMPUTE) {
-      indices_loops = indices_loops * org_indices_shape[org_indices_shape.size() - 1];
+    if ((gather_compile_info.gather_type != GATHER_ND_COMPUTE) && (real_batch_dims < cur_indices_dim_len)) {
+      indices_loops = indices_loops * org_indices_shape[cur_indices_dim_len - 1];
     }
 
-    indices_shape.push_back(indices_loops);
-    indices_shape.push_back(rank);
+    indices_shape[INDICES_LOOP_IDX] = indices_loops;
+    indices_shape[INDICES_RANK_IDX] = rank;
 
     return;
   }
@@ -335,8 +351,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::IsSpecialPattern() {
-    return (output_shape[OUTPUT_BATCH_DIM_IDX] == 1) && (output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] == 1) &&
-           (output_shape[OUTPUT_INDICES_LOOP_IDX] > 1) && (rank == 1);
+    return rank == 1;
   }
 
   bool GatherDsl::IsDePadTiling() {
@@ -350,21 +365,14 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
     params_num_ub = gather_compile_info.tensor_sizes.at(DEPAD_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
 
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
-    if (real_params_row_num < 1) {
+    real_params_row_num = params_num_ub / params_rows_align;
+    if ((real_params_row_num < 1) && (params_rows % gather_compile_info.params_align == 0)) {
       return false;
     }
 
-    int64_t params_size_total_align =
-      params_size_total / params_rows * (params_rows + gather_compile_info.params_align - 1) /
-      gather_compile_info.params_align * gather_compile_info.params_align * gather_compile_info.params_dtype;
-
-    constexpr int64_t depad_params_threshold = 16384;
-    constexpr int64_t depad_indices_threshold = 3072;
-    bool is_shape_ok = (params_size_total_align > depad_params_threshold) &&
-                       (indices_size_total > depad_indices_threshold) &&
-                       (((params_rows * gather_compile_info.params_dtype) % BLOCK_SIZE) > 0);
+    bool is_shape_ok = ((params_size_total > gather_compile_info.params_ub_store_num) ||
+                       (params_rows > 15 && params_rows < 64)) &&
+                       (params_rows % gather_compile_info.params_align > 0);
     if (is_shape_ok) {
       // b32
       constexpr int64_t b32_last_dim_max = 168;
@@ -392,8 +400,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
         co2co = b64_co2co;
       }
       bool is_params_rows_ok = params_rows <= last_dim_max;
-      bool is_params_num_ok = (co2co * (params_rows + gather_compile_info.params_align - 1) /
-                               gather_compile_info.params_align * gather_compile_info.params_align) <= params_num_ub;
+      bool is_params_num_ok = co2co * params_rows_align <= params_num_ub;
 
       return is_params_rows_ok && is_params_num_ok;
     }
@@ -401,15 +408,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::DoDePadTiling() {
-    // check if remove pad can use
-    int64_t max_ub_factor = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                            gather_compile_info.params_align * gather_compile_info.params_align);
-
-    BlockThirdAxis();
-
-    if (ub_factor > max_ub_factor) {
-      ub_factor = max_ub_factor;
-    }
+    DoBaseTiling();
     key_special_pattern = DEPAD_TILING_KEY;
 
     return true;
@@ -426,60 +425,23 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
     params_num_ub = gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     indices_num_ub = gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
+    real_params_row_num = params_num_ub / params_rows_align;
 
-    constexpr int64_t scalar_indices_threshold = 3072;
-    return (params_size_total < gather_compile_info.params_ub_half_num / UB_HALF_DIV_NUM) &&
-           (indices_size_total < scalar_indices_threshold) &&
-           (output_shape[OUTPUT_PARAMS_ROW_IDX] == 1);
+    return (params_size_total < gather_compile_info.params_ub_store_num) &&
+           (params_rows <= 15) &&
+           (params_rows % gather_compile_info.params_align > 0);
   }
 
   bool GatherDsl::DoScalarTiling() {
-    block_axis = OUTPUT_INDICES_LOOP_IDX;
-    ub_axis = OUTPUT_INDICES_LOOP_IDX;
-    if (output_shape[OUTPUT_INDICES_LOOP_IDX] >= gather_compile_info.core_num) {
-      block_factor =
-        (output_shape[OUTPUT_INDICES_LOOP_IDX] + gather_compile_info.core_num - 1) / gather_compile_info.core_num;
-      block_factor = (block_factor + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-      block_dims = (output_shape[OUTPUT_INDICES_LOOP_IDX] + block_factor - 1) / block_factor;
 
-      if ((block_factor * gather_compile_info.params_dtype) >= BLOCK_SIZE) {
-        int64_t min_ub_num = std::min(params_num_ub, indices_num_ub);
-        min_ub_num = (min_ub_num + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-
-        if (block_factor > min_ub_num) {
-          ub_factor = min_ub_num;
-        } else {
-          ub_factor = block_factor;
-        }
-      } else {
-        block_factor = BLOCK_SIZE / gather_compile_info.params_dtype;
-        block_dims = (output_shape[OUTPUT_INDICES_LOOP_IDX] + block_factor - 1) / block_factor;
-        ub_factor = block_factor;
-      }
-    } else {
-      // one core
-      block_dims = 1;
-      block_factor = output_shape[block_axis];
-      ub_factor = output_shape[ub_axis];
-    }
+    DoBaseTiling();
     key_special_pattern = SCALAR_TILING_KEY;
 
     return true;
   }
 
   bool GatherDsl::IsStoreUB(int64_t params_total) {
-    int64_t indices_total = indices_shape[INDICES_BATCH_DIM_IDX] * indices_shape[INDICES_LOOP_IDX];
-    constexpr int64_t store_ub_indices_threshold = 3200;
-    return ((params_total < (gather_compile_info.params_ub_half_num / UB_HALF_DIV_NUM)) &&
-            (indices_total > store_ub_indices_threshold));
-  }
-
-  bool GatherDsl::IsStoreL1(int64_t params_total) {
-    int64_t indices_total = indices_shape[INDICES_BATCH_DIM_IDX] * indices_shape[INDICES_LOOP_IDX];
-    constexpr int64_t store_l1_indices_threshold = 16384;
-    return ((params_total < gather_compile_info.params_l1_num) &&
-            (params_total >= (gather_compile_info.params_ub_half_num / UB_HALF_DIV_NUM)) &&
-            (indices_total > store_l1_indices_threshold));
+    return params_total < gather_compile_info.params_ub_store_num;
   }
 
   bool GatherDsl::IsParamsUbTiling() {
@@ -496,59 +458,26 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
       params_num_ub = gather_compile_info.tensor_sizes.at(PARAMS_UB_NOT_ALIGN_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     }
 
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
+    real_params_row_num = params_num_ub / params_rows_align;
     if (real_params_row_num < 1) {
       return false;
     }
 
-    int64_t params_size_total_align = params_size_total / params_rows *
-                                      (params_rows + gather_compile_info.params_align - 1) /
-                                      gather_compile_info.params_align * gather_compile_info.params_align;
+    int64_t params_size_total_align = params_size_total / params_rows * params_rows_align;
     return IsStoreUB(params_size_total_align);
   }
 
   bool GatherDsl::DoParamsUbTiling() {
     // check need align
-    BlockThirdAxis();
-
+    DoBaseTiling();
+    if ((block_axis == OUTPUT_PARAMS_ROW_IDX) && (block_factor % gather_compile_info.params_align != 0)) {
+      return false;
+    }
     if (((params_rows * gather_compile_info.params_dtype) % BLOCK_SIZE) == 0) {
       key_special_pattern = PARAMS_UB_ALIGN_KEY;
     } else {
       key_special_pattern = PARAMS_UB_NO_ALIGN_KEY;
     }
-
-    return true;
-  }
-
-  bool GatherDsl::IsParamsL1Tiling() {
-    if (((params_rows * gather_compile_info.params_dtype) % BLOCK_SIZE) == 0) {
-      return false;
-    }
-
-    if (gather_compile_info.tensor_sizes.count(PARAMS_L1_SCHEDULE) == 0) {
-      return false;
-    }
-
-    if (gather_compile_info.tensor_sizes.at(PARAMS_L1_SCHEDULE).size() != TENSOR_SIZES_NUM) {
-      return false;
-    }
-
-    params_num_ub = gather_compile_info.tensor_sizes.at(PARAMS_L1_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
-
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
-
-    int64_t params_size_total_align = params_size_total / params_rows *
-                                      (params_rows + gather_compile_info.params_align - 1) /
-                                      gather_compile_info.params_align * gather_compile_info.params_align;
-
-    return IsStoreL1(params_size_total_align);
-  }
-
-  bool GatherDsl::DoParamsL1Tiling() {
-    BlockThirdAxis();
-    key_special_pattern = PARAMS_L1_TILING_KEY;
 
     return true;
   }
@@ -564,15 +493,13 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
     params_num_ub = gather_compile_info.tensor_sizes.at(DB_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
 
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
+    real_params_row_num = params_num_ub / params_rows_align;
 
     return (real_params_row_num < 1) && (params_rows % gather_compile_info.params_align == 0);
   }
 
   bool GatherDsl::DoDbModule() {
-    BlockThirdAxis();
-    ub_factor = ub_factor / gather_compile_info.params_align * gather_compile_info.params_align;
+    DoBaseTiling();
     key_special_pattern = DB_MODULE_TILING_KEY;
     return true;
   }
@@ -589,18 +516,24 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     params_num_ub = gather_compile_info.tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     indices_num_ub = gather_compile_info.tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
 
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
+    real_params_row_num = params_num_ub / params_rows_align;
 
     return true;
   }
 
   void GatherDsl::BlockFirstAxis() {
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
+    real_params_row_num = params_num_ub / params_rows_align;
 
     block_axis = BLOCK_TILING_FIRST_AXIS;
-    block_factor = (output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num;
+    int64_t under_block = output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] *
+            output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows;
+    int64_t block_tmp = std::min((gather_compile_info.params_align + under_block -1) / under_block,
+                                 output_shape[block_axis]);
+    block_factor =
+      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+    if (block_factor == 0) {
+      return;
+    }
     block_dims = (output_shape[block_axis] + block_factor - 1) / block_factor;
 
     // ub factor
@@ -638,11 +571,17 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   void GatherDsl::BlockSecondAxis() {
-    real_params_row_num = params_num_ub / ((params_rows + gather_compile_info.params_align - 1) /
-                          gather_compile_info.params_align * gather_compile_info.params_align);
+    real_params_row_num = params_num_ub / params_rows_align;
 
     block_axis = BLOCK_TILING_SECOND_AXIS;
-    block_factor = (output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num;
+    int64_t under_block = output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows;
+    int64_t block_tmp = std::min((gather_compile_info.params_align + under_block -1) / under_block,
+                                 output_shape[block_axis]);
+    block_factor =
+      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+    if (block_factor == 0) {
+      return;
+    }
     block_dims = (output_shape[block_axis] + block_factor - 1) / block_factor;
 
     // ub factor
@@ -660,9 +599,9 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
         // ub axis = 1
         int64_t real_axis2_params_row_num = real_params_row_num / output_shape[OUTPUT_INDICES_LOOP_IDX];
         ub_axis = UB_TILING_SECOND_AXIS;
-        if (real_axis2_params_row_num < output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX]) {
-          temp_ub_times = (output_shape[ub_axis] + real_axis2_params_row_num - 1) / real_axis2_params_row_num;
-          ub_factor = (output_shape[ub_axis] + temp_ub_times - 1) / temp_ub_times;
+        if (real_axis2_params_row_num < block_factor) {
+          temp_ub_times = (block_factor + real_axis2_params_row_num - 1) / real_axis2_params_row_num;
+          ub_factor = (block_factor + temp_ub_times - 1) / temp_ub_times;
         } else {
           ub_factor = block_factor;
         }
@@ -673,7 +612,13 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
   void GatherDsl::BlockThirdAxis() {
     block_axis = BLOCK_TILING_THIRD_AXIS;
-    block_factor = (output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num;
+    int64_t block_tmp = std::min((gather_compile_info.params_align + params_rows - 1) / params_rows,
+                                 output_shape[block_axis]);
+    block_factor =
+      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+    if (block_factor == 0) {
+      return;
+    }
     block_dims = (output_shape[block_axis] + block_factor - 1) / block_factor;
 
     int64_t temp_ub_times;
@@ -695,7 +640,12 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
   void GatherDsl::BlockLastAxis() {
     block_axis = BLOCK_TILING_LAST_AXIS;
-    block_factor = (output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num;
+    int64_t block_tmp = std::min(gather_compile_info.params_align, output_shape[block_axis]);
+    block_factor =
+      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+    if (block_factor == 0) {
+      return;
+    }
     block_dims = (output_shape[block_axis] + block_factor - 1) / block_factor;
 
     ub_axis = UB_TILING_LAST_AXIS;
@@ -711,52 +661,73 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     if (block_dims != 1) {
       // check if ub factor less than 32B
       int64_t total_ub_size = ub_factor;
-      for (size_t i = ub_axis + 1; i < output_shape.size(); i++) {
-        total_ub_size = total_ub_size * output_shape[i];
-      }
-      if (total_ub_size < gather_compile_info.params_align) {
-        key_special_pattern = 0;
-        if ((output_shape[OUTPUT_BATCH_DIM_IDX] == 1) &&
-            (output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] == 1) &&
-            (output_shape[OUTPUT_PARAMS_ROW_IDX] == 1) &&
-            (output_shape[OUTPUT_INDICES_LOOP_IDX] > gather_compile_info.params_align) &&
-            (output_shape[OUTPUT_INDICES_LOOP_IDX] < gather_compile_info.params_align * BLOCK_SIZE)) {
-          block_axis = BLOCK_TILING_THIRD_AXIS;
-          ub_axis = UB_TILING_THIRD_AXIS;
-          ub_factor = gather_compile_info.params_align;
-          block_factor = gather_compile_info.params_align;
-          block_dims = (output_shape[OUTPUT_INDICES_LOOP_IDX] + gather_compile_info.params_align - 1) /
-                       gather_compile_info.params_align;
+      total_ub_size = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
+                                      total_ub_size, std::multiplies<int64_t>());
+      int64_t total_ub_size_tail = ub_factor;
+      if (block_axis == ub_axis) {
+        if (block_factor == ub_factor) {
+          int64_t pre_core_num = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis,
+                                                 1LL, std::multiplies<int64_t>());
+          if ((pre_core_num == 1) && (total_ub_size > gather_compile_info.params_align)) {
+            return;
+          }
+          total_ub_size_tail = output_shape[ub_axis] % ub_factor;
         } else {
-          block_axis = BLOCK_TILING_FIRST_AXIS;
-          ub_axis = UB_TILING_FIRST_AXIS;
-          block_dims = 1;
-          block_factor = output_shape[OUTPUT_BATCH_DIM_IDX];
-          ub_factor = block_factor;
+          total_ub_size_tail = block_factor % ub_factor;
         }
-      }
-    }
-
-    // gather nd delete reduction axis
-    if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
-      if (block_axis >= 1) {
-        block_axis = block_axis - 1;
+      } else {
+        total_ub_size_tail = output_shape[ub_axis] % ub_factor;
       }
 
-      if (ub_axis >= 1) {
-        ub_axis = ub_axis - 1;
+      total_ub_size_tail = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
+                                           total_ub_size_tail, std::multiplies<int64_t>());
+
+      if ((total_ub_size < gather_compile_info.params_align) ||
+      ((total_ub_size_tail < gather_compile_info.params_align) && (total_ub_size_tail > 0))) {
+        SafeTiling();
       }
     }
 
     return;
   }
 
+  void GatherDsl::SafeTiling() {
+    key_special_pattern = 0;
+    block_dims = 1;
+    block_axis = BLOCK_TILING_FIRST_AXIS;
+    block_factor = output_shape[block_axis];
+
+    if (params_rows_align > gather_compile_info.params_ub_store_num) {
+      ub_axis = OUTPUT_PARAMS_ROW_IDX;
+      ub_factor = gather_compile_info.params_ub_store_num;
+    } else {
+      int64_t ub_size_align = output_size / params_rows * params_rows_align;
+      for(size_t idx = block_axis; idx < OUTPUT_PARAMS_ROW_IDX; idx++) {
+        if (ub_size_align < gather_compile_info.params_ub_store_num) {
+          ub_axis = idx;
+          ub_factor = output_shape[ub_axis];
+          break;
+        } else {
+          ub_size_align = ub_size_align / output_shape[idx];
+        }
+      }
+    }
+
+
+  }
+
   bool GatherDsl::DoBaseTiling() {
     // n last gather and params last dim > 1
-    if (output_shape[OUTPUT_BATCH_DIM_IDX] > 1) {
+    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= BLOCK_SPLIT_VALUE) ||
+    ((output_size / output_shape[OUTPUT_BATCH_DIM_IDX] * gather_compile_info.params_dtype) < BLOCK_SIZE) ||
+    ((output_shape[OUTPUT_BATCH_DIM_IDX] >= output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX]) &&
+    (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
+    gather_compile_info.core_num * gather_compile_info.params_align))) {
       BlockFirstAxis();
     } else {
-      if (output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] > 1) {
+      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= BLOCK_SPLIT_VALUE) ||
+      (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
+      gather_compile_info.core_num * gather_compile_info.params_align)) {
         BlockSecondAxis();
       } else {
         if (output_shape[OUTPUT_INDICES_LOOP_IDX] > 1) {
@@ -771,6 +742,17 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::CalcKey() {
+
+    // gather nd delete reduction axis
+    if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
+      if (block_axis >= 1) {
+        block_axis = block_axis - 1;
+      }
+      if (ub_axis >= 1) {
+        ub_axis = ub_axis - 1;
+      }
+    }
+
     // base key
     key = BASE_KEY;
 
@@ -793,9 +775,9 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
     // split info
     if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
-      key += block_axis * (output_shape.size() - 1) + ub_axis;
+      key += block_axis * (OUTPUT_SHAPE_SIZE - 1) + ub_axis;
     } else {
-      key += block_axis * output_shape.size() + ub_axis;
+      key += block_axis * OUTPUT_SHAPE_SIZE + ub_axis;
     }
 
     return true;
@@ -872,14 +854,12 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     } else {
       if (IsSpecialPattern()) {
         // special schedule
-        if (IsDePadTiling()){
+        if (IsDePadTiling()) {
           tiling_ret = DoDePadTiling();
         } else if (IsScalarTiling()) {
           tiling_ret = DoScalarTiling();
         } else if (IsParamsUbTiling()) {
           tiling_ret = DoParamsUbTiling();
-        } else if (IsParamsL1Tiling()) {
-          tiling_ret = DoParamsL1Tiling();
         } else if (IsDbModule()) {
           tiling_ret = DoDbModule();
         }

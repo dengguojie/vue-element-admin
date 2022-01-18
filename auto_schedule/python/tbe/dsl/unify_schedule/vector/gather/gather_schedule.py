@@ -41,11 +41,9 @@ BLOCK_SIZE_BYTE = 32
 # STORE AREA
 PARAMS_STORE_GM = 0
 PARAMS_STORE_UB = 1
-PARAMS_STORE_L1 = 2
 
 PARAMS_SCOPE = {
     PARAMS_STORE_UB: "local.UB",
-    PARAMS_STORE_L1: "local.L1"
 }
 
 
@@ -121,7 +119,6 @@ class GatherSchedule(Schedule):
         self._tensor_space = None
         self._ub_size = util.get_ub_size()
         self._params_ub_size = self._ub_size // 2
-        self._l1_size = util.get_l1_size()
         self._tmp_ub_size = 0
         self._params_dtype_size = 4
         self._indices_dtype_size = 4
@@ -210,6 +207,8 @@ class GatherSchedule(Schedule):
         self._calc_emit_insn()
         self._do_emit_insn()
 
+        self._do_group_axis()
+
         self._add_compile_info()
 
         return self._schedule
@@ -245,7 +244,7 @@ class GatherSchedule(Schedule):
         self._indices_ub_tensor = self._schedule.cache_read(self._indices_gm_tensor, self._scope,
                                                             self._in_out_map.get(self._indices_gm_tensor))
 
-        # params in ub or l1
+        # params in ub
         if self._store_area > 0:
             self._params_inner_tensor = self._schedule.cache_read(self._params_gm_tensor,
                                                                   PARAMS_SCOPE.get(self._store_area),
@@ -279,16 +278,10 @@ class GatherSchedule(Schedule):
         else:
             self.tensor_space = self._ub_size // self._coexisting_quantity // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
-            if self._store_area == PARAMS_STORE_L1:
-                # params in l1
-                # set params ub storage bound
-                self._params_storage_bound = int(self._l1_size // self._params_dtype_size)
-                self._schedule[self._params_inner_tensor].set_buffer_size(self._params_storage_bound)
-            else:
-                # PARAMS_STORE_GM
-                if self._is_db:
-                    # db
-                    self.tensor_space = self.tensor_space // 2
+            # PARAMS_STORE_GM
+            if self._is_db:
+                # db
+                self.tensor_space = self.tensor_space // 2
 
         # indices buffer size
         self._indices_storage_bound = int(self.tensor_space // self._indices_dtype_size)
@@ -329,11 +322,10 @@ class GatherSchedule(Schedule):
         inputs = [{"shape": tmp_params_shape, "dtype": self._params_gm_tensor.dtype},
                   {"shape": tmp_indices_shape, "dtype": self._indices_gm_tensor.dtype}]
 
-        base_info = [util.get_core_num(), self._ub_size, self._l1_size, self._gather_compute_type,
+        base_info = [util.get_core_num(), self._ub_size, self._gather_compute_type,
                      self._params_dtype_size, self._indices_dtype_size]
 
-        custom_info = [int(self._l1_size // self._params_dtype_size),
-                       int(self._params_ub_size // self._params_dtype_size),
+        custom_info = [int(self._params_ub_size // self._params_dtype_size),
                        self._batch_dims, False, self._batch_dims]
 
         tensor_sizes = {self._special_pattern: [self._gather_storage_bound, self._indices_storage_bound]}
@@ -371,6 +363,10 @@ class GatherSchedule(Schedule):
             self._fake_schedule = True
         else:
             operation.get_context().add(GatherCompileInfo.STATIC_SUCCESS, True)
+            if self._store_area == 1:
+                operation.get_context().add(GatherCompileInfo.STATIC_CLOSE_PASS, False)
+            else:
+                operation.get_context().add(GatherCompileInfo.STATIC_CLOSE_PASS, True)
 
     def _do_tiling(self):
         funcs = {TilingStrategy.DYNAMIC: self._do_tiling_dynamic,
@@ -452,7 +448,7 @@ class GatherSchedule(Schedule):
         for tensor_i in self._input_tensors:
             self._compute_at_map[tensor_i] = [self._out_tensor, self._compute_at_axis]
 
-        # params ub/l1
+        # params ub
         if self._store_area > 0:
             self._compute_at_map[self._params_inner_tensor] = [self._out_tensor, self._block_bind_axis]
 
@@ -483,12 +479,9 @@ class GatherSchedule(Schedule):
         # indcies ub
         self._emit_insn_map[self._indices_ub_tensor] = [self._indices_ub_tensor.op.axis[0], "dma_copy"]
 
-        # params_ub/params_l1 need
+        # params_ub need
         if self._store_area == 1:
             self._emit_insn_map[self._params_inner_tensor] = [self._params_inner_tensor.op.axis[0], "dma_copy"]
-        elif self._store_area == 2:
-            self._emit_insn_map[self._params_inner_tensor] = [self._params_inner_tensor.op.axis[0], "dma_copy",
-                                                              {"mem_align": 1}]
 
         # gather ub
         if self._store_area == 1:
@@ -496,8 +489,6 @@ class GatherSchedule(Schedule):
                 self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "data_mov"]
             else:
                 self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy"]
-        elif self._store_area == 2:
-            self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy", {"mem_align": 1}]
         else:
             self._emit_insn_map[self._gather_ub_tensor] = [self._gather_emit_at_axis, "dma_copy"]
 
@@ -515,6 +506,19 @@ class GatherSchedule(Schedule):
         for tensor_i, param in self._emit_insn_map.items():
             self._schedule[tensor_i].emit_insn(*param)
 
+    def _do_group_axis(self):
+        if self._store_area == 1 and not self._is_params_align:
+            group_id = tvm.make.Call("int32", "axis_group", [0, "overwrite"], tvm.expr.Call.Extern, None, 0)
+            self._schedule[self._params_inner_tensor].pragma(
+                self._schedule[self._params_inner_tensor].op.axis[0], "axis_group", group_id)
+            self._schedule[self._params_inner_tensor].pragma(
+                self._schedule[self._params_inner_tensor].op.axis[1], "axis_group", group_id)
+            self._schedule[self._params_inner_tensor].pragma(
+                self._schedule[self._params_inner_tensor].op.axis[2], "axis_group", group_id)
+            if self._gather_compute_type == 0:
+                self._schedule[self._params_inner_tensor].pragma(
+                    self._schedule[self._params_inner_tensor].op.axis[3], "axis_group", group_id)
+
     def _add_compile_info(self):
         cpt_compute = operation.get_context().get_current_compute()
         cpt_schedule = cpt_compute.get_current_schedule()
@@ -524,13 +528,11 @@ class GatherSchedule(Schedule):
         # BASE INFO
         cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
         cpt_schedule.add(CompileInfo.UB_SIZE, self._ub_size)
-        cpt_schedule.add(GatherCompileInfo.L1_SIZE, self._l1_size)
         cpt_schedule.add(GatherCompileInfo.GATHER_TYPE, self._gather_compute_type)
         cpt_schedule.add(GatherCompileInfo.PARAMS_DTYPE_SIZE, self._params_dtype_size)
         cpt_schedule.add(GatherCompileInfo.INDICES_DTYPE_SIZE, self._indices_dtype_size)
 
         # CUSTOM INFO
-        cpt_schedule.add(GatherCompileInfo.PARAMS_L1_NUM, int(self._l1_size // self._params_dtype_size))
         cpt_schedule.add(GatherCompileInfo.PARAMS_UB_NUM, int(self._params_ub_size // self._params_dtype_size))
         cpt_schedule.add(GatherCompileInfo.BATCH_DIMS, self._batch_dims)
         cpt_schedule.add(GatherCompileInfo.SPECIAL_PATTERN, self._special_pattern)

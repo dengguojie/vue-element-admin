@@ -81,8 +81,6 @@ class GatherScheduleZeroShape(Schedule):
 
         self._ub_size = util.get_ub_size()
 
-        self._l1_size = util.get_l1_size()
-
         self._scope = "local.UB"
 
         self._gather_compute_type = 0
@@ -188,7 +186,6 @@ class GatherScheduleZeroShape(Schedule):
         # BASE INFO
         cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
         cpt_schedule.add(CompileInfo.UB_SIZE, self._ub_size)
-        cpt_schedule.add(GatherCompileInfo.L1_SIZE, self._l1_size)
         cpt_schedule.add(GatherCompileInfo.GATHER_TYPE, self._gather_compute_type)
         cpt_schedule.add(GatherCompileInfo.PARAMS_DTYPE_SIZE, self._params_dtype_size)
         cpt_schedule.add(GatherCompileInfo.INDICES_DTYPE_SIZE, 0)
@@ -196,7 +193,6 @@ class GatherScheduleZeroShape(Schedule):
         # CUSTOM INFO
         cpt_schedule.add(GatherCompileInfo.PARAMS_NUM, 0)
         cpt_schedule.add(GatherCompileInfo.INDICES_NUM, 0)
-        cpt_schedule.add(GatherCompileInfo.PARAMS_L1_NUM, int(self._l1_size // self._params_dtype_size))
         cpt_schedule.add(GatherCompileInfo.PARAMS_UB_NUM, self._ub_size)
         cpt_schedule.add(GatherCompileInfo.SPECIAL_PATTERN, GatherCompileInfo.ZERO_SCHEDULE_PATTERN)
         cpt_schedule.add(GatherCompileInfo.BATCH_DIMS, 0)
