@@ -80,3 +80,16 @@ TEST_F(TEST_EXPAND_UT, TestExpandCheck) {
     int32_t expect_out[36] = {1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3};
     EXPECT_EQ(CompareResult<int32_t>(output, expect_out, 36), true);
 }
+
+TEST_F(TEST_EXPAND_UT, TestExpandEqual) {
+    vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
+    vector<vector<int64_t>> shapes = {{3, 1}, {2}, {3, 1}}; 
+    int32_t input0[3] = {1, 2, 3};
+    int32_t input1[2] = {3, 1};
+    int32_t output[3] = {0};
+    vector<void *> datas = {(void *)input0, (void *)input1, (void *)output};
+    CREATE_EXPAND_NODEDEF(shapes, data_types, datas);
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    int32_t expect_out[3] = {1, 2, 3};
+    EXPECT_EQ(CompareResult<int32_t>(output, expect_out, 3), true);
+}
