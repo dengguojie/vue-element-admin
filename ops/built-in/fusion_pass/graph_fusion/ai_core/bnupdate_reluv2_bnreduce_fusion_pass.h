@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,20 +24,18 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-
 class BNupdateReluV2Conv2DBNreducePass : public PatternFusionBasePass {
- protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
+protected:
+    vector<FusionPattern*> DefinePatterns() override;
+    Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
 
- private:
-  bool AnalyzeLayers(const std::vector<ge::NodePtr> &node_list);
-  bool UpdateDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc,
-                  std::vector<std::string> fused_inputs, std::vector<std::string> fused_outputs);
-  bool AddFusedDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc);
-  bool LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node);
-  const std::string fused_op_type_ = "BNupdate_ReluV2_Conv2D_BNreduce";
+private:
+    bool AnalyzeLayers(const std::vector<ge::NodePtr> &node_list);
+    bool UpdateDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc,
+                    std::vector<std::string> fused_inputs, std::vector<std::string> fused_outputs);
+    bool AddFusedDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc);
+    bool LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node);
+    const std::string fused_op_type_ = "BNupdate_ReluV2_Conv2D_BNreduce";
 };
-
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H_

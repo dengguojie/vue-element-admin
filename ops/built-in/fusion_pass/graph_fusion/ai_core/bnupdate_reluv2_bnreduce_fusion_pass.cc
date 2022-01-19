@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@
 #include "common/util/platform_info.h"
 
 namespace fe {
-
 static const char kBNupdateType[] = "BNTrainingUpdate";
 static const char kReluV2Type[] = "ReluV2";
 static const char kConv2DType[] = "Conv2D";
@@ -69,7 +68,8 @@ static const int kBiasIndex = 2;
   *
   * @return vector<FusionPattern*> All valid patterns.
   */
-vector<FusionPattern*> BNupdateReluV2Conv2DBNreducePass::DefinePatterns() {
+vector<FusionPattern*> BNupdateReluV2Conv2DBNreducePass::DefinePatterns()
+{
     vector<FusionPattern*> patterns;
     FusionPattern* pattern = new (std::nothrow) FusionPattern("BNupdateReluV2Conv2DBNreducePass");
     FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "new a pattern object failed."),
@@ -105,7 +105,8 @@ vector<FusionPattern*> BNupdateReluV2Conv2DBNreducePass::DefinePatterns() {
   * @return Status Graph processing result.
   */
 Status BNupdateReluV2Conv2DBNreducePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                                std::vector<ge::NodePtr>& new_nodes) {
+                                                std::vector<ge::NodePtr>& new_nodes)
+{
     OP_LOGD(fused_op_type_.c_str(), "Enter BNupdateReluV2Conv2DBNreducePass.");
     // check the platform
     PlatformInfo platform_info;
@@ -182,7 +183,8 @@ Status BNupdateReluV2Conv2DBNreducePass::Fusion(ge::ComputeGraph& graph, Mapping
   * @param node_list The bnupdate, reluv2, conv2d, bureduce node ptr list.
   * @return bool Whether the inputs and outputs are expected.
   */
-bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodePtr> &node_list) {
+bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodePtr> &node_list)
+{
     // check bnupdate node output single referred
     int idx = 0;
     std::vector<size_t> ir_inputs = {7, 1, 4, 1};
@@ -264,7 +266,8 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
   */
 bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc,
                                                   std::vector<std::string> fused_inputs,
-                                                  std::vector<std::string> fused_outputs) {
+                                                  std::vector<std::string> fused_outputs)
+{
     // >>> start: replace input and output name
     std::map<std::string, std::vector<std::string>> ori_to_new = {
         {"mean", {"moving_mean"}}, {"variance", {"moving_variance"}}};
@@ -278,7 +281,6 @@ bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr>
                               return false);
             name = (it->second)[0];
             (it->second).erase((it->second).begin());
-
         }
         new_name.insert(std::pair<std::string, uint32_t>(name, static_cast<uint32_t>(i)));
     }
@@ -308,17 +310,21 @@ bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr>
     for (auto attr : attr_list) {
         float value = 0.0;
         bool ret = ge::AttrUtils::GetFloat(node_list[0]->GetOpDesc(), attr, value);
-        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "get attribute [%s] failed.", attr.c_str()), return false);
+        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "get attribute [%s] failed.", attr.c_str()),
+                          return false);
         ret = ge::AttrUtils::SetFloat(fused_desc, attr, value);
-        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "set attribute [%s] failed.", attr.c_str()), return false);
+        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "set attribute [%s] failed.", attr.c_str()),
+                          return false);
     }
     attr_list = {kAttrStrides, kAttrPads, kAttrDilations};
     for (auto attr : attr_list) {
         std::vector<int32_t> value;
         bool ret = ge::AttrUtils::GetListInt(node_list[2]->GetOpDesc(), attr, value);
-        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "get attribute [%s] failed.", attr.c_str()), return false);
+        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "get attribute [%s] failed.", attr.c_str()),
+                                        return false);
         ret = ge::AttrUtils::SetListInt(fused_desc, attr, value);
-        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "set attribute [%s] failed.", attr.c_str()), return false);
+        FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "set attribute [%s] failed.", attr.c_str()),
+                          return false);
     }
     ge::AttrUtils::SetInt(fused_desc, kAttrGroups, 1);
     // <<< end: add op attribute
@@ -337,7 +343,8 @@ bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr>
   * @param node_list The bnupdate, reluv2, conv2d, bureduce node ptr list.
   * @return bool Whether new desc is added successfully.
   */
-bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc) {
+bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc)
+{
     std::vector<std::string> fused_inputs;
     std::vector<std::string> fused_outputs;
     for (auto node : node_list) {
@@ -383,8 +390,8 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
         for (auto name : output_name) {
             for (auto exist : fused_outputs) {
                 FUSION_PASS_CHECK((name != kCommoutput && exist == name),
-                                  OP_LOGD(fused_op_type_.c_str(), "can't support output same name [%s].", exist.c_str()),
-                                  return false);
+                    OP_LOGD(fused_op_type_.c_str(), "can't support output same name [%s].", exist.c_str()),
+                    return false);
             }
             FUSION_PASS_CHECK(fused_desc->AddOutputDesc(node_desc->GetOutputDesc(name)) != ge::GRAPH_SUCCESS,
                               OP_LOGD(fused_op_type_.c_str(), "add output desc %s failed.", name.c_str()),
@@ -406,7 +413,8 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
 /*!
   * @brief Simply link fused node to graph.
   */
-bool BNupdateReluV2Conv2DBNreducePass::LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node) {
+bool BNupdateReluV2Conv2DBNreducePass::LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node)
+{
     uint32_t input_idx = 0;
     // output valid anchor start from 2
     uint32_t output_idx = 2;
@@ -475,16 +483,17 @@ bool BNupdateReluV2Conv2DBNreducePass::LinkNewNode(const std::vector<ge::NodePtr
                 }
                 has_external = true;
                 ret = anchor->Unlink(peer_input);
-                FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGD(fused_op_type_.c_str(), "unlink output anchor failed."),
+                FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+                                  OP_LOGD(fused_op_type_.c_str(), "unlink output anchor failed."),
                                   return false);
                 auto new_src = fused_node->GetOutDataAnchor(output_idx);
                 FUSION_PASS_CHECK(new_src == nullptr,
-                                  OP_LOGD(fused_op_type_.c_str(), "get fused node output %u anchor failed.", output_idx),
-                                  return false);
+                    OP_LOGD(fused_op_type_.c_str(), "get fused node output %u anchor failed.", output_idx),
+                    return false);
                 ret = new_src->LinkTo(peer_input);
                 FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
-                                  OP_LOGD(fused_op_type_.c_str(), "link fused node output %u anchor failed.", output_idx),
-                                  return false);
+                    OP_LOGD(fused_op_type_.c_str(), "link fused node output %u anchor failed.", output_idx),
+                    return false);
             }
             // only external connection need to link to output
             if (has_external) {
