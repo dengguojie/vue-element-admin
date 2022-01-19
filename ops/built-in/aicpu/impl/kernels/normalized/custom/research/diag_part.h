@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_DIAG_H_
-#define AICPU_KERNELS_NORMALIZED_DIAG_H_
+#ifndef AICPU_KERNELS_NORMALIZED_DIAG_PART_H_
+#define AICPU_KERNELS_NORMALIZED_DIAG_PART_H_
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
-class DiagCpuKernel : public CpuKernel {
- public:
-  DiagCpuKernel() = default;
-  ~DiagCpuKernel() = default;
+class DiagPartCpuKernel : public CpuKernel {
+public:
+  DiagPartCpuKernel() = default;
+  ~DiagPartCpuKernel() override = default;
+
+protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
+
+private:
+  uint32_t DiagPartCheck(CpuKernelContext &ctx);
+
+  template <typename T>
+  uint32_t DiagPartCompute(CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

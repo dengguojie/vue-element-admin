@@ -113,6 +113,7 @@ set(local_kernels_src_files
 )
 if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
+        kernels/normalized/custom/research/diag_part.cc
         kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
         kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/lu.cc

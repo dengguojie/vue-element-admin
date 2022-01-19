@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
@@ -296,6 +297,7 @@ set(_cpu_kernels_ut_files
   testcase/reduce_sum/src/reduce_sum_utest.cpp
   testcase/cumsum/src/cumsum_utest.cpp
   testcase/diag/src/diag_utest.cpp
+  testcase/diag_part/src/diag_part_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/edit_distance/src/edit_distance_kernel_utest.cpp
   testcase/elugrad/src/elugrad_utest.cpp
