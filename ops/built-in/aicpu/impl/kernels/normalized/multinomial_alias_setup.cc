@@ -18,6 +18,7 @@
 
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
+#include "securec.h"
 
 namespace {
 const uint32_t kOutputNum = 2;
@@ -83,18 +84,18 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKern
 }
 
 template <typename T>
-uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelContext &ctx) {
+void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(
+                                         CpuKernelContext &ctx,
+                                         std::vector<T> &accept,
+                                         std::vector<int64_t> &alias,
+                                         double &max) {
   int64_t data_num = ctx.Input(0)->NumElements();
-  auto out_j= reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
-  auto out_q = reinterpret_cast<T *>(ctx.Output(1)->GetData());
-  std::vector<T> accept(data_num, -1);
-  std::vector<int64_t> alias(data_num, -1);
   std::vector<T> area_ratio;
   std::stack<int> large;
   std::stack<int> small;
   size_t large_idx = -1;
   size_t small_idx = -1;
-  double max = -1;
+
   auto probs_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   for (int64_t i = 0; i < data_num; i++) {
     area_ratio.push_back((*(probs_x + i))*data_num);
@@ -133,6 +134,18 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelC
     small.pop();
     accept[small_idx] = 1;
   }
+  return;
+}
+
+template <typename T>
+uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelContext &ctx) {
+  int64_t data_num = ctx.Input(0)->NumElements();
+  auto out_j= reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
+  auto out_q = reinterpret_cast<T *>(ctx.Output(1)->GetData());
+  std::vector<T> accept(data_num, -1);
+  std::vector<int64_t> alias(data_num, -1);
+  double max = -1;
+  MultinomialAliasSetupCal(ctx, accept, alias, max);
   if (max>1) {
     for (int64_t i = 0; i < data_num; i++) {
       if (accept[i] < 1) {

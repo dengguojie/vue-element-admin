@@ -36,6 +36,12 @@ class MultinomialAliasSetupCpuKernel : public CpuKernel {
   uint32_t MultinomialAliasSetupCompute(CpuKernelContext &ctx);
 
   uint32_t MultinomialAliasSetupParamCheck(CpuKernelContext &ctx);
+
+  template <typename T>
+  void MultinomialAliasSetupCal(CpuKernelContext &ctx,
+                                    std::vector<T> &accept,
+                                    std::vector<int64_t> &alias,
+                                    double &max);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_MULTINOMIAL_ALIAS_SETUP_H_
