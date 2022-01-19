@@ -133,6 +133,13 @@ def atan_compute(x, y, kernel_name="atan"):
 
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
+
+    # when x's value is too large the first caculator of _do_taylor will be overflow. when epsilon is 0.0001,
+    # the approximate value of `tan(pi/2 - 0.0001)` is 10000
+    max_input_value = 10000
+    min_input_value = -max_input_value
+    x = tbe.vmaxs(tbe.vmins(x, max_input_value), min_input_value)
+
     abs_data = tbe.vabs(x)
 
     tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, x.dtype), shape)
