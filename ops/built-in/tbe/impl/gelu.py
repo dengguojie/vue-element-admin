@@ -23,6 +23,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
+from .fast_gelu_v2 import fast_gelu_v2_compute
 
 
 # 'pylint: disable=too-many-locals,invalid-name
@@ -67,9 +68,11 @@ def gelu_compute(input_x, output_y, kernel_name="gelu",
     -------
      A TVM tensor same as input placeholders.
     """
+    if impl_mode == "high_performance":
+        return fast_gelu_v2_compute(input_x, output_y, kernel_name, impl_mode)
+    
     dtype = input_x.dtype
     has_improve_precision = False
-
     if dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         if impl_mode == "high_precision" or (impl_mode is None):
@@ -140,15 +143,15 @@ def gelu(input_x, output_y, kernel_name="gelu", impl_mode=None):
     -------
     None.
     """
-    shape = input_x.get("shape")
-    para_check.check_shape(shape, param_name="input_x")
+    input_shape = input_x.get("shape")
+    para_check.check_shape(input_shape, param_name="input_x")
 
     check_list = ("float16", "float32")
     input_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     fuseshape = [1]
-    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x*y, input_shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
     result = gelu_compute(data, output_y, kernel_name, impl_mode=impl_mode)
 

@@ -105,6 +105,7 @@ run_st() {
     if [[ ! -e ${custom_ini} ]];then
       timeout 10m python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}"
     else
+      echo "[INFO] use custom_ini:${custom_ini}"
       timeout 10m python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}" -conf "${custom_ini}"
       case_name=`grep -F "case_name"  $op_case|sed 's/^ \+//g; s/\"//g; s/, *//g'`
       result_file="${CANN_ST_OUT}/result.txt"
