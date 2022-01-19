@@ -370,7 +370,8 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     is_cast = False
     is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and is_support_vexp and impl_mode == "high_performance":
+    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance")
+                                or impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
@@ -495,7 +496,8 @@ def layer_norm_compute(input_x,
     is_cast = False
     is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and is_support_vexp and impl_mode == "high_performance":
+    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance")
+                                or impl_mode == "high_precision"):
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
