@@ -26,7 +26,6 @@ set(local_kernels_src_files
     kernels/normalized/cosh.cc
     kernels/normalized/crop_and_resize.cc
     kernels/normalized/cumsum.cc
-    kernels/normalized/diag.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
     kernels/normalized/elugrad.cc
@@ -118,6 +117,7 @@ set(local_kernels_src_files
 )
 if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
+        kernels/normalized/custom/research/diag.cc
         kernels/normalized/custom/research/diag_part.cc
         kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
         kernels/normalized/custom/research/ifft.cc
