@@ -32,6 +32,7 @@ const char *kVtFloat = "VT_FLOAT";
 const char *kVtListFloat = "VT_LIST_FLOAT";
 const char *kVtInt = "VT_INT";
 const char *kVtListInt = "VT_LIST_INT";
+const char *kVtListListInt = "VT_LIST_LIST_INT";
 const char *kVtBool = "VT_BOOL";
 const char *kVtListBool = "VT_LIST_BOOL";
 const char *kVtDataType = "VT_DATA_TYPE";
@@ -188,6 +189,29 @@ int32_t AddListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
   return 0;
 }
 
+int32_t AddListListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
+                                    aicpu::NodeDef *node_def) {
+  std::vector<std::vector<int64_t>> list_i;
+  ge::graphStatus ret = op.GetAttr(name, list_i);
+  if (ret != ge::GRAPH_SUCCESS) {
+    CPU_LOG_WARN("Op get attr[%s] failed.", name.c_str());
+    return -1;
+  }
+  if (!list_i.empty()) {
+    size_t k = list_i[0].size();
+    size_t col = 2; // the column of listlistint
+    if (k != col) {
+      CPU_LOG_WARN("Op get attr[%s] format failed.", name.c_str());
+      return -1;
+    }
+  }
+  auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
+  CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
+  attr->SetListListInt(list_i);
+  node_def->AddAttrs(name, attr.get());
+  return 0;
+}
+
 int32_t AddDataTypeAttrToNodeDef(ge::Operator &op, const std::string &name,
                                  aicpu::NodeDef *node_def) {
   ge::DataType data_type = ge::DT_UNDEFINED;
@@ -291,6 +315,8 @@ int32_t AddListAttrToNodeDef(ge::Operator &op, const std::string &name,
     ret = AddListFloatAttrToNodeDef(op, name, node_def);
   } else if (type == kVtListInt) {
     ret = AddListIntAttrToNodeDef(op, name, node_def);
+  } else if (type == kVtListListInt) {
+    ret = AddListListIntAttrToNodeDef(op, name, node_def);
   } else if (type == kVtListBool) {
     ret = AddListBoolAttrToNodeDef(op, name, node_def);
   } else if (type == kVtListDataType) {

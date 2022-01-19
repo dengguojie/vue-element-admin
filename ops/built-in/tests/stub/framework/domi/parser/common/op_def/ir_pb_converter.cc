@@ -59,6 +59,30 @@ static void ConvertList(const std::pair<std::string, domi::OpAttribute> &op_attr
     (void)ge::AttrUtils::SetListInt(op_def, op_attr_pair.first, v_u);
   }
 }
+  vector<vector<int64_t>> v_s;
+  vector<int64_t> b1;
+  vector<int64_t> b2;
+  for (size_t i = 0; i < a_list.s_size(); ++i) {
+    if (i % 2 == 0) {
+      b1.push_back((int64_t)a_list.s(i));
+    } else {
+      b2.push_back((int64_t)a_list.s(i));
+    }
+  }
+  v_s.push_back(b1);
+  v_s.push_back(b2);
+  vector<vector<int64_t>> v_t;
+  vector<int64_t> tmp;
+  for (size_t i = 0; i < v_s[0].size(); ++i) {
+    for (size_t j = 0; j < v_s.size(); ++j) {
+      tmp.push_back(v_s[j][i]);
+    }
+    v_t.push_back(tmp);
+    tmp.clear();
+  }
+  if (v_t.size() > 0) {
+    (void)ge::AttrUtils::SetListListInt(op_def, op_attr_pair.first, v_t);
+  }
 
 static void UpdateTensorForOpDesc(const domi::Operator &op, ge::OpDescPtr op_def) {
   if (op_def == nullptr) {
@@ -164,6 +188,12 @@ FMK_FUNC_HOST_VISIBILITY FMK_FUNC_DEV_VISIBILITY domi::Status ConvertFromOpDesc(
         op.Attr(attr.first, vec);
         break;
       } 
+      case ge::GeAttrValue::ValueType::VT_LIST_LIST_INT: {
+        std::vector<std::vector<int64_t>> vec;
+        (void)ge::AttrUtils::GetListListInt(op_def, attr.first, vec);
+        op.Attr(attr.first, vec);
+        break;
+      }
       case ge::GeAttrValue::ValueType::VT_STRING: {
         string s = "";
         (void)ge::AttrUtils::GetStr(op_def, attr.first, s);

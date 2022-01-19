@@ -772,6 +772,7 @@ const std::map<GeAttrValue::ValueType, std::string> kAttrTypesMap = {
     {GeAttrValue::VT_LIST_FLOAT, "VT_LIST_FLOAT"},
     {GeAttrValue::VT_LIST_BOOL, "VT_LIST_BOOL"},
     {GeAttrValue::VT_LIST_INT, "VT_LIST_INT"},
+    {GeAttrValue::VT_LIST_INT, "VT_LIST_LIST_INT"},
     {GeAttrValue::VT_LIST_TENSOR_DESC, "VT_LIST_TENSOR_DESC"},
     {GeAttrValue::VT_LIST_TENSOR, "VT_LIST_TENSOR"},
     {GeAttrValue::VT_LIST_BYTES, "VT_LIST_BYTES"},
