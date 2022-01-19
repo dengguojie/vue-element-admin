@@ -341,9 +341,8 @@ def depthwise_conv2d_backprop_input_d(filter,
     out_backprop_width = (full_width - dilated_filter_width) // stride_w + 1
 
     _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width)
-    multi_k = output_channel // channel_in
-    filter_size = [filter_c * filter_k, 1, filter_height, filter_width]
-    filter_shape = [input_c1 * filter_height * filter_width, multi_k, BLOCK_SIZE, filter_ci0]
+    # filter shape is (real_g * cin_g * hk * wk, cout_g, cout0, cin0)
+    filter_shape = filter.get("shape")
     filter_init = tvm.placeholder(filter_shape, dtype=filter_dtype, name='filter')
 
     group_dict = util_deconv_comm.calculate_group(

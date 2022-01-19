@@ -21,6 +21,36 @@ dp_conv2d_bp_input_op_testcase = [
     ((5, 5, 1, 240), (2, 14, 14, 240), (2, 28, 28, 240), 2, 1, (2, 2, 2, 2), "NHWC", "success"),
 ]
 
+def _lcm(param1, param2):
+    temp = param1 * param2
+    while param1 % param2 != 0:
+        param1, param2 = param2, param1 % param2
+
+    return temp // param2
+
+
+def ceil(x_1, x_2):
+    return (x_1 + x_2 - 1) // x_2
+
+
+def calculate_group(cin, cout, groups):
+    
+    dx_c_ori = cin
+    dy_c_ori = cout // groups
+
+    c0_size = 16
+    c0_size_k = 16
+
+    dx_c_extend = _lcm(dx_c_ori, c0_size) // dx_c_ori
+    dy_c_extend = _lcm(dy_c_ori, c0_size_k) // dy_c_ori
+    multiple_extend = min(_lcm(dx_c_extend, dy_c_extend), groups)
+
+    dx_c1_extend = ceil(multiple_extend * dx_c_ori, c0_size)
+    dy_c1_extend = ceil(multiple_extend * dy_c_ori, c0_size_k)
+
+    group_extend = ceil(groups, multiple_extend)
+    
+    return group_extend, dx_c1_extend, dy_c1_extend
 
 def _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads):
     bias_shape = bias_shape if bias_shape else []
@@ -45,8 +75,8 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
     else:  # NCHW
         n, c, h, w = shape
     c0 = 16 if dtype.lower() == "float16" else 32
-    c1 = (c + c0 - 1) // c0
-    return (c1, h, w, n, c0, c0)
+    real_g, cin1_g, cout1_g = calculate_group(c, n, n)
+    return (real_g * cin1_g * h * w, cout1_g, 16, c0)
 
 
 def _gen_trans_data_case(param):
