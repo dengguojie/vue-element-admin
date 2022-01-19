@@ -32,7 +32,7 @@ const uint32_t kIndexTwo = 2;
 
 namespace aicpu {
 template <typename T, typename Index>
-uint32_t DoCompute(CpuKernelContext &ctx) {
+uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
   Tensor* params = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID,
                        "Get params failed.");
@@ -89,19 +89,19 @@ template <typename IndicesType>
 uint32_t IndicesCompute(CpuKernelContext &ctx) {
   DataType params_type = ctx.Input(0)->GetDataType();
   std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls;
-  calls[DT_FLOAT16] = DoCompute<Eigen::half, IndicesType>;
-  calls[DT_FLOAT] = DoCompute<float, IndicesType>;
-  calls[DT_DOUBLE] = DoCompute<double, IndicesType>;
-  calls[DT_INT8] = DoCompute<int8_t, IndicesType>;
-  calls[DT_INT16] = DoCompute<int16_t, IndicesType>;
-  calls[DT_INT32] = DoCompute<int32_t, IndicesType>;
-  calls[DT_INT64] = DoCompute<int64_t, IndicesType>;
-  calls[DT_UINT8] = DoCompute<uint8_t, IndicesType>;
-  calls[DT_UINT16] = DoCompute<uint16_t, IndicesType>;
-  calls[DT_UINT32] = DoCompute<uint32_t, IndicesType>;
-  calls[DT_UINT64] = DoCompute<uint64_t, IndicesType>;
-  calls[DT_COMPLEX64] = DoCompute<std::complex<float>, IndicesType>;
-  calls[DT_COMPLEX128] = DoCompute<std::complex<double>, IndicesType>;
+  calls[DT_FLOAT16] = DoGatherV2Compute<Eigen::half, IndicesType>;
+  calls[DT_FLOAT] = DoGatherV2Compute<float, IndicesType>;
+  calls[DT_DOUBLE] = DoGatherV2Compute<double, IndicesType>;
+  calls[DT_INT8] = DoGatherV2Compute<int8_t, IndicesType>;
+  calls[DT_INT16] = DoGatherV2Compute<int16_t, IndicesType>;
+  calls[DT_INT32] = DoGatherV2Compute<int32_t, IndicesType>;
+  calls[DT_INT64] = DoGatherV2Compute<int64_t, IndicesType>;
+  calls[DT_UINT8] = DoGatherV2Compute<uint8_t, IndicesType>;
+  calls[DT_UINT16] = DoGatherV2Compute<uint16_t, IndicesType>;
+  calls[DT_UINT32] = DoGatherV2Compute<uint32_t, IndicesType>;
+  calls[DT_UINT64] = DoGatherV2Compute<uint64_t, IndicesType>;
+  calls[DT_COMPLEX64] = DoGatherV2Compute<std::complex<float>, IndicesType>;
+  calls[DT_COMPLEX128] = DoGatherV2Compute<std::complex<double>, IndicesType>;
   return calls[params_type](ctx);
 }
 
@@ -121,7 +121,10 @@ uint32_t GatherV2CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
                      "Shape must be at least rank [%d] but is rank [%d]",
                      min_params_dim, params_dims);
 
-  int64_t batch_dims = ctx.GetAttr("batch_dims")->GetInt();
+  auto batch_dims_ptr = ctx.GetAttr("batch_dims");
+  KERNEL_CHECK_NULLPTR(batch_dims_ptr, KERNEL_STATUS_PARAM_INVALID,
+                       "Get batch dims failed.");  
+  int64_t batch_dims = batch_dims_ptr->GetInt();
   KERNEL_CHECK_FALSE((batch_dims >= 0), KERNEL_STATUS_PARAM_INVALID,
                      "Batch_dims must be at least 0 but is [%d]", batch_dims);
   return KERNEL_STATUS_OK;
