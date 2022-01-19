@@ -88,5 +88,95 @@
       }
     ],
     "case_name": "test_dynamic_MovingSumWithSigmoid_000"
+  },
+  {
+    "op": "MovingSumWithSigmoid",
+    "input_desc": [
+      {
+        "shape": [
+          -1           
+        ],
+        "ori_shape": [
+          -1         
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            -1
+          ]
+        ],
+        "typical_shape": [
+          51200
+        ]
+      },
+      {
+        "shape": [
+          -1           
+        ],
+        "ori_shape": [
+          -1         
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "energy",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            -1
+          ]
+        ],
+        "typical_shape": [
+          51200
+        ]
+      },
+      {
+        "shape": [
+          1           
+        ],
+        "ori_shape": [
+          1         
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "frame_size",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+        {
+        "shape": [
+          -1           
+        ],
+        "ori_shape": [
+          -1         
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            -1
+          ]
+        ],
+        "typical_shape": [
+          51200
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "window_size",
+        "type": "int",
+        "value": 512
+      }
+    ],
+    "case_name": "test_dynamic_MovingSumWithSigmoid_001"
   }
 ]

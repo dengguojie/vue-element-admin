@@ -24,19 +24,16 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-MAX_INT32 = 2 ** 31 - 1
-BLOCK = 8
-ALIGN = 64
-
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
-    BLOCK = 8
+    BLOCK_ALIGN = 8
+    CONV_ALIGN = 16
     MAX_INT32 = 2 ** 31 - 1
-    ALIGN = 64
+    REDUCE_ALIGN = 64
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -50,9 +47,8 @@ class MovingSumWithSigmoid(object):
         self.kernel_name = kernel_name
 
         self.dtype = alpha.get("dtype").lower()
-        self.block = Constant.BLOCK
-        if self.dtype != "float32":
-            raise RuntimeError("Unexpected dtype.")
+        self.block = Constant.CONV_ALIGN if self.dtype == "float16" else Constant.BLOCK_ALIGN
+        self.conv = True if self.dtype == "float16" else False
 
         self.alpha_gm = self.tik_instance.Tensor(self.dtype, [Constant.MAX_INT32], name="alpha", scope=tik.scope_gm)
         self.energy_gm = self.tik_instance.Tensor(self.dtype, [Constant.MAX_INT32], name="energy", scope=tik.scope_gm)
@@ -73,6 +69,7 @@ class MovingSumWithSigmoid(object):
         self.batch_tail = None
 
     def moving_sum_with_sigmoid_compute(self):
+
         frame_size_ub = self.tik_instance.Tensor("int32", [self.block], name="frame_size_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(frame_size_ub, self.frame_size_gm, 0, 1, 1, 0, 0)
         self.frame_size = self.tik_instance.Scalar("int32", init_value=frame_size_ub[0])
@@ -82,6 +79,7 @@ class MovingSumWithSigmoid(object):
         self.batch_num_per_aicore = self.tik_instance.Scalar("int32",
                                                              init_value=self.task_num // self.used_aicore_num)
         self.batch_tail = self.tik_instance.Scalar("int32", init_value=self.task_num % self.used_aicore_num)
+
         version = tik.Dprofile().get_product_name()
         with self.tik_instance.for_range(0, self.used_aicore_num, block_num=self.used_aicore_num) as i:
             with self.tik_instance.for_range(0, self.batch_num_per_aicore) as j:
@@ -110,9 +108,20 @@ class MovingSumWithSigmoid(object):
                                              scope=tik.scope_ubuf)
         y_ub = self.tik_instance.Tensor("float32", [self.block], name="y_ub", scope=tik.scope_ubuf)
 
-        self.tik_instance.data_move(alpha_ub, self.alpha_gm[task_idx * self.block], 0, 1,
-                                    self.task_num - task_idx, 0, 0)
-        self.tik_instance.data_move(energy_ub, self.energy_gm[task_idx * self.block], 0, 1, 1, 0, 0)
+        if self.conv:
+            alpha_ub_fp16 = self.tik_instance.Tensor("float16", [self.frame_size_align], name="alpha_ub_fp16",
+                                                     scope=tik.scope_ubuf)
+            energy_ub_fp16 = self.tik_instance.Tensor("float16", [self.block], name="energy_ub_fp16",
+                                                      scope=tik.scope_ubuf)
+            self.tik_instance.data_move(alpha_ub_fp16, self.alpha_gm[task_idx * self.block], 0, 1,
+                                        self.task_num - task_idx, 0, 0)
+            self.tik_instance.data_move(energy_ub_fp16, self.energy_gm[task_idx * self.block], 0, 1, 1, 0, 0)
+            self.tik_instance.vec_conv(self.block, "none", alpha_ub, alpha_ub_fp16, self.task_num - task_idx, 2, 1)
+            self.tik_instance.vec_conv(self.block, "none", energy_ub, energy_ub_fp16, 1, 2, 1)
+        else:
+            self.tik_instance.data_move(alpha_ub, self.alpha_gm[task_idx * self.block], 0, 1,
+                                        self.task_num - task_idx, 0, 0)
+            self.tik_instance.data_move(energy_ub, self.energy_gm[task_idx * self.block], 0, 1, 1, 0, 0)
 
         ones_ub = self.tik_instance.Tensor("float32", [self.block], name="ones_ub", scope=tik.scope_ubuf)
         zero_ub = self.tik_instance.Tensor("float32", [self.block], name="zero_ub", scope=tik.scope_ubuf)
@@ -126,13 +135,13 @@ class MovingSumWithSigmoid(object):
 
         tmp_val = self.tik_instance.Scalar("float32")
         loop = self.tik_instance.Scalar("int32", init_value=self.frame_size - task_idx * self.block)
-
+        # func '1 / (1 + np.exp(-x))'
         if version == "mini":
             exp_ub = self.tik_instance.Tensor("float16", [self.block], name="exp_ub", scope=tik.scope_ubuf)
             work_ub = self.tik_instance.Tensor("float16", [self.block], name="work_ub", scope=tik.scope_ubuf)
             tmp_ub_ = self.tik_instance.Tensor("float32", [self.block], name="tmp_ub_", scope=tik.scope_ubuf)
 
-            self.tik_instance.vec_sub(self.block ,tmp_ub, zero_ub, energy_ub, 1, 1, 1, 1)
+            self.tik_instance.vec_sub(self.block, tmp_ub, zero_ub, energy_ub, 1, 1, 1, 1)
 
             self.tik_instance.vec_conv(self.block, "none", work_ub, tmp_ub, 1, 0, 0)
             self.tik_instance.vec_exp(self.block, exp_ub, work_ub, 1, 1, 1)
@@ -147,19 +156,19 @@ class MovingSumWithSigmoid(object):
                 with self.tik_instance.else_scope():
                     block_len.set_as(self.frame_size - task_idx * self.block)
 
-                with self.tik_instance.if_scope(block_len > Constant.ALIGN):
-                    with self.tik_instance.if_scope(block_len % Constant.ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, tmp_ub_, alpha_ub, work_tensor_ub,
-                                                         block_len // Constant.ALIGN, 8)
+                with self.tik_instance.if_scope(block_len > Constant.REDUCE_ALIGN):
+                    with self.tik_instance.if_scope(block_len % Constant.REDUCE_ALIGN > 0):
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub_, alpha_ub, work_tensor_ub,
+                                                         block_len // Constant.REDUCE_ALIGN, 8)
                         tmp_val.set_as(tmp_ub_[0])
-                        self.tik_instance.vec_reduce_add(block_len % Constant.ALIGN, tmp_ub_,
-                                                         alpha_ub[block_len - (block_len % Constant.ALIGN)],
+                        self.tik_instance.vec_reduce_add(block_len % Constant.REDUCE_ALIGN, tmp_ub_,
+                                                         alpha_ub[block_len - (block_len % Constant.REDUCE_ALIGN)],
                                                          work_tensor_ub, 1, 0)
                         tmp_ub_[1].set_as(tmp_val)
                         self.tik_instance.vec_reduce_add(2, tmp_ub, tmp_ub_, work_tensor_ub, 1, 0)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, tmp_ub, alpha_ub, work_tensor_ub,
-                                                         block_len // Constant.ALIGN, 8)
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub, alpha_ub, work_tensor_ub,
+                                                         block_len // Constant.REDUCE_ALIGN, 8)
                 with self.tik_instance.else_scope():
                     self.tik_instance.vec_reduce_add(block_len, tmp_ub, alpha_ub, work_tensor_ub, 1, 1)
 
@@ -167,7 +176,6 @@ class MovingSumWithSigmoid(object):
                 alpha_ub[idx].set_as(0)
                 loop.set_as(loop - 1)
         else:
-            # func '1 / (1 + np.exp(-x))'
             sum_val = self.tik_instance.Scalar("float32")
             exp_ub = self.tik_instance.Tensor("float32", [self.block], name="exp_ub", scope=tik.scope_ubuf)
             self.tik_instance.vec_sub(self.block, tmp_ub, zero_ub, energy_ub, 1, 1, 1, 1)
@@ -176,36 +184,38 @@ class MovingSumWithSigmoid(object):
             self.tik_instance.vec_rec_high_preci(self.block, sigmoid_ub, tmp_ub, work_tensor_ub, 1, 1, 1)
 
             with self.tik_instance.if_scope(loop > self.window_size):
-                with self.tik_instance.if_scope(self.window_size > Constant.ALIGN):
-                    with self.tik_instance.if_scope(self.window_size % Constant.ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         self.window_size // Constant.ALIGN, 8)
+                with self.tik_instance.if_scope(self.window_size > Constant.REDUCE_ALIGN):
+                    with self.tik_instance.if_scope(self.window_size % Constant.REDUCE_ALIGN > 0):
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                         self.window_size // Constant.REDUCE_ALIGN, 8)
                         tmp_val.set_as(sum_ub[0])
-                        self.tik_instance.vec_reduce_add(self.window_size % Constant.ALIGN, sum_ub,
+                        self.tik_instance.vec_reduce_add(self.window_size % Constant.REDUCE_ALIGN, sum_ub,
                                                          alpha_ub[
-                                                             self.window_size - (self.window_size % Constant.ALIGN)],
+                                                             self.window_size - (
+                                                                 self.window_size % Constant.REDUCE_ALIGN)],
                                                          work_tensor_ub, 1, 0)
                         sum_val.set_as(sum_ub[0])
                         sum_ub[0].set_as(sum_val + tmp_val)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         self.window_size // Constant.ALIGN, 8)
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                         self.window_size // Constant.REDUCE_ALIGN, 8)
                 with self.tik_instance.else_scope():
                     self.tik_instance.vec_reduce_add(self.window_size, sum_ub, alpha_ub, work_tensor_ub, 1, 1)
 
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(loop > Constant.ALIGN):
-                    with self.tik_instance.if_scope(loop % Constant.ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         loop // Constant.ALIGN, 8)
+                with self.tik_instance.if_scope(loop > Constant.REDUCE_ALIGN):
+                    with self.tik_instance.if_scope(loop % Constant.REDUCE_ALIGN > 0):
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                         loop // Constant.REDUCE_ALIGN, 8)
                         tmp_val.set_as(sum_ub[0])
-                        self.tik_instance.vec_reduce_add(loop % Constant.ALIGN, sum_ub,
-                                                         alpha_ub[loop - loop % Constant.ALIGN], work_tensor_ub, 1, 0)
+                        self.tik_instance.vec_reduce_add(loop % Constant.REDUCE_ALIGN, sum_ub,
+                                                         alpha_ub[loop - loop % Constant.REDUCE_ALIGN],
+                                                         work_tensor_ub, 1, 0)
                         sum_val.set_as(sum_ub[0])
                         sum_ub[0].set_as(sum_val + tmp_val)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         loop // Constant.ALIGN, 8)
+                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                         loop // Constant.REDUCE_ALIGN, 8)
 
                 with self.tik_instance.else_scope():
                     self.tik_instance.vec_reduce_add(loop, sum_ub, alpha_ub, work_tensor_ub, 1, 1)
@@ -223,11 +233,16 @@ class MovingSumWithSigmoid(object):
                 sum_ub[idx].set_as(sum_val)
 
         self.tik_instance.vec_mul(self.block, y_ub, sum_ub, sigmoid_ub, 1, 0, 0, 0)
-        self.tik_instance.data_move(self.y_gm[task_idx * self.block], y_ub, 0, 1, 1, 0, 0)
+        if self.conv:
+            y_ub_fp16 = self.tik_instance.Tensor("float16", [self.block], name="y_ub_fp16", scope=tik.scope_ubuf)
+            self.tik_instance.vec_conv(self.block, "none", y_ub_fp16, y_ub, 1, 1, 2)
+            self.tik_instance.data_move(self.y_gm[task_idx * self.block], y_ub_fp16, 0, 1, 1, 0, 0)
+        else:
+            self.tik_instance.data_move(self.y_gm[task_idx * self.block], y_ub, 0, 1, 1, 0, 0)
 
     def data_tune(self):
         with self.tik_instance.if_scope(self.frame_size_align > self.frame_size):
-            y_ub = self.tik_instance.Tensor("float32", [self.block], name="y_ub", scope=tik.scope_ubuf)
+            y_ub = self.tik_instance.Tensor(self.dtype, [self.block], name="y_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(y_ub, self.y_gm[self.frame_size_align - self.block], 0, 1, 1, 0, 0)
             with self.tik_instance.for_range(0, self.frame_size_align - self.frame_size) as idx:
                 y_ub[self.block - idx - 1].set_as(0)
