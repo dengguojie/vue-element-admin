@@ -22,7 +22,7 @@
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_FUSION_RULE_H_
 #include <string>
 #include "graph/node.h"
-#include "common/op_slice_info.h"
+#include "graph_optimizer/fusion_common/op_slice_info.h"
 
 namespace fe {
 

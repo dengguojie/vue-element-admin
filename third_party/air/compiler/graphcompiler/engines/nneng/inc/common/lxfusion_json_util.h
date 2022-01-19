@@ -21,7 +21,7 @@
 
 #include "common/aicore_util_types.h"
 #include "common/aicore_util_attr_define.h"
-#include "common/op_slice_info.h"
+#include "graph_optimizer/fusion_common/op_slice_info.h"
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 
 const std::string L1_FUSION_EXTEND_CONTENT = "_l1_fusion_extend_content";

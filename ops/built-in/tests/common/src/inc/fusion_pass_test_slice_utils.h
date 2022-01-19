@@ -22,7 +22,7 @@
 #include "graph/graph.h"
 #include "graph/compute_graph.h"
 #include "pattern_fusion_util.h"
-#include "common/op_slice_info.h"
+#include "graph_optimizer/fusion_common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 #include "common/lxfusion_json_util.h"
 

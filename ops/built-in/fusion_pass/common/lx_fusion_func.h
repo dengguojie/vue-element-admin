@@ -26,7 +26,6 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 #include "common/lxfusion_json_util.h"
-#include "common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 
 

@@ -24,7 +24,7 @@
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
-#include "common/op_slice_info.h"
+#include "graph_optimizer/fusion_common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
