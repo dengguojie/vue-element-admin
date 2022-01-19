@@ -41,3 +41,16 @@ TEST_F(tensorArraySplit, tensorArraySplit_infershape_input3_rank_fail){
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(tensorArraySplit, tensorArraySplit_infershape_success){
+  ge::op::TensorArraySplit op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types;
+  auto context = op.GetInferenceContext();
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op.UpdateInputDesc("lengths", create_desc({4}, ge::DT_INT64));
+  op.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
