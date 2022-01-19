@@ -863,6 +863,10 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
     }
     value_desc.SetShapeRange(value_shape_range);
   }
+  if (output_shape.GetDims().size() != shape_and_range.shape_range_.size()) {
+    std::vector<std::pair<int64_t, int64_t>> final_value_shape_range;
+    value_desc.SetShapeRange(final_value_shape_range);  
+  }
   if (op.UpdateOutputDesc("value", value_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[value] desc failed."));
     return GRAPH_FAILED;

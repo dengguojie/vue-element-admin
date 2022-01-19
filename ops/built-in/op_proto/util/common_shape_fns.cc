@@ -1167,18 +1167,15 @@ graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_r
         return GRAPH_FAILED;
       }
       shape_changed = true;
-    }
-    auto &shape_and_range = aicpu_resource_context->shape_and_range_;
-    if (shape_and_range.empty()) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()),
-                                        std::string("get resource context shape and ranges failed."));
-      return GRAPH_FAILED;
-    }
-    if (MergeShapeAndRange(shape_and_range[0], feed_shape_and_range, shape_and_range[0],
-                           shape_changed, op_name.GetString()) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()),
-                                        std::string("merge shape and range failed."));
-      return GRAPH_FAILED;
+    } else {
+      auto &shape_and_range = aicpu_resource_context->shape_and_range_;
+      if (shape_and_range.empty()) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()),
+                                          std::string("get resource context shape and ranges failed."));
+        return GRAPH_FAILED;
+      }
+      MergeShapeAndRange(shape_and_range[0], feed_shape_and_range, shape_and_range[0],
+                         shape_changed, op_name.GetString());
     }
     if (shape_changed) {
       if (context->AddChangedResourceKey(marks[0]) != GRAPH_SUCCESS) {
