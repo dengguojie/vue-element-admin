@@ -1,16 +1,15 @@
-/***
- *  Copyright Huawei Technologies Co., Ltd. 2021-2021.All rights reserved.
- *  Description:This file provides the function of expandding.
- *  Author: Huawei.
- *  Create:2021-10-08.
- ***/
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ * Description:This file provides the function of expandding.
+ * Author: Huawei.
+ * Create:2021-10-08.
+ */
 #include "expand.h"
 using namespace std;
 
 namespace {
-const char* kExpand = "Expand";
-const uint32_t InputNum = 2;
-const uint32_t OutputNum = 1;
+const uint32_t kInputNum = 2;
+const uint32_t kOutputNum = 1;
 }  // namespace
 
 namespace expand {
@@ -24,7 +23,7 @@ uint32_t CopyExpandIndex(std::vector<T> x_indexes,
       1;  //  Default target dimension when beginning to expand tensor
   uint64_t copy_size = 1;       //  Default size when beginning to copy tensor
   uint64_t break_axis_num = 0;  //  Default axis when beginning to expand tensor
-  for (uint64_t i = shape_in.size() - 1; i >= 0; i--) {
+  for (int64_t i = static_cast<int64_t>(shape_in.size() - 1); i >= 0; i--) {
     if (shape_in[i] != shape_out[i]) {
       if (shape_in[i] != static_cast<IndexT>(1)) {
         KERNEL_LOG_ERROR(
@@ -75,17 +74,17 @@ uint32_t GetExpandIndex(std::vector<T> x_indexes,
   IndexT expand_to_axis = static_cast<IndexT>(1);
   uint64_t break_axis_num = 0;
 
-  for (uint64_t i = shape_in.size() - 1; i >= 0; i--) {
-    if (shape_in[i] != shape_out[i]) {
-      if (shape_in[i] != static_cast<IndexT>(1)) {
+  for (int64_t j = static_cast<int64_t>(shape_in.size()- 1); j >= 0; j--) {
+    if (shape_in[j] != shape_out[j]) {
+      if (shape_in[j] != static_cast<IndexT>(1)) {
         KERNEL_LOG_ERROR(
             "Param error,shape_in[%lu]!=1 when shape_in[%lu] != "
             "shape_out[%lu]",
-            i, i, i);
+            j, j, j);
         return aicpu::KERNEL_STATUS_PARAM_INVALID;
       }
-      expand_to_axis = shape_out[i];
-      break_axis_num = i;
+      expand_to_axis = shape_out[j];
+      break_axis_num = j;
       break;
     }
   }
@@ -139,11 +138,11 @@ uint32_t ExpandByLayer(std::vector<T> x_indexes,
 
 template <typename T, typename IndexT>
 uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
-  auto TensorBase =
+  auto tensorBase =
       static_cast<T*>(ctx.Input(0)->GetData());  // input tensor address
-  auto ShapeData =
+  auto shapeData =
       static_cast<IndexT*>(ctx.Input(1)->GetData());  // input shape address
-  auto OutTensor =
+  auto outTensor =
       static_cast<T*>(ctx.Output(0)->GetData());  // output tensor address
 
   aicpu::Tensor* input_tensor0 = ctx.Input(0);  // input tensor
@@ -165,7 +164,7 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   std::vector<IndexT> shape_out;
 
   for (int64_t i = 0; i < size1[0]; i++) {
-    shape_out.push_back(ShapeData[i]);
+    shape_out.push_back(shapeData[i]);
   }
   for (uint64_t i = 0; i < size0.size(); i++) {
     shape_in.push_back(static_cast<IndexT>(size0[i]));
@@ -177,7 +176,7 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   }
 
   for (uint64_t i = 0; i < input_num; i++) {
-    x_indexes1.push_back(TensorBase[i]);
+    x_indexes1.push_back(tensorBase[i]);
   }
 
   ExpandByLayer<T, IndexT>(x_indexes1, out_indexes, shape_in, shape_out);
@@ -188,7 +187,7 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   }
 
   for (uint64_t i = 0; i < out_indexes.size(); i++) {
-    OutTensor[i] = out_indexes[i];
+    outTensor[i] = out_indexes[i];
   }
 
   return aicpu::KERNEL_STATUS_OK;
@@ -217,9 +216,10 @@ uint32_t IndicesExpandCompute(aicpu::CpuKernelContext& ctx) {
 }  // namespace expand
 
 namespace aicpu {
+const char* kExpand = "Expand";
 uint32_t ExpandCpuKernel::Compute(CpuKernelContext& ctx) {
   KERNEL_LOG_INFO("ExpandCpuKernel start.");
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, InputNum, OutputNum),
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "Check Expand params failed.");
 
   Tensor* indices = ctx.Input(1);
