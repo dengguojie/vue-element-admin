@@ -75,6 +75,72 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
         self.set_orign_input_tensor()
         self.set_final_output_tensors()
         self._init_scalar_params()
+        self._init_params_with_none()
+        self._init_params_with_none_fetch()
+
+    def _init_params_with_none(self):
+        """
+        init params with none
+        """
+        self.fmap_l1 = None
+        self.filters_l1 = None
+        self.filters_l1_size = None
+        self.fmap_l0a_ping = None
+        self.filters_l0b_ping = None
+        self.fmap_l0c_ping = None
+        self.fmap_l0a_pong = None
+        self.filters_l0b_pong = None
+        self.fmap_l0c_pong = None
+        self.ub_fm1_workbuf2 = None
+        self.fmap_f16_ub_pong = None
+        self.input_x_fp16_ub_pong = None
+        self.tem_ub = None
+        self.tem_ub_pong = None
+        self.scale_ub_64 = None
+        self.offset_ub_64 = None
+        self.input_x_mask_ub_pong = None
+        self.fmap_f16_ub_ping = None
+        self.input_x_fp16_ub = None
+        self.square_mul_ub = None
+        self.last_sum_output_ub = None
+        self.last_square_sum_output_ub = None
+        self.zeros_const_ub = None
+        self.zeros_const_ub_16 = None
+        self.input_x_fp32_ub = None
+        self.save_ub = None
+        self.save_ub_pong = None
+        self.y_scale_ub = None
+        self.y_offset_ub = None
+        self.sum_input_ub = None
+        self.square_sum_input_ub = None
+        self.mean_ub = None
+        self.scale_ub = None
+        self.square_sum_div_ub = None
+        self.square_mean_ub = None
+        self.varience_ub = None
+        self.y_scale_add_ub = None
+        self.y_scale_sqrt_ub = None
+        self.offset_ub = None
+        self.y_offset_mul_ub = None
+        self.pre_moving_mean_ub = None
+        self.mean_mul_ub = None
+        self.pre_moving_variance_ub = None
+
+    def _init_params_with_none_fetch(self):
+        """
+        init params with none
+        """
+        self.mean_mul_rev_ub = None
+        self.moving_mean_ub = None
+        self.variance_batch_ub = None
+        self.variance_mul_ub = None
+        self.variance_mul_rev_ub = None
+        self.moving_variance_ub = None
+        self.input_x_mask_ub = None
+        self.input_x_ub = None
+        self.fmap_ub = None
+        self.output_sum_inub = None
+        self.output_square_sum_inub = None
 
     def _init_scalar_params(self):
         """
@@ -1258,7 +1324,7 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
         self.calu_square_sum(self.fmap_ub, fp32_loop_times, fp32_redundant, fp32_repeat_times)
         self.tik_instance.pipe_barrier("PIPE_V")
         self.dichotomy_sum_and_square_sum_handsync(self.fmap_ub, self.square_mul_ub,
-                                                       square_size, dst_n_offset)
+                                                   square_size, dst_n_offset)
 
     def _tail_bn_reduce_process_handsync(self, k_redundant, n_l0):
         """
@@ -1415,7 +1481,6 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
                                        square_sum_ub[total_repeat // 2 * 2 * 64],
                                        1, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.pipe_barrier("PIPE_V")
-                redundant = 0
             total_repeat = dich_repeat
             dich_repeat = total_repeat // 2
             vadd_0 = square_sum_ub
@@ -4058,58 +4123,36 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         fp32_loop_redundant = self.tik_instance.Scalar(name="fp32_loop_redundant",
                                                        init_value=self.this_time_calu_length *
                                                        self.width_in * self.channel_in0 % (64 * 255))
-        fp32_repeat = self.tik_instance.Scalar(name="fp32_repeat",
-                                               init_value=fp32_loop_redundant // 64)
-        fp32_redundant = self.tik_instance.Scalar(name="fp32_redundant",
-                                                  init_value=fp32_loop_redundant % 64)
+        fp32_repeat = self.tik_instance.Scalar(name="fp32_repeat", init_value=fp32_loop_redundant // 64)
+        fp32_redundant = self.tik_instance.Scalar(name="fp32_redundant", init_value=fp32_loop_redundant % 64)
         with self.tik_instance.if_scope(fp32_loop_times > 0):
             with self.tik_instance.for_range(0, fp32_loop_times, name="fp32_loop") as fp32_loop:
-                self.tik_instance.vconv(
-                    64,
-                    "none",
-                    self.input_x_fp32_ub[fp32_loop * 255 * 64],
-                    self.input_x_ub[fp32_loop * 255 * 64],
-                    255,
-                    1, 1, 8, 4)
+                self.tik_instance.vconv(64, "none", self.input_x_fp32_ub[fp32_loop * 255 * 64],
+                                        self.input_x_ub[fp32_loop * 255 * 64], 255, 1, 1, 8, 4)
         with self.tik_instance.if_scope(fp32_repeat > 0):
-            self.tik_instance.vconv(
-                64,
-                "none",
-                self.input_x_fp32_ub[fp32_loop_times * 255 * 64],
-                self.input_x_ub[fp32_loop_times * 255 * 64],
-                fp32_repeat,
-                1, 1, 8, 4)
+            self.tik_instance.vconv(64, "none", self.input_x_fp32_ub[fp32_loop_times * 255 * 64],
+                                    self.input_x_ub[fp32_loop_times * 255 * 64], fp32_repeat, 1, 1, 8, 4)
         with self.tik_instance.if_scope(fp32_redundant > 0):
-            self.tik_instance.vconv(
-                fp32_redundant,
-                "none",
-                self.input_x_fp32_ub[fp32_loop_times * 255 * 64 + fp32_repeat * 64],
-                self.input_x_ub[fp32_loop_times * 255 * 64 + fp32_repeat * 64],
-                1,
-                1, 1, 8, 4)
+            self.tik_instance.vconv(fp32_redundant, "none",
+                                    self.input_x_fp32_ub[fp32_loop_times * 255 * 64 + fp32_repeat * 64],
+                                    self.input_x_ub[fp32_loop_times * 255 * 64 + fp32_repeat * 64], 1, 1, 1, 8, 4)
         self.tik_instance.set_flag("PIPE_V", "PIPE_MTE2", 0)
         self.tik_instance.vec_dup(64, self.scale_ub_64, 0, 1, 0)
         self.tik_instance.vec_dup(64, self.offset_ub_64, 0, 1, 0)
-        self.tik_instance.vec_add(16, self.scale_ub_64, self.scale_ub_64,
-                                  self.y_scale_ub[cur_cin1 * 16], 4, 2, 2, 0)
+        self.tik_instance.vec_add(16, self.scale_ub_64, self.scale_ub_64, self.y_scale_ub[cur_cin1 * 16], 4, 2, 2, 0)
         self.tik_instance.vec_add(16, self.offset_ub_64, self.offset_ub_64,
                                   self.y_offset_ub[cur_cin1 * 16], 4, 2, 2, 0)
         with self.tik_instance.if_scope(fp32_loop_times > 0):
-            with self.tik_instance.for_range(
-                    0, fp32_loop_times, name="loop_time") as loop_time:
+            with self.tik_instance.for_range(0, fp32_loop_times, name="loop_time") as loop_time:
                 self.tik_instance.vmaddrelu(64, self.input_x_fp32_ub[loop_time * 255 * 64],
-                                            self.scale_ub_64,
-                                            self.offset_ub_64, 255, 1, 1, 1, 8, 0, 0)
+                                            self.scale_ub_64, self.offset_ub_64, 255, 1, 1, 1, 8, 0, 0)
         with self.tik_instance.if_scope(fp32_repeat > 0):
             self.tik_instance.vmaddrelu(64, self.input_x_fp32_ub[fp32_loop_times * 255 * 64],
-                                        self.scale_ub_64,
-                                        self.offset_ub_64, fp32_repeat, 1, 1, 1, 8, 0, 0)
+                                        self.scale_ub_64, self.offset_ub_64, fp32_repeat, 1, 1, 1, 8, 0, 0)
         with self.tik_instance.if_scope(fp32_redundant > 0):
             self.tik_instance.vmaddrelu(fp32_redundant,
-                                        self.input_x_fp32_ub[
-                                            fp32_loop_times * 255 * 64 + fp32_repeat * 64],
-                                        self.scale_ub_64,
-                                        self.offset_ub_64, 1, 1, 1, 1, 8, 0, 0)
+                                        self.input_x_fp32_ub[fp32_loop_times * 255 * 64 + fp32_repeat * 64],
+                                        self.scale_ub_64, self.offset_ub_64, 1, 1, 1, 1, 8, 0, 0)
         # 这里开double buffer，防止vector流水中断
         with self.tik_instance.if_scope(self.bn_update_lastub_output_pingpong == 0):
             self._bn_update_ping([batch_index, cur_cin1, fm_ddr2ub_nburst, fp32_loop_times, fp32_redundant,
