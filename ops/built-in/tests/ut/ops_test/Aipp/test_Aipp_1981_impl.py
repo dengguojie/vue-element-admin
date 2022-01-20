@@ -96,11 +96,13 @@ def test_aipp_static_1(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_1)
 
@@ -128,11 +130,13 @@ def test_aipp_static_2(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_2)
 
@@ -160,11 +164,13 @@ def test_aipp_static_3(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_3)
 
@@ -193,11 +199,13 @@ def test_aipp_static_4(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_4)
 
@@ -226,13 +234,57 @@ def test_aipp_static_5(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_5)
+
+
+def test_aipp_static_6(test_arg):
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp = {
+        "aipp_mode": "static",
+        "input_format": "RGB888_U8",
+        "csc_switch": 0,
+        "rbuv_swap_switch": 0,
+        "var_reci_chn_0": 0.003922,
+        "var_reci_chn_1": 0.003922,
+        "var_reci_chn_2": 0.003922,
+    }
+    param_dict = gen_static_aipp_case(
+        (1, 3, 416, 416),
+        (1, 1, 416, 416, 32),
+        "uint8",
+        "uint8",
+        "NCHW",
+        "NC1HWC0",
+        aipp_config_dict_tmp,
+        "aipp_1",
+        "success",
+    )
+    input_data = param_dict["params"][0]
+    input_dync_param = param_dict["params"][1]
+    output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
+    except Exception as e:
+        print("1981 aipp test mock")
+        print("exception:", e)
+
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
+        print("exception:", e)
+
+ut_case.add_cust_test_func(test_func=test_aipp_static_6)
 
 
 def test_aipp_format_support(test_arg):
@@ -254,7 +306,7 @@ def test_aipp_format_support(test_arg):
     from impl import aipp_comm
     for cce_product in aipp_comm.Const.SUPPORT_IMAGE_FORMAT_MAP:
         try:
-            aipp_comm.check_aipp_static_config(input_data.get("shape"), input_data.get("format"), 
+            aipp_comm.check_aipp_static_config(input_data.get("shape"), input_data.get("format"),
                                                output_data, aipp_config_dict_tmp, cce_product)
         except Exception as e:
             print("Aipp format support test mock")
@@ -316,11 +368,13 @@ def test_aipp_dynamic_1(test_arg):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
+        print("exception:", e)
 
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic_tmp, "Ascend320", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
+        print("exception:", e)
 
 
 ut_case.add_cust_test_func(test_func=test_aipp_dynamic_1)

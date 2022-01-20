@@ -2727,9 +2727,7 @@ def get_actual_col_size(aipp_config, h, w, support_vertical_padding=False):
     :param w:
     :return:
     """
-
-    actual_col_size = \
-        aipp_config.get("src_image_size_h") * aipp_config.get("src_image_size_w")
+    actual_col_size = h * w
 
     if "crop" in aipp_config and aipp_config.get("crop") == 1:
         crop_size_h = aipp_config.get("crop_size_h")
