@@ -1168,6 +1168,71 @@
               "type": "int"
           }
         ]
+      },
+      {
+        "op": "StridedSliceD",
+        "case_name" : "test_strided_slice_d_019",
+        "calc_expect_func_file" : "test_strided_slice_d_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "shape": [],
+            "type": ["float32"],
+            "value_range": [[0, 1]],
+            "data_distribute" : "uniform",
+            "name": "x"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "shape": [1],
+            "type": ["float16"],
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "begin",
+            "value": [0, 0],
+            "type": "list_int"
+          },
+          {
+              "name": "end",
+              "value": [3, 3],
+              "type": "list_int"
+          },
+          {
+              "name": "strides",
+              "value": [1, 1],
+              "type": "list_int"
+          },
+          {
+              "name": "begin_mask",
+              "value": 0,
+              "type": "int"
+          },
+          {
+              "name": "end_mask",
+              "value": 0,
+              "type": "int"
+          },
+          {
+              "name": "ellipsis_mask",
+              "value": 1,
+              "type": "int"
+          },
+          {
+              "name": "new_axis_mask",
+              "value": 2,
+              "type": "int"
+          },
+          {
+              "name": "shrink_axis_mask",
+              "value": 0,
+              "type": "int"
+          }
+        ]
       }
   ]
   

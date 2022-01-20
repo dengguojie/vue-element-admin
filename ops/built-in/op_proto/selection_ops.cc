@@ -1726,12 +1726,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
 
   size_t dim_num = shape.GetDimNum();
 
-  if (dim_num == 0) {
-    std::string err_msg = GetParamOutRangeErrMsg("input x's dimnum", ConcatString("[", DIM_SIZE1, ", ", DIM_SIZE8, "]"),  ConcatString(dim_num));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
   OP_LOGD(op.GetName().c_str(), "begin_list:%s", to_string(slice_params.begin_list).c_str());
   OP_LOGD(op.GetName().c_str(), "end_list:%s", to_string(slice_params.end_list).c_str());
   OP_LOGD(op.GetName().c_str(), "stride_list:%s", to_string(slice_params.stride_list).c_str());
