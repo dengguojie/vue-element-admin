@@ -145,6 +145,12 @@ Status SpacetobatchConv2dBatchtospacePass::CheckNodes(ge::NodePtr spacetobatchNo
     FUSION_PASS_CHECK(spacetobatchNode->GetOutDataNodes().size() > 1,
         OP_LOGI(fusedOpType_.c_str(), "spacetobatch output multi nodes, no fusion."),
         return NOT_CHANGED);
+    FUSION_PASS_CHECK(batchtospaceNode->GetOutDataNodes().size() > 1,
+        OP_LOGI(fusedOpType_.c_str(), "batchtospace output multi nodes, no fusion."),
+        return NOT_CHANGED);
+    FUSION_PASS_CHECK(conv2dNode->GetOutDataNodes().size() > 1,
+        OP_LOGI(fusedOpType_.c_str(), "conv output multi nodes, no fusion."),
+        return NOT_CHANGED);
 
     FUSION_PASS_CHECK(spacetobatchNode->GetOpDesc() == nullptr,
         OP_LOGE(fusedOpType_.c_str(), "spacetobatch desc is null, fusion failed."),
@@ -168,8 +174,8 @@ Status SpacetobatchConv2dBatchtospacePass::CheckCrops(ge::NodePtr batchtospaceNo
 {
     auto batchWeight = ge::OpDescUtils::GetWeights(batchtospaceNode);
     FUSION_PASS_CHECK(batchWeight.size() != 2,
-        OP_LOGE(fusedOpType_.c_str(), "invalid batchtospace weight %zu, fusion failed.", batchWeight.size()),
-        return PARAM_INVALID);
+        OP_LOGI(fusedOpType_.c_str(), "batchtospace weight %zu, no fusion.", batchWeight.size()),
+        return NOT_CHANGED);
 
     auto cropsPtr = batchWeight[1];
     FUSION_PASS_CHECK(cropsPtr == nullptr,
@@ -260,8 +266,8 @@ Status SpacetobatchConv2dBatchtospacePass::CheckConvPads(ge::ConstGeTensorPtr sp
         OP_LOGE(fusedOpType_.c_str(), "invalid conv pads, fusion failed."),
         return PARAM_INVALID);
     for (auto& pad : convPads) {
-        FUSION_PASS_CHECK(pad < 0,
-            OP_LOGI(fusedOpType_.c_str(), "conv pad < 0, no fusion."), return NOT_CHANGED);
+        FUSION_PASS_CHECK(pad != 0,
+            OP_LOGI(fusedOpType_.c_str(), "conv pad not 0, no fusion."), return NOT_CHANGED);
     }
 
     for (size_t i = 0; i < convPads.size(); ++i) {
@@ -333,8 +339,8 @@ Status SpacetobatchConv2dBatchtospacePass::UpdateConv2dAttr(ge::NodePtr spaceNod
 
     auto spaceWeight = ge::OpDescUtils::GetWeights(spaceNode);
     FUSION_PASS_CHECK(spaceWeight.size() != SPACETOBATCH_CONST_INPUT,
-        OP_LOGE(fusedOpType_.c_str(), "space invalid weight size %zu, fusion failed.", spaceWeight.size()),
-        return PARAM_INVALID);
+        OP_LOGI(fusedOpType_.c_str(), "spacetobatch weight size %zu, no fusion.", spaceWeight.size()),
+        return NOT_CHANGED);
 
     std::vector<int64_t> dilations;
     ret = CheckConvDilations(spaceWeight[SPACETOBATCH_BLOCK], convDesc, dilations);

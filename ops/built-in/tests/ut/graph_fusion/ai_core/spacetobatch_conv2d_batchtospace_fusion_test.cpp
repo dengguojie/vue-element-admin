@@ -503,14 +503,14 @@ TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_t
             findBatchtospace = true;
         }
     }
-    EXPECT_EQ(findSpacetobatch, false);
-    EXPECT_EQ(findBatchtospace, false);
+    EXPECT_EQ(findSpacetobatch, true);
+    EXPECT_EQ(findBatchtospace, true);
 }
 
 TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_test_block)
 {
     ge::ComputeGraphPtr computeGraph;
-    BuildGraphSpaceConvPads(computeGraph);
+    BuildGraphBlock(computeGraph);
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
     bool findSpacetobatch = false;
