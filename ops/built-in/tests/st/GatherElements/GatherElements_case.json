@@ -1,0 +1,990 @@
+[
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                64
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_64_64_float32_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int8",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                64
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          64,
+          64
+        ],
+        "ori_shape": [
+          64,
+          64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_64_64_int8_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            25600
+        ],
+        "ori_shape": [
+            25600
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            10
+        ],
+        "ori_shape": [
+            10
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                25600
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            10
+        ],
+        "ori_shape": [
+            10
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_25600_10_float16_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            31263
+        ],
+        "ori_shape": [
+            31263
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            13
+        ],
+        "ori_shape": [
+            13
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                31263
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            13
+        ],
+        "ori_shape": [
+            13
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_31263_13_int32_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            54314
+        ],
+        "ori_shape": [
+            54314
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int64",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            9
+        ],
+        "ori_shape": [
+            9
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                54314
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            9
+        ],
+        "ori_shape": [
+            9
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int64"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_54314_9_int64_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            2,
+            101,
+            2
+        ],
+        "ori_shape": [
+            2,
+            101,
+            2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            2,
+            2,
+            2
+        ],
+        "ori_shape": [
+            2,
+            2,
+            2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int64",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                101
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            2,
+            2,
+            2
+        ],
+        "ori_shape": [
+            2,
+            2,
+            2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_GatherElements_21012_222_float16_int64",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            10,
+            1024
+        ],
+        "ori_shape": [
+            10,
+            1024
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            10,
+            1024
+        ],
+        "ori_shape": [
+            10,
+            1024
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                10
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            10,
+            1024
+        ],
+        "ori_shape": [
+            10,
+            1024
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_10_1024_float32_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            4,
+            4
+        ],
+        "ori_shape": [
+            4,
+            4
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int64",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            4,
+            2
+        ],
+        "ori_shape": [
+            4,
+            2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                4
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            4,
+            2
+        ],
+        "ori_shape": [
+            4,
+            2
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int64"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_GatherElements_44_42_int64_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            135
+        ],
+        "ori_shape": [
+            135
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "uint8",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            15
+        ],
+        "ori_shape": [
+            15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                135
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            15
+        ],
+        "ori_shape": [
+            15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_135_15_uint8_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            15,
+            15,
+            15
+        ],
+        "ori_shape": [
+            15,
+            15,
+            15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            15,
+            15,
+            15
+        ],
+        "ori_shape": [
+            15,
+            15,
+            15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                15
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            15,
+            15,
+            15
+        ],
+        "ori_shape": [
+            15,
+            15,
+            15
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": -2
+      }
+    ],
+    "case_name": "test_GatherElements_15_15_int32_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            64,
+            64
+        ],
+        "ori_shape": [
+            64,
+            64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            10000,
+            64
+        ],
+        "ori_shape": [
+            10000,
+            64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                64
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            10000,
+            64
+        ],
+        "ori_shape": [
+            10000,
+            64
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_GatherElements_64_6410000_int32_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            16,
+            16,
+            3
+        ],
+        "ori_shape": [
+            16,
+            16,
+            3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            16,
+            16,
+            5
+        ],
+        "ori_shape": [
+            16,
+            16,
+            5
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                3
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            16,
+            16,
+            5
+        ],
+        "ori_shape": [
+            16,
+            16,
+            5
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_GatherElements_16_16_3_float16_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  },
+  {
+    "op": "GatherElements",
+    "input_desc": [
+      {
+        "shape": [
+            32,
+            32,
+            3
+        ],
+        "ori_shape": [
+            32,
+            32,
+            3
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "int64",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0.1,
+                10.0
+            ]
+        ]
+      },
+      {
+        "shape": [
+            32,
+            32,
+            1
+        ],
+        "ori_shape": [
+            32,
+            32,
+            1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "index",
+        "type": "int32",
+        "data_distribute": [
+            "uniform"
+        ],
+        "value_range": [
+            [
+                0,
+                3
+            ]
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+            32,
+            32,
+            1
+        ],
+        "ori_shape": [
+            32,
+            32,
+            1
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int64"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_GatherElements_32_32_3_int64_int32",
+    "calc_expect_func_file": "./gather_elements_torch.py:gather_elements_torch"
+  }
+]

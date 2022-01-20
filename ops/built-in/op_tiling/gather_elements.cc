@@ -18,6 +18,9 @@
  * \file gather_v2.cpp
  * \brief tiling function of op
  */
+
+#include <algorithm>
+#include <stdint.h>
 #include <string>
 
 #include <nlohmann/json.hpp>
@@ -29,6 +32,7 @@
 #include "error_log.h"
 
 namespace optiling {
+
 const int64_t BLOCK_SIZE = 32;
 const int64_t PARAMS_CACHED_UB = 100 * 1024;
 const int64_t RESERVED_UB_SIZE = 6 * 1024;
@@ -37,20 +41,10 @@ const int64_t RESERVED_UB_SIZE = 6 * 1024;
 // B: indices larger than the number contained in one block for each core
 // C: remaining indices larger than one block
 
-// A
 const int64_t TILING_MODE_1 = 1;
-// B
-const int64_t TILING_MODE_4 = 4;
-
-//
 const int64_t TILING_MODE_2 = 2;
-// B C
-const int64_t TILING_MODE_5 = 5;
-
-// A B
 const int64_t TILING_MODE_3 = 3;
-// A B C
-const int64_t TILING_MODE_6 = 6;
+const int64_t TILING_MODE_4 = 4;
 
 struct GatherElementsTilingParams {
   int64_t tilingMode;
@@ -67,6 +61,8 @@ struct GatherElementsTilingParams {
   int64_t paramsTotal;
   int64_t remaining_block_remain;
   int64_t remaining_block_num;
+  int64_t param_large_than_indice;
+  int64_t indicesAxis;
 };
 
 void InitGatherElementsParams(GatherElementsTilingParams& params) {
@@ -84,6 +80,8 @@ void InitGatherElementsParams(GatherElementsTilingParams& params) {
   params.paramsTotal = 0;
   params.remaining_block_remain = 0;
   params.remaining_block_num = 0;
+  params.param_large_than_indice = 1;
+  params.indicesAxis = 1;
 }
 
 void SetGatherElementsParams(GatherElementsTilingParams& Params, OpRunInfo& runInfo) {
@@ -102,6 +100,8 @@ void SetGatherElementsParams(GatherElementsTilingParams& Params, OpRunInfo& runI
   ByteBufferPut(runInfo.tiling_data, Params.paramsTotal); // 12
   ByteBufferPut(runInfo.tiling_data, Params.remaining_block_remain); // 13
   ByteBufferPut(runInfo.tiling_data, Params.remaining_block_num); // 14
+  ByteBufferPut(runInfo.tiling_data, Params.param_large_than_indice); // 15
+  ByteBufferPut(runInfo.tiling_data, Params.indicesAxis); // 16
 }
 
 void PrintGatherElementsParams(const GatherElementsTilingParams& params) {
@@ -119,6 +119,8 @@ void PrintGatherElementsParams(const GatherElementsTilingParams& params) {
   GELOGD("op [GatherElementsTiling] : paramsTotal=%d.", params.paramsTotal);
   GELOGD("op [GatherElementsTiling] : remaining_block_remain=%d.", params.remaining_block_remain);
   GELOGD("op [GatherElementsTiling] : remaining_block_num=%d.", params.remaining_block_num);
+  GELOGD("op [GatherElementsTiling] : param_large_than_indice=%d.", params.param_large_than_indice);
+  GELOGD("op [GatherElementsTiling] : indicesAxis=%d.", params.indicesAxis);
 }
 
 bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesShape, std::vector<int64_t> yShape) {
@@ -131,6 +133,7 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesSha
   }
 
   int64_t outputDims = outputShape.size();
+
   if (yDims != outputDims) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : CheckTensorShape, y Shape is invalid.");
@@ -149,9 +152,8 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesSha
 }
 
 bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson, int64_t& coreNum,
-                      int64_t& ubSize, int64_t& l1Size, int64_t& paramsDSize, int64_t& indicesDSize, int64_t& axis) {
+                      int64_t& ubSize, int64_t& paramsDSize, int64_t& indicesDSize, int64_t& axis) {
   using namespace nlohmann;
-
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
@@ -165,12 +167,6 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
-  if (allVars.count("l1_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get l1_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "l1_size");
-    return false;
-  }
-  l1Size = allVars["l1_size"].get<std::int64_t>();
   if (allVars.count("params_dsize") == 0) {
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get params_dsize error");
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
@@ -237,13 +233,13 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
 
   // get compile info
   int64_t ubSize = 0;
-  int64_t l1Size = 0;
   int64_t coreNum = 0;
   int64_t paramsDSize = 0;
   int64_t indicesDSize = 0;
   int64_t axis = 0;
 
-  bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize, axis);
+  bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, paramsDSize, indicesDSize, axis);
+
   if (!flag) {
     OP_LOGE("op[%s] GatherElementsTiling: GetCompileParams error.", opType.c_str());
     return false;
@@ -279,6 +275,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
     }
   }
   runParams.paramsAxis = paramsShape[axis];
+  runParams.indicesAxis = indicesShape[axis];
   if (axis + 1 < paramsDims) {
     for (int i = axis + 1; i < paramsDims; i++) {
       runParams.paramsRow *= paramsShape[i];
@@ -292,6 +289,9 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   int64_t paramsBlockNum = BLOCK_SIZE / paramsDSize;
   int64_t indicesBlockNum = BLOCK_SIZE / indicesDSize;
 
+  runParams.param_large_than_indice = std::max(indicesDSize / paramsDSize, (int64_t)1);
+  int64_t indicesBlockNumLarge = runParams.param_large_than_indice * indicesBlockNum;
+
   runParams.paramsTotal = std::accumulate(paramsShape.begin(), paramsShape.end(), 1, std::multiplies<int64_t>());
   int64_t paramsTotalCeil = (runParams.paramsTotal + paramsBlockNum - 1) / paramsBlockNum * paramsBlockNum;
 
@@ -299,35 +299,24 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
     runParams.indicesNum *= indicesShape[i];
   }
 
-  int64_t halfUbIndicesElem = halfUbSize / indicesDSize;
+  int64_t halfUbIndicesElem = halfUbSize / std::max(indicesDSize, paramsDSize);
 
-  if (runParams.indicesNum >= indicesBlockNum * coreNum){
+  if (runParams.indicesNum >= indicesBlockNumLarge * coreNum) {
     runParams.need_core_num = coreNum;
-    runParams.indices_num_each_core = runParams.indicesNum / runParams.need_core_num;
-    runParams.indices_num_remaining = runParams.indicesNum % runParams.need_core_num;
+    runParams.indices_num_each_core = runParams.indicesNum / runParams.need_core_num / 
+                                                  indicesBlockNumLarge * indicesBlockNumLarge;
+    runParams.indices_num_remaining = runParams.indicesNum - runParams.need_core_num * runParams.indices_num_each_core;
     runParams.indices_loop_num = runParams.indices_num_each_core / halfUbIndicesElem;
     runParams.indices_row_num_once = halfUbIndicesElem;
     runParams.indices_row_num_last = runParams.indices_num_each_core % runParams.indices_row_num_once;
+    runParams.remaining_block_remain = runParams.indices_num_remaining % indicesBlockNumLarge;
+    runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNumLarge;
 
-    if (paramsTotalCeil >= PARAMS_CACHED_UB / paramsDSize){
-      if (indicesBlockNum >= runParams.indices_num_remaining){
-        runParams.tilingMode = TILING_MODE_3;
-      }
-      else {
-        runParams.tilingMode = TILING_MODE_6;
-        runParams.remaining_block_remain = runParams.indices_num_remaining % indicesBlockNum;
-        runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNum;
-      }
+    if (paramsTotalCeil >= PARAMS_CACHED_UB / paramsDSize) {
+      runParams.tilingMode = TILING_MODE_3;
     }
     else {
-      if (indicesBlockNum >= runParams.indices_num_remaining){
-        runParams.tilingMode = TILING_MODE_4;
-      }
-      else {
-        runParams.tilingMode = TILING_MODE_5;
-        runParams.remaining_block_remain = runParams.indices_num_remaining % indicesBlockNum;
-        runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNum;
-      }
+      runParams.tilingMode = TILING_MODE_4;
     }
   }
   else {
@@ -338,7 +327,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
     runParams.indices_row_num_once = 0;
     runParams.indices_row_num_last = runParams.indicesNum;
 
-    if (paramsTotalCeil >= PARAMS_CACHED_UB / paramsDSize){
+    if (paramsTotalCeil >= PARAMS_CACHED_UB / paramsDSize) {
        runParams.tilingMode = TILING_MODE_1;
     }
     else {
@@ -356,7 +345,6 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   workspace.push_back(2147483647);
   runInfo.workspaces = workspace;
   GELOGI("op[%s] tiling run success.", opType.c_str());
-
   return true;
 }
 

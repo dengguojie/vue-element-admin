@@ -1205,29 +1205,59 @@ COMMON_INFER_FUNC_REG(Gather, GatherInferShape);
 // ----------------Gather END-------------------
 
 // --------------------------GatherElements-------------------------
+static bool InferShapeAndTypeGatherElements(Operator& op, const string& paramName,
+                                            const string& indicesName, const string& outputName) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto InputDesc = op_desc->MutableInputDesc(paramName.c_str());
+  auto IndicesDesc = op_desc->MutableInputDesc(indicesName.c_str());
+  auto OutputDecs = op_desc->MutableOutputDesc(outputName.c_str());
+
+  DataType paramType = InputDesc->GetDataType();
+  Format paramFormat = InputDesc->GetFormat();
+  GeShape paramShape = InputDesc->GetShape();
+  GeShape indicesShape = IndicesDesc->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> index_range;
+  IndicesDesc->GetShapeRange(index_range);
+
+  DataType indices_dtype = IndicesDesc->GetDataType();
+
+  if ((indices_dtype != DT_INT32) && (indices_dtype != DT_INT64)) {
+    OP_LOGE("gather_elements", "The indices type is not int32 or int64, please check!");
+    return false;
+  }
+
+  std::vector<int64_t> params_dims = paramShape.GetDims();
+  std::vector<int64_t> indices_dims = indicesShape.GetDims();
+
+  if (params_dims.size() != indices_dims.size()) {
+    OP_LOGE("gather_elements", "input dims not equal indices dims");
+    return false;
+  }
+
+  GeShape output_shape = GeShape(indices_dims);
+  OutputDecs->SetDataType(paramType);
+  OutputDecs->SetFormat(paramFormat);
+  OutputDecs->SetShape(output_shape);
+  OutputDecs->SetShapeRange(index_range);
+
+  return true;
+}
+
 IMPLEMT_COMMON_INFERFUNC(GatherElementsInferShape) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  if (op_info == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
+  if (InferShapeAndTypeGatherElements(op, "x", "index", "y") == false) {
+    OP_LOGE("gather_elements", "gather_elements infer shape failed!");
     return GRAPH_FAILED;
   }
-  auto outputTensordesc = op_info->MutableOutputDesc("y");
-  auto x_desc = op_info->MutableInputDesc("x");
-  auto indices_desc = op_info->MutableInputDesc("index");
-
-  std::vector<std::pair<int64_t, int64_t>> out_range;
-  DataType x_dtype = x_desc->GetDataType();
-  vector<int64_t> indices_shape = indices_desc->MutableShape().GetDims();
-  indices_desc->GetShapeRange(out_range);
-  
-  outputTensordesc->SetShape(GeShape(indices_shape));
-  outputTensordesc->SetShapeRange(out_range);
-  outputTensordesc->SetDataType(x_dtype);
   return GRAPH_SUCCESS;
-  
+}
+
+IMPLEMT_VERIFIER(GatherElements, GatherElementsVerify) {
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(GatherElements, GatherElementsInferShape);
+VERIFY_FUNC_REG(GatherElements, GatherElementsVerify);
 // --------------------------GatherElements END---------------------
 
 // --------------------------GatherD-------------------------

@@ -259,11 +259,12 @@ REG_OP(GatherV2D)
 *@par Third-party framework compatibility
 *Compatible with the PyTorch operator Gather.
 */
-
 REG_OP(GatherElements)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
-    .INPUT(index, TensorType({DT_INT32, DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
+    .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_INT16,DT_INT32,
+    DT_INT64,DT_UINT8,DT_UINT16,DT_UINT32,DT_UINT64}))
+    .INPUT(index, TensorType({DT_INT32,DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT8,DT_INT16,DT_INT32,
+    DT_INT64,DT_UINT8,DT_UINT16,DT_UINT32,DT_UINT64}))
     .ATTR(dim, Int, 0)
     .OP_END_FACTORY_REG(GatherElements)
 
