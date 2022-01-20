@@ -572,3 +572,237 @@ TEST_F(padv3d_avgpoolv2_fusion_test, padv3d_avgpoolv2_fusion_test_10) {
     }
     EXPECT_EQ(findOp, true);
 }
+
+TEST_F(padv3d_avgpoolv2_fusion_test, padv3d_avgpoolv2_fusion_test_11) {
+    ge::Graph graph("padv3d_avgpoolv2_fusion_test");
+    std::vector<int64_t> ksize = {1, 1, 1, 1};
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    std::vector<int64_t> pads = {0, 0, 0, 0};
+    std::string padding = "VALID";
+    std::string data_format = "NCHW";
+    auto data0 = op::Data().set_attr_index(0);
+    std::vector<int64_t> pad_v3_paddings(8, 0);
+    std::vector<int64_t> dims = {8};
+    ge::Shape shape(dims);
+    ge::TensorDesc desc(shape, ge::FORMAT_ND, ge::DT_INT64);
+    ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(pad_v3_paddings.data()),
+                      pad_v3_paddings.size() * sizeof(int64_t));
+    auto const_op = op::Const("cost").set_attr_value(tensor);
+    auto pad = op::PadV3("padd")
+                        .set_input_x(data0)
+                        .set_input_paddings(const_op)
+                        .set_attr_paddings_contiguous(false);
+    auto input_desc = pad.GetInputDesc("paddings");
+    input_desc.SetDataType(ge::DT_INT64);
+    pad.UpdateInputDesc("paddings", input_desc);
+
+    auto avgpool = op::AvgPoolV2("AvgPoolV2")
+                        .set_input_x(pad)
+                        .set_attr_ksize(ksize)
+                        .set_attr_strides(strides)
+                        .set_attr_padding_mode(padding)
+                        .set_attr_pads(pads)
+                        .set_attr_data_format(data_format);
+
+    std::vector<int64_t> data0_vec{1, 112, -1, 3};
+    ge::Shape data0_shape(data0_vec);
+    ge::TensorDesc data0_desc(data0_shape, FORMAT_NCHW,  DT_FLOAT);
+    data0.update_input_desc_x(data0_desc);
+    data0.update_output_desc_y(data0_desc);
+
+    pad.update_input_desc_x(data0_desc);
+    pad.update_output_desc_y(data0_desc);
+    avgpool.update_input_desc_x(data0_desc);
+    avgpool.update_output_desc_y(data0_desc);
+    std::vector<Operator> inputs{data0};
+    std::vector<Operator> outputs{avgpool};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    // fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+    fe::Status res = fe::FusionPassTestUtils::RunGraphFusionPass("Padv3dAvgpoolFusionPass",
+                                                                 fe::BUILT_IN_GRAPH_PASS,
+                                                                 *compute_graph_ptr);
+    EXPECT_EQ(res, fe::NOT_CHANGED);
+}
+
+TEST_F(padv3d_avgpoolv2_fusion_test, padv3d_avgpoolv2_fusion_test_12) {
+    ge::Graph graph("padv3d_avgpoolv2_fusion_test");
+    std::vector<int64_t> ksize = {1, 1, 1, 1};
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    std::vector<int64_t> pads = {0, 0, 0, 0};
+    std::string padding = "VALID";
+    std::string data_format = "NCHW";
+    auto data0 = op::Data().set_attr_index(0);
+    std::vector<int64_t> pad_v3_paddings(8, 0);
+    std::vector<int64_t> dims = {8};
+    ge::Shape shape(dims);
+    ge::TensorDesc desc(shape, ge::FORMAT_ND, ge::DT_INT64);
+    ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(pad_v3_paddings.data()),
+                      pad_v3_paddings.size() * sizeof(int64_t));
+    auto const_op = op::Const("cost").set_attr_value(tensor);
+    auto pad = op::PadV3("padd")
+                        .set_input_x(data0)
+                        .set_input_paddings(const_op)
+                        .set_attr_paddings_contiguous(false);
+    auto input_desc = pad.GetInputDesc("paddings");
+    input_desc.SetDataType(ge::DT_INT64);
+    pad.UpdateInputDesc("paddings", input_desc);
+
+    auto avgpool = op::AvgPoolV2("AvgPoolV2")
+                        .set_input_x(pad)
+                        .set_attr_ksize(ksize)
+                        .set_attr_strides(strides)
+                        .set_attr_padding_mode(padding)
+                        .set_attr_pads(pads)
+                        .set_attr_data_format(data_format);
+
+    std::vector<int64_t> data0_vec{1, 3, 112, 112};
+    ge::Shape data0_shape(data0_vec);
+    ge::TensorDesc data0_desc(data0_shape, FORMAT_NCHW,  DT_FLOAT);
+    data0.update_input_desc_x(data0_desc);
+    data0.update_output_desc_y(data0_desc);
+
+    pad.update_input_desc_x(data0_desc);
+    pad.update_output_desc_y(data0_desc);
+    avgpool.update_input_desc_x(data0_desc);
+    avgpool.update_output_desc_y(data0_desc);
+    std::vector<Operator> inputs{data0};
+    std::vector<Operator> outputs{avgpool};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    // fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+    bool findOp = false;
+
+    fe::FusionPassTestUtils::RunGraphFusionPass("Padv3dAvgpoolFusionPass",
+                                                fe::BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+
+    findOp = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AvgPoolV2") {
+            findOp = true;
+        }
+    }
+    EXPECT_EQ(findOp, true);
+}
+
+TEST_F(padv3d_avgpoolv2_fusion_test, padv3d_avgpoolv2_fusion_test_13) {
+    ge::Graph graph("padv3d_avgpoolv2_fusion_test");
+    std::vector<int64_t> ksize = {1, 1, 1, 1};
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    std::vector<int64_t> pads = {0, 0, 0, 0};
+    std::string padding = "VALID";
+    std::string data_format = "NHWC";
+    auto data0 = op::Data().set_attr_index(0);
+    std::vector<int64_t> pad_v3_paddings(8, 0);
+    std::vector<int64_t> dims = {8};
+    ge::Shape shape(dims);
+    ge::TensorDesc desc(shape, ge::FORMAT_ND, ge::DT_INT64);
+    ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(pad_v3_paddings.data()),
+                      pad_v3_paddings.size() * sizeof(int64_t));
+    auto const_op = op::Const("cost").set_attr_value(tensor);
+    auto pad = op::PadV3("padd")
+                        .set_input_x(data0)
+                        .set_input_paddings(const_op)
+                        .set_attr_paddings_contiguous(false);
+    auto input_desc = pad.GetInputDesc("paddings");
+    input_desc.SetDataType(ge::DT_INT64);
+    pad.UpdateInputDesc("paddings", input_desc);
+
+    auto avgpool = op::AvgPoolV2("AvgPoolV2")
+                        .set_input_x(pad)
+                        .set_attr_ksize(ksize)
+                        .set_attr_strides(strides)
+                        .set_attr_padding_mode(padding)
+                        .set_attr_pads(pads)
+                        .set_attr_data_format(data_format);
+
+    std::vector<int64_t> data0_vec{1, 3, 112, 112};
+    ge::Shape data0_shape(data0_vec);
+    ge::TensorDesc data0_desc(data0_shape, FORMAT_NCHW,  DT_FLOAT);
+    data0.update_input_desc_x(data0_desc);
+    data0.update_output_desc_y(data0_desc);
+
+    pad.update_input_desc_x(data0_desc);
+    pad.update_output_desc_y(data0_desc);
+    avgpool.update_input_desc_x(data0_desc);
+    avgpool.update_output_desc_y(data0_desc);
+    std::vector<Operator> inputs{data0};
+    std::vector<Operator> outputs{avgpool};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    // fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+    bool findOp = false;
+
+    fe::FusionPassTestUtils::RunGraphFusionPass("Padv3dAvgpoolFusionPass",
+                                                fe::BUILT_IN_GRAPH_PASS,
+                                                *compute_graph_ptr);
+
+    findOp = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AvgPoolV2") {
+            findOp = true;
+        }
+    }
+    EXPECT_EQ(findOp, true);
+}
+
+TEST_F(padv3d_avgpoolv2_fusion_test, padv3d_avgpoolv2_fusion_test_14) {
+    ge::Graph graph("padv3d_avgpoolv2_fusion_test");
+    std::vector<int64_t> ksize = {1, 1, 1};
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    std::vector<int64_t> pads = {0, 0, 0, 0};
+    std::string padding = "VALID";
+    std::string data_format = "NCHW";
+    auto data0 = op::Data().set_attr_index(0);
+    std::vector<int64_t> pad_v3_paddings(8, 0);
+    std::vector<int64_t> dims = {8};
+    ge::Shape shape(dims);
+    ge::TensorDesc desc(shape, ge::FORMAT_ND, ge::DT_INT64);
+    ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(pad_v3_paddings.data()),
+                      pad_v3_paddings.size() * sizeof(int64_t));
+    auto const_op = op::Const("cost").set_attr_value(tensor);
+    auto pad = op::PadV3("padd")
+                        .set_input_x(data0)
+                        .set_input_paddings(const_op)
+                        .set_attr_paddings_contiguous(false);
+    auto input_desc = pad.GetInputDesc("paddings");
+    input_desc.SetDataType(ge::DT_INT64);
+    pad.UpdateInputDesc("paddings", input_desc);
+
+    auto avgpool = op::AvgPoolV2("AvgPoolV2")
+                        .set_input_x(pad)
+                        .set_attr_ksize(ksize)
+                        .set_attr_strides(strides)
+                        .set_attr_padding_mode(padding)
+                        .set_attr_pads(pads)
+                        .set_attr_data_format(data_format);
+
+    std::vector<int64_t> data0_vec{1, 112, 112, 3};
+    ge::Shape data0_shape(data0_vec);
+    ge::TensorDesc data0_desc(data0_shape, FORMAT_NCHW,  DT_FLOAT);
+    data0.update_input_desc_x(data0_desc);
+    data0.update_output_desc_y(data0_desc);
+
+    pad.update_input_desc_x(data0_desc);
+    pad.update_output_desc_y(data0_desc);
+    avgpool.update_input_desc_x(data0_desc);
+    avgpool.update_output_desc_y(data0_desc);
+    std::vector<Operator> inputs{data0};
+    std::vector<Operator> outputs{avgpool};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    // fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+    fe::Status res = fe::FusionPassTestUtils::RunGraphFusionPass("Padv3dAvgpoolFusionPass",
+                                                                 fe::BUILT_IN_GRAPH_PASS,
+                                                                 *compute_graph_ptr);
+    EXPECT_EQ(res, fe::NOT_CHANGED);
+}

@@ -33,6 +33,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -61,8 +62,9 @@ vector<FusionPattern*> Padv3dAvgpoolFusionPass::DefinePatterns() {
 }
 
 Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
-                                        Mapping& mapping,
-                                        vector<ge::NodePtr> &fusionNodes) {
+                                       Mapping& mapping,
+                                       vector<ge::NodePtr> &fusionNodes)
+{
   // get all nodes
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADV3D, mapping);
   ge::NodePtr pooling_node = GetNodeFromMapping(PATTERN_POOLING, mapping);
@@ -70,7 +72,7 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
                     "pad_node is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(pooling_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pooling_node is null, fusion failed."), return PARAM_INVALID);
-
+    NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
   // check output link
   FUSION_PASS_CHECK(pad_node->GetOutDataAnchor(0)->GetPeerAnchorsSize() != 1,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "PADV3D_node output size is [%d], which not equal to 1.",
