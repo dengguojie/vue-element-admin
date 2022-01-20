@@ -211,6 +211,13 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(domi::OpRegistry::Instance()->GetImplyType(l2loss_node->GetType()) == domi::ImplyType::CCE,
                     OP_LOGW(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", l2loss_node->GetName().c_str()),
                     return NOT_CHANGED);
+                  
+  // add cycle detection to check if there is a cycle after fusion
+  std::vector<NodePtr> mul_addn_l2loss_fusion_nodes = {addn_node, mul_node, l2loss_node};
+  const std::vector<std::vector<NodePtr>> fusion_nodes = {mul_addn_l2loss_fusion_nodes};
+  FUSION_PASS_CHECK(CycleDetection(graph, fusion_nodes),
+                    OP_LOGW(kFusedOpType.c_str(), "There will be a cycle after fusion."), return NOT_CHANGED);
+
   int mul_index{0};
   bool find_addn{false};
   auto out_dataanchor_list = mul_node->GetAllOutDataAnchors();
@@ -230,12 +237,6 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   }
   FUSION_PASS_CHECK(!find_addn, OP_LOGW(kFusedOpType.c_str(), "The output node of Mul node is not AddN."),
                     return NOT_CHANGED);
-
-  // add cycle detection to check if there is a cycle after fusion
-  std::vector<NodePtr> mul_addn_l2loss_fusion_nodes = {addn_node, mul_node, l2loss_node};
-  const std::vector<std::vector<NodePtr>> fusion_nodes = {mul_addn_l2loss_fusion_nodes};
-  FUSION_PASS_CHECK(CycleDetection(graph, fusion_nodes),
-                    OP_LOGW(kFusedOpType.c_str(), "There will be a cycle after fusion."), return NOT_CHANGED);
   // add control anchor between input node of Mul and out node of Mul.
   for (auto input_node_mul : mul_node->GetInAllNodes()) {
     for (auto mul_out_control_node : mul_node->GetOutControlNodes()) {
