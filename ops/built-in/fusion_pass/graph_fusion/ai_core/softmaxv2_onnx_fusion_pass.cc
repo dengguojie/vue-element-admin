@@ -93,6 +93,9 @@ Status ASoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   std::vector<int32_t> axes;
   ge::AttrUtils::GetListInt(softmax_opdesc, "axes", axes);
   unsigned int axis = axes[0] > -1 ? axes[0] : axes[0] + dims.size();
+  FUSION_PASS_CHECK(axis == (dims.size() - 1),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "It does not need insert reshape."),
+                    return NOT_CHANGED);
   int64_t dim_1 = 1;
   int64_t dim_2 = 1;
   for (size_t idx = 0; idx < dims.size(); idx++) {
