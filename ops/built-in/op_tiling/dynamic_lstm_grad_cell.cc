@@ -22,7 +22,7 @@
 using namespace std;
 
 namespace optiling {
-static const int INPUT_SIZE = 12;
+static const int INPUT_SIZE = 11;
 static map<std::string, int64_t> TYPE_SIZE = {
     {
         "float16", 2

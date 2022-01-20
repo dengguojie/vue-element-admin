@@ -151,11 +151,7 @@ class LstmCellGradInput:
         """
         if sorted(self.gate_order) != sorted('ijfo'):
             raise RuntimeError('gate_order illegal')
-        shape_list = (self.c_shape, self.dht_shape, self.dct_shape,
-                      self.it_shape, self.jt_shape, self.ft_shape,
-                      self.ot_shape, self.tanh_ct_shape)
-        if self.dht_out_shape is not None:
-            shape_list += (self.dht_out_shape,)
+        shape_list = (self.c_shape, self.it_shape, self.jt_shape, self.ft_shape, self.ot_shape, self.tanh_ct_shape)
         no_t_shape = self.c_shape[1:]
         for shape in shape_list:
             para_check.check_shape(shape, min_rank=4, max_rank=5, param_name="dht_out")
@@ -786,14 +782,23 @@ class LstmCellGrad(LstmCellGradInput):
                 with self.tik_instance.if_scope(index0 < self.use_core_num):
                     self.compute_each_core(index0, index1, t_offset)
 
-        if self.dht_out_shape is not None:
+        if self.dht_out_shape is not None and self.mask_shape is not None:
             input_list = (self.gm_init_c, self.gm_c, self.gm_dht_out, self.gm_dht, self.gm_dct,
+                          self.gm_it, self.gm_jt, self.gm_ft, self.gm_ot,
+                          self.gm_tanh_ct, self.gm_t_state, self.gm_mask)
+        elif self.dht_out_shape is not None and self.mask_shape is None:
+            input_list = (self.gm_init_c, self.gm_c, self.gm_dht_out, self.gm_dht, self.gm_dct,
+                          self.gm_it, self.gm_jt, self.gm_ft, self.gm_ot,
+                          self.gm_tanh_ct, self.gm_t_state)
+        elif self.dht_out_shape is None and self.mask_shape is not None:
+            input_list = (self.gm_init_c, self.gm_c, self.gm_dht, self.gm_dct,
                           self.gm_it, self.gm_jt, self.gm_ft, self.gm_ot,
                           self.gm_tanh_ct, self.gm_t_state, self.gm_mask)
         else:
             input_list = (self.gm_init_c, self.gm_c, self.gm_dht, self.gm_dct,
                           self.gm_it, self.gm_jt, self.gm_ft, self.gm_ot,
-                          self.gm_tanh_ct, self.gm_t_state, self.gm_mask)
+                          self.gm_tanh_ct, self.gm_t_state)
+
         add_compile_info("vars", {"device_aicore_num": self.aicore_num,
                                   "ub_size": tbe_platform.get_soc_spec(tbe_platform.UB_SIZE),
                                   "mask_input": 0 if self.mask_shape is None else 1})

@@ -155,7 +155,7 @@ namespace fe {
 
     ge::NodePtr AddDxPadNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
                              bool &failStatus);
-
+    ge::OpDescPtr AddCastNode(std::string castNodeName, ge::NodePtr dynamicRNNGradNode, bool& failStatus);
     ge::OpDescPtr
     AddTransposeToRNNNode(std::string transposeNodeName, ge::NodePtr dynamicRNNGradNode, bool &failStatus);
 
@@ -171,7 +171,7 @@ namespace fe {
     int64_t hidden_nz_size = 0;
     int64_t batch_start = 1;
     int64_t batch_end = 32;
-
+    bool hasSeqLength = false;
     ge::NodePtr reshapeInitC = nullptr;
     ge::NodePtr reshapeInitH = nullptr;
     ge::NodePtr reshapeDh = nullptr;
