@@ -62,6 +62,7 @@ def get_op_support_info(input_x,
     """
     format_a = input_x.get("format")
     format_b = input_y.get("format")
+    format_out = output_z.get("format")
     a_shape = input_x.get("shape")
     b_shape = input_y.get("shape")
     dtype_b = input_y.get("dtype")
@@ -112,14 +113,13 @@ def get_op_support_info(input_x,
              util_select_op_base.SplitOutput([0, [i]])]
         )
 
-    out_m_axis = batch_len_a + 1 if format_a == "FRACTAL_NZ" else batch_len_a
+    out_m_axis = batch_len_a + 1 if format_out == "FRACTAL_NZ" else batch_len_a
     axis_split_matrix_a = [
         [util_select_op_base.SplitInput(m_split_list),
          util_select_op_base.SplitOutput([0, [out_m_axis]])]
     ]
 
-    out_n_axis = batch_len_a if format_b in (
-        "FRACTAL_NZ", "FRACTAL_Z") else batch_len_a + 1
+    out_n_axis = batch_len_a if format_out == "FRACTAL_NZ" else batch_len_a + 1
     axis_split_matrix_b = [
         [util_select_op_base.SplitInput(*n_split_list),
          util_select_op_base.SplitOutput([0, [out_n_axis]])]
@@ -473,6 +473,9 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z=None, trans_a=Fal
     batch_shape_b = ori_shape_y[:-2] if len(ori_shape_y) > 2 else []
     batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else []
 
+    output_format = output_z.get("format")
+    output_format = "ND" if output_format == "NHWC" else output_format
+
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,
@@ -484,6 +487,7 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z=None, trans_a=Fal
         "batch_shape_a": batch_shape_a,
         "batch_shape_b": batch_shape_b,
         "batch_shape_out": batch_shape_out,
+        "format_out": output_format,
         "op_type": "BatchMatMul"
     }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
@@ -548,6 +552,9 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z=None, trans_
     ori_shape_out = output_z.get("ori_shape")
     batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else []
 
+    output_format = output_z.get("format")
+    output_format = "ND" if output_format == "NHWC" else output_format
+
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,
@@ -559,6 +566,7 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z=None, trans_
         "batch_shape_out": batch_shape_out,
         "batch_shape_a": batch_shape_a,
         "batch_shape_b": batch_shape_b,
+        "format_out": output_format,
         "op_type": "BatchMatMul"
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)

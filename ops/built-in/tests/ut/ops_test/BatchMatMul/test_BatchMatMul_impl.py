@@ -252,24 +252,39 @@ for fusion_case in batchmatmul_ut_fusion_case:
 def test_split_batch_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
-    get_op_support_info(x1, x2, trans_a=True)
+    output_z = {"format": "FRACTAL_NZ"}
+    get_op_support_info(x1, x2, output_z=output_z, trans_a=True)
 
 def test_split_batch_matmul_1(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
-    get_op_support_info(x1, x2, trans_b=True)
+    output_z = {"format": "ND"}
+    get_op_support_info(x1, x2, output_z=output_z, trans_b=True)
 
 def test_split_batch_matmul_2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
-    get_op_support_info(x1, x2,bias=True)
+    output_z = {"format": "FRACTAL_NZ"}
+    get_op_support_info(x1, x2, output_z=output_z, bias=True)
     x3 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x4 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
-    get_op_support_info(x3, x4)
+    output_z = {"format": "ND"}
+    get_op_support_info(x3, x4, output_z=output_z)
+
+def test_split_batch_matmul_3(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    output_z = {"format": "ND"}
+    get_op_support_info(x1, x2, output_z=output_z, bias=True)
+    x3 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
+    x4 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
+    output_z = {"format": "FRACTAL_NZ"}
+    get_op_support_info(x3, x4, output_z=output_z)
 
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_1)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_2)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_3)
 
 def test_batchmatmul_confusion_transpose_910(test_arg):
     te_set_version("Ascend910")

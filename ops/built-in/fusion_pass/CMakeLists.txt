@@ -105,6 +105,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_dropout_do_mask_v3_d_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_dequant_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_requant_pass.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_pooling_quant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv_clipByValue_fusion_pass.cc

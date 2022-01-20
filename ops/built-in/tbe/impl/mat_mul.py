@@ -246,6 +246,7 @@ def get_op_support_info(input_x1: dict,
     """
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
+    format_out = output_y.get("format")
     dtype_b = input_x2.get("dtype")
     if format_a == 'FRACTAL_NZ':
         trans_a = not trans_a
@@ -276,28 +277,15 @@ def get_op_support_info(input_x1: dict,
         axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
                             util_select_op_base.ReduceOutput([0, 1, False])]]
 
-    if format_a == "FRACTAL_NZ":
-        axis_split_matrix_a = [
-            [util_select_op_base.SplitInput(m_split_list),
-             util_select_op_base.SplitOutput([0, [1]])],
-        ]
-    else:
-        axis_split_matrix_a = [
-            [util_select_op_base.SplitInput(m_split_list),
-             util_select_op_base.SplitOutput([0, [0]])],
-        ]
-
-    # cut n
-    if format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
-        axis_split_matrix_b = [
-            [util_select_op_base.SplitInput(*n_split_list),
-             util_select_op_base.SplitOutput([0, [0]])],
-        ]
-    else:
-        axis_split_matrix_b = [
-            [util_select_op_base.SplitInput(*n_split_list),
-             util_select_op_base.SplitOutput([0, [1]])],
-        ]
+    out_m_idx, out_n_idx = (1, 0) if format_out == "FRACTAL_NZ" else (0, 1)
+    axis_split_matrix_a = [
+        [util_select_op_base.SplitInput(m_split_list),
+         util_select_op_base.SplitOutput([0, [out_m_idx]])],
+    ]
+    axis_split_matrix_b = [
+        [util_select_op_base.SplitInput(*n_split_list),
+         util_select_op_base.SplitOutput([0, [out_n_idx]])],
+    ]
 
     axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
     min_l1space = _cal_min_l1space(dtype_b)

@@ -278,7 +278,14 @@ ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_2)
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}
-    get_op_support_info(x1, x2, None)
+    output_y = {"format": "FRACTAL_NZ"}
+    get_op_support_info(x1, x2, None, output_y=output_y)
+
+def test_split_matmul_1(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}
+    output_y = {"format": "ND"}
+    get_op_support_info(x1, x2, None, output_y=output_y)
 
 def test_op_select_format_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
@@ -298,6 +305,7 @@ def test_op_select_format_matmul_2(test_arg):
     op_select_format(x1, x2, bias, impl_mode="keep_bias_fp32")
 
 ut_case.add_cust_test_func(test_func=test_split_matmul)
+ut_case.add_cust_test_func(test_func=test_split_matmul_1)
 ut_case.add_cust_test_func(test_func=test_op_select_format_matmul)
 ut_case.add_cust_test_func(test_func=test_op_select_format_matmul_1)
 ut_case.add_cust_test_func(test_func=test_op_select_format_matmul_2)

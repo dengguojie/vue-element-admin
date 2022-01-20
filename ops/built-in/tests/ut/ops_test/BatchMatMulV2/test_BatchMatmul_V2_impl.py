@@ -264,15 +264,29 @@ ut_case.add_case(["Ascend910A"], case19)
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
-    get_op_support_info(x1, x2, trans_a=True)
+    output_z = {"format": "FRACTAL_NZ"}
+    get_op_support_info(x1, x2, output_z=output_z, trans_a=True)
 
 def test_split_batch_matmul_v2_1(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
-    get_op_support_info(x1, x2, trans_b=True)
+    output_z = {"format": "ND"}
+    get_op_support_info(x1, x2, output_z=output_z, trans_b=True)
+
+def test_split_batch_matmul_v2_2(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    output_z = {"format": "ND"}
+
+def test_split_batch_matmul_v2_3(test_arg):
+    x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
+    x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
+    output_z = {"format": "FRACTAL_NZ"}
+
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_1)
-
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_2)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_3)
 
 def test_op_check_supported(test_arg):
     def _test_supported(case):

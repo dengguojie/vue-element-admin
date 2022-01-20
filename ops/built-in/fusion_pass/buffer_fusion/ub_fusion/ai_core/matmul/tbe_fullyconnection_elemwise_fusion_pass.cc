@@ -288,7 +288,10 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
                                                             vector<ge::NodePtr> &fusionNodes) {
   OP_LOGD("Begin to do TbeFullyconnectionElemwiseFusionPass!");
   fusionNodes = GetMatchedNodes(mapping);
-
+  if (fusionNodes.size() == 1) {
+    fusionNodes.clear();
+    return SUCCESS;
+  }
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
   Status ret = CheckDynamicMode(matmulNodes, fusionNodes);
