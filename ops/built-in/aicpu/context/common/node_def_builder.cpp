@@ -130,13 +130,6 @@ NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<int64_t
 	return *this;
 }
 
-NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<std::vector<int64_t>> &value) {
-	auto attr = CpuKernelUtils::CreateAttrValue();
-	attr->SetListListInt(value);
-	nodeDef_->AddAttrs(name, attr.get());
-	return *this;
-}
-
 NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<float> &value) {
 	auto attr = CpuKernelUtils::CreateAttrValue();
 	attr->SetListFloat(value);

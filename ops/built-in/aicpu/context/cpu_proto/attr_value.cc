@@ -68,13 +68,6 @@ std::vector<int64_t> AttrValue::GetListInt() const {
 }
 
 /*
- * get int list list value of attr.
- */
-std::vector<std::vector<int64_t>> AttrValue::GetListListInt() const {
-  return impl_->GetListListInt();
-}
-
-/*
  * attr add int value to list.
  */
 void AttrValue::AddListInt(int64_t i) { impl_->AddListInt(i); }
@@ -94,13 +87,6 @@ void AttrValue::SetInt(int64_t i) { impl_->SetInt(i); }
  */
 void AttrValue::SetListInt(const std::vector<int64_t> &list) {
   impl_->SetListInt(list);
-}
-
-/*
- * set int list list value to attr.
- */
-void AttrValue::SetListListInt(const std::vector<std::vector<int64_t>> &listlist) {
-  impl_->SetListListInt(listlist);
 }
 
 /*
