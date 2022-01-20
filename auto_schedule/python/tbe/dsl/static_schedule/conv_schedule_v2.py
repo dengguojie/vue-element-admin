@@ -849,6 +849,8 @@ class InnerBatch:
                 err_man.raise_err_specific("conv2d", "innerbatch case must full load M.")
             if batch_cl0 * batch_dim > batch:
                 err_man.raise_err_specific("conv2d", "innerbatch batch_cl0*batch_dim cannot be greater than batch.")
+
+
 class L0aLoad2d:
     """
     class of fmap load2d optimization.
@@ -1671,7 +1673,8 @@ class Conv2dSchedule:
 
         res_go, res_gi = sch[res].split(res_g, nparts=group_dim)
 
-        res_nio, res_nii = sch[res].split(res_ni, self._inner_batch.config_innerbatch_axis(batch_cl0, batch_al1))
+        batch_factor = self._inner_batch.config_innerbatch_axis(batch_al1, batch_cl0)
+        res_nio, res_nii = sch[res].split(res_ni, batch_factor)
 
         if group_cl0 == 1 and multi_bl0_group:
             res_gio, res_gii = sch[res].split(res_gi, factor=group_bl0)
