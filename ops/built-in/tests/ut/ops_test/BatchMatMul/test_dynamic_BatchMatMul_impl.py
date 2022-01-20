@@ -29,10 +29,10 @@ matmul_case = [
 
 matmul_ND_case = [
     (((32, 2147483647),), (49, 112), (49, 112), (113, 240),"float16", "float16", "ND",False, False, False, True, "dynamic_batch_matmul_ND_format_0"),
-    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_ND_format_1"),
-    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, False, False, True, "dynamic_matmul_ND_format_1"),
-    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, True, False, True, "dynamic_matmul_ND_format_1"),
-    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, True, False, True, "dynamic_matmul_ND_format_1"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, False, False, True, "dynamic_matmul_ND_format_FFFT"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, False, False, True, "dynamic_matmul_ND_format_TFFT"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", False, True, False, True, "dynamic_matmul_ND_format_FTFT"),
+    (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, True, False, True, "dynamic_matmul_ND_format_TTFT"),
 ]
 
 matmul_none_range_case = [
