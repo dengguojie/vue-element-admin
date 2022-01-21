@@ -94,6 +94,7 @@ set(_op_proto_srcs
   ragged_conversion_ops.cc
   ragged_math_ops.cc
   random_ops.cc
+  randomdsa_ops.cc
   reduce_ops.cc
   reduction_ops.cc
   resource_variable_ops.cc
