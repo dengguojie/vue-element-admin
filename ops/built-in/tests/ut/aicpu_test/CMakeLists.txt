@@ -114,6 +114,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/random_gamma.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/scale_and_translate.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sinh.cc
@@ -203,6 +204,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
   ${CPU_KERNELS_DIR}/utils/kernel_util.cc
   ${CPU_KERNELS_DIR}/utils/range_sampler.cc
+  ${CPU_KERNELS_DIR}/utils/sampling_kernels.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
 )
@@ -368,6 +370,8 @@ set(_cpu_kernels_ut_files
   testcase/rightshift/src/rightshift_utest.cpp
   testcase/round/src/round_utest.cpp
   testcase/rsqrt/src/rsqrt_utest.cpp
+  testcase/scale_and_translate/src/scale_and_translate_utest.cpp
+  testcase/scale_and_translate_grad/src/scale_and_translate_grad_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sigmoid/src/sigmoid_utest.cpp

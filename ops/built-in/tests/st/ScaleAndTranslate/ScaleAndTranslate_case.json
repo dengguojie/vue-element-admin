@@ -1,0 +1,1081 @@
+[
+    {
+        "case_name": "Test_ScaleAndTranslate_512B",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [5,5,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[10,10]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [5,10,10,2]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_1K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [5,10,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[20,20]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [5,20,20,2]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_4K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [10,10,10,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[20,20]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,20,20,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_8K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [10,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[20,20]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,20,20,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_16K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [20,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[20,20]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [20,20,20,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_32K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [40,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[20,20]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [40,20,20,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_64K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [10,40,40,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[80,80]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,80,80,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_128K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [10,40,40,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[80,80]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,80,80,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_256K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [10,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[80,80]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,80,80,16]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_512K",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [20,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[80,80]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [20,80,80,16]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_1M",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [25,100,100,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        320                    
+                    ]
+                ],
+                "value":[200,200]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [25,200,200,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_2M",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [25,200,100,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        400                    
+                    ]
+                ],
+                "value":[400,200]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [25,400,200,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslate_8M",
+        "op": "ScaleAndTranslate",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [100,200,200,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "is_const":true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        400                    
+                    ]
+                ],
+                "value":[400,400]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [100,400,400,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    }
+]

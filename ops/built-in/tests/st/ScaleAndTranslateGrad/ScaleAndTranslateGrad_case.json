@@ -1,0 +1,1055 @@
+[
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_512B",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [5,5,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [5,5,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [5,5,10,2]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_1K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [5,10,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [5,10,10,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [5,10,10,2]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_4K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,10,10,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,10,10,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,10,10,4]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_8K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,10,10,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_16K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [20,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [20,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [20,10,10,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_32K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [40,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [40,10,10,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [40,10,10,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_64K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,25,25,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,25,25,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,25,25,3]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_128K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,40,40,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,40,40,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,40,40,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_256K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [10,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [10,40,40,16]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_512K",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [20,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [20,40,40,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [20,40,40,16]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_1M",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [100,100,100,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [100,100,100,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [100,100,100,3]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_2M",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [200,100,100,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [200,100,100,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [200,100,100,3]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScaleAndTranslateGrad_8M",
+        "op": "ScaleAndTranslateGrad",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [200,200,200,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [200,200,200,3],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        255
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [200,200,200,3]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "kernel_type",          
+                "type": "string",         
+                "value": "lanczos3"       
+            },
+            {
+                "name": "antialias",          
+                "type": "bool",         
+                "value": true  
+            }
+        ]
+    }
+]
