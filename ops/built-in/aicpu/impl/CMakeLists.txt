@@ -123,6 +123,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/bitwise_and.cc
         kernels/normalized/custom/research/diag.cc
         kernels/normalized/custom/research/diag_part.cc
+        kernels/normalized/custom/research/div.cc
         kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
         kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/inv.cc

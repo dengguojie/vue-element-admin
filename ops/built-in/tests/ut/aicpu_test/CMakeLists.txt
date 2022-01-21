@@ -108,6 +108,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_and.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/div.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/inv.cc
@@ -310,6 +311,7 @@ set(_cpu_kernels_ut_files
   testcase/cumsum/src/cumsum_utest.cpp
   testcase/diag/src/diag_utest.cpp
   testcase/diag_part/src/diag_part_utest.cpp
+  testcase/div/src/div_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/edit_distance/src/edit_distance_kernel_utest.cpp
   testcase/elugrad/src/elugrad_utest.cpp
