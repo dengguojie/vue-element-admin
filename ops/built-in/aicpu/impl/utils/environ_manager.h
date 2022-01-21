@@ -17,7 +17,6 @@
 #ifndef AICPU_UTILS_ENVIRON_MANAGER_H
 #define AICPU_UTILS_ENVIRON_MANAGER_H
 
-#include <utility>
 #include <map>
 #include <memory>
 #include <vector>
@@ -46,9 +45,9 @@ class EnvironMgr {
   void Clear();
 
   // Check whether the inputs of EnvironGet kernel or EnvironSet kernel are valid.
-  bool CheckEnvInput(const CpuKernelContext &ctx);
+  bool CheckEnvInput(const CpuKernelContext &ctx) const;
   // Check whether is scalar tensor. Environ handle and env key only support scalar tensor currently.
-  bool IsScalarTensor(std::vector<int64_t> shape);
+  bool IsScalarTensor(const std::vector<int64_t> &shape) const;
 
  private:
   EnvironMgr() = default;

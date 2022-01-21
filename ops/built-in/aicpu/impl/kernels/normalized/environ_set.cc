@@ -72,8 +72,8 @@ uint32_t EnvironSetCpuKernel::Compute(CpuKernelContext &ctx) {
                      value_size_);
 
   // Get handle and key.
-  int64_t *handle_data = reinterpret_cast<int64_t *>(input_handle_->GetData());
-  int64_t *key_data = reinterpret_cast<int64_t *>(input_key->GetData());
+  int64_t *handle_data = static_cast<int64_t *>(input_handle_->GetData());
+  int64_t *key_data = static_cast<int64_t *>(input_key->GetData());
 
   // Set env member.
   const auto &env = env_mgr.Get(handle_data[0]);

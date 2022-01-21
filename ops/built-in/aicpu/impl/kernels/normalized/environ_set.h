@@ -31,7 +31,7 @@ class EnvironSetCpuKernel : public CpuKernel {
                           input_value_(nullptr) {}
   ~EnvironSetCpuKernel() = default;
 
-  uint32_t Compute(CpuKernelContext &ctx);
+  uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   uint32_t InitKernel(const CpuKernelContext &ctx);

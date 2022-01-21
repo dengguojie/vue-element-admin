@@ -55,7 +55,7 @@ void EnvironMgr::Clear() {
   envs_.clear();
 }
 
-bool EnvironMgr::IsScalarTensor(std::vector<int64_t> shape) {
+bool EnvironMgr::IsScalarTensor(const std::vector<int64_t> &shape) const {
   if (shape.empty()) {
     KERNEL_LOG_DEBUG("The shape is empty.");
     return true;
@@ -69,7 +69,7 @@ bool EnvironMgr::IsScalarTensor(std::vector<int64_t> shape) {
   return false;
 }
 
-bool EnvironMgr::CheckEnvInput(const CpuKernelContext &ctx) {
+bool EnvironMgr::CheckEnvInput(const CpuKernelContext &ctx) const {
   AttrValue *value_type_ptr = ctx.GetAttr(kEnvValueTypeAttr);
   // Check the value type attr
   KERNEL_CHECK_NULLPTR(value_type_ptr, false, "Get attr:[%s] failed.", kEnvValueTypeAttr)

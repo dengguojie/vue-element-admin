@@ -36,7 +36,7 @@ uint32_t EnvironCreateCpuKernel::Compute(CpuKernelContext &ctx) {
   // Generate an unique handle.
   int64_t env_handle = EnvironMgr::GetInstance().Create();
   KERNEL_LOG_DEBUG("Create env handle:%d ", env_handle);
-  auto *output_data = reinterpret_cast<int64_t *>(output_tensor->GetData());
+  auto *output_data = static_cast<int64_t *>(output_tensor->GetData());
   output_data[0] = env_handle;
 
   return KERNEL_STATUS_OK;

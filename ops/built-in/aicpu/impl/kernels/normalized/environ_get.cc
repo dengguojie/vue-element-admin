@@ -61,8 +61,8 @@ uint32_t EnvironGetCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  auto *input_handle = reinterpret_cast<int64_t *>(ctx.Input(0)->GetData());
-  auto *input_key = reinterpret_cast<int64_t *>(ctx.Input(1)->GetData());
+  auto *input_handle = static_cast<int64_t *>(ctx.Input(0)->GetData());
+  auto *input_key = static_cast<int64_t *>(ctx.Input(1)->GetData());
 
   // Get handle and key
   int64_t handle = input_handle[0];
