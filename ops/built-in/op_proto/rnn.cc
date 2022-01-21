@@ -342,6 +342,7 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
   int64_t hiddenSize = 0;
+  int64_t inputSize = 0;
   int64_t num_step = 0;
   int64_t stateSize = hiddenSize;
   if (inputProjectTensorDesc != nullptr) {
@@ -351,6 +352,7 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
     num_step = shapeX.GetDims().at(0);
     batchSize = shapeX.GetDims().at(1);
     hiddenSize = shapeW.GetDims().at(1) / 4;
+    inputSize = shapeW.GetDims().at(0) - hiddenSize;
   } else {
     OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
@@ -386,8 +388,12 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
   (void)op.UpdateOutputDesc("o", outputOTensorDesc);
   (void)op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc);
 
-  inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  inputWTensorDesc.SetFormat(ge::FORMAT_ND);
+  inputBTensorDesc.SetFormat(ge::FORMAT_ND);
+  ge::AttrUtils::SetInt(op_desc, "input_size", inputSize);
+  ge::AttrUtils::SetInt(op_desc, "hidden_size", hiddenSize);
   (void)op.UpdateInputDesc("w", inputWTensorDesc);
+  (void)op.UpdateInputDesc("b", inputBTensorDesc);
 
   return GRAPH_SUCCESS;
 }
