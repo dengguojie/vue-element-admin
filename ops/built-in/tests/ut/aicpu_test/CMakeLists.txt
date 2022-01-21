@@ -109,6 +109,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/inv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
@@ -327,6 +328,7 @@ set(_cpu_kernels_ut_files
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/index_to_addr/src/index_to_addr_utest.cpp
   testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
+  testcase/inv/src/inv_utest.cpp
   testcase/invgrad/src/invgrad_utest.cpp
   testcase/is_close/src/is_close_utest.cpp
   testcase/is_inf/src/is_inf_utest.cpp
