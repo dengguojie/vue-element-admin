@@ -42,7 +42,7 @@ class OpFileAiCore(OPFile):
         "dynamic": "DYNAMIC"
     }
 
-    def _generate_cmake_lists(self):
+    def _generate_cmake_lists(self: any) -> None:
         tbe_dir = os.path.join(self.output_path, 'tbe')
         if os.path.exists(tbe_dir):
             return
@@ -52,7 +52,7 @@ class OpFileAiCore(OPFile):
             ConstManager.OP_TEMPLATE_TBE_PATH)
         utils.copy_template(template_path, tbe_dir, True)
 
-    def _generate_op_params_for_check(self):
+    def _generate_op_params_for_check(self: any) -> str:
         op_params_for_check = ""
         for op_input in self.op_info.parsed_input_info.values():
             input_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_input.get("param_type"))
@@ -75,7 +75,7 @@ class OpFileAiCore(OPFile):
         op_params_for_check += "para_check.KERNEL_NAME"
         return op_params_for_check
 
-    def generate_impl(self):
+    def generate_impl(self: any) -> None:
         """
         Function Description:
         generate operator implementation.
@@ -123,7 +123,7 @@ class OpFileAiCore(OPFile):
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
 
-    def _generate_impl_compute(self, head_str, op_input, op_output):
+    def _generate_impl_compute(self: any, head_str: str, op_input: str, op_output: str) -> str:
         if len(self.op_info.parsed_attr_info) == 0:
             head_str += OPTmpl.PY_COMPUTE_WITHOUT_ATTR.format(
                 name=self.op_info.fix_op_type,
@@ -139,7 +139,8 @@ class OpFileAiCore(OPFile):
         head_str += OPTmpl.PY_COMPUTE_END.format(input_name=op_input)
         return head_str
 
-    def _generate_impl_define_head(self, head_str, op_input, op_output, op_params_for_check):
+    def _generate_impl_define_head(self: any, head_str: str, op_input: str, op_output: str,
+                                   op_params_for_check: str) -> str:
         if len(self.op_info.parsed_attr_info) == 0:
             head_str += OPTmpl.PY_DEF_WITHOUT_ATTR.format(
                 op_params=op_params_for_check,
@@ -158,7 +159,7 @@ class OpFileAiCore(OPFile):
             head_str += OPTmpl.PY_PLACEHOLDER.format(name=name)
         return head_str
 
-    def generate_info_cfg(self):
+    def generate_info_cfg(self: any) -> None:
         """
         Function Description:
         generate operator info config file
@@ -188,7 +189,7 @@ class OpFileAiCore(OPFile):
         new_str += OPTmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
         self._make_info_cfg_file(new_str)
 
-    def _generate_attr_aicore(self, attr, new_str):
+    def _generate_attr_aicore(self: any, attr: list, new_str: str) -> str:
         attr_type = self._mapping_attr_type_for_ini(attr[1])
         new_str += OPTmpl.INI_ATTR_TYPE_VALUE.format(name=attr[0],
                                                       type=attr_type)
@@ -218,7 +219,7 @@ class OpFileAiCore(OPFile):
             )
         return new_str
 
-    def _generate_input_output_info_cfg(self, parsed_info, template_string):
+    def _generate_input_output_info_cfg(self: any, parsed_info: any, template_string: str) -> str:
         new_str = ""
         for (index, name) in enumerate(parsed_info):
             ir_types = (x for x in
@@ -246,7 +247,7 @@ class OpFileAiCore(OPFile):
                                               paramType=param_type)
         return new_str
 
-    def _make_info_cfg_file(self, new_str):
+    def _make_info_cfg_file(self: any, new_str: str) -> None:
         for unit in self.compute_unit:
             compute_unit_parse_list = unit.split("-", 1)
             info_dir = os.path.join(self.output_path, 'tbe', 'op_info_cfg')
@@ -261,12 +262,12 @@ class OpFileAiCore(OPFile):
             utils.write_files(info_path, new_str)
 
     @staticmethod
-    def _mapping_attr_type_for_ini(attr_type):
+    def _mapping_attr_type_for_ini(attr_type: str) -> str:
         attr_type = attr_type.strip()
         return utils.CheckFromConfig().trans_ini_attr_type(attr_type)
 
     @staticmethod
-    def _mapping_info_cfg_type(op_type):
+    def _mapping_info_cfg_type(op_type: str) -> str:
         op_type = op_type.strip()
         if op_type in OpFileAiCore.CFG_INFO_TYPE_MAP:
             return OpFileAiCore.CFG_INFO_TYPE_MAP.get(op_type)

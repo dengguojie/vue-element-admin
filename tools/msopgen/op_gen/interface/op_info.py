@@ -23,20 +23,20 @@ class OpInfo:
     }
     """
 
-    def __init__(self):
+    def __init__(self: any) -> None:
         self.op_type = ""
         self.fix_op_type = ""
         self.parsed_input_info = collections.OrderedDict()
         self.parsed_output_info = collections.OrderedDict()
         self.parsed_attr_info = []
 
-    def get_op_type(self):
+    def get_op_type(self: any) -> str:
         """
         get op type
         """
         return self.op_type
 
-    def get_fix_op_type(self):
+    def get_fix_op_type(self: any) -> str:
         """
         get fix op type
         """

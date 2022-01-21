@@ -19,11 +19,11 @@ class OpFileGenerator:
     CLass for generating operator files
     """
 
-    def __init__(self, argument: ArgParser):
+    def __init__(self: any, argument: ArgParser) -> None:
         self.op_file = self._create_op_file(argument)
 
     @staticmethod
-    def _create_op_file(argument: ArgParser):
+    def _create_op_file(argument: ArgParser) -> any:
         if argument.framework in ConstManager.FMK_MS:
             if argument.core_type == ConstManager.AICORE:
                 utils.print_info_log(
@@ -40,13 +40,13 @@ class OpFileGenerator:
         utils.print_info_log("Start to generate AI CPU operator files.")
         return OpFileAiCpu(argument)
 
-    def generate(self):
+    def generate(self: any) -> None:
         """
         generate op files
         """
         self.op_file.generate()
 
-    def get_op_file(self):
+    def get_op_file(self: any) -> any:
         """
         get op files
         """

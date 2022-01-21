@@ -42,7 +42,7 @@ class IrRow:
     ATTR_NAME = 'ATTR'
     REQUIRED_ATTR_NAME = 'REQUIRED_ATTR'
 
-    def __init__(self, row):
+    def __init__(self: any, row: any) -> None:
         if len(row) >= IrRow.IR_TEMPLATE_VALID_NCLOS:
             self.classify = row[IrRow.IR_TEMPLATE_CLASSIFY_CLO]
             self.name = row[IrRow.IR_TEMPLATE_NAME_CLO]
@@ -55,13 +55,13 @@ class IrRow:
             utils.print_error_log("The row information is insufficient.")
             sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
 
-    def get_name(self):
+    def get_name(self: any) -> str:
         """
         get name
         """
         return self.name
 
-    def get_op_type(self):
+    def get_op_type(self: any) -> str:
         """
         get op type
         """
@@ -73,7 +73,7 @@ class IROpInfo(OpInfo):
     CLass for IR OP Info.
     """
 
-    def __init__(self, argument: ArgParser):
+    def __init__(self: any, argument: ArgParser) -> None:
         super().__init__()
         self.op_path = argument.input_path
         self.gen_flag = argument.gen_flag
@@ -83,7 +83,7 @@ class IROpInfo(OpInfo):
         else:
             self.mi_cmd = argument.mi_cmd
 
-    def parse(self):
+    def parse(self: any) -> None:
         """
         Parse the IR excel, store the parse result in OpInfo attribute
         """
@@ -94,7 +94,7 @@ class IROpInfo(OpInfo):
             if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
                 self._parse_xls_to_json()
 
-    def _parse_xls_to_info(self):
+    def _parse_xls_to_info(self: any) -> None:
         utils.print_info_log("Start to parse the ir template:%s." %
                              self.op_path)
         sheet_data = self._get_sheet_data(self.op_path)
@@ -146,7 +146,7 @@ class IROpInfo(OpInfo):
             else:
                 utils.print_warn_log("Classify value is invalid: " + classify)
 
-    def _parse_xls_to_json(self):
+    def _parse_xls_to_json(self: any) -> None:
         sheet_data = self._get_sheet_data(self.op_path)
         ir_map = self._get_ir_map(sheet_data)
         op_names = list(ir_map.keys())
@@ -158,7 +158,7 @@ class IROpInfo(OpInfo):
         json_path = os.path.join(self.output_path, ir_file_name + ".json")
         utils.write_json_file(json_path, json_data)
 
-    def _get_ir_map(self, sheet_data):
+    def _get_ir_map(self: any, sheet_data: any) -> dict:
         if sheet_data is None:
             utils.print_error_log("Failed to obtain the sheet data.")
             sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
@@ -168,7 +168,7 @@ class IROpInfo(OpInfo):
         ir_map = self._read_sheet_data(sheet_data)
         return ir_map
 
-    def _get_sheet_data(self, ir_file):
+    def _get_sheet_data(self: any, ir_file: any) -> any:
         ir_template, sheet_names = self._get_sheets(ir_file)
         if IrRow.IR_DEFAULT_SHEET_NAME not in sheet_names:
             utils.print_error_log("No sheet named \"Op\" exists in the IR "
@@ -179,7 +179,7 @@ class IROpInfo(OpInfo):
         return sheet_data
 
     @staticmethod
-    def _get_sheets(ir_file):
+    def _get_sheets(ir_file: str) -> any:
         try:
             import xlrd
             ir_template = xlrd.open_workbook(ir_file)
@@ -194,7 +194,7 @@ class IROpInfo(OpInfo):
         return ir_template, sheet_names
 
     @staticmethod
-    def _check_sheet_data(sheet_data):
+    def _check_sheet_data(sheet_data: any) -> bool:
         # The second row is header, a valid sheet has at least 2 rows
         if sheet_data.nrows < IrRow.IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
@@ -220,14 +220,14 @@ class IROpInfo(OpInfo):
                 return False
         return True
 
-    def _del_with_merged_cell(self, sheet_data, col_span):
+    def _del_with_merged_cell(self: any, sheet_data: any, col_span: any) -> None:
         if sheet_data.merged_cells:
             for item in sheet_data.merged_cells:
                 # item contain the scope of the merged cell, e.g. [0, 3, 0, 3]
                 self._del_with_row_col(item, col_span)
 
     @staticmethod
-    def _del_with_row_col(item, col_span):
+    def _del_with_row_col(item: list, col_span: any) -> None:
         for row in range(item[0], item[1]):
             for col in range(item[2], item[3]):
                 # only the first block has value, file the value of
@@ -235,7 +235,7 @@ class IROpInfo(OpInfo):
                 if (row, col) != (item[0], item[2]):
                     col_span.update({(row, col): (item[0], item[2])})
 
-    def _read_sheet_data(self, sheet_data):
+    def _read_sheet_data(self: any, sheet_data: any) -> dict:
         rows = sheet_data.nrows
         # Get merged cell in the sheet
         col_span = {}
@@ -248,7 +248,7 @@ class IROpInfo(OpInfo):
         return ir_map
 
     @staticmethod
-    def _deal_with_ir_map(row, ir_map):
+    def _deal_with_ir_map(row: list, ir_map: dict) -> dict:
         if row and len(row[0]) > 0:
             ir_row = IrRow(row)
             if row[0] in ir_map:
@@ -259,7 +259,7 @@ class IROpInfo(OpInfo):
         return ir_map
 
     @staticmethod
-    def _deal_with_row(col_span, sheet_data, row_item, row):
+    def _deal_with_row(col_span: dict, sheet_data: any, row_item: any, row: list) -> list:
         for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
             # if the block is merged block, fetch value from col span
             if col_span.get((row_item, j)):
@@ -278,7 +278,7 @@ class IROpInfo(OpInfo):
                 row.append(op_value)
         return row
 
-    def _choose_op(self, op_names):
+    def _choose_op(self: any, op_names: list) -> str:
         if self.choose_op != "":
             utils.print_info_log("Start to parse '%s' in the ir template."
                                  % self.choose_op)
@@ -298,7 +298,7 @@ class IROpInfo(OpInfo):
         return op_names[0]
 
     @staticmethod
-    def _choose_op_name(op_names):
+    def _choose_op_name(op_names: list) -> str:
         utils.print_info_log("There is more than one operator in the sheet:")
         i = 1
         for op_name in op_names:
@@ -319,7 +319,7 @@ class IROpInfo(OpInfo):
                 utils.print_warn_log(
                     "The input is not a number. Please retype!")
 
-    def _add_input_output(self, prefix, ir_row, param_type):
+    def _add_input_output(self: any, prefix: str, ir_row: any, param_type: any) -> any:
         ir_name = ir_row.name.strip()
         ir_type = ir_row.type_range.strip()
         types = ir_type.split(",")
@@ -346,7 +346,7 @@ class IROpInfo(OpInfo):
             ConstManager.INFO_PARAM_TYPE_KEY: param_type,
             ConstManager.INFO_PARAM_FORMAT_KEY: op_format}}
 
-    def _check_input_output_info(self):
+    def _check_input_output_info(self: any) -> None:
         if not self.parsed_input_info:
             utils.print_warn_log("There is no input in the IR Excel. Please "
                                  "check the input or output type. If you "
@@ -387,7 +387,7 @@ class IROpInfo(OpInfo):
                                                         first_count,
                                                         first_name))
 
-    def _add_attr(self, name, op_type, default_value):
+    def _add_attr(self: any, name: str, op_type: str, default_value: any) -> None:
         name = name.strip()
         op_type = op_type.strip()
         attr_type = self._mapping_attr_type(op_type)
@@ -399,7 +399,7 @@ class IROpInfo(OpInfo):
         utils.print_info_log("One attr has been handled: " + name)
 
     @staticmethod
-    def _parse_bool_value(value):
+    def _parse_bool_value(value: str) -> str:
         new_value = value.strip().lower()
         if new_value == 'true':
             return 'true'
@@ -408,7 +408,7 @@ class IROpInfo(OpInfo):
         return value
 
     @staticmethod
-    def _mapping_ini_param_type(param_type):
+    def _mapping_ini_param_type(param_type: str) -> str:
         if param_type in ConstManager.PARAM_TYPE_MAP_INI:
             # the return wont't be none
             return ConstManager.PARAM_TYPE_MAP_INI.get(param_type)
@@ -417,17 +417,17 @@ class IROpInfo(OpInfo):
         sys.exit(ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name):
+    def _mapping_input_output_type(ir_type: any, ir_name: str) -> any:
         file_type = ConstManager.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
                                                       file_type)
 
     @staticmethod
-    def _mapping_attr_type(attr_type):
+    def _mapping_attr_type(attr_type: any) -> any:
         file_type = ConstManager.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
 
-    def get_op_path(self):
+    def get_op_path(self: any) -> str:
         """
         get op path
         """

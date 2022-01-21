@@ -15,7 +15,7 @@ from op_gen.interface import utils
 from op_gen.interface.const_manager import ConstManager
 
 
-def _do_gen_cmd(argument):
+def _do_gen_cmd(argument: ArgParser) -> None:
     try:
         op_file_generator = OpFileGenerator(argument)
         if not op_file_generator.op_file:
@@ -29,7 +29,7 @@ def _do_gen_cmd(argument):
         pass
 
 
-def _do_mi_cmd(argument):
+def _do_mi_cmd(argument: ArgParser) -> None:
     try:
         if argument.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
             OpInfoParser(argument)

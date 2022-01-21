@@ -18,16 +18,16 @@ class MSTFOpInfo(TFOpInfo):
     """
 
     @staticmethod
-    def _mapping_input_output_type(tf_type, name):
+    def _mapping_input_output_type(tf_type: str, name: str) -> str:
         return utils.CheckFromConfig().trans_ms_tf_io_dtype(tf_type, name)
 
-    def get_op_path(self):
+    def get_op_path(self: any) -> str:
         """
         get op path
         """
         return self.op_path
 
-    def get_op_type(self):
+    def get_op_type(self: any) -> str:
         """
         get op type
         """

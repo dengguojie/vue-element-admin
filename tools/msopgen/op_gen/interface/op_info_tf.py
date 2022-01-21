@@ -21,7 +21,7 @@ class TFOpInfo(OpInfo):
     CLass representing operator info.
     """
 
-    def __init__(self, argument: ArgParser):
+    def __init__(self: any, argument: ArgParser) -> None:
         super().__init__()
         self.op_path = argument.input_path
         self.attr_info = []
@@ -31,14 +31,14 @@ class TFOpInfo(OpInfo):
         self.op_type = None
 
     @staticmethod
-    def _parse_name_info(line):
+    def _parse_name_info(line: str) -> any:
         if ":" not in line:
             utils.print_warn_log(
                 "Name info \"" + line + "\" error ,Failed to find \":\".")
             return '', ''
         return line.split(":", 1)
 
-    def parse(self):
+    def parse(self: any) -> None:
         """
         Function Description:
         parse tensorflow operator
@@ -71,7 +71,7 @@ class TFOpInfo(OpInfo):
                            attr_info_lines)
 
     @staticmethod
-    def _check_info_str(info_str, op_name):
+    def _check_info_str(info_str: str, op_name: str) -> (bool, str):
         if info_str is None or len(info_str) == 0:
             return True, op_name
         if "REGISTER_OP" in info_str:
@@ -86,7 +86,8 @@ class TFOpInfo(OpInfo):
         return False, op_name
 
     @staticmethod
-    def _parse_info_lines(info_str, input_info_lines, output_info_lines, attr_info_lines):
+    def _parse_info_lines(info_str: str, input_info_lines: list, output_info_lines: list,
+                          attr_info_lines: list) -> (bool, list, list, list):
         if info_str.startswith("Input") or info_str.startswith("Output") \
                 or info_str.startswith("Attr"):
             match_list = utils.get_content_from_double_quotes(info_str)
@@ -104,8 +105,8 @@ class TFOpInfo(OpInfo):
                 return True, input_info_lines, output_info_lines, attr_info_lines
         return False, input_info_lines, output_info_lines, attr_info_lines
 
-    def _init_op_info(self, op_name, input_info_lines, output_info_lines,
-                      attr_info_lines):
+    def _init_op_info(self: any, op_name: str, input_info_lines: list, output_info_lines: list,
+                      attr_info_lines: list) -> None:
         if not op_name:
             utils.print_warn_log(
                 "Failed to parse the op type. Please check.")
@@ -133,7 +134,7 @@ class TFOpInfo(OpInfo):
         self._generate_output_info()
         self._generate_attr_info()
 
-    def _add_input(self, op_name, op_info):
+    def _add_input(self: any, op_name: str, op_info: str) -> None:
         op_name = utils.fix_name_lower_with_under(op_name.strip())
         op_info = op_info.strip()
         self.input_info.append([op_name, op_info])
@@ -145,7 +146,7 @@ class TFOpInfo(OpInfo):
         else:
             self.type_attr[op_info] = 0
 
-    def _add_output(self, op_name, op_info):
+    def _add_output(self: any, op_name: str, op_info: str) -> None:
         op_name = utils.fix_name_lower_with_under(op_name.strip())
         op_info = op_info.strip()
         self.output_info.append([op_name, op_info])
@@ -157,7 +158,7 @@ class TFOpInfo(OpInfo):
         else:
             self.type_attr[op_info] = 0
 
-    def _add_attr(self, op_name, op_info):
+    def _add_attr(self: any, op_name: str, op_info: str) -> None:
         op_name = op_name.strip()
         op_info = op_info.strip()
         if op_name in self.type_attr:
@@ -165,7 +166,7 @@ class TFOpInfo(OpInfo):
         else:
             self.attr_info.append([op_name, op_info])
 
-    def _generate_type_info(self, types, name):
+    def _generate_type_info(self: any, types: str, name: str) -> str:
         attr_info = {}
         if types.startswith("{"):
             if "}" not in types:
@@ -185,12 +186,12 @@ class TFOpInfo(OpInfo):
         return self._mapping_input_output_type(types.strip(), name)
 
     @staticmethod
-    def _get_dynamic_input_output_type(value):
+    def _get_dynamic_input_output_type(value: str) -> str:
         if "N*" in value:
             return value.replace("N*", "")
         return ""
 
-    def _get_ir_type_and_param_type(self, name, value):
+    def _get_ir_type_and_param_type(self: any, name: str, value: str) -> any:
         # parse dynamic input/output
         dynamic_type = self._get_dynamic_input_output_type(value)
         if dynamic_type:
@@ -208,7 +209,7 @@ class TFOpInfo(OpInfo):
         ir_type_list = ir_types.split(',')
         return ir_type_list, param_type
 
-    def _generate_input_info(self):
+    def _generate_input_info(self: any) -> None:
         for name, value in self.input_info:
             ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
@@ -216,7 +217,7 @@ class TFOpInfo(OpInfo):
                 ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
                 ConstManager.INFO_PARAM_TYPE_KEY: param_type}})
 
-    def _generate_output_info(self):
+    def _generate_output_info(self: any) -> None:
         for name, value in self.output_info:
             ir_type_list, param_type = self._get_ir_type_and_param_type(name, value)
             # update op_info.parsed_input_info
@@ -224,7 +225,7 @@ class TFOpInfo(OpInfo):
                 ConstManager.INFO_IR_TYPES_KEY: ir_type_list,
                 ConstManager.INFO_PARAM_TYPE_KEY: param_type}})
 
-    def _generate_attr_info(self):
+    def _generate_attr_info(self: any) -> None:
         for name, value in self.attr_info:
             if self._check_dynamic_io_attr_info(name, value):
                 utils.print_info_log("The attr '%s:%s' belongs to dynamic "
@@ -243,19 +244,19 @@ class TFOpInfo(OpInfo):
                 self.parsed_attr_info.append([attr_name, attr_type])
 
     @staticmethod
-    def _check_dynamic_io_attr_info(name, value):
+    def _check_dynamic_io_attr_info(name: str, value: str) -> bool:
         return bool(name == 'N' and ('>' or '<' in value))
 
     @staticmethod
-    def _mapping_attr_type(tf_type):
+    def _mapping_attr_type(tf_type: str) -> str:
         return utils.CheckFromConfig().trans_tf_attr_type(tf_type)
 
     @staticmethod
-    def _mapping_input_output_type(tf_type, name):
+    def _mapping_input_output_type(tf_type: str, name: str) -> str:
         # mapping from tf type to D enum
         return utils.CheckFromConfig().trans_tf_io_dtype(tf_type, name)
 
-    def get_op_path(self):
+    def get_op_path(self: any) -> str:
         """
         get op path
         """

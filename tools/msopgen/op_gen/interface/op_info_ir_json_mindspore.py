@@ -19,25 +19,25 @@ class JsonMSIROpInfo(JsonIROpInfo):
     """
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name):
+    def _mapping_input_output_type(ir_type: str, ir_name: str) -> any:
         file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_ms_io_dtype(ir_type, ir_name,
                                                          file_type)
 
     @staticmethod
-    def _init_op_format(input_output_map, prefix, input_output_name,
-                        ir_type_list):
+    def _init_op_format(input_output_map: dict, prefix: str, input_output_name: str,
+                        ir_type_list: list) -> any:
         op_format = ",".join("ND" for _ in ir_type_list)
         op_format = op_format.split(",")
         return op_format
 
-    def get_op_path(self):
+    def get_op_path(self: any) -> str:
         """
         get op path
         """
         return self.op_path
 
-    def get_gen_flag(self):
+    def get_gen_flag(self: any) -> str:
         """
         get gen flag
         """

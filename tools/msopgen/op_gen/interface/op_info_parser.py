@@ -24,12 +24,12 @@ class OpInfoParser:
     CLass for parsing operator info
     """
 
-    def __init__(self, argument: ArgParser):
+    def __init__(self: any, argument: ArgParser) -> None:
         self.op_info = self._create_op_info(argument)
         self.op_info.parse()
 
     @staticmethod
-    def _create_op_info(argument: ArgParser):
+    def _create_op_info(argument: ArgParser) -> any:
         if argument.input_path.endswith(ConstManager.INPUT_FILE_EXCEL):
             utils.print_warn_log("Excel cannot be used as inputs in future "
                                  "versions. It is recommended that json "
@@ -45,14 +45,14 @@ class OpInfoParser:
             return MSTFOpInfo(argument)
         return TFOpInfo(argument)
 
-    def get_op_info(self):
+    def get_op_info(self: any) -> any:
         """
         get op info
         """
         return self.op_info
 
     @staticmethod
-    def get_gen_flag():
+    def get_gen_flag() -> str:
         """
         get gen flag
         """

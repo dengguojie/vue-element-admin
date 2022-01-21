@@ -22,7 +22,7 @@ class JsonIROpInfo(OpInfo):
     CLass for IR OP Info from Json.
     """
 
-    def __init__(self, argument: ArgParser):
+    def __init__(self: any, argument: ArgParser) -> None:
         super().__init__()
         self.op_path = argument.input_path
         self.gen_flag = argument.gen_flag
@@ -32,7 +32,7 @@ class JsonIROpInfo(OpInfo):
         else:
             self.mi_cmd = argument.mi_cmd
 
-    def parse(self):
+    def parse(self: any) -> None:
         """
         Parse the IR json, store the parse result in OpInfo attribute
         """
@@ -43,7 +43,7 @@ class JsonIROpInfo(OpInfo):
             if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
                 self._parse_template_to_json()
 
-    def _parse_json_to_info(self):
+    def _parse_json_to_info(self: any) -> None:
         utils.print_info_log("Start to parse the ir template:%s" %
                              self.op_path)
         json_data = utils.read_json_file(self.op_path)
@@ -71,7 +71,7 @@ class JsonIROpInfo(OpInfo):
             utils.print_warn_log("The \"attr\" value is invalid or no \"attr\" "
                                  "exists in the map.")
 
-    def _check_input_output_info(self):
+    def _check_input_output_info(self: any) -> None:
         if not self.parsed_input_info:
             utils.print_warn_log("There is no input in the IR json. Please "
                                  "check the input or output type. If you "
@@ -111,7 +111,7 @@ class JsonIROpInfo(OpInfo):
                                                         first_count,
                                                         first_name))
 
-    def _parse_template_to_json(self):
+    def _parse_template_to_json(self: any) -> None:
         json_data = utils.read_json_file(self.op_path)
         self._check_json_data(json_data)
         if isinstance(json_data, dict):
@@ -126,7 +126,7 @@ class JsonIROpInfo(OpInfo):
         json_path = os.path.join(self.output_path, ir_file_name + ".json")
         utils.write_json_file(json_path, json_data)
 
-    def _check_json_data(self, json_data):
+    def _check_json_data(self: any, json_data: any) -> None:
         if not isinstance(json_data, (list, dict)):
             utils.print_error_log("Data in %s should be List or Dict."
                                   % self.op_path)
@@ -136,7 +136,7 @@ class JsonIROpInfo(OpInfo):
                                   "Please check." % self.op_path)
             raise utils.MsOpGenException(ConstManager.MS_OP_GEN_JSON_DATA_ERROR)
 
-    def _read_json_data(self, json_data):
+    def _read_json_data(self: any, json_data: any) -> dict:
         ir_map = {}
         for json_map in json_data:
             op_map = {}
@@ -158,7 +158,7 @@ class JsonIROpInfo(OpInfo):
                     ir_map[op_name] = op_map
         return ir_map
 
-    def _choose_op_for_generate(self, ir_map):
+    def _choose_op_for_generate(self: any, ir_map: dict) -> any:
         op_names = list(ir_map.keys())
         op_name = self._choose_op(op_names)
         if not op_name:
@@ -173,7 +173,7 @@ class JsonIROpInfo(OpInfo):
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         return ir_info
 
-    def _choose_op(self, op_names):
+    def _choose_op(self: any, op_names: list) -> str:
         if self.choose_op != "":
             utils.print_info_log("Start to parse '%s' in the json ir template."
                                  % self.choose_op)
@@ -212,14 +212,14 @@ class JsonIROpInfo(OpInfo):
             utils.print_info_log("Start to parse the op: " + op_names[0])
             return op_names[0]
 
-    def _add_input_output_from_json(self, prefix, input_output_list):
+    def _add_input_output_from_json(self: any, prefix: str, input_output_list: any) -> None:
         if isinstance(input_output_list, list):
             for input_output_map in input_output_list:
                 self._update_input_output_info(prefix, input_output_map)
         else:
             utils.print_warn_log("\"%s\" in the map should be list" % prefix)
 
-    def _update_input_output_info(self, prefix, input_output_map):
+    def _update_input_output_info(self: any, prefix: str, input_output_map: any) -> None:
         if isinstance(input_output_map, dict):
             input_output_name = input_output_map.get("name")
             if input_output_name is None or \
@@ -246,7 +246,7 @@ class JsonIROpInfo(OpInfo):
             utils.print_warn_log(
                 "Every value in the \"%s\" list should be dict" % prefix)
 
-    def _init_ir_type(self, prefix, input_output_name, types):
+    def _init_ir_type(self: any, prefix: str, input_output_name: any, types: list) -> list:
         ir_type_list = []
         for ir_type in types:
             converted_type = self._mapping_input_output_type(
@@ -264,14 +264,14 @@ class JsonIROpInfo(OpInfo):
         return ir_type_list
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name):
+    def _mapping_input_output_type(ir_type: str, ir_name: str) -> any:
         file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
                                                       file_type)
 
     @staticmethod
-    def _init_op_format(input_output_map, prefix, input_output_name,
-                        ir_type_list):
+    def _init_op_format(input_output_map: dict, prefix: str, input_output_name: str,
+                        ir_type_list: list) -> any:
         op_format = input_output_map.get("format")
         if not isinstance(op_format, (list, str)):
             op_format = None
@@ -291,7 +291,7 @@ class JsonIROpInfo(OpInfo):
         return op_format
 
     @staticmethod
-    def _init_param_type(input_output_map, input_output_name):
+    def _init_param_type(input_output_map: dict, input_output_name: str) -> str:
         param_type = input_output_map.get("param_type")
         if param_type not in ConstManager.INPUT_OUTPUT_PARAM_TYPE:
             param_type = ConstManager.PARAM_TYPE_REQUIRED
@@ -300,8 +300,8 @@ class JsonIROpInfo(OpInfo):
                                  input_output_name)
         return param_type
 
-    def _update_parsed_info(self, prefix, input_output_name, ir_type_list,
-                            type_format):
+    def _update_parsed_info(self: any, prefix: str, input_output_name: str, ir_type_list: list,
+                            type_format: list) -> None:
         param_type = type_format[0]
         op_format = type_format[1]
         if prefix == "input_desc":
@@ -323,14 +323,14 @@ class JsonIROpInfo(OpInfo):
                 ConstManager.INFO_PARAM_TYPE_KEY: param_type,
                 ConstManager.INFO_PARAM_FORMAT_KEY: op_format}})
 
-    def _add_attr_from_json(self, attr_list):
+    def _add_attr_from_json(self: any, attr_list: any) -> None:
         if isinstance(attr_list, list):
             for attr_map in attr_list:
                 self._update_attr_info(attr_map)
         else:
             utils.print_warn_log("Attr in the map should be a list.")
 
-    def _update_attr_info(self, attr_map):
+    def _update_attr_info(self: any, attr_map: dict) -> None:
         attr_name = attr_map.get("name")
         if attr_name is None or not isinstance(attr_name, str):
             utils.print_warn_log("The attr_name name is None or invalid. "
@@ -363,12 +363,12 @@ class JsonIROpInfo(OpInfo):
         utils.print_info_log("One attr is handled: " + attr_name)
 
     @staticmethod
-    def _mapping_attr_type(attr_type):
+    def _mapping_attr_type(attr_type: str) -> any:
         file_type = ConstManager.INPUT_FILE_JSON
         return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
 
     @staticmethod
-    def _parse_bool_value_for_json(value):
+    def _parse_bool_value_for_json(value: any) -> str:
         if value:
             return 'true'
         return "false"

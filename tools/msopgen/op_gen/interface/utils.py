@@ -27,7 +27,7 @@ class MsOpGenException(Exception):
         self.error_info = error_info
 
 
-def _print_log(level, msg):
+def _print_log(level: str, msg: str) -> None:
     current_time = time.strftime("%Y-%m-%d %H:%M:%S",
                                  time.localtime(int(time.time())))
     pid = os.getpid()
@@ -35,7 +35,7 @@ def _print_log(level, msg):
     sys.stdout.flush()
 
 
-def print_error_log(error_msg):
+def print_error_log(error_msg: str) -> None:
     """
     print error log
     @param error_msg: the error message
@@ -44,7 +44,7 @@ def print_error_log(error_msg):
     _print_log("ERROR", error_msg)
 
 
-def print_warn_log(warn_msg):
+def print_warn_log(warn_msg: str) -> None:
     """
     print warn log
     @param warn_msg: the warn message
@@ -53,7 +53,7 @@ def print_warn_log(warn_msg):
     _print_log("WARNING", warn_msg)
 
 
-def print_info_log(info_msg):
+def print_info_log(info_msg: str) -> None:
     """
     print info log
     @param info_msg: the info message
@@ -62,7 +62,7 @@ def print_info_log(info_msg):
     _print_log("INFO", info_msg)
 
 
-def read_json_file(json_path):
+def read_json_file(json_path: str) -> any:
     """
     read json file to get json object
     @param json_path: the path of json file
@@ -91,7 +91,7 @@ class CheckFromConfig:
     """
     The class for check param from config file
     """
-    def __init__(self):
+    def __init__(self: any) -> None:
         # verification limit
         self.ms_io_dtype_list = \
             self.get_trans_value("MS_INPUT_OUTPUT_DTYPE_LIST")
@@ -106,7 +106,7 @@ class CheckFromConfig:
             self.get_trans_value("TF_INPUT_OUTPUT_DTYPE_MAP")
 
     @staticmethod
-    def get_trans_value(key):
+    def get_trans_value(key: str) -> str:
         """
         get verification limit from config file
         @param key: key of config json file
@@ -128,7 +128,7 @@ class CheckFromConfig:
             raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
         return trans_data_value
 
-    def trans_ms_io_dtype(self, ir_type, ir_name, file_type):
+    def trans_ms_io_dtype(self: any, ir_type: str, ir_name: str, file_type: str) -> str:
         """
         transform input output type for mindspore
         @param ir_type: type from template file
@@ -144,7 +144,7 @@ class CheckFromConfig:
                        % (ir_name, ir_type, file_type))
         return ""
 
-    def trans_io_dtype(self, ir_type, ir_name, file_type):
+    def trans_io_dtype(self: any, ir_type: str, ir_name: str, file_type: str) -> str:
         """
         transform input output type for tf,caffee,pytorch
         @param ir_type: type from template file
@@ -160,7 +160,7 @@ class CheckFromConfig:
                        % (ir_name, ir_type, file_type))
         return ""
 
-    def trans_ir_attr_type(self, attr_type, file_type):
+    def trans_ir_attr_type(self: any, attr_type: str, file_type: str) -> str:
         """
         transform attr type for ir.h
         @param attr_type: type from template file
@@ -175,7 +175,7 @@ class CheckFromConfig:
                        "warning." % (attr_type, file_type))
         return ""
 
-    def trans_ini_attr_type(self, attr_type):
+    def trans_ini_attr_type(self: any, attr_type: str) -> str:
         """
         transform attr type for .ini
         @param attr_type: attr type from template file
@@ -188,7 +188,7 @@ class CheckFromConfig:
                        "problem, ignore the warning." % attr_type)
         return ""
 
-    def trans_tf_attr_type(self, tf_type):
+    def trans_tf_attr_type(self: any, tf_type: str) -> str:
         """
         transform attr type from tf .txt
         @param tf_type: tf type from template file
@@ -201,7 +201,7 @@ class CheckFromConfig:
                        "have this problem, ignore the warning." % tf_type)
         return ""
 
-    def trans_ms_tf_io_dtype(self, tf_type, name):
+    def trans_ms_tf_io_dtype(self: any, tf_type: str, name: str) -> str:
         """
         transform tf type from tf mindspore .txt
         @param tf_type: tf type from template file
@@ -216,7 +216,7 @@ class CheckFromConfig:
                        % (name, tf_type))
         return ""
 
-    def trans_tf_io_dtype(self, tf_type, name):
+    def trans_tf_io_dtype(self: any, tf_type: str, name: str) -> str:
         """
         transform tf type from tf  .txt
         @param tf_type: tf type from template file
@@ -230,7 +230,7 @@ class CheckFromConfig:
                        "ignore the warning." % (name, tf_type))
         return ""
 
-    def trans_check_attr_type(self, attr_type):
+    def trans_check_attr_type(self: any, attr_type: str) -> str:
         """
         transform attr type for check_op_params
         @param attr_type: attr type from template file
@@ -244,7 +244,7 @@ class CheckFromConfig:
         return ""
 
 
-def check_name_valid(name):
+def check_name_valid(name: str) -> int:
     """
     Function Description:
     check name valid
@@ -264,7 +264,7 @@ def check_name_valid(name):
     return ConstManager.MS_OP_GEN_NONE_ERROR
 
 
-def check_path_valid(path, isdir=False):
+def check_path_valid(path: str, isdir: bool = False) -> None:
     """
     Function Description:
     check path valid
@@ -313,7 +313,7 @@ def check_path_valid(path, isdir=False):
             raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
 
 
-def copy_template(src, dst, is_skip_exist=False):
+def copy_template(src: str, dst: str, is_skip_exist: bool = False) -> None:
     """
     copy template files  from src dir to dest dir
     :param src: source dir
@@ -339,7 +339,7 @@ def copy_template(src, dst, is_skip_exist=False):
         raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
 
 
-def copy_src_to_dst(srcname, dstname, is_skip_exist):
+def copy_src_to_dst(srcname: str, dstname: str, is_skip_exist: bool) -> bool:
     """
     copy sub template files  from src dir to dest dir
     :param srcname: source sub dir
@@ -355,7 +355,7 @@ def copy_src_to_dst(srcname, dstname, is_skip_exist):
     return False
 
 
-def copy_exist_file(dstname, is_skip_exist):
+def copy_exist_file(dstname: str, is_skip_exist: bool) -> bool:
     """
     copy file is exist
     :param dstname: dest sub dir
@@ -369,7 +369,7 @@ def copy_exist_file(dstname, is_skip_exist):
     return False
 
 
-def get_content_from_double_quotes(line):
+def get_content_from_double_quotes(line: str) -> any:
     """
     Function Description:
     get content list between two double quotes
@@ -386,7 +386,7 @@ def get_content_from_double_quotes(line):
     return match
 
 
-def make_dirs(op_dir):
+def make_dirs(op_dir: str) -> None:
     """
     make dirs
     :param op_dir:dirs
@@ -401,7 +401,7 @@ def make_dirs(op_dir):
         pass
 
 
-def read_file(op_file):
+def read_file(op_file: str) -> None:
     """
     read new_str from op_file
     :param op_file:the file
@@ -419,7 +419,7 @@ def read_file(op_file):
         pass
 
 
-def write_files(op_file, new_str):
+def write_files(op_file: str, new_str: str) -> None:
     """
     write new_str to op_file
     :param op_file:the file
@@ -441,7 +441,7 @@ def write_files(op_file, new_str):
     print_info_log("File %s generated successfully." % op_file)
 
 
-def write_json_file(json_path, content):
+def write_json_file(json_path: str, content: str) -> None:
     """
     write  content to json file
     :param content:
@@ -463,7 +463,7 @@ def write_json_file(json_path, content):
         "Generate file %s successfully." % json_path)
 
 
-def fix_name_lower_with_under(name):
+def fix_name_lower_with_under(name: str) -> str:
     """
     change name to lower_with_under style,
     eg: "Abc" -> abc

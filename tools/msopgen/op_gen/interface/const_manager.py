@@ -113,14 +113,14 @@ class ConstManager:
     AICORE = 0
     AICPU = 1
 
-    def get_aicore(self):
+    def get_aicore(self: any) -> int:
         """
         get ai_core flag
         :return: ai_core flag
         """
         return self.AICORE
 
-    def get_aicpu(self):
+    def get_aicpu(self: any) -> int:
         """
         get aicpu flag
         :return: aicpu flag

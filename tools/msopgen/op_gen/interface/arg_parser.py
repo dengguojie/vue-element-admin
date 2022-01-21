@@ -18,7 +18,7 @@ class ArgParser:
     CLass for parsing input arguments
     """
 
-    def __init__(self):
+    def __init__(self: any) -> None:
         parse = argparse.ArgumentParser()
         subparsers = parse.add_subparsers(help='commands')
         mi_parser = subparsers.add_parser(
@@ -58,7 +58,7 @@ class ArgParser:
             self._check_mi_cmd_param(args)
 
     @staticmethod
-    def _mi_parse_add_arguments(mi_parser):
+    def _mi_parse_add_arguments(mi_parser: any) -> None:
         mi_subparsers = mi_parser.add_subparsers(help='commands')
         query_parser = mi_subparsers.add_parser(
             ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY, help='Query the operators from '
@@ -79,7 +79,7 @@ class ArgParser:
                                   required=False)
 
     @staticmethod
-    def _gen_parse_add_arguments(gen_parser):
+    def _gen_parse_add_arguments(gen_parser: any) -> None:
         gen_parser.add_argument("-i", "--input",
                                 dest="input",
                                 default="",
@@ -117,7 +117,7 @@ class ArgParser:
                                 help="<Optional> op type in IR excel.",
                                 required=False)
 
-    def _check_mi_cmd_param(self, args):
+    def _check_mi_cmd_param(self: any, args: any) -> None:
         if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
             if not args.input.endswith(ConstManager.MI_VALID_TYPE):
                 utils.print_error_log(
@@ -129,12 +129,12 @@ class ArgParser:
             self.input_path = args.input
             self._check_output_path(args.output)
 
-    def _check_op_type_valid(self, args_operator):
+    def _check_op_type_valid(self: any, args_operator: str) -> None:
         if args_operator != '':
             utils.check_name_valid(args_operator)
             self.op_type = args_operator
 
-    def _check_framework(self, args_framework):
+    def _check_framework(self: any, args_framework: str) -> None:
         lower_args_framework = args_framework.lower()
         if lower_args_framework in ConstManager.FMK_LIST:
             self.framework = lower_args_framework
@@ -143,7 +143,7 @@ class ArgParser:
                 "Unsupported framework type: " + args_framework)
             sys.exit(ConstManager.MS_OP_GEN_CONFIG_UNSUPPORTED_FMK_TYPE_ERROR)
 
-    def _check_output_path(self, args_output_path):
+    def _check_output_path(self: any, args_output_path: str) -> None:
         args_output_path = os.path.realpath(args_output_path)
         if not os.path.exists(args_output_path):
             utils.make_dirs(args_output_path)
@@ -156,7 +156,7 @@ class ArgParser:
                                   "write.")
             sys.exit(ConstManager.MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
 
-    def _check_input_path(self, args_input):
+    def _check_input_path(self: any, args_input: str) -> None:
         if not args_input.endswith(ConstManager.GEN_VALID_TYPE):
             utils.print_error_log(
                 'The file "%s" is invalid. Only the %s file is supported. Please '
@@ -171,7 +171,7 @@ class ArgParser:
                                   "and readable file.")
             sys.exit(ConstManager.MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
-    def _init_core_type(self, unit_parse_list, type_list, core_type):
+    def _init_core_type(self: any, unit_parse_list: list, type_list: list, core_type: any) -> None:
         if unit_parse_list[0].lower() in type_list:
             if self.core_type == -1:
                 self.core_type = core_type
@@ -185,7 +185,7 @@ class ArgParser:
         else:
             self._print_compute_unit_invalid_log()
 
-    def _check_compute_unit_valid(self, args_compute_unit):
+    def _check_compute_unit_valid(self: any, args_compute_unit: str) -> int:
         compute_unit_list = args_compute_unit.split(",")
         compute_unit_valid = []
         for unit in compute_unit_list:
@@ -205,7 +205,7 @@ class ArgParser:
         return ConstManager.MS_OP_GEN_NONE_ERROR
 
     @staticmethod
-    def _print_compute_unit_invalid_log():
+    def _print_compute_unit_invalid_log() -> None:
         utils.print_error_log("Invalid compute unit format. "
                               "Please check whether the format of the input "
                               "compute unit is ${core_type}-${"
@@ -213,7 +213,7 @@ class ArgParser:
         raise utils.MsOpGenException(
             ConstManager.MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR)
 
-    def _check_mode_valid(self, mode):
+    def _check_mode_valid(self: any, mode: any) -> int:
         if str(mode) not in ConstManager.GEN_MODE_LIST:
             utils.print_error_log('Unsupported mode: %s. Only %s is supported. '
                                   'Please check the input mode.' %
@@ -223,14 +223,14 @@ class ArgParser:
         self.mode = mode
         return ConstManager.MS_OP_GEN_NONE_ERROR
 
-    def get_gen_flag(self):
+    def get_gen_flag(self: any) -> bool:
         """
         get gen flag
         """
         return self.gen_flag
 
     @staticmethod
-    def get_gen_result():
+    def get_gen_result() -> str:
         """
         get gen result
         """

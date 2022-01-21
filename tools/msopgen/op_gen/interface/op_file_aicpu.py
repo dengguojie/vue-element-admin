@@ -18,7 +18,7 @@ class OpFileAiCpu(OPFile):
     CLass for generate aicpu op files
     """
 
-    def generate_impl(self):
+    def generate_impl(self: any) -> None:
         """
         Function Description:
         generate operator implementation.
@@ -30,7 +30,7 @@ class OpFileAiCpu(OPFile):
         self._generate_impl_cc(op_info)
         self._generate_impl_h(op_info)
 
-    def _generate_cmake_lists(self):
+    def _generate_cmake_lists(self: any) -> None:
         impl_dir = os.path.join(self.output_path, 'cpukernel')
         if os.path.exists(impl_dir):
             return
@@ -40,7 +40,7 @@ class OpFileAiCpu(OPFile):
             ConstManager.OP_TEMPLATE_AICPU_PATH)
         utils.copy_template(template_path, impl_dir, True)
 
-    def _generate_impl_cc(self, op_info):
+    def _generate_impl_cc(self: any, op_info: any) -> None:
         cc_str = OPTmpl.AICPU_IMPL_CPP_STRING.format(
             fix_op_type=op_info.fix_op_type,
             op_type=op_info.op_type,
@@ -53,7 +53,7 @@ class OpFileAiCpu(OPFile):
         utils.make_dirs(impl_dir)
         utils.write_files(cc_path, cc_str)
 
-    def _generate_impl_h(self, op_info):
+    def _generate_impl_h(self: any, op_info: any) -> None:
         h_str = OPTmpl.AICPU_IMPL_H_STRING.format(
             op_type=op_info.op_type,
             op_type_upper=op_info.fix_op_type.upper(),
@@ -65,7 +65,7 @@ class OpFileAiCpu(OPFile):
         utils.make_dirs(impl_dir)
         utils.write_files(h_path, h_str)
 
-    def generate_info_cfg(self):
+    def generate_info_cfg(self: any) -> None:
         """
         Function Description:
         generate operator info config file

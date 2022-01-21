@@ -475,13 +475,13 @@ public:
 """
     # =======================================================
 
-    def get_ini_op(self):
+    def get_ini_op(self: any) -> str:
         """
         get ini op
         """
         return self.INI_OP
 
-    def get_ini_input(self):
+    def get_ini_input(self: any) -> str:
         """
         get ini input
         """

@@ -19,18 +19,18 @@ class MSIROpInfo(IROpInfo):
     """
 
     @staticmethod
-    def _mapping_input_output_type(ir_type, ir_name):
+    def _mapping_input_output_type(ir_type: str, ir_name: str) -> any:
         file_type = ConstManager.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_ms_io_dtype(ir_type, ir_name,
                                                          file_type)
 
-    def get_op_path(self):
+    def get_op_path(self: any) -> str:
         """
         get op path
         """
         return self.op_path
 
-    def get_gen_flag(self):
+    def get_gen_flag(self: any) -> str:
         """
         get gen flag
         """

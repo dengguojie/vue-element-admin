@@ -18,7 +18,7 @@ class OpFileMindSpore(OPFile):
     CLass for generate MindSpore op files
     """
 
-    def generate(self):
+    def generate(self: any) -> None:
         """
         Function Description:
         generate MindSpore project or only generator an MindSpore operator
@@ -42,15 +42,15 @@ class OpFileMindSpore(OPFile):
         # generate mindspore operator
         self._new_operator()
 
-    def _new_operator(self):
+    def _new_operator(self: any) -> None:
         self.generate_impl()
         self._generate_op_proto()
 
-    def _generate_mindspore_path(self):
+    def _generate_mindspore_path(self: any) -> None:
         ms_dir = os.path.join(self.output_path, ConstManager.PROJ_MS_NAME)
         utils.make_dirs(ms_dir)
 
-    def _parse_attr_info(self):
+    def _parse_attr_info(self: any) -> list:
         attr_list = []
         for attr_info in self.op_info.parsed_attr_info:
             attr_str = []
@@ -76,7 +76,7 @@ class OpFileMindSpore(OPFile):
             attr_list.append(attr_str)
         return attr_list
 
-    def _parse_input_output(self, var_list):
+    def _parse_input_output(self: any, var_list: list) -> (list, list):
         # parse inputs
         input_list = []
         for input_name in self.op_info.parsed_input_info:
@@ -92,7 +92,7 @@ class OpFileMindSpore(OPFile):
             output_list.append(str_output_name)
         return input_list, output_list
 
-    def _parse_op_info(self, head_str):
+    def _parse_op_info(self: any, head_str: str) -> str:
         var_list = []
         # parse attr information
         attr_valid_list = []
@@ -134,7 +134,7 @@ class OpFileMindSpore(OPFile):
                 data_types='\n    '.join(data_types_list))
         return head_str
 
-    def generate_impl(self):
+    def generate_impl(self: any) -> None:
         """
         Function Description:
         generate mindspore operator implementation.
@@ -187,7 +187,7 @@ class OpFileMindSpore(OPFile):
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
 
-    def _generate_op_proto(self):
+    def _generate_op_proto(self: any) -> None:
         if not self.op_info.fix_op_type:
             utils.print_warn_log("The op type is empty. Failed to generate "
                                  "op proto files. Please check.")
@@ -196,7 +196,7 @@ class OpFileMindSpore(OPFile):
         utils.make_dirs(template_path)
         self._generate_ms_proto()
 
-    def _generate_ms_proto(self):
+    def _generate_ms_proto(self: any) -> None:
         input_list = list(self.op_info.parsed_input_info)
         op_input = ", ".join(input_list)
         op_output = ", ".join(list(self.op_info.parsed_output_info))
@@ -223,7 +223,7 @@ class OpFileMindSpore(OPFile):
         utils.write_files(ms_proto_path, ms_proto_str)
 
     @staticmethod
-    def generate_info_cfg():
+    def generate_info_cfg() -> str:
         """
         Function Description:
         generate operator info config file
