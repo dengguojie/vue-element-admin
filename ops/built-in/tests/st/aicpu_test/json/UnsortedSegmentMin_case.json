@@ -1,0 +1,886 @@
+[
+    {
+        "case_name": "CASE1_DATA_TYPE_DT_INT64_512B",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1,512],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "value_range": [0.0,0.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1.0,1.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1,512]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE2_DATA_TYPE_DT_INT64_1K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "value_range": [0.0,0.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1.0,1.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE3_DATA_TYPE_DT_INT64_4K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [4,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "value_range": [0.0,3.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [4.0,4.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [4,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE4_DATA_TYPE_DT_INT64_8K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [8],
+                "value_range": [0.0,7.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [8.0,8.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE5_DATA_TYPE_DT_INT64_16K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [16],
+                "value_range": [0.0,15.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [16.0,16.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE6_DATA_TYPE_DT_INT64_32K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32],
+                "value_range": [0.0,31.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [32.0,32.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE7_DATA_TYPE_DT_INT64_64K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [64],
+                "value_range": [0.0,63.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [64.0,64.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE8_DATA_TYPE_DT_INT64_128K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [128],
+                "value_range": [0.0,127.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [128.0,128.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE9_DATA_TYPE_DT_INT64_256K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [256],
+                "value_range": [0.0,255.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [256.0,256.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE10_DATA_TYPE_DT_INT64_512K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [512],
+                "value_range": [0.0,511.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [512.0,512.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE11_DATA_TYPE_DT_INT64_1M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1024],
+                "value_range": [0.0,1023.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1024.0,1024.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE12_DATA_TYPE_DT_INT64_2M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2],
+                "value_range": [0.0,1.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [2.0,2.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE13_DATA_TYPE_DT_INT64_8M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [8],
+                "value_range": [0.0,7.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [8.0,8.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE14_DATA_TYPE_DT_DOUBLE_512B",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1,512],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "value_range": [0.0,0.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1.0,1.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1,512]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE15_DATA_TYPE_DT_DOUBLE_1K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "value_range": [0.0,0.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1.0,1.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE16_DATA_TYPE_DT_DOUBLE_4K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [4,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "value_range": [0.0,3.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [4.0,4.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [4,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE17_DATA_TYPE_DT_DOUBLE_8K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [8],
+                "value_range": [0.0,7.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [8.0,8.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE18_DATA_TYPE_DT_DOUBLE_16K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [16,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [16],
+                "value_range": [0.0,15.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [16.0,16.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [16,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE19_DATA_TYPE_DT_DOUBLE_32K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32],
+                "value_range": [0.0,31.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [32.0,32.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE20_DATA_TYPE_DT_DOUBLE_64K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [64],
+                "value_range": [0.0,63.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [64.0,64.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE21_DATA_TYPE_DT_DOUBLE_128K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [128],
+                "value_range": [0.0,127.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [128.0,128.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE22_DATA_TYPE_DT_DOUBLE_256K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [256],
+                "value_range": [0.0,255.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [256.0,256.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE23_DATA_TYPE_DT_DOUBLE_512K",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [512,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [512],
+                "value_range": [0.0,511.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [512.0,512.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [512,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE24_DATA_TYPE_DT_DOUBLE_1M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1024],
+                "value_range": [0.0,1023.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [1024.0,1024.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE25_DATA_TYPE_DT_DOUBLE_2M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2,1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2],
+                "value_range": [0.0,1.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [2.0,2.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2,1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "CASE26_DATA_TYPE_DT_DOUBLE_8M",
+        "op": "UnsortedSegmentMin", 
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,1024,1024],
+                "value_range": [[0.0, 20.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [8],
+                "value_range": [0.0,7.0],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value_range": [8.0,8.0],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,1024,1024]
+            }
+        ]
+    }
+] 
