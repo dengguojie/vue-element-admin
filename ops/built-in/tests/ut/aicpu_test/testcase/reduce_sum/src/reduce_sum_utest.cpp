@@ -222,3 +222,37 @@ TEST_F(TEST_REDUCE_SUM_UT, DATA_TYPE_BIG_2X) {
   bool keep_dims = false;
   RunReduceSumKernel<uint32_t, int32_t, uint32_t>(files, data_types, shapes, keep_dims);
 }
+
+TEST_F(TEST_REDUCE_SUM_UT, DATA_TYPE_INT8_SCALAR) {
+  vector<DataType> data_types = {DT_INT8, DT_INT32, DT_INT8};
+  vector<vector<int64_t>> shapes = {{}, {}, {}};
+
+  int8_t input1[1] = {1};
+  int32_t input2[1] = {0};
+  int8_t output[1] = {0};
+  vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas, false);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  int8_t output_exp[1] = {1};
+  bool compare = CompareResult(output, output_exp, 1);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_REDUCE_SUM_UT, DATA_TYPE_COMPLEX64_SCALAR) {
+  vector<DataType> data_types = {DT_COMPLEX64, DT_INT32, DT_COMPLEX64};
+  vector<vector<int64_t>> shapes = {{}, {}, {}};
+
+  complex<float> input1[1] = {(1.2345678 + 2.3456789j)};
+  int32_t input2[1] = {0};
+  complex<float> output[1] = {0};
+  vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas, false);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  complex<float> output_exp[1] = {(1.2345678 + 2.3456789j)};
+  bool compare = CompareResult(output, output_exp, 1);
+  EXPECT_EQ(compare, true);
+}

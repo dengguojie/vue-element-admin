@@ -78,11 +78,6 @@ uint32_t ReduceSumCpuKernel::ReduceSumCheck(CpuKernelContext &ctx) {
                        "Get input tensor shape failed.");
   KERNEL_CHECK_NULLPTR(ctx.Output(0)->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "get output failed.");
-  std::vector<int64_t> shape_input =
-      ctx.Input(0)->GetTensorShape()->GetDimSizes();
-  KERNEL_CHECK_FALSE((shape_input.size() != 0), KERNEL_STATUS_PARAM_INVALID,
-                     "Input must be at least rank 1, got [%zu].",
-                     shape_input.size());
   if (ctx.Input(1)->GetData() != nullptr) {
     KERNEL_CHECK_FALSE(
         (ctx.Input(1)->GetDataType() == DT_INT32 ||
@@ -95,8 +90,13 @@ uint32_t ReduceSumCpuKernel::ReduceSumCheck(CpuKernelContext &ctx) {
 }
 template <typename T>
 uint32_t ReduceSumCpuKernel::ReduceSumCompute(CpuKernelContext &ctx) {
+  std::vector<int64_t> input_shape = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   auto input_data = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_data = reinterpret_cast<T *>(ctx.Output(0)->GetData());
+  if (input_shape.size() == 0) {
+    output_data[0] = input_data[0];
+    return KERNEL_STATUS_OK;
+  }
   auto axes_data = reinterpret_cast<int32_t *>(ctx.Input(1)->GetData());
   if (axes_data == nullptr) {
     int64_t data_num = ctx.Input(0)->NumElements();
@@ -110,7 +110,6 @@ uint32_t ReduceSumCpuKernel::ReduceSumCompute(CpuKernelContext &ctx) {
   std::vector<int64_t> axes;
   KERNEL_HANDLE_ERROR(ReduceSumDedupAxes(ctx, axes), "ReduceSum deduplicate failed.");
   int64_t output_num = ctx.Output(0)->NumElements();
-  std::vector<int64_t> input_shape = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   uint32_t axes_idx = 0;
   KERNEL_HANDLE_ERROR(ReduceSumOneAxes<T>(input_data, input_shape, output_data, output_num, axes, axes_idx),
                       "Reduce sum compute failed.");
@@ -153,8 +152,13 @@ uint32_t ReduceSumCpuKernel::ReduceSumOneAxes(const T *input_data, std::vector<i
 }
 template <typename T, typename T2>
 uint32_t ReduceSumCpuKernel::ReduceSumCompute2(CpuKernelContext &ctx) {
+  std::vector<int64_t> input_shape = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   auto input_data = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_data = reinterpret_cast<T *>(ctx.Output(0)->GetData());
+  if (input_shape.size() == 0) {
+    output_data[0] = std::complex<T2>(input_data[0].real(), input_data[0].imag());
+    return KERNEL_STATUS_OK;
+  }
   auto axes_data = reinterpret_cast<int32_t *>(ctx.Input(1)->GetData());
   int64_t input_num = ctx.Input(0)->NumElements();
   if (axes_data == nullptr) {
@@ -169,7 +173,6 @@ uint32_t ReduceSumCpuKernel::ReduceSumCompute2(CpuKernelContext &ctx) {
   }
   std::vector<int64_t> axes;
   KERNEL_HANDLE_ERROR(ReduceSumDedupAxes(ctx, axes), "ReduceSum deduplicate failed.");
-  std::vector<int64_t> input_shape = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   int64_t output_num = ctx.Output(0)->NumElements();
   uint32_t axes_idx = 0;
   KERNEL_HANDLE_ERROR((ReduceSumOneAxes2<T, T2>(input_data, input_num, input_shape,
