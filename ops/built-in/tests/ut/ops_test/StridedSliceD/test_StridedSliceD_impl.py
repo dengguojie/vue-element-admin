@@ -450,6 +450,24 @@ case47 = {"params": [{"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format"
           "expect": "success",
           "support_expect": True}
 
+case48 = {"params": [{"shape": (7700, 31, 40), "dtype": "float32", "format": "ND",
+                      "ori_shape": (7700, 31, 40), "ori_format": "ND"},
+                     {"shape": (7700, 31, 40), "dtype": "float32", "format": "ND",
+                      "ori_shape": (7700, 2, 40), "ori_format": "ND"},
+                     [0, 29, 0], [0, 0, 0], [1, 1, 1], 4, 6, 1, 0, 0],
+          "case_name": "StridedSliceD_48",
+          "expect": "success",
+          "support_expect": True}
+
+case49 = {"params": [{"shape": (77, 31, 40), "dtype": "float32", "format": "ND",
+                      "ori_shape": (77, 31, 40), "ori_format": "ND"},
+                     {"shape": (77, 31, 40), "dtype": "float32", "format": "ND",
+                      "ori_shape": (77, 31, 40), "ori_format": "ND"},
+                     [0, 29, 0], [0, 0, 0], [1, 1, 1], 4, 6, 1, 0, 0],
+          "case_name": "StridedSliceD_49",
+          "expect": "success",
+          "support_expect": True}
+
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
     op_select_format(
@@ -528,6 +546,8 @@ ut_case.add_case(["all"], case44)
 ut_case.add_case(["all"], case45)
 ut_case.add_case(["all"], case46)
 ut_case.add_case(["all"], case47)
+ut_case.add_case(["all"], case48)
+ut_case.add_case(["all"], case49)
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
