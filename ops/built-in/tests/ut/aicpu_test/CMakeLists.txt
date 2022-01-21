@@ -116,6 +116,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/softplus.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/softplusgrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sqrtgrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/svd.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unpack.cc
@@ -369,6 +370,7 @@ set(_cpu_kernels_ut_files
   testcase/slice_write/src/slice_write_utest.cpp
   testcase/softmaxv2/src/softmaxv2_utest.cpp
   testcase/softplus/src/softplus_utest.cpp
+  testcase/softplusgrad/src/softplusgrad_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/sqrtgrad/src/sqrtgrad_utest.cpp

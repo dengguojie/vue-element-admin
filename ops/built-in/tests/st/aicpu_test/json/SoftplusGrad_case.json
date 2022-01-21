@@ -1,0 +1,1136 @@
+[
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_512B",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_512B",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512B",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[1,512]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[2,512]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 20, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 20]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 40, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[80, 80, 80]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT16_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float16"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float16"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_FLOAT_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float32"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "SoftplusGrad",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100.0, 100.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["double"]
+      }
+    ]
+  }
+]

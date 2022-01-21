@@ -129,6 +129,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/sin.cc
         kernels/normalized/custom/research/sinh.cc
         kernels/normalized/custom/research/softplus.cc
+        kernels/normalized/custom/research/softplusgrad.cc
         kernels/normalized/custom/research/sqrtgrad.cc
         kernels/normalized/custom/research/svd.cc
         kernels/normalized/custom/research/unpack.cc
