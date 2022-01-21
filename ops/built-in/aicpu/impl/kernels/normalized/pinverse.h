@@ -18,7 +18,6 @@
 #define AICPU_KERNELS_PINVERSE_H_
 
 #include "Eigen/Dense"
-#include "math.h"
 #include "cpu_kernel.h"
 
 namespace aicpu {

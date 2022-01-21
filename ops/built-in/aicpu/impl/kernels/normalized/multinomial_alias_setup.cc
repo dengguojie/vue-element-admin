@@ -16,6 +16,8 @@
 
 #include "multinomial_alias_setup.h"
 
+#include <stack>
+
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 #include "securec.h"
@@ -37,7 +39,7 @@ const double ZERO = 0.;
   }
 }
 
-namespace aicpu { 
+namespace aicpu {
 uint32_t MultinomialAliasSetupCpuKernel::Compute(CpuKernelContext &ctx) {
   // check params
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
@@ -61,7 +63,7 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKern
   auto probs_shape = probs->GetTensorShape();
   KERNEL_CHECK_FALSE(probs_shape->GetDims() == 1, KERNEL_STATUS_PARAM_INVALID,
                      "Input must be 1D.")
-  DataType probs_type = probs->GetDataType(); 
+  DataType probs_type = probs->GetDataType();
   KERNEL_CHECK_FALSE((probs_type == DT_FLOAT || probs_type == DT_DOUBLE), KERNEL_STATUS_PARAM_INVALID,
                      "The data type of probs need be DT_FLOAT or DT_DOUBLE.")
   int64_t data_num = ctx.Input(0)->NumElements();
@@ -79,16 +81,15 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKern
     }
   }
   KERNEL_LOG_DEBUG(
-      "MultinomialAliasSetupCpuKernel[%s], probs: size[%llu];",ctx.GetOpType().c_str(), data_num);
+      "MultinomialAliasSetupCpuKernel[%s], probs: size[%llu];", ctx.GetOpType().c_str(), data_num);
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(
-                                         CpuKernelContext &ctx,
-                                         std::vector<T> &accept,
-                                         std::vector<int64_t> &alias,
-                                         double &max) {
+void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(CpuKernelContext &ctx,
+                                                              std::vector<T> &accept,
+                                                              std::vector<int64_t> &alias,
+                                                              double &max) {
   int64_t data_num = ctx.Input(0)->NumElements();
   std::vector<T> area_ratio;
   std::stack<int> large;
@@ -140,7 +141,7 @@ void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(
 template <typename T>
 uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelContext &ctx) {
   int64_t data_num = ctx.Input(0)->NumElements();
-  auto out_j= reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
+  auto out_j = reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
   auto out_q = reinterpret_cast<T *>(ctx.Output(1)->GetData());
   std::vector<T> accept(data_num, -1);
   std::vector<int64_t> alias(data_num, -1);

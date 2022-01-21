@@ -18,11 +18,11 @@
 #define AICPU_KERNELS_PINVERSE_CC_
 
 #include "pinverse.h"
+
 #include "Eigen/Core"
 #include "cpu_kernel_utils.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
-#include <iostream>
 
 namespace {
 const uint32_t kInputNum = 1;
@@ -61,7 +61,7 @@ uint32_t PinverseCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((output_shape.size() == SHAPEDIM), KERNEL_STATUS_PARAM_INVALID, "Output[x] must be 2D.");
   MatrixMap output(reinterpret_cast<T *>(output_tensor->GetData()),
                     output_shape[0], output_shape[1]);
-  
+
   // calculate S+
   for (unsigned int i = 0; i < singularValues.size(); ++i) {
     if (singularValues(i) > rcond) {
@@ -82,7 +82,7 @@ uint32_t PinverseCpuKernel::Compute(CpuKernelContext &ctx) {
   Tensor *input0_tensor = ctx.Input(0);
   auto input_x_type = input0_tensor->GetDataType();
   uint32_t ret = KERNEL_STATUS_OK;
-  switch(input_x_type) {
+  switch (input_x_type) {
     case DT_FLOAT:
       ret = DoCompute<float>(ctx);
       break;

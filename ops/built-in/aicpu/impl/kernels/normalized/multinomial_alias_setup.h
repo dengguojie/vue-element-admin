@@ -17,7 +17,6 @@
 #ifndef AICPU_KERNELS_NORMALIZED_MULTINOMIAL_ALIAS_SETUP_H_
 #define AICPU_KERNELS_NORMALIZED_MULTINOMIAL_ALIAS_SETUP_H_
 
-#include <stack>
 #include <vector>
 
 #include "cpu_kernel.h"

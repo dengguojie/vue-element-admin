@@ -26,7 +26,7 @@ const uint32_t kOutputNum = 1;
 const char *kGeometric = "Geometric";
 const double PATTRDEFAULT = 0.5;
 
-#define Geometric_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
+#define GEOMETRIC_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                           \
     uint32_t result = DoCompute<TYPE>(CTX);                 \
     if (result != KERNEL_STATUS_OK) {                       \
@@ -76,8 +76,8 @@ uint32_t GeometricCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_DEBUG("%s op input[x] data type is [%s].", kGeometric,
                    DTypeStr(input_data_type).c_str());
   switch (input_data_type) {
-    Geometric_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    Geometric_COMPUTE_CASE(DT_FLOAT, float, ctx)
+    GEOMETRIC_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
+    GEOMETRIC_COMPUTE_CASE(DT_FLOAT, float, ctx)
     default:
       KERNEL_LOG_ERROR("Geometric kernel data type [%s] not support.",
                        DTypeStr(input_data_type).c_str());
