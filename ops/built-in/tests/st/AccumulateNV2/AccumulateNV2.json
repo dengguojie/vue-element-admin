@@ -1,0 +1,106 @@
+[
+    {
+      "op": "AccumulateNV2",
+      "calc_expect_func_file":"test_accumulate_nv2.py:calc_expect_func", 
+      "input_desc": [
+        {
+          "shape": [
+               1,16,16,16,16
+          ],
+          "ori_shape": [
+               1,16,16,16,16
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "name": "x0",
+          "type": "float"
+        },
+        {
+            "shape": [
+                1,16,16,16,16
+            ],
+            "ori_shape": [
+                1,16,16,16,16
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x1",
+            "type": "float"
+        }
+      ],
+      "output_desc": [
+        {
+            "shape": [
+                1,16,16,16,16       
+            ],
+            "ori_shape": [
+                1,16,16,16,16     
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "y",
+            "type": "float"
+          }
+      ],
+      "attr": [
+        {
+          "name": "N",
+          "type": "int",
+          "value": 2
+        }
+      ],
+      "case_name": "test_accumulate_nv2_0"
+    },
+    {
+        "op": "AccumulateNV2",
+        "calc_expect_func_file":"test_accumulate_nv2.py:calc_expect_func", 
+        "input_desc": [
+          {
+            "shape": [
+                 1,16,16,16,16
+            ],
+            "ori_shape": [
+                 1,16,16,16,16
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "x0",
+            "type": "float"
+          },
+          {
+              "shape": [
+                  16,16,16,16,16
+              ],
+              "ori_shape": [
+                  16,16,16,16,16
+              ],
+              "format": "ND",
+              "ori_format": "ND",
+              "name": "x1",
+              "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+              "shape": [
+                  16,16,16,16,16       
+              ],
+              "ori_shape": [
+                  16,16,16,16,16     
+              ],
+              "format": "ND",
+              "ori_format": "ND",
+              "name": "y",
+              "type": "float"
+            }
+        ],
+        "attr": [
+          {
+            "name": "N",
+            "type": "int",
+            "value": 2
+          }
+        ],
+        "case_name": "test_accumulate_nv2_1"
+      }
+  ]

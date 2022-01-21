@@ -5001,32 +5001,30 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 COMMON_INFER_FUNC_REG(StridedSliceV3, StridedSliceV3InferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV3);
 // ----------------StridedSlicev3 Op End-------------------
-// ----------------InplaceTopKDistance Begin-------------------
+// ----------------MovingSumWithSigmoidInferShape Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
-  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape work");
-  ge::TensorDesc alphaTensorDesc = op.GetInputDescByName("alpha");
-  ge::TensorDesc energyTensorDesc = op.GetInputDescByName("energy");
-  ge::TensorDesc frameTensorDesc = op.GetInputDescByName("frame_size");
-  DataType alphaDtype = alphaTensorDesc.GetDataType();
-  DataType energyDtype = energyTensorDesc.GetDataType();
-  DataType frameDtype = frameTensorDesc.GetDataType();
-  auto alphaShape = alphaTensorDesc.GetShape();
-  std::vector<std::pair<int64_t, int64_t>> in_range;
-  auto alphaShapeRange = alphaTensorDesc.GetShapeRange(in_range);
-  
-  ge::TensorDesc yDesc = op.GetOutputDescByName("y");
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape work.");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x = op_info->GetInputDescPtr(0);
+  auto output_y = op_info->MutableOutputDesc(0);
 
-  yDesc.SetShape(ge::Shape(alphaShape));
-  yDesc.SetShapeRange(in_range);
+  auto x_dtype = input_x->GetDataType();
+  auto x_shape = input_x->GetShape();
 
-  yDesc.SetDataType(alphaDtype);
+  output_y->SetShape(x_shape);
+  output_y->SetDataType(x_dtype);
 
- (void) op.UpdateOutputDesc("y", yDesc);
-
+  auto input_dims = x_shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  if (input_dims == UNKNOWN_RANK) {
+    input_x->GetShapeRange(x_range);
+    output_y->SetShapeRange(x_range);
+  }
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape done.");
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(MovingSumWithSigmoid, MovingSumWithSigmoidInferShape);
-// ----------------InplaceTopKDistance END---------------------
+// ----------------MovingSumWithSigmoidInferShape END---------------------
 }  // namespace ge
 

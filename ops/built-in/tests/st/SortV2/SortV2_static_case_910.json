@@ -1,0 +1,149 @@
+[
+  {
+    "op": "SortV2",
+    "calc_expect_func_file":"test_sort_v2.py:calc_expect_func", 
+    "input_desc": [
+      {
+        "shape": [
+          16, 
+          32760
+        ],
+        "ori_shape": [
+          16,
+          32760
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32760
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32760
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_Sort_000"
+  },
+  {
+    "op": "SortV2",
+    "calc_expect_func_file":"test_sort_v2.py:calc_expect_func", 
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          327
+        ],
+        "ori_shape": [
+          7,
+          327
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          327
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7,
+          327
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_Sort_001"
+  },
+  {
+    "op": "SortV2",
+    "calc_expect_func_file":"test_sort_v2.py:calc_expect_func", 
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          6
+        ],
+        "ori_shape": [
+          7,
+          6
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          7,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_Sort_002"
+  }
+]

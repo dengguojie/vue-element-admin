@@ -75,7 +75,7 @@
         "format": "ND",
         "ori_format": "ND",
         "name": "alpha",
-        "type": "float"
+        "type": "float16"
       },
       {
         "shape": [
@@ -87,7 +87,7 @@
         "format": "ND",
         "ori_format": "ND",
         "name": "energy",
-        "type": "float"
+        "type": "float16"
       },
       {
         "shape": [
@@ -113,7 +113,7 @@
         ],
         "ori_format": "ND",
         "name": "y",
-        "type": "float"
+        "type": "float16"
       }
     ],
     "attr": [

@@ -1,6 +1,7 @@
 [
   {
     "op": "MovingSumWithSigmoid",
+    "calc_expect_func_file":"test_msws.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -64,13 +65,14 @@
   },
   {
     "op": "MovingSumWithSigmoid",
+    "calc_expect_func_file":"test_msws.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
-          51200
+          512
         ],
         "ori_shape": [
-          51200
+          512
         ],
         "format": "ND",
         "ori_format": "ND",
@@ -79,10 +81,10 @@
       },
       {
         "shape": [
-          51200
+          512
         ],
         "ori_shape": [
-          51200
+          512
         ],
         "format": "ND",
         "ori_format": "ND",
@@ -105,11 +107,11 @@
     "output_desc": [
       {
         "shape": [
-          51200
+          512
         ],
         "format": "ND",
         "ori_shape": [
-          51200
+          512
         ],
         "ori_format": "ND",
         "name": "y",

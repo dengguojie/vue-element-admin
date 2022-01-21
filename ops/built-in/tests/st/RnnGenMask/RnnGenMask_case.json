@@ -1,6 +1,7 @@
 [
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -51,6 +52,7 @@
   },
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -101,6 +103,7 @@
   },
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -151,6 +154,7 @@
   },
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -201,6 +205,7 @@
   },
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -251,6 +256,7 @@
   },
   {
     "op": "RnnGenMask",
+    "calc_expect_func_file":"test_rnn_gen_mask.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [

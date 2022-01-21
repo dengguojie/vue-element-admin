@@ -5,7 +5,7 @@
 
 // ----------------MovingSumWithSigmoid-------------------
 class MovingSumWithSigmoidProtoTest : public testing::Test {
- protected:
+protected:
   static void SetUpTestCase() {
     std::cout << "MovingSumWithSigmoid Proto Test SetUp" << std::endl;
   }
@@ -33,7 +33,7 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_0) {
 
     op.UpdateInputDesc("alpha", alpha_desc);
     op.UpdateInputDesc("energy", alpha_desc);
-	op.UpdateInputDesc("frame_size", frame_desc);
+    op.UpdateInputDesc("frame_size", frame_desc);
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);

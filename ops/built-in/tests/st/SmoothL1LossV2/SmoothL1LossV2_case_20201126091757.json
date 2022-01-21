@@ -1,76 +1,65 @@
 [
-	{
-		"case_name":"Test_SmoothL1LossV2_001",
-		"op":"SmoothL1LossV2",
-		"input_desc":[
-			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
-				"shape":[
-					3,
-					5
-				],
-				"value_range":[
-					[
-						0.1,
-						1.0
-					]
-				],
-				"data_distribute":[
-					"uniform"
-				]
-			},
-			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
-				"shape":[
-					3,
-					5
-				],
-				"value_range":[
-					[
-						0.1,
-						1.0
-					]
-				],
-				"data_distribute":[
-					"uniform"
-				]
-			}
-		],
-		"output_desc":[
-			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
-				"shape":[
-					3,
-					5
-				]
-			}
-		],
-		"attr":[
-			{
-				"name":"sigma",
-				"value":1.0,
-				"type":"float"
-			},
-			{
-				"name":"reduction",
-				"value":"none",
-				"type":"string"
-			}
-		]
-	}
+    {
+        "op": "SmoothL1LossV2",
+        "calc_expect_func_file":"test_smooth_l1_loss_v2.py:calc_expect_func", 
+        "input_desc": [
+            {
+                "shape": [
+                    3, 
+                    4
+                ],
+                "ori_shape": [
+                    3, 
+                    4
+                ],
+                "format": "ND",
+                "ori_format": "ND",
+                "name": "predict",
+                "type": "float32"
+            },
+            {
+                "shape": [
+                    3, 
+                    4
+                ],
+                "ori_shape": [
+                    3,
+                    4
+                ],
+                "format": "ND",
+                "ori_format": "ND",
+                "name": "label",
+                "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    3, 
+                    4
+                ],
+                "format": "ND",
+                "ori_shape": [
+                    3, 
+                    4
+                ],
+                "ori_format": "ND",
+                "name": "loss",
+                "type": "float32"
+            }
+        ],
+        "attr":[
+            {
+                "name":"sigma",
+                "value":1.0,
+                "type":"float"
+            },
+            {
+                "name":"reduction",
+                "value":"none",
+                "type":"string"
+            }
+        ],
+        "case_name": "Test_SmoothL1LossV2_001"
+    }
 ]
