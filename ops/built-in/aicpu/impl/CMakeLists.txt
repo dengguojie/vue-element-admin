@@ -135,6 +135,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/sqrtgrad.cc
         kernels/normalized/custom/research/svd.cc
         kernels/normalized/custom/research/unpack.cc
+        kernels/normalized/custom/research/unsorted_segment_prod.cc
     )
 endif()
 message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src_files})
