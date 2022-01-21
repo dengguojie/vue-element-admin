@@ -50,7 +50,7 @@ static const string PATTERN_SUM = "Sum";
 
 // attr name
 static const string ATTR_AXIS = "axes";
-
+static const int64_t MAX_LENGTH = 30000;
 /*
 before:
   input0    input1
@@ -189,6 +189,11 @@ Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     OP_LOGI(FUSED_OP_TYPE.c_str(),
             "reduce sum axisValue0 % reduceSumInputDimNum is [%d], which not equal to reduceSumInputDimNum - 1 [%d].",
     (axisValue0 % reduceSumInputDimNum), (reduceSumInputDimNum - 1)), return NOT_CHANGED);
+
+  // input's last dimension more than 30000, need use workspace, can not enable mutil core
+  FUSION_PASS_CHECK(reduceSumInputShape.GetDims()[reduceSumInputDimNum - 1] > MAX_LENGTH,
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "last dimension more than 30000."),
+    return NOT_CHANGED);
 
   // create softmax grad node op description
   std::string softmaxGradName = mulNode->GetName() + "/" + TYPE_SOFTMAXGRAD;
