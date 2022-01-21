@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/abs.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
@@ -257,6 +258,7 @@ set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
   testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
+  testcase/abs/src/abs_utest.cpp
   testcase/acos/src/acos_utest.cpp
   testcase/acosh/src/acosh_utest.cpp
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp

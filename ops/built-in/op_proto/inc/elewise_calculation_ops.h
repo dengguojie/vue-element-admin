@@ -331,7 +331,7 @@ REG_OP(Sub)
 
 *@par Inputs:
 *One input, including: \n
-*x: A Tensor. Must be one of the following types: float16, float32, double, int32, int64. \n
+*x: A Tensor. Must be one of the following types: float16, float32, double, int8, int16, int32, int64. \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type as "x". \n
@@ -340,8 +340,10 @@ REG_OP(Sub)
 *Compatible with the TensorFlow operator Abs.
 */
 REG_OP(Abs)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16,
+                          DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16,
+                           DT_INT32, DT_INT64}))
     .OP_END_FACTORY_REG(Abs)
 
 /**
