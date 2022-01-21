@@ -1176,15 +1176,9 @@ class GemmSchedule:
             emit_insn_str = "vector_conv"
         else:
             if round_mode == "Round":
-                emit_insn_str = "vector_conv_round"
-            elif round_mode == "Ceil":
-                emit_insn_str = "vector_conv_ceil"
-            elif round_mode == "Floor":
-                emit_insn_str = "vector_conv_floor"
-            elif round_mode == "Trunc":
-                emit_insn_str = "vector_conv_trunc"
-            else:
                 emit_insn_str = "vector_conv"
+            else:
+                raise RuntimeError("Round mode should be Round only, %s is not supported" % round_mode)
         return emit_insn_str
 
     def _quant_fusion_proc(self):
@@ -1352,7 +1346,8 @@ class GemmSchedule:
         self._atomic_add()
         self._find_tensor_and_get_flag(compute_tensors)
         self.status_controller.quantify_fusion = (
-            self.status_controller.requant_fusion or self.status_controller.dequant_fusion)
+            self.status_controller.requant_fusion or self.status_controller.dequant_fusion
+            or self.status_controller.quant_fusion)
 
         self._print_debug(self.status_controller.quant_fusion, "quant_fusion")
         self._print_debug(self.status_controller.requant_fusion, "requant_fusion")
@@ -1708,12 +1703,12 @@ class GemmSchedule:
                     continue
                 if ten_in not in self.container.matmul_tensors and ten_in not in elemwise_tensors:
                     elemwise_tensors.append(ten_in)
-
             return True
         return False
 
     def _get_matmul_dequant_tensor(self):
-        if self.container.TENSOR_MAP.get("quant") is not None:
+        if self.container.TENSOR_MAP.get("quant") is not None and self.container.TENSOR_MAP.get(
+                "dequant_nz") is not None:
             compute_tensors = self._get_compute_tensor(self.container.TENSOR_MAP.get("dequant_nz"))
             return compute_tensors
         return []
