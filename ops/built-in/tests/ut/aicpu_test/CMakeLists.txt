@@ -105,6 +105,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/abs.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_and.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
@@ -277,6 +278,7 @@ set(_cpu_kernels_ut_files
   testcase/atanh/src/atanh_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
   testcase/betainc/src/betainc_utest.cpp
+  testcase/bitwise_and/src/bitwise_and_utest.cpp
   testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/calc_buckets_limit_and_offset/src/calc_buckets_limit_and_offset_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp
