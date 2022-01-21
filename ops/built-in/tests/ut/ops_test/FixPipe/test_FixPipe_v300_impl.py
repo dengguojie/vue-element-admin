@@ -100,6 +100,10 @@ single_conv2d = [
     ("conv2d", "conv2d", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
 ]
 
+aipp_conv2d = [
+    ("conv2d", "conv2d", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
+]
+
 
 def eltwise_exists(dataflow):
     if dataflow.find("add") != -1 or dataflow.find("sub") != -1:
@@ -949,6 +953,141 @@ def check_fixpipe_conv2d():
         print("====>catch c0 error")
 
 
+def test_aipp_conv2d(config_dict):
+    """
+    c04 + aipp
+    """
+    import json
+    from impl.aipp import aipp_compute
+
+    casename, dataflow, conv_type, shape_in, shape_w, pads, strides, dilation, groups, bias_flag, quant_scale, quant_offset, relu_param = config_dict
+    Ni, Ci, Hi, Wi = shape_in
+    Co, _, Hk, Wk = shape_w
+
+    Ci0 = 4
+    Co0 = 16
+    Ci1 = 1
+    Co1 = (Co + Co0 - 1) // Co0
+
+    shape_w_fracz = ((Hk * Wk * Ci1 + Ci0 - 1) // Ci0, Co1, Co0, Ci0 * 4)
+    weight_format = "FRACTAL_Z_C04"
+
+    dilations = [1, 1, 1, 1]
+    strides = [1, 1, strides[0], strides[1]]
+
+    aipp_format_dict = {
+        "yuv": "YUV420SP_U8",
+        "xrgb": "XRGB8888_U8",
+        "rgb": "RGB888_U8"
+    }
+    aipp_format = "rgb"
+    aipp_input_format = aipp_format_dict[aipp_format]
+
+    h_after_crop = Hi
+    w_after_crop = Wi
+    output_data = {
+        'shape': [Ni, 1, h_after_crop, w_after_crop, 4],
+        'ori_shape': [Ni, 3, h_after_crop, w_after_crop],
+        'format': 'NC1HWC0_C04',
+        'ori_format': 'NCHW',
+        'dtype': 'float16',
+        'addr_type': 0,
+        'valid_shape': (),
+        'slice_offset': (),
+        'use_L1_workspace': 0,
+        'L1_workspace_size': -1,
+        'L1_fusion_type': -1,
+        'L1_addr_offset': 0,
+        'total_shape': (),
+        'split_index': 0
+    }
+
+    aipp_config_dict = {
+        "cce_product": "2.1",
+        "out_dtype": "float16",
+        "out_format": "NC1HWC0",
+        "aipp_mode": "static",
+        "related_input_rank": 0,
+        "input_format": aipp_input_format,
+        "src_image_size_n": shape_in[0],
+        "src_image_size_c": shape_in[1],
+        "src_image_size_h": shape_in[2],
+        "src_image_size_w": shape_in[3],
+        "crop": False,
+        "load_start_pos_h": 2,
+        "load_start_pos_w": 2,
+        "crop_size_h": h_after_crop,
+        "crop_size_w": w_after_crop,
+        "src_image_h": shape_in[2],
+        "src_image_w": shape_in[3],
+        "resize": 0,
+        "resize_model": 0,
+        "resize_output_h": 32,
+        "resize_output_w": 32,
+        "padding": 0,
+        "left_padding_size": 7,
+        "right_padding_size": 7,
+        "top_padding_size": 0,
+        "bottom_padding_size": 4,
+        "csc_switch": 1,
+        "rbuv_swap_switch": 0,
+        "ax_swap_switch": 0,
+        "matrix_r0c0": 298,
+        "matrix_r0c1": 516,
+        "matrix_r0c2": 0,
+        "matrix_r1c0": 298,
+        "matrix_r1c1": -100,
+        "matrix_r1c2": -208,
+        "matrix_r2c0": 298,
+        "matrix_r2c1": 0,
+        "matrix_r2c2": 409,
+        "input_bias_0": 16,
+        "input_bias_1": 128,
+        "input_bias_2": 128,
+        "mean_chn_0": 1,
+        "mean_chn_1": 1,
+        "mean_chn_2": 1,
+        "mean_chn_3": 1,
+        "var_reci_chn_0": 1.0,
+        "var_reci_chn_1": 1.0,
+        "var_reci_chn_2": 1.0,
+        "min_chn_0": 0,
+        "min_chn_1": 0,
+        "min_chn_2": 0,
+        "min_chn_3": 0
+    }
+
+    with tvm.target.cce():
+        fmap = tvm.placeholder(shape_in,
+                               name="params_0",
+                               dtype="uint8",
+                               attrs={
+                                   "ori_shape": shape_in,
+                                   "format": "NCHW",
+                                   "ori_format": "NHWC"
+                               })
+        aipp_config_dict_json = json.dumps(aipp_config_dict)
+        aipp_res = aipp_compute(fmap,
+                                None,
+                                output_data,
+                                aipp_config_dict_json,
+                                kernel_name="aipp")
+        aipp_res.op.attrs["is_first_layer"] = True
+
+
+def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
+    from te.platform.cce_conf import te_set_version
+    from tbe.common.platform.platform_info import get_soc_spec
+    with op_context.OpContext():
+        te_set_version("Ascend320", "AiCore")
+        soc_version = get_soc_spec("SOC_VERSION")
+        print("=================get soc:", soc_version)
+        for case in case_list:
+            if is_hf32_flag:
+                set_impl_mode()
+            test_aipp_conv2d(case)
+
+
 def run_v300_cases(test_arg):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
@@ -960,6 +1099,10 @@ def run_v300_cases(test_arg):
             #run_v300_batch_cases(single_conv2d)
 
 
+def run_v300_aipp_fusion_cases(test_arg):
+    run_v300_batch_cases_aipp(aipp_conv2d)
+
+
 def run_v220_cases(test_arg):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects_220)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects_220)):
@@ -968,7 +1111,7 @@ def run_v220_cases(test_arg):
 
 print("====> conv2d v300 ut start")
 ut_case.add_cust_test_func(test_func=run_v300_cases)
-#ut_case.add_cust_test_func(test_func=run_v220_cases)
+ut_case.add_cust_test_func(test_func=run_v300_aipp_fusion_cases)
 print("====> end v300 ut start")
 
 

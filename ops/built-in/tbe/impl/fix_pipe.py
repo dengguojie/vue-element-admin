@@ -113,12 +113,14 @@ def _create_placeholder(input_dict, name):
                              (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE),
                              (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE),
                              (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE),
-                             (dict, para_check.NONE_TYPE), dict, (list, tuple), (list, tuple), str)
+                             (dict, para_check.NONE_TYPE), dict, (list, tuple), (list, tuple),
+                             str, str)
 def fix_pipe(x1: dict, x2: (dict, None), quant_scale_0: (dict, None), relu_weight_0: (dict, None),
             clip_value_0: (dict, None),
             quant_scale_1: (dict, None), relu_weight_1: (dict, None), clip_value_1: (dict, None),
             anti_quant_scale: (dict, None), anti_quant_offset: (dict, None), output: dict,
-            fusion_op_list: (List[str], tuple), unit_list: (List[str], tuple), eltwise_mode: str):
+            fusion_op_list: (List[str], tuple), unit_list: (List[str], tuple), eltwise_mode: str,
+            kernel_name="fixpipe"):
     """
     :param x1:
     :param x2:
@@ -149,6 +151,7 @@ def fix_pipe(x1: dict, x2: (dict, None), quant_scale_0: (dict, None), relu_weigh
     _ = fusion_op_list
     _ = unit_list
     _ = eltwise_mode
+    _ = kernel_name
 
     check_fixpipe_support()
     input_x = _create_placeholder(x1, "x1")

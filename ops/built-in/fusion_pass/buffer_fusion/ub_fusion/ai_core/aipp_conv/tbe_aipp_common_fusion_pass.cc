@@ -34,6 +34,8 @@ static const char kPatternConv[] = "convolution";
 static const char kPatternElemwise[] = "elemwise";
 static const char kPatternQuant[] = "quant";
 static const char kPatternStridedWrite[] = "stridedwrite";
+static const char kPatternFixpipe[] = "FixPipe";
+
 
 vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
@@ -61,12 +63,14 @@ vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name2.c_str());
   pattern2->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternFixpipe, {OP_PATTERN_FIXPIPE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternElemwise, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_MAX)
           .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternStridedWrite, {OP_PATTERN_STRIDED_WRITE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .SetHead({kPatternAipp})
           .SetOutputs(kPatternAipp, {kPatternConv})
-          .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternConv, {kPatternElemwise, kPatternFixpipe}, TBE_OUTPUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternFixpipe, {}, TBE_OUTPUT_BRANCH_SINGLE, true, true)
           .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
           .SetOutputs(kPatternQuant, {kPatternStridedWrite});
   patterns.push_back(pattern2);

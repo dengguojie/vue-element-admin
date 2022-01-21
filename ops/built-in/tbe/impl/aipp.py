@@ -169,6 +169,8 @@ def aipp_compute(input_data, input_dync_param, output_data,
     aipp_map["load_start_pos_w"] = load_start_pos_w
     aipp_map["crop_size_h"] = load_image_h
     aipp_map["crop_size_w"] = load_image_w
+    if cur_cce_product in ["Ascend920", "Ascend320"]:
+        aipp_map["is_first_layer"] = True
 
     aipp_res = tvm.compute(
         res_shape,

@@ -292,3 +292,4 @@ if __name__ == "__main__":
     test_aipp_static_4()
     test_aipp_static_5()
     test_aipp_dynamic_1()
+    print("end of aipp test")

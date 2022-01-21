@@ -506,9 +506,6 @@ class AippFusion:
                         "spr_2": aipp_map["spr_2"],
                         "spr_3": aipp_map["spr_3"],
                         "spr_4": aipp_map["spr_4"],
-                        "spr_5": aipp_map["spr_5"],
-                        "spr_6": aipp_map["spr_6"],
-                        "spr_7": aipp_map["spr_7"],
                         "spr_8": aipp_map["spr_8"],
                         "spr_9": aipp_map["spr_9"],
                         "src_image_h": aipp_map["src_image_h"],
@@ -518,6 +515,12 @@ class AippFusion:
                         "load_start_pos_w": aipp_map["load_start_pos_w"],
                         "crop_size_h": aipp_map["crop_size_h"],
                         "crop_size_w": aipp_map["crop_size_w"]}
+        # v300 spr5-7 is deleted
+        if not is_support_fixpipe_op():
+            aipp_map_res["spr_5"] = aipp_map["spr_5"]
+            aipp_map_res["spr_6"] = aipp_map["spr_6"]
+            aipp_map_res["spr_7"] = aipp_map["spr_7"]
+
         sch[al1].emit_insn(al1.op.axis[1], "load_image_to_cbuf", aipp_map_res)
 
 
@@ -1454,6 +1457,9 @@ class Conv2dSchedule:
                 sch[bias_bt].compute_at(sch[res], fixpipe_slice_axis)
 
         def anti_quant_spilt_flag(res):
+            """
+            fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride.
+            """
             if res.dtype == "float16" and not self._fixpipe_fusion.nz2nd_flag and \
                     self._fixpipe_fusion.anti_quant_flag:
                 return True
