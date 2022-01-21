@@ -318,7 +318,7 @@ def depthwise_conv2d_backprop_input_d(filter,
 
     # input parameters
     batch, channel_in, input_height, input_width = input_shape
-    filter_height, filter_width, filter_c, filter_k = filter_shape
+    filter_height, filter_width, _, _ = filter_shape
     _, filter_ci0, _ = tbe_platform.CUBE_MKN[filter_dtype]["mac"]
     input_c1 = (channel_in + filter_ci0 - 1) // filter_ci0
     stride_h, stride_w = strides[dim_s_h], strides[dim_s_w]

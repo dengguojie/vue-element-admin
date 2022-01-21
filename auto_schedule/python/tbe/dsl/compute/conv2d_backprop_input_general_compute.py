@@ -569,7 +569,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
                         ].astype(output_dtype),
                     name="c_ddr",
                     tag="conv2d_backprop_input",
-                    attrs={"output_shape": (dx_batch, dx_cin1 * 2, dx_h, dx_w, dx_cin0 // 2),
+                    attrs={"output_shape": self._output_shape,
                            "output_dtype": self.output_dtype,
                            "group_dict": self._group_dict,
                            "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
