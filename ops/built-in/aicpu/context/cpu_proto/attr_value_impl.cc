@@ -124,6 +124,19 @@ void AttrValueImpl::SetListInt(const std::vector<int64_t> &list) {
 }
 
 /*
+ * set int list list value to attr.
+ */
+void AttrValueImpl::SetListListInt(const std::vector<std::vector<int64_t>> &list) {
+  auto array = attr_value_->mutable_array();
+  KERNEL_CHECK_NULLPTR_VOID(array, "Protobuf mutable array is nullptr")
+  for (size_t i = 0; i < list.size(); ++i) {
+    for (size_t j = 0; j < list[i].size(); ++j) {
+      array->add_i(list[i][j]);
+    }
+  }
+}
+
+/*
  * get float value of attr.
  */
 float AttrValueImpl::GetFloat() const { return attr_value_->f(); }

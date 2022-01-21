@@ -90,6 +90,13 @@ void AttrValue::SetListInt(const std::vector<int64_t> &list) {
 }
 
 /*
+ * set int list list value to attr.
+ */
+void AttrValue::SetListListInt(const std::vector<std::vector<int64_t>> &listlist) {
+  impl_->SetListListInt(listlist);
+}
+
+/*
  * get float value of attr.
  */
 float AttrValue::GetFloat() const { return impl_->GetFloat(); }

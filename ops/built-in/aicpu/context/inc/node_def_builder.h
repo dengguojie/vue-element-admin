@@ -56,6 +56,8 @@ class NodeDefBuilder {
 
 	NodeDefBuilder& Attr(std::string name, const std::vector<int64_t> &value);
 
+	NodeDefBuilder& Attr(std::string name, const std::vector<std::vector<int64_t>> &value);
+
 	NodeDefBuilder& Attr(std::string name, const std::vector<float> &value);
 
 	NodeDefBuilder& Attr(std::string name, const std::vector<aicpu::DataType> &value);
