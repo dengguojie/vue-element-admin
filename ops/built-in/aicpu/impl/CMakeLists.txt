@@ -124,6 +124,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/lu.cc
         kernels/normalized/custom/research/minimum.cc
         kernels/normalized/custom/research/qr.cc
+        kernels/normalized/custom/research/random_gamma.cc
         kernels/normalized/custom/research/sigmoid_grad.cc
         kernels/normalized/custom/research/sin.cc
         kernels/normalized/custom/research/sinh.cc

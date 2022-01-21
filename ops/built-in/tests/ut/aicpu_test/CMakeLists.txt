@@ -111,6 +111,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/random_gamma.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sigmoid_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sinh.cc
@@ -348,6 +349,7 @@ set(_cpu_kernels_ut_files
   testcase/pinverse/src/pinverse_utest.cpp
   testcase/poisson/src/poisson_utest.cpp
   testcase/qr/src/qr_utest.cpp
+  testcase/random_gamma/src/random_gamma_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp

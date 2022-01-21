@@ -1,0 +1,2966 @@
+[
+    {
+        "case_name": "RandomGamma_folat16_001",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    8,
+                    16
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_002",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    8,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_003",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    16,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_004",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    16,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_005",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    32,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_006",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    32,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_007",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    64,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_008",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    64,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_009",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    128,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_010",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    128,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_011",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    256,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_012",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    256,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat16_013",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        512.0,
+                        512.0
+                    ]
+                ],
+                "value": [
+                    512
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                    512,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_001",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    8,
+                    16
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_002",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    8,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_003",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    16,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_004",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    16,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_005",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    32,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_006",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    32,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_007",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    64,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_008",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    64,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_009",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    128,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_010",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    128,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_011",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_012",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    256,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_folat32_013",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        512.0,
+                        512.0
+                    ]
+                ],
+                "value": [
+                    512
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float"
+                ],
+                "shape": [
+                    512,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_001",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    8,
+                    16
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_002",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "value": [
+                    8
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    8,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_003",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    16,
+                    32
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_004",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        16.0,
+                        16.0
+                    ]
+                ],
+                "value": [
+                    16
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    16,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_005",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    32,
+                    64
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_006",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        32.0,
+                        32.0
+                    ]
+                ],
+                "value": [
+                    32
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    32,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_007",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    64,
+                    128
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_008",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        64.0,
+                        64.0
+                    ]
+                ],
+                "value": [
+                    64
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    64,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_009",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    128,
+                    256
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_010",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        128.0,
+                        128.0
+                    ]
+                ],
+                "value": [
+                    128
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    128,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_011",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    256,
+                    512
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_012",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        256.0,
+                        256.0
+                    ]
+                ],
+                "value": [
+                    256
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    256,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "RandomGamma_double_013",
+        "op": "RandomGamma",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    1
+                ],
+                "is_const": true,
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        512.0,
+                        512.0
+                    ]
+                ],
+                "value": [
+                    512
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    1024
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        2.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "double"
+                ],
+                "shape": [
+                    512,
+                    1024
+                ]
+            }
+        ],
+        "attr": [
+            {
+                "name": "seed",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "seed2",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    }
+]
