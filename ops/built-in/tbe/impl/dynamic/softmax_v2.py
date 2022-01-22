@@ -59,6 +59,14 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return param_dynamic_in_json
 
 
+def _is_special_cases(input_shape):
+    white_list_shape = [[96, 4]]
+    shape_t = list(input_shape)
+    if shape_t in white_list_shape:
+        return True
+    return False
+
+
 # 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
@@ -84,8 +92,8 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         the result of softmax
     """
 
-    shape = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
+    shape = shape_util.shape_to_list(input_x.shape)
     list_axis = list(axis)
     last_dim = len(input_x.shape) - 1
 
@@ -168,7 +176,10 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
         tbe_platform.api_check_support("tik.vgatherb")) and \
             output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
-        data_expsum = tbe.vrec(data_expsum)
+        if _is_special_cases(ori_shape):
+            data_expsum = tbe.vrec(data_expsum, "high_precision")
+        else:
+            data_expsum = tbe.vrec(data_expsum)
         data_expsum = tbe.broadcast(data_expsum, shape)
         output = tbe.vmul(data_exp, data_expsum)
     else:
