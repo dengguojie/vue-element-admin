@@ -74,7 +74,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
   ${CPU_KERNELS_DIR}/kernels/host/gemm.cc
   ${CPU_KERNELS_DIR}/kernels/host/matmul.cc
-  ${CPU_KERNELS_DIR}/kernels/host/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
   ${CPU_KERNELS_DIR}/kernels/host/trans_data_rnn.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
@@ -113,6 +112,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/inv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/random_gamma.cc

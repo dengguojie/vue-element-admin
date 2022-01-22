@@ -128,6 +128,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/inv.cc
         kernels/normalized/custom/research/lu.cc
+        kernels/normalized/custom/research/matrix_triangular_solve.cc
         kernels/normalized/custom/research/minimum.cc
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/random_gamma.cc
@@ -157,7 +158,6 @@ set(local_host_kernels_src_files
     kernels/host/format_transfer/register_format_transfer.cc
     kernels/host/gemm.cc
     kernels/host/matmul.cc
-    kernels/host/matrix_triangular_solve.cc
     kernels/host/no_op.cc
     kernels/host/trans_data_rnn.cc
     kernels/host/transdata.cc
