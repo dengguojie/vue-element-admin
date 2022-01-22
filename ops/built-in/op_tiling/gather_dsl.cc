@@ -102,7 +102,6 @@ constexpr int32_t DECIMAL_TEN = 10;
 constexpr int32_t INDICES_SHAPE_IDX = 20000;
 constexpr int32_t MIN_BLOCK_FACTOR_IDX = 30000;
 constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
-constexpr int32_t BLOCK_SPLIT_VALUE = 16;
 }
   GatherDslCompileInfo::GatherDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
     try {
@@ -133,15 +132,15 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
                  return);
       constexpr size_t params_ub_store_num_idx = 0;
       constexpr size_t batch_dims_idx = 1;
-      constexpr size_t is_binary_shape_idx = 2;
+      constexpr size_t unknown_batch_dims_idx = 2;
       constexpr size_t org_batch_dims_idx = 3;
       params_ub_store_num = custom_info[params_ub_store_num_idx];
       batch_dims = custom_info[batch_dims_idx];
-      is_binary_shape = custom_info[is_binary_shape_idx];
+      unknown_batch_dims = custom_info[unknown_batch_dims_idx];
       org_batch_dims = custom_info[org_batch_dims_idx];
 
       OP_LOGD(op_type.c_str(), "GatherDslCompileInfo:%lld %lld %lld %lld",
-              gather_type, batch_dims, is_binary_shape, org_batch_dims);
+              gather_type, batch_dims, unknown_batch_dims, org_batch_dims);
 
       // tensor sizes for special pattern
       tensor_sizes = org_compile_info.at("_tensor_sizes").get<std::unordered_map<std::string, std::vector<int64_t>>>();
@@ -153,6 +152,10 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
       } else {
         // gather vars
         gather_vars = org_compile_info.at("_gather_vars").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+      }
+
+      if (unknown_batch_dims) {
+        attr_name = org_compile_info.at("attr_name").get<std::string>();
       }
     } catch (const std::exception &e) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "construct compile_info error. Error message: %s", e.what());
@@ -189,11 +192,7 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
     }
 
     // batch dims
-    if ((gather_compile_info.is_binary_shape) && (gather_compile_info.org_batch_dims < 0)) {
-      real_batch_dims = gather_compile_info.org_batch_dims + cur_indices_dim_len;
-    } else {
-      real_batch_dims = gather_compile_info.org_batch_dims;
-    }
+    GetRealBatchDims();
 
     if (gather_compile_info.is_dynamic_const) {
       // const condition shape if fused
@@ -229,7 +228,6 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
         params_rows = params_shape[PARAMS_SHAPE_SIZE - 1];
       }
 
-
     } else {
       // dynamic
       // gather_type = 0 gather
@@ -251,6 +249,7 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
     params_size_total = std::accumulate(params_shape.begin(), params_shape.end(), 1LL, std::multiplies<int64_t>());
     indices_size_total = indices_shape[INDICES_BATCH_DIM_IDX] * indices_shape[INDICES_LOOP_IDX]
                          * indices_shape[INDICES_RANK_IDX];
+    // indices shape batch dims value is same as params shape
     total_size = params_size_total * indices_shape[INDICES_LOOP_IDX];
     output_size = output_shape[OUTPUT_BATCH_DIM_IDX] * output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] *
                   output_shape[OUTPUT_INDICES_LOOP_IDX] * output_shape[OUTPUT_PARAMS_ROW_IDX];
@@ -259,6 +258,25 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
             output_shape[OUTPUT_BATCH_DIM_IDX], output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX],
             output_shape[OUTPUT_INDICES_LOOP_IDX], output_shape[OUTPUT_PARAMS_ROW_IDX]);
     return true;
+  }
+
+  void GatherDsl::GetRealBatchDims() {
+    int64_t batch_dims = 0;
+    if ((gather_compile_info.unknown_batch_dims) && (gather_compile_info.gather_type != GATHER_ND_COMPUTE)) {
+      if (ge::GRAPH_SUCCESS !=
+        static_cast<int64_t>(op_paras.GetAttr(gather_compile_info.attr_name.c_str(), batch_dims))) {
+        OP_LOGW("Gather tiling GetAttr(batch_dims) failed, set default value to 0.");
+      }
+    } else {
+      batch_dims = gather_compile_info.org_batch_dims;
+    }
+
+    if (batch_dims < 0) {
+      real_batch_dims = batch_dims + cur_indices_dim_len;
+    } else {
+      real_batch_dims = batch_dims;
+    }
+    return;
   }
 
   void GatherDsl::SimplyParamsAndIndices() {
@@ -495,7 +513,7 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
 
     real_params_row_num = params_num_ub / params_rows_align;
 
-    return (real_params_row_num < 1) && (params_rows % gather_compile_info.params_align == 0);
+    return params_rows > gather_compile_info.params_align && params_rows % gather_compile_info.params_align == 0;
   }
 
   bool GatherDsl::DoDbModule() {
@@ -718,14 +736,14 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
 
   bool GatherDsl::DoBaseTiling() {
     // n last gather and params last dim > 1
-    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= BLOCK_SPLIT_VALUE) ||
+    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= (gather_compile_info.core_num / 2)) ||
     ((output_size / output_shape[OUTPUT_BATCH_DIM_IDX] * gather_compile_info.params_dtype) < BLOCK_SIZE) ||
     ((output_shape[OUTPUT_BATCH_DIM_IDX] >= output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX]) &&
     (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
     gather_compile_info.core_num * gather_compile_info.params_align))) {
       BlockFirstAxis();
     } else {
-      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= BLOCK_SPLIT_VALUE) ||
+      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= (gather_compile_info.core_num / 2)) ||
       (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
       gather_compile_info.core_num * gather_compile_info.params_align)) {
         BlockSecondAxis();
@@ -757,21 +775,8 @@ constexpr int32_t BLOCK_SPLIT_VALUE = 16;
     key = BASE_KEY;
 
     // gather info
-    int64_t key_axis = axis;
-    if (gather_compile_info.gather_type != GATHER_ND_COMPUTE) {
-      constexpr int64_t axis_key_value = 2;
-      key_axis = axis_key_value;
-    }
-
-    int64_t key_batch_dims = real_batch_dims;
-    if (gather_compile_info.is_binary_shape) {
-      key_batch_dims = 1;
-    }
-
-    constexpr int64_t batch_dim_coeff = 1000000;
-    constexpr int64_t key_axis_coeff = 100000;
     constexpr int64_t rank_coeff = 10000;
-    key += key_batch_dims * batch_dim_coeff + key_axis * key_axis_coeff + rank * rank_coeff + key_special_pattern;
+    key += rank * rank_coeff + key_special_pattern;
 
     // split info
     if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {

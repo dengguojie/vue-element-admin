@@ -497,10 +497,7 @@ class GatherSchedule(Schedule):
             self._emit_insn_map[self._removd_pad_tensor] = [self._remove_pad_emit_at_axis, "remove_pad"]
 
         # res
-        if self._is_db:
-            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy"]
-        else:
-            self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy", {"no_overlap": 2}]
+        self._emit_insn_map[self._out_tensor] = [self._res_emit_at_axis, "dma_copy", {"no_overlap": 2}]
 
     def _do_emit_insn(self):
         for tensor_i, param in self._emit_insn_map.items():

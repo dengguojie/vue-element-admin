@@ -48,8 +48,9 @@ namespace optiling {
     // custom info
     int64_t params_ub_store_num{1};
     int64_t batch_dims{0};
-    bool is_binary_shape{false};
+    bool unknown_batch_dims{false};
     int64_t org_batch_dims{0};
+    std::string attr_name;
 
     // tensor size
     std::unordered_map<std::string, std::vector<int64_t>> tensor_sizes;
@@ -75,7 +76,7 @@ namespace optiling {
 
     private:
       bool Init();
-
+      void GetRealBatchDims();
       void SimplyParamsAndIndices();
       bool IsZeroShapeTiling();
       bool DoZeroShapeTiling();

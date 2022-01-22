@@ -23,6 +23,9 @@ from tbe.dsl.base import operation
 from . import util
 
 
+UNKNOWN = "unknown"
+
+
 def classify_gather(ins: list):
     """
     GatherClassifier
@@ -45,79 +48,68 @@ class GatherClassifier:
     def __init__(self, ins: list):
         self.is_zeros_shape = False
         self.is_zeros_range = False
-        self.is_binary_shape = False
 
         self.org_params_info = ins[0]
         self.org_indices_info = ins[1]
 
+        self.unknown_batch_dims = ins[3] == UNKNOWN
+
         # check status dynamic or static
         self.is_static = operation.get_op_mode() == "static"
+
+        self.params_dtype = self.org_params_info["dtype"]
+        self.indices_dtype = self.org_indices_info["dtype"]
 
         if self.is_static:
             # params
             self.params_shape = list(self.org_params_info["shape"])
             self.params_range = list(self.org_params_info["range"])
-            self.params_dtype = self.org_params_info["dtype"]
 
             # indices
             self.indices_shape = list(self.org_indices_info["shape"])
             self.indices_range = list(self.org_indices_info["range"])
-            self.indices_dtype = self.org_indices_info["dtype"]
+
+            self.batch_dims = ins[3] if ins[3] >= 0 else ins[3] + len(self.indices_shape)
+            self.org_batch_dims = self.batch_dims
+
+            if ins[2] is None:
+                self.axis = self.batch_dims
+            else:
+                self.axis = ins[2] if ins[2] >= 0 else ins[2] + len(self.params_shape)
         else:
-            # params
-            params_shape_len = len(self.org_params_info["shape"])
-            self.params_shape = [-1,] * params_shape_len
-            self.params_range = [[1, None]] * params_shape_len
-            self.params_dtype = self.org_params_info["dtype"]
+            if ins[2] is None:
+                self.params_shape = [-1, 1, -1, -1]
+                self.params_range = [[1, None], [1, 1], [1, None], [1, None]]
 
-            # indices
-            indices_shape_len = len(self.org_indices_info["shape"])
-            self.indices_shape = [-1,] * indices_shape_len
-            self.indices_range = [[1, None]] * indices_shape_len
-            self.indices_dtype = self.org_indices_info["dtype"]
+                self.indices_shape = [-1, -1]
+                self.indices_range = [[1, None], [1, None]]
+            else:
+                self.params_shape = [-1, -1, -1, -1]
+                self.params_range = [[1, None], [1, None], [1, None], [1, None]]
 
-        # gather ins like [params, indices, axis, batch_dims]
-        self.axis = ins[2]
-        if isinstance(ins[2], dict):
-            self.axis = self._get_axis_in_const() if self.is_static else ins[2]
-        else:
-            self.axis = ins[2] + len(self.indices_shape) if ins[2] < 0 else ins[2]
-
-        self.batch_dims = ins[3] + len(self.indices_shape) if ins[3] < 0 else ins[3]
-
-        # gather axes rank
-        self.gather_rank = 1
-
-        # binary condition
-        if -2 in chain(self.org_params_info["shape"] + self.org_indices_info["shape"]):
-            self.params_shape = [-1, -1, -1, -1]
-            self.params_range = [[1, None], [1, None], [1, None], [1, None], ]
-
-            self.indices_shape = [-1, -1]
-            self.indices_range = [[1, None], [1, None]]
+                self.indices_shape = [-1, -1]
+                self.indices_range = [[1, None], [1, None]]
 
             self.batch_dims = 1
             self.axis = 2
 
-            self.is_zeros_range = True
-            self.is_binary_shape = True
+            # batch dims
+            # binary condition or fuzzy condition
+            self.org_batch_dims = 0 if self.unknown_batch_dims else ins[3]
 
-        self.org_batch_dims = ins[3] if self.is_binary_shape else self.batch_dims
+        # gather axes rank
+        self.gather_rank = 1
+
+        # fuzzy condition
+        if -2 in chain(self.org_params_info["shape"] + self.org_indices_info["shape"]) or self.unknown_batch_dims:
+            self.is_zeros_range = True
 
         operation.get_context().add("_batch_dims", self.batch_dims)
         operation.get_context().add("_org_batch_dims", self.org_batch_dims)
-        operation.get_context().add("_is_binary_shape", self.is_binary_shape)
+        operation.get_context().add("_unknown_batch_dims", self.unknown_batch_dims)
         operation.get_context().add("_gather_mode", "gather")
 
         self._check_zero_shape()
-
-    def _get_axis_in_const(self):
-        """
-        get const axis value
-        :return:
-        """
-        axis = self.axis["const_value"] if isinstance(self.axis["const_value"], int) else self.axis["const_value"][0]
-        return axis + len(self.params_shape) if axis < 0 else axis
 
     def _check_zero_shape(self):
         # shape value zero
@@ -234,75 +226,47 @@ class GatherClassifier:
 
         self._handle_batch_dims()
 
-        if isinstance(self.axis, int):
-            # gather axis pre loop
-            if self.axis == self.batch_dims:
-                pre_loop_shape = 1
-                pre_loop_range = (1, 1)
-            else:
-                pre_loop_shape = util.combine_dim(self.params_shape[self.batch_dims:self.axis])
-                pre_loop_range = util.combine_range(self.params_range[self.batch_dims:self.axis])
-
-            # params hand
-            # gather axis
-            gather_axis_shape = list(self.params_shape[self.axis:self.axis + self.gather_rank])
-            gather_axis_range = list(self.params_range[self.axis:self.axis + self.gather_rank])
-
-            # gather after index
-            if self.axis + self.gather_rank >= len(self.params_shape):
-                after_loop_shape = 1
-                after_loop_range = (1, 1)
-            else:
-                after_loop_shape = util.combine_dim(self.params_shape[self.axis + self.gather_rank:])
-                after_loop_range = util.combine_range(self.params_range[self.axis + self.gather_rank:])
-
-            # assemble
-            gather_ins = []
-
-            params_dict = _asseble_params_info(
-                [self.batch_shape, pre_loop_shape, gather_axis_shape, after_loop_shape],
-                [self.batch_range, pre_loop_range, gather_axis_range, after_loop_range],
-                self.params_dtype)
-
-            indices_dict = _asseble_indices_info(
-                [self.batch_shape, self.indices_loop_shape],
-                [self.batch_range, self.indices_loop_range],
-                self.indices_dtype)
-
-            gather_ins.append(params_dict)
-            gather_ins.append(indices_dict)
-            gather_ins.append(2)
-            gather_ins.append(1)
-
-            gather_instances.append(gather_ins)
+        # gather axis pre loop
+        if self.axis == self.batch_dims:
+            pre_loop_shape = 1
+            pre_loop_range = (1, 1)
         else:
-            pre_loop_shape = -1
-            pre_loop_range = (1, None)
+            pre_loop_shape = util.combine_dim(self.params_shape[self.batch_dims:self.axis])
+            pre_loop_range = util.combine_range(self.params_range[self.batch_dims:self.axis])
 
-            gather_axis_shape = [-1, ]
-            gather_axis_range = [[1, None]]
+        # params hand
+        # gather axis
+        gather_axis_shape = list(self.params_shape[self.axis:self.axis + self.gather_rank])
+        gather_axis_range = list(self.params_range[self.axis:self.axis + self.gather_rank])
 
-            after_loop_shape = -1
-            after_loop_range = [1, None]
+        # gather after index
+        if self.axis + self.gather_rank >= len(self.params_shape):
+            after_loop_shape = 1
+            after_loop_range = (1, 1)
+        else:
+            after_loop_shape = util.combine_dim(self.params_shape[self.axis + self.gather_rank:])
+            after_loop_range = util.combine_range(self.params_range[self.axis + self.gather_rank:])
 
-            # assemble info
-            gather_ins = []
-            params_dict = _asseble_params_info(
-                [self.batch_shape, pre_loop_shape, gather_axis_shape, after_loop_shape],
-                [self.batch_range, pre_loop_range, gather_axis_range, after_loop_range],
-                self.params_dtype)
+        # assemble
+        gather_ins = []
 
-            indices_dict = _asseble_indices_info(
-                [self.batch_shape, self.indices_loop_shape],
-                [self.batch_range, self.indices_loop_range],
-                self.indices_dtype)
+        params_dict = _asseble_params_info(
+            [self.batch_shape, pre_loop_shape, gather_axis_shape, after_loop_shape],
+            [self.batch_range, pre_loop_range, gather_axis_range, after_loop_range],
+            self.params_dtype)
 
-            gather_ins.append(params_dict)
-            gather_ins.append(indices_dict)
-            gather_ins.append(2)
-            gather_ins.append(1)
+        indices_dict = _asseble_indices_info(
+            [self.batch_shape, self.indices_loop_shape],
+            [self.batch_range, self.indices_loop_range],
+            self.indices_dtype)
 
-            gather_instances.append(gather_ins)
+        gather_ins.append(params_dict)
+        gather_ins.append(indices_dict)
+        gather_ins.append(2)
+        gather_ins.append(1)
+
+        gather_instances.append(gather_ins)
+
         return gather_instances
 
 
@@ -312,7 +276,7 @@ class GatherNdClassifier:
         self.is_zeros_range = False
         self.is_broadcast_shape = False
         self.is_broadcast_range = False
-        self.is_binary_shape = False
+        self.unknown_batch_dims = False
 
         self.org_params_info = ins[0]
         self.org_indices_info = ins[1]
@@ -358,12 +322,12 @@ class GatherNdClassifier:
 
             self.is_zeros_range = True
             self.is_broadcast_range = True
-            self.is_binary_shape = True
+            self.unknown_batch_dims = True
 
         self._check_zero_shape()
 
         # gather axis
-        if self.is_binary_shape:
+        if self.unknown_batch_dims:
             self.batch_dims = 1
             self.org_batch_dims = ins[2]
         else:
@@ -372,7 +336,7 @@ class GatherNdClassifier:
 
         operation.get_context().add("_batch_dims", self.batch_dims)
         operation.get_context().add("_org_batch_dims", self.org_batch_dims)
-        operation.get_context().add("_is_binary_shape", self.is_binary_shape)
+        operation.get_context().add("_unknown_batch_dims", self.unknown_batch_dims)
         operation.get_context().add("_gather_mode", "gather_nd")
 
         self.axis = self.batch_dims

@@ -90,8 +90,7 @@ class GatherComputation(Computation):
     def do_tiling_case(self):
         is_static = operation.get_op_mode() == "static"
         gather_op_context = operation.get_context()
-        batch_dims = gather_op_context.get("_batch_dims") if gather_op_context.get("_is_binary_shape") \
-            else gather_op_context.get("_org_batch_dims")
+        batch_dims = gather_op_context.get("_batch_dims")
         axis = operation.get_context().get_current_compute().get("_axis")
         rank = operation.get_context().get_current_compute().get("_rank")
         indices_shape = operation.get_context().get_current_compute().get("_indices_shape")
@@ -229,7 +228,7 @@ class GatherComputation(Computation):
         dim_len = len(shape)
         out_dtype = out.dtype
 
-        base_key = self._calc_base_key(batch_dims, axis, rank)
+        base_key = self._calc_base_key(rank)
 
         # skip large params
         params_shape = operation.get_context().get_current_compute().get("_params_shape")
@@ -269,13 +268,12 @@ class GatherComputation(Computation):
                     "store_area": 0,
                     "is_need_align": is_need_align
                 })
-
         return cases
 
-    def _calc_base_key(self, batch_dims, axis, rank):
+    def _calc_base_key(self, rank):
         base_key = 900000000
         # add pattern
-        base_key += batch_dims * 1000000 + axis * 100000 + rank * 10000
+        base_key += rank * 10000
 
         return base_key
 
@@ -351,12 +349,13 @@ def _pre_build(schedules_list):
                      max(cpt_indices_dtype)]
         operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 
-        is_binary_shape = operation.get_context().get("_is_binary_shape")
-        if is_binary_shape:
-            org_batch_dims = operation.get_context().get("_org_batch_dims")
+        unknown_batch_dims = operation.get_context().get("_unknown_batch_dims")
+        if unknown_batch_dims:
+            org_batch_dims = 0
         else:
-            org_batch_dims = max(batch_dims)
-        custom_info = [min(params_ub_num), max(batch_dims), is_binary_shape, org_batch_dims]
+            org_batch_dims = operation.get_context().get("_org_batch_dims")
+
+        custom_info = [min(params_ub_num), max(batch_dims), unknown_batch_dims, org_batch_dims]
         operation.add_compile_info_inner(GatherCompileInfo.CUSTOM_INFO, custom_info)
 
         operation.add_compile_info_inner(GatherCompileInfo.TENSOR_SIZES, tensor_sizes)

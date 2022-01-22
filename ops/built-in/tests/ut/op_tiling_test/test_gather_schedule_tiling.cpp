@@ -67,7 +67,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 65536;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -113,7 +113,7 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
 gather_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900210010 2 3778 2 756 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900010010 2 3778 2 756 ");
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_1
@@ -131,7 +131,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 65536;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -196,7 +196,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 65536;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -254,7 +254,7 @@ optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runI
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
-"900210000 0 1 0 1 ");
+"900010000 0 1 0 1 ");
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_3
@@ -271,7 +271,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -279,7 +279,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900210015", {10001, 10002, 10003, 30003, 40003}},
+        {"900010015", {10001, 10002, 10003, 30003, 40003}},
 };
 
 std::vector <int64_t> inputA{
@@ -349,7 +349,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 49152;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -358,7 +358,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900216010", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900016010", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{1901};
@@ -423,7 +423,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -431,7 +431,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900216010", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900016010", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{162};
@@ -498,7 +498,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 1;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 1;
 
 op_compile_info.tensor_sizes = {
@@ -574,7 +574,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 131072;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -583,7 +583,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900211010", {10001, 10002, 10003, 20001, 30001, 40002}},
+        {"900011010", {10001, 10002, 10003, 20001, 30001, 40002}},
 };
 
 std::vector <int64_t> inputA{7, 1, 16, 3, 16};
@@ -714,7 +714,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 1;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 1;
 
 op_compile_info.tensor_sizes = {
@@ -722,7 +722,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"901210000", {10000, 10001, 10002, 10003, 20001, 30000, 40000}},
+        {"900010000", {10000, 10001, 10002, 10003, 20001, 30000, 40000}},
 };
 
 std::vector <int64_t> inputA{40, 1, 5};
@@ -779,9 +779,14 @@ TEST_F(GatherScheduleTiling, gather_schedule_tiling_10
 // _custom_info len exception
 
 using namespace optiling;
+//std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
+//"_custom_info":[58240, 7280, 262144, 32786, 1, 1, 8, false],
+//"_gather_vars": {"901210000": [10000, 10001, 10002, 20001, 30000, 40000]},
+//"_vars": {"901210002": ["_params_dims_0", "_params_dims_1", "_params_dims_2", "_indices_dims_1",
+//"_block_factor_0", "_ub_factor_0"]}, "_pattern":"Gather"})";
+
 std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
-"_custom_info":[58240, 7280, 262144, 32786, 1, 1, 8, false],
-"_gather_vars": {"901210000": [10000, 10001, 10002, 20001, 30000, 40000]},
+"_custom_info":[58240, 0, false, 0],
 "_vars": {"901210002": ["_params_dims_0", "_params_dims_1", "_params_dims_2", "_indices_dims_1",
 "_block_factor_0", "_ub_factor_0"]}, "_pattern":"Gather"})";
 
@@ -854,7 +859,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 131072;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -862,7 +867,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900217000", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900017000", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{261, 16};
@@ -928,7 +933,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 131072;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -936,7 +941,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900217000", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900017000", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{261, 16};
@@ -1002,7 +1007,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 65536;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -1010,7 +1015,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900217005", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900017005", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{2, 7, 2, 2, 7, 3};
@@ -1076,7 +1081,7 @@ op_compile_info.indices_dtype = 1;
 
 op_compile_info.params_ub_store_num = 65536;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -1144,7 +1149,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 16384;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 
 op_compile_info.tensor_sizes = {
@@ -1152,7 +1157,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"900217010", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"900017010", {10001, 10002, 10003, 20001, 30002, 40002}},
 };
 
 std::vector <int64_t> inputA{1, 0};
@@ -1217,7 +1222,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 op_compile_info.const_axis = 2;
 op_compile_info.is_dynamic_const = true;
@@ -1271,7 +1276,7 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
 gather_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900211010 2 480 2 120 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900011010 2 480 2 120 ");
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_17
@@ -1289,7 +1294,7 @@ op_compile_info.indices_dtype = 4;
 
 op_compile_info.params_ub_store_num = 32768;
 op_compile_info.batch_dims = 0;
-op_compile_info.is_binary_shape = false;
+op_compile_info.unknown_batch_dims = false;
 op_compile_info.org_batch_dims = 0;
 op_compile_info.const_axis = 2;
 op_compile_info.is_dynamic_const = true;
@@ -1343,19 +1348,182 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
 gather_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900212010 2 480 2 240 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
 }
 
-TEST_F(GatherScheduleTiling, gather_schedule_tiling_19) {
+TEST_F(GatherScheduleTiling, gather_schedule_tiling_18
+) {
+// gather v2 binary condtion
+using namespace optiling;
+
+GatherDslCompileInfo op_compile_info;
+op_compile_info.core_num = 32;
+op_compile_info.ub_size = 262144;
+op_compile_info.gather_type = 0;
+op_compile_info.params_dtype = 4;
+op_compile_info.params_align = 8;
+op_compile_info.indices_dtype = 4;
+
+op_compile_info.params_ub_store_num = 32768;
+op_compile_info.batch_dims = 0;
+op_compile_info.unknown_batch_dims = true;
+op_compile_info.org_batch_dims = 0;
+op_compile_info.const_axis = 2;
+op_compile_info.is_dynamic_const = true;
+op_compile_info.attr_name = "batch_dims";
+
+
+op_compile_info.tensor_sizes = {
+        {"2", {29120, 3640}},
+};
+
+std::vector <int64_t> inputA{1, 1, 26, 100};
+std::vector <int64_t> inputB{1, 15360};
+std::vector <int64_t> inputC{1};
+std::vector <int64_t> output{3120};
+
+TensorDesc tensor_inputA;
+tensor_inputA.
+SetShape(ge::Shape(inputA)
+);
+tensor_inputA.
+SetDataType(ge::DT_INT32);
+
+TensorDesc tensor_inputB;
+tensor_inputB.
+SetShape(ge::Shape(inputB)
+);
+tensor_inputB.
+SetDataType(ge::DT_INT32);
+
+TensorDesc tensor_inputC;
+tensor_inputC.
+SetShape(ge::Shape(inputC)
+);
+tensor_inputC.
+SetDataType(ge::DT_INT32);
+vector<int32_t> axis_data{0};
+
+TensorDesc tensor_output;
+tensor_output.
+SetShape(ge::Shape(output)
+);
+tensor_output.
+SetDataType(ge::DT_INT32);
+
+auto opParas = op::GatherV2("GatherV2");
+TENSOR_INPUT(opParas, tensor_inputA, x);
+TENSOR_INPUT(opParas, tensor_inputB, indices);
+TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(), axis_data.size() * 4);
+TENSOR_OUTPUT(opParas, tensor_output, y);
+opParas.set_attr_batch_dims(-2);
+
+optiling::utils::OpRunInfo runInfo;
+optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+gather_dsl_schedule.DoTiling();
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
+}
+
+TEST_F(GatherScheduleTiling, gather_schedule_tiling_19
+) {
+// gather v2 binary condtion not contain attr
+using namespace optiling;
+
+GatherDslCompileInfo op_compile_info;
+op_compile_info.core_num = 32;
+op_compile_info.ub_size = 262144;
+op_compile_info.gather_type = 0;
+op_compile_info.params_dtype = 4;
+op_compile_info.params_align = 8;
+op_compile_info.indices_dtype = 4;
+
+op_compile_info.params_ub_store_num = 32768;
+op_compile_info.batch_dims = 0;
+op_compile_info.unknown_batch_dims = true;
+op_compile_info.org_batch_dims = 0;
+op_compile_info.const_axis = 2;
+op_compile_info.is_dynamic_const = true;
+op_compile_info.attr_name = "batch_dims";
+
+
+op_compile_info.tensor_sizes = {
+        {"2", {29120, 3640}},
+};
+
+std::vector <int64_t> inputA{1, 1, 26, 100};
+std::vector <int64_t> inputB{1, 15360};
+std::vector <int64_t> inputC{1};
+std::vector <int64_t> output{3120};
+
+TensorDesc tensor_inputA;
+tensor_inputA.
+SetShape(ge::Shape(inputA)
+);
+tensor_inputA.
+SetDataType(ge::DT_INT32);
+
+TensorDesc tensor_inputB;
+tensor_inputB.
+SetShape(ge::Shape(inputB)
+);
+tensor_inputB.
+SetDataType(ge::DT_INT32);
+
+TensorDesc tensor_inputC;
+tensor_inputC.
+SetShape(ge::Shape(inputC)
+);
+tensor_inputC.
+SetDataType(ge::DT_INT32);
+vector<int32_t> axis_data{0};
+
+TensorDesc tensor_output;
+tensor_output.
+SetShape(ge::Shape(output)
+);
+tensor_output.
+SetDataType(ge::DT_INT32);
+
+auto opParas = op::GatherV2("GatherV2");
+TENSOR_INPUT(opParas, tensor_inputA, x);
+TENSOR_INPUT(opParas, tensor_inputB, indices);
+TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(), axis_data.size() * 4);
+TENSOR_OUTPUT(opParas, tensor_output, y);
+
+optiling::utils::OpRunInfo runInfo;
+optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+gather_dsl_schedule.DoTiling();
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
+}
+
+TEST_F(GatherScheduleTiling, gather_schedule_tiling_20) {
 using namespace optiling;
 std::string compileInfo = R"({"_base_info":[32, 262144, 1048576, 0, 4, 4],
-"_custom_info":[262144, 32786, 0, false, 0],
+"_custom_info":[32786, 0, false, 0],
 "_tensor_sizes": {"901210003": [10001, 10003, 20001, 30000, 40003]},
 "_gather_vars": {"0": [209964, 6552]},
+"attr_name": "batch_dims",
 "_vars": {"901210002": ["_params_dims_1", "_params_dims_3", "_indices_dims_1", "_block_factor_0", "_ub_factor_3"]}, "_pattern":"Gather"})";
 
 nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
 GatherDslCompileInfo actual_struct("gather", op_info);
 ASSERT_TRUE(actual_struct.org_batch_dims == 0);
+}
+
+TEST_F(GatherScheduleTiling, gather_schedule_tiling_21) {
+using namespace optiling;
+std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
+"_custom_info":[32786, 0, true, 0],
+"_gather_vars": {"901210003": [10001, 10003, 20001, 30000, 40003]},
+"_tensor_sizes": {"0": [209964, 6552]},
+"_const_axis": 1,
+"attr_name": "batch_dims",
+"_vars": {"901210002": ["_params_dims_1", "_params_dims_3", "_indices_dims_1", "_block_factor_0", "_ub_factor_3"]}, "_pattern":"Gather"})";
+
+nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+
+GatherDslCompileInfo actual_struct("gather", op_info);
+ASSERT_TRUE(actual_struct.const_axis == 1);
+EXPECT_EQ(actual_struct.attr_name, "batch_dims");
 }

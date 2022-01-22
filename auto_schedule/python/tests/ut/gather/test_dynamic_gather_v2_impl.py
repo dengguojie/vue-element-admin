@@ -13,7 +13,7 @@ def dsl_dynamic_gather_v2(params, indices, axis, output, batch_dims=0, kernel_na
 
     with tbe.common.context.op_context.OpContext("dynamic"):
 
-        ins = classify([params, indices, axis, batch_dims], "gather")
+        ins = classify([params, indices, "unknown", batch_dims], "gather")
         schedules, tensors = [], []
 
         for params_input, indices_input, axis_input, batch_dims_input in ins:
