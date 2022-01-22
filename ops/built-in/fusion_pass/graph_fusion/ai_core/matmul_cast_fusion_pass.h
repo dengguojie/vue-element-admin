@@ -26,17 +26,15 @@
 
 namespace fe {
 class MatmulCastFusionPass : public PatternFusionBasePass {
- protected:
+protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
- private:
-  Status LinkOutputEdgeWithoutControl(const ge::NodePtr &oldNode, const ge::NodePtr &newNode) const;
-  Status IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode) const;
-  Status DoFusion(const ge::NodePtr &matmulNode) const;
-  const std::string CAST = "Cast";
-  const string FUSED_OP_TYPE = "MatMul/MatMulV2";
+private:
+  Status LinkOutputEdgeWithoutControl(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const;
+  Status IsMatch(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const;
+  Status DoFusion(const ge::NodePtr &matmul_node) const;
+  const string FUSED_OP_TYPE = "MatmulCastFusionPass";
 };
-
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_CAST_FUSION_PASS_H_

@@ -26,16 +26,22 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class BatchMatmulFusionPass : public PatternFusionBasePass {
- protected:
+class BatchMatMulFusionPass : public PatternFusionBasePass {
+protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
- private:
+private:
   bool CheckIsNeedFusion(const ge::NodePtr& fused_node) const;
+  bool CheckAndDoTransposeFusion(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const;
+  bool CheckTransposeFusion(const ge::NodePtr& transpose_node) const;
+  Status DoTransposeFusion(const ge::NodePtr& transpose_node, const ge::NodePtr& fused_node, int data_index,
+                           const string& attr_name) const;
+  Status LinkEdge(const ge::NodePtr& transpose_node, const ge::NodePtr& fused_node, int data_index) const;
   Status CreateMatMulNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& new_node) const;
   Status AddEdgeForMatMulNode(const ge::NodePtr& fused_node, const ge::NodePtr& matmul_node) const;
   Status RemoveFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const;
+  const string FUSED_OP_TYPE = "BatchMatMulFusionPass";
 };
 
 }  // namespace fe

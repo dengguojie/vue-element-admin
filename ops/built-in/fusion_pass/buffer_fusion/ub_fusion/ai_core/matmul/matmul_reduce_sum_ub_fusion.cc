@@ -107,8 +107,24 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
   vector<ge::NodePtr> reduceSumDNodes = GetMatchedNodesByDescName(PATTERN_REDUCESUM, mapping);
   for (auto matmulNode : matmulNodes) {
-    if (matmulNode->GetType() != "BatchMatMul") {
+    if (matmulNode->GetType() != "BatchMatMul" && matmulNode->GetType() != "BatchMatMulV2") {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support this OP, skip fusion.");
+      return SUCCESS;
+    }
+    vector<int64_t> matmul_output_shape = matmulNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDims();
+    int batch_lenth = matmul_output_shape.size() - kNumTwo;
+    if (batch_lenth > 1) {
+      OP_LOGD(FUSED_OP_TYPE, "Only support BatchMatMul shape batch dim is 1.");
+      return SUCCESS;
+    }
+    vector<int64_t> matmul_x1_shape = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    if (matmul_x1_shape.size() > kNumTwo && matmul_x1_shape[0] == 1) {
+      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul shape batch=1.");
+      return SUCCESS;
+    }
+    vector<int64_t> matmul_x2_shape = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    if (matmul_x2_shape.size() > kNumTwo && matmul_x2_shape[0] == 1) {
+      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul shape batch=1.");
       return SUCCESS;
     }
   }
@@ -124,6 +140,11 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
               return FAILED);
     if (output0desc->GetDataType() != ge::DT_FLOAT) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support reduce output type not fp32, skip fusion.");
+      return SUCCESS;
+    }
+    bool keep_dims;
+    if (ge::AttrUtils::GetBool(reduceNode->GetOpDesc(), "keep_dims", keep_dims) && keep_dims) {
+      OP_LOGW(FUSED_OP_TYPE, "ub fusion do not support keep_dims is true.");
       return SUCCESS;
     }
   }

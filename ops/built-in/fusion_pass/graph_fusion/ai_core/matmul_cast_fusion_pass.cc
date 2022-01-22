@@ -16,7 +16,7 @@
 
 /*!
  * \file matmul_cast_fusion_pass.cpp
- * \brief matmul cast fusion (Matmul--Cast)
+ * \brief matmul cast fusion (MatMul--Cast)
  */
 #include "matmul_cast_fusion_pass.h"
 #include <memory>
@@ -34,14 +34,6 @@
 namespace fe {
 static const string PATTERN_MATMUL = "matmul";
 static const string PATTERN_CAST = "cast";
-static const string OUT_T = "out_T";
-static const string DATA_TYPE_FIXED = "DataTypeFixed";
-static const uint8_t MATMUL_OUTPUT_NUM = 1;
-static const string MATMUL_DATATYPE_ATTR_KEY = "T";
-static const string CAST_DATATYPE_DES_ATTR_KEY = "DstT";
-
-static const char* TF_MATMUL = "MatMul";
-static const char* TF_MATMULV2 = "MatMulV2";
 
 /*
     fusion pattern
@@ -55,145 +47,113 @@ static const char* TF_MATMULV2 = "MatMulV2";
 */
 vector<FusionPattern*> MatmulCastFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("matmulCastFusion");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulCastFusion");
   if (pattern == nullptr) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern not success!");
+    OP_LOGE(FUSED_OP_TYPE, "pattern is nullptr, Create pattern not success!");
     return patterns;
   }
-  pattern->AddOpDesc(PATTERN_MATMUL, {TF_MATMUL, TF_MATMULV2})
-      .AddOpDesc(PATTERN_CAST, {CAST})
+  pattern->AddOpDesc(PATTERN_MATMUL, {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"})
+      .AddOpDesc(PATTERN_CAST, {"Cast"})
       .SetInputs(PATTERN_CAST, {PATTERN_MATMUL})
       .SetOutput(PATTERN_CAST);
   patterns.push_back(pattern);
   return patterns;
 }
 
-Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmulNode, const ge::NodePtr &castNode) const {
-  std::shared_ptr<ge::OpDesc> matmulOp = matmulNode->GetOpDesc();
-  std::shared_ptr<ge::OpDesc> castOp = castNode->GetOpDesc();
-  FUSION_PASS_CHECK(matmulOp == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "MATMUL ops is null"), return FAILED);
-  FUSION_PASS_CHECK(castOp == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Cast ops is null"), return FAILED);
-  if (ge::AttrUtils::HasAttr(matmulOp, MATMUL_DATATYPE_ATTR_KEY) &&
-      ge::AttrUtils::HasAttr(castOp, CAST_DATATYPE_DES_ATTR_KEY)) {
-    // get matmul datatype
-    ge::DataType matmulDataType = ge::DT_UNDEFINED;
-    FUSION_PASS_CHECK(!ge::AttrUtils::GetDataType(matmulOp, MATMUL_DATATYPE_ATTR_KEY, matmulDataType),
-                      OP_LOGD(FUSED_OP_TYPE.c_str(), "Fail to get attr T from matmul."), return FAILED);
-    // get cast dest datatype
-    ge::DataType castDesDataType = ge::DT_UNDEFINED;
-    FUSION_PASS_CHECK(!ge::AttrUtils::GetDataType(castOp, CAST_DATATYPE_DES_ATTR_KEY, castDesDataType),
-                      OP_LOGD(FUSED_OP_TYPE.c_str(), "Fail to get attr DstT from cast."), return FAILED);
-    if (matmulDataType != ge::DT_FLOAT16 || castDesDataType != ge::DT_FLOAT) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "Matmul datatype is %u Cast data type is %u", matmulDataType, castDesDataType);
-      return FAILED;
-    }
-  } else {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Do not have attr %s or %s", MATMUL_DATATYPE_ATTR_KEY.c_str(),
-            CAST_DATATYPE_DES_ATTR_KEY.c_str());
+Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const {
+  if (matmul_node->GetOutDataNodes().size() != 1) {
+    OP_LOGD(FUSED_OP_TYPE, "MatMul outputs num shoubld be 1");
     return FAILED;
   }
-  if (matmulNode->GetOutDataNodes().size() != MATMUL_OUTPUT_NUM) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "matmul outputs num shoubld be 1");
+  ge::DataType matmul_output_dtype = matmul_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
+  ge::DataType cast_output_dtype = cast_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
+  if (matmul_output_dtype != ge::DT_FLOAT16 || cast_output_dtype != ge::DT_FLOAT) {
+    OP_LOGD(FUSED_OP_TYPE, "MatMul output dtype is %u, Cast output dtype is %u", matmul_output_dtype,
+            cast_output_dtype);
     return FAILED;
   }
   return SUCCESS;
 }
 
-Status MatmulCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  ge::NodePtr matmulNode = GetNodeFromMapping(PATTERN_MATMUL, mapping);
-  ge::NodePtr castNode = GetNodeFromMapping(PATTERN_CAST, mapping);
+Status MatmulCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(FUSED_OP_TYPE, "Enter MatmulCastFusionPass.");
+  ge::NodePtr matmul_node = GetNodeFromMapping(PATTERN_MATMUL, mapping);
+  ge::NodePtr cast_node = GetNodeFromMapping(PATTERN_CAST, mapping);
+  FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "MatMul node is null"), return FAILED);
+  FUSION_PASS_CHECK(cast_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "Cast node is null"), return FAILED);
 
-  FUSION_PASS_CHECK(matmulNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "matmul node is null"), return FAILED);
-  FUSION_PASS_CHECK(castNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "cast node is null"), return FAILED);
-
-  FUSION_PASS_CHECK(!CheckOpSupported(matmulNode->GetOpDesc()),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul[%s] is not supported by FE, fusion abort.",
-                            matmulNode->GetOpDesc()->GetName().c_str()),
-                    return NOT_CHANGED);
-
-  if (IsMatch(matmulNode, castNode) != SUCCESS) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Node[%s] and node[%s] don't match Matmul + Cast fusion pattern.",
-            matmulNode->GetName().c_str(), castNode->GetName().c_str());
+  if (IsMatch(matmul_node, cast_node) != SUCCESS) {
+    OP_LOGD(FUSED_OP_TYPE, "Node[%s] and node[%s] don't match Matmul + Cast fusion pattern.",
+            matmul_node->GetName().c_str(), cast_node->GetName().c_str());
     return NOT_CHANGED;
   }
-  if (DoFusion(matmulNode) == FAILED) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matmul and cast fusion failed!");
-    return FAILED;
-  }
-  ge::GeTensorDesc castOutputDesc = castNode->GetOpDesc()->GetOutputDesc(0);
-  FUSION_PASS_CHECK(matmulNode->GetOpDesc()->UpdateOutputDesc(0, castOutputDesc) != ge::GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to update output desc of MatMul node[%s].",
-                            matmulNode->GetOpDesc()->GetName().c_str()),
-                    return FAILED);
-  if (PatternFusionUtil::RemoveInputEdge(castNode) == FAILED) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
-    return FAILED;
-  }
-  if (LinkOutputEdgeWithoutControl(castNode, matmulNode) == FAILED) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
-    return FAILED;
-  }
+
+  DoFusion(matmul_node);
+  FUSION_PASS_CHECK(!CheckOpSupported(matmul_node->GetOpDesc()),
+                    OP_LOGI(FUSED_OP_TYPE, "MatMul[%s] is not supported by FE, fusion abort.",
+                            matmul_node->GetOpDesc()->GetName().c_str()),
+                    return NOT_CHANGED);
+
   // link matmul output with cast output and remove cast node
-  if (graph.RemoveNode(castNode) == ge::GRAPH_FAILED) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast node remove failed");
+  if (LinkOutputEdgeWithoutControl(matmul_node, cast_node) == FAILED) {
+    OP_LOGE(FUSED_OP_TYPE, "link output edge Failed.");
+    return FAILED;
+  }
+  if (graph.RemoveNode(cast_node) == ge::GRAPH_FAILED) {
+    OP_LOGE(FUSED_OP_TYPE, "cast node remove failed");
     return FAILED;
   }
 
-  fusionNodes.push_back(matmulNode);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Node[%s] do Matmul + Cast fusion success!", matmulNode->GetName().c_str());
+  OP_LOGD(FUSED_OP_TYPE, "Node[%s] do MatMul + Cast fusion success!", matmul_node->GetName().c_str());
   return SUCCESS;
 }
 
-Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmulNode) const {
-  std::shared_ptr<ge::OpDesc> matmulOp = matmulNode->GetOpDesc();
-  FUSION_PASS_CHECK(matmulOp == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "matmul op is null"), return FAILED);
-  if (ge::AttrUtils::SetInt(matmulOp, OUT_T, ge::DT_FLOAT) == false) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set Matmul[%s]'s out_T DT_FLOAT failed", matmulOp->GetName().c_str());
-    return FAILED;
-  }
+Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmul_node) const {
+  auto matmul_output_desc = matmul_node->GetOpDesc()->MutableOutputDesc(0);
+  matmul_output_desc->SetDataType(ge::DT_FLOAT);
+  matmul_output_desc->SetOriginDataType(ge::DT_FLOAT);
 
-  if (ge::AttrUtils::SetBool(matmulOp, DATA_TYPE_FIXED, true) == false) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                          "set Matmul[%s]'s DataTypeFixed true failed", matmulOp->GetName().c_str());
-    return FAILED;
-  }
-
-  ge::GeTensorDescPtr tensorDesc = matmulOp->MutableOutputDesc(0);
-  FUSION_PASS_CHECK(tensorDesc == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "tensor desc is null"), return FAILED);
   return SUCCESS;
 }
 
-Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr& oldNode,
-                                                          const ge::NodePtr& newNode) const {
-  ge::OutDataAnchorPtr newOutDataAnchor = newNode->GetOutDataAnchor(0);
-  if (newOutDataAnchor == nullptr) {
-    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");
-    return fe::PARAM_INVALID;
+Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr& matmul_node,
+                                                          const ge::NodePtr& cast_node) const {
+  // Remove cast node all input edge
+  if (PatternFusionUtil::RemoveInputEdge(cast_node) == FAILED) {
+    OP_LOGE(FUSED_OP_TYPE, "Remove cast input edge Failed.");
+    return FAILED;
   }
-  for (ge::OutDataAnchorPtr &anchor : oldNode->GetAllOutDataAnchors()) {
-    if (anchor == nullptr) {
-      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[anchor] must not be null.");
-      return fe::PARAM_INVALID;
+  auto matmul_out_anchor = matmul_node->GetOutDataAnchor(0);
+  if (matmul_out_anchor == nullptr) {
+    OP_LOGE(FUSED_OP_TYPE, "Parameter[matmul_out_anchor] must not be null.");
+    return FAILED;
+  }
+  // Remove cast->output anchor and add matmul->output anchor
+  for (ge::OutDataAnchorPtr &anchor : cast_node->GetAllOutDataAnchors()) {
+    if (anchor != nullptr) {
+      for (ge::InDataAnchorPtr &dst_anchor : anchor->GetPeerInDataAnchors()) {
+        if (ge::GraphUtils::RemoveEdge(anchor, dst_anchor) != ge::GRAPH_SUCCESS ||
+            ge::GraphUtils::AddEdge(matmul_out_anchor, dst_anchor) != ge::GRAPH_SUCCESS) {
+          OP_LOGE(FUSED_OP_TYPE, "Replace out data anchor Failed.");
+          return FAILED;
+        }
+      }
     }
-    for (ge::InDataAnchorPtr &dstAnchor : anchor->GetPeerInDataAnchors()) {
-      if (ge::GraphUtils::RemoveEdge(anchor, dstAnchor) != ge::GRAPH_SUCCESS ||
-          ge::GraphUtils::AddEdge(newOutDataAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace out data anchor Failed.");
+  }
+  // Remove cast->output control anchor and add matmul->output control anchor
+  auto cast_out_control_anchor = cast_node->GetOutControlAnchor();
+  if (cast_out_control_anchor != nullptr) {
+    for (ge::InControlAnchorPtr &dst_anchor : cast_out_control_anchor->GetPeerInControlAnchors()) {
+      if (ge::GraphUtils::RemoveEdge(cast_out_control_anchor, dst_anchor) != ge::GRAPH_SUCCESS ||
+          ge::GraphUtils::AddEdge(matmul_node->GetOutControlAnchor(), dst_anchor) != ge::GRAPH_SUCCESS) {
+        OP_LOGE(FUSED_OP_TYPE, "Replace out control anchor Failed.");
         return FAILED;
       }
     }
   }
-  auto outControlAnchor = oldNode->GetOutControlAnchor();
-  if (outControlAnchor != nullptr) {
-    for (ge::InControlAnchorPtr &dstAnchor : outControlAnchor->GetPeerInControlAnchors()) {
-      if (ge::GraphUtils::RemoveEdge(outControlAnchor, dstAnchor) != ge::GRAPH_SUCCESS ||
-          ge::GraphUtils::AddEdge(newNode->GetOutControlAnchor(), dstAnchor) != ge::GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace input control anchor Failed.");
-        return FAILED;
-      }
-    }
-  }
   return SUCCESS;
 }
+
 REGISTER_PASS("MatmulCastFusionPass", BUILT_IN_GRAPH_PASS, MatmulCastFusionPass);
+REGISTER_PASS("MatmulCastFusionPass", SECOND_ROUND_BUILT_IN_GRAPH_PASS, MatmulCastFusionPass);
 }  // namespace fe
