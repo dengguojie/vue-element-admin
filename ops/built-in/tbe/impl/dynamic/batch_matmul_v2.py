@@ -45,7 +45,6 @@ L1FUSION_INPUT_CTR = 2
 MKN_MIN = 1
 LOWER_LIMIT_STR = "LOWER_LIMIT"
 
-
 class Format(str, Enum):
     """
     class of format
@@ -816,8 +815,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
     n_var = operation.var(n_var_name, n_range)
-    if "Ascend910" in soc_version:
-        _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
+
     if op_type in ("BatchMatMulV2", "BatchMatMul"):
         batch_var = operation.var("batch", batch_range)
         shape_x1 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
@@ -826,6 +824,9 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     else:
         reason = f"not support op_type: {op_type}"
         error_manager_vector.raise_err_specific_reson(op_type, reason)
+
+    if "Ascend910" in soc_version:
+        _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
 
     shape_x2 = [DYNAMIC_FLAG, DYNAMIC_FLAG]
     range_x2 = input_x2.get("range")

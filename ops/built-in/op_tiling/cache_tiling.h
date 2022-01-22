@@ -269,8 +269,7 @@ void AL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalc
 void NeitherFullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator,
                           const int32_t nFactorTwoCandidates[][2], const int32_t mFactorTwoCandidates[][2],
                           const int32_t& nFactor, const int32_t& mFactor);
-int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status,
-                    const int32_t& coreNum);
+int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status);
 
 int32_t GetLoadSize(const L2Status& l2Status, const L0Status& l0Status);
 MKNParasCombo GetParasCombo(const int32_t& index, const int32_t& blockValue);

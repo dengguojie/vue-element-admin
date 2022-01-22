@@ -24,7 +24,6 @@ using namespace std;
 
 namespace optiling {
 static const int32_t kNONE = -INT_MAX;
-static const int32_t kCoreNum = 32;
 static const int32_t kL1Size = (1024 * 1024);
 static const int32_t kL0cSize = (256 * 1024);
 static const int32_t kUbSize = (256 * 1024);
@@ -298,7 +297,7 @@ void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDim
 }
 
 void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int32_t m0s[][2],
-                       const int32_t n0s[][2], bool b_have_batch)
+                       const int32_t n0s[][2], bool b_have_batch, int32_t core_num)
 {
   int32_t iIdx = blockDimCalculator.i_idx;
   int32_t jIdx = blockDimCalculator.j_idx;
@@ -306,7 +305,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
   int32_t nFactor = blockDimCalculator.n_dim_array[jIdx];
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (bFactor * nFactor * mFactor > kCoreNum) {
+    if (bFactor * nFactor * mFactor > core_num) {
       break;
     }
     l2Status.batch = blockDimCalculator.batch / bFactor;
@@ -388,8 +387,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
   }
 }
 
-int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Status &l2Status,
-                    const int32_t &coreNum)
+int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Status &l2Status)
 {
   // get batch_dim, m_dim and n_dim for single core
   // not support multi cores slicing along k dim
@@ -397,7 +395,7 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
 
   OP_LOGD(op_type.c_str(), "input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m, params.k,
           params.n);
-  if (params.batch_32 * params.m_32 * params.n_32 < coreNum) {
+  if (params.batch_32 * params.m_32 * params.n_32 < params.core_num) {
     l2Status.batch_dim = params.batch_32;
     l2Status.n_dim = params.n_32;
     l2Status.m_dim = params.m_32;
@@ -414,15 +412,15 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
   blockDimCalculator.m = params.m_32;
   blockDimCalculator.k = params.k_32;
   blockDimCalculator.n = params.n_32;
-  int32_t batchDimArray[coreNum] = {0};
-  int32_t nDimArray[coreNum] = {0};
-  int32_t mDimArray[coreNum] = {0};
-  GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, params.batch_32, coreNum);
-  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, coreNum);
-  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, coreNum);
+  int32_t batchDimArray[params.core_num] = {0};
+  int32_t nDimArray[params.core_num] = {0};
+  int32_t mDimArray[params.core_num] = {0};
+  GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, params.batch_32, params.core_num);
+  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
+  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
   int32_t mnMaxPnt = 16;
-  int32_t m0s[coreNum + 1][2] = {0};
-  int32_t n0s[coreNum + 1][2] = {0};
+  int32_t m0s[params.core_num + 1][2] = {0};
+  int32_t n0s[params.core_num + 1][2] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int32_t tmpNDim = nDimArray[idx];
     int32_t tmpNSingleCore = params.n_32 / tmpNDim;
@@ -446,7 +444,7 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
     for (int32_t jIdx = 0; jIdx < blockDimCalculator.n_dim_cnt; jIdx++) {
       blockDimCalculator.i_idx = iIdx;
       blockDimCalculator.j_idx = jIdx;
-      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s, params.b_have_batch);
+      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s, params.b_have_batch, params.core_num);
     }
   }
   l2Status.batch_dim = blockDimCalculator.batch_dim_factor;
@@ -1312,7 +1310,7 @@ void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &ti
   L1Status l1Status;
   UbStatus ubStatus;
   l0Status.SetInitLoadStatus();
-  int32_t blockValue = GetBlockDim(op_type, params, l2Status, kCoreNum);
+  int32_t blockValue = GetBlockDim(op_type, params, l2Status);
   GetL0Factors(op_type, l2Status, blockValue, l0Status);
   GetL1Factors(op_type, params, l2Status, l0Status, l1Status);
   GetUbFactors(op_type, params, l2Status, l1Status, l0Status, ubStatus);

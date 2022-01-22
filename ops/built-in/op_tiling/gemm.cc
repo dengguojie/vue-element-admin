@@ -420,6 +420,9 @@ void SetRunInfo(const bool& isBatchMatmulMode, string& tiling_id, const json& co
   } else {
     run_info.AddTilingData(runinfoparas.params.n_32);
   }
+  if (isBatchMatmulMode) {
+    run_info.AddTilingData(runinfoparas.params.batch_32);
+  }
   if (is_cache_tiling) {
     if (runinfoparas.params.format_a == "ND") {
       run_info.AddTilingData(runinfoparas.params.m_32);
@@ -461,9 +464,6 @@ void SetRunInfo(const bool& isBatchMatmulMode, string& tiling_id, const json& co
       run_info.AddTilingData(runinfoparas.aub_align_bound);
       run_info.AddTilingData(runinfoparas.bub_align_bound);
     }
-  }
-  if (isBatchMatmulMode) {
-    run_info.AddTilingData(runinfoparas.params.batch_32);
   }
 }
 
