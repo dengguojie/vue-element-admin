@@ -147,13 +147,13 @@ ut_case.add_cust_test_func(test_func=test_get_ub_core_for_cov)
 ut_case.add_cust_test_func(test_func=test_nd_2_nz_shape_mismatch)
 
 
-def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
+def add_ts_case(soc, d_type, x, perm, y, value_type="default", op_imply_type="dynamic"):
     if d_type == "bool":
         d_type ="uint8"
     perm = np.array(perm)
     x_dynamic = x
-    x_dynamic = (-1,) + x[1:]
-    print(x_dynamic)
+    if op_imply_type == "dynamic":
+        x_dynamic = (-1,) + x[1:]
     x_range = []
     y_range = []
     p_shape = len(perm)
@@ -211,6 +211,7 @@ def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
                                            },
                                        ],
                                    "calc_expect_func": calc_expect_func,
+                                   "op_imply_type": op_imply_type,
                                    #"case_name": "case_" + str(os.getpid())+ "_" + str((int)(time.time())),
                                    "precision_standard": precision_info.PrecisionStandard(0, 0)
                                })
@@ -220,7 +221,8 @@ def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
 #                                          ok
 #
 #------------------------------------------------------------------------------------------------
-add_ts_case(["Ascend910A"], "float16",   (1024, 12, 30, 26),           (0, 2, 1, 3),           (1024, 30,12,26),        "random")
+add_ts_case(["Ascend910A"], "float16",   (16, 12, 30, 26),           (0, 2, 1, 3),           (16, 30,12,26),        "random", op_imply_type="dynamic")
+add_ts_case(["Ascend910A"], "float16",   (16, 12, 30, 26),           (0, 2, 1, 3),           (16, 30,12,26),        "random", op_imply_type="static")
 #add_ts_case(["Ascend910A"], "int8",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
 #add_ts_case(["Ascend910A"], "int16",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
 #add_ts_case(["Ascend910A"], "uint8",   (8, 16),                    (1, 0),                 (16, 8),                 "random")

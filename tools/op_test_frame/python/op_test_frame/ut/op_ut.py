@@ -60,10 +60,11 @@ class OpFuncType(Enum):
 
 class OpImplyType(Enum):
     """
-    op imply type Enum, contains STATIC_SHAPE, DYNAMIC_SHAPE
+    op imply type Enum, contains PRE_STATIC, STATIC, DYNAMIC
     """
-    STATIC_SHAPE = "static_shape"
-    DYNAMIC_SHAPE = "dynamic_shape"
+    PRE_STATIC = "pre_static"
+    STATIC = "static"
+    DYNAMIC = "dynamic"
 
 
 class FuncCache:
@@ -160,9 +161,9 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         else:
             self.op_module_name = op_module_name
         if ".dynamic." in self.op_module_name:
-            self.imply_type = OpImplyType.DYNAMIC_SHAPE
+            self.imply_type = OpImplyType.DYNAMIC
         else:
-            self.imply_type = OpImplyType.STATIC_SHAPE
+            self.imply_type = OpImplyType.PRE_STATIC
         if not op_func_name:
             self.op_func_name = _default_lower_op_type()
         else:
@@ -190,11 +191,17 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                case_line_num=None) -> op_ut_case_info.OpUTCase:
         if "params" not in case.keys():
             raise RuntimeError("Not has params info in case")
+
+        if case.get("op_imply_type"):
+            op_imply_type = case.get("op_imply_type")
+        else:
+            op_imply_type = self.imply_type.value
+
         case_name = case.get("case_name")
         if not case_name:
             self._auto_gen_case_name_count += 1
             case_name = "test_%s_auto_case_name_%d" % (self.op_type, self._auto_gen_case_name_count)
-        case_name = "_".join([self.op_type, str(self.imply_type.value), case_name])
+        case_name = "_".join([self.op_type, op_imply_type, case_name])
         # case_name duplicated, auto change name to xxx__1, xxx__2
         if case_name in self._case_info_map.keys():
             idx = 1
@@ -223,7 +230,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                         case_file=self.case_file,
                                         case_line_num=case_line_num,
                                         precision_standard=precision_standard,
-                                        op_imply_type=self.imply_type.value,
+                                        op_imply_type=op_imply_type,
                                         addition_params=case.get("addition_params", None))
 
     def add_case(self, support_soc=None, case=None):
@@ -573,18 +580,26 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         call_op_success = True
         err_msg = None
         try:
-            if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
-                # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-                import tbe  # 'pylint: disable=import-outside-toplevel
-                import tbe.common.context.op_info as operator_info # 'pylint: disable=import-outside-toplevel
+            # there is a bug in te, we can't import te before tensorflow, so can't import te outside
+            import tbe  # 'pylint: disable=import-outside-toplevel
+            import tbe.common.context.op_info as operator_info  # 'pylint: disable=import-outside-toplevel
+            if case_info.op_imply_type == OpImplyType.DYNAMIC.value:
                 with tbe.common.context.op_context.OpContext("dynamic"):
                     op_info = operator_info.OpInfo(self.op_type, self.op_type)
                     tbe.common.context.op_context.get_context().add_op_info(op_info)
                     op_func(*case_info.op_params, **addition_params)
                     compile_info = tbe.common.context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
-            else:
-                import tbe # 'pylint: disable=import-outside-toplevel
+            elif case_info.op_imply_type == OpImplyType.STATIC.value:
+                with tbe.common.context.op_context.OpContext("static"):
+                    op_info = operator_info.OpInfo(self.op_type, self.op_type)
+                    op_info.inputs, op_info.outputs = self._build_tiling_args(case_info.op_params)
+                    op_info.extra_params = case_info.addition_params
+                    tbe.common.context.op_context.get_context().add_op_info(op_info)
+                    op_func(*case_info.op_params, **addition_params)
+                    compile_info = tbe.common.context.get_context().get_compile_info()
+                    self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
+            elif case_info.op_imply_type == OpImplyType.PRE_STATIC.value:
                 with tbe.common.context.op_context.OpContext("pre-static"):
                     op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # 'pylint: disable=broad-except
@@ -794,7 +809,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                   soc_version=run_soc_version,
                                   simulator_lib_path=self._get_simulator_lib_path(run_cfg),
                                   simulator_dump_path=simulator_dump_path) as runner:
-            if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
+            if self.imply_type.value == OpImplyType.DYNAMIC.value or  self.imply_type.value == OpImplyType.STATIC.value:
                 op_kernel.set_compile_info({})
                 tiling_inputs, tiling_outputs = self._build_tiling_args(case_info.op_params)
                 block_dim, tiling_data = self._do_tiling(run_soc_version=run_soc_version,

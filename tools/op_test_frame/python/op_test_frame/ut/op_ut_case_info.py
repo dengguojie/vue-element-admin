@@ -151,7 +151,7 @@ class OpUTCase(OpUTBaseCase):  # 'pylint: disable=too-many-instance-attributes
                  op_params=None, expect=None, case_usage: CaseUsage = CaseUsage.IMPL,
                  expect_out_fn=None, case_file=None, case_line_num=None,
                  precision_standard: precision_info.PrecisionStandard = None,
-                 op_imply_type="static", addition_params=None):
+                 op_imply_type=None, addition_params=None):
         super().__init__(support_soc=support_soc, op_type=op_type, case_name=case_name, case_usage=case_usage,
                          case_file=case_file, case_line_num=case_line_num)
 
