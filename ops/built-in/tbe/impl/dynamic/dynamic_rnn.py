@@ -1260,34 +1260,24 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
-    a_ub_if = tvm.compute(shape_a_z_bigz,
+    a_ub = tvm.compute(shape_a_z_bigz,
                        lambda *indice:
                        tvm.select(indice[2] < in_x,
                                   input_x[indice[0],
                                           indice[2],
                                           indice[1],
                                           indice[3],
-                                          indice[4]]
-                                  ),
-                       name="a_ub_if", tag="concat")
-
-    a_ub_else = tvm.compute(shape_a_z_bigz,
-                       lambda *indice:
-                       tvm.select(indice[2] >= in_x,
+                                          indice[4]],
                                   s_state_h_ub[0,
                                                indice[2] - in_x,
                                                indice[1],
                                                indice[3],
                                                indice[4]]
                                   ),
-                       name="a_ub_else", tag="concat")
-
-    # `a_ub_if_else = a_ub_if + a_ub_else`
-    a_ub_if_else = tvm.compute(shape_a_z_bigz, lambda *indices: a_ub_if(*indices) + a_ub_else(*indices),
-                               name="a_ub_if_else", tag="empty_intrin")
+                       name="a_ub", tag="concat")
 
     a_l1 = tvm.compute(shape_a_z_bigz,
-                       lambda *indices: a_ub_if_else(*indices),
+                       lambda *indices: a_ub(*indices),
                        name='a_l1',
                        tag="out_to_l1")
     b_l1 = tvm.compute(shape_b,
@@ -1697,10 +1687,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if seq_mask_gm is not None:
         s[s_state_h_ub_for_element].set_scope(scope_ubuf)
 
-    # `s[a_ub].set_scope(scope_ubuf)`
-    s[a_ub_if].set_scope(scope_ubuf)
-    s[a_ub_else].set_scope(scope_ubuf)
-    s[a_ub_if_else].set_scope(scope_ubuf)
+    s[a_ub].set_scope(scope_ubuf)
 
     if fp16_input_output:
         s[bias_ub_fp32].set_scope(scope_ubuf)
@@ -1785,10 +1772,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      c_l0c.op.axis[4 + 1], l0_k_inner,
                      c_l0c.op.reduce_axis[1])
 
-    # `s[a_ub].compute_at(s[c_l0c], l1_k_outer)`
-    s[a_ub_if].compute_at(s[c_l0c], l1_k_outer)
-    s[a_ub_else].compute_at(s[c_l0c], l1_k_outer)
-    s[a_ub_if_else].compute_at(s[c_l0c], l1_k_outer)
+    s[a_ub].compute_at(s[c_l0c], l1_k_outer)
 
     s[s_state_h_ub].compute_at(s[c_l0c], l1_k_outer)
 
@@ -1924,9 +1908,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_h].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
 
-    s[a_ub_if].reused_by(a_ub_else, a_ub_if_else)
-    s[a_ub_if].reused_by(reuse_data=True)
-
     s[a_l1].double_buffer()
     s[b_l1].double_buffer()
     s[a_l0a].double_buffer()
@@ -1940,10 +1921,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
     s[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
 
-    # `s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')`
-    s[a_ub_if].emit_insn(a_ub_if.op.axis[0], 'dma_copy')
-    s[a_ub_else].emit_insn(a_ub_else.op.axis[0], 'dma_copy')
-    s[a_ub_if_else].emit_insn(a_ub_if_else.op.axis[0], 'phony_insn')
+    s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
 
     if fp16_input_output:
         s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
@@ -1992,10 +1970,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[s_state_h_ub].set_buffer_size(shapeh)
         s[s_state_c_ub].set_buffer_size(shapei)
 
-    s[a_ub_if].set_buffer_size(shapeazbigz)
-    s[a_ub_else].set_buffer_size(shapeazbigz)
-    s[a_ub_if_else].set_buffer_size(shapeazbigz)
-
+    s[a_ub].set_buffer_size(shapeazbigz)
     s[a_l1].set_buffer_size(shapeazbigz)
     s[b_l1].set_buffer_size(shapeb)
     s[a_l0a].set_buffer_size(shapeazbigz)
