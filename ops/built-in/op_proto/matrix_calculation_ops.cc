@@ -75,6 +75,9 @@ const int64_t kInputNumRowsIndex = 2;
 const int64_t kInputNumColsIndex = 3;
 const int64_t kInputPaddingIndex = 4;
 
+// MatMul FRACTAL_Z
+const int64_t BLOCK_SIZE = 16;
+
 // ----------------FullyConnection-------------------
 
 bool InferFC5HD(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
@@ -1922,6 +1925,18 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
             opName.GetString(), "transpose_x1");
     return GRAPH_FAILED;
+  }
+
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  bool input_size_flag = AttrUtils::GetInt(op_desc, "input_size", input_size);
+  bool hidden_size_flag = AttrUtils::GetInt(op_desc, "hidden_size", hidden_size);
+  OP_LOGD(opName.GetString(), "input_size[%lld], hidden_size[%lld]", input_size, hidden_size);
+  if (input_size_flag && hidden_size_flag) {
+    shape_x2.SetDim(1, shape_x1.GetDim(1));
+    int64_t align_dim = (input_size + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE +
+                        (hidden_size + BLOCK_SIZE) / BLOCK_SIZE * BLOCK_SIZE;
+    shape_x2.SetDim(0, align_dim);
   }
 
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Check the input shape length.");

@@ -127,6 +127,9 @@ def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: 
                            (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
                            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))]
 
+    base_case_nzz_fp16_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float16", "ND"),
+                                   ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
+
     # ND input and output scenario
     nd_case_scenario = [
             (("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
@@ -139,7 +142,7 @@ def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: 
         ]
     nd_fp32out_scenario = []
 
-    dyn_case_scenario_list = base_case_scenario + nd_case_scenario
+    dyn_case_scenario_list = base_case_scenario + nd_case_scenario + base_case_nzz_fp16_scenario
     # Construct scenario list for static
     if src_fp16_flag:
         if bias_fp32_flag and impl_mode == "keep_bias_fp32":
@@ -264,6 +267,8 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     res : dict
         None
     """
+    if input_x2.get("format") == "FRACTAL_ZN_RNN":
+        input_x2["format"] = "FRACTAL_Z"
     with tbe.compute():
         res = batch_matmul_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
                                    trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name,

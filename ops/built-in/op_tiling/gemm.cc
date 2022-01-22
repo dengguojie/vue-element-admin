@@ -64,6 +64,8 @@ const int32_t BLOCK_SIZE = 16;
 const int64_t DIM_NUM = 3;
 const int32_t CACHE_TILING_ID_LEN_NZ = 7;
 const int32_t CACHE_TILING_ID_LEN_ND = 9;
+const int64_t KBLOCK_SIZE = 16;
+const int64_t KMULTI = 4;
 /*
 TilingID from 20000 to 30000 means this tilingkey is used for aligned shape only. The range
 is ensured by gemm_tilingcase.py.
@@ -526,9 +528,22 @@ string GEMMTilingSelect(const string& op_type, const ge::Operator& op_paras, con
 
   ge::ConstGeTensorDescPtr tensor_a = op_desc->GetInputDescPtr(0);
   ge::ConstGeTensorDescPtr tensor_b = op_desc->GetInputDescPtr(1);
-  const ge::GeShape& ori_shape_a = tensor_a->GetOriginShape();
-  const ge::GeShape& ori_shape_b = tensor_b->GetOriginShape();
+  ge::GeShape ori_shape_a = tensor_a->GetOriginShape();
+  ge::GeShape ori_shape_b = tensor_b->GetOriginShape();
   ge::DataType dtype = tensor_a->GetDataType();
+
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  bool input_size_flag = ge::AttrUtils::GetInt(op_desc, "input_size", input_size);
+  bool hidden_size_flag = ge::AttrUtils::GetInt(op_desc, "hidden_size", hidden_size);
+  if (input_size_flag && hidden_size_flag) {
+    int64_t hidden_size_align = (hidden_size + KBLOCK_SIZE - 1) / KBLOCK_SIZE * KBLOCK_SIZE;
+    ori_shape_a.SetDim(1, hidden_size_align * KMULTI);
+    int64_t align_dim = (input_size + KBLOCK_SIZE - 1) / KBLOCK_SIZE * KBLOCK_SIZE + hidden_size_align;
+    ori_shape_b.SetDim(0, align_dim);
+    ori_shape_b.SetDim(1, hidden_size_align * KMULTI);
+  }
+
   CHECK((!CalcGEMMMknb(op_type, compile_info, dtype, ori_shape_a, ori_shape_b, compile_value)),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch"),
   return tiling_id);

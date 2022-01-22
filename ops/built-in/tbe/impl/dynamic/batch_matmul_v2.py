@@ -492,6 +492,10 @@ def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type:
             k_x2_index = -2
             n_index = -1
             batch_range_x2 = range_x2[:-2]
+        elif format_x2 == 'FRACTAL_Z':
+            n_index = -3
+            k_x2_index = -4
+            batch_range_x2 = range_x2[:-4]
     else:
         error_manager_vector.raise_err_specific_reson(op_type, "Lenth of x1_range illegal")
     k_range_x2 = list(range_x2[k_x2_index])
@@ -522,7 +526,7 @@ def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2
     if range_bias:
         range_bias_n = list(range_bias[0])
         if range_bias[0][1] is not None:
-            if format_x2 == 'FRACTAL_NZ':
+            if format_x2 in ('FRACTAL_NZ', 'FRACTAL_Z'):
                 range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
         n_range = _get_range_intersection(n_range, range_bias_n, "n_range", is_graph_mode)
 
@@ -558,7 +562,8 @@ def check_and_config_para(input_x1: dict, input_x2: dict, bias: dict, output_z: 
     para_check.check_kernel_name(kernel_name)
     expect_args = [('FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float16'),
                    ('ND', 'float16', 'ND', 'float16', 'ND', 'float16'),
-                   ('ND', 'float16', 'FRACTAL_NZ', 'float16', 'ND', 'float16')]
+                   ('ND', 'float16', 'FRACTAL_NZ', 'float16', 'ND', 'float16'),
+                   ('FRACTAL_NZ', 'float16', 'FRACTAL_Z', 'float16', 'FRACTAL_NZ', 'float16')]
     _check_args((format_a, dtype_a, format_b, dtype_b, format_out, dtype_out),
                 expect_args, "format_a, dtype_a, format_b, dtype_b, format_out, dtype_out")
 
@@ -656,11 +661,11 @@ def _get_k_n_index(format_b: str, trans_b: bool) -> list:
     get the correct k, n position for shape_x2.
     """
     if trans_b:
-        n_index = -2 if format_b == "ND" else -1
-        k_index = -1 if format_b == "ND" else -2
+        n_index = -2 if format_b in ("ND", "FRACTAL_Z") else -1
+        k_index = -1 if format_b in ("ND", "FRACTAL_Z") else -2
     else:
-        n_index = -1 if format_b == "ND" else -2
-        k_index = -2 if format_b == "ND" else -1
+        n_index = -1 if format_b in ("ND", "FRACTAL_Z") else -2
+        k_index = -2 if format_b in ("ND", "FRACTAL_Z") else -1
     return [k_index, n_index]
 
 

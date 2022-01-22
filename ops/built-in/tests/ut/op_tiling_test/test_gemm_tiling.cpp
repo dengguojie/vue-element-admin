@@ -849,3 +849,56 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
   // In Aligned Mode. The key is changed
   EXPECT_EQ(runInfo.GetTilingKey(), 211220121);
 }
+
+TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
+  using namespace optiling;
+  std::string op_name = "MatMul";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const ge::AscendString compileInfo = 
+      R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn",
+      "repo_seeds": {}, "repo_range": {}, "cost_range": {}, "block_dim": {"1120000": 6},
+      "attrs":{"transpose_a": false, "transpose_b": true}},{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn",
+      "repo_seeds": {}, "repo_range": {}, "cost_range": {}, "block_dim": {"1120000": 6},
+      "attrs":{"transpose_a": false, "transpose_b": true}}])";
+
+  ge::Graph graph("matmul_op_tiling_test_7");
+
+  auto x1_shape = vector<int64_t>({1, 256});
+  ge::TensorDesc desc_x1(ge::Shape(x1_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(ge::Shape(x1_shape));
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(desc_x1);
+  x1.update_output_desc_y(desc_x1);
+
+  auto x2_shape = vector<int64_t>({96, 256});
+  ge::TensorDesc desc_x2(ge::Shape(x2_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(ge::Shape(x2_shape));
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(desc_x2);
+  x2.update_output_desc_y(desc_x2);
+
+  auto matmul = op::MatMul(op_name)
+      .set_input_x1(x1)
+      .set_input_x2(x2);
+      
+  matmul.SetAttr("input_size", 17);
+  matmul.SetAttr("hidden_size", 50);
+
+  auto y_shape = vector<int64_t>({1, 96});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  matmul.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{matmul};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("matmul_op_tiling_test_7", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_v2_(matmul, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 6);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1120000);
+}

@@ -519,3 +519,19 @@ TEST_F(MatMulV2Test, MatMulV2InferShapeTest) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
+
+
+TEST_F(MatMulV2Test, MatMulV2InferShapeTestFormat) {
+  ge::op::MatMulV2 op;
+  op.UpdateInputDesc("x1", create_desc_with_original_shape({16, 1, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{1, 256}, ge::FORMAT_ND));
+  op.UpdateInputDesc("x2", create_desc_with_original_shape({6, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_ZN_RNN,{67, 200}, ge::FORMAT_ND));
+  op.UpdateOutputDesc("y", create_desc_with_original_shape({6, 1, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{1, 96}, ge::FORMAT_ND));
+  op.SetAttr("transpose_x1", false);
+  op.SetAttr("transpose_x2", true);
+  op.SetAttr("input_size", 17);
+  op.SetAttr("hidden_size", 50);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
