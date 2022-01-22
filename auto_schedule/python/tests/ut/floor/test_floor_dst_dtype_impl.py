@@ -55,7 +55,7 @@ test_func_list = [
     test_shape_value_less_then_zero,
 ]
 for item in test_func_list:
-    ut_case.add_cust_test_func(test_func=item)
+    ut_case.add_cust_test_func(support_soc=["Ascend920A"], test_func=item)
 
 case1 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float32", "format": "ND"},
                     {"shape": (2, 282, 282, 128), "dtype": "bfloat16", "format": "ND"},

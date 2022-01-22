@@ -56,7 +56,7 @@ test_func_list = [
     test_axis_in_none
 ]
 for item in test_func_list:
-    ut_case.add_cust_test_func(test_func=item)
+    ut_case.add_cust_test_func(support_soc=["Ascend910A"], test_func=item)
 
 
 case1 = {
@@ -178,7 +178,7 @@ compile_case_list = [
     case10,
 ]
 for item in compile_case_list:
-    ut_case.add_case(case=item)
+    ut_case.add_case(["Ascend910A"], case=item)
 
 
 def calc_expect_func(x, _, axis, keep_dims):
@@ -188,7 +188,7 @@ def calc_expect_func(x, _, axis, keep_dims):
 
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (1, 1, 128), "dtype": "int32", "param_type": "input"},
                    {"shape": (1, 1), "dtype": "int32", "param_type": "output"},
                    (2, ),
@@ -200,7 +200,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (1, 256), "dtype": "int32", "param_type": "input"},
                    {"shape": (1, 1), "dtype": "int32", "param_type": "output"},
                    (1, ),
@@ -212,7 +212,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (1, 39, 1), "dtype": "int32", "param_type": "input"},
                    {"shape": (1, 1), "dtype": "int32", "param_type": "output"},
                    (1, ),
@@ -224,7 +224,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (4, 4, 4, 128), "dtype": "int32", "param_type": "input"},
                    {"shape": (4, ), "dtype": "int32", "param_type": "output"},
                    (1, 2, 3),
@@ -236,7 +236,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (1, 8631), "dtype": "int32", "param_type": "input"},
                    {"shape": (1, 1), "dtype": "int32", "param_type": "output"},
                    (1, ),
@@ -248,7 +248,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (1, 4), "dtype": "int32", "param_type": "input"},
                    {"shape": (1,), "dtype": "int32", "param_type": "output"},
                    (1, ),
@@ -260,7 +260,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    "Ascend910A", {
         "params": [{"shape": (4, 4, 23), "dtype": "int32", "param_type": "input"},
                    {"shape": (4, 4, 1), "dtype": "int32", "param_type": "output"},
                    (2, ),
@@ -278,4 +278,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
