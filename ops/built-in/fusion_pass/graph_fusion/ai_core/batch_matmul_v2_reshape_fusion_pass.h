@@ -22,19 +22,41 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_RESHAPE_FUSION_PASS_H_
 
 #include <string>
+
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
 class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  vector<FusionPattern *> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusionNodes) override;
 
  private:
-  Status CreateReshapeNode(ge::ComputeGraph& graph, const ge::OutDataAnchorPtr & out_anchor, const vector<int64_t> & shape,
-                           ge::NodePtr& shape_node);
-  Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst, const ge::NodePtr& new_node);
+  bool CheckProduct(const std::vector<int64_t> &shape, std::size_t len);
+  bool CheckNeedChange(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x, const vector<int64_t> &shape_y);
+  Status InputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, int32_t index,
+                                const vector<int64_t> &new_shape);
+  Status OutputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, int32_t index,
+                                 const vector<int64_t> &out_shape);
+  Status UpdateOpDescByIndex(const ge::NodePtr &node, const vector<int64_t> &new_shape, int32_t index);
+  Status UpdateOpDesc(const ge::NodePtr &node, const vector<int64_t> &new_shape);
+  Status ConnectOneElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node, const vector<int64_t> &new_shape,
+                            const vector<int64_t> &out_shape);
+  bool IsMatchScenario1(const ge::NodePtr &fused_node); // BatchMatMulV2 --> Add --> Output
+  bool IsMatchScenario2(const ge::NodePtr &fused_node); // BatchMatMulV2 --> Add --> Add --> Output
+  /*
+   * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
+   *                    \__________________________/
+   */
+  bool IsMatchScenario3(const ge::NodePtr &fused_node);
+  Status ConnectTwoElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node, const vector<int64_t> &new_shape,
+                            const vector<int64_t> &out_shape);
+  Status ProcessOutNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, const vector<int64_t> &new_shape,
+                        const vector<int64_t> &out_shape);
+  Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &next_node,
+                           const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
+                           ge::NodePtr &shape_node);
   const string FUSED_OP_TYPE = "BatchMatMulV2";
 };
-}  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_RESHAPE_FUSION_PASS_H_
+} // namespace fe
+#endif // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_RESHAPE_FUSION_PASS_H_

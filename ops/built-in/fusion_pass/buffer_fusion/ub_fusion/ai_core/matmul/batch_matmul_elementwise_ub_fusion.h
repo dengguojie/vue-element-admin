@@ -22,26 +22,27 @@
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_ELEMENTWISE_UB_FUSION_H
 
 #include <vector>
-#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+
 #include "common/lxfusion_json_util.h"
+#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
-
 class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
-  public:
-    explicit TbeBatchMatmulElementWiseFusionPass() {}
+ public:
+  explicit TbeBatchMatmulElementWiseFusionPass() {}
 
-    ~TbeBatchMatmulElementWiseFusionPass() override {}
+  ~TbeBatchMatmulElementWiseFusionPass() override {}
 
-  protected:
-    vector<BufferFusionPattern*> DefinePatterns() override;
-    Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
+ protected:
+  vector<BufferFusionPattern *> DefinePatterns() override;
+  Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
-  private:
-    const string FUSED_OP_TYPE = "FusedOp";
-    void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+ private:
+  const string FUSED_OP_TYPE = "FusedOp";
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+  Status CheckPattern1(const BufferFusionMapping &mapping);
+  Status CheckPattern2(const BufferFusionMapping &mapping);
 };
+} // namespace fe
 
-}  // namespace fe
-
-#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_TBE_MATMUL_ELEMWISE_H
+#endif // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_TBE_MATMUL_ELEMWISE_H

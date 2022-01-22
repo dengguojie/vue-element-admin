@@ -20,86 +20,448 @@
  */
 
 #include "batch_matmul_v2_reshape_fusion_pass.h"
+
+#include "anchor_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "anchor_util.h"
 
 namespace fe {
-  static const string PATTERN_BATCHMATMULV2 = "BatchMatMulV2";
-  static const string BATCHMATMULV2 = "BatchMatMulV2";
-  vector<FusionPattern*> BatchMatMulV2ReshapeFusionPass::DefinePatterns() {
-  vector<FusionPattern*> patterns;
-  FusionPattern *pattern = new(std::nothrow) FusionPattern("BatchMatMulV2ReshapeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object fail."),
-                    return patterns);
+static const string PATTERN_BATCHMATMULV2 = "BatchMatMulV2";
+static const string BATCHMATMULV2 = "BatchMatMulV2";
+static const uint32_t kLeftShapeDim = 3;
+static const uint32_t kRightShapeDim = 2;
+static const uint32_t kBatchMinValue = 50;
+static const uint32_t kMaxValue = 32;
+vector<FusionPattern *> BatchMatMulV2ReshapeFusionPass::DefinePatterns() {
+  vector<FusionPattern *> patterns;
+  FusionPattern *pattern = new (std::nothrow) FusionPattern("BatchMatMulV2ReshapeFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object fail."), return patterns);
   pattern->AddOpDesc(PATTERN_BATCHMATMULV2, {BATCHMATMULV2}).SetOutput(PATTERN_BATCHMATMULV2);
   patterns.push_back(pattern);
   return patterns;
+}
+
+bool BatchMatMulV2ReshapeFusionPass::CheckProduct(const std::vector<int64_t> &shape, std::size_t len) {
+  if (len > shape.size()) {
+    return false;
+  }
+  int64_t product = 1;
+  for (std::size_t i = 0; i < len; i++) {
+    if (shape[i] > 0) {
+      if (product > (INT64_MAX / shape[i])) {
+        return false;
+      } else {
+        product *= shape[i];
+      }
+    }
   }
 
-Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                              vector<ge::NodePtr>& /* fuion_nodes */) {
-  OP_LOGD(FUSED_OP_TYPE, "Enter BatchMatMulV2ReshapeFusionPass.");
+  return true;
+}
+
+// BatchMatMulV2 --> Add --> Output
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario1(const ge::NodePtr &fused_node) {
+  auto out_anchor = fused_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return false);
+  auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  if (peer_in_anchors.size() != 1) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "fused_node peer_in_anchors.size() is not 1.");
+    return false;
+  }
+  auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
+                    return false);
+  auto out_node_num = next_node->GetOutDataNodesSize();
+  if (out_node_num != 1) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node out_node_num is not 1.");
+    return false;
+  }
+  if (next_node->GetType() == "Add") {
+    // the add operator specifies two inputs
+    auto input1_dims = next_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDimNum();
+    auto input2_dims = next_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDimNum();
+    if (input1_dims == 1 || input2_dims == 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// BatchMatMulV2 --> Add --> Add --> Output
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_node) {
+  if (IsMatchScenario1(fused_node)) {
+    auto out_anchor = fused_node->GetOutDataAnchor(0);
+    FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                      return false);
+    auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+    auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
+    FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
+                      return false);
+    peer_in_anchors = next_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
+    if (peer_in_anchors.size() != 1) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node peer_in_anchors.size() is not 1.");
+      return false;
+    }
+    auto next_next_node = peer_in_anchors.at(0)->GetOwnerNode();
+    FUSION_PASS_CHECK(next_next_node == nullptr,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_next_node is null."), return FAILED);
+    auto out_node_num = next_next_node->GetOutDataNodesSize();
+    if (out_node_num != 1) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "next_next_node out_node_num is not 1.");
+      return false;
+    }
+    if (next_next_node->GetType() == "Add") {
+      auto idx = peer_in_anchors.at(0)->GetIdx();
+      auto input_dims = next_next_node->GetOpDesc()->GetInputDesc(1 - idx).GetOriginShape().GetDimNum();
+      if (input_dims > 1) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/*
+ * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
+ *                    \__________________________/
+ */
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario3(const ge::NodePtr &fused_node) {
+  auto out_anchor = fused_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return false);
+  auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  if (peer_in_anchors.size() != 1) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() is not 1.");
+    return false;
+  }
+  auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
+                    return false);
+  auto out_node_num = next_node->GetOutDataNodesSize();
+  if (out_node_num != 2) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node out_node_num is not 2.");
+    return false;
+  }
+  peer_in_anchors = next_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
+  auto next_next_node_0 = peer_in_anchors.at(0)->GetOwnerNode();
+  auto next_next_node_1 = peer_in_anchors.at(1)->GetOwnerNode();
+  FUSION_PASS_CHECK(next_next_node_0 == nullptr || next_next_node_1 == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node is null."), return false);
+  FUSION_PASS_CHECK(next_next_node_0->GetType() != "Mul" || next_next_node_1->GetType() != "Mul",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The next node is not Mul."), return false);
+  out_anchor = next_next_node_0->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return false);
+  peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  auto sigmoid_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(sigmoid_node == nullptr || sigmoid_node->GetType() != "Sigmoid",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The node is not Sigmoid."), return false);
+  out_anchor = sigmoid_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return false);
+  peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  auto mul_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(mul_node == nullptr || mul_node->GetName() != next_next_node_1->GetName(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The end node must be same Mul node."), return false);
+  out_anchor = mul_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return false);
+  peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  return true;
+}
+
+bool BatchMatMulV2ReshapeFusionPass::CheckNeedChange(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x,
+                                                     const vector<int64_t> &shape_y) {
+  auto x_dims = shape_x.size();
+  auto y_dims = shape_y.size();
+
+  if (x_dims == 0 || y_dims == 0) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "shape_x or shape_y is empty.");
+    return false;
+  }
+
+  // step1: compatible with the original scenario
+  if (x_dims == 1 || y_dims == 1) {
+    return true;
+  }
+
+  // step2: handling the new fusion scenario
+  if (x_dims == kLeftShapeDim && y_dims == kRightShapeDim) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "input shape x1=[%ld, %ld, %ld], x2=[%ld, %ld].", shape_x[0], shape_x[1], shape_x[2],
+            shape_y[0], shape_y[1]);
+    auto op_desc = fused_node->GetOpDesc();
+    FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op_desc is null."),
+                      return false);
+    // check if dynamic shape
+    auto x0_desc = op_desc->MutableInputDesc(0);
+    auto x1_desc = op_desc->MutableInputDesc(1);
+    if (x0_desc->MutableShape().IsUnknownShape() || x1_desc->MutableShape().IsUnknownShape()) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "not support dynamic shape.");
+      return false;
+    }
+    bool trans_a = false;
+    bool trans_b = false;
+    FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x1", trans_a),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetBool adj_x1 failed!"), return false);
+    FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x2", trans_b),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetBool adj_x2 failed!"), return false);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "batchmatmul trans_a=%d, trans_b=%d.", trans_a, trans_b);
+    bool need_change =
+        shape_x[0] >= kBatchMinValue && shape_x[1] <= kMaxValue && shape_x[2] == shape_y[0] && !trans_a && !trans_b;
+    need_change = need_change && CheckProduct(x0_desc->GetOriginShape().GetDims(), 2) &&
+                  (IsMatchScenario2(fused_node) || IsMatchScenario1(fused_node) || IsMatchScenario3(fused_node));
+    if (need_change) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::InputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                                                              int32_t index, const vector<int64_t> &new_shape) {
+  ge::NodePtr x1_reshape_node = nullptr;
+  auto in_anchor = fused_node->GetInDataAnchor(index);
+  FUSION_PASS_CHECK(in_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in_anchor is null."),
+                    return FAILED);
+  auto out_anchor = in_anchor->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return FAILED);
+
+  CreateReshapeNode(graph, fused_node, out_anchor, new_shape, x1_reshape_node);
+  auto input_desc_ptr = GetCurrNodeMutableInputDesc(fused_node, index);
+  FUSION_PASS_CHECK(input_desc_ptr == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_desc_ptr is null."),
+                    return FAILED);
+  input_desc_ptr->SetShape(ge::GeShape(new_shape));
+  input_desc_ptr->SetOriginShape(ge::GeShape(new_shape));
+
+  auto ret = ge::GraphUtils::InsertNodeBetweenDataAnchors(out_anchor, in_anchor, x1_reshape_node);
+  FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InsertNodeBetweenDataAnchors failed."),
+                    return FAILED);
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::OutputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                                                               int32_t index, const vector<int64_t> &out_shape) {
+  ge::NodePtr out_reshape_node = nullptr;
+  auto out_anchor = fused_node->GetOutDataAnchor(index);
+  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+                    return FAILED);
+  for (const auto &peer_in_anchor : out_anchor->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(peer_in_anchor == nullptr,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchor is null."), return FAILED);
+
+    auto next_node = peer_in_anchor->GetOwnerNode();
+    FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
+                      return FAILED);
+    CreateReshapeNode(graph, next_node, out_anchor, out_shape, out_reshape_node);
+    int32_t idx = peer_in_anchor->GetIdx();
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "next next node type=[%s], in anchor index=[%d].", next_node->GetType().c_str(),
+            idx);
+
+    auto input_desc_ptr = GetCurrNodeMutableInputDesc(next_node, idx);
+    FUSION_PASS_CHECK(input_desc_ptr == nullptr,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_desc_ptr is null."), return FAILED);
+    input_desc_ptr->SetShape(ge::GeShape(out_shape));
+    input_desc_ptr->SetOriginShape(ge::GeShape(out_shape));
+    auto ret = ge::GraphUtils::InsertNodeBetweenDataAnchors(out_anchor, peer_in_anchor, out_reshape_node);
+    FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InsertNodeBetweenDataAnchors failed."),
+                      return FAILED);
+  }
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::UpdateOpDescByIndex(const ge::NodePtr &node, const vector<int64_t> &new_shape,
+                                                           int32_t index) {
+  auto input_desc_ptr = GetCurrNodeMutableInputDesc(node, index);
+  FUSION_PASS_CHECK(input_desc_ptr == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_desc_ptr is null."),
+                    return FAILED);
+  int32_t dims = input_desc_ptr->GetOriginShape().GetDimNum();
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "index = %d, node input dims=%d.", index, dims);
+  if (dims > 1) {
+    input_desc_ptr->SetShape(ge::GeShape(new_shape));
+    input_desc_ptr->SetOriginShape(ge::GeShape(new_shape));
+  }
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::UpdateOpDesc(const ge::NodePtr &node, const vector<int64_t> &new_shape) {
+  uint32_t input_num = node->GetAllInDataAnchorsSize();
+  for (uint32_t i = 0; i < input_num; ++i) {
+    FUSION_PASS_CHECK(SUCCESS != UpdateOpDescByIndex(node, new_shape, i),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDescByIndex failed!"), return FAILED);
+  }
+
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != node->InferShapeAndType(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InferShapeAndType failed!"), return FAILED);
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::ConnectOneElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node,
+                                                          const vector<int64_t> &new_shape,
+                                                          const vector<int64_t> &out_shape) {
+  auto out_node = next_node;
+  auto peer_in_anchors = next_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
+  auto next_next_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(next_next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_next_node is null."),
+                    return FAILED);
+  auto idx = peer_in_anchors.at(0)->GetIdx();
+  if (next_next_node->GetType() == "Add") {
+    out_node = next_next_node;
+    FUSION_PASS_CHECK(SUCCESS != UpdateOpDesc(next_next_node, new_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDesc failed!"), return FAILED);
+    auto input_dims = next_next_node->GetOpDesc()->GetInputDesc(1 - idx).GetOriginShape().GetDimNum();
+    if (input_dims > 1 && SUCCESS != InputInsertReshapeNode(graph, next_next_node, (1 - idx), new_shape)) {
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InputInsertReshapeNode failed.");
+      return FAILED;
+    }
+  }
+
+  if (SUCCESS != OutputInsertReshapeNode(graph, out_node, 0, out_shape)) {
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OutputInsertReshapeNode failed.");
+    return FAILED;
+  }
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::ConnectTwoElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node,
+                                                          const vector<int64_t> &new_shape,
+                                                          const vector<int64_t> &out_shape) {
+  auto peer_in_anchors = next_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
+  auto next_next_node_0 = peer_in_anchors.at(0)->GetOwnerNode();
+  auto next_next_node_1 = peer_in_anchors.at(1)->GetOwnerNode();
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "next node1 name = %s, node2 name = %s.", next_next_node_0->GetName().c_str(),
+          next_next_node_1->GetName().c_str());
+
+  auto input2desc = GetCurrNodeInputDesc(next_next_node_0, 1);
+  FUSION_PASS_CHECK(input2desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input2desc is null"),
+                    return FAILED);
+  auto x2_shape = input2desc->GetOriginShape().GetDims();
+  if (x2_shape.size() == kLeftShapeDim) {
+    FUSION_PASS_CHECK(true != CheckProduct(x2_shape, 2),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CheckProduct x2_shape failed!"), return FAILED);
+    vector<int64_t> new_x2_shape = {x2_shape[0] * x2_shape[1], x2_shape[2]};
+    FUSION_PASS_CHECK(SUCCESS != InputInsertReshapeNode(graph, next_next_node_0, 1, new_x2_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InputInsertReshapeNode failed!"), return FAILED);
+  }
+  FUSION_PASS_CHECK(SUCCESS != UpdateOpDescByIndex(next_next_node_0, new_shape, 0),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDescByIndex failed!"), return FAILED);
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != next_next_node_0->InferShapeAndType(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InferShapeAndType failed!"), return FAILED);
+
+  FUSION_PASS_CHECK(SUCCESS != UpdateOpDesc(next_next_node_1, new_shape),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDesc failed."), return FAILED);
+
+  auto out_anchor = next_next_node_0->GetOutDataAnchor(0);
+  peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  auto sigmoid_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(SUCCESS != UpdateOpDesc(sigmoid_node, new_shape),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDesc failed."), return FAILED);
+  out_anchor = sigmoid_node->GetOutDataAnchor(0);
+  peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  auto mul_node = peer_in_anchors.at(0)->GetOwnerNode();
+  FUSION_PASS_CHECK(SUCCESS != UpdateOpDesc(mul_node, new_shape),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOpDesc failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != OutputInsertReshapeNode(graph, mul_node, 0, out_shape),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OutputInsertReshapeNode failed."), return FAILED);
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::ProcessOutNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                                                      const vector<int64_t> &new_shape,
+                                                      const vector<int64_t> &out_shape) {
+  auto out_anchor = fused_node->GetOutDataAnchor(0);
+  auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
+  int32_t idx = peer_in_anchors.at(0)->GetIdx();
+  auto input_desc_ptr = GetCurrNodeMutableInputDesc(next_node, idx);
+  FUSION_PASS_CHECK(input_desc_ptr == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_desc_ptr is null."),
+                    return FAILED);
+  input_desc_ptr->SetShape(ge::GeShape(new_shape));
+  input_desc_ptr->SetOriginShape(ge::GeShape(new_shape));
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != next_node->InferShapeAndType(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InferShapeAndType failed!"), return FAILED);
+
+  auto out_node_num = next_node->GetOutDataNodesSize();
+  if (out_node_num == 1) {
+    FUSION_PASS_CHECK(SUCCESS != ConnectOneElemwise(graph, next_node, new_shape, out_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConnectOneElemwise failed!"), return FAILED);
+  } else if (out_node_num == 2) {
+    FUSION_PASS_CHECK(SUCCESS != ConnectTwoElemwise(graph, next_node, new_shape, out_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConnectTwoElemwise failed!"), return FAILED);
+  }
+
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
+                                              vector<ge::NodePtr> & /* fuion_nodes */) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter BatchMatMulV2ReshapeFusionPass.");
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_BATCHMATMULV2, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "Fuse node is null, fusion failed."),
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fuse node is null, fusion failed."),
                     return PARAM_INVALID);
   auto input0desc = GetCurrNodeInputDesc(fused_node, 0);
   auto input1desc = GetCurrNodeInputDesc(fused_node, 1);
-  FUSION_PASS_CHECK(input0desc == nullptr,
-                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                return FAILED);
-  FUSION_PASS_CHECK(input1desc == nullptr,
-                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                return FAILED);
+  FUSION_PASS_CHECK(input0desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                    return FAILED);
+  FUSION_PASS_CHECK(input1desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                    return FAILED);
   auto x1_shape = input0desc->GetOriginShape().GetDims();
   auto x2_shape = input1desc->GetOriginShape().GetDims();
-  if (x1_shape.size() != 1 and x2_shape.size() != 1) {
-      OP_LOGD(FUSED_OP_TYPE, "Dim size of x1 or x2 for %s is not 1, graph not changed.", fused_node->GetName().c_str());
-      return NOT_CHANGED;
+  if (!CheckNeedChange(fused_node, x1_shape, x2_shape)) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "The graph doesn't need to be changed.");
+    return NOT_CHANGED;
   }
+
+  if (x1_shape.size() == kLeftShapeDim) {
+    vector<int64_t> new_shape = {x1_shape[0] * x1_shape[1], x1_shape[2]};
+    FUSION_PASS_CHECK(SUCCESS != InputInsertReshapeNode(graph, fused_node, 0, new_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InputInsertReshapeNode failed!"), return FAILED);
+
+    auto out_shape = fused_node->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> new_out_shape = {new_shape[0], x2_shape[1]};
+    auto out_desc_ptr = fused_node->GetOpDesc()->MutableOutputDesc(0);
+    out_desc_ptr->SetShape(ge::GeShape(new_out_shape));
+    out_desc_ptr->SetOriginShape(ge::GeShape(new_out_shape));
+
+    FUSION_PASS_CHECK(SUCCESS != ProcessOutNode(graph, fused_node, new_out_shape, out_shape),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessOutNode failed!"), return FAILED);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "BatchMatMulV2ReshapeFusionPass new scenario success.");
+    return SUCCESS;
+  }
+
   // step1: creat reshape op and add to graph for x1
   if (x1_shape.size() == 1) {
-      ge::NodePtr x1_reshape_node = nullptr;
-      vector<int64_t> new_shape = {1, x1_shape[0]};
-      auto in_anchor = fused_node->GetInDataAnchor(0);
-      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get in data anchor 0."),
-                        return FAILED);
-      auto out_anchor = in_anchor->GetPeerOutAnchor();
-      FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get out data anchor 0."),
-                        return FAILED);
-      CreateReshapeNode(graph, out_anchor, new_shape, x1_reshape_node);
-      ge::GeTensorDescPtr fusedNodeInputDescPtr = GetCurrNodeMutableInputDesc(fused_node, 0);
-      FUSION_PASS_CHECK(fusedNodeInputDescPtr == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."),
-                        return FAILED);
-      fusedNodeInputDescPtr->SetShape(ge::GeShape(new_shape));
-      fusedNodeInputDescPtr->SetOriginShape(ge::GeShape(new_shape));
-      Status ret = InsertNode(out_anchor, in_anchor, x1_reshape_node);
-      if (ret != SUCCESS) {
-        OP_LOGE(x1_reshape_node->GetType().c_str(), "Add node %s failed.", x1_reshape_node->GetName().c_str());
-        return FAILED;
-      }
+    ge::NodePtr x1_reshape_node = nullptr;
+    vector<int64_t> new_shape = {1, x1_shape[0]};
+    FUSION_PASS_CHECK(SUCCESS != InputInsertReshapeNode(graph, fused_node, 0, new_shape),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."), return FAILED);
   }
   // step2: creat reshape op and add to graph for x2
   if (x2_shape.size() == 1) {
-      ge::NodePtr x2_reshape_node = nullptr;
-      vector<int64_t> new_shape = {x2_shape[0], 1};
-      auto in_anchor = fused_node->GetInDataAnchor(1);
-      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get in data anchor 1."),
-                        return FAILED);
-      auto out_anchor = in_anchor->GetPeerOutAnchor();
-      FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get out data anchor 1."),
-                        return FAILED);
-      CreateReshapeNode(graph, out_anchor, new_shape, x2_reshape_node);
-      fused_node->GetOpDesc()->MutableInputDesc(1)->SetShape(ge::GeShape(new_shape));
-      fused_node->GetOpDesc()->MutableInputDesc(1)->SetOriginShape(ge::GeShape(new_shape));
-      Status ret = InsertNode(out_anchor, in_anchor, x2_reshape_node);
-      if (ret != SUCCESS) {
-        OP_LOGE(x2_reshape_node->GetType().c_str(), "Add node %s failed.", x2_reshape_node->GetName().c_str());
-        return FAILED;
-      }
+    ge::NodePtr x2_reshape_node = nullptr;
+    vector<int64_t> new_shape = {x2_shape[0], 1};
+    FUSION_PASS_CHECK(SUCCESS != InputInsertReshapeNode(graph, fused_node, 1, new_shape),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."), return FAILED);
   }
   // step3: create reshape op and add to graph for batch matmul
   auto out_shape = fused_node->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDims();
@@ -107,73 +469,16 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     out_shape.erase(out_shape.begin());
   }
   if (x2_shape.size() == 1 and out_shape.size() > 1) {
-    out_shape.erase(out_shape.end()-1);
+    out_shape.erase(out_shape.end() - 1);
   }
 
-  ge::NodePtr out_reshape_node = nullptr;
-  auto out_anchor = fused_node->GetOutDataAnchor(0);
-  if (out_anchor == nullptr) {
-    OP_LOGD(FUSED_OP_TYPE, "Get out data anchor failed.");
-    return NOT_CHANGED;
-  }
-
-  CreateReshapeNode(graph, out_anchor, out_shape, out_reshape_node);
-  for (const auto &peer_input_anchor: out_anchor->GetPeerAnchors()) {
-    FUSION_PASS_CHECK(peer_input_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "peer input anchor is null."),
-                      return FAILED);
-
-    auto next_node = peer_input_anchor->GetOwnerNode();
-    FUSION_PASS_CHECK(next_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "peer input Node is null."),
-                      return FAILED);
-    int idx = peer_input_anchor->GetIdx();
-    auto mutableIndesc = GetCurrNodeMutableInputDesc(next_node, idx);
-    FUSION_PASS_CHECK(mutableIndesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "mutableIndesc is null."),
-                      return FAILED);
-    mutableIndesc->SetShape(ge::GeShape(out_shape));
-    mutableIndesc->SetOriginShape(ge::GeShape(out_shape));
-    auto in_anchor = next_node->GetInDataAnchor(idx);
-    out_anchor = in_anchor->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get peer out anchor."),
-                      return FAILED);
-    Status ret = InsertNode(out_anchor, in_anchor, out_reshape_node);
-    if (ret != SUCCESS) {
-      OP_LOGE(out_reshape_node->GetType().c_str(), "Add node %s failed.", out_reshape_node->GetName().c_str());
-      return FAILED;
-      }
-  }
-  OP_LOGD(FUSED_OP_TYPE, "BatchMatMulV2ReshapeFusionPass success.");
+  FUSION_PASS_CHECK(SUCCESS != OutputInsertReshapeNode(graph, fused_node, 0, out_shape),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."), return FAILED);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "BatchMatMulV2ReshapeFusionPass success.");
   return SUCCESS;
 }
 
-Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
-                                                  const ge::NodePtr& new_node) {
-  ge::NodePtr src_node = src->GetOwnerNode();
-  ge::NodePtr dst_node = dst->GetOwnerNode();
-  if (new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != GRAPH_SUCCESS) {
-    OP_LOGI(new_node->GetName().c_str(), "update input_desc failed.");
-    return FAILED;
-  }
-  if (new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx())) != GRAPH_SUCCESS) {
-    OP_LOGI(new_node->GetName().c_str(), "update output_desc failed.");
-    return FAILED;
-  }
-  if (ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
-    OP_LOGE(dst_node->GetName().c_str(), "Remove input0 edge error.");
-    return FAILED;
-  }
-  if (ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
-    OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str());
-    return FAILED;
-  }
-  if (ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
-   OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str());
-    return FAILED;
-  }
-  return SUCCESS;
-}
-
-Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph &graph,
+Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &next_node,
                                                          const ge::OutDataAnchorPtr &out_anchor,
                                                          const vector<int64_t> &shape, ge::NodePtr &shape_node) {
   auto previous_node = out_anchor->GetOwnerNode();
@@ -184,8 +489,9 @@ Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph &graph
   next_in_desc.SetOriginShape(ge::GeShape(shape));
 
   ge::OpDescPtr reshape_desc;
-  FUSION_PASS_MAKE_SHARED((reshape_desc = std::make_shared<ge::OpDesc>(
-                          previous_node->GetName() + "/Reshape", "Reshape")), return FAILED);
+  FUSION_PASS_MAKE_SHARED(
+      (reshape_desc = std::make_shared<ge::OpDesc>(next_node->GetName() + "_cann" + "/Reshape", "Reshape")),
+      return FAILED);
   FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", previous_node_desc) != GRAPH_SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to reshape."), return FAILED);
   FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
@@ -198,6 +504,6 @@ Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph &graph
   shape_node = new_shape_node;
   return SUCCESS;
 }
- REGISTER_PASS("BatchMatMulV2ReshapeFusionPass", BUILT_IN_GRAPH_PASS, BatchMatMulV2ReshapeFusionPass);
-}  // namespace fe
 
+REGISTER_PASS("BatchMatMulV2ReshapeFusionPass", BUILT_IN_GRAPH_PASS, BatchMatMulV2ReshapeFusionPass);
+} // namespace fe
