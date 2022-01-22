@@ -17,6 +17,7 @@ import te.lang.cce as tbe
 from impl.ascend_anti_quant import ascend_anti_quant_compute
 from impl.ascend_quant import ascend_quant_compute
 from impl.strided_write import strided_write_compute
+from sch_test_frame.common import precision_info
 
 warnings.filterwarnings("ignore")
 
@@ -34,10 +35,9 @@ def dsl_pooling2d_fuse(x, y, fuse_type, window, stride, pooling_mode, padding_mo
     input_dtype = x.get("dtype")
     data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
     if fuse_type == 3:
-        res = ascend_anti_quant_compute(data1, y, 0.0177109297, 128, False)
+        res = ascend_anti_quant_compute(data1, y, 0.9551185, 128)
         res = tbe.pooling2d(res, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
                             fusion_params, impl_mode)
-        res = ascend_quant_compute(res, None, 36.9753761, -128, False)
     elif fuse_type == 4:
         res = tbe.pooling2d(data1, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
                             fusion_params, impl_mode)
@@ -206,6 +206,32 @@ compile_case_list = [
 for item in compile_case_list:
     ut_case.add_case(case=item)
 
+
+def calc_expect_func(x, y, fuse_type, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode,
+                    ceil_mode, fusion_params, impl_mode, kernel_name='dsl_pooling2d_fuse'):
+    import numpy as np
+    output = x.get("value").reshape(1,8,4,4,2,16).transpose(0,1,4,2,3,5).reshape(1,16,4,4,16).astype("float16")
+    # output = x.get("value").astype("float16")
+    scale = np.full(output.shape, 0.9551185, dtype="float16")
+    output = (output + 128) * scale
+    output = np.sum(output, axis=(2, 3), keepdims=1)
+    output = output / 16
+    return output
+
+
+ut_case.add_precision_case(
+    "Ascend310", {
+        "params": [ {"shape": (1,8,4,4,32), "dtype": "int8", "value_range": [1, 10], "param_type": "input"},
+                    {"shape": (1,16,1,1,16), "dtype": "float16", "ori_shape": (1, 256, 4, 4),"param_type": "output"},
+                    3
+                   ],
+        "case_name": "test_cast_to_precision_fp322s32_faster_rcnn_resnet",
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
+        "addition_params": {"window": (4, 4), "stride": (4, 4), "pooling_mode": "GAP", "padding_mode": "SAME",
+                            "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                            "fusion_params": {}, "impl_mode": "high_performance"}
+    })
 
 if __name__ == '__main__':
     import os

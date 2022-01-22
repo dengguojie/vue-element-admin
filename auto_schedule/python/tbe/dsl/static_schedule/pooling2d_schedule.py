@@ -2506,6 +2506,8 @@ def pooling_global_quant_schedule(
         _set_scope(sch, antiquant_tensors.values(), scope_ubuf)
         _set_scope(sch, [antiquant_res], scope_ubuf)
         sch[antiquant_res].compute_at(sch[res], compute_at_axis)
+        reform_by_vmuls = antiquant_tensors["reform_by_vmuls"]
+        sch[reform_by_vmuls].split(reform_by_vmuls.op.axis[1], factor=2)
         sch[antiquant_tensors["reform_by_vmuls"]].reused_by(antiquant_res)
 
     is_split_hw = ("loop_cut_hi" in tiling_params and (tiling_params["loop_cut_hi"] > 1)) or \
