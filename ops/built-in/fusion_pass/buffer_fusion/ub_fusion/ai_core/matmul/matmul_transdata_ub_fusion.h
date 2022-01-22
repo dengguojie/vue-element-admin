@@ -31,12 +31,12 @@ class MatmulTransdataFusionPass : public BufferFusionPassBase {
   explicit MatmulTransdataFusionPass() {
   }
 
-  ~MatmulTransdataFusionPass() {
+  ~MatmulTransdataFusionPass() override {
   }
 
  protected:
   bool CheckFormatOfTransData(const ge::NodePtr& node_ptr_transdata, const char *expect_src_format,
-                              const char *expect_dst_format);
+                              const char *expect_dst_format) const;
   vector<BufferFusionPattern*> DefinePatterns() override;
   bool DelInputTransdata(ge::NodePtr& node_ptr_transdata, const uint32_t idx);
   bool DelOutputTransdata();
@@ -47,12 +47,11 @@ class MatmulTransdataFusionPass : public BufferFusionPassBase {
   bool IsLinkRelationshipCorrect();
   bool IsOutOfInTransdataCorrect() const;
   bool IsStaticShape() const;
-  bool ModifyTransdataInControlEdge(ge::NodePtr& node_ptr_transdata);
-  bool ModifyTransdataOutControlEdge(ge::NodePtr& node_ptr_transdata);
+  bool ModifyTransdataInControlEdge(const ge::NodePtr& node_ptr_transdata) const;
+  bool ModifyTransdataOutControlEdge(const ge::NodePtr& node_ptr_transdata) const;
   bool NeedFusion();
 
  private:
-  const char *kFusedOpType = "matmul_transdata_fused_op";
   ge::NodePtr in_ptr_0 = nullptr;
   ge::NodePtr transdata_ptr_0 = nullptr;
   ge::NodePtr in_ptr_1 = nullptr;

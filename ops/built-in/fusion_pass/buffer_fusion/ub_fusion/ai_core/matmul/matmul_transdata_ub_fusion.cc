@@ -50,12 +50,14 @@
 #include "../graph_fusion/ai_core/tbe_ops_pass_util.h"
 
 namespace {
-static constexpr char *kPatternMatmul = "matmul";
+static const char kPatternMatmul[] = "matmul";
 
-static constexpr char *kOpTypeTransdata = "TransData";
+static const char kOpTypeTransdata[] = "TransData";
 
-static constexpr char *kFormatNd = "ND";
-static constexpr char *kFormatFractalNz = "FRACTAL_NZ";
+static const char kFormatNd[] = "ND";
+static const char kFormatFractalNz[] = "FRACTAL_NZ";
+
+static const char kFusedOpType[] = "matmul_transdata_fused_op";
 
 static constexpr int kNumAlignHalf = 16;
 static constexpr int kRIdxLast = -1;
@@ -104,7 +106,7 @@ bool MatmulTransdataFusionPass::IsOutTransdataCorrect(const ge::Node::Vistor<ge:
 
 bool MatmulTransdataFusionPass::CheckFormatOfTransData(const ge::NodePtr& node_ptr_transdata,
                                                        const char *expect_src_format,
-                                                       const char *expect_dst_format) {
+                                                       const char *expect_dst_format) const {
   string src_format;
   string dst_format;
   FUSION_PASS_CHECK(node_ptr_transdata == nullptr,
@@ -207,12 +209,12 @@ bool MatmulTransdataFusionPass::IsAligned() const {
     shape_data_1 = transdata_ptr_1->GetOpDesc()->MutableInputDesc(0)->GetOriginShape();
   }
 
-  auto len_shape_data_0 = shape_data_0.GetDimNum();
-  auto len_shape_data_1 = shape_data_1.GetDimNum();
-  if (shape_data_0.GetDim(len_shape_data_0 + kRIdxLast) % kNumAlignHalf == 0 &&
-      shape_data_0.GetDim(len_shape_data_0 + kRIdxLastSecond) % kNumAlignHalf == 0 &&
-      shape_data_1.GetDim(len_shape_data_1 + kRIdxLast) % kNumAlignHalf == 0 &&
-      shape_data_1.GetDim(len_shape_data_1 + kRIdxLastSecond) % kNumAlignHalf == 0) {
+  auto len_data_0 = shape_data_0.GetDimNum();
+  auto len_data_1 = shape_data_1.GetDimNum();
+  if (shape_data_0.GetDim(len_data_0 + kRIdxLast) % kNumAlignHalf == 0 &&
+      shape_data_0.GetDim(len_data_0 + kRIdxLastSecond) % kNumAlignHalf == 0 &&
+      shape_data_1.GetDim(len_data_1 + kRIdxLast) % kNumAlignHalf == 0 &&
+      shape_data_1.GetDim(len_data_1 + kRIdxLastSecond) % kNumAlignHalf == 0) {
     return true;
   }
   return false;
@@ -239,7 +241,7 @@ bool MatmulTransdataFusionPass::NeedFusion() {
   return true;
 }
 
-bool MatmulTransdataFusionPass::ModifyTransdataInControlEdge(ge::NodePtr& node_ptr_transdata) {
+bool MatmulTransdataFusionPass::ModifyTransdataInControlEdge(const ge::NodePtr& node_ptr_transdata) const {
   for (auto& control_transdata_node : node_ptr_transdata->GetInControlNodes()) {
     FUSION_PASS_CHECK(control_transdata_node == nullptr,
                       OP_LOGD(kFusedOpType, "In Transdata has no in control node."), return true);
@@ -255,7 +257,7 @@ bool MatmulTransdataFusionPass::ModifyTransdataInControlEdge(ge::NodePtr& node_p
   return true;
 }
 
-bool MatmulTransdataFusionPass::ModifyTransdataOutControlEdge(ge::NodePtr& node_ptr_transdata) {
+bool MatmulTransdataFusionPass::ModifyTransdataOutControlEdge(const ge::NodePtr& node_ptr_transdata) const {
   for (auto& transdata_control_node : node_ptr_transdata->GetOutControlNodes()) {
     FUSION_PASS_CHECK(transdata_control_node == nullptr,
                       OP_LOGD(kFusedOpType, "In Transdata has no out control node."), return true);
@@ -349,7 +351,7 @@ bool MatmulTransdataFusionPass::DelOutputTransdata() {
                       OP_LOGE(kFusedOpType, "Failed to remove edge between matmul and out transdata."),
                       return false);
 
-    for (auto idx = 0; idx < in_nodes_size; ++idx) {
+    for (uint32_t idx = 0; idx < in_nodes_size; ++idx) {
       auto out_transdata_peer_in = GetPeerInAnchorByOutDataAnchor(out_transdata_out_anchor, 0);
       FUSION_PASS_CHECK(out_transdata_peer_in == nullptr,
                         OP_LOGE(kFusedOpType, "Failed to get peer out anchor of in_transdata."),
