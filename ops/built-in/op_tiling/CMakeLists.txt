@@ -68,6 +68,7 @@ set(_optiling_files
   deconvolution.cc
   dynamic_atomic_addr_clean.cc
   dynamic_rnn_v2.cc
+  dynamic_rnn_v3.cc
   elewise_v3.cc
   broadcast_v3.cc
   fill.cc

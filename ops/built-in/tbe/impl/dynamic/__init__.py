@@ -60,6 +60,7 @@ from .bias import bias
 from .segment_sum import segment_sum
 from .dequantize import dequantize
 from .dynamic_rnn_v2 import dynamic_rnn_v2
+from .dynamic_rnn_v3 import dynamic_rnn_v3
 from .bninference_d import bninference_d
 from .bn_training_reduce import bn_training_reduce
 from .bounding_box_decode import bounding_box_decode
