@@ -188,6 +188,9 @@ class ResizeNearestNeighbor(OpBase):
                                 self.tiling_out_height * self.tiling_out_width < self.stride_threshold,
                                 self.tiling_in_height * self.tiling_in_width < 10 * 10)):
                     self.tiling_key.set_as(111001)
+        with self.tik_instance.if_scope(self.tiling_key == 113000):
+            self.cut_height_num.set_as(self.tiling_in_height)
+            self.cut_width_num.set_as(self.tiling_in_width)
         with self.tik_instance.if_scope(self.tiling_key == 101000):
             self.cut_width_num.set_as(self.tiling_in_width)
 
