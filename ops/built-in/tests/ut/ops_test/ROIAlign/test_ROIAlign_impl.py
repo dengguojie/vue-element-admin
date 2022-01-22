@@ -236,7 +236,7 @@ case13 = {"params": [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format"
                      0.25,
                      16,
                      1,
-                     2,
+                     0,
                      3
                      ],
           "case_name": "roi_align_13",
@@ -252,12 +252,12 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case11)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
 
 
 def roi_align_v200_001(test_arg):
@@ -317,6 +317,7 @@ def roi_align_v200_004(test_arg):
 
     set_current_compile_soc_info(test_arg)
 
+
 def roi_align_v200_005(test_arg):
     cce_conf.cce_conf.te_set_version("Ascend710")
     roi_align({"shape": (3, 16, 5, 5, 16), "dtype": "float32", "format": "NC1HWC0",
@@ -330,6 +331,7 @@ def roi_align_v200_005(test_arg):
               0.25, 5, 5, 2, 0)
     cce_conf.cce_conf.te_set_version(test_arg)
 
+
 ut_case.add_cust_test_func(test_func=roi_align_v200_001)
 ut_case.add_cust_test_func(test_func=roi_align_v200_002)
 ut_case.add_cust_test_func(test_func=roi_align_v200_003)
@@ -339,7 +341,11 @@ ut_case.run("Ascend910A")
 vals = {("tik.vextract", "float16"): False,
         ("tik.vextract", "float32"): False,
         ("tik.vgatherb"): True}
+
+
 def side_effects(*args):
     return vals[args]
+
+
 with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMock(side_effect=side_effects)):
     ut_case.run("Ascend710","ROIAlign_static_shape_roi_align_01")

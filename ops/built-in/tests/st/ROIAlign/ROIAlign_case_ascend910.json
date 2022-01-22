@@ -581,5 +581,122 @@
         "value": 1
       }
     ]
+  },
+  {
+    "case_name": "ROIAlign_1_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          2,
+          32,
+          32,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          100,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            2
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          100
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float"
+        ],
+        "shape": [
+          100,
+          32,
+          7,
+          7
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 2
+      }
+    ]
   }
 ]

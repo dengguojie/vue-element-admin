@@ -1,177 +1,119 @@
 [
   {
+    "case_name": "test_ROIAlign_000",
     "op": "ROIAlign",
     "input_desc": [
       {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          5,
-          4,
-		  76,
-		  76,
-		  16
+          2,
+          256,
+          336,
+          336
         ],
-        "format": "NC1HWC0",
-        "ori_shape": [
-          5,
-          64,
-		  76,
-		  76
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NCHW",
-        "param_type": "input",
-        "name": "features",
-        "type": "float32"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
       },
-	  {
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          15,
-		  5
+          1280,
+          5
         ],
-        "format": "ND",
-        "ori_shape": [
-          15,
-		  5
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "rois",
-        "type": "float32"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1280
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          15,
-          4,
-		  7,
-		  7,
-		  16
+          1280,
+          256,
+          7,
+          7
         ],
-        "format": "NC1HWC0",
-        "ori_shape": [
-          15,
-          64,
-		  7,
-		  7
-        ],
-        "ori_format": "NCHW",
-        "param_type": "output",
-        "name": "y",
-        "type": "float32"
+        "name": "y"
       }
     ],
     "attr": [
-	{
-        "name": "spatial_scale",
-        "value": 0.5,
-        "type": "float"
-    },
-	{
-        "name": "pooled_height",
-        "value": 7,
-        "type": "int"
-    },
-	{
-        "name": "pooled_width",
-        "value": 7,
-        "type": "int"
-    },
-	{
-        "name": "sample_num",
-        "value": 0,
-        "type": "int"
-    },
-	{
-        "name": "roi_end_mode",
-        "value": 0,
-        "type": "int"
-    }
-	],
-    "case_name": "test_ROIAlign_000"
-  },
-  {
-    "op": "ROIAlign",
-    "input_desc": [
       {
-        "shape": [
-          -1,
-          -1,
-		  -1,
-		  -1,
-		  -1
-        ],
-        "typical_shape": [
-          5,
-          4,
-		  76,
-		  76,
-		  16
-        ],
-        "format": "NC1HWC0",
-        "shape_range": [
-          [1, 65535],
-          [1, 65535],
-          [1, 65535],
-          [1, 65535],
-          [1, 65535]
-        ],
-        "param_type": "input",
-        "name": "features",
-        "type": "float32"
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
       },
-	  {
-        "shape": [
-          15,
-		  5
-        ],
-        "format": "ND",
-        "param_type": "input",
-        "name": "rois",
-        "type": "float32"
-      }
-    ],
-    "output_desc": [
       {
-        "shape": [
-          15,
-          4,
-		  7,
-		  7,
-		  16
-        ],
-        "format": "NC1HWC0",
-        "param_type": "output",
-        "name": "y",
-        "type": "float32"
-      }
-    ],
-    "attr": [
-	{
-        "name": "spatial_scale",
-        "value": 0.5,
-        "type": "float"
-    },
-	{
         "name": "pooled_height",
-        "value": 7,
-        "type": "int"
-    },
-	{
+        "type": "int",
+        "value": 7
+      },
+      {
         "name": "pooled_width",
-        "value": 7,
-        "type": "int"
-    },
-	{
+        "type": "int",
+        "value": 7
+      },
+      {
         "name": "sample_num",
-        "value": 0,
-        "type": "int"
-    },
-	{
+        "type": "int",
+        "value": 2
+      },
+      {
         "name": "roi_end_mode",
-        "value": 0,
-        "type": "int"
-    }
-	],
-    "case_name": "test_ROIAlign_001"
+        "type": "int",
+        "value": 1
+      }
+    ]
   }
 ]
