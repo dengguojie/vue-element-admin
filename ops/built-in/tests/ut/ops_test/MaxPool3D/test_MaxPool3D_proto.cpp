@@ -608,3 +608,23 @@ TEST_F(MaxPool3DTest, InfershapeMaxPool3D_014) {
   std::vector<int64_t> expected_output_shape = {2, 19, 1, 7, 7};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, -1, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                          {2, -1, 1, 19, 19}, ge::FORMAT_NCDHW));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  std::vector<int32_t> padsList = {2, 2, 2, 2, 2, 2};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "CALCULATED");
+  op.SetAttr("ceil_mode", 1);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

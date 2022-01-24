@@ -4118,6 +4118,7 @@ INFER_DATA_SLICE_FUNC_REG(MaxPool, MaxPoolInferDataSlice);
 
 // ----------------MaxPool3D-------------------
 IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
+  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE5 = 5;
@@ -4147,7 +4148,6 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-
 
   // get input strides
   std::vector<int32_t> stridesList;

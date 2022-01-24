@@ -56,6 +56,16 @@
     re_expr;                                           \
   }
 
+#define DYNAMIC_SHAPE_NOT_SUPPORTED(op)                                                                      \
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);                                                     \
+  for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {                                                 \
+    auto input_i_desc = op_desc->MutableInputDesc(i);                                                        \
+    const GeShape& input_i_shape = input_i_desc->MutableShape();                                             \
+    CHECK(input_i_shape.IsUnknownShape() || input_i_shape.IsUnknownDimNum(),                                 \
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("Not Support dynamic shape now")), \
+          return GRAPH_FAILED);                                                                              \
+  }
+
 namespace ge {
 
 // enum type and string type mapping
