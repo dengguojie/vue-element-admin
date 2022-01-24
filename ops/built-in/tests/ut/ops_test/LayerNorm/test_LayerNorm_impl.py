@@ -230,8 +230,8 @@ case16 = {"params": [{"shape": (50,8,768), "dtype": "float16", "format": "ND", "
          "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case21)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend910A"], case5)
@@ -242,12 +242,12 @@ ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case14)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case15)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case16)
+ut_case.add_case(["Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend710", "Ascend910A"], case14)
+ut_case.add_case(["Ascend710", "Ascend910A"], case15)
+ut_case.add_case(["Ascend710", "Ascend910A"], case16)
 
 # pylint: disable=unused-argument
 def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_params_axis):
