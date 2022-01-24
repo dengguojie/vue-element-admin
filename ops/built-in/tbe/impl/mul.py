@@ -600,6 +600,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     dtype_total = []
     format_nd = ["ND"]
+    format_nd_ext = ["NCHW", "NHWC", "ND"]
     # 'pylint: disable=unused-variable
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
@@ -651,9 +652,13 @@ def op_select_format(x, y, output, kernel_name="mul"):
             x_flag.get("Scalar") and y_flag.get("4d"))
     format_flag["FRACTAL_NZ"] = format_flag.get("FRACTAL_NZ") or (
             len(shape_x) >= 2 and y_flag.get("Scalar") and (
-                format_x in format_4d_list or (shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0))) or (
+                format_x in format_4d_list or format_x in format_nd)) or (
             len(shape_y) >= 2 and x_flag.get("Scalar") and (
-                format_y in format_4d_list or (shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0)))
+                format_y in format_4d_list or format_y in format_nd )) or \
+            (len(shape_x) >= 2 and len(shape_y) == 1 and format_x in format_nd_ext and ( \
+            shape_x[-1] % 16 == 0 and shape_x[-1] == shape_y[-1])) or \
+            (len(shape_y) >= 2 and len(shape_x) == 1 and format_y in format_nd_ext and ( \
+            shape_y[-1] % 16 == 0 and shape_x[-1] == shape_y[-1]))
 
     format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
                              (len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == shape_y[0] % 16 == 0) or \
@@ -769,9 +774,6 @@ def _infer_shape(format_pattern, x, y):
                                                                       shape_y,
                                                                       param_name_input1="x",
                                                                       param_name_input2="y")
-        if shape_y[-2] == ori_shape_x[-2] and shape_y[-1] == ori_shape_x[-1]:
-            error_manager_vector.raise_err_check_params_rules("mul", "the input shape of y is illegal", 'y', shape_y)
-
         if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
             shape_y.append(1)
             shape_y.append(1)
@@ -795,9 +797,6 @@ def _infer_shape(format_pattern, x, y):
                                                                       ori_shape_y,
                                                                       param_name_input1="x",
                                                                       param_name_input2="y")
-        if shape_x[-2] == ori_shape_y[-2] and shape_x[-1] == ori_shape_y[-1]:
-            error_manager_vector.raise_err_check_params_rules("mul", "the input shape of x is illegal", 'x', shape_x)
-
         if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
             shape_x.append(1)
             shape_x.append(1)
@@ -817,6 +816,22 @@ def _infer_shape(format_pattern, x, y):
             shape_x.append(1)
 
     return shape_x, shape_y
+
+# 'pylint: too-many-branches,too-many-statements
+def reshape(tensor_in, new_shape):
+    """
+    :params:
+    :input: tensor to be reshaped
+    :new_shape: shape after input tensor reshaped
+    :return: reshape tensor
+    """
+    def _nd2nz_compute(tensor, indices):
+        axis_3 = indices[-1]
+        axis_0 = indices[-4]
+        axis_list = [0] * (len(indices) - 1) + [axis_0 * 16 + axis_3]
+        return tensor(*axis_list)
+
+    return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("mul")
@@ -849,6 +864,27 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
             input_y = tbe.cast_to(input_y, "float32")
         input_y = tbe.broadcast(input_y, shape_x)
     else:
+        if all(["format" in input_x.op.attrs, "format" in input_y.op.attrs]):
+            format_x = input_x.op.attrs["format"].value
+            format_y = input_y.op.attrs["format"].value
+            check_format = "FRACTAL_NZ"
+            if format_x == check_format and "ori_shape" in input_y.op.attrs:
+                ori_shape_y = [i.value for i in input_y.op.attrs["ori_shape"]]
+                if len(ori_shape_y) == 1 and ori_shape_y[0] != 1:
+                    target_shape = [1] * len(shape_x)
+                    target_shape[-1] = shape_x[-1]
+                    target_shape[-4] = shape_x[-4]
+                    input_y = reshape(input_y, target_shape)
+                    shape_y = target_shape
+            elif format_y == check_format and "ori_shape" in input_x.op.attrs:
+                ori_shape_x = [i.value for i in input_x.op.attrs["ori_shape"]]
+                if len(ori_shape_x) == 1 and ori_shape_x[0] != 1:
+                    target_shape = [1] * len(shape_y)
+                    target_shape[-1] = shape_y[-1]
+                    target_shape[-4] = shape_y[-4]
+                    input_x = reshape(input_x, target_shape)
+                    shape_x = target_shape
+
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                   shape_y,
                                                                   param_name_input1="x",
