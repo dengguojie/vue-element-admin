@@ -745,6 +745,28 @@ REG_OP(UnsqueezeV2)
     .ATTR(axis, ListInt, {})
     .OP_END_FACTORY_REG(UnsqueezeV2)
 
+
+/**
+*@brief Inserts a dimension of 1 into a tensor's shape. Only the tensor shape
+is changed, but the data is not changed. \n
+
+*@par Inputs:
+*x: A tensor.
+*axes: A list of int64, which indicates the dimensions to be inserted. \n
+
+*@par Outputs:
+*y: Reshape tensor with same data as input. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Onnx operator Unsqueeze in V13. \n
+*/
+
+REG_OP(UnsqueezeV3)
+    .INPUT(x, TensorType::ALL())
+    .INPUT(axes, ListInt)
+    .OUTPUT(y, TensorType::ALL())
+    .OP_END_FACTORY_REG(UnsqueezeV3)
+
 /**
 *@brief Reshapes a tensor. Only the tensor shape is changed, without changing the data. \n
 
@@ -820,6 +842,28 @@ REG_OP(SqueezeV2)
     .OUTPUT(y, TensorType::ALL())
     .ATTR(axis, ListInt, {})
     .OP_END_FACTORY_REG(SqueezeV2)
+
+/**
+*@brief Removes dimensions of size 1 from the shape of a tensor according to axes. \n
+
+*@par Inputs:
+*x: A tensor.
+*axes: An optional list of int64. If not specified, squeezes all dimensions of
+size 1. If specified, only squeezes the dimensions listed. It is an error to
+squeeze a dimension that is not 1. \n 
+
+*@par Outputs:
+*y: Reshape tensor with same data as input. \n
+
+*@par Third-party framework compatibility
+*Compatible with the onnx operator Squeeze in V13. \n
+*/
+
+REG_OP(SqueezeV3)
+    .INPUT(x, TensorType::ALL())
+    .OPTIONAL_INPUT(axes, ListInt)
+    .OUTPUT(y, TensorType::ALL())
+    .OP_END_FACTORY_REG(SqueezeV3)
 
 /**
 *@brief Returns an integer representing the rank of input tensor. The rank of a tensor is the number of indices required to uniquely select each element of the tensor, that is, the dimension size of the tensor. \n

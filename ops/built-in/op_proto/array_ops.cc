@@ -1696,7 +1696,6 @@ bool CanSqueezeV2DoSqueeze(const vector<int32_t> &axis_arr, const size_t dim_siz
     }
   }
   return true;
-  
 }
 
 IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
@@ -1788,6 +1787,350 @@ IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
 }
 INFER_FUNC_REG(SqueezeV2, SqueezeV2Infer);
 
+// -----------------------------------------SqueezeV3 & UnSqueezeV3 in----------------------------------------------
+static bool IsSqueezeAxesValid(vector<int64_t> &axes, const std::vector<int64_t> &shape_dim) {
+  const auto dim_size = shape_dim.size();
+  // check axes val is in dim range[-dim, dim -1] and selected dim is 1 or -1
+  for (auto &axis : axes) {
+    axis = axis >= 0 ? axis : (axis + dim_size);
+    if ((axis < 0) || (axis >= static_cast<int64_t>(dim_size))) {
+      string reason = "Axes val is out of range, expect to be in range of [-" + std::to_string(dim_size) + "," +
+                      std::to_string(dim_size - 1U) + "], but got " + std::to_string(axis) + ".";
+      GE_OP_LOGE("SqueezeV3", "%s, can not be squeezed.", reason.c_str());
+      return false;
+    }
+    if ((shape_dim[axis] != 1) && (shape_dim[axis] != UNKNOWN_DIM)) {
+      GE_OP_LOGE("SqueezeV3",
+                 "Axes is invalid, which select one dim not 1, can not be squeezed, use input shape as output shape");
+      return false;
+    }
+  }
+  return true;
+}
+
+static graphStatus CheckInputNotNull(const OpDescPtr &op_desc) {
+  // check null
+  if (op_desc == nullptr) {
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape verify failed, as get null op_desc from op",
+                      op_desc->GetName().c_str());
+    GE_OP_LOGE(op_desc->GetName().c_str(), "[InferShape][Verify]Op_desc is null");
+    return GRAPH_FAILED;
+  }
+
+  const auto input_desc_x = op_desc->MutableInputDesc(0);
+  if (input_desc_x == nullptr) {
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape verify failed, as get null input_desc_x from op",
+                      op_desc->GetName().c_str());
+    GE_OP_LOGE(op_desc->GetName().c_str(), "[InferShape]Input_desc_x is null");
+    return GRAPH_FAILED;
+  }
+
+  if (op_desc->GetType() != "SqueezeV3") {
+    const auto input_desc_axes = op_desc->MutableInputDesc(1);
+    if (input_desc_axes == nullptr) {
+      REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape verify failed, as get null input_desc_axes from op",
+                        op_desc->GetName().c_str());
+      GE_OP_LOGE(op_desc->GetName().c_str(), "[InferShape]Input_desc_axes is null");
+      return GRAPH_FAILED;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus GetInputAxes(const Operator &op, OpDescPtr &op_desc, std::vector<int64_t> &axes_val,
+                                bool& is_axes_unknown) {
+  AscendString op_name;
+  (void)op.GetName(op_name);
+  if (op_desc->GetInputsSize() == 1UL) {
+    GE_OP_LOGD(op_name.GetString(), "there is no axes");
+    return GRAPH_SUCCESS;
+  }
+
+  const std::vector<string> dep_inputs = {"axes"};
+  op_desc->SetOpInferDepends(dep_inputs);
+  const auto axes_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("axes"));
+  const GeTensor *tensor = OpDescUtils::GetInputConstData(op, axes_idx);
+  
+  if (tensor != nullptr) {
+    const auto axes_desc = op_desc->MutableInputDesc(axes_idx);
+    auto pbuff = tensor->GetData().GetData();
+    if (pbuff == nullptr) {
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Get data from axes input failed, as data buff is null",
+                         op_name.GetString());
+      GE_OP_LOGE(op_name.GetString(), "[InferShape] Get data from axis input failed, as data buff is null");
+      return GRAPH_FAILED;
+    }
+    const auto axes_len = tensor->GetData().GetSize();
+    auto axes_pbuff = const_cast<int64_t*>(reinterpret_cast<const int64_t*>(pbuff));
+    for (size_t i = 0UL; i < (axes_len / sizeof(int64_t)); ++i) {
+      axes_val.emplace_back(axes_pbuff[i]);
+    }
+  } else {
+    GE_OP_LOGI(op_name.GetString(), "Op get input const data of axes failed");
+    is_axes_unknown = true;
+  }
+  return GRAPH_SUCCESS;
+}
+
+static void DoSqueezeWithoutAxes(const std::vector<int64_t> &input_dims,
+                                 const std::vector<std::pair<int64_t, int64_t>> &input_range,
+                                 const bool is_unknown_shape, GeTensorDescPtr &output_desc) {
+  const auto dim_size = input_dims.size();
+  const uint64_t output_size = static_cast<uint64_t>(
+      std::count_if(input_dims.begin(), input_dims.end(), [](const int64_t& item) { return item != 1; }));
+  auto &output_shape = output_desc->MutableShape();
+  output_shape.SetDimNum(output_size);
+  size_t idx = 0UL;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+
+  // keep -1 and squeeze all 1
+  for (size_t i = 0UL; i < dim_size; ++i) {
+    if ((input_dims[i] != 1) && (idx < output_size)) {
+      output_shape.SetDim(idx, input_dims[i]);
+      ++idx;
+      if (is_unknown_shape) {
+        output_range.emplace_back(input_range[i]);
+      }
+    }
+  }
+
+  output_desc->SetShapeRange(output_range);
+  output_desc->SetOriginShape(output_shape);
+}
+
+static void DoSqueezeWithAxes(const std::vector<int64_t> &input_dims,
+                              const std::vector<std::pair<int64_t, int64_t>> &input_range, const bool is_unknown_shape,
+                              const std::vector<int64_t> &axes, GeTensorDescPtr &output_desc) {
+  const auto dim_size = input_dims.size();
+  auto &output_shape = output_desc->MutableShape();
+
+  // output shape is unknown at the beginning
+  output_shape.SetDimNum(dim_size);
+
+  // init a vector whose element is 0
+  std::vector<int64_t> dim_idx(dim_size);
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+
+  // label index of selected input dim to squeeze it. -1 wil be squeezed.
+  // It's handled in the same way as Squeeze!!!
+  std::for_each(axes.begin(), axes.end(), [&dim_idx](const int64_t axis) {dim_idx[axis] = -1;});
+
+  uint64_t idx = 0UL;
+  for (size_t i = 0UL; i < dim_size; ++i) {
+    if (dim_idx[i] != -1) {
+      output_shape.SetDim(idx, input_dims[i]);
+      ++idx;
+      if (is_unknown_shape) {
+        output_range.emplace_back(input_range[i]);
+      }
+    }
+  }
+  output_shape.SetDimNum(idx);
+  output_desc->SetShapeRange(output_range);
+  output_desc->SetOriginShape(output_shape);
+}
+
+IMPLEMT_INFERFUNC(SqueezeV3, SqueezeV3Infer) {
+  AscendString op_name;
+  (void)op.GetName(op_name);
+  GE_OP_LOGD(op_name.GetString(), "Enter SqueezeV3 infershape.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  graphStatus ret;
+  ret = CheckInputNotNull(op_desc);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  // dynamic shape without shape range is error
+  const auto input_desc_x = op_desc->MutableInputDesc(0);
+  const auto &input_shape = input_desc_x->GetShape();
+  const auto x_shape_dim = input_shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  if (input_desc_x->GetShapeRange(x_shape_range) != GRAPH_SUCCESS) {
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Infer shape failed, as get shape range failed", op_name.GetString());
+    GE_OP_LOGE("SqueezeV3", "[ERROR] get input shape range failed.");
+    return GRAPH_FAILED;
+  }
+
+  const bool is_unknown_shape = IsUnKnownShape(x_shape_dim);
+  if (is_unknown_shape && (!x_shape_range.empty()) && (x_shape_range.size() != x_shape_dim.size())) {
+    REPORT_INNER_ERROR(
+        "E19999", "[Node:%s] Infer shape failed, as shape range size of unknown input x does not equal to dim size",
+        op_name.GetString());
+    GE_OP_LOGE("SqueezeV3", "[ERROR] shape range size does not equal to dim size.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> axes_val;
+  bool is_axes_unknown = false;
+  ret = GetInputAxes(op, op_desc, axes_val, is_axes_unknown);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  output_desc->SetDataType(input_desc_x->GetDataType());
+  output_desc->SetOriginDataType(input_desc_x->GetDataType());
+
+  // process -2(UnknownRank)
+  if (x_shape_dim == UNKNOWN_RANK) {
+    GE_OP_LOGD(op_name.GetString(), "Input x shape is -2!");
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_desc_x->GetOriginShape());
+    return GRAPH_SUCCESS;
+  }
+
+  // if axes is unknown, make output unknown rank for next infershape
+  if (is_axes_unknown) {
+    GE_OP_LOGD(op_name.GetString(), "Input axes is unknown!");
+    output_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    return GRAPH_SUCCESS;
+  }
+
+  if (axes_val.empty()) {
+    GE_OP_LOGD(op_name.GetString(), "axes is empty!");
+    DoSqueezeWithoutAxes(x_shape_dim, x_shape_range, is_unknown_shape, output_desc);
+  } else {
+    // check axes valid
+    if (!IsSqueezeAxesValid(axes_val, x_shape_dim)) {
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Infer shape failed, as axes is invalid", op_name.GetString());
+      GE_OP_LOGE(op_name.GetString(), "[InferShape]Infer shape failed, as axes is invalid");
+      return GRAPH_FAILED;
+    }
+    DoSqueezeWithAxes(x_shape_dim, x_shape_range, is_unknown_shape, axes_val, output_desc);
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SqueezeV3, SqueezeV3Infer);
+
+static bool IsUnsqueezeAxesValid(vector<int64_t> &axes, const std::vector<int64_t> &shape_dim) {
+  // check duplicate data
+  std::sort(axes.begin(), axes.end());
+  size_t axes_set_size = std::unique(axes.begin(), axes.end()) - axes.begin();
+  if (axes.size() != axes_set_size) {
+    GE_OP_LOGE("UnsqueezeV3", "Duplicate data exists in the axes");
+    return false;
+  }
+
+  const size_t dim_size = shape_dim.size() + axes.size();
+  for (int64_t &axis : axes) {
+    axis = axis >= 0 ? axis : axis + dim_size;
+    if ((axis < 0) || (axis > static_cast<int64_t>(dim_size))) {
+      string reason = "Axes val is out of range, expect to be in range of [-" + std::to_string(dim_size) + "," +
+                      std::to_string(dim_size - 1U) + "], but got " + std::to_string(axis) + ".";
+      GE_OP_LOGE("UnsqueezeV3", "%s, can not be unsqueezed.", reason.c_str());
+      return false;
+    }
+  }
+  return true;
+}
+
+static void DoUnsqueezeWithAxes(const std::vector<int64_t> &input_dims,
+                                const std::vector<std::pair<int64_t, int64_t>> &input_range,
+                                const bool is_unknown_shape, const std::vector<int64_t> &axes,
+                                GeTensorDescPtr &output_desc) {
+  GE_OP_LOGD("UnsqueezeV3", "[InferShape]Begin to do UnsqueezeV3");
+  const auto dim_size = input_dims.size();
+  auto &output_shape = output_desc->MutableShape();
+  const auto output_dim_size = dim_size + axes.size();
+  output_shape.SetDimNum(output_dim_size);
+  std::vector<std::pair<int64_t, int64_t>> output_range(output_dim_size);
+
+  // set the dim selected by the axes to 1 
+  for (size_t i = 0UL; i < axes.size(); ++i) {
+    output_shape.SetDim(axes[i], 1);
+    if (is_unknown_shape) {
+      output_range[i] = {1, 1};
+    }
+  }
+
+  // fill the dim not 1 with input shape  
+  size_t idx = 0UL;
+  for (size_t i = 0UL; i < output_dim_size; ++i) {
+    if (output_shape.GetDim(i) != 1) {
+      output_shape.SetDim(i, input_dims[idx]);
+      if (is_unknown_shape) {
+        output_range[i] = input_range[idx];
+      }
+      ++idx;
+    }
+  }
+  output_desc->SetShapeRange(output_range);
+  output_desc->SetOriginShape(output_shape);
+}
+
+IMPLEMT_INFERFUNC(UnsqueezeV3, UnsqueezeV3Infer) {
+  AscendString op_name;
+  (void)op.GetName(op_name);
+  GE_OP_LOGD(op_name.GetString(), "Enter UnsqueezeV3 infershape.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  graphStatus ret;
+  ret = CheckInputNotNull(op_desc);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  // dynamic shape without shape range is error
+  const auto input_desc_x = op_desc->MutableInputDesc(0);
+  const auto &input_shape = input_desc_x->GetShape();
+  const auto x_shape_dim = input_shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  if (input_desc_x->GetShapeRange(x_shape_range) != GRAPH_SUCCESS) {
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Infer shape failed, as get shape range failed", op_name.GetString());
+    GE_OP_LOGE(op_name.GetString(), "[ERROR] get input shape range failed.");
+    return GRAPH_FAILED;
+  }
+
+  const bool is_unknown_shape = IsUnKnownShape(x_shape_dim);
+  if (is_unknown_shape && (!x_shape_range.empty()) && (x_shape_range.size() != x_shape_dim.size())) {
+    REPORT_INNER_ERROR(
+        "E19999", "[Node:%s] Infer shape failed, as shape range size of unknown input x does not equal to dim size",
+        op_name.GetString());
+    GE_OP_LOGE(op_name.GetString(), "[ERROR] shape range size does not equal to dim size.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> axes_val;
+  bool is_axes_unknown = false;
+  ret = GetInputAxes(op, op_desc, axes_val, is_axes_unknown);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  output_desc->SetDataType(input_desc_x->GetDataType());
+  output_desc->SetOriginDataType(input_desc_x->GetDataType());
+
+  // process -2(UnknownRank)
+  if (x_shape_dim == UNKNOWN_RANK) {
+    GE_OP_LOGD(op_name.GetString(), "Input x shape is -2!");
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_desc_x->GetOriginShape());
+    return GRAPH_SUCCESS;
+  }
+
+  // if axes is unknown, make output unknown rank for next infershape
+  if (is_axes_unknown) {
+    GE_OP_LOGD(op_name.GetString(), "Input axes is unknown!");
+    output_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    return GRAPH_SUCCESS;
+  }
+
+  // check axes valid
+  if (!IsUnsqueezeAxesValid(axes_val, x_shape_dim)) {
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as axes is invalid", op_name.GetString());
+    GE_OP_LOGE(op_name.GetString(), "[InferShape]Infer shape failed, as axes is invalid");
+    return GRAPH_FAILED;
+  }
+  DoUnsqueezeWithAxes(x_shape_dim, x_shape_range, is_unknown_shape, axes_val, output_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(UnsqueezeV3, UnsqueezeV3Infer);
+// -----------------------------------------SqueezeV3 & UnSqueezeV3 out---------------------------------------------
 IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
   auto axis_arr = op.get_attr_axes();
   auto axis_nums = axis_arr.size();

@@ -25,15 +25,15 @@ using domi::ONNX;
 
 namespace domi {
 
-Status ParseParamsUnsqueeze(const Message* op_src, ge::Operator& op_dest) {
-  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+Status ParseParamsUnsqueeze(const Message *op_src, ge::Operator &op_dest) {
+  const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   std::vector<int64_t> axes = {};
-  for (const auto& attr : node->attribute()) {
+  for (const auto &attr : node->attribute()) {
     if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
       for (int i = 0; i < attr.ints_size(); i++) {
         axes.push_back(attr.ints(i));
@@ -48,6 +48,15 @@ Status ParseParamsUnsqueeze(const Message* op_src, ge::Operator& op_dest) {
   return SUCCESS;
 }
 
+Status ParseParamsUnsqueezeV3(const Message *op_src, ge::Operator &op_dest) {
+  const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+  if (node == nullptr) {
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
+    return FAILED;
+  }
+  return SUCCESS;
+}
+
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Unsqueeze")
     .FrameworkType(ONNX)
@@ -57,5 +66,11 @@ REGISTER_CUSTOM_OP("Unsqueeze")
                    "ai.onnx::11::Unsqueeze",
                    "ai.onnx::12::Unsqueeze"})
     .ParseParamsFn(ParseParamsUnsqueeze)
+    .ImplyType(ImplyType::GELOCAL);
+
+REGISTER_CUSTOM_OP("UnsqueezeV3")
+    .FrameworkType(ONNX)
+    .OriginOpType({"ai.onnx::13::Unsqueeze"})
+    .ParseParamsFn(ParseParamsUnsqueezeV3)
     .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi
