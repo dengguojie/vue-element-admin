@@ -432,7 +432,7 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &
     return NOT_CHANGED;
   }
 
-  if (x1_shape.size() == kLeftShapeDim) {
+  if (x1_shape.size() == kLeftShapeDim && x2_shape.size() == kRightShapeDim) {
     vector<int64_t> new_shape = {x1_shape[0] * x1_shape[1], x1_shape[2]};
     FUSION_PASS_CHECK(SUCCESS != InputInsertReshapeNode(graph, fused_node, 0, new_shape),
                       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InputInsertReshapeNode failed!"), return FAILED);

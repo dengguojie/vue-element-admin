@@ -149,18 +149,18 @@ Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapp
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
 
-  FUSION_PASS_CHECK(elemNode.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return SUCCESS);
+  FUSION_PASS_CHECK(elemNode.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return FAILED);
   auto ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
   if (ret == elem_typelist.end()) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, div, muladd and Relu in first elemwise");
-    return SUCCESS;
+    return FAILED;
   }
 
   if (!elemNode1.empty()) {
     ret = find(elem1_typelist.begin(), elem1_typelist.end(), elemNode1[0]->GetType());
     if (ret == elem1_typelist.end()) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, relu and muladd in second elemwise");
-      return SUCCESS;
+      return FAILED;
     }
   }
 
@@ -173,26 +173,26 @@ Status TbeBatchMatmulElementWiseFusionPass::CheckPattern2(const BufferFusionMapp
   vector<ge::NodePtr> elemNode2 = GetMatchedNodesByDescName(PATTERN_ELEM_2, mapping);
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   FUSION_PASS_CHECK(elemNode.empty() || elemNode1.empty() || elemNode2.empty() || matmulNodes.empty(),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return SUCCESS);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return FAILED);
 
   bool is_matched = false;
   if (elemNode[0]->GetType() != "Mul" || elemNode1[0]->GetType() != "Mul" || elemNode2[0]->GetType() != "Sigmoid") {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match, node name [%s], [%s], [%s].",
             elemNode[0]->GetType().c_str(), elemNode1[0]->GetType().c_str(), elemNode2[0]->GetType().c_str());
-    return SUCCESS;
+    return FAILED;
   }
 
   auto elem_name = elemNode[0]->GetName();
   auto out_nodes = matmulNodes[0]->GetOutDataNodes();
   if (out_nodes.size() != 2) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "matmulNode output size not match!");
-    return SUCCESS;
+    return FAILED;
   }
 
   for (auto &node : out_nodes) {
     is_matched = is_matched || (node->GetName() == elem_name);
   }
-  FUSION_PASS_CHECK(!is_matched, OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node name not match!"), return SUCCESS);
+  FUSION_PASS_CHECK(!is_matched, OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node name not match!"), return FAILED);
 
   return SUCCESS;
 }
