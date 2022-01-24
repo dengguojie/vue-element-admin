@@ -253,6 +253,9 @@
         "reduce_sum",
         "reduce_classify"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py":[
+        "gather"
+    ],
     "auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"

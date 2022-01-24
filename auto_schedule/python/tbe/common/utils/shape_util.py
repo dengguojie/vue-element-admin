@@ -419,7 +419,7 @@ def _gather_variable_shape(inputs):
     current_compute.add("_indices_shape", indices_info["shape"])
 
     # zeros shape condition
-    if 0 in chain(params_info["shape"] + indices_info["shape"][:-1]):
+    if 0 in chain(list(params_info["shape"]) + list(indices_info["shape"][:-1])):
         if gather_mode == "gather":
             return params_info["shape"], indices_info["shape"], axis_info, batch_dims_info
         return params_info["shape"], indices_info["shape"], batch_dims_info

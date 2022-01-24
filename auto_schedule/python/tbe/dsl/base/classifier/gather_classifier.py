@@ -49,25 +49,27 @@ class GatherClassifier:
         self.is_zeros_shape = False
         self.is_zeros_range = False
 
-        self.org_params_info = ins[0]
-        self.org_indices_info = ins[1]
+        self.org_params_shape_info = list(ins[0]["shape"])
+        self.org_params_range_info = list(ins[0]["range"])
+        self.org_indices_shape_info = list(ins[1]["shape"])
+        self.org_indices_range_info = list(ins[1]["range"])
 
         self.unknown_batch_dims = ins[3] == UNKNOWN
 
         # check status dynamic or static
         self.is_static = operation.get_op_mode() == "static"
 
-        self.params_dtype = self.org_params_info["dtype"]
-        self.indices_dtype = self.org_indices_info["dtype"]
+        self.params_dtype = ins[0]["dtype"]
+        self.indices_dtype = ins[1]["dtype"]
 
         if self.is_static:
             # params
-            self.params_shape = list(self.org_params_info["shape"])
-            self.params_range = list(self.org_params_info["range"])
+            self.params_shape = self.org_params_shape_info
+            self.params_range = self.org_params_range_info
 
             # indices
-            self.indices_shape = list(self.org_indices_info["shape"])
-            self.indices_range = list(self.org_indices_info["range"])
+            self.indices_shape = self.org_indices_shape_info
+            self.indices_range = self.org_indices_range_info
 
             self.batch_dims = ins[3] if ins[3] >= 0 else ins[3] + len(self.indices_shape)
             self.org_batch_dims = self.batch_dims
@@ -101,7 +103,7 @@ class GatherClassifier:
         self.gather_rank = 1
 
         # fuzzy condition
-        if -2 in chain(self.org_params_info["shape"] + self.org_indices_info["shape"]) or self.unknown_batch_dims:
+        if -2 in chain(self.org_params_shape_info + self.org_indices_shape_info) or self.unknown_batch_dims:
             self.is_zeros_range = True
 
         operation.get_context().add("_batch_dims", self.batch_dims)
@@ -113,14 +115,14 @@ class GatherClassifier:
 
     def _check_zero_shape(self):
         # shape value zero
-        for dim_value in chain(self.org_params_info["shape"] + self.org_indices_info["shape"]):
+        for dim_value in chain(self.org_params_shape_info + self.org_indices_shape_info):
             if 0 == dim_value:
                 self.is_zeros_shape = True
                 break
 
         # range value zero
         if not self.is_zeros_shape:
-            for dim_range in chain(self.org_params_info["range"] + self.org_indices_info["range"]):
+            for dim_range in chain(self.org_params_range_info + self.org_indices_range_info):
                 if 0 == dim_range[0]:
                     self.is_zeros_range = True
                     break
@@ -278,41 +280,42 @@ class GatherNdClassifier:
         self.is_broadcast_range = False
         self.unknown_batch_dims = False
 
-        self.org_params_info = ins[0]
-        self.org_indices_info = ins[1]
+        self.org_params_shape_info = list(ins[0]["shape"])
+        self.org_params_range_info = list(ins[0]["range"])
+        self.org_indices_shape_info = list(ins[1]["shape"])
+        self.org_indices_range_info = list(ins[1]["range"])
+
+        self.params_dtype = ins[0]["dtype"]
+        self.indices_dtype = ins[1]["dtype"]
 
         # check status dynamic or static
         self.is_static = operation.get_op_mode() == "static"
 
         if self.is_static:
             # params
-            self.params_shape = list(self.org_params_info["shape"])
-            self.params_range = list(self.org_params_info["range"])
-            self.params_dtype = self.org_params_info["dtype"]
+            self.params_shape = self.org_params_shape_info
+            self.params_range = self.org_params_range_info
 
             # indices
-            self.indices_shape = list(self.org_indices_info["shape"])
-            self.indices_range = list(self.org_indices_info["range"])
-            self.indices_dtype = self.org_indices_info["dtype"]
+            self.indices_shape = self.org_indices_shape_info
+            self.indices_range = self.org_indices_range_info
         else:
             # params
-            params_shape_len = len(self.org_params_info["shape"])
+            params_shape_len = len(self.org_params_shape_info)
             self.params_shape = [-1,] * params_shape_len
             self.params_range = [[1, None]] * params_shape_len
-            self.params_dtype = self.org_params_info["dtype"]
 
             # indices
-            indices_shape_len = len(self.org_indices_info["shape"])
+            indices_shape_len = len(self.org_indices_shape_info)
             self.indices_shape = [-1,] * indices_shape_len
             self.indices_range = [[1, None]] * indices_shape_len
-            self.indices_dtype = self.org_indices_info["dtype"]
 
         if len(self.indices_shape) == 1:
             self.indices_shape.insert(0, 1)
             self.indices_range.insert(0, (1, 1))
 
         # binary condition
-        if -2 in chain(self.org_params_info["shape"] + self.org_indices_info["shape"]):
+        if -2 in chain(self.org_params_shape_info + self.org_indices_shape_info):
             self.params_shape = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
             self.params_range = [[1, None], [1, None], [1, None], [1, None], [1, None],
                                  [1, None], [1, None], [1, None], [1, None]]
@@ -346,24 +349,24 @@ class GatherNdClassifier:
 
     def _check_zero_shape(self):
         # shape value zero
-        for dim_value in chain(self.org_params_info["shape"] + self.org_indices_info["shape"][:-1]):
+        for dim_value in chain(self.org_params_shape_info + self.org_indices_shape_info[:-1]):
             if 0 == dim_value:
                 self.is_zeros_shape = True
                 break
 
         # range value zero
         if not self.is_zeros_shape:
-            for range_value in chain(self.org_params_info["range"] + self.org_indices_info["range"][:-1]):
+            for range_value in chain(self.org_params_range_info + self.org_indices_range_info[:-1]):
                 if 0 == range_value[0]:
                     self.is_zeros_range = True
                     break
 
         # shape value broadcast
-        if self.org_indices_info["shape"][-1] == 0:
+        if self.org_indices_shape_info[-1] == 0:
             self.is_broadcast_shape = True
 
         # range value broadcast
-        if self.org_indices_info["range"][-1][0] == 0:
+        if self.org_indices_range_info[-1][0] == 0:
             self.is_broadcast_range = True
 
     def classify(self):
