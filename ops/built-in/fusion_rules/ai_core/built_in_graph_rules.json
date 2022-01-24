@@ -10362,16 +10362,20 @@
                     "dst": "Mul7:1"
                 },
                 {
-                    "src": "Mul1:0",
+                    "src": "AddN_Out",
                     "dst": "AddN1:0"
                 },
                 {
+                    "src": "Mul1:0",
+                    "dst": "AddN1:1"
+                },
+                {
                     "src": "RealDiv0:0",
-                    "dst": "AddN1:2"
+                    "dst": "AddN1:3"
                 },
                 {
                     "src": "Mul7:0",
-                    "dst": "AddN1:1"
+                    "dst": "AddN1:2"
                 },
                 {
                     "src": "Input0",
@@ -10444,12 +10448,12 @@
                     "dst": "Add_LN:0"
                 },
                 {
-                  "src": "AddN_Out",
-                  "dst": "Add_LN:1"
+                    "src": "AddN_Out",
+                    "dst": "Add_LN:1"
                 },
                 {
-                  "src":"Add_LN:0",
-                  "dst":"Output0"
+                    "src":"Add_LN:0",
+                    "dst":"Output0"
                 },
                 {
                     "src": "LayerNormGrad:1",
