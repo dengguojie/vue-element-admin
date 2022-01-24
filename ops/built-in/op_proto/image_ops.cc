@@ -263,7 +263,7 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
     y_desc->SetShapeRange(y_range);
   }
   y_desc->SetShape(y_shape);
-  y_desc->SetDataType(DT_FLOAT);
+  y_desc->SetDataType(boxes_desc->GetDataType());
 
   return GRAPH_SUCCESS;
 }
