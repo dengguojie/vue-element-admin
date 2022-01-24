@@ -272,16 +272,18 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
 
     // Set outputShape
     // The SSG's out_range needs to get value of "shape". In compilation, infer_shape will not get
-    // value of "shape" while "shape" is variable, so don't need to set range.
+    // value of "shape" while "shape" is variable, set range as (0,-1).
     size_t dim_num = dim_vector[0];
     OP_LOGD(op.GetName().c_str(), "dim_num is %d.", dim_num);
     for (size_t dim = 0; dim < dim_num; dim++) {
       outputShapeList.push_back(-1);
+      out_range.push_back(std::make_pair(0, -1));
     }
     TensorDesc tensordesc_output = op.GetOutputDesc("output");
     ge::Shape out_shape = ge::Shape(outputShapeList);
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
+    tensordesc_output.SetShapeRange(out_range);
     (void)op.UpdateOutputDesc("output", tensordesc_output);
     return GRAPH_SUCCESS;
   }
