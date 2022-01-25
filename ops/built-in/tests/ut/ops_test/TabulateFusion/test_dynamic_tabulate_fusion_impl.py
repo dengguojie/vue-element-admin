@@ -27,10 +27,11 @@ ut_case = OpUT("TabulateFusion", "impl.dynamic.tabulate_fusion", "tabulate_fusio
 def tabulate_fusion_ut_test(test_args, nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0):
     set_current_compile_soc_info("Ascend710")
 
+    last_layer_size_align = (last_layer_size + 64 - 1) // 64 * 64
     with tbe.common.context.op_context.OpContext("dynamic"):
-        table = {"shape": (table_dim0, last_layer_size*6), "dtype": "float32", "format": "ND",
-                 "ori_shape": (table_dim0, last_layer_size*6), "ori_format": "ND",
-                 "range": ((table_dim0, table_dim0), (last_layer_size*6, last_layer_size*6))}
+        table = {"shape": (table_dim0, last_layer_size_align*6), "dtype": "float32", "format": "ND",
+                 "ori_shape": (table_dim0, last_layer_size_align*6), "ori_format": "ND",
+                 "range": ((table_dim0, table_dim0), (last_layer_size_align*6, last_layer_size_align*6))}
         table_info = {"shape": (6,), "dtype": "float32", "format": "ND",
                       "ori_shape": (6,), "ori_format": "ND",
                       "range": ((6, 6))}

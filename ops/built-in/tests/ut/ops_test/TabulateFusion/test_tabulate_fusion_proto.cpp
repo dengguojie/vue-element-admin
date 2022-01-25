@@ -37,7 +37,9 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionVerifyTest_1) {
   int64_t nnei = 46;
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
-  op.UpdateInputDesc("table", create_desc({table_dim0, last_layer_size * 6}, ge::DT_FLOAT));
+
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
+  op.UpdateInputDesc("table", create_desc({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT));
   op.UpdateInputDesc("table_info", create_desc({6}, ge::DT_FLOAT));
   op.UpdateInputDesc("em_x", create_desc({nloc * nnei, 1}, ge::DT_FLOAT));
   op.UpdateInputDesc("em", create_desc({nloc, nnei, 4}, ge::DT_FLOAT));
@@ -52,7 +54,9 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionVerifyTest_2) {
   int64_t nnei = 46;
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
-  op.UpdateInputDesc("table", create_desc({table_dim0, last_layer_size * 6}, ge::DT_FLOAT));
+
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
+  op.UpdateInputDesc("table", create_desc({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT));
   op.UpdateInputDesc("table_info", create_desc({6}, ge::DT_FLOAT));
   op.UpdateInputDesc("em_x", create_desc({nloc * nnei, 1}, ge::DT_FLOAT));
   op.UpdateInputDesc("em", create_desc({nloc, nnei, 4}, ge::DT_FLOAT));
@@ -83,10 +87,11 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_1) {
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
 
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
   op.UpdateInputDesc("table",
-                     create_desc_shape_range({table_dim0, last_layer_size * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
-                                             {table_dim0, last_layer_size * 6}, ge::FORMAT_ND,
-                                             {{table_dim0, table_dim0}, {last_layer_size * 6, last_layer_size * 6}}));
+                     create_desc_shape_range({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
+                                             {table_dim0, last_layer_size_align * 6}, ge::FORMAT_ND,
+                                             {{table_dim0, table_dim0}, {last_layer_size_align * 6, last_layer_size_align * 6}}));
   op.UpdateInputDesc("table_info",
                      create_desc_shape_range({6}, ge::DT_FLOAT, ge::FORMAT_ND,
                                              {6}, ge::FORMAT_ND,
@@ -122,9 +127,10 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_2) {
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
 
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
   op.UpdateInputDesc("table",
-                     create_desc_with_ori({table_dim0, last_layer_size * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
-                                          {table_dim0, last_layer_size * 6}, ge::FORMAT_ND));
+                     create_desc_with_ori({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
+                                          {table_dim0, last_layer_size_align * 6}, ge::FORMAT_ND));
   op.UpdateInputDesc("table_info",
                      create_desc_with_ori({6}, ge::DT_FLOAT, ge::FORMAT_ND, {6}, ge::FORMAT_ND));
   op.UpdateInputDesc("em_x",
@@ -158,9 +164,10 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_3) {
   int32_t splitCount = 2;
   int32_t splitIndex = 0;
 
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
   op.UpdateInputDesc("table",
-                     create_desc_with_ori({table_dim0, last_layer_size * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
-                                          {table_dim0, last_layer_size * 6}, ge::FORMAT_ND));
+                     create_desc_with_ori({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
+                                          {table_dim0, last_layer_size_align * 6}, ge::FORMAT_ND));
   op.UpdateInputDesc("table_info",
                      create_desc_with_ori({6}, ge::DT_FLOAT, ge::FORMAT_ND, {6}, ge::FORMAT_ND));
   op.UpdateInputDesc("em_x",
@@ -182,7 +189,7 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_3) {
     auto output_desc = op.GetOutputDescByName("descriptor");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {4096, 4, last_layer_size};
+    std::vector<int64_t> expected_output_shape = {4370, 4, last_layer_size};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   }
 }
@@ -196,9 +203,10 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_4) {
   int32_t splitCount = 2;
   int32_t splitIndex = 1;
 
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
   op.UpdateInputDesc("table",
-                     create_desc_with_ori({table_dim0, last_layer_size * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
-                                          {table_dim0, last_layer_size * 6}, ge::FORMAT_ND));
+                     create_desc_with_ori({table_dim0, last_layer_size_align * 6}, ge::DT_FLOAT, ge::FORMAT_ND,
+                                          {table_dim0, last_layer_size_align * 6}, ge::FORMAT_ND));
   op.UpdateInputDesc("table_info",
                      create_desc_with_ori({6}, ge::DT_FLOAT, ge::FORMAT_ND, {6}, ge::FORMAT_ND));
   op.UpdateInputDesc("em_x",
@@ -220,7 +228,7 @@ TEST_F(TabulateFusionProtoTest, TabulateFusionInferShapeTest_4) {
     auto output_desc = op.GetOutputDescByName("descriptor");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {4096, 4, last_layer_size};
+    std::vector<int64_t> expected_output_shape = {3822, 4, last_layer_size};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   }
 }

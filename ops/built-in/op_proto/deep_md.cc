@@ -38,6 +38,8 @@
 #include "util/vector_proto_profiling.h"
 
 namespace ge {
+static const int NUM_8 = 8;
+static const int NUM_15 = 15;
 
 // --------------------------TabulateFusion Begin-----------------
 IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
@@ -108,7 +110,12 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
   if (splitCount == 1) {
     outputDesc->SetShape(ge::GeShape(outputShape));
   } else if (splitCount == 2) {
-    int64_t ceilValue = (nlocValue + splitCount - 1) / splitCount;
+    int64_t baseValue = nlocValue / NUM_15;
+    int64_t ceilValue = baseValue * NUM_8;
+    if (nlocValue % NUM_15 != 0) {
+      ceilValue += (nlocValue % NUM_15);
+    }
+
     if (splitIndex == 0) {
       OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
       outputShape = {ceilValue, 4, lastLayerSize};

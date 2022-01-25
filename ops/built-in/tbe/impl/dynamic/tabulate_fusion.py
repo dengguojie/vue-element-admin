@@ -95,7 +95,7 @@ class TabulateFusion():
         Init TabulateFusion parameters
         """
         self.last_layer_size = last_layer_size
-        self.tik_inst = tik.Tik(tik.Dprofile())
+        self.tik_inst = tik.Tik()
         self.dtype = table.get("dtype").lower()
         self.dtype_int32 = "int32"
         self.dsize = tbe_platform.get_bit_len(self.dtype) // self.EIGHT_BIT
@@ -381,9 +381,7 @@ class TabulateFusion():
         get a0,a1,a2,a3,a4,a5,a6, then calculate var.
         """
         with self.tik_inst.new_stmt_scope():
-            # one row data of table is last_layer_size*6
-            table_ub = self.tik_inst.Tensor(self.dtype, (self.last_size_align * self.NUM_6,),
-                                            name="table_ub", scope=tik.scope_ubuf)
+            # one row data of table is last_size_align*6
             a_i_ub = self.tik_inst.Tensor(self.dtype, (self.last_size_align * self.NUM_6,),
                                           name="a_i_ub", scope=tik.scope_ubuf)
             xx_new = self.tik_inst.Scalar(dtype=self.dtype, name="xx_new")
@@ -391,40 +389,25 @@ class TabulateFusion():
             table_idx = self.tik_inst.Scalar(dtype=self.dtype_int32, name="table_idx")
             table_idx.set_as(table_idx_ub[offset])
 
-            self.tik_inst.data_move(table_ub, self.table_gm[table_idx * (self.last_layer_size * self.NUM_6)], 0, 1,
-                                    ceiling_value(self.last_layer_size * self.NUM_6, self.block_elems), 0, 0)
-            self.tik_inst.v4dtrans(False, a_i_ub, table_ub, self.last_size_align, self.NUM_6)
+            self.tik_inst.data_move(a_i_ub, self.table_gm[table_idx * (self.last_size_align * self.NUM_6)], 0, 1,
+                                    ceiling_value(self.last_size_align * self.NUM_6, self.block_elems), 0, 0)
 
             # `var = a0 + (a1 + (a2 + (a3 + (a4 + a5 * xx) * xx) * xx) * xx) * xx`
             repeats = self.last_size_align // self.vector_elems
-            self.tik_inst.vmuls(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                xx_new, repeats, 1, 1, 8, 8)
-            self.tik_inst.vadd(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                a_i_ub[self.last_size_align * 4], repeats, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                xx_new, repeats, 1, 1, 8, 8)
-            self.tik_inst.vadd(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                a_i_ub[self.last_size_align * self.NUM_3], repeats, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(
-                self.NUM_64, a_i_ub[self.last_size_align * 5], a_i_ub[self.last_size_align * self.NUM_5],
-                xx_new, repeats, 1, 1, 8, 8)
-            self.tik_inst.vadd(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                a_i_ub[self.last_size_align * self.NUM_2], repeats, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                xx_new, repeats, 1, 1, 8, 8)
-            self.tik_inst.vadd(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                a_i_ub[self.last_size_align], repeats, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vmuls(
-                self.NUM_64, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[self.last_size_align * self.NUM_5],
-                xx_new, repeats, 1, 1, 8, 8)
-            self.tik_inst.vadd(self.NUM_64, var_ub, a_i_ub[self.last_size_align * self.NUM_5], a_i_ub[0],
+            xx_new_dup = self.tik_inst.Tensor(self.dtype, (self.vector_elems,),
+                                              name="xx_new_dup", scope=tik.scope_ubuf)
+            self.tik_inst.vector_dup(self.NUM_64, xx_new_dup, xx_new, 1, 1, 8)
+            self.tik_inst.vmla(self.NUM_64, a_i_ub[self.last_size_align * self.NUM_4],
+                               a_i_ub[self.last_size_align * self.NUM_5], xx_new_dup, repeats, 1, 1, 1, 8, 8, 0)
+            self.tik_inst.vmla(self.NUM_64, a_i_ub[self.last_size_align * self.NUM_3],
+                               a_i_ub[self.last_size_align * self.NUM_4], xx_new_dup, repeats, 1, 1, 1, 8, 8, 0)
+            self.tik_inst.vmla(self.NUM_64, a_i_ub[self.last_size_align * self.NUM_2],
+                               a_i_ub[self.last_size_align * self.NUM_3], xx_new_dup, repeats, 1, 1, 1, 8, 8, 0)
+            self.tik_inst.vmla(self.NUM_64, a_i_ub[self.last_size_align * self.NUM_1],
+                               a_i_ub[self.last_size_align * self.NUM_2], xx_new_dup, repeats, 1, 1, 1, 8, 8, 0)
+            self.tik_inst.vmuls(self.NUM_64, a_i_ub[self.last_size_align * self.NUM_1],
+                                a_i_ub[self.last_size_align * self.NUM_1], xx_new, repeats, 1, 1, 8, 8)
+            self.tik_inst.vadd(self.NUM_64, var_ub, a_i_ub[self.last_size_align * self.NUM_1], a_i_ub[0],
                                repeats, 1, 1, 1, 8, 8, 8)
 
     def _cal_output(self, nloc_i_res, res_size, var_ub, ll_values, ago, xx, out_i_offset, nnei_j, for_end_s):

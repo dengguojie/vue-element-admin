@@ -36,6 +36,8 @@ constexpr int64_t NUM_4 = 4;
 constexpr int64_t NUM_5 = 5;
 constexpr int64_t NUM_6 = 6;
 constexpr int64_t NUM_8 = 8;
+constexpr int64_t NUM_15 = 15;
+constexpr int64_t NUM_64 = 64;
 constexpr int64_t NUM_128 = 128;
 
 struct TabulateFusionTilingParams {
@@ -118,9 +120,13 @@ bool CheckShapesInfo(const std::string& opType, const TeOpParas& opParas, int64_
   nloc = emShape[0];
   nnei = emShape[1];
   OP_LOGI(opType.c_str(), "CheckShapesInfo  nloc=%ld, nnei=%ld.", nloc, nnei);
+  OP_TILING_CHECK((nloc <= 0) || (nnei <= 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim 0 and 1 of em should be greater than 0"),
+                  return false);
 
-  OP_TILING_CHECK(tableShape[1] != lastLayerSize * NUM_6,
-                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim 1 of table should be euqal to last_layer_size*6"),
+  int64_t lastLayerSizeAlign = (lastLayerSize + NUM_64 - 1) / NUM_64 * NUM_64;
+  OP_TILING_CHECK(tableShape[1] != lastLayerSizeAlign * NUM_6,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim 1 of table is invalid"),
                   return false);
   OP_TILING_CHECK(tableInfoShape[0] < NUM_5,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim 0 of table_info should not be less than 5"),
@@ -205,7 +211,12 @@ bool CalTabulateFusionRunningParams(const std::string& opType, TabulateFusionTil
   int64_t nlocForEngine = nloc;
   // enable vector core
   if (compileParam.splitCount == NUM_2) {
-    int64_t ceilValue = (nloc + NUM_2 - 1) / NUM_2;
+    int64_t baseValue = nloc / NUM_15;
+    int64_t ceilValue = baseValue * NUM_8;
+    if (nloc % NUM_15 != 0) {
+      ceilValue += (nloc % NUM_15);
+    }
+
     if (compileParam.splitIndex == 0) {
       runParams.nlocEngineOffset = 0;
       nlocForEngine = ceilValue;

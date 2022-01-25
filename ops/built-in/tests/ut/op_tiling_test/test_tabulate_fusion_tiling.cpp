@@ -108,7 +108,8 @@ void RunSimpleTest(const int64_t& runIndex, const int64_t& nloc, const int64_t& 
               << ", \"split_count\": " << splitCount
               << ", \"split_index\": " << splitIndex << "}}";
 
-  RunTestTiling({table_dim0, last_layer_size * 6}, "float32",
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
+  RunTestTiling({table_dim0, 6 * last_layer_size_align}, "float32",
                 {6}, "float32",
                 {nloc, nnei}, "float32",
                 {nloc, nnei, 4}, "int32",
@@ -116,8 +117,8 @@ void RunSimpleTest(const int64_t& runIndex, const int64_t& nloc, const int64_t& 
                 compileInfo.str(), compileInfoKey.str(), expectTiling);
 }
 
-TEST_F(TabulateFusionTiling, prod_tabulate_fusion_tiling_001) {
+TEST_F(TabulateFusionTiling, tabulate_fusion_tiling_001) {
   RunSimpleTest(0, 8192, 46, 100, 1360, 1, 0, 14848, 8, "8 0 46 1024 1024 128 8 0 8 0 ");
-  RunSimpleTest(1, 8192, 46, 100, 1360, 2, 0, 14848, 8, "8 0 46 512 512 128 4 0 4 0 ");
-  RunSimpleTest(2, 8192, 46, 100, 1360, 2, 1, 14848, 7, "7 4096 46 586 580 128 4 74 4 68 ");
+  RunSimpleTest(1, 8192, 46, 100, 1360, 2, 0, 14848, 8, "8 0 46 547 541 128 4 35 4 29 ");
+  RunSimpleTest(2, 8192, 46, 100, 1360, 2, 1, 14848, 7, "7 4370 46 546 546 128 4 34 4 34 ");
 }

@@ -49,6 +49,8 @@ static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 static const int SPLIT_COUNT = 2;
 static const int NUM_3 = 3;
+static const int NUM_8 = 8;
+static const int NUM_15 = 15;
 
 /*!
  * @brief Define pattern.
@@ -99,7 +101,11 @@ Status TabulateFusionFusionPass::UpdateTabulateFusionNode(ge::NodePtr &tabulateN
 
   if (tabulateAicOutputShape.GetDim(0) > 0) {
     int64_t nloc = tabulateAicOutputShape.GetDim(0);
-    int64_t ceilValue = (nloc + SPLIT_COUNT - 1) / SPLIT_COUNT;
+    int64_t baseValue = nloc / NUM_15;
+    int64_t ceilValue = baseValue * NUM_8;
+    if (nloc % NUM_15 != 0) {
+      ceilValue += (nloc % NUM_15);
+    }
 
     tabulateAicOutputShape.SetDim(0, ceilValue);
     tabulateAicOutput.SetShape(tabulateAicOutputShape);

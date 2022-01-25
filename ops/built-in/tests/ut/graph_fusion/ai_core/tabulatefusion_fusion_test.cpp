@@ -68,7 +68,8 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_01) {
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
 
-  auto table = CreateDataNode("table", {table_dim0, last_layer_size * 6}, FORMAT_ND, DT_FLOAT);
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
+  auto table = CreateDataNode("table", {table_dim0, last_layer_size_align * 6}, FORMAT_ND, DT_FLOAT);
   auto table_info = CreateDataNode("table_info", {6}, FORMAT_ND, DT_FLOAT);
   auto em_x = CreateDataNode("em_x", {nloc, nnei}, FORMAT_ND, DT_FLOAT);
   auto em = CreateDataNode("em", {nloc, nnei, 4}, FORMAT_ND, DT_FLOAT);
@@ -112,12 +113,12 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_01) {
         findAiCoreNode = true;
         ge::GeTensorDesc tabulateAicOutput = iOpDesc->GetOutputDesc(0);
         ge::GeShape tabulateAicOutputShape = tabulateAicOutput.GetShape();
-        EXPECT_EQ(tabulateAicOutputShape.GetDim(0), 4096);
+        EXPECT_EQ(tabulateAicOutputShape.GetDim(0), 4370);
       } else if (engineName == "VectorEngine" && kernelLibName == "VectorEngine") {
         findVectorCoreNode = true;
         ge::GeTensorDesc tabulateVecOutput = iOpDesc->GetOutputDesc(0);
         ge::GeShape tabulateVecOutputShape = tabulateVecOutput.GetShape();
-        EXPECT_EQ(tabulateVecOutputShape.GetDim(0), 4096);
+        EXPECT_EQ(tabulateVecOutputShape.GetDim(0), 3822);
       }
     }
   }
@@ -132,7 +133,8 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_02) {
   int32_t last_layer_size = 100;
   int64_t table_dim0 = 1360;
 
-  auto table = CreateDataNode("table", {table_dim0, last_layer_size * 6}, FORMAT_ND, DT_FLOAT);
+  int32_t last_layer_size_align = (last_layer_size + 64 - 1) / 64 * 64;
+  auto table = CreateDataNode("table", {table_dim0, last_layer_size_align * 6}, FORMAT_ND, DT_FLOAT);
   auto table_info = CreateDataNode("table_info", {6}, FORMAT_ND, DT_FLOAT);
   auto em_x = CreateDataNode("em_x", {nloc, nnei}, FORMAT_ND, DT_FLOAT);
   auto em = CreateDataNode("em", {nloc, nnei, 4}, FORMAT_ND, DT_FLOAT);
