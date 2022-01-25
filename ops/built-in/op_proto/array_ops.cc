@@ -42,6 +42,7 @@ const char* const kAttrShape = "attr shape";
 const char* const kAttrDtype = "attr dtype";
 const char* const kAttrAxis = "attr axis";
 const char* const kAttrNumAxes = "attr num_axes";
+const char* const kInputAxes = "input axes";
 const char* const kPreOpInputShapeRange = "_pre_op_in_range";
 const int64_t kMaxDimNum = 8;
 const size_t kAxesSize = 2UL;
@@ -1850,7 +1851,7 @@ static graphStatus GetInputAxes(const Operator &op, OpDescPtr &op_desc, std::vec
   op_desc->SetOpInferDepends(dep_inputs);
   const auto axes_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("axes"));
   const GeTensor *tensor = OpDescUtils::GetInputConstData(op, axes_idx);
-  
+
   if (tensor != nullptr) {
     const auto axes_desc = op_desc->MutableInputDesc(axes_idx);
     auto pbuff = tensor->GetData().GetData();
@@ -1994,6 +1995,7 @@ IMPLEMT_INFERFUNC(SqueezeV3, SqueezeV3Infer) {
   } else {
     // check axes valid
     if (!IsSqueezeAxesValid(axes_val, x_shape_dim)) {
+      GeInfershapeErrReport(op_name.GetString(), op.GetOpType(), kInputAxes, "is invalid.");
       REPORT_INNER_ERROR("E19999", "[Node:%s] Infer shape failed, as axes is invalid", op_name.GetString());
       GE_OP_LOGE(op_name.GetString(), "[InferShape]Infer shape failed, as axes is invalid");
       return GRAPH_FAILED;
@@ -2017,7 +2019,7 @@ static bool IsUnsqueezeAxesValid(vector<int64_t> &axes, const std::vector<int64_
   const size_t dim_size = shape_dim.size() + axes.size();
   for (int64_t &axis : axes) {
     axis = axis >= 0 ? axis : axis + dim_size;
-    if ((axis < 0) || (axis > static_cast<int64_t>(dim_size))) {
+    if ((axis < 0) || (axis >= static_cast<int64_t>(dim_size))) {
       string reason = "Axes val is out of range, expect to be in range of [-" + std::to_string(dim_size) + "," +
                       std::to_string(dim_size - 1U) + "], but got " + std::to_string(axis) + ".";
       GE_OP_LOGE("UnsqueezeV3", "%s, can not be unsqueezed.", reason.c_str());
@@ -2039,10 +2041,10 @@ static void DoUnsqueezeWithAxes(const std::vector<int64_t> &input_dims,
   std::vector<std::pair<int64_t, int64_t>> output_range(output_dim_size);
 
   // set the dim selected by the axes to 1 
-  for (size_t i = 0UL; i < axes.size(); ++i) {
-    output_shape.SetDim(axes[i], 1);
+  for(const auto axis : axes) {
+    output_shape.SetDim(axis, 1);
     if (is_unknown_shape) {
-      output_range[i] = {1, 1};
+      output_range[axis] = {1, 1};
     }
   }
 
@@ -2121,6 +2123,7 @@ IMPLEMT_INFERFUNC(UnsqueezeV3, UnsqueezeV3Infer) {
 
   // check axes valid
   if (!IsUnsqueezeAxesValid(axes_val, x_shape_dim)) {
+    GeInfershapeErrReport(op_name.GetString(), op.GetOpType(), kInputAxes, "is invalid.");
     REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as axes is invalid", op_name.GetString());
     GE_OP_LOGE(op_name.GetString(), "[InferShape]Infer shape failed, as axes is invalid");
     return GRAPH_FAILED;

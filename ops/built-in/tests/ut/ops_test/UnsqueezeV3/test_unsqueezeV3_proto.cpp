@@ -78,6 +78,27 @@ TEST_F(UNSQUEEZEV3_UT, CheckInputInvalid) {
     ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
   }
+
+  {
+    // check axes invalid while out of range. boundary test
+    ge::op::UnsqueezeV3 op("UnsqueezeV3");
+    ge::graphStatus ret;
+    op.UpdateInputDesc("x", create_desc({5, 5, 5}, ge::DT_INT32));
+    ge::Tensor const_tensor;
+    ge::TensorDesc const_desc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT64);
+    const_desc.SetSize(1 * sizeof(int64_t));
+    const_tensor.SetTensorDesc(const_desc);
+    int64_t const_data[1] = {4};
+    const_tensor.SetData((uint8_t*)const_data, 1 * sizeof(int64_t));
+    auto axes = ge::op::Constant().set_attr_value(const_tensor);
+    op.set_input_axes(axes);
+    auto desc = op.GetInputDesc("axes");
+    desc.SetDataType(ge::DT_INT64);
+    op.UpdateInputDesc("axes", desc);
+
+    ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  }
 }
 
 
@@ -195,10 +216,10 @@ TEST_F(UNSQUEEZEV3_UT, InfershapeTest) {
     op_desc->MutableInputDesc(0)->SetShapeRange(x_range);
     ge::Tensor const_tensor;
     ge::TensorDesc const_desc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT64);
-    const_desc.SetSize(1 * sizeof(int64_t));
+    const_desc.SetSize(2 * sizeof(int64_t));
     const_tensor.SetTensorDesc(const_desc);
-    int64_t const_data[1] = {0};
-    const_tensor.SetData((uint8_t*)const_data, 1 * sizeof(int64_t));
+    int64_t const_data[2] = {0, 6};
+    const_tensor.SetData((uint8_t*)const_data, 2 * sizeof(int64_t));
     auto axes = ge::op::Constant().set_attr_value(const_tensor);
     op.set_input_axes(axes);
     auto desc = op.GetInputDesc("axes");
@@ -208,7 +229,7 @@ TEST_F(UNSQUEEZEV3_UT, InfershapeTest) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    std::vector<std::pair<int64_t, int64_t>> output_range = {{1, 1}, {1, 5}, {3, 3}, {1, 6}, {1, 1}, {5, 5}};
+    std::vector<std::pair<int64_t, int64_t>> output_range = {{1, 1}, {1, 5}, {3, 3}, {1, 6}, {1, 1}, {5, 5}, {1, 1}};
     const auto output = op.GetOutputDesc("y");
     std::vector<std::pair<int64_t, int64_t>> actul_output_range;
 
