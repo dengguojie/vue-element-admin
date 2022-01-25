@@ -124,14 +124,32 @@ void AttrValueImpl::SetListInt(const std::vector<int64_t> &list) {
 }
 
 /*
+ * get int list list value of attr.
+ */
+std::vector<std::vector<int64_t>> AttrValueImpl::GetListListInt() const {
+  auto array = attr_value_->list_list_int();
+  std::vector<std::vector<int64_t>> ret;
+  for (auto idx = 0; idx < array.list_list_i_size(); ++idx) {
+    std::vector<int64_t> vec;
+    for (auto i = 0; i < array.list_list_i(idx).list_i_size(); ++i) {
+      vec.emplace_back(array.list_list_i(idx).list_i(i));
+    }
+    ret.emplace_back(vec);
+  }
+  return ret;
+}
+
+/*
  * set int list list value to attr.
  */
 void AttrValueImpl::SetListListInt(const std::vector<std::vector<int64_t>> &list) {
-  auto array = attr_value_->mutable_array();
+  auto array = attr_value_->mutable_list_list_int();
+  array->clear_list_list_i();
   KERNEL_CHECK_NULLPTR_VOID(array, "Protobuf mutable array is nullptr")
-  for (size_t i = 0; i < list.size(); ++i) {
-    for (size_t j = 0; j < list[i].size(); ++j) {
-      array->add_i(list[i][j]);
+  for (const std::vector<int64_t> &i : list) {
+    const auto list_i = array->add_list_list_i();
+    for (const int64_t val : i) {
+      list_i->add_list_i(val);
     }
   }
 }

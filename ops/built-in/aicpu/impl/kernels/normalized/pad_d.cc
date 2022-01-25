@@ -104,26 +104,24 @@ uint32_t PadDCpuKernel::DoCompute(CpuKernelContext &ctx) {
   std::vector<int64_t> dims_y = y_shape->GetDimSizes();
   std::vector<T> y_ori;
   // paddings
-  std::vector<int64_t> pad;
-  std::vector<int64_t> pad1;
-  std::vector<int64_t> pad2;
-  pad = ctx.GetAttr("paddings")->GetListInt();
+  std::vector<std::vector<int64_t>> pad;
+  std::vector<int64_t> pad1, pad2;
+  pad = ctx.GetAttr("paddings")->GetListListInt();
+  // the constraint of column
+  const uint32_t col = 2;
   if (pad.empty()) {
     auto ret = memcpy_s(y->GetData(), y->GetDataSize(), x->GetData(), x->GetDataSize());
     KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
                        "PadD Memcpy failed, result = [%d].", ret);
     return KERNEL_STATUS_OK;
   }
-  for (size_t m = 0; m < pad.size(); m ++) {
-    if (m % 2 == 0) {
-      pad1.emplace_back(pad[m]);  // left
-    } else {
-      pad2.emplace_back(pad[m]);  // right
-    }
-  }
-  if (pad1.size() != pad2.size() || pad1.size() != (size_t)rank) {
-    KERNEL_LOG_ERROR("PadD attr data format not support.");
+  if ((pad.size() != (size_t)rank) || (pad[0].size() != (size_t)col)) {
+    KERNEL_LOG_ERROR("PadD attr data format not support");
       return KERNEL_STATUS_PARAM_INVALID;
+  }
+  for (int64_t t = 0; t < rank; t++) {
+    pad1.emplace_back(pad[t][0]);
+    pad2.emplace_back(pad[t][1]);
   }
     // offset
   std::vector<int64_t> offsetL;
