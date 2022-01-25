@@ -58,6 +58,8 @@ int64_t ScanPQCodesCeilDiv(int64_t dividend, int64_t divisor) {
 }
 
 const int64_t TOTAL_CORE_NUM = 15;
+const int64_t AI_CORE_NUM = 8;
+const int64_t VECTOR_CORE_NUM = 7;
 bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                        OpRunInfo& run_info) {
   OP_LOGI("========================ScanPQCodesTiling running====================");
@@ -95,18 +97,20 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   int64_t bucketNumLow = 0;
   int64_t bucketNumHigh = 0;
   int64_t highCoreNum = 0;
+  int64_t aiMaxBucketNums = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * AI_CORE_NUM;
   if (splitCount == SPLIT_COUNT_NUM) {
     if (splitIndex == 0) {
-      bucketNumTotal = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * coreNums;
+      bucketNumTotal = (aiMaxBucketNums < bucketShape[0]) ? aiMaxBucketNums : bucketShape[0];
       bucketStartBase = 0;
     } else {
-      bucketStartBase = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * (TOTAL_CORE_NUM - coreNums);
-      bucketNumTotal = (bucketShape[0] >= bucketStartBase) ? (bucketShape[0] - bucketStartBase) : bucketShape[0];
+      bucketStartBase = (aiMaxBucketNums < bucketShape[0]) ? aiMaxBucketNums : bucketShape[0];
+      bucketNumTotal = (bucketShape[0] >= bucketStartBase) ? (bucketShape[0] - bucketStartBase) : 0;
     }
   } else {
     bucketNumTotal = bucketShape[0];
     bucketStartBase = 0;
   }
+  coreNums = (splitIndex == 0) ? AI_CORE_NUM : VECTOR_CORE_NUM;
   bucketNumLow = bucketNumTotal / coreNums;
   bucketNumHigh = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
   highCoreNum = bucketNumTotal % coreNums;

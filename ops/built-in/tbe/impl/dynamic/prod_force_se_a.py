@@ -92,7 +92,7 @@ class ProdForceSeA:
         self.core_loop_left = self.tik_instance.Scalar("int64", name="core_loop_left")
         self.core_offset = self.tik_instance.Scalar("int64", name="core_offset")
         self.core_nums_used = self.tik_instance.Scalar("int64", name="core_nums_used")
-        self.nnei_unit_len = _ceil_fill(self.nnei, 128)
+        self.nnei_unit_len = _ceil_fill(self.nnei, 64)
         if self.nnei_unit_len > Constant.NNEI_UNIT_MAX:
             self.nnei_unit_len = Constant.NNEI_UNIT_MAX
         self.nall_ub_len = _floor_fill(Constant.UB_MAX_SIZE // 2 - self.nnei_unit_len * 14,

@@ -161,8 +161,8 @@ IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
   CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
   int64_t natomsSize = natomsShape[0];
-  CHECK(natomsSize < 4,
-        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 4"), return GRAPH_FAILED);
+  CHECK(natomsSize < 3,
+        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
 
   CHECK(netDerivDesc->GetDataType() != inDerivDesc->GetDataType(),
         OP_LOGE(opName.GetString(), "Data type of net_deriv and in_deriv are not match"), return GRAPH_FAILED);
@@ -204,7 +204,6 @@ IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
       OP_LOGE(opName.GetString(), "Get Const Value failed.");
       return GRAPH_FAILED;
     };
-    CHECK(constVec.size() != 4, OP_LOGE(opName.GetString(), "natoms length should be 4"), return GRAPH_FAILED);
     int64_t nall = constVec[1];
     CHECK(nall > MAX_NALL,
           OP_LOGE(opName.GetString(), "nall value %d is more than 30000.", nall), return GRAPH_FAILED);

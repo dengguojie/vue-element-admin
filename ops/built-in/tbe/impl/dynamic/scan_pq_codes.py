@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.dynamic.scan_pq_codes_expand import ScanPQCodesExpand
 
 
 # 'pylint: disable=too-few-public-methods
@@ -47,6 +48,7 @@ class Constant:
     IVF_SLICE_INNER_SIZE = SLICE_INNER_SIZE * IVF_UNIT_LEN
     INNER_LOOP_TIME = SLICE_SIZE // SLICE_INNER_SIZE
     MAX_BUCKET_LEN = 64
+    ADC_DIM = 1
 
 
 def _ceil_div(dividend, divisor):
@@ -649,8 +651,14 @@ def scan_pq_codes(ivf,
     bucket_limits_dtype = bucket_limits.get("dtype").lower()
     bucket_offsets_dtype = bucket_offsets.get("dtype").lower()
     adc_tables_dtype = adc_tables.get("dtype").lower()
+    adc_tables_shape = adc_tables.get("shape")
+    ivf_dim = adc_tables_shape[Constant.ADC_DIM]
     dtypes = (ivf_dtype, bucket_list_dtype, bucket_base_distance_dtype, bucket_limits_dtype, bucket_offsets_dtype,
               adc_tables_dtype)
-    attrs = (total_limit, group_size, extreme_mode, split_count, split_index)
-    obj = ScanPQCodes(attrs, dtypes)
+    if ivf_dim == Constant.IVF_UNIT_LEN:
+        attrs = (total_limit, group_size, extreme_mode, split_count, split_index)
+        obj = ScanPQCodes(attrs, dtypes)
+    else:
+        attrs = (total_limit, group_size, extreme_mode, split_count, split_index, ivf_dim)
+        obj = ScanPQCodesExpand(attrs, dtypes)
     return obj.scan_pq_codes_operator(kernel_name)

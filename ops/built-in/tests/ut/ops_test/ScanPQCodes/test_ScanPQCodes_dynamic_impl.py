@@ -8,7 +8,7 @@ from impl.dynamic.scan_pq_codes import scan_pq_codes
 ut_case = OpUT("ScanPQCodes", "impl.dynamic.scan_pq_codes", "scan_pq_codes")
 
 
-def test_1951_uint8_small_shape_001(test_arg):
+def test_1951_uint8_small_shape_000(test_arg):
     set_current_compile_soc_info('Ascend710')
     with tbe.common.context.op_context.OpContext("dynamic"):
         scan_pq_codes(
@@ -36,7 +36,7 @@ def test_1951_uint8_small_shape_001(test_arg):
             {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND",
              "range": [(1, 1)]},
             10240, 64, 0, 1, 0,
-            "test_1951_uint8_small_shape_001")
+            "test_1951_uint8_small_shape_000")
     set_current_compile_soc_info(test_arg)
 
 def test_1951_uint8_small_shape_001(test_arg):
@@ -62,7 +62,7 @@ def test_1951_uint8_small_shape_001(test_arg):
             {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
             {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
             262144, 64, 0, 2, 1,
-            "test_1951_uint8_small_shape_002")
+            "test_1951_uint8_small_shape_001")
     set_current_compile_soc_info(test_arg)
 
 def test_1951_uint8_small_shape_002(test_arg):
@@ -93,10 +93,10 @@ def test_1951_uint8_small_shape_002(test_arg):
             {"shape": (5,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
              "range": [(1, 1)]},
             204800, 64, 0, 1, 0,
-            "test_1951_uint8_small_shape_003")
+            "test_1951_uint8_small_shape_002")
     set_current_compile_soc_info(test_arg)
 
-def test_1951_uint8_small_shape_002(test_arg):
+def test_1951_uint8_small_shape_003(test_arg):
     set_current_compile_soc_info('Ascend710')
     with tbe.common.context.op_context.OpContext("dynamic"):
         scan_pq_codes(
@@ -119,10 +119,10 @@ def test_1951_uint8_small_shape_002(test_arg):
             {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
             {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
             262144, 64, 0, 2, 0,
-            "test_1951_uint8_small_shape_004")
+            "test_1951_uint8_small_shape_003")
     set_current_compile_soc_info(test_arg)
 
-def test_1951_uint8_small_shape_003(test_arg):
+def test_1951_uint8_small_shape_004(test_arg):
     set_current_compile_soc_info('Ascend710')
     with tbe.common.context.op_context.OpContext("dynamic"):
         scan_pq_codes(
@@ -148,8 +148,116 @@ def test_1951_uint8_small_shape_003(test_arg):
             "test_1951_uint8_small_shape_004")
     set_current_compile_soc_info(test_arg)
 
+def test_1951_uint8_small_shape_005(test_arg):
+    set_current_compile_soc_info('Ascend710')
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        scan_pq_codes(
+            {"shape": (4096, 32), "dtype": "uint8", "format": "ND", "ori_shape": (4096, 32), "ori_format": "ND",
+             "range": [(1, 131072), (32, 32)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int64", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1, 32, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 32, 256), "ori_format": "ND",
+             "range": [(1, 64), (32, 32), (256, 256)]},
+
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "float16", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            262144, 64, 0, 2, 1,
+            "test_1951_uint8_small_shape_005")
+    set_current_compile_soc_info(test_arg)
+
+def test_1951_uint8_small_shape_006(test_arg):
+    set_current_compile_soc_info('Ascend710')
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        scan_pq_codes(
+            {"shape": (17, 32), "dtype": "uint8", "format": "ND", "ori_shape": (4096, 32), "ori_format": "ND",
+             "range": [(1, 131072), (32, 32)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int64", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1, 32, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 32, 256), "ori_format": "ND",
+             "range": [(1, 64), (32, 32), (256, 256)]},
+
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "float16", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            262144, 64, 0, 2, 1,
+            "test_1951_uint8_small_shape_006")
+    set_current_compile_soc_info(test_arg)
+
+def test_1951_uint8_small_shape_007(test_arg):
+    set_current_compile_soc_info('Ascend710')
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        scan_pq_codes(
+            {"shape": (4096, 64), "dtype": "uint8", "format": "ND", "ori_shape": (4096, 64), "ori_format": "ND",
+             "range": [(1, 131072), (64, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int64", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1, 64, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 64, 256), "ori_format": "ND",
+             "range": [(1, 64), (64, 64), (256, 256)]},
+
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "float16", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            262144, 64, 0, 2, 1,
+            "test_1951_uint8_small_shape_007")
+    set_current_compile_soc_info(test_arg)
+
+def test_1951_uint8_small_shape_008(test_arg):
+    set_current_compile_soc_info('Ascend710')
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        scan_pq_codes(
+            {"shape": (17, 64), "dtype": "uint8", "format": "ND", "ori_shape": (4096, 64), "ori_format": "ND",
+             "range": [(1, 131072), (64, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1,), "dtype": "int64", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(1, 64)]},
+            {"shape": (1, 64, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 64, 256), "ori_format": "ND",
+             "range": [(1, 64), (64, 64), (256, 256)]},
+
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "float16", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            262144, 64, 0, 2, 1,
+            "test_1951_uint8_small_shape_008")
+    set_current_compile_soc_info(test_arg)
+
 ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_001)
 ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_002)
+ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_005)
+ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_006)
+ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_007)
+ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_008)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

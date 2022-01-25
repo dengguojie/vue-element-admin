@@ -223,7 +223,9 @@ VERIFY_FUNC_REG(TopKPQDistance, TopKPQDistanceVerify);
 // ----------------TopKPQDistance End---------------------
 
 // ----------------ScanPQCodes Begin-------------------
-const int64_t IVF_LAST_DIM = 16;
+const int64_t IVF_LAST_DIM_1 = 16;
+const int64_t IVF_LAST_DIM_2 = 32;
+const int64_t IVF_LAST_DIM_3 = 64;
 const int64_t BUCKET_SHAPE = 1;
 const int64_t ADC_TABLE_SHAPE = 256;
 const int64_t GROUP_SIZE_BASE = 64;
@@ -260,7 +262,7 @@ graphStatus ScanPQCodesVerifyAttrs(op::ScanPQCodes op){
         return GRAPH_FAILED);
   CHECK(splitIndex > splitCount - 1,
         OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr split_index is more than splitCount."),
-        return GRAPH_FAILED);  
+        return GRAPH_FAILED);
   return GRAPH_SUCCESS;
 }
 IMPLEMT_VERIFIER(ScanPQCodes, ScanPQCodesVerify) {
@@ -268,8 +270,9 @@ IMPLEMT_VERIFIER(ScanPQCodes, ScanPQCodesVerify) {
   GeTensorDescPtr ivfDesc = opDesc->MutableInputDesc("ivf");
   std::vector<int64_t> ivfShape = ivfDesc->MutableShape().GetDims();
   int64_t dimLast = ivfShape[ivfShape.size() - 1];
-  CHECK(IVF_LAST_DIM != dimLast,
-        OP_LOGE(op.GetName().c_str(), "Last dimesion %d of ivf should be equl to 16.", dimLast),
+  std::vector<int64_t> ivfLastDims {IVF_LAST_DIM_1, IVF_LAST_DIM_2, IVF_LAST_DIM_3};
+  CHECK((find(ivfLastDims.begin(), ivfLastDims.end(), dimLast) == ivfLastDims.end()),
+        OP_LOGE(op.GetName().c_str(), "Last dimesion %d of ivf should be equl to 16, 32, 64.", dimLast),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketListDesc = opDesc->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();
@@ -295,13 +298,12 @@ IMPLEMT_VERIFIER(ScanPQCodes, ScanPQCodesVerify) {
   std::vector<int64_t> adcTablesShape = adcTablesDesc->MutableShape().GetDims();
   int64_t dimM = adcTablesShape[1];
   int64_t dimKsub = adcTablesShape[2];
-  CHECK(IVF_LAST_DIM != dimM,
-        OP_LOGE(op.GetName().c_str(), "M dimesion of adc_tables should be equl to 16."),
+  CHECK((find(ivfLastDims.begin(), ivfLastDims.end(), dimM) == ivfLastDims.end()),
+        OP_LOGE(op.GetName().c_str(), "M dimesion of adc_tables should be equl to 16, 32, 64."),
         return GRAPH_FAILED);
   CHECK(ADC_TABLE_SHAPE != dimKsub,
         OP_LOGE(op.GetName().c_str(), "ksub dimesion of adc_tables should be equl to 256."),
         return GRAPH_FAILED);
-  
   return ScanPQCodesVerifyAttrs(op);
 }
 
