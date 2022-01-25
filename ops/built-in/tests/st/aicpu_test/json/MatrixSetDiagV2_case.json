@@ -1,0 +1,108 @@
+[
+    {
+        "case_name": "test_matrix_set_diag_v2_001",
+        "op": "MatrixSetDiagV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[4,4,4],[8,4,4],[32,4,4],[64,4,4],[128,4,4],[256,4,4],[512,4,4]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[4,4],[8,4],[32,4],[64,4],[128,4],[256,4],[512,4]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int32"],
+                "shape": [[],[],[],[],[],[],[]],
+                "value_range": [[0,0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[4,4,4],[8,4,4],[32,4,4],[64,4,4],[128,4,4],[256,4,4],[512,4,4]]
+            }
+        ]
+    },
+    {
+        "case_name": "test_matrix_set_diag_v2_002",
+        "op": "MatrixSetDiagV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[16,32,32],[32,32,32],[64,32,32],[128,32,32],[256,32,32],[1024,32,32]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[16,32],[32,32],[64,32],[128,32],[256,32],[1024,32]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int32"],
+                "shape": [[],[],[],[],[],[]],
+                "value_range": [[0,0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[16,32,32],[32,32,32],[64,32,32],[128,32,32],[256,32,32],[1024,32,32]]
+            }
+        ]
+    },
+    {
+        "case_name": "test_matrix_set_diag_v2_003",
+        "op": "MatrixSetDiagV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64",
+                "float16","float","double"],
+                "shape": [[8,8,8]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64",
+                "float16","float","double"],
+                "shape": [[8,8]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32","int32","int32","int32","int32",
+                "int32","int32","int32"],
+                "shape": [[]],
+                "value_range": [[0,0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64",
+                "float16","float","double"],
+                "shape": [[8,8,8]]
+            }
+        ]
+    }
+]

@@ -114,6 +114,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/inv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/lu.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/matrix_set_diag_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
@@ -354,6 +355,7 @@ set(_cpu_kernels_ut_files
   testcase/masked_select/src/masked_select_utest.cpp
   testcase/masked_select_grad/src/masked_select_grad_utest.cpp
   testcase/matmul/src/matmul_utest.cpp
+  testcase/matrix_set_diag_v2/src/matrix_set_diag_v2_utest.cpp
   testcase/matrix_triangular_solve/src/matrix_triangular_solve_utest.cpp
   testcase/minimum/src/minimum_utest.cpp
   testcase/mul/src/mul_utest.cpp
