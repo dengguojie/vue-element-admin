@@ -19,11 +19,38 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from impl.util import util_common
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
 
 READ_SELECT_TAG = "read_select"
 PARA_LIST_LEN = 5
 EMPTY_LIST_LEN = 0
+
+
+# 'pylint: disable=unused-argument
+def get_op_support_info(input_x, output_x, stride_list, output_tensor_dim, kernel_name="read_select"):
+    """
+    get_op_support_info, lxfusion slice inference for read_select
+    """
+    ori_input_shape = input_x.get("ori_shape")
+    ori_output_shape = output_x.get("ori_shape")
+    input_format = input_x.get("format").upper()
+    ori_format = input_x.get("ori_format").upper()
+    axis_split_matrix = []
+    axis_reduce_list = []
+    if ori_input_shape and ori_output_shape and len(ori_input_shape) == len(ori_output_shape):
+        for i, _ in enumerate(ori_input_shape):
+            axis = i
+            if input_format != ori_format:
+                axis = util_common.update_axis_for_other_format(ori_input_shape, axis, input_format, ori_format, False)
+            if ori_input_shape[i] == ori_output_shape[i]:
+                split_0 = [SplitInput([0, [axis], [-1], [-1]]), SplitOutput([0, [axis]])]
+                axis_split_matrix.append(split_0)
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
