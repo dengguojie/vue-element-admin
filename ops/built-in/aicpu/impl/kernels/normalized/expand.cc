@@ -105,13 +105,6 @@ uint32_t ExpandByLayer(std::vector<T> x_indexes,
                        std::vector<T>& out_indexes,
                        std::vector<IndexT> shape_in,
                        std::vector<IndexT>& shape_out) {
-  uint64_t input_dimension_a = shape_in.size();
-  uint64_t output_dimension = shape_out.size();
-  if (input_dimension_a < output_dimension) {
-    shape_in.insert(shape_in.begin(), output_dimension - input_dimension_a,
-                    static_cast<IndexT>(1));
-  }
-
   std::vector<IndexT> shape_out_temp;
   bool flag_end = true;
   while (flag_end) {
@@ -137,6 +130,40 @@ uint32_t ExpandByLayer(std::vector<T> x_indexes,
 }
 
 template <typename T, typename IndexT>
+uint32_t GetExpandShape(std::vector<T>& x_indexes1,
+                        std::vector<IndexT>& shape_in,
+                        std::vector<IndexT>& shape_out,
+                        std::vector<int64_t> size0,
+                        T* tensorBase) {
+  for (uint64_t i = 0; i < size0.size(); i++) {
+    shape_in.push_back(static_cast<IndexT>(size0[i]));
+  }
+
+  uint64_t input_num = 1;
+  for (uint64_t i = 0; i < shape_in.size(); i++) {
+    input_num = input_num * static_cast<uint64_t>(shape_in[i]);
+  }
+
+  for (uint64_t i = 0; i < input_num; i++) {
+    x_indexes1.push_back(tensorBase[i]);
+  }
+
+  uint64_t input_dimension_a = shape_in.size();
+  uint64_t output_dimension = shape_out.size();
+  if (input_dimension_a < output_dimension) {
+    shape_in.insert(shape_in.begin(), output_dimension - input_dimension_a,
+                    static_cast<IndexT>(1));
+  }
+
+  for (uint64_t i = 0; i < shape_in.size(); i++) {
+    if (shape_out[i] == static_cast<IndexT>(1) &&
+        shape_in[i] != static_cast<IndexT>(1)) {
+      shape_out[i] = shape_in[i];
+    }
+  }
+}
+
+template <typename T, typename IndexT>
 uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   auto tensorBase =
       static_cast<T*>(ctx.Input(0)->GetData());  // input tensor address
@@ -154,7 +181,7 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
       input_tensor1->GetTensorShape()->GetDimSizes();  // input shape shape
 
   if (size0.size() < 0) {
-    KERNEL_LOG_ERROR("The dimension of input tensor < 1");
+    KERNEL_LOG_ERROR("The dimension of input tensor < 0");
     return aicpu::KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -166,22 +193,10 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   std::vector<T> x_indexes1;
   std::vector<IndexT> shape_in;
   std::vector<IndexT> shape_out;
-
   for (int64_t i = 0; i < size1[0]; i++) {
     shape_out.push_back(shapeData[i]);
   }
-  for (uint64_t i = 0; i < size0.size(); i++) {
-    shape_in.push_back(static_cast<IndexT>(size0[i]));
-  }
-
-  uint64_t input_num = 1;
-  for (uint64_t i = 0; i < shape_in.size(); i++) {
-    input_num = input_num * static_cast<uint64_t>(shape_in[i]);
-  }
-
-  for (uint64_t i = 0; i < input_num; i++) {
-    x_indexes1.push_back(tensorBase[i]);
-  }
+  GetExpandShape(x_indexes1, shape_in, shape_out, size0, tensorBase);
 
   uint64_t input_flag = 0;
   for (uint64_t i = 0; i < shape_in.size(); i++) {
