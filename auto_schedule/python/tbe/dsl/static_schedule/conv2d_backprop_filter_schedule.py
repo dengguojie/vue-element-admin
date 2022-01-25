@@ -191,16 +191,7 @@ class CceConv2dBackpropFilterOp:
             al0_matrix = tiling.get("AL0_matrix")
             bl0_matrix = tiling.get("BL0_matrix")
             cl0_matrix = tiling.get("CL0_matrix")
-            if al1_shape:
-                if (al1_shape[0] // self.c0_size) % al0_matrix[1] != 0:
-                    dict_args = {}
-                    dict_args['errCode'] = "E64006"
-                    dict_args['param_1'] = "AL1_shape(AL1_shape[0]//C0)"
-                    dict_args['param_2'] = "AL0_matrix(ALO_matrix[1])"
-                    dict_args['value_1'] = str(al1_shape[0] // self.c0_size)
-                    dict_args['value_2'] = str(al0_matrix[1])
-                    error_manager_util.raise_runtime_error(dict_args)
-                if al1_shape[1] < 1:
+            if al1_shape and al1_shape[1] < 1:
                     dict_args = {}
                     dict_args['errCode'] = "E64007"
                     dict_args['axis_name'] = "m"
@@ -208,16 +199,7 @@ class CceConv2dBackpropFilterOp:
                     dict_args['param_value'] = str(al1_shape[1])
                     error_manager_util.raise_runtime_error(dict_args)
 
-            if bl1_shape:
-                if (bl1_shape[0] // self.c0_size) % bl0_matrix[0] != 0:
-                    dict_args = {}
-                    dict_args['errCode'] = "E64006"
-                    dict_args['param_1'] = "BL1_shape(BL1_shape[0]//C0)"
-                    dict_args['param_2'] = "BL0_matrix(BL0_matrix[0])"
-                    dict_args['value_1'] = str(bl1_shape[0] // self.c0_size)
-                    dict_args['value_2'] = str(bl0_matrix[0])
-                    error_manager_util.raise_runtime_error(dict_args)
-                if bl1_shape[1] < 1:
+            if bl1_shape and bl1_shape[1] < 1:
                     dict_args = {}
                     dict_args['errCode'] = "E64007"
                     dict_args['axis_name'] = "n"
