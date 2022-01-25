@@ -15,13 +15,13 @@
 
 set(_eigen_url "")
 if(CANN_PKG_SERVER)
-  set(_eigen_url "${CANN_PKG_SERVER}/libs/eigen3/eigen-3.3.7.tar.gz")
+  set(_eigen_url "${CANN_PKG_SERVER}/libs/eigen3/eigen-3.3.9.tar.gz")
 endif()
 
 ExternalProject_Add(eigen
   URL               ${_eigen_url}
-                    https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
-  URL_MD5           9e30f67e8531477de4117506fe44669b
+                    https://gitlab.com/libeigen/eigen/-/archive/3.3.9/eigen-3.3.9.tar.gz
+  URL_MD5           609286804b0f79be622ccf7f9ff2b660
   DOWNLOAD_DIR      download/eigen
   PREFIX            third_party
   CONFIGURE_COMMAND ""

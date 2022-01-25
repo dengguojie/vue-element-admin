@@ -33,7 +33,7 @@ local_kernels_inc_path := $(LOCAL_PATH) \
                           $(LOCAL_PATH)/utils \
                           $(TOPDIR)inc/aicpu/cpu_kernels \
                           $(TOPDIR)inc/external/aicpu \
-                          ${TOPDIR}third_party/eigen/src/eigen-3.3.7 \
+                          ${TOPDIR}third_party/eigen/src/eigen-3.3.9 \
                           $(TOPDIR)inc \
                           $(TOPDIR)libc_sec/include \
 

@@ -159,15 +159,15 @@ get_libs_name(){
   libs=("secure_c" "protobuf" "eigen" "gtest" "nlohmann_json")
   secure_c_pack="v1.1.10.tar.gz"
   protobuf_pack="v3.13.0.tar.gz"
-  eigen_pack="eigen-3.3.7.tar.gz"
+  eigen_pack="eigen-3.3.9.tar.gz"
   gtest_pack="release-1.8.0.tar.gz"
   nlohmann_json_pack="include.zip"
-  eigen_link=https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
+  eigen_link=https://gitlab.com/libeigen/eigen/-/archive/3.3.9/eigen-3.3.9.tar.gz
   gtest_link=https://github.com/google/googletest/archive/release-1.8.0.tar.gz
   nlohmann_json_link=https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
   protobuf_link=https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
   secure_c_link=https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
-  obs_eigen=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/eigen-3.3.7.tar.gz
+  obs_eigen=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/eigen-3.3.9.tar.gz
   obs_gtest=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/release-1.8.0.tar.gz
   obs_nlohmann_json=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/include.zip
   obs_protobuf=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/v3.13.0.tar.gz
@@ -212,7 +212,7 @@ down_third_libs(){
   declare -A expect_md5
   expect_md5=([secure_c]="ae4865cec1bfb52f7dca03f5c05ac98a"
               [protobuf]="1a6274bc4a65b55a6fa70e264d796490"
-              [eigen]="9e30f67e8531477de4117506fe44669b"
+              [eigen]="609286804b0f79be622ccf7f9ff2b660"
               [gtest]="16877098823401d1bf2ed7891d7dce36"
               [nlohmann_json]="0dc903888211db3a0f170304cd9f3a89")
   declare -A read_md5

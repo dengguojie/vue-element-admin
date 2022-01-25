@@ -35,7 +35,7 @@ local_context_inc_path := $(LOCAL_PATH) \
                           $(TOPDIR)inc/external/aicpu \
                           $(TOPDIR)libc_sec/include \
                           $(TOPDIR)third_party/protobuf/include \
-                          ${TOPDIR}third_party/eigen/src/eigen-3.3.7 \
+                          ${TOPDIR}third_party/eigen/src/eigen-3.3.9 \
                           ${TOPDIR}out/${product}
 
 # built shared libs for device
