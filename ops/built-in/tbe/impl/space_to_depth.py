@@ -58,6 +58,13 @@ MAX_BURST_N = 4095
 MAX_STRIDE = 65535
 
 
+def check_supported(x, filter, y, block_size, data_format="NHWC", kernel_name="space_to_depth"):
+    """
+    check is support dynamic or cube
+    """
+    return True
+
+
 # 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 @check_op_params(REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_STR, KERNEL_NAME)
 def space_to_depth(x, filter,

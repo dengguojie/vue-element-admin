@@ -29,7 +29,7 @@ def layer_norm_grad_generalization(input_dy,
                                    output_pd_x,
                                    output_pd_gamma,
                                    output_pd_beta,
-                                   impl_mode,
+                                   impl_mode=None,
                                    generalize_config=None):
     """
     for now only support dy (-1, -1, N)  and shape_gamma is (N,)

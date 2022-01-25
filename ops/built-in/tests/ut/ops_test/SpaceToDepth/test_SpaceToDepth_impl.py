@@ -176,6 +176,23 @@ def test_get_op_support_info(test_arg):
         None, None, None, None,
     )
 
+def test_dynamic_check_supported(test_arg):
+    from impl.dynamic.space_to_depth import check_supported
+    check_supported(
+        {"shape": (60,60,60,60), "dtype": "float16", "format": "NHWC", "ori_shape": (60,60,60,60),"ori_format": "NHWC"},
+                     {"shape": (), "dtype": "", "format": "", "ori_shape": (),"ori_format": ""},
+                     {"shape": (60,10,10,2160), "dtype": "float16", "format": "NHWC", "ori_shape": (60,10,10,2160),"ori_format": "NHWC"},6,"NHWC"
+    )
+
+def test_static_check_supported(test_arg):
+    from impl.space_to_depth import check_supported
+    check_supported(
+        {"shape": (60,60,60,60), "dtype": "float16", "format": "NHWC", "ori_shape": (60,60,60,60),"ori_format": "NHWC"},
+                     {"shape": (), "dtype": "", "format": "", "ori_shape": (),"ori_format": ""},
+                     {"shape": (60,10,10,2160), "dtype": "float16", "format": "NHWC", "ori_shape": (60,10,10,2160),"ori_format": "NHWC"},6,"NHWC"
+    )
+
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
@@ -193,6 +210,8 @@ ut_case.add_case(["Ascend910A","Ascend310"], case13)
 ut_case.add_case(["Ascend910A","Ascend310"], case14)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_cust_test_func(test_func=test_dynamic_check_supported)
+ut_case.add_cust_test_func(test_func=test_static_check_supported)
 
 def calc_expect_func(x1, x2, y, block_size, data_format):
     input_data = x1['value']

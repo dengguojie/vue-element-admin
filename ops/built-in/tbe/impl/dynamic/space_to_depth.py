@@ -23,6 +23,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
+def check_supported(x, filter, y, block_size, data_format="NHWC", kernel_name="space_to_depth"):
+    """
+    check is support dynamic or cube
+    """
+    if filter is not None:
+        return False, "filter is not none, not support"
+    return True
+
+
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
