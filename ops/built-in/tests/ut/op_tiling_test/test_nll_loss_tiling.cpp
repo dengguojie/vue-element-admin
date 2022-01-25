@@ -107,7 +107,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling1) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -156,7 +156,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling2) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -204,7 +204,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling3) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -252,7 +252,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling4) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -300,7 +300,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling5) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -348,7 +348,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling6) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -396,14 +396,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling7) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
       "1 32 2000 3991 63 4 3 47 3 2 59872 16 3992 -1 ");
   int64_t tiling_test_num = 10;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+    RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   }
 }
 
@@ -448,7 +448,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling8) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -496,7 +496,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling9) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"REDUCTION\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling10) {
@@ -540,7 +540,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling10) {
       "{\"vars\": {\"ub_size\": 65024, \"CORE\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling11) {
@@ -584,7 +584,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling11) {
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling12) {
@@ -628,7 +628,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling12) {
       "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling13) {
@@ -672,7 +672,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling13) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling14) {
@@ -716,7 +716,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling14) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling15) {
@@ -760,7 +760,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling15) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling16) {
@@ -805,7 +805,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling16) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "new case NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
@@ -848,7 +848,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling17) {
       "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),

@@ -559,12 +559,12 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
 static const std::vector<std::string> PAD_COMPILE_INFO_KEY = {"core_num", "ub_size", "dtype_rate",
                                                               "tiling_two_max_output_size"};
 static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"tiling_two_max_output_size", 960}};
-REGISTER_OP_TILING_V3_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
-REGISTER_OP_TILING_V3_WITH_VECTOR(PadV2, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V4_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V4_WITH_VECTOR(PadV2, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 
 // register tiling interface of the StridedSliceGrad op.
-static const std::vector<std::string>& STRIDED_COMPILE_INFO_KEY = {
+static const std::vector<std::string> STRIDED_COMPILE_INFO_KEY = {
     "core_num",      "ub_size",       "dtype_rate",      "tiling_two_max_output_size", "begin_mask", "end_mask",
     "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
-REGISTER_OP_TILING_V3_WITH_VECTOR(StridedSliceGrad, PadTiling, STRIDED_COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V4_WITH_VECTOR(StridedSliceGrad, PadTiling, STRIDED_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling

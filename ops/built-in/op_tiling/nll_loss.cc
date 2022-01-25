@@ -462,5 +462,5 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
 }
 
 // register tiling inferface of the Nllloss op
-REGISTER_OP_TILING_V3_CUSTOM(NLLLoss, NLLLossTiling, NLLLossParseFunc, std::vector<int64_t>);
+REGISTER_OP_TILING_V4_CUSTOM(NLLLoss, NLLLossTiling, NLLLossParseFunc, std::vector<int64_t>);
 }  // namespace optiling

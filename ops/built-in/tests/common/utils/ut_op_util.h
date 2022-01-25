@@ -47,7 +47,7 @@
   paras.set_input_##key(const##key);                                                           \
   paras.UpdateInputDesc(#key, tensor_desc_##key)
 
-#define TENSOR_OUTPUT_WITH_SHAPE(paras, key, shape, dtype, foramt, range)                       \
+#define TENSOR_OUTPUT_WITH_SHAPE(paras, key, shape, dtype, foramt, range)                           \
   auto tensor_out_desc_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, range); \
   paras.UpdateOutputDesc(#key, tensor_out_desc_##key)
 
@@ -58,6 +58,15 @@
 #define RUN_TILING_V3_FALSE(op, tiling_iter, compile_info, run_info) \
   ge::AscendString op_compile_info_as = compile_info.c_str();        \
   ASSERT_FALSE(tiling_iter.tiling_func_v3_(op, tiling_iter.parse_func_v3_(op, op_compile_info_as), run_info));
+
+#define RUN_TILING_V4(op, tiling_iter, compile_info, run_info) \
+  ge::AscendString op_compile_info_as = compile_info.c_str();  \
+  ASSERT_TRUE(tiling_iter.tiling_func_v4_(op, tiling_iter.parse_func_v4_(op, op_compile_info_as), run_info));
+
+#define RUN_TILING_V4_FALSE(op, tiling_iter, compile_info, run_info) \
+  ge::AscendString op_compile_info_as = compile_info.c_str();        \
+  ASSERT_FALSE(tiling_iter.tiling_func_v4_(op, tiling_iter.parse_func_v4_(op, op_compile_info_as), run_info));
+
 namespace ut_util {
 
 template <typename T>

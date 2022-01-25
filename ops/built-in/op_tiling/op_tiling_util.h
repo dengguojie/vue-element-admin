@@ -28,6 +28,7 @@
 #include "op_tiling.h"
 #include "op_attr.h"
 #include "op_const.h"
+#include "op_util.h"
 #include "external/graph/operator.h"
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling_profiling.h"
@@ -65,6 +66,79 @@
     return nullptr;                                                                                                   \
   }                                                                                                                   \
   REGISTER_OP_TILING_V3(optype, Tbe##optype##TilingV3Custom, Tbe##optype##TilingV3CustomParsefunc)
+
+#define REGISTER_OP_TILING_V4_WITH_VECTOR(optype, opfunc, vector_key, optional_key)                                  \
+  class Tbe##optype##VecCompileInfo : public CompileInfoBase {                                                       \
+   public:                                                                                                           \
+    ~Tbe##optype##VecCompileInfo() = default;                                                                        \
+    std::vector<int64_t> compile_vec;                                                                                \
+  };                                                                                                                 \
+  bool Tbe##optype##TilingV4WithVec(const ge::Operator& para, const std::shared_ptr<CompileInfoBase> op_info_ptr,    \
+                                    optiling::utils::OpRunInfo& rinfo) {                                             \
+    OP_TILING_CHECK(op_info_ptr == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#optype, "op_info_ptr is nullptr."),     \
+                    return false);                                                                                   \
+    const std::shared_ptr<Tbe##optype##VecCompileInfo> compile_ptr =                                                 \
+        dynamic_pointer_cast<Tbe##optype##VecCompileInfo>(op_info_ptr);                                              \
+    OP_TILING_CHECK(compile_ptr == nullptr,                                                                          \
+                    VECTOR_INNER_ERR_REPORT_TILIING(#optype, "change CompileInfoBase to VecCompileInfo failed."),    \
+                    return false);                                                                                   \
+    return opfunc(#optype, para, compile_ptr->compile_vec, rinfo);                                                   \
+  }                                                                                                                  \
+  std::shared_ptr<CompileInfoBase> Tbe##optype##TilingV4WithVecParsefunc(const ge::Operator& para,                   \
+                                                                         const ge::AscendString& compile_info) {     \
+    std::shared_ptr<Tbe##optype##VecCompileInfo> compile_ptr =                                                       \
+        ops::make_shared_nothrow<Tbe##optype##VecCompileInfo>();                                                     \
+    if (compile_ptr == nullptr) {                                                                                    \
+      OP_LOGW(#optype, "make_shared failed, will return nullptr!");                                                  \
+      return nullptr;                                                                                                \
+    }                                                                                                                \
+    bool parse_ret = ParseCompileToInt64Vec(para, compile_info, vector_key, optional_key, compile_ptr->compile_vec); \
+    if (parse_ret) {                                                                                                 \
+      return compile_ptr;                                                                                            \
+    }                                                                                                                \
+    return nullptr;                                                                                                  \
+  }                                                                                                                  \
+  REGISTER_OP_TILING_V4(optype, Tbe##optype##TilingV4WithVec, Tbe##optype##TilingV4WithVecParsefunc)
+
+#define REGISTER_OP_TILING_V4_CUSTOM(optype, opfunc, parse_func, struct_name)                                        \
+  class Tbe##optype##CustomCompileInfo : public CompileInfoBase {                                                    \
+   public:                                                                                                           \
+    ~Tbe##optype##CustomCompileInfo() = default;                                                                     \
+    struct_name compile_info;                                                                                        \
+  };                                                                                                                 \
+  bool Tbe##optype##TilingV4Custom(const ge::Operator& para, const std::shared_ptr<CompileInfoBase> op_info_ptr,     \
+                                   optiling::utils::OpRunInfo& rinfo) {                                              \
+    OP_TILING_CHECK(op_info_ptr == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#optype, "op_info_ptr is nullptr."),     \
+                    return false);                                                                                   \
+    const std::shared_ptr<Tbe##optype##CustomCompileInfo> compile_ptr =                                              \
+        dynamic_pointer_cast<Tbe##optype##CustomCompileInfo>(op_info_ptr);                                           \
+    OP_TILING_CHECK(compile_ptr == nullptr,                                                                          \
+                    VECTOR_INNER_ERR_REPORT_TILIING(#optype, "change CompileInfoBase to CustomCompileInfo failed."), \
+                    return false);                                                                                   \
+    return opfunc(#optype, para, compile_ptr->compile_info, rinfo);                                                  \
+  }                                                                                                                  \
+  std::shared_ptr<CompileInfoBase> Tbe##optype##TilingV4CustomParsefunc(const ge::Operator& para,                    \
+                                                                        const ge::AscendString& compile_info) {      \
+    std::shared_ptr<nlohmann::json> json_object =                                                                    \
+        ops::make_shared_nothrow<nlohmann::json>(nlohmann::json::parse(compile_info.GetString()));                   \
+    if (json_object == nullptr) {                                                                                    \
+      OP_LOGW(#optype, "nlohmann::json::parse the compile info failed, will return nullptr!");                       \
+      return nullptr;                                                                                                \
+    }                                                                                                                \
+    std::shared_ptr<Tbe##optype##CustomCompileInfo> compile_ptr =                                                    \
+        ops::make_shared_nothrow<Tbe##optype##CustomCompileInfo>();                                                  \
+    if (compile_ptr == nullptr) {                                                                                    \
+      OP_LOGW(#optype, "make_shared failed, will return nullptr!");                                                  \
+      return nullptr;                                                                                                \
+    }                                                                                                                \
+    bool parse_ret = parse_func(#optype, *json_object, compile_ptr->compile_info);                                   \
+    if (parse_ret) {                                                                                                 \
+      return compile_ptr;                                                                                            \
+    }                                                                                                                \
+    OP_LOGW(#optype, "do parse_func failed, will return nullptr!");                                                  \
+    return nullptr;                                                                                                  \
+  }                                                                                                                  \
+  REGISTER_OP_TILING_V4(optype, Tbe##optype##TilingV4Custom, Tbe##optype##TilingV4CustomParsefunc)
 
 namespace optiling {
 using optiling::ByteBuffer;
@@ -186,15 +260,27 @@ bool GetCompileValue(const nlohmann::json& all_vars, const std::string& name, T1
 
 /*
  * @brief: transfor the json to vector_int64, with the json string key
- * @param [in] op_type: op type
- * @param [in] compile_info_json: the compile info json class
+ * @param [in] op: ge::Operator
+ * @param [in] compile_info: ge::AscendString for compile info
  * @param [in] compile_info_key: the string vector, inclue the key value for op_type
- * @param [in] compile_info_vec: the result vector of int64_t, base on the compile_info_key
- * @return bool: true or false;
+ * @param [in] optional_key: the map for default compile info, set default value, when key isnot in compile_info
+ * @return void*: ptr for vector result;
  */
 void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
                              const std::vector<std::string>& compile_info_key,
                              const std::map<std::string, int64_t>& optional_key);
 
+/*
+ * @brief: transfor the json to vector_int64, with the json string key
+ * @param [in] op: ge::Operator
+ * @param [in] compile_info: ge::AscendString for compile info
+ * @param [in] compile_info_key: the string vector, inclue the key value for op_type
+ * @param [in] optional_key: the map for default compile info, set default value, when key isnot in compile_info
+ * @param [out] compile_vec: the compile parse result
+ * @return bool: true or false;
+ */
+bool ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
+                            const std::vector<std::string>& compile_info_key,
+                            const std::map<std::string, int64_t>& optional_key, std::vector<int64_t>& compile_vec);
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_

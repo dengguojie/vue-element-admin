@@ -75,7 +75,7 @@ vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
   if (op_desc == nullptr)
     return {};
 
-  vector< vector<int64_t> > shapes;
+  vector<vector<int64_t>> shapes;
   int count = op_desc->GetInputsSize();
   for (int i = 0; i < count; i++) {
     auto ptr = op_desc->MutableInputDesc(i);
@@ -133,5 +133,15 @@ void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString comp
   bool bsucc = TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
   OP_TILING_CHECK(!bsucc, delete parsed_vector_ptr, return nullptr);
   return static_cast<void*>(parsed_vector_ptr);
+}
+
+bool ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
+                            const std::vector<std::string>& compile_info_key,
+                            const std::map<std::string, int64_t>& optional_key, std::vector<int64_t>& compile_vec) {
+  std::shared_ptr<nlohmann::json> json_object =
+      ops::make_shared_nothrow<nlohmann::json>(nlohmann::json::parse(compile_info.GetString()));
+  OP_TILING_CHECK(json_object == nullptr, OP_LOGW(TbeGetOpType(op), "Parse the compile info failed, will return false"),
+                  return false);
+  return TransJsonToVector(op, *json_object, compile_info_key, optional_key, compile_vec);
 }
 }  // namespace optiling
