@@ -45,7 +45,7 @@ _TILING_DATA.buf = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
 _TILING_DATA.buf_size = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
 
 
-def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None):
+def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None, attrs=None):
     """
     do op tilinng
     """
@@ -67,6 +67,13 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
     compile_info_c = json.dumps(compile_info).encode('utf_8')
     inputs_c = json.dumps(inputs).encode('utf_8')
     outputs_c = json.dumps(outputs).encode('utf_8')
+    # Attrs supported format: ({name: str, dtype: str, value: Any}, ...)
+    # Attrs supported dtypes: (bool, float, float32, int, int32, list_bool, list_float, list_float32, list_int,
+    #                          list_int32, list_list_int, list_list_int32, list_str, str)
+    if not attrs:
+        attrs_c = ctypes.c_void_p()
+    else:
+        attrs_c = json.dumps(attrs).encode('utf_8')
     if not compile_info_hash:
         hashstr = hashlib.sha1()
         hashstr.update(compile_info_c)
@@ -77,18 +84,20 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
         _TILING_DATA.buf = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
         _TILING_DATA.buf_size = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
 
-    tiling_func = libregister.TbeOpTilingPyInterfaceEx2
+    tiling_func = libregister.TbeOpTilingPyInterface
     if isinstance(timer, list):
         array_c = ctypes.c_uint64 * 3
         elapse_c = array_c(0, 0, 0)
-        res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
-                          _TILING_DATA.buf, _TILING_DATA.buf_size, compile_info_hash_c,
+        res = tiling_func(optype_c, compile_info_c, compile_info_hash_c,
+                          inputs_c, outputs_c, attrs_c,
+                          _TILING_DATA.buf, _TILING_DATA.buf_size,
                           elapse_c)
         for i in range(0, 3):
             timer.append(elapse_c[i])
     else:
-        res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
-                          _TILING_DATA.buf, _TILING_DATA.buf_size, compile_info_hash_c,
+        res = tiling_func(optype_c, compile_info_c, compile_info_hash_c,
+                          inputs_c, outputs_c, attrs_c,
+                          _TILING_DATA.buf, _TILING_DATA.buf_size,
                           ctypes.c_void_p())
     if not res:
         dict_args = {}

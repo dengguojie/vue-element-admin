@@ -37,11 +37,11 @@ TEST_F(TilingDispatch, TilingDispatchElewise) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "ElemWise"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -55,11 +55,11 @@ TEST_F(TilingDispatch, TilingDispatchBroadcast) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "Broadcast"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -73,11 +73,11 @@ TEST_F(TilingDispatch, TilingDispatchReduce) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "CommReduce"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -91,11 +91,11 @@ TEST_F(TilingDispatch, TilingDispatchNorm) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -109,11 +109,11 @@ TEST_F(TilingDispatch, TilingDispatchTransposeDsl) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "Transpose"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -127,11 +127,11 @@ TEST_F(TilingDispatch, TilingDispatchUnknownPattern) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "TilingDispatchUnknownPattern"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_FALSE(op_compile_info != nullptr);
   ASSERT_FALSE(tiling_func(op, op_compile_info, runInfo));
 }
@@ -146,11 +146,11 @@ TEST_F(TilingDispatch, TilingDispatchUnknownOpType) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   optiling::OpTilingFuncInfo& op_func_info = iter->second;
-  ASSERT_TRUE(op_func_info.IsFunctionV3());
-  const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
-  const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
   ge::AscendString compileInfo(R"({"_pattern": "TilingDispatchUnknownOpType"})");
-  void* op_compile_info = parse_func(op, compileInfo);
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_FALSE(op_compile_info != nullptr);
   ASSERT_FALSE(tiling_func(op, op_compile_info, runInfo));
 }

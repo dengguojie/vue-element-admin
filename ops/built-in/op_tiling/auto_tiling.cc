@@ -24,7 +24,6 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-static std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
 
 /*
  * @brief: tiling function of ops
@@ -34,14 +33,14 @@ static std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AutoTiling(const ge::Operator& op_paras, const void* handler,
+bool AutoTiling(const ge::Operator& op_paras, std::shared_ptr<CompileInfoBase> handler,
                 utils::OpRunInfo& run_info) {
   OP_LOGI("AutoTiling", "Entering AutoTiling Dispatcher.");
   if (handler == nullptr) {
     OP_LOGE("AutoTiling", "AutoTiling Dispatcher received nullptr, CompileInfo Parser is not working properly.");
     return false;
   }
-  const AutoTilingHandler& _handler = *(static_cast<const AutoTilingHandler*>(handler));
+  const AutoTilingHandler& _handler = *static_pointer_cast<const AutoTilingHandler>(handler);
 #ifdef ASCEND_OPTILING_UT
   return true;
 #else
@@ -49,7 +48,8 @@ bool AutoTiling(const ge::Operator& op_paras, const void* handler,
 #endif
 }
 
-void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendString& compile_info_str) {
+std::shared_ptr<CompileInfoBase> AutoTilingHandlerParser(const ge::Operator& op_paras,
+                                                         const ge::AscendString& compile_info_str) {
   // Print Info Log and get Pattern+OpType
   static std::mutex vector_lock;
   OP_LOGI("AutoTiling", "Entering AutoTilingHandler Parser.");
@@ -72,12 +72,9 @@ void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendStri
   const string& pattern = parsed_compile_info["_pattern"];
   std::shared_ptr<AutoTilingHandler> p_handler = CreateAutoTilingHandler(op_type, pattern,
                                                                          parsed_compile_info);
-  vector_lock.lock();
-  handler_container.push_back(p_handler);
-  vector_lock.unlock();
-  return p_handler.get();
+  return p_handler;
 }
 
 // register AutoTiling
-REGISTER_OP_TILING_V3(AutoTiling, AutoTiling, AutoTilingHandlerParser);
+REGISTER_OP_TILING_V4(AutoTiling, AutoTiling, AutoTilingHandlerParser);
 }  // namespace optiling

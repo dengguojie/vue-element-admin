@@ -1,5 +1,5 @@
 # source file:python/tbe/common/utils/op_tiling.py
 
-def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None):
+def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None, attrs=None):
 
 def decode(tiling_data, fmt):

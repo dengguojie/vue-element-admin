@@ -65,7 +65,7 @@ private:
   static const std::vector<std::vector<int32_t>> dummy_variable;
 };
 
-class AutoTilingHandler {
+class AutoTilingHandler: public CompileInfoBase {
   public:
   AutoTilingHandler(const std::string& o, const std::string& p) : op_type(o), pattern(p) {}
   virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const = 0;
