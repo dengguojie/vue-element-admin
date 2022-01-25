@@ -98,6 +98,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_v2_dequant_mul_add.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_quant_ub_fusion.cc

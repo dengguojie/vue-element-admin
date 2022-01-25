@@ -51,7 +51,7 @@ Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op)
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("BatchMatMul")
+REGISTER_CUSTOM_OP("BatchMatMulV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType({"BatchMatMul", "BatchMatMulV2"})
     .ParseParamsByOperatorFn(AutoMappingFnBatchMatMul)

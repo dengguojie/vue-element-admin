@@ -588,6 +588,7 @@ class GemmSchedule:
         self.status_controller.have_c = tensor_l0c.op.attrs["have_c"].value
         self.format_a = tensor_l0c.op.attrs["format_a"].value
         self.format_b = tensor_l0c.op.attrs["format_b"].value
+        self.tensor_b_reshape = 1 if "tensor_b_reshape" in ori_tensors else 0
         self.status_controller.align_a = False if self.is_dynamic else tensor_l0c.op.attrs["align_a"].value
         self.status_controller.align_b = False if self.is_dynamic else tensor_l0c.op.attrs["align_b"].value
         if self.format_a == "ND" and self.is_dynamic:
@@ -752,8 +753,13 @@ class GemmSchedule:
         self.container.TENSOR_MAP["c_gm"] = self._match_and_get_tensor(compute_tensors, "tensor_c_gm")
         self.container.TENSOR_MAP["a_placehold"] = self._match_and_get_tensor(
             placeholder_tensors, placeholder_name["a"])
-        self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
-            placeholder_tensors, placeholder_name["b"])
+        if self.tensor_b_reshape:
+            self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
+                compute_tensors, placeholder_name["b"])
+        else:
+            self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
+                placeholder_tensors, placeholder_name["b"])
+
         self.container.TENSOR_MAP["alpha"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
         self.container.TENSOR_MAP["beta"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
         self.container.TENSOR_MAP["c_l0c"] = self._match_and_get_tensor(compute_tensors, "tensor_c_matrix")
@@ -1431,6 +1437,8 @@ class GemmSchedule:
         if compute_inline_c_ub:
             self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("c_ub_fract"))
 
+        if self.tensor_b_reshape:
+            self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("b_placehold"))
         fusion_tensor_cub += self.container.elemwise_tensors
 
     def _tensor_a_l1_workspace_emit(self):

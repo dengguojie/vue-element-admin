@@ -15,6 +15,8 @@
 """
 common function
 """
+import functools
+
 import tbe.common.utils as tbe_utils
 from te.tvm import api as tvm
 from te.lang.cce.te_compute.elewise_compute import vmuls
@@ -176,5 +178,48 @@ def batchmatmul_elem_reshape(batch_matmul, elem_input, batch_shape, para_name):
                              lambda *indices: _batch_reshape(indices, elem_input),
                              name="broadcast_reshape_" + para_name,
                              tag="broadcast_reshape")
+
+    return elem_input
+
+
+def elem_reshape(elem_shape, elem_input, para_name):
+    """
+    reshape elem inputs tensors
+
+    Parameters:
+    elem_shape: the tensor of batchmatmul elem
+
+    elem_input: the tensor of elem
+
+    para_name: the elemwise name
+
+    Returns result
+    """
+    batch_shape = elem_shape[:-4]
+    batch = functools.reduce(lambda x, y: x * y, elem_shape[:-4])
+    elem_shape = [batch, ] + elem_shape[-4:]
+
+    def _batch_reshape(indices, input_tensor):
+        if len(batch_shape) == 1:
+            return input_tensor(indices[0], *indices[-4:])
+        elif len(batch_shape) == 2:
+            return input_tensor(indices[0] // batch_shape[-1],
+                                indices[0] % batch_shape[-1],
+                                *indices[-4:])
+        elif len(batch_shape) == 3:
+            return input_tensor(indices[0] // batch_shape[-1] // batch_shape[-2],
+                                indices[0] // batch_shape[-1] % batch_shape[-2],
+                                indices[0] % batch_shape[-1],
+                                *indices[-4:])
+        return input_tensor(indices[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
+                            indices[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
+                            indices[0] // batch_shape[-1] % batch_shape[-2],
+                            indices[0] % batch_shape[-1],
+                            *indices[-4:])
+
+    elem_input = tvm.compute(elem_shape,
+                             lambda *indices: _batch_reshape(indices, elem_input),
+                             name="reshape_" + para_name,
+                             tag="reshape")
 
     return elem_input

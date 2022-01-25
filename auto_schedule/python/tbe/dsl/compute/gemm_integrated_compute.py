@@ -254,6 +254,7 @@ class GEMMCompute(FormatCompute):
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.attrs = para_dict.get("attrs", {})
         self.batch_shape = para_dict.get("batch_shape")
+        self.op_type = para_dict.get("op_type", None)
         self.beta_mode, self.alpha_mode = "none", "none"
         self.have_bias, self.have_c = False, False
         self.res = None
@@ -571,10 +572,40 @@ class GEMMCompute(FormatCompute):
 
         return tensor_c_ub_fract
 
+    def _tensor_b_reshape(self):
+        if self.op_type == "BatchMatMulV2":
+            ori_shape_b = self.tensor_b.op.attrs["ori_shape"]
+            shape_b = self.tensor_b.shape
+            ori_shape_b_len = len(ori_shape_b)
+            shape_b_len = len(shape_b)
+            # (c1hw, n1, n0, c0) -> (h, w, c1, n1, n0, c0)
+            is_valid = (not in_dynamic()
+                        and ori_shape_b_len in (3, 4)
+                        and shape_b_len == 4
+                        and self.tensor_b.dtype == "int8"
+                        and self.trans_b == False
+                        and self.tensor_b.op.attrs["ori_format"] == "HWCN"
+                        and self.format_b == "FRACTAL_Z")
+            if is_valid:
+                if ori_shape_b_len == 4:
+                    height, width, _, _ = ori_shape_b
+                else:
+                    height = 1
+                    width, _, _ = ori_shape_b
+
+                c1hw, n1, n0, c0 = shape_b
+                c1 = c1hw // (height * width)
+                tensor_b_reshape = [height * width, c1, n1, n0, c0]
+                self.tensor_b = tvm.compute(tensor_b_reshape,
+                                            lambda hw_idx, c1_idx, n1_idx, n0_idx, c0_idx:
+                                            self.tensor_b(c1_idx * height * width + hw_idx, n1_idx, n0_idx, c0_idx),
+                                            name="tensor_b_reshape")
+
     def calculate(self):
         """
         the main func of gemm
         """
+        self._tensor_b_reshape()
         self._init_func()
         self.ops_format = self.format_a
 

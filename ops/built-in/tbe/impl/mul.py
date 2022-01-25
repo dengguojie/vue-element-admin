@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util import util_common
+from impl.util.util_compute import elem_reshape
 
 
 # 'pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
@@ -834,6 +835,39 @@ def reshape(tensor_in, new_shape):
     return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
 
 
+def check_batchmatmul_dequant_mul_fusion(input_tensor):
+    """
+    check if fused with batchmatmul + dequant + mul + add
+
+    Parameters
+    ----------
+    input_tensor: TVM tensor
+        the tensor of elem input
+
+    Returns
+    -------
+    """
+    nodes = ["mul"]
+    queue = [input_tensor]
+    visited = [input_tensor]
+    while queue:
+        item = queue.pop(0)
+        if len(item.shape) in (3, 5) and ("matmul" in item.op.tag) \
+            and item.op.attrs["format"] == "FRACTAL_NZ" and "matmul" not in nodes:
+            nodes.append("matmul")
+        elif "dequant" in item.op.tag and "dequant" not in nodes:
+            nodes.append("dequant")
+
+        if nodes == ["mul", "dequant", "matmul"]:
+            return True
+
+        for child in item.op.input_tensors:
+            if child not in visited:
+                queue.append(child)
+                visited.append(child)
+    return False
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("mul")
 def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="mul"):
     """
@@ -864,7 +898,17 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
             input_y = tbe.cast_to(input_y, "float32")
         input_y = tbe.broadcast(input_y, shape_x)
     else:
-        if all(["format" in input_x.op.attrs, "format" in input_y.op.attrs]):
+        batchmatmul_deq_mul_add_fusion_lflag = check_batchmatmul_dequant_mul_fusion(input_x)
+        batchmatmul_deq_mul_add_fusion_rflag = check_batchmatmul_dequant_mul_fusion(input_y)
+        if batchmatmul_deq_mul_add_fusion_lflag or batchmatmul_deq_mul_add_fusion_rflag:
+            if batchmatmul_deq_mul_add_fusion_rflag:
+                input_x = elem_reshape(shape_x, input_x, "mul_x")
+            elif batchmatmul_deq_mul_add_fusion_lflag:
+                input_y = elem_reshape(shape_y, input_y, "mul_y")
+
+            shape_x = shape_util.shape_to_list(input_x.shape)
+            shape_y = shape_util.shape_to_list(input_y.shape)
+        elif all(["format" in input_x.op.attrs, "format" in input_y.op.attrs]):
             format_x = input_x.op.attrs["format"].value
             format_y = input_y.op.attrs["format"].value
             check_format = "FRACTAL_NZ"

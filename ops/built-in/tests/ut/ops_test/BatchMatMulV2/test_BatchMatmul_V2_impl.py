@@ -335,7 +335,7 @@ case_dequant_requant_sum = (
      False,
      False,
      "dequant", "batch_matmul_v2_dequant_test",
-     {"shape": (198, 3, 3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 47), "ori_format": "ND"}], 
+     {"shape": (198, 3, 3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 47), "ori_format": "ND"}],
 )
 def test_op_fusion_func(case):
     fusion_para = case[7]
@@ -346,11 +346,11 @@ def test_op_fusion_func(case):
     from te.lang.cce import cce_build_code
     from impl.ascend_requant import ascend_requant_compute
     from te.platform.cce_conf import te_set_version
-    
+
     def test_op_fusion(test_args):
         te_set_version("Ascend710")
         with cce():
-            
+
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
                                     attrs={'format': case[0].get("format"),
                                             "ori_shape": case[0].get("ori_shape")},
@@ -366,7 +366,7 @@ def test_op_fusion_func(case):
                                     dtype=case[2].get("dtype"))
             res = batch_matmul_compute(tensor_a, tensor_b, bias=bias, output_z=case[9], trans_a=case[5],
                                 trans_b=case[6], offset_x=0, kernel_name=case[8])
-            
+
             if fusion_para == "dequant":
                 deq_tensor = tvm.placeholder(case[3].get("shape"), name='deq_tensor',
                                             attrs={'format': case[3].get("format"),
@@ -398,9 +398,91 @@ def test_op_fusion_func(case):
     return test_op_fusion
 
 for fusion_case in case_dequant_requant_sum:
-    
+
     ut_case.add_cust_test_func(["Ascend310"], test_func=test_op_fusion_func(fusion_case))
-    
+
+case_batchmatmul_dequant_mul_add_fusion = [
+    {"shape": (8, 25, 2, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 784), "ori_format": "ND"},
+    {"shape": (200, 6, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (8, 784, 96), "ori_format": "HWCN"},
+    None,
+    False,
+    False,
+    {"shape": (8, 3, 2, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    "batchmatmul_v2_dequant_mul_add_fusion_test",
+    {"shape": (1, 1, 1, 1, 16), "dtype": "uint64", "format": "NC1HWC0", "ori_shape": (1,), "ori_format": "NCHW"},
+    {"shape": (8, 6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    "dequant",
+    {"shape": (8, 6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    {"shape": (8, 6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    "mul",
+    {"shape": (8, 6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    {"shape": (8, 6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 31, 96), "ori_format": "ND"},
+    "add"]
+
+def test_batchmatmul_dequant_mul_add_fusion_func(case):
+    from impl.batch_matmul_v2 import batch_matmul_compute
+    from impl.ascend_dequant import ascend_dequant_compute
+    from impl.mul import mul_compute
+    from impl.add import add_compute
+    from tbe.dsl import auto_schedule
+    from te.tvm.target import cce
+    from te.lang.cce import cce_build_code
+    from te.platform.cce_conf import te_set_version
+
+    def test_op_fusion(test_args):
+        te_set_version("Ascend710")
+        with cce():
+            tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
+                                    attrs={'format': case[0].get("format"),
+                                            "ori_shape": case[0].get("ori_shape")},
+                                    dtype=case[0].get("dtype"))
+
+            tensor_b = tvm.placeholder(case[1].get("shape"), name='tensor_b',
+                                    attrs={'format': case[1].get("format"),
+                                            "ori_shape": case[1].get("ori_shape"),
+                                            "ori_format": case[1].get("ori_format")},
+                                    dtype=case[1].get("dtype"))
+
+            res = batch_matmul_compute(tensor_a, tensor_b, bias=None, output_z=case[5], trans_a=case[3],
+                                trans_b=case[4], offset_x=0, kernel_name=case[6])
+
+            deq_tensor = tvm.placeholder(case[7].get("shape"), name='deq_tensor',
+                                        attrs={'format': case[7].get("format"),
+                                        "ori_shape": case[7].get("ori_shape")},
+                                        dtype=case[7].get("dtype"))
+            res = ascend_dequant_compute(res, deq_tensor, case[8], sqrt_mode=False, relu_flag=False, kernel_name=case[9])
+
+
+            mul_tensor = tvm.placeholder(case[10].get("shape"), name='mul_tensor',
+                                        attrs={'format': case[10].get("format"),
+                                        "ori_shape": case[10].get("ori_shape")},
+                                        dtype=case[10].get("dtype"),
+            )
+            res = mul_compute(res, mul_tensor, case[11], kernel_name=case[12])
+
+            add_tensor = tvm.placeholder(case[13].get("shape"), name='add_tensor',
+                                        attrs={'format': case[13].get("format"),
+                                        "ori_shape": case[13].get("ori_shape")},
+                                        dtype=case[13].get("dtype"),
+            )
+            out = add_compute(res, add_tensor, case[14], kernel_name=case[15])
+
+            tensor_list = [tensor_a, tensor_b, deq_tensor, mul_tensor, add_tensor, out]
+            sch = auto_schedule(out)
+            config = {
+                    "print_ir": False,
+                    "need_build": True,
+                    "name": "test_batchmatmul_dequant_mul_add_fusion_func",
+                    "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+        te_set_version("Ascend310")
+    return test_op_fusion
+
+
+ut_case.add_cust_test_func(["Ascend310"],
+                    test_func=test_batchmatmul_dequant_mul_add_fusion_func(case_batchmatmul_dequant_mul_add_fusion))
+
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
@@ -432,7 +514,7 @@ if __name__ == '__main__':
     #     ut_case.add_precision_case(["Ascend310", "Ascend910"], case)
 
     from case_nd_in_nd_out import cases
-    for case in cases:
+    for case_info in cases:
         #print(case)
-        ut_case.add_case(["Ascend310"], case)
+        ut_case.add_case(["Ascend310"], case_info)
     #ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

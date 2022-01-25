@@ -58,8 +58,8 @@
         "format": "NHWC",
         "shape": [
           3,
-          96,
-          32
+          32,
+          64
         ],
         "type": "float16",
         "name": "y"
@@ -277,13 +277,13 @@
         "format": "NHWC",
         "shape":  [
           -1,
-          96,
-          32
+          32,
+          64
         ],
         "typical_shape": [
           3,
-          96,
-          32
+          32,
+          64
         ],
         "shape_range": [
           1,
@@ -364,8 +364,8 @@
         "format": "NHWC",
         "shape": [
           3,
-          96,
-          32
+          32,
+          64
         ],
         "type": "float16",
         "name": "y"
@@ -442,114 +442,8 @@
         "format": "NHWC",
         "shape": [
           3,
-          96,
-          32
-        ],
-        "type": "float16",
-        "name": "y"
-      }
-    ],
-    "attr": [
-      {
-        "name": "adj_x1",
-        "value": true,
-        "type": "bool"
-      },
-      {
-        "name": "adj_x2",
-        "value": true,
-        "type": "bool"
-      }
-    ]
-  },
-  {
-    "op": "BatchMatMulV2",
-    "case_name": "test_BatchMatMulV2_007",
-    "input_desc": [
-      {
-        "format": "NHWC",
-        "shape": [
-          -1,
-          96,
-          32
-        ],
-        "typical_shape": [
-          3,
-          96,
-          32
-        ],
-        "shape_range": [
-          1,
-          -1
-        ],
-        "type": "float16",
-        "value_range": [
-          [
-            -1,
-            1
-          ]
-        ],
-        "data_distribute": "uniform",
-        "name": "x1"
-      },
-      {
-        "format": "NHWC",
-        "shape": [
-          -1,
-          64,
-          96
-        ],
-        "typical_shape": [
-          3,
-          64,
-          96
-        ],
-        "shape_range": [
-          1,
-          5
-        ],
-        "type": "float16",
-        "value_range": [
-          [
-            -1,
-            1
-          ]
-        ],
-        "data_distribute": "uniform",
-        "name": "x2"
-      },
-      {
-        "format": "NHWC",
-        "shape": [
+          32,
           64
-        ],
-        "type": "float16",
-        "value_range": [
-          [
-            -1,
-            1
-          ]
-        ],
-        "data_distribute": "uniform",
-        "name": "bias"
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "NHWC",
-        "shape": [
-          -1,
-          96,
-          32
-        ],
-        "typical_shape": [
-          3,
-          96,
-          32
-        ],
-        "shape_range": [
-          1,
-          5
         ],
         "type": "float16",
         "name": "y"
