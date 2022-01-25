@@ -114,17 +114,6 @@ ut_case.add_precision_case(
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
     })
 
-ut_case.add_precision_case(
-    "all", {
-        "params": [{"shape": (1024, ), "dtype": "float16", "param_type": "input"},
-                   {"shape": (1024, ), "dtype": "int8", "param_type": "output"},
-                   "int8",
-                   False
-                   ],
-        "case_name": "test_cast_to_precision_fp162int8",
-        "calc_expect_func": calc_expect_func,
-        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-    })
 
 ut_case.add_precision_case(
     "Hi3796CV300CS", {

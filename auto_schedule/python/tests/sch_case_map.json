@@ -240,7 +240,8 @@
         "vnot/test_vnot_impl.py",
         "vcmp/test_vcmp_impl.py",
         "vsel/test_vsel_impl.py",
-        "vcmpsel/test_vcmpsel_impl.py"
+        "vcmpsel/test_vcmpsel_impl.py",
+        "multi_outputs/test_multi_outputs_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce_tilingcase.py":[
         "reduce_sum"

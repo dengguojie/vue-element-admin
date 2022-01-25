@@ -518,6 +518,43 @@ class ElewiseSchedule(VectorSchedule):
             shape, dtype, block_split_axis, block_split_inner_size,
             max_ub_count)
 
+        if len(self._mid_output_tensors) > 1:
+            ub_tail_tag = 0
+            for tensor in self._mid_output_tensors:
+                _out_shape = self._shape_to_list(tensor.shape)
+                _out_dtype = tensor.dtype
+                if _out_shape == shape and _out_dtype == dtype:
+                    continue
+
+                data_size = 1
+                for i in range(ub_split_axis + 1, len(_out_shape), 1):
+                    data_size = data_size * _out_shape[i]
+                if block_split_axis == ub_split_axis:
+                    tail_count = block_split_inner_size % ub_split_inner
+                    ub_split_axis_count = block_split_inner_size
+                else:
+                    tail_count = _out_shape[ub_split_axis] % ub_split_inner
+                    ub_split_axis_count = _out_shape[ub_split_axis]
+                ub_split_outer = math.ceil(ub_split_axis_count / ub_split_inner)
+                tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count * data_size
+                if tail_count != 0:
+                    if tail_size < 32:
+                        allow_tail_count = 32 / (DTYPE_WIDTH_MAP.get(dtype) * 2 * data_size)
+                        new_ub_split_inner = math.floor((ub_split_axis_count - allow_tail_count) / (ub_split_outer - 1))
+                        new_ub_inner_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * new_ub_split_inner * data_size
+                        if new_ub_inner_size < 32:
+                            ub_tail_tag = 1
+                            break
+                        ub_split_inner = new_ub_split_inner
+            if ub_tail_tag:
+                self.block_tiling_use_nparts_mode = False
+                self._need_multi_core = False
+                block_split_axis = 0
+                block_split_inner_size = shape[block_split_axis]
+                ub_split_axis, ub_split_inner = self._calculate_tiling_core(
+                    shape, dtype, block_split_axis, block_split_inner_size,
+                    max_ub_count)
+
         if self._need_multi_core:
             if self._is_need_optimize_block_tiling(shape, block_split_axis,
                                                    ub_split_axis,

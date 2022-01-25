@@ -38,7 +38,7 @@ DMA_MODE = 0
 VECTOR_MODE = 1
 VECTOR_ENHANCED_MODE = 2
 UINT8_MAXIMUM = 255
-ME_LIMITS_LIST = [[3200, 10], [840, 12]] # MEB limits case, because of over stack
+ME_LIMITS_LIST = [[3200, 10], [840, 12], [480, 20]] # MEB limits case, because of over stack
 
 
 def last_axis_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
