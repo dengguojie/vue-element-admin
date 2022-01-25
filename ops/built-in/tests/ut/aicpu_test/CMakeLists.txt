@@ -128,6 +128,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/sqrtgrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/svd.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unpack.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_max.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_min.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_prod.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
@@ -412,6 +413,7 @@ set(_cpu_kernels_ut_files
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
   testcase/unpack/src/unpack_utest.cpp
+  testcase/unsorted_segment_max/src/unsorted_segment_max_utest.cpp
   testcase/unsorted_segment_min/src/unsorted_segment_min_utest.cpp
   testcase/unsorted_segment_prod/src/unsorted_segment_prod_utest.cpp
   testcase/where/src/where_utest.cpp
