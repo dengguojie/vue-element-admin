@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.14)
 
 project(cann C CXX)
 
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_FOUND})
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE_FOUND})
+endif(CCACHE_FOUND)
+
 #switch build mode
 if(BUILD_MODE)
   message(${BUILD_MODE})
