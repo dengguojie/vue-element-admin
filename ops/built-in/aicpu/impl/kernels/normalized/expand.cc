@@ -130,11 +130,11 @@ uint32_t ExpandByLayer(std::vector<T> x_indexes,
 }
 
 template <typename T, typename IndexT>
-uint32_t GetExpandShape(std::vector<T>& x_indexes1,
-                        std::vector<IndexT>& shape_in,
-                        std::vector<IndexT>& shape_out,
-                        std::vector<int64_t> size0,
-                        T* tensorBase) {
+void GetExpandShape(std::vector<T>& x_indexes1,
+                    std::vector<IndexT>& shape_in,
+                    std::vector<IndexT>& shape_out,
+                    std::vector<int64_t> size0,
+                    T* tensorBase) {
   for (uint64_t i = 0; i < size0.size(); i++) {
     shape_in.push_back(static_cast<IndexT>(size0[i]));
   }
