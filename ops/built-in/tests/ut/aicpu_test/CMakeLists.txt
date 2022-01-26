@@ -106,6 +106,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/abs.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_and.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_or.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_xor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/div.cc
@@ -286,6 +287,7 @@ set(_cpu_kernels_ut_files
   testcase/betainc/src/betainc_utest.cpp
   testcase/bitwise_and/src/bitwise_and_utest.cpp
   testcase/bitwise_or/src/bitwise_or_utest.cpp
+  testcase/bitwise_xor/src/bitwise_xor_utest.cpp
   testcase/cache_swap_table/src/cache_swap_table_kernel_utest.cpp
   testcase/calc_buckets_limit_and_offset/src/calc_buckets_limit_and_offset_utest.cpp
   testcase/candidate_sampler/src/candidate_sampler_kernel_utest.cpp

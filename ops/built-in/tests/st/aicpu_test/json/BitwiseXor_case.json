@@ -1,0 +1,2335 @@
+[
+    {
+        "case_name": "DATA_TYPE_DT_INT8_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT16_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_UINT8_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint8"
+                ],
+                "shape": [
+                    4,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_UINT16_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint16"
+                ],
+                "shape": [
+                    2,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_UINT32_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint32"
+                ],
+                "shape": [
+                    2,
+                    256
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_UINT64_2K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "uint64"
+                ],
+                "shape": [
+                    2,
+                    128
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_512B",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    32
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_1K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    1
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_4K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    4
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_8K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    8
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_16K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    16
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_32K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    32
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_64K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    64
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_128K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    128
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_256K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    256
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_512K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_1M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    2
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    2
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    2
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_2M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    4
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_4M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    8
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_8M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    16
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_512B",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    2,
+                    32
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_1K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    1
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    1
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_4K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    4
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_8K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    8
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_16K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    16
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_32K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    32
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    32
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_64K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    64
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    64
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_128K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    128
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    128
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_256K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    256
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    256
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_512K",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    512
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_1M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    2
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    512,
+                    2
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    2
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_2M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    512,
+                    4
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    4
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_4M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    512,
+                    8
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    8
+                ]
+            }
+        ]
+    },
+    {
+        "case_name": "DATA_TYPE_DT_INT64_BCAST_8M",
+        "op": "BitwiseXor",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    1,
+                    512,
+                    16
+                ],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -384.0,
+                        384.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int64"
+                ],
+                "shape": [
+                    4,
+                    32,
+                    512,
+                    16
+                ]
+            }
+        ]
+    }
+]
