@@ -156,7 +156,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
 void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
   constexpr int key_10 = 10;
   constexpr int key_1 = 1;
-  constexpr int key_4= 4;
+  constexpr int key_4 = 4;
   constexpr int key_2 = 2;
   constexpr int key_8 = 8;
   constexpr int key_9 = 9;
