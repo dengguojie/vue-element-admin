@@ -23,5 +23,10 @@ ut_case.add_case("all",
                                                 "float16", "dynamic_greater_equal_fp16_ND",
                                                 "success"))
 
+ut_case.add_case("all",
+                 gen_dynamic_greater_equal_case((-2,), (-2,), ((1, 1),), ((2, 16),),
+                                                "float16", "dynamic_greater_equal_rank_ND",
+                                                "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

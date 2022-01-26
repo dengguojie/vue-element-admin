@@ -29,5 +29,9 @@ ut_case.add_case("all", gen_dynamic_relu_case((-1,), ((1, None),), "int8",
                                               "dynamic_relu_int8_ND",
                                               "success"))
 
+ut_case.add_case("all", gen_dynamic_relu_case((-2, ), ((1, None), (1, None)), "float32",
+                                              "dynamic_relu_rank_ND",
+                                              "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

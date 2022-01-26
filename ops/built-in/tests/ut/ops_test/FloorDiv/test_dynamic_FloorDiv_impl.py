@@ -23,5 +23,10 @@ ut_case.add_case("all", gen_dynamic_floor_div_case((-1,), (1,), ((2, 16),),
                                                    "dynamic_floor_div_fp16_ND",
                                                    "success"))
 
+ut_case.add_case("all", gen_dynamic_floor_div_case((-2,), (-2,), ((2, 16),),
+                                                   ((1, 1),), "float16",
+                                                   "dynamic_floor_div_rank_ND",
+                                                   "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

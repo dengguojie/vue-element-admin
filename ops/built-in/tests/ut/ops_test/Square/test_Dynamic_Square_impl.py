@@ -26,5 +26,13 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
                                          "dynamic_square_float32_ND",
                                          "success"))
 
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_dynamic_square_case((-2,),
+                                         [(1, None)],
+                                         "float32", "ND",
+                                         (-2,),
+                                         "dynamic_square_rank_ND",
+                                         "success"))
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310"])

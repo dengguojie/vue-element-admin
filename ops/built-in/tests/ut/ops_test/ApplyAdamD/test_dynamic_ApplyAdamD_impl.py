@@ -61,6 +61,29 @@ case2 = {"params": [get_input((-1,), [(1, 200)], "float32"),
          "expect": "success",
          "support_expect": True}
 
+case3 = {"params": [get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    get_input((-2, ), [(1, None)], "float32"),
+                    False,False,
+                    ],
+         "case_name": "ApplyAdamD_3",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
+
+if __name__ == '__main__':
+    ut_case.run("Ascend910A")

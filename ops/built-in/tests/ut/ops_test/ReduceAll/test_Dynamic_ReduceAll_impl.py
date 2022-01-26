@@ -26,5 +26,10 @@ ut_case.add_case(
                                        (1,), [(1,1),], "int8", "ND", (-1,3,-1,2), (1, ), 
                                        True, "dynamic_reduce_all_fp16_ND", "success"))
 
+ut_case.add_case(
+    "all", gen_dynamic_reduce_sum_case((-1,3,-1,2), [(1,None), (3,3), (1,None), (2,2)],
+                                       (1,), [(1,1),], "bool", "ND", (-1,3,-1,2), (1, ), 
+                                       True, "dynamic_reduce_all_bool_ND", "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

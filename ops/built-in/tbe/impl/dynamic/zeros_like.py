@@ -47,6 +47,8 @@ def zeros_like_compute(x, y, kernel_name="zeros_like"):
         the result of zeros_like_compute
     """
     src_dtype = x.dtype.lower()
+    if src_dtype == "bool":
+        src_dtype = "int8"
     dst_type = src_dtype
     src_type_list = ("int8", "uint8")
     dst_type_list = ("int8", "uint8")

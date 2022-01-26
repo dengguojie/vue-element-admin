@@ -30,5 +30,11 @@ ut_case.add_case(
     ["Ascend310"], gen_dynamic_reduce_prod_case((-1,3,-1,2), [(1,None), (3,3), (1,None), (2,2)],
                                        (1,), [(1,1),], "uint8", "ND", (-1,3,-1,2), (1, ),
                                        True, "dynamic_reduce_prod_uint8_ND", "success"))
+
+ut_case.add_case(
+    ["Ascend910A"], gen_dynamic_reduce_prod_case((-2,), [(1,None), (3,3), (1,None), (2,2)],
+                                       (-2,), [(1,1),], "float16", "ND", (-2,), (-2, ),
+                                       True, "dynamic_reduce_prod_rank_ND", "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

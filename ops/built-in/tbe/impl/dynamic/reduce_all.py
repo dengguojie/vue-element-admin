@@ -83,6 +83,8 @@ def reduce_all(x, axes, y, keepdims=False, kernel_name="reduce_all"):
 
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
+    if dtype_lower_x == "bool":
+        dtype_lower_x = "int8"
     check_list_x = ("int8",)
     para_check.check_dtype(dtype_lower_x, check_list_x, param_name="x")
     x["rel_pos_to_reduce"] = "before"

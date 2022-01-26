@@ -30,5 +30,9 @@ ut_case.add_case("all", gen_dynamic_minimum_case((1,), (-1,), ((1, 1),), ((2, 16
                                           "uint8", "dynamic_minimum_fp16_ND",
                                           "success"))
 
+ut_case.add_case("all", gen_dynamic_minimum_case((-2,), (-2,), ((1, 1),), ((2, 16),),
+                                          "uint8", "dynamic_minimum_rank_ND",
+                                          "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

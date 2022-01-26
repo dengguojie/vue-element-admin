@@ -33,9 +33,19 @@ case3 = {"params": [{"shape": (-1, -1, -1), "dtype": "float32", "format": "ND", 
          "case_name": "pow_dynamic_float32_broadcast",
          "expect": "success"}
 
+case4 = {"params": [{"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, None), (1, None), (1, None)]},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, None), (1, None)]},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, None), (1, None), (1, None)]}],
+         "case_name": "pow_dynamic_float32_rank",
+         "expect": "success"}
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
+ut_case.add_case("all", case4)
 
 
 if __name__ == "__main__":
