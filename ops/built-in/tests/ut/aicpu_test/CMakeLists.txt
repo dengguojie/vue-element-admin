@@ -119,6 +119,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/matrix_set_diag_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/matrix_triangular_solve.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/minimum.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/multinomial.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/qr.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/random_gamma.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/scale_and_translate.cc
@@ -365,6 +366,7 @@ set(_cpu_kernels_ut_files
   testcase/mul/src/mul_utest.cpp
   testcase/multinomial_alias_draw/multinomial_alias_draw_utest.cpp
   testcase/multinomial_alias_setup/src/multinomial_alias_setup_utests.cpp
+  testcase/multinomial/src/multinomial_utest.cpp
   testcase/neg/src/neg_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
   testcase/nms_with_mask/src/nms_with_mask_utest.cpp
