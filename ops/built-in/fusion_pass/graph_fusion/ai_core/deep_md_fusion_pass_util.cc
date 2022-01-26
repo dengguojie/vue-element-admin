@@ -135,7 +135,7 @@ Status DeepMdFusionPassUtil::CreateAddNodeAfterSplitNode(const std::string& fuse
                     VECTOR_FUSION_INNER_ERR_REPORT(fusedOpType.c_str(), "Failed to check preNodeOutputIdx"),
                     return PARAM_INVALID);
 
-  std::string addNodeName = preNodes[0]->GetName() + "/Add/"+ fusedOpDesc->GetOutputNameByIndex(preNodeOutputIdx);
+  std::string addNodeName = preNodes[0]->GetName() + "/Add/" + fusedOpDesc->GetOutputNameByIndex(preNodeOutputIdx);
   OP_LOGD(fusedOpType.c_str(), "Name for new Add node is: %s", addNodeName);
 
   ge::OpDescPtr opDesc = nullptr;
