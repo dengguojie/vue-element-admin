@@ -1,0 +1,353 @@
+[
+    {
+        "case_name": "Test_Erfc_double_512B",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_1K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32,2]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_4K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,2]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_8K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,4]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_16K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_32K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_64K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_128K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,4]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_256K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,4]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_512K",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_1M",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,8]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_2M",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Erfc_double_8M",
+        "op": "Erfc",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,1024,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -1.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,1024,32]
+            }
+        ]
+    }
+]

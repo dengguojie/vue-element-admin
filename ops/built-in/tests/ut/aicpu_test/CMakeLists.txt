@@ -111,6 +111,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/div.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/divnonan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/erfc.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/fixed_unigram_candidate_sampler.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/ifft.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/inv.cc
@@ -326,6 +327,7 @@ set(_cpu_kernels_ut_files
   testcase/elugrad/src/elugrad_utest.cpp
   testcase/embedding_lookup/src/embedding_lookup_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
+  testcase/erfc/src/erfc_utest.cpp
   testcase/expand/src/expand_utest.cpp
   testcase/exponential/src/exponential_utest.cpp
   testcase/fill/src/fill_utest.cpp
