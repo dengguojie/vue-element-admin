@@ -180,6 +180,7 @@ class StridedSlice:
         max_dim_supported = 8
         self.tiling_param = self.TilingParam([1] * max_dim_supported, inst)
         self.dtype = input_x.get("dtype").lower()
+        self.dtype = "int8" if self.dtype == "bool" else self.dtype
         self.dtype_size = common_util.get_data_size(self.dtype)
         self.input_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="input_gm", scope=tik.scope_gm)
         self.begin_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="begin_gm", scope=tik.scope_gm)

@@ -37,6 +37,8 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_concat_case((-1, -1), "uint8", "case_4", "success"))
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_concat_case((-1, -1), "int32", "case_5", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+                 gen_concat_case((-2, ), "bool", "case_6", "success"))
 
 def test_op_check_supported_1(test_arg):
     from impl.dynamic.strided_slice import check_supported
