@@ -39,9 +39,20 @@ case2 = {"params": [{"shape": (3, 3, 2), "dtype": "int32", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
+case3 = {"params": [{"shape": (8, 5, 128), "dtype": "int32", "format": "ND", "ori_shape": (8, 5, 128), "ori_format": "ND"},
+                    {"shape": (4,), "dtype": "int32", "format": "ND", "ori_shape": (4,), "ori_format": "ND"},
+                    {"shape": (8, 4, 128), "dtype": "int32", "format": "ND", "ori_shape": (8, 4, 128), "ori_format": "ND"},
+                    {"shape": (8, 5, 128), "dtype": "int32", "format": "ND", "ori_shape": (8,5, 128), "ori_format": "ND"},
+                    1,
+                    ],
+         "case_name": "inplace_index_add_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run(["Ascend910A"])
     exit(0)

@@ -92,6 +92,27 @@ class Scatter:
         self.compute_type = compute_type
         self.nd_flag = nd_flag
 
+        self.indices_ub_number = None
+        self.updates_ub_number = None
+        self.vconv_ub_number = None
+        self.var_vconv_ub = None
+        self.updates_vconv_ub = None
+        self.var_tail_vconv_ub = None
+        self.updates_tail_vconv_ub = None
+        self.var_ub = None
+        self.updates_ub = None
+        self.indices_ub = None
+        self.var_tail_ub = None
+        self.updates_tail_ub = None
+        self.var_read_index = None
+        self.updates_read_index = None
+        self.indices_loop_index = None
+        self.indices_tmp = None
+        self.outer_loop_start_index_every_block = None
+        self.outer_loops_ub_per_block = None
+        self.outer_loop_start_index_of_var = None
+        self.outer_loop_start_index_of_updates = None
+
         if self.indices_shape == (1,) and \
                 len(self.var_shape[axis:]) - len(self.updates_shape[axis:]) == 1:
             if not nd_flag:
@@ -127,27 +148,6 @@ class Scatter:
 
         # calc the tiling parameters
         self.init_ub_tensor_para()
-
-        self.indices_ub_number = None
-        self.updates_ub_number = None
-        self.vconv_ub_number = None
-        self.var_vconv_ub = None
-        self.updates_vconv_ub = None
-        self.var_tail_vconv_ub = None
-        self.updates_tail_vconv_ub = None
-        self.var_ub = None
-        self.updates_ub = None
-        self.indices_ub = None
-        self.var_tail_ub = None
-        self.updates_tail_ub = None
-        self.var_read_index = None
-        self.updates_read_index = None
-        self.indices_loop_index = None
-        self.indices_tmp = None
-        self.outer_loop_start_index_every_block = None
-        self.outer_loops_ub_per_block = None
-        self.outer_loop_start_index_of_var = None
-        self.outer_loop_start_index_of_updates = None
 
     def get_some_basic_info(self):
         """
