@@ -3510,4 +3510,19 @@ IMPLEMT_INFERFUNC(QueueData, QueueDataInferShape) {
 
 INFER_FUNC_REG(QueueData, QueueDataInferShape);
 // ----------------QueueData End--------------------------
+
+// ----------------EnsureShape Begin-------------------
+IMPLEMT_INFERFUNC(EnsureShape, EnsureShapeInfer) {
+  OP_LOGI(op.GetName().c_str(), "EnsureShape infershape start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_desc->MutableInputDesc("input");
+ 
+  auto output_desc = op_desc->MutableOutputDesc("output");
+  output_desc->SetShape(input_desc->GetShape());
+  output_desc->SetDataType(input_desc->GetDataType());
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(EnsureShape, EnsureShapeInfer);
+// ----------------EnsureShape End-------------------
 }  // namespace ge
