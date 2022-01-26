@@ -686,6 +686,7 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
 
     # build
     build_config_new = build_config
+    build_config_new = build_config_update(build_config_new, "dummy_placeholder", False)
     if config.options.build is not None:
         build_config_new = config.options.build
     with build_config_new:
