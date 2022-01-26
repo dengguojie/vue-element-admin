@@ -32,6 +32,7 @@
 #include "error_util.h"
 
 namespace fe {
+static const char kFusionName[] = "MatmulCastFusionPass";
 static const string PATTERN_MATMUL = "matmul";
 static const string PATTERN_CAST = "cast";
 
@@ -48,10 +49,7 @@ static const string PATTERN_CAST = "cast";
 vector<FusionPattern*> MatmulCastFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulCastFusion");
-  if (pattern == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE, "pattern is nullptr, Create pattern not success!");
-    return patterns;
-  }
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusionName, "Create pattern fail!"), patterns);
   pattern->AddOpDesc(PATTERN_MATMUL, {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"})
       .AddOpDesc(PATTERN_CAST, {"Cast"})
       .SetInputs(PATTERN_CAST, {PATTERN_MATMUL})
@@ -62,13 +60,13 @@ vector<FusionPattern*> MatmulCastFusionPass::DefinePatterns() {
 
 Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const {
   if (matmul_node->GetOutDataNodes().size() != 1) {
-    OP_LOGD(FUSED_OP_TYPE, "MatMul outputs num shoubld be 1");
+    OP_LOGD(kFusionName, "MatMul outputs num shoubld be 1");
     return FAILED;
   }
   ge::DataType matmul_output_dtype = matmul_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
   ge::DataType cast_output_dtype = cast_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
   if (matmul_output_dtype != ge::DT_FLOAT16 || cast_output_dtype != ge::DT_FLOAT) {
-    OP_LOGD(FUSED_OP_TYPE, "MatMul output dtype is %u, Cast output dtype is %u", matmul_output_dtype,
+    OP_LOGD(kFusionName, "MatMul output dtype is %u, Cast output dtype is %u", matmul_output_dtype,
             cast_output_dtype);
     return FAILED;
   }
@@ -76,35 +74,33 @@ Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmul_node, const ge::N
 }
 
 Status MatmulCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGD(FUSED_OP_TYPE, "Enter MatmulCastFusionPass.");
+  OP_LOGD(kFusionName, "Enter MatmulCastFusionPass.");
   ge::NodePtr matmul_node = GetNodeFromMapping(PATTERN_MATMUL, mapping);
   ge::NodePtr cast_node = GetNodeFromMapping(PATTERN_CAST, mapping);
-  FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "MatMul node is null"), return FAILED);
-  FUSION_PASS_CHECK(cast_node == nullptr, OP_LOGE(FUSED_OP_TYPE, "Cast node is null"), return FAILED);
+  FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(kFusionName, "MatMul node is null"), return FAILED);
+  FUSION_PASS_CHECK(cast_node == nullptr, OP_LOGE(kFusionName, "Cast node is null"), return FAILED);
 
   if (IsMatch(matmul_node, cast_node) != SUCCESS) {
-    OP_LOGD(FUSED_OP_TYPE, "Node[%s] and node[%s] don't match Matmul + Cast fusion pattern.",
+    OP_LOGD(kFusionName, "Node[%s] and node[%s] don't match Matmul + Cast fusion pattern.",
             matmul_node->GetName().c_str(), cast_node->GetName().c_str());
     return NOT_CHANGED;
   }
 
   DoFusion(matmul_node);
   FUSION_PASS_CHECK(!CheckOpSupported(matmul_node->GetOpDesc()),
-                    OP_LOGI(FUSED_OP_TYPE, "MatMul[%s] is not supported by FE, fusion abort.",
+                    OP_LOGI(kFusionName, "MatMul[%s] is not supported by FE, fusion abort.",
                             matmul_node->GetOpDesc()->GetName().c_str()),
                     return NOT_CHANGED);
 
   // link matmul output with cast output and remove cast node
-  if (LinkOutputEdgeWithoutControl(matmul_node, cast_node) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE, "link output edge Failed.");
-    return FAILED;
-  }
-  if (graph.RemoveNode(cast_node) == ge::GRAPH_FAILED) {
-    OP_LOGE(FUSED_OP_TYPE, "cast node remove failed");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(LinkOutputEdgeWithoutControl(matmul_node, cast_node) == FAILED,
+                    OP_LOGE(kFusionName, "link output edge Failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(cast_node) == ge::GRAPH_FAILED,
+                    OP_LOGE(kFusionName, "cast node remove failed"),
+                    return FAILED);
 
-  OP_LOGD(FUSED_OP_TYPE, "Node[%s] do MatMul + Cast fusion success!", matmul_node->GetName().c_str());
+  OP_LOGD(kFusionName, "Node[%s] do MatMul + Cast fusion success!", matmul_node->GetName().c_str());
   return SUCCESS;
 }
 
@@ -119,24 +115,23 @@ Status MatmulCastFusionPass::DoFusion(const ge::NodePtr &matmul_node) const {
 Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr& matmul_node,
                                                           const ge::NodePtr& cast_node) const {
   // Remove cast node all input edge
-  if (PatternFusionUtil::RemoveInputEdge(cast_node) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE, "Remove cast input edge Failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(PatternFusionUtil::RemoveInputEdge(cast_node) == FAILED,
+                    OP_LOGE(kFusionName, "Remove cast input edge Failed."),
+                    return FAILED);
   auto matmul_out_anchor = matmul_node->GetOutDataAnchor(0);
-  if (matmul_out_anchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE, "Parameter[matmul_out_anchor] must not be null.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(matmul_out_anchor == nullptr,
+                    OP_LOGE(kFusionName, "Parameter[matmul_out_anchor] must not be null."),
+                    return FAILED);
   // Remove cast->output anchor and add matmul->output anchor
   for (ge::OutDataAnchorPtr &anchor : cast_node->GetAllOutDataAnchors()) {
-    if (anchor != nullptr) {
-      for (ge::InDataAnchorPtr &dst_anchor : anchor->GetPeerInDataAnchors()) {
-        if (ge::GraphUtils::RemoveEdge(anchor, dst_anchor) != ge::GRAPH_SUCCESS ||
-            ge::GraphUtils::AddEdge(matmul_out_anchor, dst_anchor) != ge::GRAPH_SUCCESS) {
-          OP_LOGE(FUSED_OP_TYPE, "Replace out data anchor Failed.");
-          return FAILED;
-        }
+    FUSION_PASS_CHECK(anchor == nullptr,
+                      OP_LOGE(kFusionName, "Parameter[cast_out_anchor] must not be null."),
+                      return FAILED);
+    for (ge::InDataAnchorPtr &dst_anchor : anchor->GetPeerInDataAnchors()) {
+      if (ge::GraphUtils::RemoveEdge(anchor, dst_anchor) != ge::GRAPH_SUCCESS ||
+          ge::GraphUtils::AddEdge(matmul_out_anchor, dst_anchor) != ge::GRAPH_SUCCESS) {
+        OP_LOGE(kFusionName, "Replace out data anchor Failed.");
+        return FAILED;
       }
     }
   }
@@ -146,7 +141,7 @@ Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(const ge::NodePtr& mat
     for (ge::InControlAnchorPtr &dst_anchor : cast_out_control_anchor->GetPeerInControlAnchors()) {
       if (ge::GraphUtils::RemoveEdge(cast_out_control_anchor, dst_anchor) != ge::GRAPH_SUCCESS ||
           ge::GraphUtils::AddEdge(matmul_node->GetOutControlAnchor(), dst_anchor) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE, "Replace out control anchor Failed.");
+        OP_LOGE(kFusionName, "Replace out control anchor Failed.");
         return FAILED;
       }
     }

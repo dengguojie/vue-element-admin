@@ -41,7 +41,6 @@ private:
   Status CreateMatMulNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& new_node) const;
   Status AddEdgeForMatMulNode(const ge::NodePtr& fused_node, const ge::NodePtr& matmul_node) const;
   Status RemoveFusedNode(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const;
-  const string FUSED_OP_TYPE = "BatchMatMulFusionPass";
 };
 
 }  // namespace fe

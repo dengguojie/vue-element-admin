@@ -36,9 +36,10 @@
 #include "tbe_fusion_pass_util.h"
 
 namespace fe {
+static const char kFusionName[] = "BatchMatMulFusionPass";
 static const std::string PATTEN_MATMUL = "batmatmul";
-static const string kTranspose = "Transpose";
-static const string kTransposeD = "TransposeD";
+static const char kTranspose[] = "Transpose";
+static const char kTransposeD[] = "TransposeD";
 static const int32_t kDimLimit = 2;
 vector<FusionPattern*> BatchMatMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -51,7 +52,7 @@ vector<FusionPattern*> BatchMatMulFusionPass::DefinePatterns() {
 }
 
 Status BatchMatMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGD(FUSED_OP_TYPE, "Enter BatchMatMulFusionPass.");
+  OP_LOGD(kFusionName, "Enter BatchMatMulFusionPass.");
   ge::NodePtr fused_node = GetNodeFromMapping(PATTEN_MATMUL, mapping);
   FUSION_PASS_CHECK(fused_node == nullptr,
                     CUBE_CALL_ERR_REPORT("BatchMatMulFusionPass", "Fusion GetNode Error"),
@@ -63,24 +64,26 @@ Status BatchMatMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   if (CheckIsNeedFusion(fused_node)) {
     ge::NodePtr matmul_node = nullptr;
     auto ret = CreateMatMulNode(graph, fused_node, matmul_node);
-    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMatMulNode FAIL"), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMatMulNode FAIL"),
+                      return FAILED);
     ret = AddEdgeForMatMulNode(fused_node, matmul_node);
     FUSION_PASS_CHECK(ret != SUCCESS,
                       CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdgeForMatMulNode FAIL"), return FAILED);
     ret = RemoveFusedNode(graph, fused_node);
-    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "RemoveFusedNode FAIL"), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "RemoveFusedNode FAIL"),
+                      return FAILED);
     fusionNodes.push_back(matmul_node);
   } else if (!is_transpose_fusion) {
     return NOT_CHANGED;
   }
 
-  OP_LOGD(FUSED_OP_TYPE, "BatchMatMulFusionPass success.");
+  OP_LOGD(kFusionName, "BatchMatMulFusionPass success.");
   return SUCCESS;
 }
 
 bool BatchMatMulFusionPass::CheckIsNeedFusion(const ge::NodePtr& fused_node) const {
-  if (fused_node->GetType() != "BatchMatMul" && fused_node->GetType() != "BatchMatMulV2") {
-    OP_LOGD(FUSED_OP_TYPE, "BatchMatMul type is %s, skip BatchMatMul fusion.", fused_node->GetType().c_str());
+  if (fused_node->GetType() != "BatchMatMul") {
+    OP_LOGD(kFusionName, "BatchMatMul type is %s, skip BatchMatMul fusion.", fused_node->GetType().c_str());
     return false;
   }
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
@@ -98,11 +101,11 @@ bool BatchMatMulFusionPass::CheckIsNeedFusion(const ge::NodePtr& fused_node) con
 bool BatchMatMulFusionPass::CheckAndDoTransposeFusion(ge::ComputeGraph &graph, const ge::NodePtr &fused_node) const {
   ge::DataType data_dtype = fused_node->GetOpDesc()->GetInputDesc(1).GetDataType();
   if (data_dtype != ge::DT_FLOAT16 && data_dtype != ge::DT_FLOAT) {
-    OP_LOGD(FUSED_OP_TYPE, "Transpose MatMul Fusion only support float16 and float32.");
+    OP_LOGD(kFusionName, "Transpose MatMul Fusion only support float16 and float32.");
     return false;
   }
   bool is_transpose_fusion = false;
-  OP_LOGD(FUSED_OP_TYPE, "MatMul type is %s.", fused_node->GetType().c_str());
+  OP_LOGD(kFusionName, "MatMul type is %s.", fused_node->GetType().c_str());
   string attr_name = "adj_x";
   if (fused_node->GetType() == "MatMul" or fused_node->GetType() == "MatMulV2") {
     attr_name = "transpose_x";
@@ -110,29 +113,29 @@ bool BatchMatMulFusionPass::CheckAndDoTransposeFusion(ge::ComputeGraph &graph, c
   // due left transpose
   auto peer0_anchor = GetPeerOutAnchorWithInDataAnchor(fused_node, 0);
   if (peer0_anchor != nullptr) {
-    OP_LOGD(FUSED_OP_TYPE, "Start check Transpose left.");
+    OP_LOGD(kFusionName, "Start check Transpose left.");
     ge::NodePtr transpose0_node = peer0_anchor->GetOwnerNode();
     auto check_transpose0 = CheckTransposeFusion(transpose0_node);
     if (check_transpose0) {
       is_transpose_fusion = true;
       FUSION_PASS_CHECK(DoTransposeFusion(transpose0_node, fused_node, 0, attr_name) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE, "DoTransposeFusion left failed."), return FAILED);
+                        OP_LOGE(kFusionName, "DoTransposeFusion left failed."), return FAILED);
       FUSION_PASS_CHECK(RemoveFusedNode(graph, transpose0_node) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE, "RemoveFusedNode left failed."), return FAILED);
+                        OP_LOGE(kFusionName, "RemoveFusedNode left failed."), return FAILED);
     }
   }
   // due right transpose
   auto peer1_anchor = GetPeerOutAnchorWithInDataAnchor(fused_node, 1);
   if (peer1_anchor != nullptr) {
-    OP_LOGD(FUSED_OP_TYPE, "Start check Transpose right.");
+    OP_LOGD(kFusionName, "Start check Transpose right.");
     ge::NodePtr transpose1_node = peer1_anchor->GetOwnerNode();
     auto check_transpose1 = CheckTransposeFusion(transpose1_node);
     if (check_transpose1) {
       is_transpose_fusion = true;
       FUSION_PASS_CHECK(DoTransposeFusion(transpose1_node, fused_node, 1, attr_name) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE, "DoTransposeFusion right failed."), return FAILED);
+                        OP_LOGE(kFusionName, "DoTransposeFusion right failed."), return FAILED);
       FUSION_PASS_CHECK(RemoveFusedNode(graph, transpose1_node) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE, "RemoveFusedNode right failed."), return FAILED);
+                        OP_LOGE(kFusionName, "RemoveFusedNode right failed."), return FAILED);
     }
   }
   return is_transpose_fusion;
@@ -140,25 +143,22 @@ bool BatchMatMulFusionPass::CheckAndDoTransposeFusion(ge::ComputeGraph &graph, c
 
 // check transpose node
 bool BatchMatMulFusionPass::CheckTransposeFusion(const ge::NodePtr &transpose_node) const {
-  if (transpose_node == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE, "Transpose node is null.");
-    return false;
-  }
+  FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusionName, "Transpose node is null."), false);
   auto transpose_type = transpose_node->GetType();
   if (transpose_type != kTransposeD && transpose_type != kTranspose) {
-    OP_LOGD(FUSED_OP_TYPE, "Transpose type is %s.", transpose_type.c_str());
+    OP_LOGD(kFusionName, "Transpose type is %s.", transpose_type.c_str());
     return false;
   }
   if (transpose_node->GetOutDataNodes().size() != 1) {
-    OP_LOGD(FUSED_OP_TYPE, "Transpose output is not 1.");
+    OP_LOGD(kFusionName, "Transpose output is not 1.");
     return false;
   }
   vector<int32_t> perm_value;
   ge::OpDescPtr transpose_desc = transpose_node->GetOpDesc();
-  OP_LOGD(FUSED_OP_TYPE, "Transpose type is %s.", transpose_node->GetType().c_str());
-  if (transpose_node->GetType() == kTransposeD) {
+  OP_LOGD(kFusionName, "Transpose type is %s.", transpose_type.c_str());
+  if (transpose_type == kTransposeD) {
     if (!ge::AttrUtils::GetListInt(transpose_desc, "perm", perm_value)) {
-      OP_LOGD(FUSED_OP_TYPE, "Get attr perm failed.");
+      OP_LOGD(kFusionName, "Get attr perm failed.");
       return false;
     }
   } else {
@@ -166,22 +166,19 @@ bool BatchMatMulFusionPass::CheckTransposeFusion(const ge::NodePtr &transpose_no
     ge::Tensor perm_const;
     ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(transpose_node);
     if (GRAPH_SUCCESS != op.GetInputConstData("perm", perm_const)) {
-      OP_LOGD(FUSED_OP_TYPE, "Get perm const data failed.");
+      OP_LOGD(kFusionName, "Get perm const data failed.");
       return false;
     }
     auto perm_desc = transpose_desc->GetInputDesc(1);
     vector<int64_t> perm_shape = perm_desc.GetShape().GetDims();
     if (perm_shape.size() != 1) {
-      OP_LOGD(FUSED_OP_TYPE, "The perm dim size must be 1, now is %d.", perm_shape.size());
+      OP_LOGD(kFusionName, "The perm dim size must be 1, now is %d.", perm_shape.size());
       return false;
     }
     // get const data
     DataType perm_dtype = perm_desc.GetDataType();
     const uint8_t *perm_data = perm_const.GetData();
-    if (perm_data == nullptr) {
-      OP_LOGD(FUSED_OP_TYPE, "Get perm data failed.");
-      return false;
-    }
+    FUSION_PASS_CHECK(perm_data == nullptr, OP_LOGE(kFusionName, "Get perm data failed."), return false);
     size_t size;
     if (perm_dtype == ge::DT_INT32) {
       size = perm_const.GetSize() / sizeof(int32_t);
@@ -194,63 +191,60 @@ bool BatchMatMulFusionPass::CheckTransposeFusion(const ge::NodePtr &transpose_no
         perm_value.push_back(*((int64_t *)perm_data + i));
       }
     } else {
-      OP_LOGD(FUSED_OP_TYPE, "Perm dtype is not int32 or int64.");
+      OP_LOGD(kFusionName, "Perm dtype is not int32 or int64.");
       return false;
     }
   }
-  int perm_len = perm_value.size();
-  vector<int64_t> input_shape = transpose_desc->GetInputDesc(0).GetShape().GetDims();
-  if (perm_len != input_shape.size() or perm_len < kDimLimit) {
-    OP_LOGD(FUSED_OP_TYPE,
+  int32_t perm_len = perm_value.size();
+  int32_t input_dims = transpose_desc->GetInputDesc(0).GetShape().GetDims().size();
+  if (perm_len != input_dims or perm_len < kDimLimit) {
+    OP_LOGD(kFusionName,
             "perm value dim should be equal to input dim and must be >= 2, now perm value len is %d, "
             "input shape len is %d.",
-            perm_len, input_shape.size());
+            perm_len, input_dims);
     return false;
   }
   for (int i = 0; i < perm_len - kDimLimit; i++) {
     if (perm_value[i] != i) {
-      OP_LOGD(FUSED_OP_TYPE, "batch dim is transposed.");
+      OP_LOGD(kFusionName, "batch dim is transposed.");
       return false;
     }
   }
-  return perm_value[perm_len - 1] == perm_len - 2 && perm_value[perm_len - 2] == perm_len - 1;
+  return perm_value[perm_len - 1] == perm_len - kDimLimit && perm_value[perm_len - kDimLimit] == perm_len - 1;
 }
 
 Status BatchMatMulFusionPass::DoTransposeFusion(const ge::NodePtr& transpose_node, const ge::NodePtr& fused_node,
                                                 int data_index, const string& attr_name) const {
-  OP_LOGD(FUSED_OP_TYPE, "Start due transpose %d.", data_index);
+  OP_LOGD(kFusionName, "Start due transpose %d.", data_index);
   ge::OpDescPtr matmul_desc = fused_node->GetOpDesc();
   string real_attr_name = attr_name + std::to_string(data_index + 1);
-  bool adj;
-  if (!ge::AttrUtils::GetBool(matmul_desc, real_attr_name, adj)) {
-    OP_LOGE(FUSED_OP_TYPE, "Get matmul attr %s failed.", real_attr_name.c_str());
-    return FAILED;
-  }
-  if (!ge::AttrUtils::SetBool(matmul_desc, real_attr_name, !adj)) {
-    OP_LOGE(FUSED_OP_TYPE, "Set matmul attr %s failed.", real_attr_name.c_str());
-    return FAILED;
-  }
+  bool adj = false;
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matmul_desc, real_attr_name, adj),
+                    OP_LOGE(kFusionName, "Get matmul attr %s failed.", real_attr_name.c_str()),
+                    return FAILED);
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(matmul_desc, real_attr_name, !adj),
+                    OP_LOGE(kFusionName, "Set matmul attr %s failed.", real_attr_name.c_str()),
+                    return FAILED);
 
   auto matmul_input_desc = matmul_desc->MutableInputDesc(data_index);
   vector<int64_t> x_shape = matmul_input_desc->GetShape().GetDims();
   vector<std::pair<int64_t, int64_t>> x_range;
   matmul_input_desc->GetShapeRange(x_range);
-  int dims = x_shape.size();
-  if (dims < kDimLimit) {
-    OP_LOGE(FUSED_OP_TYPE, "MatMul input %d shape dim must be >= 2.", data_index);
-    return false;
-  }
+  auto dims = x_shape.size();
+  FUSION_PASS_CHECK(dims < kDimLimit,
+                    OP_LOGE(kFusionName, "MatMul input %d shape dim must be >= 2.", data_index),
+                    return FAILED);
   if (x_range.empty()) {
-    OP_LOGD(FUSED_OP_TYPE, "MatMul input %d range is null.", data_index);
-  } else if (x_range.size() != dims) {
-    OP_LOGE(FUSED_OP_TYPE, "MatMul input %d shape dim and range dim are not equal.", data_index);
-    return false;
+    OP_LOGD(kFusionName, "MatMul input %d range is null.", data_index);
   } else {
-    swap(x_range[dims - 1], x_range[dims - 2]);
+    FUSION_PASS_CHECK(x_range.size() != dims,
+                      OP_LOGE(kFusionName, "MatMul input %d shape dim and range dim are not equal.", data_index),
+                      return FAILED);
+    swap(x_range[dims - 1], x_range[dims - kDimLimit]);
     matmul_input_desc->SetShapeRange(x_range);
     matmul_input_desc->SetOriginShapeRange(x_range);
   }
-  swap(x_shape[dims - 1], x_shape[dims - 2]);
+  swap(x_shape[dims - 1], x_shape[dims - kDimLimit]);
   matmul_input_desc->SetShape(ge::GeShape(x_shape));
   matmul_input_desc->SetOriginShape(ge::GeShape(x_shape));
 
@@ -259,28 +253,25 @@ Status BatchMatMulFusionPass::DoTransposeFusion(const ge::NodePtr& transpose_nod
 
 Status BatchMatMulFusionPass::LinkEdge(const ge::NodePtr &transpose_node, const ge::NodePtr &fused_node,
                                        int data_index) const {
-  OP_LOGD(FUSED_OP_TYPE, "Find node[%s]->matmul[%s].", transpose_node->GetName().c_str(), fused_node->GetName().c_str());
+  OP_LOGD(kFusionName, "Find node[%s]->matmul[%s].", transpose_node->GetName().c_str(),
+          fused_node->GetName().c_str());
   auto matmul_in_anchor = fused_node->GetInDataAnchor(data_index);
   auto ret = ge::GraphUtils::RemoveEdge(transpose_node->GetOutDataAnchor(0), matmul_in_anchor);
-  if (ret != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE, "RemoveEdge transpose-->matmul failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(kFusionName, "RemoveEdge transpose-->matmul failed."),
+                    return FAILED);
   auto peer_out_anchor = GetPeerOutAnchorWithInDataAnchor(transpose_node, 0);
-  if (peer_out_anchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE, "Transpose peer out anchor is null.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(peer_out_anchor == nullptr,
+                    OP_LOGE(kFusionName, "Transpose peer out anchor is null."),
+                    return FAILED);
   ret = ge::GraphUtils::RemoveEdge(peer_out_anchor, transpose_node->GetInDataAnchor(0));
-  if (ret != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE, "RemoveEdge peer-->transpose failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(kFusionName, "RemoveEdge peer-->transpose failed."),
+                    return FAILED);
   ret = ge::GraphUtils::AddEdge(peer_out_anchor, matmul_in_anchor);
-  if (ret != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE, "AddEdge peer-->matmul failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(kFusionName, "AddEdge peer-->matmul failed."),
+                    return FAILED);
   return SUCCESS;
 }
 
