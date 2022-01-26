@@ -438,5 +438,6 @@ def softmax_cross_entropy_with_logits(
     tensor_list = [data_features, data_labels] + list(res)
 
     config = {"name": kernel_name,
-              "tensor_list": tensor_list}
+              "tensor_list": tensor_list,
+              "dummy_placeholder": False}
     tbe.cce_build_code(sch, config)
