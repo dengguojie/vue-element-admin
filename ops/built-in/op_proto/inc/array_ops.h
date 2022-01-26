@@ -1492,6 +1492,23 @@ REG_OP(QueueData)
     .ATTR(output_types, ListType, {})
     .ATTR(output_shapes, ListListInt, {{}, {}})
     .OP_END_FACTORY_REG(QueueData)
+
+/**
+* @brief Ensures that the tensor's shape matches the expected shape. \n
+* @par Inputs:
+* x: A Tensor. \n
+* @par Attributes:
+* shape:  The shape that needs to be checked \n
+* @par Outputs:
+* y: A tensor. \n
+*/
+REG_OP(EnsureShape)
+    .INPUT(input, TensorType({DT_INT8,DT_UINT8,DT_INT16,DT_UINT16,DT_INT32,DT_INT64,DT_FLOAT16, \
+                            DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output, TensorType({DT_INT8,DT_UINT8,DT_INT16,DT_UINT16,DT_INT32,DT_INT64,DT_FLOAT16, \
+                            DT_FLOAT,DT_DOUBLE}))
+    .REQUIRED_ATTR(shape, ListInt)
+    .OP_END_FACTORY_REG(EnsureShape)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ARRAY_OPS_H_
