@@ -345,7 +345,7 @@ TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_
 
    /*
     * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
-    *                    \___________________________/
+    *                    \__________________________/
     */
     auto X1Data = op::Data("x1");
     std::vector<int64_t> dims_x1{128, 16, 1775};

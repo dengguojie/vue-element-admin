@@ -42,13 +42,13 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
   Status UpdateOpDesc(const ge::NodePtr &node, const vector<int64_t> &new_shape);
   Status ConnectOneElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node, const vector<int64_t> &new_shape,
                             const vector<int64_t> &out_shape);
-  bool IsMatchScenario1(const ge::NodePtr &fused_node); // BatchMatMulV2 --> Add --> Output
-  bool IsMatchScenario2(const ge::NodePtr &fused_node); // BatchMatMulV2 --> Add --> Add --> Output
+  bool IsMatchScenario1(const ge::NodePtr &fused_node) const; // BatchMatMulV2 --> Add --> Output
+  bool IsMatchScenario2(const ge::NodePtr &fused_node) const; // BatchMatMulV2 --> Add --> Add --> Output
   /*
    * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
    *                    \__________________________/
    */
-  bool IsMatchScenario3(const ge::NodePtr &fused_node);
+  bool IsMatchScenario3(const ge::NodePtr &fused_node) const;
   Status ConnectTwoElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node, const vector<int64_t> &new_shape,
                             const vector<int64_t> &out_shape);
   Status ProcessOutNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, const vector<int64_t> &new_shape,

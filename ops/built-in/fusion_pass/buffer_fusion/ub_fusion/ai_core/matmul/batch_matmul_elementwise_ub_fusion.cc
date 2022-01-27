@@ -145,7 +145,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
-Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapping &mapping) {
+Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapping &mapping) const {
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
 
@@ -167,7 +167,7 @@ Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapp
   return SUCCESS;
 }
 
-Status TbeBatchMatmulElementWiseFusionPass::CheckPattern2(const BufferFusionMapping &mapping) {
+Status TbeBatchMatmulElementWiseFusionPass::CheckPattern2(const BufferFusionMapping &mapping) const {
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
   vector<ge::NodePtr> elemNode2 = GetMatchedNodesByDescName(PATTERN_ELEM_2, mapping);

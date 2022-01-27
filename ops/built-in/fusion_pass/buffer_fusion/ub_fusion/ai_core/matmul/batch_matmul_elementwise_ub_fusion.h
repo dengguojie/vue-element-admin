@@ -40,8 +40,8 @@ class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
  private:
   const string FUSED_OP_TYPE = "FusedOp";
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
-  Status CheckPattern1(const BufferFusionMapping &mapping);
-  Status CheckPattern2(const BufferFusionMapping &mapping);
+  Status CheckPattern1(const BufferFusionMapping &mapping) const;
+  Status CheckPattern2(const BufferFusionMapping &mapping) const;
 };
 } // namespace fe
 

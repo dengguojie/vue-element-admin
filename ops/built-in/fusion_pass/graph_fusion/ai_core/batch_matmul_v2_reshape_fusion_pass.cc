@@ -62,7 +62,7 @@ bool BatchMatMulV2ReshapeFusionPass::CheckProduct(const std::vector<int64_t> &sh
 }
 
 // BatchMatMulV2 --> Add --> Output
-bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario1(const ge::NodePtr &fused_node) {
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario1(const ge::NodePtr &fused_node) const {
   auto out_anchor = fused_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
                     return false);
@@ -92,7 +92,7 @@ bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario1(const ge::NodePtr &fused_n
 }
 
 // BatchMatMulV2 --> Add --> Add --> Output
-bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_node) {
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_node) const {
   if (IsMatchScenario1(fused_node)) {
     auto out_anchor = fused_node->GetOutDataAnchor(0);
     FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
@@ -130,7 +130,7 @@ bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_n
  * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
  *                    \__________________________/
  */
-bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario3(const ge::NodePtr &fused_node) {
+bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario3(const ge::NodePtr &fused_node) const {
   auto out_anchor = fused_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
                     return false);
