@@ -29,10 +29,12 @@ namespace optiling {
     struct MovingSumWithSigmoidTilingParam {
         int32_t tiling_mode;
         int32_t core_num;
+        int32_t batch_size;
     };
     void InitRunningParams(MovingSumWithSigmoidTilingParam& params) {
         params.tiling_mode = TILING_MODE_1;
         params.core_num = 0;
+        params.batch_size = 0;
     }
 
     bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info,
@@ -57,13 +59,15 @@ namespace optiling {
         OP_LOGD("SetRunningInfo is running");
         ByteBufferPut(run_info.tiling_data, tiling_params.tiling_mode);
         ByteBufferPut(run_info.tiling_data, tiling_params.core_num);
+        ByteBufferPut(run_info.tiling_data, tiling_params.batch_size);
     }
 
     void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
     {
         OP_LOGD("PrintTilingParams is running");
-        OP_LOGD("op [RnnGenMaskV2Tiling] : cal_mode=%d.", tiling_params.cal_mode);
-        OP_LOGD("op [RnnGenMaskV2Tiling] : core_used=%d.", tiling_params.core_used);
+        OP_LOGD("op [MovingSumWithSigmoid] : cal_mode=%d.", tiling_params.cal_mode);
+        OP_LOGD("op [MovingSumWithSigmoid] : core_used=%d.", tiling_params.core_used);
+        OP_LOGD("op [MovingSumWithSigmoid] : batch_size=%d.", tiling_params.batch_size);
     }
 
     bool MovingSumWithSigmoidTiling(const std::string & op_type, const TeOpParas & op_paras,
@@ -80,9 +84,11 @@ namespace optiling {
         }
 
         run_params.core_num = core_num;
+        std::vector<int64_t> beam_shape = op_paras.inputs[2].tensor[0].shape;
+        run_params.batch_size = beam_shape[0];
         SetRunningInfo(run_params, run_info);
         PrintTilingParams(run_params);
-        std::vector<int64_t> workspace;
+        std::vector<int64_t> workspace={2048};
         run_info.workspaces = workspace;
 
         run_info.block_dim = core_num;

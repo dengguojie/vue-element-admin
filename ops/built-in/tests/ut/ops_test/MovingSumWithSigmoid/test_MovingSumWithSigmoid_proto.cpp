@@ -33,6 +33,7 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_0) {
 
     op.UpdateInputDesc("alpha", alpha_desc);
     op.UpdateInputDesc("energy", alpha_desc);
+    op.UpdateInputDesc("beam_size", frame_desc);
     op.UpdateInputDesc("frame_size", frame_desc);
 
     auto ret = op.InferShapeAndType();

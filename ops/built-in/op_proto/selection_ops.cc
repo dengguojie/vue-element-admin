@@ -5003,30 +5003,33 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 COMMON_INFER_FUNC_REG(StridedSliceV3, StridedSliceV3InferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV3);
 // ----------------StridedSlicev3 Op End-------------------
+
 // ----------------MovingSumWithSigmoidInferShape Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
-  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape work.");
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_x = op_info->GetInputDescPtr(0);
-  auto output_y = op_info->MutableOutputDesc(0);
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape started.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_energy_desc = op_desc->GetInputDescPtr(1);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
 
-  auto x_dtype = input_x->GetDataType();
-  auto x_shape = input_x->GetShape();
+  auto energy_dtype = input_energy_desc->GetDataType();
+  auto energy_shape = input_energy_desc->GetShape();
 
-  output_y->SetShape(x_shape);
-  output_y->SetDataType(x_dtype);
+  output_y_desc->SetShape(energy_shape);
+  output_y_desc->SetDataType(energy_dtype);
 
-  auto input_dims = x_shape.GetDims();
-  std::vector<std::pair<int64_t, int64_t>> x_range;
+  auto input_dims = energy_shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> energy_range;
   if (input_dims == UNKNOWN_RANK) {
-    input_x->GetShapeRange(x_range);
-    output_y->SetShapeRange(x_range);
+    input_energy_desc->GetShapeRange(energy_range);
+    output_y_desc->SetShapeRange(energy_range);
   }
-  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape done.");
+
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape finished.");
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(MovingSumWithSigmoid, MovingSumWithSigmoidInferShape);
 // ----------------MovingSumWithSigmoidInferShape END---------------------
+
 }  // namespace ge
 

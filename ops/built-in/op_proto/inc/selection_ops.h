@@ -2540,13 +2540,14 @@ REG_OP(StridedSliceV3)
 *Four inputs, including:
 * @li alpha: A Tensor. Must be one of the following types: float32, float16.
 * @li energy: A Tensor. Must be one of the following types: float32, float16.
-* @li frame_szie: A Tensor of type int32. \n
+* @li beam_size: A Tensor of type int32.
+* @li frame_size: A Tensor of type int32. \n
 
 *@par Outputs:
 * y: A Tensor. Has the same type as "alpha". \n
 *
 * @par Attributes:
-* window_size: get the first k data of sorted_distance. \n
+* window_size: A int.
 *
 * @par Restrictions:
 * Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
@@ -2554,7 +2555,8 @@ REG_OP(StridedSliceV3)
 REG_OP(MovingSumWithSigmoid)
     .INPUT(alpha, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(energy, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(frame_szie, TensorType({DT_INT32}))
+    .INPUT(beam_size, TensorType({DT_INT32}))
+    .INPUT(frame_size, TensorType({DT_INT32}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .REQUIRED_ATTR(window_size, Int)
     .OP_END_FACTORY_REG(MovingSumWithSigmoid)

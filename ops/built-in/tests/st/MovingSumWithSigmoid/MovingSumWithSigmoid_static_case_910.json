@@ -1,130 +1,130 @@
 [
-  {
-    "op": "MovingSumWithSigmoid",
-    "calc_expect_func_file":"test_msws.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          51200
+    {
+        "case_name":"Test_MovingSumWithSigmoid_000",
+        "calc_expect_func_file":"test_msws.py:calc_expect_func", 
+        "op":"MovingSumWithSigmoid",
+        "calc_expect_func_file":"",
+        "gui_calc_expect_func_file":"",
+        "fuzz_impl":"",
+        "user_fuzz_impl":"",
+        "input_desc":[
+            {
+                "name":"alpha",
+                "format":[
+                    "ND"
+                ],
+                "type":[
+                    "float16"
+                ],
+                "shape":[
+                    5120
+                ],
+                "value_range":[
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute":[
+                    "uniform"
+                ]
+            },
+            {
+                "name":"energy",
+                "format":[
+                    "ND"
+                ],
+                "type":[
+                    "float16"
+                ],
+                "shape":[
+                    5120
+                ],
+                "value_range":[
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute":[
+                    "uniform"
+                ]
+            },
+            {
+                "name":"beam_size",
+                "format":[
+                    "ND"
+                ],
+                "type":[
+                    "int32"
+                ],
+                "shape":[
+                    1
+                ],
+                "value_range":[
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute":[
+                    "uniform"
+                ],
+                "value":[
+                    10
+                ],
+                "user_value":[
+                    10
+                ]
+            },
+            {
+                "name":"frame_size",
+                "format":[
+                    "ND"
+                ],
+                "type":[
+                    "int32"
+                ],
+                "shape":[
+                    1
+                ],
+                "value_range":[
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute":[
+                    "uniform"
+                ],
+                "value":[
+                    512
+                ],
+                "user_value":[
+                    512
+                ]
+            }
         ],
-        "ori_shape": [
-          51200
+        "output_desc":[
+            {
+                "name":"y",
+                "format":[
+                    "ND"
+                ],
+                "type":[
+                    "float16"
+                ],
+                "shape":[
+                    5120
+                ]
+            }
         ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "alpha",
-        "type": "float"
-      },
-      {
-        "shape": [
-          51200
-        ],
-        "ori_shape": [
-          51200
-        ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "energy",
-        "type": "float"
-      },
-      {
-        "shape": [
-          1
-        ],
-        "ori_shape": [
-          1
-        ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "frame_size",
-        "type": "int32"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          51200
-        ],
-        "format": "ND",
-        "ori_shape": [
-          51200
-        ],
-        "ori_format": "ND",
-        "name": "y",
-        "type": "float"
-      }
-    ],
-    "attr": [
-      {
-        "name": "window_size",
-        "type": "int",
-        "value": 512
-      }
-    ],
-    "case_name": "test_MovingSumWithSigmoid_000"
-  },
-  {
-    "op": "MovingSumWithSigmoid",
-    "calc_expect_func_file":"test_msws.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          512
-        ],
-        "ori_shape": [
-          512
-        ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "alpha",
-        "type": "float"
-      },
-      {
-        "shape": [
-          512
-        ],
-        "ori_shape": [
-          512
-        ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "energy",
-        "type": "float"
-      },
-      {
-        "shape": [
-          1
-        ],
-        "ori_shape": [
-          1
-        ],
-        "format": "ND",
-        "ori_format": "ND",
-        "name": "frame_size",
-        "type": "int32"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          512
-        ],
-        "format": "ND",
-        "ori_shape": [
-          512
-        ],
-        "ori_format": "ND",
-        "name": "y",
-        "type": "float"
-      }
-    ],
-    "attr": [
-      {
-        "name": "window_size",
-        "type": "int",
-        "value": 512
-      }
-    ],
-    "case_name": "test_MovingSumWithSigmoid_001"
-  }
+        "attr":[
+            {
+                "name":"window_size",
+                "value":100,
+                "type":"int"
+            }
+        ]
+    }
 ]

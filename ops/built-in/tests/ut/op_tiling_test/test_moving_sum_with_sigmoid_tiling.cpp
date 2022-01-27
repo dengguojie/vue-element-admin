@@ -65,12 +65,40 @@ TEST_F(MovingSumWithSigmoidTiling, tset_0) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
+  TeOpParas opParas;
+  opParas.op_type = op_name;
+  
+  std::vector<int64_t> input0{5120};
+  std::vector<int64_t> input1{1};
+
+  TeOpTensor tensor_float32;
+  tensor_float32.shape = input0;
+  tensor_float32.dtype = "float32";
+  TeOpTensor tensor_int32;
+  tensor_int32.shape = input1;
+  tensor_int32.dtype = "int32";
+
+  TeOpTensorArg tensor_input_arg0;
+  tensor_input_arg0.tensor.push_back(tensor_float32);
+  tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
+  TeOpTensorArg tensor_input_arg1;
+  tensor_input_arg1.tensor.push_back(tensor_int32);
+  tensor_input_arg1.arg_type = TensorArgType::TA_SINGLE;
+
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_float32);
+  tensor_output_arg.arg_type = TensorArgType::TA_SINGLE;
+ 
+  opParas.inputs.push_back(tensor_input_arg0);
+  opParas.inputs.push_back(tensor_input_arg0);
+  opParas.inputs.push_back(tensor_input_arg1);
+  opParas.inputs.push_back(tensor_input_arg1);
+  opParas.outputs.push_back(tensor_input_arg0);
 
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  TeOpParas opParas;
-  opParas.op_type = op_name;
+  op_compile_info.key = "TestMovingSumWithSigmoidTiling";
+
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 1 ");
 }
