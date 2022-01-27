@@ -53,6 +53,7 @@ namespace {
 static const char kPatternMatmul[] = "matmul";
 
 static const char kOpTypeTransdata[] = "TransData";
+static const vector<string> kOpTypeMatmulList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 
 static const char kFormatNd[] = "ND";
 static const char kFormatFractalNz[] = "FRACTAL_NZ";
@@ -437,14 +438,18 @@ Status MatmulTransdataFusionPass::GetFusionNodes(const BufferFusionMapping& mapp
 
   FUSION_PASS_CHECK(matmul_nodes.empty(),
                     OP_LOGE(kFusedOpType, "MatMul node is not matched."),
-                    fusion_nodes.clear();
                     return SUCCESS);
 
   matmul_node_ptr = matmul_nodes.at(0);
 
+  FUSION_PASS_CHECK(std::find(kOpTypeMatmulList.begin(), kOpTypeMatmulList.end(), matmul_node_ptr->GetType()) ==
+                    kOpTypeMatmulList.end(),
+                    OP_LOGW(kFusedOpType, "Failed to match matmul node. It's %s node.",
+                            matmul_node_ptr->GetType().c_str()),
+                    return SUCCESS);
+
   FUSION_PASS_CHECK(!NeedFusion(),
                     OP_LOGW(kFusedOpType, "no need do ub fusion"),
-                    fusion_nodes.clear();
                     return SUCCESS);
 
   FUSION_PASS_CHECK(!DoFusion(),
