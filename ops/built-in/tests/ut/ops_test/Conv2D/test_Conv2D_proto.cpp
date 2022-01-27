@@ -442,7 +442,7 @@ TEST_F(Conv2DProtoTest, conv2dBaseBiasTest1) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-// input bias size should be 1D
+// input bias size should be 1D or 4D
 TEST_F(Conv2DProtoTest, conv2dBaseBiasTest2) {
     ge::op::Conv2D conv2d;
     conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
@@ -457,6 +457,71 @@ TEST_F(Conv2DProtoTest, conv2dBaseBiasTest2) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+// input bias size 4d should be NCHW or NHWC
+TEST_F(Conv2DProtoTest, conv2dBaseBiasTest3) {
+    // bias NCHW
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{16, 16, 1, 1},ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{1, 16, 1, 1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    // bias NHWC
+    ge::op::Conv2D conv2d_2;
+    conv2d_2.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d_2.UpdateInputDesc("filter", create_desc_with_ori({16, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{16, 16, 1, 1},ge::FORMAT_NCHW));
+    conv2d_2.UpdateInputDesc("bias", create_desc_with_ori({1, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{1, 1, 1, 16}, ge::FORMAT_NHWC));
+    conv2d_2.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d_2.SetAttr("strides", {1, 1, 1, 1});
+    conv2d_2.SetAttr("pads", {0, 0, 0, 0});
+    conv2d_2.SetAttr("dilations", {1, 1, 1, 1});
+    ret = conv2d_2.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    // bias HWCN error
+    ge::op::Conv2D conv2d_3;
+    conv2d_3.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d_3.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{1, 16, 1, 1},ge::FORMAT_NCHW));
+    conv2d_3.UpdateInputDesc("bias", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1}, ge::FORMAT_HWCN));
+    conv2d_3.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d_3.SetAttr("strides", {1, 1, 1, 1});
+    conv2d_3.SetAttr("pads", {0, 0, 0, 0});
+    conv2d_3.SetAttr("dilations", {1, 1, 1, 1});
+    ret = conv2d_3.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// input bias size should be equal to out_channels
+TEST_F(Conv2DProtoTest, conv2dBaseBiasTest4) {
+    // bias NCHW
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{1, 16, 1, 1},ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{1, 16, 1, 1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+    // bias NHWC
+    ge::op::Conv2D conv2d_2;
+    conv2d_2.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d_2.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{1, 16, 1, 1},ge::FORMAT_NCHW));
+    conv2d_2.UpdateInputDesc("bias", create_desc_with_ori({2, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{2, 1, 1, 16}, ge::FORMAT_NHWC));
+    conv2d_2.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d_2.SetAttr("strides", {1, 1, 1, 1});
+    conv2d_2.SetAttr("pads", {0, 0, 0, 0});
+    conv2d_2.SetAttr("dilations", {1, 1, 1, 1});
+    ret = conv2d_2.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
 
 // input offset_w is not supported
 TEST_F(Conv2DProtoTest, conv2dBaseOffsetWTest) {

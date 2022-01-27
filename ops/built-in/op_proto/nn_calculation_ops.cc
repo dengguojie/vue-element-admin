@@ -4349,6 +4349,73 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   return true;
 }
 
+static graphStatus CheckConv2DBias(const AscendString& op_name, const OpDescPtr& op_desc, int32_t outChannel)
+{
+  auto bias_tensor = op_desc->MutableInputDesc(2); // bias is the third value of input
+  if (bias_tensor == nullptr) {
+    return GRAPH_SUCCESS;
+  }
+
+  auto &bias_shape = bias_tensor->MutableShape();
+  size_t bias_dim_num = bias_shape.GetDimNum();
+  if (bias_dim_num != 1 && bias_dim_num != 4) { // bias shape should be 1D or 4D
+    OP_LOGE(op_name.GetString(), "input bias shape should be 1D or 4D.");
+    map<string, string> err_map;
+    err_map["op_name"] = op_name.GetString();
+    err_map["description"] = "input bias shape should be 1D or 4D.";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+ 
+ // The index of the C dimension in 4D, default value is 0
+  size_t idx_c = 0;
+  if (bias_dim_num == 4) {  // bias shape is 4D 
+    auto bias_format = bias_tensor->GetFormat();
+    if (bias_format == FORMAT_NCHW) {
+      idx_c = 1;
+    } else if (bias_format == FORMAT_NHWC) {
+      idx_c = 3; // The 4th index of the C dimension in 4D
+    } else {
+      OP_LOGE(op_name.GetString(), "input bias format should be NCHW or NHWC when shape is 4D.");
+      map<string, string> err_map;
+      err_map["op_name"] = op_name.GetString();
+      err_map["description"] = "input bias format should be NCHW or NHWC when shape is 4D.";
+      std::string report_error_code = "E50060";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
+  }
+
+  for (size_t i = 0; i < bias_dim_num; i++) {
+    if (i == idx_c) {
+      if (bias_shape.GetDim(i) != outChannel) {
+        OP_LOGE(op_name.GetString(), "input bias size of dim_c should be equal to out_channels.");
+        map<string, string> err_map;
+        err_map["op_name"] = op_name.GetString();
+        err_map["description"] = "input bias size of dim_c should be equal to out_channels.";
+        std::string report_error_code = "E50060";
+        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+        return GRAPH_FAILED;
+      }
+
+      continue;
+    }
+
+    if (bias_shape.GetDim(i) != 1) {
+        OP_LOGE(op_name.GetString(), "input bias size of dim[N, H, W] should be equal to 1.");
+        map<string, string> err_map;
+        err_map["op_name"] = op_name.GetString();
+        err_map["description"] = "input bias size of dim[N, H, W] should be equal to 1.";
+        std::string report_error_code = "E50060";
+        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+        return GRAPH_FAILED;
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
+
 /*!
   * @brief Infer output shape and dtype, dtype is same to first input tensor, Output
   *        format is set by ge parser process already.
@@ -4446,26 +4513,9 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  auto bias_tensor = op_desc->MutableInputDesc(2);
-  if (bias_tensor != nullptr) {
-    auto &bias_shape = bias_tensor->MutableShape();
-    if (bias_shape.GetDimNum() == 1 && bias_shape.GetDim(0) != kn) {
-      OP_LOGE(op_name.GetString(), "input bias size should be equal to out_channels.");
-      map<string, string> err_map;
-      err_map["op_name"] = op_name.GetString();
-      err_map["description"] = "input bias size should be equal to out_channels.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    } else if (bias_shape.GetDimNum() > 1) {
-      OP_LOGE(op_name.GetString(), "input bias shape should be 1D.");
-      map<string, string> err_map;
-      err_map["op_name"] = op_name.GetString();
-      err_map["description"] = "input bias shape should be 1D.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    }
+
+  if (CheckConv2DBias(op_name, op_desc, kn) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
   }
 
   // set data_format: copy value of x_format to data_format
