@@ -151,6 +151,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/unsorted_segment_max.cc
         kernels/normalized/custom/research/unsorted_segment_min.cc
         kernels/normalized/custom/research/unsorted_segment_prod.cc
+        kernels/normalized/custom/research/unsorted_segment_sum.cc
     )
 endif()
 message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src_files})

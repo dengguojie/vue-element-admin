@@ -135,6 +135,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_max.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_min.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_prod.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/unsorted_segment_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/elugrad.cc
@@ -424,6 +425,7 @@ set(_cpu_kernels_ut_files
   testcase/unsorted_segment_max/src/unsorted_segment_max_utest.cpp
   testcase/unsorted_segment_min/src/unsorted_segment_min_utest.cpp
   testcase/unsorted_segment_prod/src/unsorted_segment_prod_utest.cpp
+  testcase/unsorted_segment_sum/src/unsorted_segment_sum_utest.cpp
   testcase/where/src/where_utest.cpp
   testcase/zeroslike/src/zeroslike_utest.cpp
   testcase/zeta/src/zeta_utest.cpp
