@@ -434,7 +434,7 @@ def high_precision_floor(x_float, is_high_precision=True):
     a tensor
     """
     x_floor = tbe.floor(x_float)
-    if x_float == "float16":
+    if x_float.dtype.lower() == "float16":
         is_high_precision = False
     if is_high_precision:
         cast_flag = tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32")

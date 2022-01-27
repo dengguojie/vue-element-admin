@@ -71,7 +71,7 @@ ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
 # ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend310"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case6)
 def calc_expect_func(x, y, dst):
     if dst == 12:
         dst = 6
