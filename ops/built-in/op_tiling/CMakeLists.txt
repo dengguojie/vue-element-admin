@@ -161,6 +161,7 @@ set(_optiling_files
   bounding_box_decode.cc
   iou.cc
   layer_norm.cc
+  layer_norm_v1.cc
   bn_update_grad_tiling.cc
   roi_align.cc
   roi_align_grad.cc

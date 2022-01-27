@@ -917,8 +917,8 @@
       {
         "shape": [
           32,
-          1,
           -1,
+          2,
           16,
           16
         ],
@@ -926,7 +926,7 @@
         "typical_shape": [32, 1, 2, 16, 16],
         "ori_shape": [
           32,
-          16,
+          32,
           -1
         ],
         "ori_format": "NCHW",
@@ -945,7 +945,7 @@
         ],
         "format": "NCHW",
         "typical_shape": [
-          32
+          16
         ],
         "shape_range": [
           [
@@ -962,7 +962,7 @@
         ],
         "format": "NCHW",
         "typical_shape": [
-          32
+          16
         ],
         "shape_range": [
           [
@@ -978,8 +978,8 @@
       {
         "shape": [
           32,
-          1,
           -1,
+          2,
           16,
           16
         ],
@@ -987,7 +987,7 @@
         "typical_shape": [32, 1, 2, 16, 16],
         "ori_shape": [
           32,
-          16,
+          32,
           -1
         ],
         "ori_format": "NCHW",
@@ -1003,19 +1003,19 @@
       {
         "shape": [
           32,
-          16,
+          32,
           1
         ],
         "format": "NCHW",
-	"typical_shape": [32, 16, 1],
+	      "typical_shape": [32, 32, 1],
         "shape_range": [
           [
             32,
             32
           ],
           [
-            16,
-            16
+            32,
+            32
           ],
           [
             1,
@@ -1028,26 +1028,26 @@
       {
         "shape": [
           32,
-          16,
+          32,
           1
         ],
         "format": "NCHW",
-        "typical_shape": [32, 16, 1],
+        "typical_shape": [32, 32, 1],
         "shape_range": [
           [
             32,
             32
           ],
           [
-            16,
-            16
+            32,
+            32
           ],
           [
             1,
             1
           ]
         ],
-	"name": "output_variance",
+	      "name": "output_variance",
         "type": "float16"
       }
     ],
@@ -1060,7 +1060,7 @@
       {
         "name": "begin_params_axis",
         "type": "int",
-        "value": 2
+        "value": -1
       }
     ],
     "case_name": "test_dynamicLayerNorm_NZ_000"
