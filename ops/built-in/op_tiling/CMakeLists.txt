@@ -51,6 +51,7 @@ set(_optiling_files
   concat_offset.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc
+  conv2d_bp_input_cache_tiling.cc
   conv3d_backprop_input.cc
   conv3d_transpose.cc
   sigmoid_cross_entropy_with_logits_grad_v2.cc

@@ -175,7 +175,7 @@ auto_schedule:
       - ops/built-in/op_tiling/transdata_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.cc
       - ops/built-in/op_tiling/tiling_handler.h
-      - auto_schedule/python/tbe/dsl/unify_schedule/vector/      
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/
     unrelease:
     llt:
       ut_check: true
@@ -192,6 +192,8 @@ cube:
       - ops/built-in/op_tiling/cube_tiling_new.cc
       - ops/built-in/op_tiling/conv2d_backprop_filter.cc
       - ops/built-in/op_tiling/conv2d_backprop_input.cc
+      - ops/built-in/op_tiling/conv2d_bp_input_cache_tiling.cc
+      - ops/built-in/op_tiling/conv2d_bp_input_cache_tiling.h
       - ops/built-in/op_tiling/conv2d_transpose.cc
       - ops/built-in/op_tiling/conv3d_backprop_filter.cc
       - ops/built-in/op_tiling/conv3d_backprop_input.cc

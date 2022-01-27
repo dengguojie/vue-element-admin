@@ -1,4 +1,4 @@
-/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+/* Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,9 @@ namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;
   constexpr int32_t kConv3dVarDimSizeLimit = 4;
   static const int kRangeDimLen = 2;
+  static const int kBlockSize = 16;
+  static const int64_t kHoshWNoDivided = 2;
+  static const int kNumTwo = 2;
   const std::vector<int32_t> kConv3DDynamicShapeDims = {0, 1, 3, 4}; // format: NDC1HWC0
   const std::vector<int32_t> kConv3DDynamicRangeDims = {0, 1, 2, 3}; // foramt: NDHW
 
@@ -148,6 +151,167 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
+  int64_t Lcm(const int64_t &param1, const int64_t &param2) {
+    int64_t pram1_lcm = param1;
+    int64_t pram2_lcm = param2;
+    int64_t temp = pram1_lcm * pram2_lcm;
+    int32_t param1_temp = pram1_lcm;
+    while(pram1_lcm % pram2_lcm != 0) {
+      param1_temp = pram1_lcm;
+      pram1_lcm = pram2_lcm;
+      pram2_lcm = param1_temp % pram2_lcm;
+    }
+    return temp / pram2_lcm;
+  }
+
+  void SetRunInfo(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+                  utils::OpRunInfo &run_info) {
+    bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
+    if (stride_equal_one) {
+      run_info.AddTilingData(static_cast<int32_t>(params.batch));
+      run_info.AddTilingData(static_cast<int32_t>(params.co));
+      run_info.AddTilingData(static_cast<int32_t>(params.ho));
+      run_info.AddTilingData(static_cast<int32_t>(params.wo));
+      run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
+      run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
+      run_info.AddTilingData(run_info_params.g_extend);
+      run_info.AddTilingData(run_info_params.dx_c1_extend);
+    } else {
+      run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
+      run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
+      run_info.AddTilingData(static_cast<int32_t>(params.batch));
+      run_info.AddTilingData(static_cast<int32_t>(params.co1));
+      run_info.AddTilingData(static_cast<int32_t>(params.ho));
+      run_info.AddTilingData(static_cast<int32_t>(params.wo));
+    }
+    run_info.AddTilingData(static_cast<int32_t>(params.cin));
+    run_info.AddTilingData(static_cast<int32_t>(params.c1));
+    if (stride_equal_one) {
+      run_info.AddTilingData(static_cast<int32_t>(params.co));
+    }
+    run_info.AddTilingData(static_cast<int32_t>(params.h));
+    run_info.AddTilingData(static_cast<int32_t>(params.w));
+    run_info.AddTilingData(static_cast<int32_t>(params.kh));
+    run_info.AddTilingData(static_cast<int32_t>(params.kw));
+    if (stride_equal_one) {
+      run_info.AddTilingData(run_info_params.dy_c_ori);
+    }
+    if (!stride_equal_one) {
+      run_info.AddTilingData(run_info_params.g_extend);
+      run_info.AddTilingData(run_info_params.dx_c1_extend);
+    }
+    run_info.AddTilingData(run_info_params.multiple_extend);
+    run_info.AddTilingData(static_cast<int32_t>(params.padu));
+    run_info.AddTilingData(static_cast<int32_t>(params.padd));
+    run_info.AddTilingData(static_cast<int32_t>(params.padl));
+    run_info.AddTilingData(static_cast<int32_t>(params.padr));
+    if (!stride_equal_one) {
+      run_info.AddTilingData(static_cast<int32_t>(params.stride_h));
+      run_info.AddTilingData(static_cast<int32_t>(params.stride_w));
+    }
+    run_info.AddTilingData(run_info_params.shape_up_modify);
+    run_info.AddTilingData(run_info_params.shape_left_modify);
+    run_info.AddTilingData(run_info_params.shape_down_modify);
+    run_info.AddTilingData(run_info_params.shape_right_modify);
+    run_info.AddTilingData(run_info_params.pad_up_before);
+    run_info.AddTilingData(run_info_params.pad_left_before);
+    run_info.AddTilingData(run_info_params.pad_down_after);
+    run_info.AddTilingData(run_info_params.pad_right_after);
+    run_info.AddTilingData(static_cast<int32_t>(tiling.batch_dim));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.n_dim));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.m_dim));
+    run_info.AddTilingData(run_info_params.batch_single_core);
+    run_info.AddTilingData(run_info_params.n_single_core);
+    run_info.AddTilingData(run_info_params.m_single_core);
+    run_info.AddTilingData(static_cast<int32_t>(tiling.k_al1 * params.kh * params.kw * kBlockSize));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.k_bl1 * params.kh * params.kw * kBlockSize));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.m_al1));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.n_bl1));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.k_aub * params.kh * params.kw * kBlockSize));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.m_aub));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.m_l0));
+    run_info.AddTilingData(run_info_params.n_l0_div_ub);
+    run_info.AddTilingData(static_cast<int32_t>(tiling.n_cub));
+    run_info.AddTilingData(static_cast<int32_t>(tiling.k_l0));
+    run_info.AddTilingData(run_info_params.k_al1_div_16);
+    run_info.AddTilingData(run_info_params.k_bl1_div_16);
+    run_info.AddTilingData(run_info_params.al1_bound);
+    run_info.AddTilingData(run_info_params.bl1_bound);
+    run_info.AddTilingData(run_info_params.aub_bound);
+  }
+
+  bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling,
+                           const string &tiling_id, utils::OpRunInfo& run_info) {
+    RunInfoRaras run_info_params;
+    run_info_params.dy_c_ori = ((params.co + params.groups - 1) / params.groups) * params.groups;
+    int32_t block_size = kBlockSize;
+    int32_t dx_c_extend = Lcm(params.cin, block_size) / params.cin;
+    int32_t dy_c_extend = Lcm(run_info_params.dy_c_ori, block_size) / run_info_params.dy_c_ori;
+    run_info_params.multiple_extend = min(Lcm(dx_c_extend, dy_c_extend), params.groups);
+    run_info_params.g_extend = (params.groups + run_info_params.multiple_extend - 1) / run_info_params.multiple_extend;
+    run_info_params.dx_c1_extend = (run_info_params.multiple_extend * params.cin + kBlockSize - 1) / kBlockSize;
+    run_info_params.pad_up_before = (params.kh - 1) * params.dilations_h - params.padu;
+    run_info_params.pad_left_before = (params.kw - 1) * params.dilations_w - params.padl;
+    run_info_params.pad_down_after =
+        params.h - params.ho * params.stride_h - run_info_params.pad_up_before + (params.kh - 1) * params.dilations_h;
+    run_info_params.pad_right_after =
+        params.w - params.wo * params.stride_w -
+        run_info_params.pad_left_before + (params.kw - 1) * params.dilations_w;
+    run_info_params.shape_up_modify = (run_info_params.pad_up_before - abs(run_info_params.pad_up_before)) / kNumTwo;
+    run_info_params.shape_left_modify =
+        (run_info_params.pad_left_before - abs(run_info_params.pad_left_before)) / kNumTwo;
+    run_info_params.shape_down_modify =
+        (run_info_params.pad_down_after - abs(run_info_params.pad_down_after)) / kNumTwo;
+    run_info_params.shape_right_modify =
+        (run_info_params.pad_right_after - abs(run_info_params.pad_right_after)) / kNumTwo;
+    run_info_params.pad_up_before = (run_info_params.pad_up_before + abs(run_info_params.pad_up_before)) / kNumTwo;
+    run_info_params.pad_left_before =
+        (run_info_params.pad_left_before + abs(run_info_params.pad_left_before)) / kNumTwo;
+    run_info_params.pad_down_after = (run_info_params.pad_down_after + abs(run_info_params.pad_down_after)) / kNumTwo;
+    run_info_params.pad_right_after =
+        (run_info_params.pad_right_after + abs(run_info_params.pad_right_after)) / kNumTwo;
+    run_info_params.batch_single_core = params.batch / tiling.batch_dim;
+    int32_t n_single_size = tiling.n_bl1 * tiling.n_l0;
+    int32_t m_single_size = tiling.m_al1 * tiling.m_l0;
+    if (tiling.n_bl1 == 0) {
+      n_single_size = tiling.n_single_core_size;
+    }
+    if (tiling.m_al1 == 0) {
+      m_single_size = tiling.m_single_core_size;
+    }
+    run_info_params.m_single_core =
+        max((params.h * params.w + kBlockSize - 1) / kBlockSize / (tiling.n_dim * n_single_size), 1L);
+    run_info_params.n_single_core = max(params.c1 / (tiling.m_dim * m_single_size), 1L);
+    run_info_params.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
+    run_info_params.k_al1_div_16 = tiling.k_al1 * params.kh * params.kw;
+    run_info_params.k_bl1_div_16 = tiling.k_bl1 * params.kh * params.kw;
+    int32_t hosh = (params.kh - 1) + m_single_size * kBlockSize / params.w + kHoshWNoDivided;
+    if (m_single_size * kBlockSize < params.w) {
+      hosh = (params.kh - 1) + kHoshWNoDivided;
+    } else if (m_single_size * kBlockSize % params.w == 0) {
+      hosh = (params.kh - 1) + m_single_size * kBlockSize / params.w;
+    }
+    run_info_params.al1_bound =  tiling.k_al1 * params.wo * params.stride_w * kBlockSize * hosh;
+    if (tiling.m_al1 == 0) {
+      run_info_params.al1_bound = tiling.k_al1 * kBlockSize *
+                  ((params.wo * params.stride_w * params.ho * params.stride_h + kBlockSize - 1) / kBlockSize) *
+                  kBlockSize;
+    }
+    run_info_params.bl1_bound =
+        tiling.k_bl1 * params.kh * params.kw * n_single_size * kBlockSize * kBlockSize;
+    run_info_params.aub_bound = tiling.k_aub * tiling.m_aub * params.wo * kBlockSize * params.stride_w;
+    bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
+    if (stride_equal_one) {
+      run_info_params.aub_bound = tiling.k_aub * kBlockSize *
+          ((tiling.m_aub * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) * kBlockSize;
+    }
+
+    SetRunInfo(run_info_params, params, tiling, run_info);
+    run_info.SetBlockDim(static_cast<uint32_t>(tiling.batch_dim * tiling.n_dim * tiling.m_dim));
+    run_info.SetTilingKey(std::stoi(tiling_id));
+    return true;
+  }
+
   bool cube_tiling(const std::string& op_type,
                    const std::vector<int64_t>& input_shape,
                    const std::vector<int64_t>& var_value,

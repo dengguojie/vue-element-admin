@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
+#include "conv2d_bp_input_cache_tiling.h"
 #include "external/graph/operator.h"
 #include "graph/debug/ge_log.h"
 #include "op_tiling.h"
@@ -42,11 +43,12 @@ const int32_t kConv2dWDim = 3;
  * @param [out] runInfo: result data
  * @return int: tiling id
  */
-bool cube_tiling(const std::string& op_type,
-                const std::vector<int64_t>& input_shape,
-                const std::vector<int64_t>& var_value,
-                const nlohmann::json& compile_info,
-                utils::OpRunInfo& run_info);
+bool cube_tiling(const std::string& op_type, const std::vector<int64_t>& input_shape,
+                 const std::vector<int64_t>& var_value, const nlohmann::json& compile_info,
+                 utils::OpRunInfo& run_info);
+bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling,
+                         const string &tilingId, utils::OpRunInfo& runInfo);
+int64_t Lcm(const int64_t &param1, const int64_t &param2);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_
