@@ -1652,6 +1652,10 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   if (batch % fzDim == 0 && hidden_dim % fzDim == 0 && input_dim % fzDim == 0 && t_size != 1) {
     fusion_reduce = true;
   }
+  if (hidden_dim % 16 != 0 || input_dim % 16 != 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "inputsize or hiddensize is not 16 align, will not changed");
+    return NOT_CHANGED;
+  }
   if (PatternFusionUtil::IsUnknownShape(batch) ||
       PatternFusionUtil::IsUnknownShape(hidden_dim) || PatternFusionUtil::IsUnknownShape(t_size) ||
       PatternFusionUtil::IsUnknownShape(input_dim)) {
