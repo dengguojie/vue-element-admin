@@ -1,0 +1,973 @@
+[
+  {
+      "case_name": "Test_int32_float_512B",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,8]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,8]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_1K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,16]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,16]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_4K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,64]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,64]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_8K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,128]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,128]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_16K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,256]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,256]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_32K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,512]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,512]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_64K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,1024]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,1024]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_128K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,2048]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,2048]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_256K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,4096]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,4096]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_512K",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,8192]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,8192]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_1M",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,16384]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,16384]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_2M",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [64,32768]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [64,32768]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_8M",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [256,32768]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [256,32768]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_8M_2",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [1,8388608]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"],
+              "value": [0]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"],
+              "value": [-1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"],
+              "value": [1]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [1,8388608]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  },
+  {
+      "case_name": "Test_int32_float_8M_3",
+      "op": "ParameterizedTruncatedNormal",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [2],
+              "value_range": [0,16],
+              "data_distribute": ["uniform"],
+              "value": [8388608,1]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [8388608],
+              "value_range": [0,0],
+              "data_distribute": ["uniform"]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [8388608],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [8388608],
+              "value_range": [-1,0],
+              "data_distribute": ["uniform"]
+          },
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [8388608],
+              "value_range": [0,1],
+              "data_distribute": ["uniform"]
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": [8388608,1]
+          }
+      ],
+      "attr": [
+          {
+              "name": "seed",
+              "type": "int",
+              "value": 0
+          },
+          {
+              "name": "seed2",
+              "type": "int",
+              "value": 0
+          }
+      ]
+  }
+]

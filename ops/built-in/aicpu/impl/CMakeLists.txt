@@ -138,6 +138,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/matrix_triangular_solve.cc
         kernels/normalized/custom/research/minimum.cc
         kernels/normalized/custom/research/multinomial.cc
+        kernels/normalized/custom/research/parameterized_truncated_normal.cc
         kernels/normalized/custom/research/qr.cc
         kernels/normalized/custom/research/random_gamma.cc
         kernels/normalized/custom/research/scale_and_translate.cc
