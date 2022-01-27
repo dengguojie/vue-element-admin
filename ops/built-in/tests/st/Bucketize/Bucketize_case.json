@@ -1,0 +1,172 @@
+[
+    {
+        "case_name": "Test_Bucketize_4k_001",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","float","double"],
+                "shape": [32,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32"],
+                "shape": [32,32]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "boundaries",          
+                "type": "list_float",         
+                "value": [0.0,1.0]          
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Bucketize_64k_002",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","float","double"],
+                "shape": [32,32,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        100
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32"],
+                "shape": [32,32,16]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "boundaries",          
+                "type": "list_float",         
+                "value": [0.0,1.0]          
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Bucketize_1M_003",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","float","double"],
+                "shape": [32,32,16,15],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -100,
+                        100
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32"],
+                "shape": [32,32,16,15]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "boundaries",          
+                "type": "list_float",         
+                "value": [0.0,1.0]          
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Bucketize_2M_004",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","float","double"],
+                "shape": [32,32,16,15,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -100,
+                        200
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32"],
+                "shape": [32,32,16,15,2]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "boundaries",          
+                "type": "list_float",         
+                "value": [0.0,1.0]          
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Bucketize_8M_005",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","float","double"],
+                "shape": [32,32,16,15,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        200
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int32","int32","int32"],
+                "shape": [32,32,16,15,8]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "boundaries",          
+                "type": "list_float",         
+                "value": [0.0,1.0]          
+            }
+        ]
+    }
+]
