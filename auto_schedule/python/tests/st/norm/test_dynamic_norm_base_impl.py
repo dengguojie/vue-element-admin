@@ -277,6 +277,24 @@ case9 = {
         True
 }
 
+case10 = {
+    "params": [{
+        "shape": (6, 12, 24, 24, 16, 16),
+        "dtype": "float16",
+        "range": [(6, 6), (12, 12), (24, 24), (24, 24), (16, 16), (16, 16)]
+    }, {
+        "shape": (6, 12, 24, 24, 16, 16),
+        "dtype": "float16",
+        "range": [(6, 6), (12, 12), (24, 24), (24, 24), (16, 16), (16, 16)]
+    }, [2, 5]],
+    "case_name":
+        "test_dync_norm_base_10",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -286,3 +304,4 @@ ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)

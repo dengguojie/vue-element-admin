@@ -39,6 +39,7 @@ constexpr int32_t NORM_REDUCE_PATTERN_WEIGHT = 1000;
 constexpr int32_t NORM_COMMON_SCH_TYPE = 0;
 constexpr int32_t NORM_PARTIAL_REORDER_SCH_TYPE = 1;
 constexpr int32_t NORM_ALIGNED_IN_UB_SCH_TYPE = 2;
+constexpr int32_t NORM_LAST_REDUCE_ALIGN_SCH_TYPE = 3;
 
 struct NormCompileInfo {
   // construct func

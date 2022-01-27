@@ -703,8 +703,8 @@ TEST_F(NormTilingTest, TilingTest13) {
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864}}};
-  op_compile_info.workspace_info = {{1000400500, {32}}};
-  op_compile_info.norm_vars = {{1000400500, {20000, 20001, 30000, 40000}}};
+  op_compile_info.workspace_info = {{1300400500, {32}}};
+  op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -741,8 +741,8 @@ TEST_F(NormTilingTest, TilingTest14) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
   op_compile_info.available_ub_size = {{42000, {15920, 12840, 15920}}};
-  op_compile_info.workspace_info = {{4200000, {32}}};
-  op_compile_info.norm_vars = {{4200000, {20000, 20003, 30000, 40000}}};
+  op_compile_info.workspace_info = {{304200000, {32}}};
+  op_compile_info.norm_vars = {{304200000, {20000, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
@@ -778,8 +778,8 @@ TEST_F(NormTilingTest, TilingTest15) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4012, {9056, 7048, 9056}}};
-  op_compile_info.workspace_info = {{401200, {32, 32}}};
-  op_compile_info.norm_vars = {{401200, {20000, 30000, 40000}}};
+  op_compile_info.workspace_info = {{300401200, {32, 32}}};
+  op_compile_info.norm_vars = {{300401200, {20000, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);

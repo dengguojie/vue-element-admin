@@ -58,6 +58,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": [32],
                           "1000400501": [4],
                           "1200400500": [32],
+                          "1300400500": [32],
                           "1000500610": [4],
                           "1000500611": [32]
                         },
@@ -65,6 +66,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -72,6 +74,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -79,6 +82,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": [],
                           "1000400501": [],
                           "1200400500": [],
+                          "1300400500": [],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -86,6 +90,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": ["mean_cof"],
                           "1000400501": ["mean_cof"],
                           "1200400500": ["mean_cof"],
+                          "1300400500": ["mean_cof"],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -93,6 +98,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                           "1000400500": [20000, 20001, 30000, 40000],
                           "1000400501": [20000, 20001, 30000, 40000],
                           "1200400500": [20000, 20001, 30000, 40000],
+                          "1300400500": [20000, 20001, 30000, 40000],
                           "1000500610": [20001, 30000, 40000],
                           "1000500611": [20001, 30000, 40000]
                         }})";
@@ -164,6 +170,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": [32],
                           "1000400501": [4],
                           "1200400500": [32],
+                          "1300400500": [32],
                           "1000500610": [4],
                           "1000500611": [32]
                         },
@@ -171,6 +178,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -178,6 +186,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -185,6 +194,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": [],
                           "1000400501": [],
                           "1200400500": [],
+                          "1300400500": [],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -192,6 +202,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": ["mean_cof"],
                           "1000400501": ["mean_cof"],
                           "1200400500": ["mean_cof"],
+                          "1300400500": ["mean_cof"],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -199,6 +210,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                           "1000400500": [20000, 20001, 30000, 40000],
                           "1000400501": [20000, 20001, 30000, 40000],
                           "1200400500": [20000, 20001, 30000, 40000],
+                          "1300400500": [20000, 20001, 30000, 40000],
                           "1000500610": [20001, 30000, 40000],
                           "1000500611": [20001, 30000, 40000]
                         }})";
@@ -277,6 +289,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -284,6 +297,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                           "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
+                          "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"],
                           "1000500610": ["_dim_1", "_block_factor", "_ub_factor"],
                           "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]
                         },
@@ -291,6 +305,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                           "1000400500": [],
                           "1000400501": [],
                           "1200400500": [],
+                          "1300400500": [],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -298,6 +313,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                           "1000400500": ["mean_cof"],
                           "1000400501": ["mean_cof"],
                           "1200400500": ["mean_cof"],
+                          "1300400500": ["mean_cof"],
                           "1000500610": [],
                           "1000500611": []
                         },
@@ -305,6 +321,7 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                           "1000400500": [20000, 20001, 30000, 40000],
                           "1000400501": [20000, 20001, 30000, 40000],
                           "1200400500": [20000, 20001, 30000, 40000],
+                          "1300400500": [20000, 20001, 30000, 40000],
                           "1000500610": [20001, 30000, 40000],
                           "1000500611": [20001, 30000, 40000]
                         }})";

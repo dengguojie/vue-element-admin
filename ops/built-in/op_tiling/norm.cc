@@ -728,7 +728,8 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& rig
                                    cur_block_dim - 1 : cur_block_dim;
     int64_t cur_block_factor = (input_shape[index] + considered_block_dim - 1) / considered_block_dim;
     // max_block_factor has default value 0
-    if (max_block_factor != 0 && cur_block_factor > max_block_factor) {
+    bool is_cur_block_factor_illegal = max_block_factor != 0 && cur_block_factor > max_block_factor;
+    if (is_cur_block_factor_illegal) {
       continue;
     }
     for (; cur_block_dim >= 1; cur_block_dim--) {
@@ -762,8 +763,15 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& rig
                                          (actual_block_factor * post_right_product < block_size) ?
                                          (block_size + post_right_product - 1) / post_right_product:
                                          actual_block_factor;
-
-        return true;
+        if (max_block_factor == 0) {
+          return true;
+        }
+        // storage align last axis but align block factor is larger than max_block_factor
+        bool is_illegal_cut = index == input_shape.size() - 1 &&
+          (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size > max_block_factor;
+        if (!is_illegal_cut) {
+          return true;
+        }
       }
     }
   }
@@ -1420,7 +1428,7 @@ bool Norm::CalcNormInfo() {
   }
   last_r_axis_index = static_cast<int32_t>(*max_element(reduce_axis.begin(), reduce_axis.end()));
   is_last_axis_reduce = last_r_axis_index == static_cast<int32_t>(input_shape.size()) - 1;
-  int32_t input_shape_size = static_cast<int32_t>(input_shape.size());
+  auto input_shape_size = static_cast<int32_t>(input_shape.size());
   last_a_axis_index_in_reorder = is_last_axis_reduce ?
                                  input_shape_size - static_cast<int32_t>(reduce_axis.size()) - 1 :
                                  input_shape_size - 1;
@@ -1430,6 +1438,7 @@ bool Norm::CalcNormInfo() {
   is_continuous_data_move =
     is_last_axis_reduce && (!is_discontinuous_reduce_axis) && (input_shape.size() - reduce_axis.size() <= 1);
   is_align_and_remove_pad = IsNeedAlignedInUb();
+  bool is_last_reduce_align = is_last_axis_reduce && input_shape.back() % block_size == 0;
   // determine ub size
   if (is_need_workspace) {
     ub_size = workspace_max_ub_count;
@@ -1438,6 +1447,9 @@ bool Norm::CalcNormInfo() {
     sch_type = NORM_ALIGNED_IN_UB_SCH_TYPE;
   } else {
     ub_size = common_max_ub_count;
+    if (is_last_reduce_align) {
+      sch_type = NORM_LAST_REDUCE_ALIGN_SCH_TYPE;
+    }
   }
 
   return true;
