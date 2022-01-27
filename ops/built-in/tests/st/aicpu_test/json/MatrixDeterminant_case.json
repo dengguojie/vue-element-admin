@@ -1,0 +1,24 @@
+[
+    {
+        "case_name": "Test_MatrixDeterminant_001",
+        "op": "MatrixDeterminant",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float","double"],
+                "shape": [[4,32,32],[64,32,32],[1024,1024],[2,1024,1024],[8,1024,1024],[128,1024,1024]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [[0.0,1.0]]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float","double"],
+                "shape": [[4],[64],[1024],[2],[8],[128]]
+            }
+        ]
+    }
+]

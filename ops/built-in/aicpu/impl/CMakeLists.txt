@@ -133,6 +133,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/ifft.cc
         kernels/normalized/custom/research/inv.cc
         kernels/normalized/custom/research/lu.cc
+        kernels/normalized/custom/research/matrix_determinant.cc
         kernels/normalized/custom/research/matrix_set_diag_v2.cc
         kernels/normalized/custom/research/matrix_triangular_solve.cc
         kernels/normalized/custom/research/minimum.cc
