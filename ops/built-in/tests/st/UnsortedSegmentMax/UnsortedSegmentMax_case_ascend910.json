@@ -1,0 +1,359 @@
+[
+    {
+      "case_name": "UnsortedSegmentMax_dynamic_shape_dynamic_unsorted_segment_max_case_1_ascend910a",
+      "op": "UnsortedSegmentMax",
+      "input_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "name": "x",
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              1.0,
+              1.0
+            ]
+          ],
+          "name": "segment_ids",
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              1.0,
+              1.0
+            ]
+          ],
+          "name": "num_segments",
+          "shape_range": [
+            [
+              1,
+              1
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "name": "y",
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "case_name": "UnsortedSegmentMax_dynamic_shape_dynamic_unsorted_segment_max_case_2_ascend910a",
+      "op": "UnsortedSegmentMax",
+      "input_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "float32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "name": "x",
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ],
+          "name": "segment_ids"
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "name": "num_segments",
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "float32"
+          ],
+          "shape": [
+            -1
+          ],
+          "shape_range": [
+            [
+              1,
+              65535
+            ]
+          ],
+          "typical_shape": [
+            1
+          ],
+          "name": "y"
+        }
+      ]
+    },
+    {
+      "case_name": "UnsortedSegmentMax_dynamic_shape_dynamic_unsorted_segment_case_2_ascend910a",
+      "op": "UnsortedSegmentMax",
+      "input_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "float32"
+          ],
+          "shape": [
+            -1,16,419
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "name": "x",
+          "shape_range": [
+            [
+              1508,
+              1518
+            ]
+          ],
+          "typical_shape": [
+            1510
+          ]
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "shape_range": [
+            [
+              1508,
+              1518
+            ]
+          ],
+          "typical_shape": [
+            1510
+          ],
+          "name": "segment_ids"
+        },
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "int32"
+          ],
+          "shape": [
+            -1
+          ],
+          "data_distribute": [
+            "uniform"
+          ],
+          "value_range": [
+            [
+              0.1,
+              1.0
+            ]
+          ],
+          "name": "num_segments",
+          "shape_range": [
+            [
+              1,
+              2
+            ]
+          ],
+          "typical_shape": [
+            1
+          ]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": [
+            "ND"
+          ],
+          "type": [
+            "float32"
+          ],
+          "shape": [
+            -1,16,419
+          ],
+          "shape_range": [
+            [
+              8,
+              16
+            ]
+          ],
+          "typical_shape": [
+            10
+          ],
+          "name": "y"
+        }
+      ]
+    }
+  ]

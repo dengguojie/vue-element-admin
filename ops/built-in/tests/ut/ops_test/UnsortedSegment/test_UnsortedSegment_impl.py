@@ -38,5 +38,5 @@ ut_case.add_case("Ascend910A", gen_dynamic_unsorted_case([2, -1], [[2, 2], [13, 
                                                          -1, [[256, 512]], "float16", "success", "segment_min"))
 
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+#if __name__ == '__main__':
+#    ut_case.run("Ascend910A")
