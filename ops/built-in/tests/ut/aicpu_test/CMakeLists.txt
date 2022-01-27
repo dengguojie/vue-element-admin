@@ -104,6 +104,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/abs.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/add_n.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_and.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_or.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_xor.cc
@@ -283,6 +284,7 @@ set(_cpu_kernels_ut_files
   testcase/acosh/src/acosh_utest.cpp
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/add/src/add_utest.cpp
+  testcase/add_n/src/add_n_utest.cpp
   testcase/asin/src/asin_utest.cpp
   testcase/asinh/src/asinh_utest.cpp
   testcase/assign/src/assign_utest.cpp

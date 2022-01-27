@@ -1,0 +1,1290 @@
+[
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_512",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_1K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_4K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_8K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_16K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_32K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_64K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_128K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_256K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_512K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_1M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_2M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_8M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_INT64_128M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["int64"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["int64"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[1, 8, 8]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[2, 8, 8]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_4K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 10, 10]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 10]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_16K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 20, 20]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_32K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 20]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_64K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[5, 40, 40]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 40, 40]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_256K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 40]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512K",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[10, 80, 80]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 50, 100]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_2M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 100, 100]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[25, 200, 200]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "op": "AddN",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128M",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x0"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "shape": [[100, 400, 400]],
+        "type": ["double"],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "N",
+        "type": "int",
+        "value": 3
+      }
+    ]
+  }
+]
