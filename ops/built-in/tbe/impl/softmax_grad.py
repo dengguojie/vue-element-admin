@@ -143,6 +143,36 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     dtype_softmax = softmax.get("dtype")
     input_format = softmax.get("format")
     shape_grad_softmax = grad_softmax.get("shape")
+    ori_shape = softmax.get("ori_shape")
+    if input_format == "NC1HWC0":
+        if len(ori_shape) == 2:
+            new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
+            softmax["ori_shape"] = new_ori_shape
+            grad_softmax["ori_shape"] = new_ori_shape
+            if not isinstance(axis, int):
+                axis = list(axis)
+            if not hasattr(axis, 'index'):
+                if axis >= 0:
+                    axis = axis + 1
+                else:
+                    axis = axis - 1
+            else:
+                if axis[0] >= 0:
+                    axis[0] = axis[0] + 1
+                else:
+                    axis[0] = axis[0] - 1
+        if len(ori_shape) == 3:
+            new_ori_shape = [1, ori_shape[0], ori_shape[1], ori_shape[2]]
+            softmax["ori_shape"] = new_ori_shape
+            grad_softmax["ori_shape"] = new_ori_shape
+            if not isinstance(axis, int):
+                axis = list(axis)
+            if not hasattr(axis, 'index'):
+                if axis >= 0:
+                    axis = axis + 1
+            else:
+                if axis[0] >= 0:
+                    axis[0] = axis[0] + 1
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ"):
         context = tbe_context.op_context.get_context()

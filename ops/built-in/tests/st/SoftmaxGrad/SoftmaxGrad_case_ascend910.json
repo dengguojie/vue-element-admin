@@ -1,3 +1,4 @@
+
 [
   {
     "op": "SoftmaxGrad",
@@ -455,5 +456,144 @@
       }
     ],
     "case_name": "test_SoftmaxGrad_007"
+  },
+  {
+    "op": "SoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "softmax",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_softmax",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          1,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxGrad_008"
+  },
+  {
+    "op": "SoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          7,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "softmax",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          7,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_softmax",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          7,
+          7,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          64,
+          7,
+          7
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxGrad_009"
   }
 ]
