@@ -701,7 +701,7 @@ class GEMMCompute(FormatCompute):
                         and ori_shape_b_len in (3, 4)
                         and shape_b_len == 4
                         and self.tensor_b.dtype == "int8"
-                        and self.trans_b == False
+                        and not self.trans_b
                         and self.tensor_b.op.attrs["ori_format"] == "HWCN"
                         and self.format_b == "FRACTAL_Z")
             if is_valid:

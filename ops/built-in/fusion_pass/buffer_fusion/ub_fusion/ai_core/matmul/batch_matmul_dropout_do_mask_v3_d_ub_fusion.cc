@@ -38,6 +38,7 @@ static const string PATTERN_OTHER_INPUT1 = "other_input1";
 static const string PATTERN_ADD = "add";
 static const string TYPE_DROPOUTDOMASKV3D = "DropOutDoMaskV3D";
 static const string TYPE_BATCHMATMUL = "BatchMatMul";
+static const string TYPE_BATCHMATMULV2 = "BatchMatMulV2";
 }  // namespace
 
 vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatterns() {
@@ -152,7 +153,9 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose
   // -> batch_matmul2 (control-node) -> dropout_do_mask"
   for (const auto& batch_matmul_node : batch_matmul_nodes) {
-    if (batch_matmul_node->GetType() != TYPE_BATCHMATMUL) {
+    bool type_invalid = batch_matmul_node->GetType() != TYPE_BATCHMATMUL &&
+                        batch_matmul_node->GetType() != TYPE_BATCHMATMULV2;
+    if (type_invalid) {
       OP_LOGD(FUSED_OP_TYPE.c_str(),
               "The op_type of node [%s] should be BatchMatMul, but actually is [%s].",
               batch_matmul_node->GetName().c_str(), batch_matmul_node->GetType().c_str());
@@ -193,7 +196,9 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     for (const auto& dropout_control_node : dropout_node->GetInControlNodes()) {
       FUSION_PASS_CHECK(dropout_control_node == nullptr,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of dropout is null."), return FAILED);
-      if (dropout_control_node->GetType() != TYPE_BATCHMATMUL) {
+      bool type_invalid = dropout_control_node->GetType() != TYPE_BATCHMATMUL &&
+                          dropout_control_node->GetType() != TYPE_BATCHMATMULV2;
+      if (type_invalid) {
         continue;
       }
       // dropout_control_node is batch_matmul_node in this situation

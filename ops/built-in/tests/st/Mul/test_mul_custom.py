@@ -17,7 +17,7 @@ def test_mul_compute_nz_nd_ubfusion():
         x = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
         y = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
         output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
-        out = mul_compute(x, y, output, False) 
+        out = mul_compute(x, y, output, False)
         tensor_list = [x, y, out]
         sch = auto_schedule(out)
         config = {
@@ -34,7 +34,7 @@ def test_mul_compute_nd_nz_ubfusion():
         x = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
         y = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
         output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
-        out = mul_compute(x, y, output, False) 
+        out = mul_compute(x, y, output, False)
         tensor_list = [x, y, out]
         sch = auto_schedule(out)
         config = {

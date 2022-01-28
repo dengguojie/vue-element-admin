@@ -342,6 +342,7 @@ class GemmSchedule:
         # Call initialization function
         self.container = self.GemmScheduleContainer()
         self.status_controller = self.GemmScheduleStatusController()
+        self.tensor_b_reshape = 0
 
     @staticmethod
     def _get_all_tags(res):

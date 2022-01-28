@@ -95,7 +95,8 @@ Status BatchMatmulConfusiontransposeUbFusion::CheckInputParameters(const vector<
     for (auto transposeControlNode : tranposeNode->GetInControlNodes()) {
       FUSION_PASS_CHECK(transposeControlNode == nullptr,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of transpose is null"), return FAILED);
-      if (transposeControlNode->GetType() != "BatchMatMul") {
+      if (transposeControlNode->GetType() != "BatchMatMul" &&
+          transposeControlNode->GetType() != "BatchMatMulV2") {
         continue;
       }
       FUSION_PASS_CHECK(

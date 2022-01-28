@@ -601,6 +601,8 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
         shape_matmul_origin = x.op.attrs["shape"]
         c1_index = len(x_shape) - 4
         res = _matmul_compute(x, x_shape, deq_scale, sqrt_mode, relu_flag, shape_matmul_origin, c1_index, tensor_flag)
+        if "batch_shape" in x.op.attrs:
+            res.op.attrs["batch_shape"] = shape_util.shape_to_list(x.op.attrs["batch_shape"])
         return res
     if x.op.tag == "depthwise_conv2d":
         align_shape[4] = 16

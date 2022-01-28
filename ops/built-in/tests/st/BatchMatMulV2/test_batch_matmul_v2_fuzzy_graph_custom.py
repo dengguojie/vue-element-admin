@@ -137,6 +137,7 @@ def test_batchmatmul_dequant_mul_add_710():
             cce_build_code(sch, config)
         te_set_version("Ascend310")
 
+
 if __name__ == '__main__':
     test_batch_matmul_generalization_range_check()
     test_batch_matmul_generalization_not_valid()

@@ -25,7 +25,6 @@ from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util import util_common
 from impl.util.util_compute import batchmatmul_elem_nd2nz
-from impl.util.util_compute import elem_reshape
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
 from impl.util.util_select_op_base import gen_param
@@ -596,40 +595,6 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
 
     return res
 
-def check_batchmatmul_dequant_mul_add_fusion(input_tensor):
-    """
-    check if fused with batchmatmul + dequant + mul + add
-
-    Parameters
-    ----------
-    input_tensor: TVM tensor
-        the tensor of elem input
-
-    Returns
-    -------
-    """
-    nodes = ["add"]
-    queue = [input_tensor]
-    visited = [input_tensor]
-    while queue:
-        item = queue.pop(0)
-        if len(item.shape) == 5 and ("matmul" in item.op.tag) \
-            and item.op.attrs["format"] == "FRACTAL_NZ" and "matmul" not in nodes:
-            nodes.append("matmul")
-        elif "mul" in item.op.tag and "mul" not in nodes:
-            nodes.append("mul")
-        elif "dequant" in item.op.tag and "dequant" not in nodes:
-            nodes.append("dequant")
-
-        if nodes == ["add", "mul", "dequant", "matmul"]:
-            return True
-
-        for child in item.op.input_tensors:
-            if child not in visited:
-                queue.append(child)
-                visited.append(child)
-    return False
-
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add")
@@ -691,16 +656,9 @@ def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=Tr
                 input_x = tvm.compute(shape_y, lambda x1, y1, y0, x0:input_x(0, x1 % shape_x[1], 0, 0, \
                     x0 % shape_x[-1]))
         else:
-            bmm_deq_mul_add_right_flag = check_batchmatmul_dequant_mul_add_fusion(input_y)
-            bmm_deq_mul_add_left_flag = check_batchmatmul_dequant_mul_add_fusion(input_x)
             batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
             batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
-            if bmm_deq_mul_add_right_flag or bmm_deq_mul_add_left_flag:
-                if bmm_deq_mul_add_left_flag:
-                    input_y = elem_reshape(shape_y, input_y, "add_y")
-                elif bmm_deq_mul_add_right_flag:
-                    input_x = elem_reshape(shape_x, input_x, "add_x")
-            elif batch_matmul_flag_lhs or batch_matmul_flag_rhs:
+            if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
                 if batch_matmul_flag_rhs:
                     input_x, input_y = input_y, input_x
                 return _add_compute_with_batchmatmul(input_x, input_y)

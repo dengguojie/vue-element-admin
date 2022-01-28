@@ -68,8 +68,7 @@ vector<BufferFusionPattern *> BatchMatmulV2DequantMulAddFusionPass::DefinePatter
           .SetOutputs(kPatternDequant, {kPatternEltwise1})
           .SetOutputs(kPatternOtherInput1, {kPatternEltwise1})
           .SetOutputs(kPatternEltwise1, {kPatternEltwise2})
-          .SetOutputs(kPatternOtherInput2, {kPatternEltwise2})
-          .SetOutputs(kPatternEltwise2, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
+          .SetOutputs(kPatternOtherInput2, {kPatternEltwise2});
 
   patterns.push_back(pattern);
   OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
@@ -104,8 +103,6 @@ Status BatchMatmulV2DequantMulAddFusionPass::GetFusionNodes(const BufferFusionMa
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Mul output nodes must be one"), return SUCCESS);
   FUSION_PASS_CHECK(elemWiseNodes2[0]->GetAllInDataAnchors().size() != 2,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add input nodes must be two"), return SUCCESS);
-  FUSION_PASS_CHECK(elemWiseNodes2[0]->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() != 1,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add output nodes must be one"), return SUCCESS);
 
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused

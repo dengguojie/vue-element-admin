@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
@@ -26,7 +26,7 @@ class BatchMatmulV2DequantMulAddFusionPass : public BufferFusionPassBase {
  public:
   explicit BatchMatmulV2DequantMulAddFusionPass() {}
 
-  ~BatchMatmulV2DequantMulAddFusionPass() {}
+  ~BatchMatmulV2DequantMulAddFusionPass() override {}
 
  protected:
   /*
@@ -56,4 +56,4 @@ class BatchMatmulV2DequantMulAddFusionPass : public BufferFusionPassBase {
 
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_V2_DEQUANT_MUL_ADD_FUSION_PASS_H
