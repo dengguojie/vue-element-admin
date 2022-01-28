@@ -70,9 +70,9 @@ def set_range(input_x, input_gamma, input_beta):
 def _is_in_white_list(shape_x, shape_gamma, shape_beta):
     # Rules that besides the func:_is_unsupported_or_single_core
     # reserved for future
-    white_list_x = []
-    white_list_gamma = []
-    white_list_beta = []
+    white_list_x = [[50, 32, 768]]
+    white_list_gamma = [[768]]
+    white_list_beta = [[768]]
 
     if shape_x in white_list_x and shape_gamma in white_list_gamma and shape_beta in white_list_beta:
         return True
