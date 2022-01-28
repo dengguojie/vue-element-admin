@@ -121,16 +121,16 @@ set_env(){
   echo  export TOOLCHAIN_HOME=\$ASCEND_HOME/toolkit >> ~/.bashrc
     
   if [ ! $usr_local ];then
-    echo  export PYTHONPATH=\$OPS_SOURCE_PATH:\$OP_TEST_FRAME_INSTALL_HOME:\$ASCEND_HOME/atc/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
+    echo  export PYTHONPATH=\$OPS_SOURCE_PATH:\$OP_TEST_FRAME_INSTALL_HOME:\$ASCEND_HOME/compiler/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
   else
-    echo  export PYTHONPATH=\$ASCEND_HOME/ops/op_impl/built-in/ai_core/tbe:\$ASCEND_HOME/atc/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
+    echo  export PYTHONPATH=\$ASCEND_HOME/ops/op_impl/built-in/ai_core/tbe:\$ASCEND_HOME/compiler/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
   fi
-  echo "if [[ ! \$LD_LIBRARY_PATH =~ \$ASCEND_HOME/atc/lib64:\$ASCEND_CODE_HOME/lib ]];then" >> ~/.bashrc
-  echo  "  export LD_LIBRARY_PATH=\$ASCEND_HOME/atc/lib64:\$ASCEND_CODE_HOME/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
+  echo "if [[ ! \$LD_LIBRARY_PATH =~ \$ASCEND_HOME/compiler/lib64:\$ASCEND_CODE_HOME/lib ]];then" >> ~/.bashrc
+  echo  "  export LD_LIBRARY_PATH=\$ASCEND_HOME/compiler/lib64:\$ASCEND_CODE_HOME/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
   echo  fi >> ~/.bashrc
 
-  echo "if [[ ! \$PATH =~ \$ASCEND_HOME/atc/ccec_compiler/bin ]];then" >> ~/.bashrc
-  echo  "  export PATH=\$ASCEND_HOME/atc/ccec_compiler/bin:\$PATH" >> ~/.bashrc
+  echo "if [[ ! \$PATH =~ \$ASCEND_HOME/compiler/ccec_compiler/bin ]];then" >> ~/.bashrc
+  echo  "  export PATH=\$ASCEND_HOME/compiler/ccec_compiler/bin:\$PATH" >> ~/.bashrc
   echo  fi >> ~/.bashrc
   
   echo  " ">> ~/.bashrc

@@ -28,7 +28,7 @@ if (USE_ATC)
     MESSAGE(STATUS "custom project, using custom configuration base on atc")
     # [Config Me] change me to you own atc root dir, please not ends with separator
     #set(ASCEND_ATC_ROOT ${MIND_STUDIO_HOME}/huawei/adk/1.75.T5.0.B050/atc)
-    set(ASCEND_ATC_ROOT /usr/local/Ascend/atc)
+    set(ASCEND_ATC_ROOT /usr/local/Ascend/compiler)
     set(ASCEND_TOOL_ROOT ${MIND_STUDIO_HOME}/huawei/adk/1.75.T5.0.B050/tools/simulator/lib/Ascend910/)
     set(ASCEND_ATC_LIB ${ASCEND_ATC_ROOT}/lib64)
     set(ASCEND_ATC_INC ${ASCEND_ATC_ROOT}/include)

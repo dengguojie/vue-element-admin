@@ -22,7 +22,7 @@
 - `CMake >= 3.14.0`
 - `Python 3.7.x`
 
-注：`canndev`的编译**依赖昇腾软件包**（开发者套件中的`ATC`包）,请先在社区下载。
+注：`canndev`的编译**依赖昇腾软件包**（开发者套件中的`compiler`包）,请先在社区下载。
 
 详细的安装步骤可以参考`Wiki`[环境准备](https://gitee.com/ascend/canndev/wikis)章节。
 
@@ -47,7 +47,7 @@
       export ASCEND_CUSTOM_PATH="/path/to/ascend";
       ```
       1. 如通过安装方式部署，则默认的路径是`/usr/local/Ascend`。
-      2. 如通过解压安装包方式，则`ascend`目录下需包含`atc`，`opp`，`toolkit`目录。
+      2. 如通过解压安装包方式，则`ascend`目录下需包含`compiler`，`opp`，`toolkit`目录。
 
     - 在`build.sh`的脚本中，会调用`cmake`下载一些依赖的库，如：`Google Protobuf`、`Google Test`、`Json`等，请确保网络连接正常。
     - 在`build.sh`的脚本中，默认会8线程编译，如果机器性能较差，可能会编译失败。可以通过`-j{线程数}`来控制线程数，如`bash build.sh -j4`。

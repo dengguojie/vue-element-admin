@@ -33,15 +33,15 @@ set_st_env() {
   local install_path="$1"
   local soc_version="$2"
   # atc
-  export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
+  export PATH=$install_path/compiler/ccec_compiler/bin:$install_path/compiler/bin:$PATH
   export ASCEND_OPP_PATH=$install_path/opp
-  export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH:${ASCEND_OPP_PATH}/op_impl/built-in/ai_core/tbe
-  export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
+  export PYTHONPATH=$install_path/compiler/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH:${ASCEND_OPP_PATH}/op_impl/built-in/ai_core/tbe
+  export LD_LIBRARY_PATH=$install_path/runtime/lib64:$install_path/compiler/lib64:$LD_LIBRARY_PATH
   # acl
   if [[ $soc_version == "Ascend310" ]]; then
     export DDK_PATH=$install_path
-    export NPU_HOST_LIB=$install_path/acllib/lib64/stub
-    export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+    export NPU_HOST_LIB=$install_path/runtime/lib64/stub
+    export LD_LIBRARY_PATH=$install_path/runtime/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
   fi
   #slog
   export ASCEND_SLOG_RPINT_TO_STDOUT=1
