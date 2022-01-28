@@ -107,13 +107,33 @@ Status ATabulateFusionTransposeFusionPass::Fusion(ge::ComputeGraph &graph, Mappi
   ge::OutDataAnchorPtr tableAnchorPtr = dataAnchorPtr->GetPeerOutAnchor();
   ge::NodePtr tableNode = tableAnchorPtr->GetOwnerNode();
 
+  ge::OpDescPtr tableDesc = tableNode->GetOpDesc();
+  FUSION_PASS_CHECK(tableDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tableDesc is null, fusion failed."),
+                    return FAILED);
+  ge::OpDescPtr newTableDesc = AttrUtils::CopyOpDesc(tableDesc);
+  FUSION_PASS_CHECK(newTableDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create new table Desc"),
+                    return FAILED);
+  newTableDesc->SetName(newTableDesc->GetName() + "_new");
+  ge::NodePtr newTableNode = graph.AddNode(newTableDesc);
+  FUSION_PASS_CHECK(newTableNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add new table to graph"),
+                    return FAILED);
+
+  fusedNode->GetInDataAnchor(0)->UnlinkAll();
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(newTableNode->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(0)),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add edge from new table to fused node."),
+      return FAILED);
+
   int64_t newTableDim1 = lastLayerSizeAlign * NUM_6;
-  ge::GeShape tableNewShape({tableDim0, newTableDim1});
-  tableTensorDesc.SetOriginShape(tableNewShape);
-  tableTensorDesc.SetShape(tableNewShape);
+  ge::GeShape newTableShape({tableDim0, newTableDim1});
+  tableTensorDesc.SetOriginShape(newTableShape);
+  tableTensorDesc.SetShape(newTableShape);
   fusedDesc->UpdateInputDesc(0, tableTensorDesc);
 
-  vector<ge::GeTensorPtr> tableWeights = ge::OpDescUtils::MutableWeights(tableNode);
+  vector<ge::GeTensorPtr> tableWeights = ge::OpDescUtils::MutableWeights(newTableNode);
   FUSION_PASS_CHECK(tableWeights.empty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Weights of table is empty, fusion failed."),
                     return PARAM_INVALID);
@@ -123,7 +143,7 @@ Status ATabulateFusionTransposeFusionPass::Fusion(ge::ComputeGraph &graph, Mappi
                     return PARAM_INVALID);
 
   tableTensorPtr->SetTensorDesc(tableTensorDesc);
-  tableNode->GetOpDesc()->UpdateOutputDesc(0, tableTensorDesc);
+  newTableNode->GetOpDesc()->UpdateOutputDesc(0, tableTensorDesc);
 
   int64_t newTableDataSize = tableDim0 * newTableDim1;
   std::unique_ptr<float[]> newTableData(new (std::nothrow) float[newTableDataSize]());
@@ -151,10 +171,17 @@ Status ATabulateFusionTransposeFusionPass::Fusion(ge::ComputeGraph &graph, Mappi
     weightTensor = std::make_shared<GeTensor>(tableTensorDesc, reinterpret_cast<uint8_t*>(newTableData.get()),
                                               newTableDataSize * sizeof(float)),
     return FAILED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::SetTensor(tableNode->GetOpDesc(), ge::ATTR_NAME_WEIGHTS, weightTensor),
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetTensor(newTableNode->GetOpDesc(), ge::ATTR_NAME_WEIGHTS, weightTensor),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "Failed to update ATTR_NAME_WEIGHTS, const: table"),
+                                                   "Failed to set ATTR_NAME_WEIGHTS, const: table"),
                     return FAILED);
+
+  if (tableNode->GetOutAllNodes().size() == 0) {
+    FUSION_PASS_CHECK(graph.RemoveNode(tableNode) != ge::GRAPH_SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove origin table node."),
+                      return FAILED);
+  }
+  newNodes.push_back(newTableNode);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to ATabulateFusionTranspose fusion pass.");
   return SUCCESS;
