@@ -25,8 +25,8 @@ class ConcatTiling : public testing::Test {
 static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
-  int64_t tmp = 0;
-  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
+  int32_t tmp = 0;
+  for (size_t i = 0; i < data.length(); i += sizeof(int32_t)) {
     memcpy(&tmp, data.c_str() + i, sizeof(tmp));
     result += std::to_string(tmp);
     result += " ";
@@ -55,11 +55,11 @@ TEST_F(ConcatTiling, Concat_tiling1) {
   opParas.SetAttr("N", 3);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":0, \"input_size\":3}}";
+  std::string compileInfo = R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 32 0 0 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling2) {
@@ -82,14 +82,342 @@ TEST_F(ConcatTiling, Concat_tiling2) {
   opParas.SetAttr("N", 3);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":1, \"input_size\":3}}";
+  std::string compileInfo = R"({"_ori_axis": 1, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 4 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling3) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1},
+      {4, 5},
+      {4, 6},
+  };
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": -1, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling4) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {2, 1, 32, 16},
+      {2, 1, 32, 32},
+      {2, 1, 32, 48},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_HWCN);
+  tensor_input2.SetOriginFormat(FORMAT_HWCN);
+  tensor_input3.SetOriginFormat(FORMAT_HWCN);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 3, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 1 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling5) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {16, 32, 2, 1},
+      {32, 32, 2, 1},
+      {48, 32, 2, 1},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_NCHW);
+  tensor_input2.SetOriginFormat(FORMAT_NCHW);
+  tensor_input3.SetOriginFormat(FORMAT_NCHW);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling6) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {16, 2, 2, 1, 16},
+      {32, 2, 2, 1, 16},
+      {48, 2, 2, 1, 16},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_NC1HWC0);
+  tensor_input2.SetOriginFormat(FORMAT_NC1HWC0);
+  tensor_input3.SetOriginFormat(FORMAT_NC1HWC0);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling7) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {16, 16, 2, 1, 2},
+      {32, 16, 2, 1, 2},
+      {48, 16, 2, 1, 2},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_NCDHW);
+  tensor_input2.SetOriginFormat(FORMAT_NCDHW);
+  tensor_input3.SetOriginFormat(FORMAT_NCDHW);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling8) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {16, 2, 1, 2, 16},
+      {32, 2, 1, 2, 16},
+      {48, 2, 1, 2, 16},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_NDHWC);
+  tensor_input2.SetOriginFormat(FORMAT_NDHWC);
+  tensor_input3.SetOriginFormat(FORMAT_NDHWC);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 0, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+}
+
+TEST_F(ConcatTiling, Concat_tiling9) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 1, 16, 16},
+      {4, 2, 16, 16},
+      {4, 3, 16, 16},
+  };
+  vector<vector<int64_t>> input_ori_shapes = {
+      {2, 1, 2, 16, 16},
+      {2, 1, 2, 16, 32},
+      {2, 1, 2, 16, 48},
+  };
+
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_FRACTAL_Z_3D, DT_FLOAT16);
+  tensor_input1.SetOriginShape(ge::Shape(input_ori_shapes[0]));
+  tensor_input2.SetOriginShape(ge::Shape(input_ori_shapes[1]));
+  tensor_input3.SetOriginShape(ge::Shape(input_ori_shapes[2]));
+  tensor_input1.SetOriginFormat(FORMAT_DHWCN);
+  tensor_input2.SetOriginFormat(FORMAT_DHWCN);
+  tensor_input3.SetOriginFormat(FORMAT_DHWCN);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = R"({"_ori_axis": 4, "_pattern": "Concat", "_core_num": 32, "_ub_size": 262144, "_only_const_tiling": false, "_is_const": false, "_concat_vars": [[true, false], [false, false], [false, false]], "_align_vars": [0, 1, 2], "_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"3000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "3000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_1", "_offset_1", "_offset_2"], "4000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_offset_1", "_offset_2"], "4100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_0_0"], "2000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "2100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"],"5000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5000001": ["_dim_0_0", "_block_factor_1", "_ub_factor_0", "_ub_factor_1", "_align_factor_0", "_align_factor_1", "_align_factor_2", "_offset_1", "_offset_2"], "5100000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "6000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}, "_custom_vars": {"3000000": [], "3000001": [], "4000000": [], "4000001": [], "4100000": [], "0": [], "2000000": [], "2000001": [], "2100000": [], "5000000": [], "5000001": [], "5100000": [], "6000000": []}})";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 1 ");
+}
+
+static string to_string_int64(const std::stringstream& tiling_data) {
+  auto data = tiling_data.str();
+  string result;
+  int64_t tmp = 0;
+  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
+    memcpy(&tmp, data.c_str() + i, sizeof(tmp));
+    result += std::to_string(tmp);
+    result += " ";
+  }
+
+  return result;
+}
+
+TEST_F(ConcatTiling, Concat_tik_tiling1) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 4, 4, 4},
+      {5, 4, 4, 4},
+      {6, 4, 4, 4},
+  };
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":0, \"input_size\":3}, \"is_tik\": true}";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
+}
+
+TEST_F(ConcatTiling, Concat_tik_tiling2) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  vector<vector<int64_t>> input_shapes = {
+      {4, 4, 4, 4},
+      {4, 5, 4, 4},
+      {4, 6, 4, 4},
+  };
+  TensorDesc tensor_input1(ge::Shape(input_shapes[0]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input2(ge::Shape(input_shapes[1]), FORMAT_ND, DT_FLOAT16);
+  TensorDesc tensor_input3(ge::Shape(input_shapes[2]), FORMAT_ND, DT_FLOAT16);
+
+  auto opParas = op::ConcatD("ConcatD");
+  opParas.create_dynamic_input_x(3);
+  opParas.UpdateDynamicInputDesc("x", 0, tensor_input1);
+  opParas.UpdateDynamicInputDesc("x", 1, tensor_input2);
+  opParas.UpdateDynamicInputDesc("x", 2, tensor_input3);
+  opParas.SetAttr("N", 3);
+  opParas.SetAttr("concat_dim", -1);
+
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":1, \"input_size\":3}, \"is_tik\": true}";
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
+}
+
+TEST_F(ConcatTiling, Concat_tik_tiling3) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -163,17 +491,17 @@ TEST_F(ConcatTiling, Concat_tiling3) {
   opParas.SetAttr("N", 30);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":30}}";
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":30}, \"is_tik\": true}";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(
-      to_string(runInfo.GetAllTilingData()),
+      to_string_int64(runInfo.GetAllTilingData()),
       "1 4 34 5 585 30 0 0 5 0 6 5 7 11 8 18 9 26 10 35 11 45 12 56 13 68 14 81 15 95 16 110 17 126 18 143 19 161 20 "
       "180 21 200 22 221 23 243 24 266 25 290 26 315 27 341 28 368 29 396 30 425 31 455 32 486 33 518 34 551 ");
 }
 
-TEST_F(ConcatTiling, Concat_tiling4) {
+TEST_F(ConcatTiling, Concat_tik_tiling4) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -193,13 +521,13 @@ TEST_F(ConcatTiling, Concat_tiling4) {
   opParas.SetAttr("N", 3);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}}";
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}, \"is_tik\": true}";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
-TEST_F(ConcatTiling, Concat_tiling5) {
+TEST_F(ConcatTiling, Concat_tik_tiling5) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -219,13 +547,13 @@ TEST_F(ConcatTiling, Concat_tiling5) {
   opParas.SetAttr("N", 3);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1}}";
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1}, \"is_tik\": true}";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
-TEST_F(ConcatTiling, Concat_tiling6) {
+TEST_F(ConcatTiling, Concat_tik_tiling6) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -245,7 +573,7 @@ TEST_F(ConcatTiling, Concat_tiling6) {
   opParas.SetAttr("N", 3);
   opParas.SetAttr("concat_dim", -1);
 
-  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}}";
+  std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"concat_dim\":-1, \"input_size\":3}, \"is_tik\": true}";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);

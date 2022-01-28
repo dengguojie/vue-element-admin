@@ -88,13 +88,19 @@
         "shape": [
           2,
           10,
-          5
+          -1
         ],
         "ori_shape": [
           2,
           10,
+          -1
+        ],
+	"typical_shape": [
+          2,
+          10,
           5
         ],
+	"shape_range": [[1,10]],
         "format": "ND",
         "ori_format": "ND",
         "type": "float",
@@ -111,13 +117,19 @@
         "shape": [
           2,
           10,
-          5
+          -1
         ],
         "ori_shape": [
           2,
           10,
+          -1
+        ],
+	"typical_shape": [
+          2,
+          10,
           5
         ],
+	"shape_range": [[1, 10]],
         "format": "ND",
         "ori_format": "ND",
         "type": "float",

@@ -133,5 +133,234 @@
         }
       ],
       "case_name": "test_Concatv2d_001"
+    },
+    {
+      "op": "ConcatV2D",
+      "input_desc": [
+        {
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+	  "typical_shape": [
+             2,
+             10,
+             8
+           ],
+          "format": "ND",
+          "ori_format": "ND",
+          "type": "float",
+          "value_range": [[0, 1]],
+          "data_distribute": "uniform",
+          "name": "x0"
+        },
+        {
+          "shape": [
+              -2
+            ],
+            "ori_shape": [
+              -2
+            ],
+	    "typical_shape": [
+             2,
+             10,
+             2
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "type": "float",
+            "value_range": [[0, 1]],
+            "data_distribute": "uniform",
+            "name": "x1"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "typical_shape": [
+            2,
+            10,
+            10
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "name": "y",
+          "type": "float"
+        }
+      ],
+      "attr": [
+        {
+          "name": "concat_dim",
+          "type": "int",
+          "value": -1
+        },
+        {
+            "name": "N",
+            "type": "int",
+            "value": 2
+        }
+      ],
+      "case_name": "test_dynamic_Concatv2d_003"
+    },
+    {
+      "op": "ConcatV2D",
+      "input_desc": [
+        {
+          "shape": [
+            5,
+	    2,
+	    2,
+	    3,
+            16
+          ],
+          "ori_shape": [
+            5,
+	    32,
+	    2,
+            3
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "type": "float16",
+          "name": "x0"
+        },
+        {
+          "shape": [
+              5,
+	      2,
+	      2,
+	      5,
+              16
+            ],
+            "ori_shape": [
+              5,
+	      32,
+	      2,
+              5
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NCHW",
+            "type": "float16",
+            "name": "x1"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              5,
+	      2,
+	      2,
+	      8,
+              16
+          ],
+          "ori_shape": [
+              5,
+	      32,
+	      2,
+              8
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NCHW",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "concat_dim",
+          "type": "int",
+          "value": 3
+        },
+        {
+            "name": "N",
+            "type": "int",
+            "value": 2
+        }
+      ],
+      "case_name": "test_dynamic_Concatv2d_002"
+    },
+    {
+      "op": "ConcatV2D",
+      "input_desc": [
+        {
+          "shape": [
+            5,
+	    2,
+	    2,
+	    3,
+            16
+          ],
+          "ori_shape": [
+            5,
+	    2,
+            3,
+	    32
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NHWC",
+          "type": "float16",
+          "name": "x0"
+        },
+        {
+          "shape": [
+              5,
+	      2,
+	      2,
+	      5,
+              16
+            ],
+            "ori_shape": [
+              5,
+	      2,
+              5,
+	      32
+            ],
+            "format": "NC1HWC0",
+            "ori_format": "NHWC",
+            "type": "float16",
+            "name": "x1"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+              5,
+	      2,
+	      2,
+	      8,
+              16
+          ],
+          "ori_shape": [
+              5,
+	      2,
+              8,
+	      32
+          ],
+          "format": "NC1HWC0",
+          "ori_format": "NHWC",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "concat_dim",
+          "type": "int",
+          "value": 2
+        },
+        {
+            "name": "N",
+            "type": "int",
+            "value": 2
+        }
+      ],
+      "case_name": "test_dynamic_Concatv2d_012"
     }
 ]

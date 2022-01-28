@@ -82,10 +82,10 @@ class TransData2D():
         None
         """
         self.src_shape = src.get("shape")
-        self.src_dtype = src.get("dtype").lower()
+        self.src_dtype = src.get("dtype").lower() if src.get("dtype") != "bfloat16" else "float16"
         self.src_format = src_format
         self.dst_shape = dst.get("shape")
-        self.dst_dtype = dst.get("dtype").lower()
+        self.dst_dtype = dst.get("dtype").lower() if dst.get("dtype") != "bfloat16" else "float16"
         if self.dst_dtype == "bool":
             self.dst_dtype = "int8"
         self.dst_format = dst_format

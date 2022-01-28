@@ -57,9 +57,7 @@ def test_do_with_dynamic_concatv2d(test_arg):
         [{"shape": (256, 1, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (256, 2, 1, 1),"ori_format": "NCHW"},
          {"shape":  (256, 1, 1, 1, 16,), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (256, 2, 1, 1),"ori_format": "NCHW"}],
         1, "dynamic_concatv2d")
-ut_case.add_cust_test_func(test_func=test_do_with_dynamic_concatv2d)
 
 if __name__ == "__main__":
-    # ut_case.run()
     ut_case.run("Ascend910")
     exit(0)

@@ -208,12 +208,12 @@ TEST_F(concat_fusion_test, concat_fusion_test_3) {
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
   auto concat_layer = op::Concat("concat");
-  concat_layer.create_dynamic_input_x(63);
-  for (int64_t n = 0; n < 63; n++) {
+  concat_layer.create_dynamic_input_x(48);
+  for (int64_t n = 0; n < 48; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
   }
   concat_layer.set_input_concat_dim(concat_dim);
-  concat_layer.set_attr_N(63);
+  concat_layer.set_attr_N(48);
 
   std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
   std::vector<Operator> outputs{concat_layer};

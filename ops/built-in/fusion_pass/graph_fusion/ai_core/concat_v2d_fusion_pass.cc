@@ -157,7 +157,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     concatNodes.clear();
     return NOT_CHANGED;
   }
-  size_t max_count = 63;
+  size_t max_count = 48;
   if (HasUnKnowInputShape(fusedInputNodes)) {
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of concat_v2
     max_count = 48;

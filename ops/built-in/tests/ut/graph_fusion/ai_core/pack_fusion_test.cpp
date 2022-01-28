@@ -354,7 +354,7 @@ TEST_F(pack_fusion_test, pack_fusion_test_5) {
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
   auto concat_layer = op::Pack("pack");
-  const int64_t input_count = 63;
+  const int64_t input_count = 48;
   concat_layer.create_dynamic_input_x(input_count);
   for (int64_t n = 0; n < input_count; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);

@@ -25,7 +25,7 @@ def gen_concat_case(dynamic_input_shapes, ori_input_shapes, dtype, axis,
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_concat_case([(-1, -1), (-1, -1), (-1, -1)],
                                  [(66, 2), (66, 2), (66, 32)],
-                                 "float16", -1, "case_1", "success"))
+                                 "float16", -1, "case_1_v2", "success"))
 
 
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],

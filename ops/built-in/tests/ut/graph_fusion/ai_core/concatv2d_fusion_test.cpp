@@ -102,7 +102,7 @@ TEST_F(concatv2d_fusion_test, concatv2d_fusion_test_1) {
             total_cocncat_node_num += 1;
         }
     }
-    EXPECT_EQ(total_cocncat_node_num, 1);
+    EXPECT_EQ(total_cocncat_node_num, 2);
 }
 
 TEST_F(concatv2d_fusion_test, concatv2d_fusion_test_2) {

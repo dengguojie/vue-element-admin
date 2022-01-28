@@ -68,9 +68,9 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
-  // A maximum of 63 tensors are supported in mini mode.
+  // A maximum of 48 tensors are supported.
   int64_t inputs_num = fusedDesc->GetInputsSize();
-  int64_t NeedTangent = 63;
+  int64_t NeedTangent = 48;
   if (HasUnKnowShape(fused_node)) {
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of concatv2
     NeedTangent = 48;

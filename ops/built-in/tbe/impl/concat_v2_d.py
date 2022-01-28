@@ -37,7 +37,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-from impl.dynamic.concat_v2_d import ConcatV2 as DynamicConcatV2
+from impl.dynamic.concat_v2_d_tik import ConcatV2 as DynamicConcatV2
 
 
 # 'pylint: disable=unused-argument,too-many-locals

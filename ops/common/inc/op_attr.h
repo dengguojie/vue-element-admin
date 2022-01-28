@@ -30,6 +30,45 @@
 
 namespace ops {
 using namespace ge;
+
+/*
+ * @brief: read constvalue from paras store into values
+ * @param [in] paras: ge::Operator
+ * @param [in] attr_info: attr info pair(attr_idx, attr_name)
+ * @param [out] value: store value.
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetAttrValue(const T& paras, const std::pair<int64_t, std::string>& attr_info, int32_t& value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  if (!AttrUtils::GetInt(op_desc, attr_info.second, value)) {
+    OP_LOGW("GetAttrValue", "Get the attr of %s is failed. return false", attr_info.second.c_str());
+    return false;
+  }
+  OP_LOGD("GetAttrValue", "Get the attr of %s is %d", attr_info.second.c_str(), value);
+  return true;
+}
+
+/*
+ * @brief: read constvalue from paras store into values
+ * @param [in] paras: ge::Operator
+ * @param [in] attr_info: attr info pair(attr_idx, attr_name)
+ * @param [out] value: store value.
+ * @param [in] default_value: default_value
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetAttrValue(const T& paras, const std::pair<int64_t, std::string>& attr_info, int32_t& value,
+                  const int32_t default_value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  if (!AttrUtils::GetInt(op_desc, attr_info.second, value)) {
+    OP_LOGW("GetAttrValue", "Get the attr of %s is failed. set the default value", attr_info.second.c_str());
+    value = default_value;
+  }
+  OP_LOGD("GetAttrValue", "Get the attr of %s is %d", attr_info.second.c_str(), value);
+  return true;
+}
+
 /*
  * @brief: read constvalue from paras store into values
  * @param [in] paras: ge::Operator

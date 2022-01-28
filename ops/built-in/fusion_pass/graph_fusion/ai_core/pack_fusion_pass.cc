@@ -64,8 +64,8 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   size_t inputs_num = fusedDesc->GetInputsSize();
-  // A maximum of 63 tensors are supported in mini mode.
-  size_t NeedTangent = 63;
+  // A maximum of 48 tensors are supported.
+  size_t NeedTangent = 48;
   if (HasUnKnowShape(fusedNode)) {
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of pack
     NeedTangent = 48;

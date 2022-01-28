@@ -91,6 +91,9 @@ class ConcatClassifier:
                 self.ranges[index] = [(0, None), (0, None)]
                 self.axis = 1
 
+        if len(self.shapes) == 1:
+            self.axis = 0
+
     def _process_single_input(self):
         if len(self.shapes) == 1:
             self.axis = 0

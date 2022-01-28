@@ -123,9 +123,9 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   num_N_new = num_N - num_N_del;
   ge::AttrUtils::SetInt(fusedDesc, "N", num_N_new);
 
-  // A maximum of 63 tensors are supported in mini mode.
+  // A maximum of 48 tensors are supported.
   int64_t inputs_num = fusedDesc->GetInputsSize();
-  int64_t NeedTangent = 63;
+  int64_t NeedTangent = 48;
   if (HasUnKnowShape(fused_node1)) {
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of concat
     NeedTangent = 48;
