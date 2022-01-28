@@ -156,7 +156,7 @@ namespace optiling {
     int64_t pram2_lcm = param2;
     int64_t temp = pram1_lcm * pram2_lcm;
     int32_t param1_temp = pram1_lcm;
-    while(pram1_lcm % pram2_lcm != 0) {
+    while (pram1_lcm % pram2_lcm != 0) {
       param1_temp = pram1_lcm;
       pram1_lcm = pram2_lcm;
       pram2_lcm = param1_temp % pram2_lcm;

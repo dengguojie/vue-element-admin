@@ -73,6 +73,7 @@ const int64_t kL1size = (1024 * 1024);
 const int64_t kStrideHWUp = 63;
 const int64_t kConv2dNC1HWC0Size = 5;
 const int64_t kConv2dNCHWSize = 4;
+const int64_t kInputOutBackpropIndex = 2;
 
 static map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"}, {ge::FORMAT_DHWNC, "DHWNC"},
@@ -278,7 +279,7 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
     dx_paras.core_num = compile_info["block_dim"]["CORE_NUM"];
     ge::GeTensorDescPtr filter_desc = op_desc->MutableInputDesc(1);
     CHECK_OP_FUNC(filter_desc == nullptr, return false, "tensor filter desc failed");
-    ge::GeTensorDescPtr out_backprop_desc = op_desc->MutableInputDesc(2);
+    ge::GeTensorDescPtr out_backprop_desc = op_desc->MutableInputDesc(kInputOutBackpropIndex);
     CHECK_OP_FUNC(out_backprop_desc == nullptr, return false, "tensor out_backprop desc failed");
     ge::GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
     CHECK_OP_FUNC(y_desc == nullptr, return false, "tensor y desc failed");
