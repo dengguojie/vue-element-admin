@@ -37,6 +37,7 @@ static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
 static const char PATTERN_OTHER_INPUT[] = "InputData";
 static const char PATTERN_DEQUANT[] = "dequant";
 static const char PATTERN_QUANT[] = "quant";
+static const vector<string> MATMUL_WHITELIST = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 }  // namespace
 
 /*
@@ -75,9 +76,9 @@ const void TbeBatchMatmulQuantFusionPass::SetSplitInfo(const BufferFusionMapping
                                                        std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
-  FUSION_PASS_CHECK(matmul_nodes.empty(), OP_LOGW(FUSED_OP_TYPE, "Matmul node not matched"), return );
+  FUSION_PASS_CHECK(matmul_nodes.empty(), OP_LOGW(FUSED_OP_TYPE, "Matmul node not matched"), return);
   FUSION_PASS_CHECK(matmul_nodes[0]->GetInDataNodes().size() <= 0,
-                    OP_LOGE(FUSED_OP_TYPE, "Matmul Nodes's inputsize can not smaller or equal to zero."), return );
+                    OP_LOGE(FUSED_OP_TYPE, "Matmul Nodes's inputsize can not smaller or equal to zero."), return);
   size_t pre = matmul_nodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
   OpL1FusionType fusion_type = L1FUSION_DISABLE;
@@ -103,14 +104,20 @@ Status TbeBatchMatmulQuantFusionPass::GetFusionNodes(const BufferFusionMapping &
                                                      vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE, "Begin to do TbeBatchMatmulQuantFusionPass!");
 
+  fusion_nodes.clear();
+  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
   vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
 
   FUSION_PASS_CHECK(quant_nodes.empty(), OP_LOGW(FUSED_OP_TYPE, "Quant node not match!"), return SUCCESS);
 
-  // buffer fusion do not support dynamic shape now
-  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
+  // check whether matmul/batchmatmul op and if dynamic mode or not
   for (const auto &matmul_node : matmul_nodes) {
+    if (find(MATMUL_WHITELIST.begin(), MATMUL_WHITELIST.end(), matmul_node->GetType()) == MATMUL_WHITELIST.end()) {
+      OP_LOGD(FUSED_OP_TYPE, "fcNode op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+              matmul_node->GetName().c_str(), matmul_node->GetType().c_str());
+      return SUCCESS;
+    }
     auto input0desc = GetCurrNodeInputDesc(matmul_node, 0);
     auto input1desc = GetCurrNodeInputDesc(matmul_node, 1);
     FUSION_PASS_CHECK(input0desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "inputDesc0 is null"),
