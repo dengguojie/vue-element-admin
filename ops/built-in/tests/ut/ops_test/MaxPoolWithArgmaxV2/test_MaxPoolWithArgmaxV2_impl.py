@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import te
+from te.platform.cce_conf import te_set_version
 from op_test_frame.ut import OpUT
 ut_case = OpUT("MaxPoolWithArgmaxv2", "impl.dynamic.max_pool_with_argmaxv2", "max_pool_with_argmax_v2")
 
@@ -81,15 +83,32 @@ case7 = {"params": [{"shape": (33,13,35,35,16), "dtype": "float16", "format": "N
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend910A"], case7)
+# resnet50 branch
+case8 = {"params": [{"shape": (32,4,112,112,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (32,4,112,112,16),"ori_format": "NC1HWC0"},
+                    {"shape": (32,4,56,56,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (32,4,56,56,16),"ori_format": "NC1HWC0"},
+                    {"shape": (32,4,9,197,16), "dtype": "uint16", "format": "NC1HWC0", "ori_shape": (32,4,9,197,16),"ori_format": "NC1HWC0"},
+                    [1, 1, 3, 3],
+                    [1, 1, 2, 2],
+                    [1, 1, 1, 1]],
+         "case_name": "max_pool_with_arxmax_v2_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
-if __name__ == '__main__':
-    # ut_case.run()
-    ut_case.run("Ascend910A")
-    exit(0)
+
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case1)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case2)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case6)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case7)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case8)
+
+# run on Ascend910A
+ut_case.run("Ascend910A")
+# run one Ascend920A
+soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+te_set_version("Ascend920A", "VectorCore")
+ut_case.run("Ascend920A")
+te_set_version(soc_version)

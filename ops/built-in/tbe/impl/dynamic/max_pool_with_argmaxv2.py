@@ -22,7 +22,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-
+from impl.dynamic import max_pool_with_argmax_v2_resnet50 as resnet50
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -87,7 +87,7 @@ class MaxPoolWithargmaxPytorch:
     Function: use to finish MaxPoolWithargmax main functions
     """
 
-    def __init__(self, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name):
+    def __init__(self, input_shape, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name):
         """
         init MaxPoolWithargmax parameters
 
@@ -146,6 +146,9 @@ class MaxPoolWithargmaxPytorch:
             self.min_float = Constant.MIN_FL32
         self.init_gm_tensor()
 
+        self.resnet50_branch = resnet50.MaxPoolWithArgmaxV2Resnet50(input_shape, dtype, self.input_gm,
+                                                                    self.max_output_gm, self.mask_output_gm,
+                                                                    self.tik_instance)
         self.tiling_mode = None
         self.act_core_num = None
         self.one_core_ele = None
@@ -1178,6 +1181,10 @@ class MaxPoolWithargmaxPytorch:
                 with self.tik_instance.if_scope(self.tiling_mode == 3):
                     with self.tik_instance.new_stmt_scope():
                         self.tiling_w_dim_core_nc(core_idx, self.core_ele, self.loop_num, self.loop_left)
+                # resnet50 branch
+                with self.tik_instance.if_scope(self.tiling_mode == 6):
+                    with self.tik_instance.new_stmt_scope():
+                        self.resnet50_branch.maxpool_resnet50(core_idx, self.core_ele, self.one_core_ele)
 
     def max_pool_operator(self):
         """Maxpool operator
@@ -1361,7 +1368,7 @@ def max_pool_with_argmax_v2(x, y, argmax, ksize, strides, pads, dtype=Constant.D
     :return: tik_instance
     """
     [_, _, dim_h, dim_w] = _check_param(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name)
-    obj = MaxPoolWithargmaxPytorch([ksize[dim_h], ksize[dim_w]], [strides[dim_h], strides[dim_w]],
+    obj = MaxPoolWithargmaxPytorch(x.get("shape"), [ksize[dim_h], ksize[dim_w]], [strides[dim_h], strides[dim_w]],
                                    [pads[dim_h], pads[dim_w]], x.get("dtype").lower(),
                                    dilation, ceil_mode, kernel_name)
     return obj.max_pool_operator()

@@ -33,8 +33,19 @@ namespace {
   constexpr int32_t TILING_MODE_2 = 2;
   constexpr int32_t TILING_MODE_3 = 3;
   constexpr int32_t TILING_MODE_5 = 5;
+  constexpr int32_t TILING_MODE_6 = 6;
   constexpr int32_t ALLIGN_NUM = 16;
+  constexpr int32_t C_ZERO = 16;
+  constexpr int32_t INPUT_INDEX_ZERO = 0;
+  constexpr int32_t INPUT_INDEX_ONE = 1;
+  constexpr int32_t INPUT_INDEX_TWO = 2;
+  constexpr int32_t INPUT_INDEX_THREE = 3;
   constexpr int32_t INPUT_INDEX_FOUR = 4;
+  constexpr int32_t RESNET50_ksize = 3;
+  constexpr int32_t RESNET50_stride = 2;
+  constexpr int32_t RESNET50_pads = 1;
+  constexpr int32_t RESNET50_DILATION = 1;  
+  constexpr int32_t RESNET50_IN = 112;
 }
 
 namespace optiling {
@@ -141,6 +152,19 @@ static int32_t DivRtn(int32_t x, int32_t y) {
     --q;
   }
   return q;
+}
+
+bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t ksize_w, 
+                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l) {
+  if ((ksize_h == RESNET50_ksize) && (ksize_w == RESNET50_ksize) && 
+      (strides_h == RESNET50_stride) && (strides_w == RESNET50_stride) && 
+      (pad_t == RESNET50_pads) && (pad_l == RESNET50_pads) &&
+      (input_shape[INPUT_INDEX_TWO] == RESNET50_IN) &&
+      (input_shape[INPUT_INDEX_THREE] == RESNET50_IN) &&
+      (input_shape[INPUT_INDEX_FOUR] == C_ZERO)) {
+        return true;
+      }
+  return false;
 }
 
 static int32_t GetRequireMemory(TilingParam& param, int32_t mode, int32_t input_memory, int32_t k_h, int32_t k_w) {
@@ -270,6 +294,10 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.one_core_loop_left = param.one_core_ele % max_ele;
     param.last_core_loop_num = param.last_core_ele / max_ele;
     param.last_core_loop_left = param.last_core_ele % max_ele;
+  } else if (check_resnet50(input_shape, ksize_h, ksize_w, strides_h, strides_w, pad_top, pad_left)) {
+    param.tiling_mode = TILING_MODE_6;
+    param.n_c1 = input_shape[INPUT_INDEX_ZERO] * input_shape[INPUT_INDEX_ONE];
+    CalCoreNum(param, param.n_c1, core_num);
   } else {
     int32_t one_sixth_ub_ele = ub_ele / TILING_DIVIDE_6;
     param.n_c1 = input_shape[0] * input_shape[1];
