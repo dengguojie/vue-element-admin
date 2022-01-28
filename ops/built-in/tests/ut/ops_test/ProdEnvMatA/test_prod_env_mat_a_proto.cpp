@@ -45,6 +45,8 @@ TEST_F(ProdEnvMatAProtoTest, ProdEnvMatAVerifyTest_0) {
   op.SetAttr("rcut_r_smth", float(2.0));
   op.SetAttr("sel_a", std::vector<int32_t>{46, 92});
   op.SetAttr("sel_r", std::vector<int32_t>{});
+  op.SetAttr("split_count", (int)2);
+  op.SetAttr("split_index", (int)0);
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
@@ -87,7 +89,8 @@ TEST_F(ProdEnvMatAProtoTest, ProdEnvMatAInferShapeTest_1) {
   op.SetAttr("rcut_r_smth", float(2.0));
   op.SetAttr("sel_a", std::vector<int32_t>{46, 92});
   op.SetAttr("sel_r", std::vector<int32_t>{});
-
+  op.SetAttr("split_count", (int)2);
+  op.SetAttr("split_index", (int)1);
   {
     ge::TensorDesc tensorDesc(ge::Shape({natomsSize}), ge::FORMAT_ND, ge::DT_INT32);
     int32_t tensorValue[natomsSize] = {nloc, nall, 0, 1};

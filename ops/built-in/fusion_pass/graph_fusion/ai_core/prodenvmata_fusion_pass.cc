@@ -62,6 +62,8 @@ const int64_t CONCAT_NUMS = 2;
 const int64_t DESCRIPT_LAST_DIM = 4;
 const int64_t DERIV_LAST_DIM = 12;
 const int64_t RIJ_LAST_DIM = 3;
+const int32_t TOTAL_PARTS = 15;
+const int32_t VECTOR_PARTS = 7;
 /*!
  * @brief Define pattern.
  * The graph struct need to adapt and target is shown as follows:
@@ -106,7 +108,7 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
       return FAILED);
 
   if (nall != -1) {
-    int32_t aic_nloc = (nloc / SPLIT_NODE_COUNT_VALUE) + (nloc % SPLIT_NODE_COUNT_VALUE);
+    int32_t aic_nloc = nloc - ((nloc / TOTAL_PARTS) * VECTOR_PARTS);
     ge::GeShape output1Shape({nsample, aic_nloc * nnei * DESCRIPT_LAST_DIM});
     ge::GeTensorDesc output1TensorDesc = ge::GeTensorDesc(output1Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output1TensorDesc.SetOriginShape(output1Shape);
@@ -163,7 +165,7 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
       return FAILED);
 
   if (nall != -1) {
-    int32_t vec_nloc = nloc / SPLIT_NODE_COUNT_VALUE;
+    int32_t vec_nloc = (nloc / TOTAL_PARTS) * VECTOR_PARTS;
     ge::GeShape output1Shape({nsample, vec_nloc * nnei * DESCRIPT_LAST_DIM});
     ge::GeTensorDesc output1TensorDesc = ge::GeTensorDesc(output1Shape, ge::FORMAT_ND, ge::DT_FLOAT);
     output1TensorDesc.SetOriginShape(output1Shape);

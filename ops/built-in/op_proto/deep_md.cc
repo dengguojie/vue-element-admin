@@ -428,7 +428,8 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
   int64_t descrptDerivDimOne = UNKNOWN_DIM;
   int64_t rijDimOne = UNKNOWN_DIM;
   int64_t nlistDimOne = UNKNOWN_DIM;
-
+  int64_t totalCores = 15;
+  int64_t vectorCores = 7;
   if (nalls != UNKNOWN_DIM) {
     Tensor natoms;
     if (op.GetInputConstData("natoms", natoms) == GRAPH_SUCCESS) {
@@ -441,9 +442,9 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
     }
     if (splitCount > 1) {
       if (splitIndex == 0) {
-        nloc = (nloc / 2) + (nloc % 2);
+        nloc = nloc - ((nloc / totalCores) * vectorCores);
       } else {
-        nloc = nloc / 2;
+        nloc = (nloc / totalCores) * vectorCores;
       }
     }
     descrptDimOne = nloc * nnei * 4;

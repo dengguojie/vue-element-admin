@@ -56,6 +56,7 @@ class ProdEnvMatA:
 
         self.nsample = 1
         self.nall = self.type_shape[1]
+        self.max_nall = 31040
         self.nnei = sum(sel_a)
 
         self.max_gm_size = 2 ** 31 - 1
@@ -179,9 +180,7 @@ class ProdEnvMatA:
         """
         mesh_offset = self.tik_instance.Scalar(self.INT32_TYPE, "mesh_offset",
                                                init_value=1 + 2 * self.total_nloc + cur_nloc_index * 1024)
-        nei_num_index = self.tik_instance.Scalar(self.INT32_TYPE, "nei_num_index",
-                                                 init_value=1 + self.total_nloc + cur_nloc_index)
-        self.cur_loc_nei_num.set_as(self.mesh_gm[nei_num_index])
+
         self.tik_instance.data_move(mesh_ub[0], self.mesh_gm[mesh_offset],
                                     sid=0, nburst=1, burst=self.max_nbor_data_size,
                                     src_stride=0, dst_stride=0)
@@ -851,7 +850,7 @@ class ProdEnvMatA:
     def vector_compute_process(self, dis_tensor, index_one_type, dis_dot_tensor,
                                sw_tensor, dsw_tensor, res_vec_tensor, res_vec_tensor_1,
                                res_vec_tensor_2, res_vec_tensor_3, dis_revert_tensor,
-                               res_descrpt_a_deriv_tensor):
+                               res_descrpt_a_deriv_tensor, sorted_coords):
         """
         the first vec compute process for descrpt and descrpt_deriv.
         """
@@ -1139,6 +1138,46 @@ class ProdEnvMatA:
                                         1,
                                         self.block_stride, self.block_stride,
                                         self.repeat_stride, self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             sorted_coords[0][self.nnei_once_repeat_nums * i], -1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             sorted_coords[1][self.nnei_once_repeat_nums * i], -1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             sorted_coords[2][self.nnei_once_repeat_nums * i], -1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             dis_dot_tensor[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             dis_tensor[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             dis_revert_tensor[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             res_vec_tensor[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             res_vec_tensor_1[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             res_vec_tensor_2[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
+                self.tik_instance.vector_dup([mask_left, mask_nlist_one],
+                                             res_vec_tensor_3[self.nnei_once_repeat_nums * i], 1,
+                                             1, self.block_stride,
+                                             self.repeat_stride)
 
     def extract_data_in_proposal(self, dst_proposal, dis_tensor, dis_dot_tensor,
                                  neighbour_coords, index_one_type, temp_idx):
@@ -1560,7 +1599,7 @@ class ProdEnvMatA:
         """
         Apply ub buffer for all neighbours type.
         """
-        type_ub = self.tik_instance.Tensor(self.type_dtype, [28328],
+        type_ub = self.tik_instance.Tensor(self.type_dtype, [self.max_nall],
                                            name="type_ub", scope=self.tik.scope_ubuf)
 
         return type_ub
@@ -1593,7 +1632,7 @@ class ProdEnvMatA:
             extract_length_align = (extract_length + self.nnei_once_repeat_nums - 1) // \
                                    self.nnei_once_repeat_nums * self.nnei_once_repeat_nums
 
-            sorted_index = self.tik_instance.Tensor(self.type_dtype, [extract_length],
+            sorted_index = self.tik_instance.Tensor(self.type_dtype, [extract_length_align],
                                                     name="sorted_index", scope=self.tik.scope_ubuf)
 
             sorted_neighbour_coord_x = self.tik_instance.Tensor(self.coord_dtype, [extract_length_align],
@@ -1656,134 +1695,162 @@ class ProdEnvMatA:
 
             cur_loc_type_id = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_type_id",
                                                        init_value=0)
-            with self.tik_instance.new_stmt_scope(disable_sync=False):
-                mesh_ub, cur_type_tensor = self.apply_ub_tensor_phase0()
-                self.data_move_to_ub_phase0(for_input_cur_loc, mesh_ub)
-
-                if self.type_num > 2:
-                    self.sort_index(mesh_ub)
-
-                type_ub_fp32 = cur_type_tensor.reinterpret_cast_to("float32")
-
+            nei_num_index = self.tik_instance.Scalar(self.INT32_TYPE, "nei_num_index",
+                                                     init_value=1 + self.total_nloc  + for_input_cur_loc)
+            self.cur_loc_nei_num.set_as(self.mesh_gm[nei_num_index])
+            self.tik_instance.vector_dup(self.repeat_once_size, sorted_index, -1,
+                                         extract_length_align // self.nnei_once_repeat_nums, self.block_stride,
+                                         self.repeat_stride)
+            with self.tik_instance.if_scope(self.cur_loc_nei_num != -1):
                 with self.tik_instance.new_stmt_scope(disable_sync=False):
-                    offsets = self.tik_instance.Tensor(self.type_dtype, [self.max_nbor_size],
-                                                       name="offsets", scope=self.tik.scope_ubuf)
+                    mesh_ub, cur_type_tensor = self.apply_ub_tensor_phase0()
+                    self.data_move_to_ub_phase0(for_input_cur_loc, mesh_ub)
 
-                    type_ub = self.apply_ub_tensor_phase1()
-                    self.data_move_to_ub_phase1(cur_sample, type_ub)
+                    if self.type_num > 2:
+                        self.sort_index(mesh_ub)
 
-                    self.tik_instance.vmuls(self.repeat_once_size,
-                                            offsets, mesh_ub, 4,
-                                            self.max_nbor_repeat_times,
-                                            self.block_stride, self.block_stride,
-                                            self.repeat_stride, self.repeat_stride)
+                    type_ub_fp32 = cur_type_tensor.reinterpret_cast_to("float32")
 
-                    self.tik_instance.vgather(self.cur_loc_nei_num,
-                                            cur_type_tensor, type_ub, offsets,
-                                            1,
-                                            self.repeat_stride,
-                                            0,
-                                            0, "counter")
+                    with self.tik_instance.new_stmt_scope(disable_sync=False):
+                        offsets = self.tik_instance.Tensor(self.type_dtype, [self.max_nbor_size],
+                                                           name="offsets", scope=self.tik.scope_ubuf)
 
-                    self.tik_instance.vconv(self.repeat_once_size, "", type_ub_fp32, cur_type_tensor,
-                                            self.max_nbor_size // self.repeat_once_size,
-                                            self.block_stride, self.block_stride,
-                                            self.repeat_stride, self.repeat_stride)
+                        type_ub = self.apply_ub_tensor_phase1()
+                        self.data_move_to_ub_phase1(cur_sample, type_ub)
 
-                    cur_loc_type_id.set_as(type_ub[cur_loc_index])
+                        self.tik_instance.vmuls(self.repeat_once_size,
+                                                offsets, mesh_ub, 4,
+                                                self.max_nbor_repeat_times,
+                                                self.block_stride, self.block_stride,
+                                                self.repeat_stride, self.repeat_stride)
 
-                with self.tik_instance.for_range(0, self.type_num) as cur_type_idx:
-                    type_id = self.tik_instance.Scalar("float32", "type_id", init_value=cur_type_idx)
-                    index_one_type = self.tik_instance.Tensor(self.type_dtype, [self.max_nbor_size],
-                                                              name="index_one_type",
+                        self.tik_instance.vgather(self.cur_loc_nei_num,
+                                                cur_type_tensor, type_ub, offsets,
+                                                1,
+                                                self.repeat_stride,
+                                                0,
+                                                0, "counter")
+
+                        self.tik_instance.vconv(self.repeat_once_size, "", type_ub_fp32, cur_type_tensor,
+                                                self.max_nbor_size // self.repeat_once_size,
+                                                self.block_stride, self.block_stride,
+                                                self.repeat_stride, self.repeat_stride)
+
+                        cur_loc_type_id.set_as(type_ub[cur_loc_index])
+
+                    with self.tik_instance.for_range(0, self.type_num) as cur_type_idx:
+                        type_id = self.tik_instance.Scalar("float32", "type_id", init_value=cur_type_idx)
+                        index_one_type = self.tik_instance.Tensor(self.type_dtype, [self.max_nbor_size],
+                                                                  name="index_one_type",
+                                                                  scope=self.tik.scope_ubuf)
+
+                        neighbour_coord_x = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                     name="neighbour_coord_x",
+                                                                     scope=self.tik.scope_ubuf)
+
+                        neighbour_coord_y = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                     name="neighbour_coord_y",
+                                                                     scope=self.tik.scope_ubuf)
+
+                        neighbour_coord_z = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                     name="neighbour_coord_z",
+                                                                     scope=self.tik.scope_ubuf)
+
+                        with self.tik_instance.new_stmt_scope(disable_sync=False):
+                            self.sort_for_index_by_type(type_id, index_one_type, type_ub_fp32, mesh_ub)
+
+                            self.get_neighbour_coords([neighbour_coord_x, neighbour_coord_y,
+                                                       neighbour_coord_z],
+                                                      index_one_type, self.cur_type_neighbour_nums)
+
+                        loc_coord_x.set_as(self.coord_gm[cur_loc_index * 3])
+                        loc_coord_y.set_as(self.coord_gm[cur_loc_index * 3 + 1])
+                        loc_coord_z.set_as(self.coord_gm[cur_loc_index * 3 + 2])
+
+                        dis_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                              name="dis_tensor",
                                                               scope=self.tik.scope_ubuf)
 
-                    neighbour_coord_x = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                                 name="neighbour_coord_x",
-                                                                 scope=self.tik.scope_ubuf)
+                        dis_dot_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                  name="dis_dot_tensor",
+                                                                  scope=self.tik.scope_ubuf)
 
-                    neighbour_coord_y = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                                 name="neighbour_coord_y",
-                                                                 scope=self.tik.scope_ubuf)
+                        with self.tik_instance.new_stmt_scope(disable_sync=False):
+                            tensor_x = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                name="tensor_x",
+                                                                scope=self.tik.scope_ubuf)
 
-                    neighbour_coord_z = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                                 name="neighbour_coord_z",
-                                                                 scope=self.tik.scope_ubuf)
+                            tensor_y = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                name="tensor_y",
+                                                                scope=self.tik.scope_ubuf)
 
-                    with self.tik_instance.new_stmt_scope(disable_sync=False):
-                        self.sort_for_index_by_type(type_id, index_one_type, type_ub_fp32, mesh_ub)
+                            tensor_z = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
+                                                                name="tensor_z",
+                                                                scope=self.tik.scope_ubuf)
 
-                        self.get_neighbour_coords([neighbour_coord_x, neighbour_coord_y,
-                                                   neighbour_coord_z],
-                                                  index_one_type, self.cur_type_neighbour_nums)
+                            self.compute_neighbour_dis([neighbour_coord_x, neighbour_coord_y,
+                                                        neighbour_coord_z], loc_coord_x,
+                                                       loc_coord_y, loc_coord_z, dis_tensor,
+                                                       dis_dot_tensor, tensor_x, tensor_y, tensor_z)
 
-                    loc_coord_x.set_as(self.coord_gm[cur_loc_index * 3])
-                    loc_coord_y.set_as(self.coord_gm[cur_loc_index * 3 + 1])
-                    loc_coord_z.set_as(self.coord_gm[cur_loc_index * 3 + 2])
+                        dst_proposal = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size * 8],
+                                                                name="dst_proposal",
+                                                                scope=self.tik.scope_ubuf)
 
-                    dis_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                          name="dis_tensor",
-                                                          scope=self.tik.scope_ubuf)
+                        with self.tik_instance.new_stmt_scope(disable_sync=False):
+                            tensor_proposal = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size * 8],
+                                                                       name="tensor_proposal",
+                                                                       scope=self.tik.scope_ubuf)
 
-                    dis_dot_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                              name="dis_dot_tensor",
+                            self.combine_proposal(dis_tensor, [neighbour_coord_x, neighbour_coord_y, neighbour_coord_z],
+                                                  index_one_type, tensor_proposal, dis_dot_tensor)
+
+                            self.sort_distance_for_neighbour(dst_proposal, tensor_proposal)
+
+                        self.extract_data_in_proposal(dst_proposal, sorted_dis_tensor, sorted_dis_dot_tensor,
+                                                      [sorted_neighbour_coord_x,
+                                                       sorted_neighbour_coord_y,
+                                                       sorted_neighbour_coord_z],
+                                                      sorted_index, cur_type_idx)
+
+            def _rij_data_output(sorted_neighbour_coord_x, sorted_neighbour_coord_y, sorted_neighbour_coord_z):
+                """
+                do the copy rij data from ub to gm.
+                """
+                with self.tik_instance.new_stmt_scope(disable_sync=False):
+                    res_rij_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_align * 3],
+                                                              name="res_rij_tensor",
                                                               scope=self.tik.scope_ubuf)
 
-                    with self.tik_instance.new_stmt_scope(disable_sync=False):
-                        tensor_x = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                            name="tensor_x",
-                                                            scope=self.tik.scope_ubuf)
+                    rij_trans_buffer = self.tik_instance.Tensor(self.coord_dtype,
+                                                                [(self.nnei + self.repeat_once_size - 1)
+                                                                 // self.repeat_once_size *
+                                                                 self.repeat_once_size * 12],
+                                                                name="rij_trans_buffer",
+                                                                scope=self.tik.scope_ubuf)
+                    with self.tik_instance.if_scope(self.cur_loc_nei_num == -1):
+                        self.tik_instance.vector_dup(self.repeat_once_size, sorted_neighbour_coord_x, 0,
+                                                     extract_length_align // self.nnei_once_repeat_nums,
+                                                     self.block_stride,
+                                                     self.repeat_stride)
+                        self.tik_instance.vector_dup(self.repeat_once_size, sorted_neighbour_coord_y, 0,
+                                                     extract_length_align // self.nnei_once_repeat_nums,
+                                                     self.block_stride,
+                                                     self.repeat_stride)
+                        self.tik_instance.vector_dup(self.repeat_once_size, sorted_neighbour_coord_z, 0,
+                                                     extract_length_align // self.nnei_once_repeat_nums,
+                                                     self.block_stride,
+                                                     self.repeat_stride)
 
-                        tensor_y = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                            name="tensor_y",
-                                                            scope=self.tik.scope_ubuf)
+                    self.concat_rij_result([sorted_neighbour_coord_x,
+                                            sorted_neighbour_coord_y,
+                                            sorted_neighbour_coord_z],
+                                           res_rij_tensor, rij_trans_buffer)
 
-                        tensor_z = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
-                                                            name="tensor_z",
-                                                            scope=self.tik.scope_ubuf)
+                    self.data_move_rij_to_gm(res_rij_tensor, cur_sample, cur_loc, loc_nei_idx, one_cor_nloc_num)
 
-                        self.compute_neighbour_dis([neighbour_coord_x, neighbour_coord_y,
-                                                    neighbour_coord_z], loc_coord_x,
-                                                   loc_coord_y, loc_coord_z, dis_tensor,
-                                                   dis_dot_tensor, tensor_x, tensor_y, tensor_z)
-
-                    dst_proposal = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size * 8],
-                                                            name="dst_proposal",
-                                                            scope=self.tik.scope_ubuf)
-
-                    with self.tik_instance.new_stmt_scope(disable_sync=False):
-                        tensor_proposal = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size * 8],
-                                                                   name="tensor_proposal",
-                                                                   scope=self.tik.scope_ubuf)
-
-                        self.combine_proposal(dis_tensor, [neighbour_coord_x, neighbour_coord_y, neighbour_coord_z],
-                                              index_one_type, tensor_proposal, dis_dot_tensor)
-
-                        self.sort_distance_for_neighbour(dst_proposal, tensor_proposal)
-
-                    self.extract_data_in_proposal(dst_proposal, sorted_dis_tensor, sorted_dis_dot_tensor,
-                                                  [sorted_neighbour_coord_x,
-                                                   sorted_neighbour_coord_y,
-                                                   sorted_neighbour_coord_z],
-                                                  sorted_index, cur_type_idx)
-
-            with self.tik_instance.new_stmt_scope(disable_sync=False):
-                res_rij_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_align * 3],
-                                                          name="res_rij_tensor",
-                                                          scope=self.tik.scope_ubuf)
-
-                rij_trans_buffer = self.tik_instance.Tensor(self.coord_dtype, [(self.nnei + self.repeat_once_size - 1)
-                                                                               // self.repeat_once_size *
-                                                                               self.repeat_once_size * 12],
-                                                            name="rij_trans_buffer",
-                                                            scope=self.tik.scope_ubuf)
-
-                self.concat_rij_result([sorted_neighbour_coord_x,
-                                        sorted_neighbour_coord_y,
-                                        sorted_neighbour_coord_z],
-                                       res_rij_tensor, rij_trans_buffer)
-
-                self.data_move_rij_to_gm(res_rij_tensor, cur_sample, cur_loc, loc_nei_idx, one_cor_nloc_num)
+            if self.type_num == 3:
+                _rij_data_output(sorted_neighbour_coord_x, sorted_neighbour_coord_y, sorted_neighbour_coord_z)
 
             nnei_repeat_align = (self.nnei + self.repeat_once_size - 1) // self.repeat_once_size * self.repeat_once_size
             res_descrpt_a_tensor = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 4],
@@ -1793,41 +1860,67 @@ class ProdEnvMatA:
             res_descrpt_a_deriv_tensor = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
                                                                   name="res_descrpt_a_deriv_tensor",
                                                                   scope=self.tik.scope_ubuf)
+            with self.tik_instance.if_scope(self.cur_loc_nei_num == -1):
+                self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_tensor, 0,
+                                             nnei_repeat_align * 4 // self.nnei_once_repeat_nums, self.block_stride,
+                                             self.repeat_stride)
+                vd_repeat_times = nnei_repeat_align * 12 // self.nnei_once_repeat_nums
+                max_repeat_times = 255
+                if vd_repeat_times > max_repeat_times:
+                    tail_repeat_times = vd_repeat_times - max_repeat_times
+                    self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_deriv_tensor, 0,
+                                                 max_repeat_times, self.block_stride,
+                                                 self.repeat_stride)
+                    self.tik_instance.vector_dup(self.repeat_once_size,
+                                                 res_descrpt_a_deriv_tensor[max_repeat_times * self.repeat_once_size],
+                                                 0,
+                                                 tail_repeat_times, self.block_stride,
+                                                 self.repeat_stride)
+                else:
+                    self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_deriv_tensor, 0,
+                                                 vd_repeat_times, self.block_stride,
+                                                 self.repeat_stride)
+            with self.tik_instance.else_scope():
+                with self.tik_instance.new_stmt_scope(disable_sync=False):
+                    free_buffer = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
+                                                           name="free_buffer",
+                                                           scope=self.tik.scope_ubuf)
 
-            with self.tik_instance.new_stmt_scope(disable_sync=False):
-                free_buffer = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
-                                                       name="free_buffer",
-                                                       scope=self.tik.scope_ubuf)
+                    sw_tensor = free_buffer[0]
+                    dsw_tensor = free_buffer[nnei_repeat_align]
+                    res_vec_tensor = free_buffer[nnei_repeat_align * 2]
+                    res_vec_tensor_1 = free_buffer[nnei_repeat_align * 3]
+                    res_vec_tensor_2 = free_buffer[nnei_repeat_align * 4]
+                    res_vec_tensor_3 = free_buffer[nnei_repeat_align * 5]
+                    dis_revert_tensor = free_buffer[nnei_repeat_align * 6]
 
-                sw_tensor = free_buffer[0]
-                dsw_tensor = free_buffer[nnei_repeat_align]
-                res_vec_tensor = free_buffer[nnei_repeat_align * 2]
-                res_vec_tensor_1 = free_buffer[nnei_repeat_align * 3]
-                res_vec_tensor_2 = free_buffer[nnei_repeat_align * 4]
-                res_vec_tensor_3 = free_buffer[nnei_repeat_align * 5]
-                dis_revert_tensor = free_buffer[nnei_repeat_align * 6]
+                    with self.tik_instance.new_stmt_scope(disable_sync=False):
+                        self.vector_compute_process(sorted_dis_tensor,
+                                                    sorted_index, sorted_dis_dot_tensor,
+                                                    sw_tensor, dsw_tensor, res_vec_tensor, res_vec_tensor_1,
+                                                    res_vec_tensor_2, res_vec_tensor_3, dis_revert_tensor,
+                                                    res_descrpt_a_deriv_tensor,
+                                                    [sorted_neighbour_coord_x,
+                                                     sorted_neighbour_coord_y,
+                                                     sorted_neighbour_coord_z])
+
+                    with self.tik_instance.new_stmt_scope(disable_sync=False):
+                        self.vector_compute_last_process(dis_revert_tensor,
+                                                         [sorted_neighbour_coord_x,
+                                                          sorted_neighbour_coord_y,
+                                                          sorted_neighbour_coord_z],
+                                                         sorted_dis_dot_tensor,
+                                                         sw_tensor, dsw_tensor,
+                                                         res_vec_tensor, res_vec_tensor_1,
+                                                         res_vec_tensor_2, res_vec_tensor_3,
+                                                         res_descrpt_a_tensor,
+                                                         res_descrpt_a_deriv_tensor, free_buffer)
 
                 with self.tik_instance.new_stmt_scope(disable_sync=False):
-                    self.vector_compute_process(sorted_dis_tensor,
-                                                sorted_index, sorted_dis_dot_tensor,
-                                                sw_tensor, dsw_tensor, res_vec_tensor, res_vec_tensor_1,
-                                                res_vec_tensor_2, res_vec_tensor_3, dis_revert_tensor,
-                                                res_descrpt_a_deriv_tensor)
+                    self.do_avg_process(res_descrpt_a_tensor, res_descrpt_a_deriv_tensor, cur_loc_type_id)
 
-                with self.tik_instance.new_stmt_scope(disable_sync=False):
-                    self.vector_compute_last_process(dis_revert_tensor,
-                                                     [sorted_neighbour_coord_x,
-                                                      sorted_neighbour_coord_y,
-                                                      sorted_neighbour_coord_z],
-                                                     sorted_dis_dot_tensor,
-                                                     sw_tensor, dsw_tensor,
-                                                     res_vec_tensor, res_vec_tensor_1,
-                                                     res_vec_tensor_2, res_vec_tensor_3,
-                                                     res_descrpt_a_tensor,
-                                                     res_descrpt_a_deriv_tensor, free_buffer)
-
-            with self.tik_instance.new_stmt_scope(disable_sync=False):
-                self.do_avg_process(res_descrpt_a_tensor, res_descrpt_a_deriv_tensor, cur_loc_type_id)
+            if self.type_num != 3:
+                _rij_data_output(sorted_neighbour_coord_x, sorted_neighbour_coord_y, sorted_neighbour_coord_z)
 
             if self.nnei % 8 == 0:
                 self.data_move_to_gm(res_descrpt_a_tensor,
@@ -1864,10 +1957,10 @@ class ProdEnvMatA:
 
             if self.split_count > 1:
                 if self.split_index == 0:
-                    self.nloc_d.set_as((self.nloc_d // 2) + (self.nloc_d % 2))
+                    self.nloc_d.set_as(self.nloc_d - (self.nloc_d // 15 * 7))
                 else:
-                    self.nloc_offset.set_as((self.nloc_d // 2) + (self.nloc_d % 2))
-                    self.nloc_d.set_as(self.nloc_d // 2)
+                    self.nloc_offset.set_as(self.nloc_d - (self.nloc_d // 15 * 7))
+                    self.nloc_d.set_as(self.nloc_d // 15 * 7)
 
     def compute_process(self):
         """
@@ -1953,9 +2046,9 @@ def _check_params(coord, types, natoms, box, mesh, davg, dstd, descrpt, descrpt_
     para_check.check_shape(natoms_shape, min_rank=1, max_rank=1, min_size=3, param_name="natoms")
 
     nall = type_shape[1]
-    max_nall_size = 30000
+    max_nall_size = 32000
     if nall > max_nall_size:
-        rule = "The nall value only support less than 30000."
+        rule = "The nall value only support less than 32000."
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "nall", nall)
 
     if any((rcut_r < 0, rcut_r_smth < 0)):
