@@ -562,7 +562,9 @@ def check_and_config_para(input_x1: dict, input_x2: dict, bias: dict, output_z: 
     expect_args = [('FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float16'),
                    ('ND', 'float16', 'ND', 'float16', 'ND', 'float16'),
                    ('ND', 'float16', 'FRACTAL_NZ', 'float16', 'ND', 'float16'),
-                   ('FRACTAL_NZ', 'float16', 'FRACTAL_Z', 'float16', 'FRACTAL_NZ', 'float16')]
+                   ('FRACTAL_NZ', 'float16', 'FRACTAL_Z', 'float16', 'FRACTAL_NZ', 'float16'),
+                   ('ND', 'float16', 'ND', 'float16', 'FRACTAL_NZ', 'float32'),
+                   ('FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float16', 'FRACTAL_NZ', 'float32')]
     _check_args((format_a, dtype_a, format_b, dtype_b, format_out, dtype_out),
                 expect_args, "format_a, dtype_a, format_b, dtype_b, format_out, dtype_out")
 
@@ -861,7 +863,8 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         "dst_dtype": dtype_out,
         "tensor_c": tensor_bias,
         "cache_tiling_flag": get_none_range_flag(input_x1, input_x2, bias),
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "input_range": input_range
     }
     op_res = tbe.gemm(tensor_x1, tensor_x2, para_dict)
 

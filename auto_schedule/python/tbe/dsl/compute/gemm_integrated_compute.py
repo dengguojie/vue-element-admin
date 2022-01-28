@@ -123,7 +123,6 @@ class GEMMComputeParam:
 
         return op_type_flag
 
-
     @staticmethod
     def check_tail_block(n_shape, ops_data_flow_mode, format_out, is_dynamic):
         """
@@ -131,6 +130,8 @@ class GEMMComputeParam:
         flow mode and n_shape
         """
         tail_block_flag = 0
+        if format_out == "FRACTAL_NZ":
+            return 1
         if is_dynamic and format_out == "ND":
             # Do not have n_shape runtime info therefore considering n_dynamic contains tail block
             return tail_block_flag
@@ -164,6 +165,116 @@ class GEMMComputeParam:
         elif transpose_b:
             trans_flag = 3
         return trans_flag
+
+    @staticmethod
+    def get_stride_w_value(tail_block_flag, split_k):
+        """
+        result_value's bit0 means have tail block
+                       bit1 means need bind k axis in core
+        """
+        result_value = tail_block_flag
+        split_k = int(split_k)
+        result_value |= split_k << 1
+        return result_value
+
+
+class GetPerfCoreNum:
+    BYTES_DTYPE = {
+        "uint64": 8,
+        "float16": 2,
+        "float32": 4,
+        "int32": 4,
+        "int16": 2,
+        "uint16": 2,
+        "int8": 1,
+        "uint8": 1,
+        "int4": 0.5
+    }
+    soc_hbm_bandwidth_info = {8: 250, 32: 1100}
+    soc_l2_bandwidth_info = {8: 1300, 32: 3300}
+
+    def __init__(self):
+        pass
+
+    def get_best_perf_factor(self, shapes, blocks):
+        m_factor = 1
+        k_factor = 1
+        n_factor = 1
+        float16_size = 2
+        m_shape, k_shape, n_shape = shapes
+        block_in, block_reduce, block_out = blocks
+        core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        l2_size = tbe_platform_info.get_soc_spec("L2_SIZE")
+        if core_num < 8:
+            return 1, 1, 1
+        use_out_buffer_size = (m_shape * k_shape + k_shape * n_shape + m_shape * n_shape) * float16_size
+        hbm_bandwidth, l2_bandwidth = self._get_bandwidth(core_num)
+        cur_bandwidth = hbm_bandwidth
+        if use_out_buffer_size < l2_size:
+            cur_bandwidth = l2_bandwidth
+        min_cost = core_num * (m_shape * n_shape + m_shape * k_shape + n_shape * k_shape) * float16_size / hbm_bandwidth
+
+        m_axis_outer = int_ceil_div(m_shape, block_in)
+        n_axis_outer = int_ceil_div(n_shape, block_out)
+        k_axis_outer = int_ceil_div(k_shape, block_reduce)
+
+        m_max_dim = core_num if (m_axis_outer > core_num) else m_axis_outer
+        n_max_dim = core_num if (n_axis_outer > core_num) else n_axis_outer
+        k_max_dim = core_num if (k_axis_outer > core_num) else k_axis_outer
+
+        total_max_dim = m_max_dim * k_max_dim * n_max_dim
+        for i in range(0, total_max_dim):
+            k_dim = int(i / (m_max_dim * n_max_dim)) + 1
+            n_dim = int(i / m_max_dim) % n_max_dim + 1
+            m_dim = i % m_max_dim + 1
+            if m_dim * k_dim * n_dim > core_num:
+                continue
+            if (m_dim > m_axis_outer) or (k_dim > k_axis_outer) or (n_dim > n_axis_outer):
+                continue
+            block_dims = (m_dim, k_dim, n_dim)
+            cur_cost = self.compute_perf(shapes, block_dims, cur_bandwidth)
+            if cur_cost < min_cost:
+                min_cost = cur_cost
+                m_factor, k_factor, n_factor = block_dims
+        return m_factor, k_factor, n_factor
+
+    def _get_bandwidth(self, core_num):
+        hbm_bandwidth = self.soc_hbm_bandwidth_info.get(core_num, 0)
+        l2_bandwidth = self.soc_l2_bandwidth_info.get(core_num, 0)
+        if hbm_bandwidth == 0 or l2_bandwidth == 0:
+            distant = abs(core_num - 8)
+            core_num_best = 8
+            for inner_core_num in self.soc_hbm_bandwidth_info.keys():
+                if abs(core_num - inner_core_num) < distant:
+                    distant = abs(core_num - inner_core_num)
+                    core_num_best = inner_core_num
+            hbm_bandwidth = self.soc_hbm_bandwidth_info.get(core_num_best, 0)
+            l2_bandwidth = self.soc_l2_bandwidth_info.get(core_num_best, 0)
+        return hbm_bandwidth, l2_bandwidth
+
+    def compute_perf(self, shapes, block_dims, cur_bandwidth):
+        m_shape, k_shape, n_shape = shapes
+        m_dim, k_dim, n_dim = block_dims
+        m_shape_inner = int_ceil_div(m_shape, m_dim)
+        k_shape_inner = int_ceil_div(k_shape, k_dim)
+        n_shape_inner = int_ceil_div(n_shape, n_dim)
+        out_data_size_fp32 = self.BYTES_DTYPE.get("float32", 0)
+        in_data_size = self.BYTES_DTYPE.get("float16", 0)
+        cast_node_cost = 0
+        transdata_node_cost = 0
+        atomic_add_bw_lose_radio = 1
+        if k_dim != 1:
+            atomic_add_bw_lose_radio = 0.5
+
+        mte3_cost = k_dim * (m_shape_inner * n_shape_inner * out_data_size_fp32) / (atomic_add_bw_lose_radio *
+                                                                                    cur_bandwidth)
+        base_load_cost = (m_shape_inner * k_shape_inner + k_shape_inner * n_shape_inner) * in_data_size / cur_bandwidth
+        b_repeat_load_cost = (m_dim - 1) * k_shape_inner * n_shape_inner * in_data_size / cur_bandwidth
+        a_repeat_load_cost = (n_dim - 1) * k_shape_inner * m_shape_inner * in_data_size / cur_bandwidth
+        total_cost = (base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost + cast_node_cost +
+                      transdata_node_cost)
+
+        return total_cost
 
 
 class GEMMCompute(FormatCompute):
@@ -215,6 +326,13 @@ class GEMMCompute(FormatCompute):
         "uint8": "uint8",
         "int4": "int4"
     }
+
+    m_shape_dict = {"ND": -2, "FRACTAL_NZ": -3, "FRACTAL_Z": -4}
+    m0_shape_dict = {"FRACTAL_NZ": -2, "FRACTAL_Z": -2}
+    n_shape_dict = {"ND": -1, "FRACTAL_NZ": -4, "FRACTAL_Z": -3, "fractal": -3}
+    n0_shape_dict = {"FRACTAL_NZ": -1, "FRACTAL_Z": -2, "fractal": -2}
+    trans_dict = {-1: -2, -2: -1, -3: -4, -4: -3}
+
     # if K_DIM is  equal or larger than GEVM_MODE_K_DIM_LIMIT in gevm/gemv mode, use gemm mode.
     # K_DIM is k * k0
     GEVM_MODE_K_DIM_LIMIT = 9216
@@ -255,6 +373,7 @@ class GEMMCompute(FormatCompute):
         self.attrs = para_dict.get("attrs", {})
         self.batch_shape = para_dict.get("batch_shape")
         self.op_type = para_dict.get("op_type", None)
+        self.input_range = para_dict.get("input_range")
         self.beta_mode, self.alpha_mode = "none", "none"
         self.have_bias, self.have_c = False, False
         self.res = None
@@ -270,6 +389,9 @@ class GEMMCompute(FormatCompute):
         # Consider not using only_use_gevm_gemv_flow
         self.only_use_gevm_gemv_flow = False
         self.int8_not_double_m = False
+        self.split_k = False
+        self.is_fusion = para_dict.get("is_fusion", False)
+        self.best_split_k_block_dim = []
 
     @staticmethod
     def _get_value(shape_object):
@@ -350,6 +472,7 @@ class GEMMCompute(FormatCompute):
             self.format_out,
             n_shape_dynamic_flag) if self.ops_format == "ND" else 1
 
+        stride_w = GEMMComputeParam.get_stride_w_value(tail_block, self.split_k)
         a_fused_num = 10 if self.format_a == "ND" else 0
         b_fused_num = 10 if self.format_b == "ND" else 0
         fused_double_operand_num = 1 if self.format_out == "ND" else 0
@@ -372,7 +495,7 @@ class GEMMCompute(FormatCompute):
             "padu": is_gevm,
             "padd": 0,
             "strideH": op_type_flag,
-            "strideW": tail_block,
+            "strideW": stride_w,
             "strideH_expand": 1,
             "strideW_expand": 1,
             "dilationH": GEMMComputeParam.get_trans_flag(self.trans_a, self.trans_b),
@@ -439,20 +562,15 @@ class GEMMCompute(FormatCompute):
             self.mmad_mode = "gemm"
             return
 
-        m_shape_dict = {"ND": -2, "FRACTAL_NZ": -3, "FRACTAL_Z": -4}
-        m0_shape_dict = {"FRACTAL_NZ": -2, "FRACTAL_Z": -2}
-        n_shape_dict = {"ND": -1, "FRACTAL_NZ": -4, "FRACTAL_Z": -3, "fractal": -3}
-        n0_shape_dict = {"FRACTAL_NZ": -1, "FRACTAL_Z": -2, "fractal": -2}
-        trans_dict = {-1: -2, -2: -1, -3: -4, -4: -3}
-
-        m_index = m_shape_dict.get(self.format_a)
-        n_index = n_shape_dict.get(self.format_b)
-        m_index = trans_dict.get(m_index) if self.trans_a else m_index
-        n_index = trans_dict.get(n_index) if self.trans_b else n_index
+        m_index = self.m_shape_dict.get(self.format_a)
+        n_index = self.n_shape_dict.get(self.format_b)
+        m_index = self.trans_dict.get(m_index) if self.trans_a else m_index
+        n_index = self.trans_dict.get(n_index) if self.trans_b else n_index
         n_shape = b_shape[n_index]
-        gevm_mode_flag, self.only_use_gevm_gemv_flow = self._get_gevm_flag(m0_shape_dict, trans_dict, a_shape, m_index)
-        gevm_mode_flag = self._cancel_gevm_mode(gevm_mode_flag, a_shape[trans_dict.get(m_index)], n_shape)
-        gemv_mode_flag = self._get_gemv_flag(n0_shape_dict, trans_dict, b_shape, n_index)
+        gevm_mode_flag, self.only_use_gevm_gemv_flow = self._get_gevm_flag(self.m0_shape_dict,
+                                                                           self.trans_dict, a_shape, m_index)
+        gevm_mode_flag = self._cancel_gevm_mode(gevm_mode_flag, a_shape[self.trans_dict.get(m_index)], n_shape)
+        gemv_mode_flag = self._get_gemv_flag(self.n0_shape_dict, self.trans_dict, b_shape, n_index)
         both_fractal = self.format_a != "ND" and self.format_b != "ND"
         self._check_and_renew_block(gevm_mode_flag, gemv_mode_flag, both_fractal, self.only_use_gevm_gemv_flow)
 
@@ -680,7 +798,36 @@ class GEMMCompute(FormatCompute):
                     attrs=attrs_dict
             )
 
+    def _get_shapes(self):
+        if in_dynamic():
+            if self.input_range is None:
+                m_shape, ka_shape, n_shape = 65535, 1, 65535
+            else:
+                m_shape = self.input_range[-3][1]
+                ka_shape = self.input_range[-2][0]
+                n_shape = self.input_range[-1][1]
+        else:
+            a_shape = list(self._get_value(i) for i in self.tensor_a.shape)
+            b_shape = list(self._get_value(i) for i in self.tensor_b.shape)
 
+            m_index = self.m_shape_dict.get(self.format_a)
+            n_index = self.n_shape_dict.get(self.format_b)
+            m_index = self.trans_dict.get(m_index) if self.trans_a else m_index
+            n_index = self.trans_dict.get(n_index) if self.trans_b else n_index
+            ka_index = self.trans_dict.get(m_index)
+            m0_index = self.m0_shape_dict.get(self.format_a)
+            ka0_index = self.trans_dict.get(m0_index)
+            n0_index = self.n0_shape_dict.get(self.format_b)
+
+            m_shape = a_shape[m_index]
+            ka_shape = a_shape[ka_index]
+            n_shape = b_shape[n_index]
+            if self.format_a != "ND":
+                m_shape *= a_shape[m0_index]
+                ka_shape *= a_shape[ka0_index]
+            if self.format_b != "ND":
+                n_shape *= b_shape[n0_index]
+        return (m_shape, ka_shape, n_shape)
 
     def _get_attrs_dict(self, res):
         attrs_dict = {
@@ -768,6 +915,32 @@ class GEMMCompute(FormatCompute):
         self._set_mmad_mode()
         self._set_alpha_and_beta_mode()
         self._check_quantize_params(self.quantize_params)
+        self._need_split_k()
+
+    def _need_split_k(self):
+        # this func will replace by the info from ub fusion
+        is_gemm  = self.alpha is not None
+        have_bias = self.tensor_bias is not None
+        not_fp16_in_fp32_out = (self.src_dtype != "float16") or (self.dst_dtype != "float32")
+        not_fractal_nz_out = self.format_out != "FRACTAL_NZ"
+
+        a_shape = list(self._get_value(i) for i in self.tensor_a.shape)
+        b_shape = list(self._get_value(i) for i in self.tensor_b.shape)
+        have_batch = False
+        if (len(a_shape) in (3, 5)) or (len(b_shape) in (3, 5)):
+            have_batch = True
+
+        not_split_k = (not_fp16_in_fp32_out or not_fractal_nz_out or is_gemm or have_bias or self.is_fusion
+                       or self.cache_tiling_flag or have_batch or self.fc_flag)
+        if not_split_k:
+            return
+
+        blocks = (self.block_in, self.block_reduce, self.block_out)
+        compute_perf_core_num = GetPerfCoreNum()
+        block_dims = compute_perf_core_num.get_best_perf_factor(self._get_shapes(), blocks)
+        self.best_split_k_block_dim = block_dims
+        if block_dims[1] != 1:
+            self.split_k = True
 
     def _set_alpha_and_beta_mode(self):
         alpha = self.alpha
@@ -1536,7 +1709,6 @@ class GEMMCompute(FormatCompute):
 
         return tensor_bias_l0c
 
-
     def _compute_c_matrix(self, a_matrix_in, b_matrix_in, tensor_bias):
         """ MatMul calculation
         Input:
@@ -1564,7 +1736,13 @@ class GEMMCompute(FormatCompute):
                       "align_b": self.align_b,
                       "format_out": self.format_out,
                       "placeholder_name": self.placeholder_name,
-                      "compress_flag": self.compress_flag}
+                      "compress_flag": self.compress_flag,
+                      "split_k": int(self.split_k)}
+
+        if self.best_split_k_block_dim != []:
+            attrs_dict["custom_block_dim_m"] = self.best_split_k_block_dim[0]
+            attrs_dict["custom_block_dim_k"] = self.best_split_k_block_dim[1]
+            attrs_dict["custom_block_dim_n"] = self.best_split_k_block_dim[2]
 
         k_shape_l0 = b_matrix_in.shape[-3] if self.mmad_mode == "gemv" else a_matrix_in.shape[-3]
         reduce_kp, reduce_kb = self._get_reduce(k_shape_l0)

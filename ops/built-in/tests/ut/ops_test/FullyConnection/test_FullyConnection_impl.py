@@ -370,7 +370,7 @@ def test_fc_fixpipe():
         output_dict = {"shape": (64, 128), "format": "ND", "dtype": "float32"}
         res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
         sch = auto_schedule(res)
-        
+
 def test_fc_fixpipe_nhwc():
     with cce():
         tensor_a = tvm.placeholder((12, 4, 16, 8), name="tensor_a", dtype="float32", attrs={
@@ -410,7 +410,6 @@ def test_mock_cases(test_args):
                 test_fc_fixpipe_nhwc()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
-        
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

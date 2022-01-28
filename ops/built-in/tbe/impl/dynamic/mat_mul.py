@@ -28,7 +28,8 @@ from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
 from impl.dynamic.batch_matmul_v2 import get_none_range_flag
-
+from tbe.common.context import get_context
+from tbe.common.buildcfg import get_current_build_config
 
 # General limitation of the size for input shape: 2**32 - 1
 SHAPE_SIZE_LIMIT = 2147483648
@@ -180,7 +181,7 @@ def op_select_format(input_x: dict, input_y: dict, bias: dict = None, offset_w: 
     return param_dynamic_in_json
 
 
-@register_operator_compute("MatMul", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("MatMul", op_mode="dynamic", support_fusion=True)
 def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
                          trans_a=False, trans_b=False, offset_x=0,
                          kernel_name="matmul"):
@@ -269,6 +270,10 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     """
     if input_x2.get("format") == "FRACTAL_ZN_RNN":
         input_x2["format"] = "FRACTAL_Z"
+    is_prebuild = get_current_build_config("enable_op_prebuild")
+    if (is_prebuild):
+        get_context().add_build_res("pattern", "MatMul")
+
     with tbe.compute():
         res = batch_matmul_compute(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
                                    trans_a=trans_a, trans_b=trans_b, offset_x=offset_x, kernel_name=kernel_name,

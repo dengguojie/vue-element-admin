@@ -462,7 +462,8 @@ def mat_mul_compute(input_x1,
         "kernel_name": kernel_name,
         "impl_mode": impl_mode,
         "format_out": output_y.get("format"),
-        "op_type": "MatMulV2"
+        "op_type": "MatMulV2",
+        "is_fusion": True
     }
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2,
                       para_dict=para_dict)
@@ -787,8 +788,10 @@ def mat_mul(input_x1,
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(result)
-
     tensor_list = [tensor_a, tensor_b, result]
+    real_outs = schedule.cce_special["real_out_tensor"]
+    tensor_list.remove(result)
+    tensor_list += real_outs
     if shape_bias_length > 0:
         tensor_list = [tensor_a, tensor_b, tensor_bias, result]
 

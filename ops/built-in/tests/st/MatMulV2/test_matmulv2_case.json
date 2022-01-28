@@ -175,5 +175,159 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_split_k_004",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          65536
+        ],
+        "type": "float16",
+        "typical_shape": [
+          32,
+          65536
+        ],
+        "shape_range": [
+          30,
+          34
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          65536,
+          -1
+        ],
+        "type": "float16",
+        "typical_shape": [
+          65536,
+          64
+        ],
+        "shape_range": [
+          62,
+          66
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          -1
+        ],
+        "typical_shape": [
+          32,
+          64
+        ],
+        "shape_range": [
+          [
+            30,
+            34
+          ],
+          [
+            62,
+            66
+          ]
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_split_k_005",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          65536
+        ],
+        "type": "float16",
+        "typical_shape": [
+          32,
+          65536
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          65536,
+          64
+        ],
+        "type": "float16",
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          64
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
 ]

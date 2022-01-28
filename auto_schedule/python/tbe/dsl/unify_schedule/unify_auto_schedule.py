@@ -118,6 +118,10 @@ def schedule_cce(outs, option=None):
                 sch, real_outs = schedule_func(param_outs, tiling_case)
                 ori_outs = real_outs
                 param_outs = real_outs
+            elif Pattern.MAT_MUL == pattern:
+                sch, real_outs = schedule_func(param_outs, tiling_case)
+                ori_outs = original_outs
+                param_outs = real_outs
             else:
                 sch = schedule_func(param_outs, tiling_case)
                 ori_outs = original_outs

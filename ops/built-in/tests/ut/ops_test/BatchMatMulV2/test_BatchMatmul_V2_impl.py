@@ -504,6 +504,7 @@ ut_case.add_cust_test_func(test_func=test_mock_cases)
 # open this in local env
 #ut_case.run(["Ascend310"])
 
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
 #     ut_case.add_case(["Ascend920A"], case14)

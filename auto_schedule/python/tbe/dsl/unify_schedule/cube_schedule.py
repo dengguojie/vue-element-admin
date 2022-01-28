@@ -148,10 +148,12 @@ class ConvSchedule:
         gemm_schedule = gemm_schedule2
         if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             gemm_schedule = gemm_schedule1
-
-        gemm_schedule(self._outs[0], [self._schedule],
+        sch_list = [self._schedule]
+        gemm_schedule(self._outs[0], sch_list,
                       {"tiling_strategy": self._tiling_strategy,
                        "m_k_n_shape": self._m_k_n_shape,
                        "var_range": self._var_range})
-
-        return self._schedule
+        real_res = [self._outs[0]]
+        if len(sch_list) > 1:
+            real_res = sch_list[1:]
+        return self._schedule, real_res

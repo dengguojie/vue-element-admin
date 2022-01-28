@@ -180,6 +180,17 @@ case6 = {"params": [{"shape": (8, 16, 16, 32), "dtype": "int8", "format": "FRACT
          "format_expect": [],
          "support_expect": True}
 
+case7 = {"params": [{"shape": (2, 1024, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16384, 32), "ori_format": "ND"},
+                    {"shape": (1024, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 16384), "ori_format": "ND"},
+                    {"shape": (64,), "dtype": "float16", "format": "ND",
+                     "ori_shape": (64, ), "ori_format": "ND"},
+                    None,
+                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 64), "ori_format": "ND"},
+                    True, True],
+         "case_name": "MatMul_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
@@ -188,6 +199,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910B"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
 # precision cases
 
