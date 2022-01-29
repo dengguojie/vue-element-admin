@@ -29,6 +29,7 @@ from tbe.common import platform as tbe_platform
 from tbe.common.buildcfg import build_config
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.tiling import get_tiling_type
 from tbe.common.tiling import set_tiling_type
@@ -810,6 +811,10 @@ class GemmSchedule:
                                                      tbe_platform_info.scope_cbuf,
                                                      [self.container.TENSOR_MAP.get("b_l0b")])
 
+    def _check_fusion_before(self):
+        if self.container.TENSOR_MAP["a_placehold"] is None or self.container.TENSOR_MAP["b_placehold"] is None:
+            error_manager_cube.raise_err_message_cube("Don't support op + Gemm/MatMul/BatchMatMul ub_fusion")
+
     def _set_data_layout(self, res):
         self.container.compute_inline_list = []
         self.container.TENSOR_MAP = {}
@@ -885,6 +890,7 @@ class GemmSchedule:
         else:
             self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
                 placeholder_tensors, placeholder_name["b"])
+        self._check_fusion_before()
 
         self.container.TENSOR_MAP["alpha"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
         self.container.TENSOR_MAP["beta"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])

@@ -15,6 +15,7 @@ from op_test_frame.common import precision_info
 import numpy as np
 from impl.mat_mul import get_op_support_info
 from impl.mat_mul import mat_mul_compute
+from impl.cast import cast_compute
 from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
@@ -554,6 +555,122 @@ def test_matmul_api(test_arg):
     tbe.matmul(tensor_a, tensor_b, trans_a=True, trans_b=True, format_a="FRACTAL_NZ", format_b="FRACTAL_NZ")
 
 ut_case.add_cust_test_func(test_func=test_matmul_api)
+
+
+def test_cast_matmul_1(test_arg):
+    with cce():
+        x1 = tvm.placeholder((2, 1, 16, 16), name="tensor_a", dtype="float16", attrs={
+                             "ori_shape": (2, 30), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((1, 2, 16, 16), name="tensor_b", dtype="float16", attrs={
+                             "ori_shape": (30, 5), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        bias = None
+        output_y = {"shape": (1, 1, 16, 16), "dtype": "float16", "ori_shape": (
+            2, 5), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        x1 = cast_compute(x1, None, 'float16')
+        x2 = cast_compute(x2, None, 'float16')
+        res = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+        tensor_list = [x1, x2, res]
+        sch = auto_schedule(res)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "test_cast_matmul_1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+
+ut_case.add_cust_test_func(test_func=test_cast_matmul_1)
+
+
+def test_cast_matmul_2(test_arg):
+    with cce():
+        x1 = tvm.placeholder((2, 1, 16, 16), name="tensor_a", dtype="float32", attrs={
+                             "ori_shape": (2, 30), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((1, 2, 16, 16), name="tensor_b", dtype="float16", attrs={
+                             "ori_shape": (30, 5), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        bias = None
+        output_y = {"shape": (1, 1, 16, 16), "dtype": "float16", "ori_shape": (
+            2, 5), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        input_a = cast_compute(x1, None, 'float16')
+        input_b = cast_compute(x2, None, 'float16')
+        for k, v in x1.op.attrs.items():
+            input_a.op.attrs[k] = v
+        res = mat_mul_compute(input_a, input_b, bias,
+                              None, output_y, False, False, 0)
+        tensor_list = [x1, x2, res]
+        try:
+            sch = auto_schedule(res)
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": "test_cast_matmul_2",
+                "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+        except RuntimeError as e:
+            print(e)
+            print("test_cast_matmul_2 success")
+
+
+ut_case.add_cust_test_func(test_func=test_cast_matmul_2)
+
+
+def test_cast_matmul_3(test_arg):
+    shape_a = [1, 1, 16, 16]
+    shape_b = [1, 1, 16, 16]
+    x1 = tvm.placeholder(shape_a, name='x1', dtype='float16',
+                         attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]})
+    x2 = tvm.placeholder(shape_b, name='x2', dtype='float16',
+                         attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]})
+    x1 = tbe.dsl.cast_to(x1, 'float16')
+    x2 = tbe.dsl.cast_to(x2, 'float16')
+    res = tbe.dsl.matmul(x1, x2, trans_a=True, trans_b=True,
+                         format_a="FRACTAL_NZ", format_b="FRACTAL_NZ")
+    with cce():
+        tensor_list = [x1, x2, res]
+        sch = auto_schedule(res)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "test_cast_matmul_3",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+
+ut_case.add_cust_test_func(test_func=test_cast_matmul_3)
+
+
+def test_cast_matmul_4(test_arg):
+    shape_a = [1, 1, 16, 16]
+    shape_b = [1, 1, 16, 16]
+    x1 = tvm.placeholder(shape_a, name='x1', dtype='float16',
+                         attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]})
+    x2 = tvm.placeholder(shape_b, name='x2', dtype='float32',
+                         attrs={'format': 'FRACTAL_NZ', 'ori_shape': [16, 16]})
+    x1 = tbe.dsl.cast_to(x1, 'float16')
+    x2 = tbe.dsl.cast_to(x2, 'float16')
+    res = tbe.dsl.matmul(x1, x2, trans_a=True, trans_b=True,
+                         format_a="FRACTAL_NZ", format_b="FRACTAL_NZ")
+    with cce():
+        tensor_list = [x1, x2, res]
+        try:
+            sch = auto_schedule(res)
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": "test_cast_matmul_4",
+                "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+        except RuntimeError as e:
+            print(e)
+            print("test_cast_matmul_4 success")
+
+
+ut_case.add_cust_test_func(test_func=test_cast_matmul_4)
+
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910A"])
