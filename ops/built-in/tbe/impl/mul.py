@@ -726,8 +726,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
         len_format_list = len(dtype_list)
         format_list = format_list * len_format_list
         unknownshape_format_list = ["ND"] * len(dtype_total)
-        param_list = _gen_para(dtype_total, format_list, format_list, format_list,
-                                            unknownshape_format_list, shape_x, shape_y)
+        format_list0 = format_list[:]
+        if "FRACTAL_NZ" in format_list and len(shape_y) == 1 and shape_y[0] != 1:
+            index_list = [idx for idx, item in enumerate(format_list) if item == "FRACTAL_NZ"]
+            for idx in index_list:
+                format_list0[idx] = "ND"
+            param_list = _gen_para(dtype_total, format_list, format_list0, format_list,
+                                    unknownshape_format_list, shape_x, shape_y)
+        elif "FRACTAL_NZ" in format_list and len(shape_x) == 1 and shape_x[0] != 1:
+            index_list = [idx for idx, item in enumerate(format_list) if item == "FRACTAL_NZ"]
+            for idx in index_list:
+                format_list0[idx] = "ND"
+            param_list = _gen_para(dtype_total, format_list0, format_list, format_list,
+                                    unknownshape_format_list, shape_x, shape_y)
+        else:
+            param_list = _gen_para(dtype_total, format_list, format_list, format_list,
+                                    unknownshape_format_list, shape_x, shape_y)
 
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json

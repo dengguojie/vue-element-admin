@@ -880,6 +880,72 @@
       }
     ],
     "case_name": "test_mul_dynamic_2"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [8192, 240],
+        "format": "ND",
+        "ori_shape": [8192,240],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [240],
+        "format": "ND",
+        "ori_shape": [240],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [8192,240],
+        "format": "ND",
+        "ori_shape": [8192,240],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_NZ_ND"
+  },
+  {
+    "op": "Mul",
+    "input_desc": [
+      {
+        "shape": [240],
+        "format": "ND",
+        "ori_shape": [240],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [8192,240],
+        "format": "ND",
+        "ori_shape": [8192,240],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [8192,240],
+        "format": "ND",
+        "ori_shape": [8192,240],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Mul_ND_NZ"
   }
 ]
 
