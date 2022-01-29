@@ -133,5 +133,32 @@ case2 = {
 }
 
 
+case3 = {
+    "params": [{
+        "shape": (10, 10),
+        "dtype": "float16",
+        "range": [(10, 10), (10, 10)]
+    }, {
+        "shape": (10, 10),
+        "dtype": "float16",
+        "range": [(10, 10), (10, 10)]
+    }, {
+        "shape": (10, 10),
+        "dtype": "float16",
+        "range": [(10, 10), (10, 10)]
+    }, {
+        "shape": (10, 10),
+        "dtype": "float16",
+        "range": [(10, 10), (10, 10)]
+    }, [1]],
+    "case_name":
+        "test_dync_norm_fake_node_3",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)

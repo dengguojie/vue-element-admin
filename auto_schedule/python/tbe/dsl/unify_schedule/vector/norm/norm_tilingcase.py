@@ -549,6 +549,9 @@ def _gen_const_tiling_case(norm_info, graph_info):
         # const enable db:
         # 1. multi reduce but not partial_reorder
         # 2. don't have after reduce output
+        # 3. don't exist fake node
+        if graph_info.endpoint_output_tensor.op.tag == FAKE_NODE_TAG:
+            return False
         if not norm_info.is_discontinuous_reduce_axis:
             return False
         if const_tiling_case.is_partial_reorder_case:
