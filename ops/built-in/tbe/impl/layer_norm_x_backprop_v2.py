@@ -26,14 +26,20 @@ from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import tbe_context
 from impl.util import util_select_op_base
-from impl.constant_util import EPSLON
+import impl.layer_norm_x_backprop_v2_unify as layer_norm_x_backprop_v2_unify
 
 
 # 'pylint: disable=too-many-lines
-# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
-def get_op_support_info(input_dy, input_x, input_variance, input_mean,
-                        input_gamma, output_pd_x, res_for_gamma,
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals,global-variable-undefined
+def get_op_support_info(input_dy,
+                        input_x,
+                        input_variance,
+                        input_mean,
+                        input_gamma,
+                        output_pd_x,
+                        res_for_gamma,
                         kernel_name="layer_norm_x_backprop_v2"):
     """
     get_op_support_info
@@ -52,15 +58,19 @@ def get_op_support_info(input_dy, input_x, input_variance, input_mean,
                     break
             if flag == -1:
                 for i in range(len(shape_x) - 1):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
-                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
-                               SplitOutput([0, [i]])]
+                    split_0 = [
+                        SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                   [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
+                        SplitOutput([0, [i]])
+                    ]
                     axis_split_matrix.append(split_0)
             else:
                 for i in range(flag):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
-                                          [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
-                               SplitOutput([0, [i]], [1, [i]])]
+                    split_0 = [
+                        SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]],
+                                   [3, [i], [-1], [-1]], [4, [i], [-1], [-1]]),
+                        SplitOutput([0, [i]], [1, [i]])
+                    ]
                     axis_split_matrix.append(split_0)
         else:
             axis_split_matrix = None
@@ -87,8 +97,14 @@ def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     return False
 
 
-def op_select_format(input_dy, input_x, input_variance, input_mean, input_gamma,
-                     output_pd_x, res_for_gamma, kernel_name="layer_norm_x_backprop_v2"):
+def op_select_format(input_dy,
+                     input_x,
+                     input_variance,
+                     input_mean,
+                     input_gamma,
+                     output_pd_x,
+                     res_for_gamma,
+                     kernel_name="layer_norm_x_backprop_v2"):
     """
     function of selecting dynamic format
 
@@ -120,70 +136,84 @@ def op_select_format(input_dy, input_x, input_variance, input_mean, input_gamma,
     c_0 = 16
 
     if _check_dynamic_format(shape_dy, shape_gamma, c_0):
-        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="dy",
                                                datatype="float16,float16,float16,float,"
-                                                        "float,float",
+                                               "float,float",
                                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        input1 = util_select_op_base.gen_param(classify="input1", name="x",
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x",
                                                datatype="float16,float16,float16,float,"
-                                                        "float,float",
+                                               "float,float",
                                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
+        input2 = util_select_op_base.gen_param(classify="input2",
+                                               name="variance",
                                                datatype="float16,float16,float16,float,"
-                                                        "float,float",
+                                               "float,float",
                                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
+        input3 = util_select_op_base.gen_param(classify="input3",
+                                               name="mean",
                                                datatype="float16,float16,float16,float,"
-                                                        "float,float",
+                                               "float,float",
                                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
+        input4 = util_select_op_base.gen_param(classify="input4",
+                                               name="gamma",
                                                datatype="float16,float16,float16,float,"
-                                                        "float,float",
+                                               "float,float",
                                                format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="pd_x",
                                                 datatype="float16,float16,float16,float,"
-                                                         "float,float",
+                                                "float,float",
                                                 format="NCHW,NHWC,ND,NCHW,NHWC,ND")
-        output1 = util_select_op_base.gen_param(classify="output1", name="res_for_gamma",
+        output1 = util_select_op_base.gen_param(classify="output1",
+                                                name="res_for_gamma",
                                                 datatype="float,float,float,float,"
-                                                         "float,float",
+                                                "float,float",
                                                 format="NCHW,NHWC,ND,NCHW,NHWC,ND")
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="dy",
                                                datatype="float16, float,float16,float16,"
-                                                        "float16,float,float,float",
+                                               "float16,float,float,float",
                                                format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,ND,"
-                                                      "NCHW,NHWC,ND")
-        input1 = util_select_op_base.gen_param(classify="input1", name="x",
+                                               "NCHW,NHWC,ND")
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x",
                                                datatype="float16, float,float16,float16,"
-                                                        "float16,float,float,float",
+                                               "float16,float,float,float",
                                                format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,ND,"
-                                                      "NCHW,NHWC,ND")
-        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
+                                               "NCHW,NHWC,ND")
+        input2 = util_select_op_base.gen_param(classify="input2",
+                                               name="variance",
                                                datatype="float16, float,float16,float16,"
-                                                        "float16,float,float,float",
+                                               "float16,float,float,float",
                                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                      "NHWC,ND")
-        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
+                                               "NHWC,ND")
+        input3 = util_select_op_base.gen_param(classify="input3",
+                                               name="mean",
                                                datatype="float16, float,float16,float16,"
-                                                        "float16,float,float,float",
+                                               "float16,float,float,float",
                                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                      "NHWC,ND")
-        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
+                                               "NHWC,ND")
+        input4 = util_select_op_base.gen_param(classify="input4",
+                                               name="gamma",
                                                datatype="float16, float,float16,float16,"
-                                                        "float16,float,float,float",
+                                               "float16,float,float,float",
                                                format="ND,ND,NCHW,NHWC,ND,NCHW,"
-                                                      "NHWC,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
+                                               "NHWC,ND")
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="pd_x",
                                                 datatype="float16, float,float16,float16,"
-                                                         "float16,float,float,float",
+                                                "float16,float,float,float",
                                                 format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
-                                                       "ND,NCHW,NHWC,ND")
-        output1 = util_select_op_base.gen_param(classify="output1", name="res_for_gamma",
+                                                "ND,NCHW,NHWC,ND")
+        output1 = util_select_op_base.gen_param(classify="output1",
+                                                name="res_for_gamma",
                                                 datatype="float, float,float,float,"
-                                                         "float,float,float,float",
+                                                "float,float,float,float",
                                                 format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NHWC,"
-                                                       "ND,NCHW,NHWC,ND")
+                                                "ND,NCHW,NHWC,ND")
 
     param_list = [input0, input1, input2, input3, input4, output0, output1]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
@@ -230,17 +260,15 @@ def _check_shape(params_map):
     -------
     None
     """
-    if operator.ne(tuple(params_map.get("shape_dy")),
-                   tuple(params_map.get("shape_x"))):
+    if operator.ne(tuple(params_map.get("shape_dy")), tuple(params_map.get("shape_x"))):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                               "input_dy", "input_x", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", "input_dy", "input_x",
+                                                               error_detail)
 
-    if operator.ne(tuple(params_map.get("shape_var")),
-                   tuple(params_map.get("shape_mean"))):
+    if operator.ne(tuple(params_map.get("shape_var")), tuple(params_map.get("shape_mean"))):
         error_detail = "shape of input_variance and input_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                               "input_variance", "input_mean", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", "input_variance",
+                                                               "input_mean", error_detail)
 
     shape_x = params_map.get("shape_x")
     shape_mean = params_map.get("shape_mean")
@@ -271,13 +299,12 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                               "input_x", "input_mean", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", "input_x", "input_mean",
+                                                               error_detail)
 
     if shape_mean[-1] != 1:
         error_detail = "value of shape_mean's last dim must be 1"
-        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                           "input_mean", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", "input_mean", error_detail)
 
     flag = -1
     for i, (xtem, mean) in enumerate(zip(shape_x, shape_mean)):
@@ -291,8 +318,8 @@ def _check_shape_mean(shape_x, shape_mean):
                 continue
             if mean != 1:
                 error_detail = "value of shape_mean must be 1"
-                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                                   "input_mean", error_detail)
+                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", "input_mean",
+                                                                   error_detail)
 
 
 def _check_shape_gamma(shape_x, shape_gamma):
@@ -312,14 +339,13 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                               "input_gamma", "input_x", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop_v2", "input_gamma", "input_x",
+                                                               error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):
         if xtem != gamma:
             error_detail = "value of shape_gamma is wrong"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2",
-                                                               "input_gamma", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop_v2", "input_gamma", error_detail)
 
 
 def _broadcast_nz(tensor, shape):
@@ -386,16 +412,11 @@ def _get_data_gm(shapes, dtype):
     data_gm: tuple
         (data_dy, data_x, data_variance, data_mean, data_gamma)
     """
-    data_dy = tvm.placeholder(shapes.get("shape_dy"),
-                              name="data_dy", dtype=dtype)
-    data_x = tvm.placeholder(shapes.get("shape_x"),
-                             name="data_x", dtype=dtype)
-    data_variance = tvm.placeholder(shapes.get("shape_var"),
-                                    name="data_variance", dtype=dtype)
-    data_mean = tvm.placeholder(shapes.get("shape_mean"),
-                                name="data_mean", dtype=dtype)
-    data_gamma = tvm.placeholder(shapes.get("shape_gamma"),
-                                 name="data_gamma", dtype=dtype)
+    data_dy = tvm.placeholder(shapes.get("shape_dy"), name="data_dy", dtype=dtype)
+    data_x = tvm.placeholder(shapes.get("shape_x"), name="data_x", dtype=dtype)
+    data_variance = tvm.placeholder(shapes.get("shape_var"), name="data_variance", dtype=dtype)
+    data_mean = tvm.placeholder(shapes.get("shape_mean"), name="data_mean", dtype=dtype)
+    data_gamma = tvm.placeholder(shapes.get("shape_gamma"), name="data_gamma", dtype=dtype)
 
     data_gm = (data_dy, data_x, data_variance, data_mean, data_gamma)
 
@@ -440,8 +461,7 @@ def _get_params(shape_x, shape_mean, shape_gamma):
     for i in reduce_axis:
         mean_num *= shape_x[i]
 
-    params = {"param_axis": param_axis, "reduce_axis": reduce_axis,
-              "mean_num": mean_num}
+    params = {"param_axis": param_axis, "reduce_axis": reduce_axis, "mean_num": mean_num}
 
     return params
 
@@ -484,11 +504,9 @@ def _get_pd_var_front(data, cast_dtype):
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
     """
-    var_elta = tbe.vadds(data.get("data_variance"),
-                         tvm.const(EPSLON, dtype=cast_dtype))
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
-    var_elta_mul = tbe.vmuls(var_elta_log,
-                             tvm.const(-0.5, dtype=cast_dtype))
+    var_elta_mul = tbe.vmuls(var_elta_log, tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
     pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
     pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
@@ -529,8 +547,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
     sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
     pdvar_mul1 = tbe.vmul(sub_x_mean, pd_xl)
-    pdvar_sum = tbe.sum(pdvar_mul1, params.get("reduce_axis"),
-                        keepdims=True)
+    pdvar_sum = tbe.sum(pdvar_mul1, params.get("reduce_axis"), keepdims=True)
     pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
     pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
@@ -567,11 +584,9 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         + pd_var*(1.0/m)*np.sum(((-2.0)*(data_x - data_mean)),
         reduce_axis, keepdims=True)
     """
-    pdmean1_sum = tbe.sum(pd_xl, params.get("reduce_axis"),
-                          keepdims=True)
+    pdmean1_sum = tbe.sum(pd_xl, params.get("reduce_axis"), keepdims=True)
     pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
-    pd_mean_1 = tbe.vmuls(pdmean1_mul,
-                          tvm.const(-1.0, dtype=cast_dtype))
+    pd_mean_1 = tbe.vmuls(pdmean1_mul, tvm.const(-1.0, dtype=cast_dtype))
 
     return pd_mean_1
 
@@ -605,20 +620,18 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     """
     pd_xl = _get_pd_xl(data, shape_x)
 
-    pd_var, var_elta_2, sub_x_mean = _get_pd_var(data, params, shape_x, pd_xl,
-                                                 cast_dtype)
+    pd_var, var_elta_2, sub_x_mean = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype)
 
-    pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean,
-                           cast_dtype)
+    pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype)
 
     var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
     res_for_gamma = tbe.vmul(var_elta_2_cast, sub_x_mean)
 
-    pd_var = tbe.vmuls(pd_var, tvm.const((2 * (params.get("mean_num") ** (-1))), dtype=cast_dtype))
+    pd_var = tbe.vmuls(pd_var, tvm.const((2 * (params.get("mean_num")**(-1))), dtype=cast_dtype))
     pdx2_broad = tbe.broadcast(pd_var, shape_x)
     pd_x_2 = tbe.vmul(pdx2_broad, sub_x_mean)
-    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num") ** (-1)), dtype=cast_dtype))
+    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
 
     return pd_x_1, pd_x_2, pd_x_3, res_for_gamma
 
@@ -692,8 +705,7 @@ def _get_res(data, params, shape_x, dtype, cast_dtype):
     return pd_x, res_for_gamma
 
 
-def _get_pds(data_dy, data_x, data_variance, data_mean,
-             data_gamma, shape_gamma_ori):
+def _get_pds(data_dy, data_x, data_variance, data_mean, data_gamma, shape_gamma_ori):
     """
     get params and data, compute pd_x, pd_gamma, pd_beta.
 
@@ -727,11 +739,9 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
 
     has_improve_precision = False
     cast_dtype = dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         cast_dtype = "float32"
-
     params = _get_params(shape_x, shape_mean, shape_gamma_ori)
 
     if has_improve_precision:
@@ -741,9 +751,13 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
         data_mean = tbe.cast_to(data_mean, "float32")
         data_gamma = tbe.cast_to(data_gamma, "float32")
 
-    data = {"data_dy": data_dy, "data_x": data_x,
-            "data_variance": data_variance,
-            "data_mean": data_mean, "data_gamma": data_gamma}
+    data = {
+        "data_dy": data_dy,
+        "data_x": data_x,
+        "data_variance": data_variance,
+        "data_mean": data_mean,
+        "data_gamma": data_gamma
+    }
 
     pd_x, res_for_gamma = _get_res(data, params, shape_x, dtype, cast_dtype)
 
@@ -751,9 +765,12 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("layer_norm_x_backprop_v2")
-def layer_norm_x_backprop_v2_compute(input_dy, input_x,
-                                     input_variance, input_mean,
-                                     input_gamma, output_pd_x,
+def layer_norm_x_backprop_v2_compute(input_dy,
+                                     input_x,
+                                     input_variance,
+                                     input_mean,
+                                     input_gamma,
+                                     output_pd_x,
                                      kernel_name="layer_norm_x_backprop_v2"):
     """
     DSL description of the layernorm_grad operator's mathematical
@@ -781,8 +798,7 @@ def layer_norm_x_backprop_v2_compute(input_dy, input_x,
     res_tuple: tuple
         (pd_x, pd_gamma, pd_beta)
     """
-    pd_x, res_for_gamma = _get_pds(input_dy, input_x, input_variance, input_mean,
-                                   input_gamma, input_gamma.shape)
+    pd_x, res_for_gamma = _get_pds(input_dy, input_x, input_variance, input_mean, input_gamma, input_gamma.shape)
     res_list = [pd_x, res_for_gamma]
 
     return res_list
@@ -836,10 +852,14 @@ def update_shape_nz(shape_x, shape_var, shape_gamma):
     for i in reduce_nz_axis:
         mean_nz_num *= shape_x_nz[i]
 
-    param_nz = {"shape_x_nz": shape_x_nz, "shape_var_nz": shape_var_nz,
-                "shape_gamma_nz": shape_gamma_nz,
-                "reduce_nz_axis": reduce_nz_axis,
-                "param_nz_axis": param_nz_axis, "mean_nz_num": mean_nz_num}
+    param_nz = {
+        "shape_x_nz": shape_x_nz,
+        "shape_var_nz": shape_var_nz,
+        "shape_gamma_nz": shape_gamma_nz,
+        "reduce_axis": reduce_nz_axis,
+        "param_axis": param_nz_axis,
+        "mean_num": mean_nz_num
+    }
 
     return param_nz
 
@@ -849,16 +869,11 @@ def _get_data_nz(param_nz, dtype):
     get placeholders of data_dy, data_x, data_variance, data_mean and data_gamma
 
     """
-    data_dy = tvm.placeholder(param_nz.get("shape_x_nz"),
-                              name="data_dy", dtype=dtype)
-    data_x = tvm.placeholder(param_nz.get("shape_x_nz"),
-                             name="data_x", dtype=dtype)
-    data_variance = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                    name="data_variance", dtype=dtype)
-    data_mean = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                name="data_mean", dtype=dtype)
-    data_gamma = tvm.placeholder(param_nz.get("shape_gamma_nz"),
-                                 name="data_gamma", dtype=dtype)
+    data_dy = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_dy", dtype=dtype)
+    data_x = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_x", dtype=dtype)
+    data_variance = tvm.placeholder(param_nz.get("shape_var_nz"), name="data_variance", dtype=dtype)
+    data_mean = tvm.placeholder(param_nz.get("shape_var_nz"), name="data_mean", dtype=dtype)
+    data_gamma = tvm.placeholder(param_nz.get("shape_gamma_nz"), name="data_gamma", dtype=dtype)
 
     data_gm = (data_dy, data_x, data_variance, data_mean, data_gamma)
 
@@ -870,8 +885,7 @@ def _get_pd_xl_nz(data, param_nz):
     compute pd_xl according to data_dy, data_gamma and shape_x
 
     """
-    data_gamma_cast = tbe.broadcast(data.get("data_gamma"),
-                                    param_nz.get("shape_x_nz"))
+    data_gamma_cast = tbe.broadcast(data.get("data_gamma"), param_nz.get("shape_x_nz"))
     pd_xl = tbe.vmul(data_gamma_cast, data.get("data_dy"))
 
     return pd_xl
@@ -882,11 +896,9 @@ def _get_pd_var_front_nz(data, cast_dtype):
     compute front part of pd_var according to data_variance
 
     """
-    var_elta = tbe.vadds(data.get("data_variance"),
-                         tvm.const(EPSLON, dtype=cast_dtype))
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
-    var_elta_mul = tbe.vmuls(var_elta_log,
-                             tvm.const(-0.5, dtype=cast_dtype))
+    var_elta_mul = tbe.vmuls(var_elta_log, tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
     pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
     pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
@@ -901,31 +913,26 @@ def _get_pd_var_nz(data, param_nz, pd_xl, cast_dtype):
     """
     pd_var_1, var_elta_2 = _get_pd_var_front_nz(data, cast_dtype)
 
-    data_mean_cast = tbe.broadcast(data.get("data_mean"),
-                                   param_nz.get("shape_x_nz"))
+    data_mean_cast = tbe.broadcast(data.get("data_mean"), param_nz.get("shape_x_nz"))
     sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
     pdvar_mul1 = tbe.vmul(sub_x_mean, pd_xl)
-    pdvar_sum = tbe.sum(pdvar_mul1, param_nz.get("reduce_nz_axis"),
-                        keepdims=True)
+    pdvar_sum = tbe.sum(pdvar_mul1, param_nz.get("reduce_axis"), keepdims=True)
     pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
     pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
     return pd_var, var_elta_2, sub_x_mean
 
 
-def _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2, sub_x_mean,
-                    cast_dtype):
+def _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
     """
     compute pd_mean according to reduce_axis, pd_xl, pd_var,
     var_elta_2 and sub_x_mean
 
     """
-    pdmean1_sum = tbe.sum(pd_xl, param_nz.get("reduce_nz_axis"),
-                          keepdims=True)
+    pdmean1_sum = tbe.sum(pd_xl, param_nz.get("reduce_axis"), keepdims=True)
     pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
-    pd_mean_1 = tbe.vmuls(pdmean1_mul,
-                          tvm.const(-1.0, dtype=cast_dtype))
+    pd_mean_1 = tbe.vmuls(pdmean1_mul, tvm.const(-1.0, dtype=cast_dtype))
 
     return pd_mean_1
 
@@ -937,19 +944,17 @@ def _get_pd_x_front_nz(data, param_nz, cast_dtype):
     """
     pd_xl = _get_pd_xl_nz(data, param_nz)
 
-    pd_var, var_elta_2, sub_x_mean = _get_pd_var_nz(data, param_nz, pd_xl,
-                                                    cast_dtype)
+    pd_var, var_elta_2, sub_x_mean = _get_pd_var_nz(data, param_nz, pd_xl, cast_dtype)
 
-    pd_mean = _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2,
-                              sub_x_mean, cast_dtype)
+    pd_mean = _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype)
 
     var_elta_2_cast = _broadcast_nz(var_elta_2, param_nz.get("shape_x_nz"))
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
     res_for_gamma = tbe.vmul(var_elta_2_cast, sub_x_mean)
-    pd_var = tbe.vmuls(pd_var, tvm.const((2 * (param_nz.get("mean_nz_num") ** (-1))), dtype=cast_dtype))
+    pd_var = tbe.vmuls(pd_var, tvm.const((2 * (param_nz.get("mean_num")**(-1))), dtype=cast_dtype))
     pdx2_broad = _broadcast_nz(pd_var, param_nz.get("shape_x_nz"))
     pd_x_2 = tbe.vmul(pdx2_broad, sub_x_mean)
-    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((param_nz.get("mean_nz_num") ** (-1)), dtype=cast_dtype))
+    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((param_nz.get("mean_num")**(-1)), dtype=cast_dtype))
 
     return pd_x_1, pd_x_2, pd_x_3, res_for_gamma
 
@@ -983,8 +988,7 @@ def _get_res_nz(data, param_nz, dtype, cast_dtype):
     return pd_x, res_for_gamma
 
 
-def _get_pds_nz(data_dy, data_x, data_variance, data_mean,
-                data_gamma, param_nz):
+def _get_pds_nz(data_dy, data_x, data_variance, data_mean, data_gamma, param_nz):
     """
     get params and data, compute pd_x, pd_gamma, pd_beta.
 
@@ -993,8 +997,7 @@ def _get_pds_nz(data_dy, data_x, data_variance, data_mean,
 
     has_improve_precision = False
     cast_dtype = dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         cast_dtype = "float32"
 
@@ -1005,17 +1008,20 @@ def _get_pds_nz(data_dy, data_x, data_variance, data_mean,
         data_mean = tbe.cast_to(data_mean, "float32")
         data_gamma = tbe.cast_to(data_gamma, "float32")
 
-    data = {"data_dy": data_dy, "data_x": data_x,
-            "data_variance": data_variance,
-            "data_mean": data_mean, "data_gamma": data_gamma}
+    data = {
+        "data_dy": data_dy,
+        "data_x": data_x,
+        "data_variance": data_variance,
+        "data_mean": data_mean,
+        "data_gamma": data_gamma
+    }
 
     pd_x, res_for_gamma = _get_res_nz(data, param_nz, dtype, cast_dtype)
 
     return pd_x, res_for_gamma
 
 
-def layer_norm_x_back_nz_compute(data_dy, data_x, data_variance,
-                                 data_mean, data_gamma, param_nz):
+def layer_norm_x_back_nz_compute(data_dy, data_x, data_variance, data_mean, data_gamma, param_nz):
     """
     DSL description of the layernorm_grad operator's mathematical
     calculation process
@@ -1040,18 +1046,21 @@ def layer_norm_x_back_nz_compute(data_dy, data_x, data_variance,
     res_tuple: tuple
         (pd_x, res_for_gamma)
     """
-    pd_x, res_for_gamma = _get_pds_nz(data_dy, data_x, data_variance,
-                                      data_mean, data_gamma, param_nz)
+    pd_x, res_for_gamma = _get_pds_nz(data_dy, data_x, data_variance, data_mean, data_gamma, param_nz)
 
     return [pd_x, res_for_gamma]
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
-                             input_gamma, output_pd_x, res_for_gamma,
+def layer_norm_x_backprop_v2(input_dy,
+                             input_x,
+                             input_variance,
+                             input_mean,
+                             input_gamma,
+                             output_pd_x,
+                             res_for_gamma,
                              kernel_name="layer_norm_x_backprop_v2"):
     """
     algorithm: layernorm_grad
@@ -1103,62 +1112,72 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     shape_variance = input_variance.get("shape")
     shape_mean = input_mean.get("shape")
     shape_gamma = input_gamma.get("shape")
-
     format_dy = input_dy.get("format")
-
+    global EPSLON
     EPSLON = 1e-5 if dtype == "float16" else 1e-12
-    if format_dy.upper() == "FRACTAL_NZ":
-        param_nz = update_shape_nz(shape_x, shape_variance, shape_gamma)
-
-        data_dy = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_dy",
-                                  dtype=dtype)
-        data_x = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_x",
-                                 dtype=dtype)
-        data_variance = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                        name="data_variance", dtype=dtype)
-        data_mean = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                    name="data_mean", dtype=dtype)
-        data_gamma = tvm.placeholder(param_nz.get("shape_gamma_nz"),
-                                     name="data_gamma", dtype=dtype)
-
-        res_list = layer_norm_x_back_nz_compute(data_dy, data_x, data_variance,
-                                                data_mean, data_gamma, param_nz)
-
-        tensor_list = [data_dy, data_x, data_variance, data_mean, data_gamma] + res_list
-
-        with tvm.target.cce():
-            sch = tbe.auto_schedule(res_list)
-
-        config = {"print_ir": False,
-                  "name": kernel_name,
-                  "tensor_list": tensor_list}
-
-        tbe.cce_build_code(sch, config)
-
+    if layer_norm_x_backprop_v2_unify.is_special_cases(shape_dy, shape_variance, shape_gamma):
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            context.add_addition("is_static", True)
+            layer_norm_x_backprop_v2_unify.layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
+                                                                    input_gamma, output_pd_x, res_for_gamma,
+                                                                    kernel_name)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                tbe_context.op_context.get_context().add_addition("is_static", True)
+                layer_norm_x_backprop_v2_unify.layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
+                                                                        input_gamma, output_pd_x, res_for_gamma,
+                                                                        kernel_name)
+        return
     else:
-        _check_params({"shape_dy": shape_dy, "shape_x": shape_x,
-                       "shape_var": shape_variance,
-                       "shape_mean": shape_mean, "shape_gamma": shape_gamma,
-                       "dtype": dtype, "kernel_name": kernel_name})
+        if format_dy.upper() == "FRACTAL_NZ":
+            param_nz = update_shape_nz(shape_x, shape_variance, shape_gamma)
+            data_dy = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_dy", dtype=dtype)
+            data_x = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_x", dtype=dtype)
+            data_variance = tvm.placeholder(param_nz.get("shape_var_nz"), name="data_variance", dtype=dtype)
+            data_mean = tvm.placeholder(param_nz.get("shape_var_nz"), name="data_mean", dtype=dtype)
+            data_gamma = tvm.placeholder(param_nz.get("shape_gamma_nz"), name="data_gamma", dtype=dtype)
 
-        shape_gamma = _update_gamma_shape(shape_x, shape_gamma)[0]
+            res_list = layer_norm_x_back_nz_compute(data_dy, data_x, data_variance, data_mean, data_gamma, param_nz)
 
-        data_gm = _get_data_gm({"shape_dy": shape_dy, "shape_x": shape_x,
-                                "shape_var": shape_variance,
-                                "shape_mean": shape_mean,
-                                "shape_gamma": shape_gamma}, dtype)
+            tensor_list = [data_dy, data_x, data_variance, data_mean, data_gamma] + res_list
 
-        res_list = layer_norm_x_backprop_v2_compute(data_gm[0], data_gm[1],
-                                                    data_gm[2], data_gm[3],
-                                                    data_gm[4], output_pd_x)
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res_list)
 
-        with tvm.target.cce():
-            sch = tbe.auto_schedule(res_list)
+            config = {"print_ir": False, "name": kernel_name, "tensor_list": tensor_list}
 
-        tensor_list = list(data_gm) + list(res_list)
+            tbe.cce_build_code(sch, config)
+        else:
+            _check_params({
+                "shape_dy": shape_dy,
+                "shape_x": shape_x,
+                "shape_var": shape_variance,
+                "shape_mean": shape_mean,
+                "shape_gamma": shape_gamma,
+                "dtype": dtype,
+                "kernel_name": kernel_name
+            })
 
-        config = {"print_ir": False,
-                  "name": kernel_name,
-                  "tensor_list": tensor_list}
+            shape_gamma = _update_gamma_shape(shape_x, shape_gamma)[0]
 
-        tbe.cce_build_code(sch, config)
+            data_gm = _get_data_gm(
+                {
+                    "shape_dy": shape_dy,
+                    "shape_x": shape_x,
+                    "shape_var": shape_variance,
+                    "shape_mean": shape_mean,
+                    "shape_gamma": shape_gamma
+                }, dtype)
+
+            res_list = layer_norm_x_backprop_v2_compute(data_gm[0], data_gm[1], data_gm[2], data_gm[3], data_gm[4],
+                                                        output_pd_x)
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res_list)
+
+            tensor_list = list(data_gm) + list(res_list)
+
+            config = {"print_ir": False, "name": kernel_name, "tensor_list": tensor_list}
+
+            tbe.cce_build_code(sch, config)

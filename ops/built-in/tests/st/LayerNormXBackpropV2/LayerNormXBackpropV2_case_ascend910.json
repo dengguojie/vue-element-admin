@@ -153,24 +153,14 @@
     ],
     "output_desc": [
       {
-        "shape": [64, -1, 16],
+        "shape": [64, 114, 16, 16],
         "format": "ND",
-        "typical_shape": [64, 1824, 16],
-        "ori_shape": [64, -1, 16],
-        "ori_format": "ND",
-        "shape_range": [[1, 1824]],
-        "value_range": [[0, 1]],
         "name": "output_pd_x",
         "type": "float"
       },
       {
-        "shape": [64, -1, 16],
+        "shape": [64, 114, 16, 16],
         "format": "ND",
-        "typical_shape": [64, 1824, 16],
-        "ori_shape": [64, -1, 16],
-        "ori_format": "ND",
-        "shape_range": [[1, 1824]],
-        "value_range": [[0, 1]],
         "name": "res_for_gamma",
         "type": "float"
       }

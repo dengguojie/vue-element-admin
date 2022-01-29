@@ -15,7 +15,11 @@
 """
 platform adapter
 """
+from typing import Any
+from typing import Dict
+from typing import Optional
 
+# 'pylint: disable=unused-import,invalid-name,reimported
 from tbe.dsl.base import operation as tbe_operation
 import tbe as platform_tbe
 import tbe.common.buildcfg as tbe_build
@@ -31,6 +35,7 @@ from tbe.common.utils.errormgr import error_manager_vector
 from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager
 import te.platform.cce_build as tbe_cce_build
 from te.lang.cce import tuple_sum as te_tuple_sum
+from impl.util import util_common
 
 register_operator = tbe_register.register_operator
 
@@ -66,6 +71,7 @@ class OpPatternMode:
     ELEWISE_WITH_BROADCAST = "broadcast"
     REDUCE = "reduce"
     TRANSDATA = "transdata"
+    NORM = "norm"
 
 
 # 'pylint: disable=too-few-public-methods, too-many-instance-attributes
@@ -283,3 +289,41 @@ tuple_sum = te_tuple_sum
 # a100
 is_vgatherb = tbe_platform.api_check_support("tik.vgatherb")
 is_supported_vlrelu = tbe_platform.api_check_support("tik.vlrelu")
+
+
+def tbe_classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
+    """
+    register op compute func
+
+    Parameters
+    ----------
+    ins : list
+        list of input dict
+    mode: string
+        classfy mode, [OpPatternMode.ELEWISE, OpPatternMode.ELEWISE_WITH_BROADCAST,
+                       OpPatternMode.reduce, OpPatternMode.TRANSDATA, OpPatternMode.NORM]
+    extra_params: dict
+        extra_params
+
+    Returns
+    -------
+    inc : list
+        list of classify result
+    """
+    for i, input_dict in enumerate(ins):
+        # not dict type will continue
+        if not isinstance(input_dict, dict):
+            continue
+        # dict is dynamic will continue
+        if util_common.is_unknown(input_dict):
+            continue
+        # dict is static and do not have range, will set range with shape
+        if input_dict is not None and not input_dict.get("range"):
+            input_shape = input_dict.get("shape")
+            if input_shape is not None:
+                input_range = []
+                for _, dim in enumerate(input_shape):
+                    input_range.append((dim, dim))
+                ins[i]["range"] = input_range
+
+    return tbe.classify(ins, mode, extra_params)

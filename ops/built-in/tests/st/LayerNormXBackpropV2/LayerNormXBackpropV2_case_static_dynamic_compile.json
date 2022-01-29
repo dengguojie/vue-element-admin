@@ -1,0 +1,104 @@
+[
+  {
+    "op": "LayerNormXBackpropV2",
+    "input_desc": [
+      {
+        "shape": [5120, 32, 4],
+        "format": "ND",
+        "name": "input_dy",
+        "type": "float"
+      },
+      {
+        "shape": [5120, 32, 4],
+        "format": "ND",
+        "name": "input_x",
+        "type": "float"
+      },
+      {
+        "shape": [5120, 32, 1],
+        "format": "ND",
+        "name": "input_variance",
+        "type": "float"
+      },
+      {
+        "shape": [5120, 32, 1],
+        "format": "ND",
+        "name": "input_mean",
+        "type": "float"
+      },
+      {
+        "shape": [4],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [5120, 32, 4],
+        "format": "ND",
+        "name": "output_pd_x",
+        "type": "float"
+      },
+      {
+        "shape": [5120, 32, 4],
+        "format": "ND",
+        "name": "res_for_gamma",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LayerNormXBackpropV2_007"
+  },
+  {
+    "op": "LayerNormXBackpropV2",
+    "input_desc": [
+      {
+        "shape": [48, 2304, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "input_dy",
+        "type": "float32"
+      },
+      {
+        "shape": [48, 2304, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "input_x",
+        "type": "float32"
+      },
+      {
+        "shape": [36864, 1],
+        "format": "ND",
+        "name": "input_variance",
+        "type": "float32"
+      },
+      {
+        "shape": [36864, 1],
+        "format": "ND",
+        "name": "input_mean",
+        "type": "float32"
+      },
+      {
+        "shape": [768],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [48, 2304, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "output_pd_x",
+        "type": "float32"
+      },
+      {
+        "shape": [48, 2304, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "res_for_gamma",
+        "type": "float32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LayerNormXBackpropV2_008"
+  }
+]
