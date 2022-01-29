@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
-
+#include "math_ops.h"
 #include "data_flow_ops.h"
 #include "op_proto_test_util.h"
 
@@ -50,6 +50,38 @@ TEST_F(GetNextV2Test, test003) {
 
 TEST_F(GetNextV2Test, test004) {
   ge::op::GetNextV2 op;
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(GetNextV2Test, test005) {
+  ge::op::GetNext op;
+  op.set_attr_output_types({ge::DT_INT8});
+  op.set_attr_output_shapes({{224, 224, 3}});
+  op.create_dynamic_output_y(1);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(GetNextV2Test, test006) {
+  ge::op::GetNext op;
+  op.set_attr_output_types({ge::DT_INT8});
+  op.set_attr_output_shapes({{224, 224, 3}, {1}});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(GetNextV2Test, test007) {
+  ge::op::GetNext op;
+  op.set_attr_output_types({ge::DT_INT8});
+  op.set_attr_output_shapes({{224, 224, 3}});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(GetNextV2Test, test008) {
+  ge::op::GetNext op;
+  op.set_attr_output_types({ge::DT_INT8});
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }

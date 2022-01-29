@@ -28,9 +28,9 @@ Status AutoMappingFnGetNext(const Message* op_src, ge::Operator& op) {
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("GetNextV2")
+REGISTER_CUSTOM_OP("GetNext")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("GetNextV2")
+    .OriginOpType("GetNext")
     .ParseParamsFn(AutoMappingFnGetNext)
     .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
