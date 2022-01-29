@@ -799,17 +799,17 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
         continue;
       }
       if (i < shape_range_x.size() && i < shape_range_y.size()) {
+        // first_range == max first
+        int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
+        if (shape_range_x[i].first == 0 || shape_range_y[i].first == 0) {
+          first_range = 0;
+        }
         if (shape_range_x[i].second == -1 && shape_range_y[i].second == 1) {
-          out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, -1));
         } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
-          out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, -1));
         } else if (shape_range_x[i].first == 1 || shape_range_y[i].first == 1) {
           // one shape size maybe 1, so will support boardcast
-          // first_range == max first
-          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
-	  if (shape_range_x[i].first == 0 || shape_range_y[i].first == 0) {
-	    first_range = 0;
-	  }
           int64_t second_range = shape_range_x[i].first == 1 ? shape_range_y[i].second : shape_range_x[i].second;
           if (shape_range_x[i].first == 1 && shape_range_y[i].first == 1) {
             second_range = std::max(shape_range_x[i].second, shape_range_y[i].second);
@@ -819,10 +819,6 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
         } else {
           // no 1 in range.first, mean no boardcast for range
           // get intersect range
-          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
-	  if (shape_range_x[i].first == 0 || shape_range_y[i].first == 0) {
-            first_range = 0;
-          }
           int64_t second_range = std::min(shape_range_x[i].second, shape_range_y[i].second);
           second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1)
                          ? std::max(shape_range_x[i].second, shape_range_y[i].second)
