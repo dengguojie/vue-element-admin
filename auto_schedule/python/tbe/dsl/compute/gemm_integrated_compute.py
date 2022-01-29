@@ -1633,21 +1633,7 @@ class GEMMCompute(FormatCompute):
             )
         return tensor_beta_bias
 
-    def _get_bias_l0c(self, tensor_bias, a_shape, b_shape):
-
-        l0c_shape = [
-            b_shape[-3],
-            a_shape[-4],
-            tbe_platform.BLOCK_OUT,
-            tbe_platform.BLOCK_IN
-        ]
-        a_shape_len = len(a_shape)
-        b_shape_len = len(b_shape)
-        have_batch = (a_shape_len > 4) or (b_shape_len > 4)
-        if have_batch:
-            batch = a_shape[0] if a_shape_len >= b_shape_len else b_shape[0]
-            l0c_shape.insert(0, batch)
-
+    def _get_bias_l0c(self, tensor_bias, l0c_shape):
         if self.have_bias and (not self.cube_vector_split):
             tensor_bias_l0c = self._get_bias_l0c_compute(tensor_bias, l0c_shape)
         else:
@@ -1764,7 +1750,7 @@ class GEMMCompute(FormatCompute):
 
         need_add_bias_in_l0c = self.have_bias and (not self.cube_vector_split)
         if need_add_bias_in_l0c:
-            bias_l0c = self._get_bias_l0c(tensor_bias, a_matrix_in.shape, b_matrix_in.shape)
+            bias_l0c = self._get_bias_l0c(tensor_bias, tensor_c_matrix.shape)
             tensor_c_add_bias = tvm.compute(bias_l0c.shape, lambda *indices:
                                             bias_l0c[indices] +
                                             tensor_c_matrix[indices],
