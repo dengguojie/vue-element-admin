@@ -34,6 +34,7 @@ class Constant:
     MAX_INT32 = 2 ** 31 - 1
     REDUCE_ALIGN = 64
     BATCH_MAX = 256
+    OFFSET_NUMS = 3
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -70,11 +71,13 @@ class MovingSumWithSigmoid(object):
                                  Constant.BLOCK_ALIGN * Constant.BLOCK_ALIGN
 
         self.used_aicore_num = tik.Dprofile().get_aicore_num()
-        self.offset_gm = self.tik_instance.Tensor("int32", [2 * Constant.BATCH_MAX], name="offset_gm",
+        self.offset_gm = self.tik_instance.Tensor("int32", [Constant.OFFSET_NUMS * Constant.BATCH_MAX],
+                                                  name="offset_gm",
                                                   scope=tik.scope_gm, is_workspace=True)
 
         self.batch_size = None
         self.batch_size_align = None
+        self.col_offset = None
 
     def get_tiling_args(self):
         """get_tiling_args"""
@@ -92,8 +95,10 @@ class MovingSumWithSigmoid(object):
 
         alpha_offset_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="alpha_offset_ub",
                                                    scope=tik.scope_ubuf)
-        energy_offset_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="energy_offset_ub",
-                                                    scope=tik.scope_ubuf)
+        energy_row_offset_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="energy_row_offset_ub",
+                                                        scope=tik.scope_ubuf)
+        energy_col_offset_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="energy_col_offset_ub",
+                                                        scope=tik.scope_ubuf)
 
         beam_size_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="beam_size_ub",
                                                 scope=tik.scope_ubuf)
@@ -105,20 +110,20 @@ class MovingSumWithSigmoid(object):
         self.tik_instance.data_move(frame_size_ub, self.frame_size_gm, 0, 1,
                                     self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
-        col_offset = self.tik_instance.Scalar("int32", init_value=0)
+        self.col_offset = self.tik_instance.Scalar("int32", init_value=0)
         tmp = self.tik_instance.Scalar("int32")
         with self.tik_instance.for_range(0, self.batch_size) as idx:
             tmp.set_as(frame_size_ub[idx])
-            col_offset.set_as(col_offset + tmp)
+            self.col_offset.set_as(self.col_offset + tmp)
 
         alpha_offset = self.tik_instance.Scalar("int32", init_value=0)
-        energy_offset = self.tik_instance.Scalar("int32", init_value=0)
 
         energy_row_offset = self.tik_instance.Scalar("int32", init_value=0)
         energy_col_offset = self.tik_instance.Scalar("int32", init_value=0)
 
         alpha_offset_ub[0].set_as(alpha_offset)
-        energy_offset_ub[0].set_as(energy_offset)
+        energy_row_offset_ub[0].set_as(energy_row_offset)
+        energy_col_offset_ub[0].set_as(energy_col_offset)
 
         current_beam = self.tik_instance.Scalar("int32")
         current_frame = self.tik_instance.Scalar("int32")
@@ -127,17 +132,18 @@ class MovingSumWithSigmoid(object):
             current_frame.set_as(frame_size_ub[idx])
 
             alpha_offset.set_as(alpha_offset + current_beam * current_frame)
-
             energy_row_offset.set_as(energy_row_offset + current_beam)
             energy_col_offset.set_as(energy_col_offset + current_frame)
-            energy_offset.set_as(energy_row_offset * col_offset + energy_col_offset)
 
             alpha_offset_ub[idx + 1].set_as(alpha_offset)
-            energy_offset_ub[idx + 1].set_as(energy_offset)
+            energy_row_offset_ub[idx + 1].set_as(energy_row_offset)
+            energy_col_offset_ub[idx + 1].set_as(energy_col_offset)
 
         self.tik_instance.data_move(self.offset_gm, alpha_offset_ub, 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
-        self.tik_instance.data_move(self.offset_gm[Constant.BATCH_MAX], energy_offset_ub, 0, 1,
+        self.tik_instance.data_move(self.offset_gm[Constant.BATCH_MAX], energy_row_offset_ub, 0, 1,
+                                    2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
+        self.tik_instance.data_move(self.offset_gm[Constant.BATCH_MAX * 2], energy_col_offset_ub, 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
         batch_num_per_aicore = self.tik_instance.Scalar("int32", init_value=self.batch_size // self.used_aicore_num)
@@ -163,17 +169,26 @@ class MovingSumWithSigmoid(object):
     def moving_sum_with_sigmoid_compute_core(self, task_idx):
         alpha_offset_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="alpha_offset_ub",
                                                    scope=tik.scope_ubuf)
-        energy_offset_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="energy_offset_ub",
-                                                    scope=tik.scope_ubuf)
+        energy_row_offset_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="energy_row_offset_ub",
+                                                        scope=tik.scope_ubuf)
+        energy_col_offset_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="energy_col_offset_ub",
+                                                        scope=tik.scope_ubuf)
+        beam_size_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="beam_size_ub",
+                                                scope=tik.scope_ubuf)
         frame_size_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="frame_size_ub",
                                                  scope=tik.scope_ubuf)
 
         self.tik_instance.data_move(alpha_offset_ub, self.offset_gm[task_idx], 0, 1, 1, 0, 0)
-        self.tik_instance.data_move(energy_offset_ub, self.offset_gm[Constant.BATCH_MAX + task_idx], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(energy_row_offset_ub, self.offset_gm[Constant.BATCH_MAX + task_idx], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(energy_col_offset_ub, self.offset_gm[Constant.BATCH_MAX * 2 + task_idx], 0, 1, 1, 0,
+                                    0)
+        self.tik_instance.data_move(beam_size_ub, self.beam_size_gm[task_idx], 0, 1, 1, 0, 0)
         self.tik_instance.data_move(frame_size_ub, self.frame_size_gm[task_idx], 0, 1, 1, 0, 0)
 
         alpha_offset = self.tik_instance.Scalar("int32", init_value=alpha_offset_ub[0])
-        energy_offset = self.tik_instance.Scalar("int32", init_value=energy_offset_ub[0])
+        energy_row_offset = self.tik_instance.Scalar("int32", init_value=energy_row_offset_ub[0])
+        energy_col_offset = self.tik_instance.Scalar("int32", init_value=energy_col_offset_ub[0])
+        beam_size = self.tik_instance.Scalar("int32", init_value=beam_size_ub[0])
         frame_size = self.tik_instance.Scalar("int32", init_value=frame_size_ub[0])
         frame_size_align = self.tik_instance.Scalar("int32")
         frame_size_align.set_as((frame_size + Constant.BLOCK_ALIGN - 1) // Constant.BLOCK_ALIGN * Constant.BLOCK_ALIGN)
@@ -184,171 +199,182 @@ class MovingSumWithSigmoid(object):
                                              scope=tik.scope_ubuf)
         y_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="y_ub", scope=tik.scope_ubuf)
 
-        if self.conv:
-            alpha_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="alpha_ub_fp16",
-                                                     scope=tik.scope_ubuf)
-            energy_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="energy_ub_fp16",
-                                                      scope=tik.scope_ubuf)
-            self.tik_instance.data_move(alpha_ub_fp16, self.alpha_gm[alpha_offset], 0, 1,
-                                        frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-            self.tik_instance.data_move(energy_ub_fp16, self.energy_gm[energy_offset], 0, 1,
-                                        frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-            self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", alpha_ub, alpha_ub_fp16,
-                                       frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
-            self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", energy_ub, energy_ub_fp16,
-                                       frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
-        else:
-            self.tik_instance.data_move(alpha_ub, self.alpha_gm[alpha_offset], 0, 1,
-                                        2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-            self.tik_instance.data_move(energy_ub, self.energy_gm[energy_offset], 0, 1,
-                                        2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+        with self.tik_instance.for_range(0, beam_size) as beam_idx:
+            if self.conv:
+                alpha_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="alpha_ub_fp16",
+                                                         scope=tik.scope_ubuf)
+                energy_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="energy_ub_fp16",
+                                                          scope=tik.scope_ubuf)
+                self.tik_instance.data_move(alpha_ub_fp16, self.alpha_gm[alpha_offset + beam_idx * frame_size], 0, 1,
+                                            frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                self.tik_instance.data_move(energy_ub_fp16, self.energy_gm[
+                    (energy_row_offset + beam_idx) * self.col_offset + energy_col_offset],
+                                            0, 1, frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", alpha_ub, alpha_ub_fp16,
+                                           frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
+                self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", energy_ub, energy_ub_fp16,
+                                           frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
+            else:
+                self.tik_instance.data_move(alpha_ub, self.alpha_gm[alpha_offset + beam_idx * frame_size], 0, 1,
+                                            2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                self.tik_instance.data_move(energy_ub, self.energy_gm[
+                    (energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], 0, 1,
+                                            2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
-        ones_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="ones_ub", scope=tik.scope_ubuf)
-        zero_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="zero_ub", scope=tik.scope_ubuf)
-        tmp_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="tmp_ub", scope=tik.scope_ubuf)
-        sigmoid_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="sigmoid_ub", scope=tik.scope_ubuf)
-        sum_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="sum_ub", scope=tik.scope_ubuf)
-        work_tensor_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="work_tensor_ub",
+            ones_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="ones_ub", scope=tik.scope_ubuf)
+            zero_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="zero_ub", scope=tik.scope_ubuf)
+            tmp_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="tmp_ub", scope=tik.scope_ubuf)
+            sigmoid_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="sigmoid_ub",
                                                   scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(Constant.BLOCK_ALIGN, ones_ub, 1, frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
-        self.tik_instance.vector_dup(Constant.BLOCK_ALIGN, zero_ub, 0, frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
+            sum_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="sum_ub", scope=tik.scope_ubuf)
+            work_tensor_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="work_tensor_ub",
+                                                      scope=tik.scope_ubuf)
+            self.tik_instance.vector_dup(Constant.BLOCK_ALIGN, ones_ub, 1, frame_size_align // Constant.BLOCK_ALIGN, 1,
+                                         2)
+            self.tik_instance.vector_dup(Constant.BLOCK_ALIGN, zero_ub, 0, frame_size_align // Constant.BLOCK_ALIGN, 1,
+                                         2)
 
-        # func '1 / (1 + np.exp(-x))'
-        if self.version == "mini":
-            exp_ub = self.tik_instance.Tensor("float16", [frame_size_align], name="exp_ub", scope=tik.scope_ubuf)
-            work_ub = self.tik_instance.Tensor("float16", [frame_size_align], name="work_ub", scope=tik.scope_ubuf)
-            tmp_ub_ = self.tik_instance.Tensor("float32", [frame_size_align], name="tmp_ub_", scope=tik.scope_ubuf)
+            # func '1 / (1 + np.exp(-x))'
+            if self.version == "mini":
+                exp_ub = self.tik_instance.Tensor("float16", [frame_size_align], name="exp_ub", scope=tik.scope_ubuf)
+                work_ub = self.tik_instance.Tensor("float16", [frame_size_align], name="work_ub", scope=tik.scope_ubuf)
+                tmp_ub_ = self.tik_instance.Tensor("float32", [frame_size_align], name="tmp_ub_", scope=tik.scope_ubuf)
 
-            self.tik_instance.vec_sub(Constant.BLOCK_ALIGN, tmp_ub, zero_ub, energy_ub,
-                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
+                self.tik_instance.vec_sub(Constant.BLOCK_ALIGN, tmp_ub, zero_ub, energy_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
 
-            self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", work_ub, tmp_ub,
-                                       frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
-            self.tik_instance.vec_exp(Constant.BLOCK_ALIGN, exp_ub, work_ub, frame_size_align // Constant.BLOCK_ALIGN,
-                                      1, 1)
-            self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", tmp_ub, exp_ub,
-                                       frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
+                self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", work_ub, tmp_ub,
+                                           frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
+                self.tik_instance.vec_exp(Constant.BLOCK_ALIGN, exp_ub, work_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN,
+                                          1, 1)
+                self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", tmp_ub, exp_ub,
+                                           frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
 
-            self.tik_instance.vec_add(Constant.BLOCK_ALIGN, tmp_ub, tmp_ub, ones_ub,
-                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
-            self.tik_instance.vec_rec_high_preci(Constant.BLOCK_ALIGN, sigmoid_ub, tmp_ub, work_tensor_ub,
-                                                 2 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
-            block_len = self.tik_instance.Scalar("int32")
-            with self.tik_instance.for_range(0, frame_size) as idx:
-                with self.tik_instance.if_scope(frame_size - idx > self.window_size):
-                    block_len.set_as(self.window_size + idx)
-                with self.tik_instance.else_scope():
-                    block_len.set_as(frame_size)
-
-                with self.tik_instance.if_scope(block_len > Constant.REDUCE_ALIGN):
-                    with self.tik_instance.if_scope(block_len % Constant.REDUCE_ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub_, alpha_ub, work_tensor_ub,
-                                                         block_len // Constant.REDUCE_ALIGN, 8)
-                        tmp_val = self.tik_instance.Scalar("float32", init_value=tmp_ub_[0])
-                        self.tik_instance.vec_reduce_add(block_len % Constant.REDUCE_ALIGN, tmp_ub_,
-                                                         alpha_ub[block_len - (block_len % Constant.REDUCE_ALIGN)],
-                                                         work_tensor_ub, 1, 0)
-                        tmp_ub_[1].set_as(tmp_val)
-                        self.tik_instance.vec_reduce_add(2, tmp_ub, tmp_ub_, work_tensor_ub, 1, 0)
+                self.tik_instance.vec_add(Constant.BLOCK_ALIGN, tmp_ub, tmp_ub, ones_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
+                self.tik_instance.vec_rec_high_preci(Constant.BLOCK_ALIGN, sigmoid_ub, tmp_ub, work_tensor_ub,
+                                                     2 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
+                block_len = self.tik_instance.Scalar("int32")
+                with self.tik_instance.for_range(0, frame_size) as idx:
+                    with self.tik_instance.if_scope(frame_size - idx > self.window_size):
+                        block_len.set_as(self.window_size + idx)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub, alpha_ub, work_tensor_ub,
-                                                         block_len // Constant.REDUCE_ALIGN, 8)
-                with self.tik_instance.else_scope():
-                    self.tik_instance.vec_reduce_add(block_len, tmp_ub, alpha_ub, work_tensor_ub, 1, 0)
+                        block_len.set_as(frame_size)
 
-                sum_ub[idx].set_as(tmp_ub[0])
-                alpha_ub[idx].set_as(0)
-        else:
-            tmp_val = self.tik_instance.Scalar("float32")
-            sum_val = self.tik_instance.Scalar("float32")
-            exp_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="exp_ub", scope=tik.scope_ubuf)
-            self.tik_instance.vec_sub(Constant.BLOCK_ALIGN, tmp_ub, zero_ub, energy_ub,
-                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
-            self.tik_instance.vec_exp(Constant.BLOCK_ALIGN, exp_ub, tmp_ub,
-                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
-            self.tik_instance.vec_add(Constant.BLOCK_ALIGN, tmp_ub, exp_ub, ones_ub,
-                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
-            self.tik_instance.vec_rec_high_preci(Constant.BLOCK_ALIGN, sigmoid_ub, tmp_ub, work_tensor_ub,
-                                                 12 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
-
-            with self.tik_instance.if_scope(frame_size > self.window_size):
-                with self.tik_instance.if_scope(self.window_size > Constant.REDUCE_ALIGN):
-                    with self.tik_instance.if_scope(self.window_size % Constant.REDUCE_ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         self.window_size // Constant.REDUCE_ALIGN, 8)
-                        tmp_val.set_as(sum_ub[0])
-                        self.tik_instance.vec_reduce_add(self.window_size % Constant.REDUCE_ALIGN, sum_ub,
-                                                         alpha_ub[
-                                                             self.window_size - (
-                                                                     self.window_size % Constant.REDUCE_ALIGN)],
-                                                         work_tensor_ub, 1, 0)
-                        sum_val.set_as(sum_ub[0])
-                        sum_ub[0].set_as(sum_val + tmp_val)
+                    with self.tik_instance.if_scope(block_len > Constant.REDUCE_ALIGN):
+                        with self.tik_instance.if_scope(block_len % Constant.REDUCE_ALIGN > 0):
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub_, alpha_ub, work_tensor_ub,
+                                                             block_len // Constant.REDUCE_ALIGN, 8)
+                            tmp_val = self.tik_instance.Scalar("float32", init_value=tmp_ub_[0])
+                            self.tik_instance.vec_reduce_add(block_len % Constant.REDUCE_ALIGN, tmp_ub_,
+                                                             alpha_ub[block_len - (block_len % Constant.REDUCE_ALIGN)],
+                                                             work_tensor_ub, 1, 0)
+                            tmp_ub_[1].set_as(tmp_val)
+                            self.tik_instance.vec_reduce_add(2, tmp_ub, tmp_ub_, work_tensor_ub, 1, 0)
+                        with self.tik_instance.else_scope():
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub, alpha_ub, work_tensor_ub,
+                                                             block_len // Constant.REDUCE_ALIGN, 8)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         self.window_size // Constant.REDUCE_ALIGN, 8)
-                with self.tik_instance.else_scope():
-                    self.tik_instance.vec_reduce_add(self.window_size, sum_ub, alpha_ub, work_tensor_ub, 1, 0)
-            with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(frame_size > Constant.REDUCE_ALIGN):
-                    with self.tik_instance.if_scope(frame_size % Constant.REDUCE_ALIGN > 0):
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         frame_size // Constant.REDUCE_ALIGN, 8)
-                        tmp_val.set_as(sum_ub[0])
-                        self.tik_instance.vec_reduce_add(frame_size % Constant.REDUCE_ALIGN, sum_ub,
-                                                         alpha_ub[
-                                                             frame_size -
-                                                             frame_size % Constant.REDUCE_ALIGN],
-                                                         work_tensor_ub, 1, 0)
-                        sum_val.set_as(sum_ub[0])
-                        sum_ub[0].set_as(sum_val + tmp_val)
-                    with self.tik_instance.else_scope():
-                        self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
-                                                         frame_size // Constant.REDUCE_ALIGN, 8)
+                        self.tik_instance.vec_reduce_add(block_len, tmp_ub, alpha_ub, work_tensor_ub, 1, 0)
 
-                with self.tik_instance.else_scope():
-                    self.tik_instance.vec_reduce_add(frame_size, sum_ub, alpha_ub, work_tensor_ub, 1, 1)
-
-            sum_val.set_as(sum_ub[0])
-            with self.tik_instance.for_range(1, frame_size) as idx:
-                tmp_val.set_as(alpha_ub[idx - 1])
-                sum_val.set_as(sum_val - tmp_val)
-
-                with self.tik_instance.if_scope(frame_size - idx >= self.window_size):
-                    tmp_val.set_as(alpha_ub[idx + self.window_size - 1])
-                    sum_val.set_as(sum_val + tmp_val)
-
-                sum_ub[idx].set_as(sum_val)
-
-        self.tik_instance.vec_mul(Constant.BLOCK_ALIGN, y_ub, sum_ub, sigmoid_ub,
-                                  frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
-
-        with self.tik_instance.for_range(frame_size, frame_size_align) as idx:
-            y_ub[idx].set_as(0)
-
-        if self.conv:
-            y_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="y_ub_fp16",
-                                                 scope=tik.scope_ubuf)
-            self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", y_ub_fp16, y_ub,
-                                       frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
-
-            if self.version == "aic":
-                self.tik_instance.set_atomic_add(2)
-                self.tik_instance.data_move(self.y_gm[energy_offset], y_ub_fp16, 0, 1,
-                                            frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-                self.tik_instance.set_atomic_add(0)
+                    sum_ub[idx].set_as(tmp_ub[0])
+                    alpha_ub[idx].set_as(0)
             else:
-                self.tik_instance.data_move(self.y_gm[energy_offset], y_ub_fp16, 0, 1,
-                                            frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-        else:
-            if self.version != "mini":
-                self.tik_instance.set_atomic_add(1)
-                self.tik_instance.data_move(self.y_gm[energy_offset], y_ub, 0, 1,
-                                            2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-                self.tik_instance.set_atomic_add(0)
+                tmp_val = self.tik_instance.Scalar("float32")
+                sum_val = self.tik_instance.Scalar("float32")
+                exp_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="exp_ub", scope=tik.scope_ubuf)
+                self.tik_instance.vec_sub(Constant.BLOCK_ALIGN, tmp_ub, zero_ub, energy_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
+                self.tik_instance.vec_exp(Constant.BLOCK_ALIGN, exp_ub, tmp_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
+                self.tik_instance.vec_add(Constant.BLOCK_ALIGN, tmp_ub, exp_ub, ones_ub,
+                                          frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
+                self.tik_instance.vec_rec_high_preci(Constant.BLOCK_ALIGN, sigmoid_ub, tmp_ub, work_tensor_ub,
+                                                     12 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
+
+                with self.tik_instance.if_scope(frame_size > self.window_size):
+                    with self.tik_instance.if_scope(self.window_size > Constant.REDUCE_ALIGN):
+                        with self.tik_instance.if_scope(self.window_size % Constant.REDUCE_ALIGN > 0):
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                             self.window_size // Constant.REDUCE_ALIGN, 8)
+                            tmp_val.set_as(sum_ub[0])
+                            self.tik_instance.vec_reduce_add(self.window_size % Constant.REDUCE_ALIGN, sum_ub,
+                                                             alpha_ub[
+                                                                 self.window_size - (
+                                                                         self.window_size % Constant.REDUCE_ALIGN)],
+                                                             work_tensor_ub, 1, 0)
+                            sum_val.set_as(sum_ub[0])
+                            sum_ub[0].set_as(sum_val + tmp_val)
+                        with self.tik_instance.else_scope():
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                             self.window_size // Constant.REDUCE_ALIGN, 8)
+                    with self.tik_instance.else_scope():
+                        self.tik_instance.vec_reduce_add(self.window_size, sum_ub, alpha_ub, work_tensor_ub, 1, 0)
+                with self.tik_instance.else_scope():
+                    with self.tik_instance.if_scope(frame_size > Constant.REDUCE_ALIGN):
+                        with self.tik_instance.if_scope(frame_size % Constant.REDUCE_ALIGN > 0):
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                             frame_size // Constant.REDUCE_ALIGN, 8)
+                            tmp_val.set_as(sum_ub[0])
+                            self.tik_instance.vec_reduce_add(frame_size % Constant.REDUCE_ALIGN, sum_ub,
+                                                             alpha_ub[
+                                                                 frame_size -
+                                                                 frame_size % Constant.REDUCE_ALIGN],
+                                                             work_tensor_ub, 1, 0)
+                            sum_val.set_as(sum_ub[0])
+                            sum_ub[0].set_as(sum_val + tmp_val)
+                        with self.tik_instance.else_scope():
+                            self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, sum_ub, alpha_ub, work_tensor_ub,
+                                                             frame_size // Constant.REDUCE_ALIGN, 8)
+
+                    with self.tik_instance.else_scope():
+                        self.tik_instance.vec_reduce_add(frame_size, sum_ub, alpha_ub, work_tensor_ub, 1, 1)
+
+                sum_val.set_as(sum_ub[0])
+                with self.tik_instance.for_range(1, frame_size) as idx:
+                    tmp_val.set_as(alpha_ub[idx - 1])
+                    sum_val.set_as(sum_val - tmp_val)
+
+                    with self.tik_instance.if_scope(frame_size - idx >= self.window_size):
+                        tmp_val.set_as(alpha_ub[idx + self.window_size - 1])
+                        sum_val.set_as(sum_val + tmp_val)
+
+                    sum_ub[idx].set_as(sum_val)
+
+            self.tik_instance.vec_mul(Constant.BLOCK_ALIGN, y_ub, sum_ub, sigmoid_ub,
+                                      frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
+
+            with self.tik_instance.for_range(frame_size, frame_size_align) as idx:
+                y_ub[idx].set_as(0)
+
+            if self.conv:
+                y_ub_fp16 = self.tik_instance.Tensor("float16", [frame_size_align], name="y_ub_fp16",
+                                                     scope=tik.scope_ubuf)
+                self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", y_ub_fp16, y_ub,
+                                           frame_size_align // Constant.BLOCK_ALIGN, 1, 2)
+
+                if self.version == "aic":
+                    self.tik_instance.set_atomic_add(2)
+                    self.tik_instance.data_move(
+                        self.y_gm[(energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], y_ub_fp16, 0,
+                        1, frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                    self.tik_instance.set_atomic_add(0)
+                else:
+                    self.tik_instance.data_move(
+                        self.y_gm[(energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], y_ub_fp16, 0,
+                        1, frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
             else:
-                self.tik_instance.data_move(self.y_gm[energy_offset], y_ub, 0, 1,
-                                            2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                if self.version != "mini":
+                    self.tik_instance.set_atomic_add(1)
+                    self.tik_instance.data_move(
+                        self.y_gm[(energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], y_ub, 0, 1,
+                        2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                    self.tik_instance.set_atomic_add(0)
+                else:
+                    self.tik_instance.data_move(
+                        self.y_gm[(energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], y_ub, 0, 1,
+                        2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

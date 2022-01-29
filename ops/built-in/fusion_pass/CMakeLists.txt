@@ -382,7 +382,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/mul_fusion_optimizer_pass.cc
   graph_fusion/ai_core/prod_force_se_a_fusion_pass.cc
   graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.cc
-  graph_fusion/ai_core/lstmp_fusion_pass
+  graph_fusion/ai_core/lstmp_fusion_pass.cc
   graph_fusion/ai_core/batch_matmul_reduce_mean_fusion_pass.cc
   graph_fusion/ai_core/spacetobatch_conv2d_batchtospace_fusion_pass.cc
   graph_fusion/ai_core/same_input_conv2d_fusion_pass.cc

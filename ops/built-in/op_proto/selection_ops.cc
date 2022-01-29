@@ -5018,8 +5018,8 @@ IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
   output_y_desc->SetDataType(energy_dtype);
 
   auto input_dims = energy_shape.GetDims();
-  std::vector<std::pair<int64_t, int64_t>> energy_range;
-  if (input_dims == UNKNOWN_RANK) {
+  if (IsUnknown(input_dims)) {
+    std::vector<std::pair<int64_t, int64_t>> energy_range;
     input_energy_desc->GetShapeRange(energy_range);
     output_y_desc->SetShapeRange(energy_range);
   }

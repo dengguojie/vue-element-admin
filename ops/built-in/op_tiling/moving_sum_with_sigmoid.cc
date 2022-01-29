@@ -25,14 +25,17 @@
 #include "error_log.h"
 
 namespace optiling {
-    const int64_t TILING_MODE_1 = 1;
+    const int64_t TILING_MODE = 1;
+    const int64_t OFFSET_NUMS = 3;
+    const int64_t BATCHSIZE_MAX = 256;
+    const int64_t INT_BTYES = 4;
     struct MovingSumWithSigmoidTilingParam {
         int32_t tiling_mode;
         int32_t core_num;
         int32_t batch_size;
     };
     void InitRunningParams(MovingSumWithSigmoidTilingParam& params) {
-        params.tiling_mode = TILING_MODE_1;
+        params.tiling_mode = TILING_MODE;
         params.core_num = 0;
         params.batch_size = 0;
     }
@@ -56,7 +59,7 @@ namespace optiling {
 
     void SetRunningInfo(const MovingSumWithSigmoidTilingParam & tiling_params, OpRunInfo & run_info)
     {
-        OP_LOGD("SetRunningInfo is running");
+        OP_LOGD("SetRunningInfo is running.");
         ByteBufferPut(run_info.tiling_data, tiling_params.tiling_mode);
         ByteBufferPut(run_info.tiling_data, tiling_params.core_num);
         ByteBufferPut(run_info.tiling_data, tiling_params.batch_size);
@@ -64,10 +67,10 @@ namespace optiling {
 
     void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
     {
-        OP_LOGD("PrintTilingParams is running");
-        OP_LOGD("op [MovingSumWithSigmoid] : cal_mode=%d.", tiling_params.cal_mode);
-        OP_LOGD("op [MovingSumWithSigmoid] : core_used=%d.", tiling_params.core_used);
-        OP_LOGD("op [MovingSumWithSigmoid] : batch_size=%d.", tiling_params.batch_size);
+        OP_LOGD("PrintTilingParams is running.");
+        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : cal_mode=%d.", tiling_params.cal_mode);
+        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : core_used=%d.", tiling_params.core_used);
+        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : batch_size=%d.", tiling_params.batch_size);
     }
 
     bool MovingSumWithSigmoidTiling(const std::string & op_type, const TeOpParas & op_paras,
@@ -86,9 +89,15 @@ namespace optiling {
         run_params.core_num = core_num;
         std::vector<int64_t> beam_shape = op_paras.inputs[2].tensor[0].shape;
         run_params.batch_size = beam_shape[0];
+        if (run_params.batch_size > BATCHSIZE_MAX)
+        {
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "batch_size is over 256.");
+          return false;
+        }
         SetRunningInfo(run_params, run_info);
         PrintTilingParams(run_params);
-        std::vector<int64_t> workspace={2048};
+
+        std::vector<int64_t> workspace={INT_BTYES * BATCHSIZE_MAX * OFFSET_NUMS};
         run_info.workspaces = workspace;
 
         run_info.block_dim = core_num;
