@@ -380,6 +380,34 @@ def _cube_variable_shape(inputs: list):
     return shape_out
 
 
+def _dw_variable_shape(inputs: list):
+    """
+    get the input shape of fusion node trans_data_trans_data_conv2d_backprop_filter
+    """
+    shape_out = []
+    dedx_index, dedy_index = 0, 1
+    dedx_ori_format = inputs[dedx_index].get("ori_format")
+    n_index = dedx_ori_format.index("N")
+    c_index = dedx_ori_format.index("C")
+    h_index = dedx_ori_format.index("H")
+    w_index = dedx_ori_format.index("W")
+    for i, input_member in enumerate(inputs):
+        input_shape = input_member.get("shape")
+        batch_var = operation.var("batch", [1, None])
+        if i in (dedx_index, dedy_index):
+            input_name = "fmap" if i == dedx_index else "dedy"
+            input_shape[n_index] = batch_var
+            input_shape[c_index] = operation.var("{}_c".format(str(input_name)), [1, None])
+            input_shape[h_index] = operation.var("{}_h".format(str(input_name)), [1, None])
+            input_shape[w_index] = operation.var("{}_w".format(str(input_name)), [1, None])
+            operation.add_exclude_bound_var(input_shape[n_index])
+            operation.add_exclude_bound_var(input_shape[c_index])
+            operation.add_exclude_bound_var(input_shape[h_index])
+            operation.add_exclude_bound_var(input_shape[w_index])
+        shape_out.append(input_shape[:])
+    return shape_out
+
+
 def _transpose_variable_shape(inputs: list):
     if len(inputs) != 1:
         dict_args = {"errCode": "E90001", "detailed_cause": "input numbers error"}
@@ -583,6 +611,9 @@ def variable_shape(inputs: list, op_mode="elewise"):
     :param op_mode: operator mode, default is elewise
     :return:
     """
+    if op_mode == "conv2d_backprop_filter":
+        return _dw_variable_shape(inputs)
+
     if op_mode == "cube":
         return _cube_variable_shape(inputs)
 

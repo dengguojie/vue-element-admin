@@ -32,6 +32,9 @@ from . import trans_data_negative_target_ntc
 from . import trans_data_positive_source_ntc
 from . import trans_data_negative_target_tc
 
+# the NCHW format length
+NCHW_LENTH = 4
+
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
@@ -121,7 +124,11 @@ def _nchw_to_5hd(input_x):
     trans nchw to nc1hwc0
     """
     input_dtype = input_x.dtype
-    shape_n, shape_c, shape_h, shape_w = shape_util.shape_to_list(input_x.shape)
+    input_shape = shape_util.shape_to_list(input_x.shape)
+    if len(input_shape) == NCHW_LENTH:
+        shape_n, shape_c, shape_h, shape_w = input_shape
+    else:
+        shape_n, shape_c, shape_h, shape_w = shape_util.shape_to_list(input_x.op.attrs["shape"])
     shape_c0 = tbe_platform.CUBE_MKN[input_dtype]["mac"][1]
     shape_c1 = (shape_c + shape_c0 - 1) // shape_c0
 
@@ -130,10 +137,16 @@ def _nchw_to_5hd(input_x):
     transpose_shape = (shape_n, shape_c1, shape_h * shape_w, shape_c0)
     output_shape = (shape_n, shape_c1, shape_h, shape_w, shape_c0)
 
-    input_ub = tvm.compute(input_align_shape,
-                           lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw // shape_w, hw % shape_w)),
-                           name="input_ub"
-                          )
+    if len(input_shape) == NCHW_LENTH:
+        input_ub = tvm.compute(input_align_shape,
+                               lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw // shape_w, hw % shape_w)),
+                               name="input_ub"
+                              )
+    else:
+        input_ub = tvm.compute(input_align_shape,
+                               lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw)),
+                               name="input_ub"
+                              )
     input_ub_pad = tvm.compute(input_align_shape,
                                lambda n, c, hw: tvm.select(c >= shape_c, tvm.const(0, input_dtype)),
                                name="input_ub_pad"
