@@ -17,6 +17,27 @@
 /*!
  * \file gelu_fusion_pass.cpp
  * \brief gelu usion pass
+ * gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
+ *case1:                            | case2:
+ *        x                         |              x
+ *     /  |  \                      |           /  |   \
+ *    |   |   Pow0                  |          |   |   Pow0
+ *    |   |    |                    |          |   |    |
+ *    |   |   Mul0        x         |          |   |   Mul0          x
+ *    |    \   /          |         |          |    \   /            |
+ *    |     Add0    ==>  Gelu       |          |     Add0    ==>    Gelu
+ *    |      |            |         |          |      |              |
+ *    |     Mul1          y         |          |     Mul1            y
+ *    |      |                      |          |      |
+ *    |     Tanh0                   |          |     Tanh0
+ *    |      |                      |          |      |
+ *    |     Add1                   const(0.5)*Mul2   Add1
+ *    |      |                      |          |      |
+ *    |     Mul2*const(0.5)         |          |      |
+ *    \      /                      |          \     /
+ *      Mul3                        |            Mul3
+ *        |                         |              |
+ *        y                         |              y
  */
 #include "gelu_fusion_pass.h"
 
@@ -54,12 +75,12 @@ static const std::string GELU = "Gelu";
 
 vector<FusionPattern*> GeluFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("GeluFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr,
+
+  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("GeluFusionPass");
+  FUSION_PASS_CHECK(pattern1 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
-
-  pattern->AddOpDesc(PATTERN_POW0, {POW})
+  pattern1->AddOpDesc(PATTERN_POW0, {POW})
       .AddOpDesc(PATTERN_MUL0, {MUL})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_MUL1, {MUL})
@@ -77,8 +98,32 @@ vector<FusionPattern*> GeluFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_MUL2, {PATTERN_ADD1})
       .SetInputs(PATTERN_MUL3, {PATTERN_INPUT, PATTERN_MUL2})
       .SetOutput(PATTERN_MUL3);
+  patterns.push_back(pattern1);
 
-  patterns.push_back(pattern);
+  FusionPattern* pattern2 = new (std::nothrow) FusionPattern("GeluFusionPass");
+  FUSION_PASS_CHECK(pattern2 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
+  pattern2->AddOpDesc(PATTERN_POW0, {POW})
+      .AddOpDesc(PATTERN_MUL0, {MUL})
+      .AddOpDesc(PATTERN_ADD0, {ADD})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .AddOpDesc(PATTERN_TANH0, {TANH})
+      .AddOpDesc(PATTERN_ADD1, {ADD})
+      .AddOpDesc(PATTERN_MUL2, {MUL})
+      .AddOpDesc(PATTERN_MUL3, {MUL})
+      .AddOpDesc(PATTERN_INPUT)
+      .SetInputs(PATTERN_POW0, {PATTERN_INPUT})
+      .SetInputs(PATTERN_MUL0, {PATTERN_POW0})
+      .SetInputs(PATTERN_ADD0, {PATTERN_INPUT, PATTERN_MUL0})
+      .SetInputs(PATTERN_MUL1, {PATTERN_ADD0})
+      .SetInputs(PATTERN_TANH0, {PATTERN_MUL1})
+      .SetInputs(PATTERN_ADD1, {PATTERN_TANH0})
+      .SetInputs(PATTERN_MUL2, {PATTERN_INPUT})
+      .SetInputs(PATTERN_MUL3, {PATTERN_MUL2, PATTERN_ADD1})
+      .SetOutput(PATTERN_MUL3);
+  patterns.push_back(pattern2);
+
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define GeluFusionPass pattern end");
   return patterns;
 }
