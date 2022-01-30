@@ -156,15 +156,6 @@ Status SubFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodeP
   }
 
   OpDescPtr constOpDesc = OpDescUtils::CreateConstOp(constDescTensor);
-
-  // set output desc of const, format, dtype
-  GeShape shape(subDimInfo);
-  GeTensorDesc constOutputDesc(shape, FORMAT_ND, subType);
-  constOutputDesc.SetOriginShape(shape);
-  constOutputDesc.SetOriginFormat(FORMAT_ND);
-  FUSION_PASS_CHECK(constOpDesc->AddOutputDesc("y", constOutputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(PATTERN_SUB.c_str(), "add output of const failed."), return FAILED);
-
   // produce const node
   NodePtr constNode = graph.AddNode(constOpDesc);
 
