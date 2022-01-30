@@ -185,7 +185,6 @@ bool BatchMatMulV2ReshapeFusionPass::CheckNeedChange(const ge::NodePtr &fused_no
                                                      const vector<int64_t> &shape_y) {
   auto x_dims = shape_x.size();
   auto y_dims = shape_y.size();
-
   if (x_dims == 0 || y_dims == 0) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "shape_x or shape_y is empty.");
     return false;
