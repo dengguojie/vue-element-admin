@@ -35,6 +35,7 @@ namespace fe {
 static const char kFusionName[] = "MatmulCastFusionPass";
 static const string PATTERN_MATMUL = "matmul";
 static const string PATTERN_CAST = "cast";
+static const int32_t kInputNum = 2;
 
 /*
     fusion pattern
@@ -70,6 +71,21 @@ Status MatmulCastFusionPass::IsMatch(const ge::NodePtr &matmul_node, const ge::N
             cast_output_dtype);
     return FAILED;
   }
+
+  // check dynamic shape
+  auto matmul_desc = matmul_node->GetOpDesc();
+  if (matmul_desc->MutableInputDesc(0)->MutableShape().IsUnknownShape() ||
+      matmul_desc->MutableInputDesc(1)->MutableShape().IsUnknownShape()) {
+    OP_LOGD(kFusionName, "Do not support dynamic shape.");
+    return FAILED;
+  }
+  if (matmul_node->GetInDataNodes().size() > kInputNum) {
+    if (matmul_desc->MutableInputDesc(kInputNum)->MutableShape().IsUnknownShape()) {
+      OP_LOGD(kFusionName, "Do not support dynamic shape.");
+      return FAILED;
+    }
+  }
+
   return SUCCESS;
 }
 
