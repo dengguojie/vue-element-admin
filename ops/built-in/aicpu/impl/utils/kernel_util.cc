@@ -242,6 +242,10 @@ bool AddrAlignedCheck(const void *addr, uint64_t alignment) {
          0;
 }
 
+bool IsVectorOrHigher(const std::vector<int64_t> &shape) {
+  return (shape.size() >= 1);
+}
+
 DataType DType(std::string dtype_str) {
   auto iter = dtype_maps.find(dtype_str);
   if (iter != dtype_maps.end()) {

@@ -226,6 +226,8 @@ bool IsSquareMatrix(const std::vector<int64_t> &shape);
 bool AddrAlignedCheck(const void *addr,
                       uint64_t alignment = kEigenAlignmentBytes);
 
+bool IsVectorOrHigher(const std::vector<int64_t> &shape);
+
 /**
  * @brief get data type from string
  * @param dtype_str string of data type
