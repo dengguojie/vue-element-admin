@@ -41,9 +41,8 @@ TEST_F(GatherTiling, gather_tiling_0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Gather");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, "
-      "\"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2}}";
+  std::string compileInfo =R"({"vars": {"ub_size": 262144, "core_num": 32, "l1_size":2097152, "indices_dsize":4,
+  "params_dsize":2, "batch_dims":0}, "is_tik": true})";
 
   std::vector<int64_t> inputA{
       87552,
@@ -79,9 +78,9 @@ TEST_F(GatherTiling, gather_tiling_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Gather");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":1}}";
+  std::string compileInfo = R"({
+  "vars": {"ub_size": 262144, "core_num": 32, "l1_size":2097152, "indices_dsize":4,
+  "params_dsize":2, "batch_dims":1}, "is_tik": true})";
 
   std::vector<int64_t> inputA{55, 32, 16};
   std::vector<int64_t> inputB{55, 6};

@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
+#include "op_tiling/tiling_handler.h"
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
@@ -119,6 +120,17 @@ const int64_t TILING_MODE_39 = 39;
 // 6. small params and indices row size
 const int64_t TILING_MODE_40 = 40;
 const int64_t TILING_MODE_41 = 41;
+
+struct GatherCompileInfo  {
+  std::shared_ptr<AutoTilingHandler> outer_compile_info;
+  int64_t ub_size{1};
+  int64_t l1_size{0};
+  int64_t core_num{1};
+  int64_t params_d_size{1};
+  int64_t indices_d_size{1};
+  int64_t batch_dims{0};
+  bool is_tik{false};
+};
 
 struct GatherCompileParams {
   int64_t ub_size;
@@ -365,19 +377,14 @@ bool CheckAxisAndBatchdims(const std::string& op_type, const GatherShapeInfo& sh
   return true;
 }
 
-bool GetV2GatherCompileParams(const std::string& op_type, const std::vector<int64_t>& compile_info_vec,
+bool GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInfo& compile_info_vec,
                               GatherCompileParams& params) {
-  OP_TILING_CHECK(
-      compile_info_vec.size() != 6,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not 6, is %zu", compile_info_vec.size()),
-      return false);
-
-  params.core_num = compile_info_vec[0];
-  params.ub_size = compile_info_vec[1];
-  params.l1_size = compile_info_vec[2];
-  params.params_d_size = compile_info_vec[3];
-  params.indices_d_size = compile_info_vec[4];
-  params.batch_dims = compile_info_vec[5];
+  params.core_num = compile_info_vec.core_num;
+  params.ub_size = compile_info_vec.ub_size;
+  params.l1_size = compile_info_vec.l1_size;
+  params.params_d_size = compile_info_vec.params_d_size;
+  params.indices_d_size = compile_info_vec.indices_d_size;
+  params.batch_dims = compile_info_vec.batch_dims;
   return true;
 }
 
@@ -1097,9 +1104,9 @@ bool TilingWithBatchDims(GatherV2TilingParams& run_params, const GatherCompilePa
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
-                    utils::OpRunInfo& run_info) {
-  OP_LOGI(op_type.c_str(), "GatherV2Tiling running.");
+bool GatherTIKTiling(const std::string &op_type, const ge::Operator &op_paras, const GatherCompileInfo &op_info,
+                     utils::OpRunInfo &run_info) {
+  OP_LOGD(op_type.c_str(), "GatherTIKTiling running.");
   PROFILING_TILING_INIT(op_type.c_str());
   using namespace ge;
 
@@ -1152,16 +1159,68 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
   // block_dim, core num used in tik op
   run_info.SetBlockDim(run_params.need_core_num);
   PROFILING_TILING_END();
-  OP_LOGI(op_type.c_str(), "tiling run success.");
+  OP_LOGD(op_type.c_str(), "GatherTIKTiling run success.");
 
   return true;
 }
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num",     "ub_size",       "l1_size",
-                                                          "params_dsize", "indices_dsize", "batch_dims"};
-static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"batch_dims", 0}};
+bool GatherDSLTiling(const std::string &op_type, const ge::Operator &op_paras, const GatherCompileInfo &op_info,
+                     utils::OpRunInfo &run_info) {
+  OP_LOGD(op_type.c_str(), "GatherDSLTiling running.");
+  OP_TILING_CHECK(!op_info.outer_compile_info->DoTiling(op_paras, run_info),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call DoTiling failed"), return false);
+  OP_LOGD(op_type.c_str(), "GatherDSLTiling end.");
+  return true;
+}
+
+bool GatherTiling(const std::string &op_type, const ge::Operator &op_paras, const GatherCompileInfo &op_info,
+                  utils::OpRunInfo &run_info) {
+  if (op_info.is_tik) {
+    OP_TILING_CHECK(!GatherTIKTiling(op_type, op_paras, op_info, run_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call TIKTiling failed"), return false);
+  } else {
+    OP_TILING_CHECK(!GatherDSLTiling(op_type, op_paras, op_info, run_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call DSLTiling failed"), return false);
+  }
+
+  return true;
+}
+
+bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_info, GatherCompileInfo &op_info) {
+  if (GetCompileValue(compile_info, "is_tik", op_info.is_tik)) {
+    const nlohmann::json &all_vars = compile_info["vars"];
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", op_info.core_num),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get core_num error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", op_info.ub_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get ub_size error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "l1_size", op_info.l1_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get l1_size error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "params_dsize", op_info.params_d_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get params_d_size error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "indices_dsize", op_info.indices_d_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get indices_d_size error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "batch_dims", op_info.batch_dims),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get batch_dims error"),
+                    return false);
+  } else {
+    op_info.outer_compile_info = CreateGatherTilingHandler(op_type, "Gather", compile_info);
+    if (op_info.outer_compile_info == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateGatherTilingHandler failed");
+      return false;
+    }
+    op_info.is_tik = false;
+  }
+
+  return true;
+}
+
 // register tiling interface of the GatherV2 op.
-REGISTER_OP_TILING_V3_WITH_VECTOR(GatherV2, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_CUSTOM(GatherV2, GatherTiling, GatherParseFunc, GatherCompileInfo);
 // register tiling interface of the Gather op.
-REGISTER_OP_TILING_V3_WITH_VECTOR(Gather, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_CUSTOM(Gather, GatherTiling, GatherParseFunc, GatherCompileInfo);
 }  // namespace optiling

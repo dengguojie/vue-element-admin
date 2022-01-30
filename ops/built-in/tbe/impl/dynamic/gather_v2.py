@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright 2019-2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +13,24 @@
 # limitations under the License.
 # ============================================================================
 """
-gather_v2d
+gather_v2
 """
 
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
-from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl import constant_util as constant
+
+from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=too-few-public-methods
@@ -172,49 +177,6 @@ def align_value(value, factor):
     res:
     """
     return (value + factor - 1) // factor * factor
-
-
-def get_op_support_info(x_dict, indices_dict, axis_dict, y_dict, batch_dims=0, kernel_name="GatherV2"):
-    """
-    get_op_support_info
-    """
-    format_x = x_dict.get("format").upper()
-    format_indices = indices_dict.get("format").upper()
-    shape_indices_len = len(indices_dict.get("shape"))
-    if format_x == "ND" and format_indices == "ND":
-        axis_split_matrix = []
-        for j in range(shape_indices_len):
-            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
-            axis_split_matrix.append(split_0)
-        axis_reduce_list = None
-
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-    return op_cal_info_in_json
-
-
-def check_supported(x_dict, indices_dict, axis_dict, y_dict, batch_dims=0, kernel_name="GatherV2"):
-    """
-    Parameters
-    ----------
-    x_dict: input params shape, dtype and range, if shape contains -2, the process doesn't support
-    """
-    if tbe_platform_adapter.api_check_support("tik.vgatherb"):
-        return True, ""
-
-    shape_x = x_dict.get("ori_shape")
-    shape_indices = indices_dict.get("ori_shape")
-
-    shape_x_list = [(7709, 512), (17191, 512)]
-    shape_indices_list = [(1,), (128, ), (64, 128)]
-
-    if shape_x in shape_x_list and shape_indices in shape_indices_list:
-        reason = "shape in bad-performance list."
-        return False, reason
-
-    return True, ""
 
 
 class GatherV2():
@@ -2023,7 +1985,7 @@ class GatherV2():
         self.cached_types["cached_types_params"] = cached_types_params
         self.cached_types["cached_types_indices"] = cached_types_indices
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def params_row_less_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is less than 32 Bytes
@@ -2111,7 +2073,7 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def params_row_more_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is more than 32 Bytes
@@ -2152,7 +2114,7 @@ class GatherV2():
         tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_row - 1, 0, 0)
         tik_instance.data_move(self.y[output_offset + (self.params_row - self.block_elem)], block_ub, 0, 1, 1, 0, 0)
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def params_row_aligned(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is aligned
@@ -2274,7 +2236,7 @@ class GatherV2():
                     tik_instance.data_move(self.y[output_offset + (self.params_row - self.one_row_tail)], res_ub,
                                            0, 1, burst_len_sub_row_last, 0, 0)
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def small_indices_row(self, batch_i, block_id, is_last):
         """
         process for small indices row
@@ -2355,7 +2317,7 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def small_params_row(self, block_id, is_last):
         """
         process for small params row
@@ -2372,7 +2334,7 @@ class GatherV2():
         output_offset_base = batch_base * self.params_pre * self.indices_row
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         params_batch_diff = batch_base if self.cached_types.get("cached_types_params") != \
-        Constant.PARAMS_CACHED_UB else 0
+                                          Constant.PARAMS_CACHED_UB else 0
         batch_num = self.row_num_once_ub // self.params_pre // self.indices_row
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
@@ -2482,7 +2444,7 @@ class GatherV2():
                                    0, 0)
             self.inner_loop_with_batch_dims(indices_loop_offset, batch_i, block_id, pre_i, 1)
 
-    #'pylint:disable=E1136
+    # 'pylint:disable=E1136
     def compute_with_batch_dims(self, avl_ub_size, block_id):
         """
         compute for tiling mode with batch_dims
@@ -2603,6 +2565,8 @@ class GatherV2():
                                                             "indices_dsize": self.indices_dsize,
                                                             "batch_dims": self.batch_dims
                                                             })
+        # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
+        tbe_context.get_context().add_compile_info("is_tik", True)
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x, self.indices, self.axis),
@@ -2643,8 +2607,9 @@ class GatherV2():
                                                             "l1_size": self.l1_size,
                                                             "params_dsize": self.params_dsize,
                                                             "indices_dsize": self.indices_dsize,
-                                                            "batch_dims": self.batch_dims
-                                                            })
+                                                            "batch_dims": self.batch_dims})
+        # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
+        tbe_context.get_context().add_compile_info("is_tik", True)
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x, self.indices),
@@ -2652,22 +2617,139 @@ class GatherV2():
                                    flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
 
 
+def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+    """
+    gather_v2 interface for tik
+    """
+    obj = GatherV2(x, indices, axis, y, batch_dims, kernel_name)
+    return obj.gather_v2_compute()
+
+
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
+def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+    """
+    get_op_support_info
+    """
+    format_x = x.get("format").upper()
+    format_indices = indices.get("format").upper()
+    shape_indices_len = len(indices.get("shape"))
+    if format_x == "ND" and format_indices == "ND":
+        axis_split_matrix = []
+        for j in range(shape_indices_len):
+            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
+def check_supported(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+    """
+    Judge whether the current input specification supports
+    """
+    if tbe_platform_adapter.api_check_support("tik.vgatherb"):
+        return True, ""
+
+    shape_x = x.get("ori_shape")
+    shape_indices = indices.get("ori_shape")
+
+    shape_x_list = [(7709, 512), (17191, 512)]
+    shape_indices_list = [(1,), (128,), (64, 128)]
+
+    if shape_x in shape_x_list and shape_indices in shape_indices_list:
+        reason = "shape in bad-performance list."
+        return False, reason
+
+    return True, ""
+
+
+def gather_v2_compute(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+    """
+    gather_v2 compute
+
+    Parameters
+    ----------
+    x: input params shape, dtype and range
+    indices: input indices shape, dtype and range
+    axis: input axis shape, dtype and range
+    y: output shape, dtype and range
+    batch_dims: the number of batch dimensions
+    kernel_name: kernel name of gather_v2 op
+
+    Returns
+    -------
+    res: TVM tensor
+        the result of gather
+    """
+    res = tbe.gather(x, indices, axis, batch_dims)
+
+    return res
+
+
+def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+    """
+    gather_v2 interface for dsl
+    """
+    check_list_x = (
+        "float16", "float32", "int8", "uint8", "int32", "uint32", "int16", "uint16", "int64", "uint64", "bool")
+    check_list_indices = ("int32", "int64")
+    dtype_x = x.get("dtype").lower()
+    dtype_indices = indices.get("dtype").lower()
+    dtype_axis = axis.get("dtype").lower()
+    para_check.check_dtype(dtype_x, check_list_x, param_name="x")
+    para_check.check_dtype(dtype_indices, check_list_indices, param_name="indices")
+    para_check.check_dtype(dtype_axis, check_list_indices, param_name="axis")
+
+    if "const_value" in axis:
+        axis_value = axis.get("const_value")
+        if isinstance(axis_value, int):
+            real_axis = axis_value
+        else:
+            real_axis = axis_value[0]
+    else:
+        real_axis = "unknown"
+
+    ins = classify([x, indices, real_axis, batch_dims], "gather", {"gather_type": "gather"})
+    schedules, tensors = [], []
+    for shape_x, shape_indices, shape_axis, batch_dims_input in ins:
+        with tbe.compute():
+            x_var, indices_var, axis_dim, batch_dims = \
+                shape_util.variable_shape([shape_x, shape_indices, shape_axis, batch_dims_input], "gather")
+            x_tensor = tvm.placeholder(x_var, name="x", dtype=dtype_x)
+            indices_tensor = tvm.placeholder(indices_var, name="indices", dtype=dtype_indices)
+            axis_tensor = tvm.placeholder([1], name="axis", dtype=dtype_axis)
+            res = gather_v2_compute(x_tensor, indices_tensor, axis_dim, y, batch_dims, kernel_name)
+            tensors.append([x_tensor, indices_tensor, axis_tensor, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.build(schedules, config)
+
+
 @register_operator("GatherV2")
-def gather_v2(x_dict, indices_dict, axis_dict, y_dict, batch_dims=0, kernel_name="GatherV2"):
+def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
     """
     gather_v2 interface
 
     Parameters
     ----------
-    x_dict: input params shape, dtype and range
-    indices_dict: input indices shape, dtype and range
-    axis_dict: input axis shape, dtype and range
-    y_dict: output shape, dtype and range
+    x: input params shape, dtype and range
+    indices: input indices shape, dtype and range
+    axis: input axis shape, dtype and range
+    y: output shape, dtype and range
+    batch_dims: the number of batch dimensions
     kernel_name: kernel name of gather_v2 op
 
     Returns
     -------
-    compile info
+    None
     """
-    obj = GatherV2(x_dict, indices_dict, axis_dict, y_dict, batch_dims, kernel_name)
-    return obj.gather_v2_compute()
+    if tbe_platform_adapter.api_check_support("tbe.dsl.vexp", "float32"):
+        gather_v2_dsl(x, indices, axis, y, batch_dims, kernel_name)
+    else:
+        gather_v2_tik(x, indices, axis, y, batch_dims, kernel_name)

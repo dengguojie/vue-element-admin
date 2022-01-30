@@ -2,18 +2,21 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
 #define private public
+
 #include "register/op_tiling_registry.h"
 #include "selection_ops.h"
 #include "array_ops.h"
 #include "test_common.h"
 #include "common/utils/ut_op_util.h"
+#include "op_tiling/gather_dsl.h"
 
 using namespace std;
 using namespace ge;
 
 class GatherV2Tiling : public testing::Test {
- protected:
+protected:
   static void SetUpTestCase() {
     std::cout << "GatherV2Tiling SetUp" << std::endl;
   }
@@ -23,7 +26,7 @@ class GatherV2Tiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream& tiling_data) {
+static string to_string(const std::stringstream &tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -36,8 +39,8 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64_t> inputC, vector<int32_t> axis,
-                    vector<int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB, ge::DataType dtypeC,
+static void Compute(vector <int64_t> inputA, vector <int64_t> inputB, vector <int64_t> inputC, vector <int32_t> axis,
+                    vector <int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB, ge::DataType dtypeC,
                     ge::DataType dtypeOutput, string infoKey, string compileInfo, string expectTilingData) {
   std::string op_name = "GatherV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherV2");
@@ -60,7 +63,7 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
   auto opParas = op::GatherV2("GatherV2");
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_INPUT(opParas, tensor_inputB, indices);
-  TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis.data(), axis.size() * 4);
+  TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t *) axis.data(), axis.size() * 4);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
   optiling::utils::OpRunInfo runInfo;
@@ -71,7 +74,7 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
 TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   vector<int64_t> inputA{
       87552,
   };
@@ -91,7 +94,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   ;
   std::vector<int64_t> inputA{81, 6, 3};
   std::vector<int64_t> inputB{
@@ -112,7 +115,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{81, 6, 32};
   std::vector<int64_t> inputB{
       6,
@@ -132,7 +135,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{81, 6, 32};
   std::vector<int64_t> inputB{
       6,
@@ -152,7 +155,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{16, 8, 16, 32};
   std::vector<int64_t> inputB{
       32,
@@ -172,7 +175,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{16, 8, 16, 32};
   std::vector<int64_t> inputB{
       320,
@@ -192,7 +195,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{180, 4};
   std::vector<int64_t> inputB{
       4,
@@ -212,7 +215,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{180, 400000};
   std::vector<int64_t> inputB{
       4,
@@ -232,7 +235,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{64, 8, 16, 32};
   std::vector<int64_t> inputB{
       32,
@@ -252,7 +255,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2}}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
   std::vector<int64_t> inputA{64, 8, 3, 16};
   std::vector<int64_t> inputB{
       32,
@@ -272,7 +275,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 3};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -290,7 +293,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16, 3};
   std::vector<int64_t> inputB{100, 800};
   std::vector<int64_t> inputC{1};
@@ -308,7 +311,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16, 3};
   std::vector<int64_t> inputB{100, 8000};
   std::vector<int64_t> inputC{1};
@@ -326,7 +329,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 3};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -344,7 +347,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16000, 3};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -362,7 +365,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16000, 3};
   std::vector<int64_t> inputB{100, 800};
   std::vector<int64_t> inputC{1};
@@ -380,7 +383,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16000, 3};
   std::vector<int64_t> inputB{100, 18000};
   std::vector<int64_t> inputC{1};
@@ -400,7 +403,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16000, 3};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -419,7 +422,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 33};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -437,7 +440,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16, 33};
   std::vector<int64_t> inputB{100, 18000};
   std::vector<int64_t> inputC{1};
@@ -456,7 +459,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 33};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -475,7 +478,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 32};
   std::vector<int64_t> inputB{10, 4};
   std::vector<int64_t> inputC{1};
@@ -493,7 +496,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{1000, 16, 32};
   std::vector<int64_t> inputB{1000, 800};
   std::vector<int64_t> inputC{1};
@@ -511,7 +514,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 6, 5, 32};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -529,7 +532,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16000, 32};
   std::vector<int64_t> inputB{10, 4};
   std::vector<int64_t> inputC{1};
@@ -547,7 +550,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{1000, 16000, 8};
   std::vector<int64_t> inputB{1000, 1800};
   std::vector<int64_t> inputC{1};
@@ -567,7 +570,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 6, 500, 32};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -587,7 +590,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{10, 16, 33000};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -605,7 +608,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 2, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{4, 16, 33000};
   std::vector<int64_t> inputB{4, 19999};
   std::vector<int64_t> inputC{1};
@@ -623,7 +626,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{2, 16, 33000};
   std::vector<int64_t> inputB{2, 40000};
   std::vector<int64_t> inputC{1};
@@ -641,7 +644,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{2, 160, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -659,7 +662,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{2, 16000, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -677,7 +680,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{100, 16, 2};
   std::vector<int64_t> inputB{100, 2};
   std::vector<int64_t> inputC{1};
@@ -695,7 +698,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
   std::vector<int64_t> inputA{2, 16000, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -708,4 +711,38 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
   string expectTilingData = "41 1 16000 2 4 0 1 0 4 0 0 4 0 16256 4 0 0 0 0 64000 0 0 0 0 2 2 0 2 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
           compileInfo, expectTilingData);
+}
+
+TEST_F(GatherV2Tiling, gather_v2_tiling_42) {
+  std::string compileInfo = R"({
+    "_pattern": "Gather", "_base_info": [32, 262144, 0, 4, 8],
+    "_custom_info": [32768, 1, false, 0],
+    "_tensor_sizes": {"7": [15392, 1924], "6": [26208, 3276], "1": [26208, 3276], "2": [26208, 3276],
+    "5": [26208, 3276], "0": [52416, 6552]},
+    "_gather_vars": {"900017000": [10000, 10001, 10002, 10003, 20001, 30000, 40000],
+    "900015010": [10000, 10001, 10002, 10003, 20001, 30002, 40002],
+    "900017006": [10000, 10001, 10002, 10003, 20001, 30001, 40002]},
+    "_vars": {"900017006": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1",
+    "_block_factor_0", "_ub_factor_0"], "900015010": ["_params_dim_0",
+    "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1", "_block_factor_2", "_ub_factor_2"]},
+    "_normal_vars": {"900017006": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3",
+    "_indices_dim_1", "_block_factor_0", "_ub_factor_0"],
+     "900015010": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1",
+     "_block_factor_2", "_ub_factor_2"]},
+    "_attr_vars": {"900017006": [], "900015010": []},
+    "_custom_vars": {"900017006": [],"900015010": []}
+    })";
+
+  std::vector <int64_t> inputA{640000, 80};
+  std::vector <int64_t> inputB{22551};
+  std::vector <int64_t> inputC{1};
+  std::vector <int64_t> output{22551, 80};
+  std::vector <int32_t> axis{1};
+  ge::DataType dtypeA = ge::DT_FLOAT;
+  ge::DataType dtypeB = ge::DT_INT32;
+  ge::DataType dtypeC = ge::DT_INT32;
+  ge::DataType dtypeOutput = dtypeA;
+  string expectTilingData = "2748779069440001 4294967376 85899345942551 1880 ";
+  Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
+  this->test_info_->name(),compileInfo, expectTilingData);
 }

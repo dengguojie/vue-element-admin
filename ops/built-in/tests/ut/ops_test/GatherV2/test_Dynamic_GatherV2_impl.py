@@ -98,7 +98,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, 80), "dtype": "float32", "ori_shape": (-1, 80),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (80, 80))},
-                     "0", "dynamic_gather_v2_01", "success"))
+                     0, "dynamic_gather_v2_01", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_v2_case(
@@ -110,7 +110,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, 1), "dtype": "float32", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "0", "dynamic_gather_v2_02", "success"))
+                     0, "dynamic_gather_v2_02", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_v2_case(
@@ -122,7 +122,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, 1), "dtype": "float16", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "0", "dynamic_gather_v2_03", "success"))
+                     0, "dynamic_gather_v2_03", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_v2_case(
@@ -134,7 +134,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, 1), "dtype": "int32", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "0", "dynamic_gather_v2_04", "success"))
+                     0, "dynamic_gather_v2_04", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_v2_case(
@@ -146,7 +146,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, -1), "dtype": "float32", "ori_shape": (-1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "0", "dynamic_gather_v2_05", "success"))
+                     0, "dynamic_gather_v2_05", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_v2_case(
@@ -158,7 +158,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, -1), "dtype": "bool", "ori_shape": (-1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "1", "dynamic_gather_v2_05", "success"))
+                     1, "dynamic_gather_v2_05", "success"))
 
 # invalid: y_dtype != params_dtype
 ut_case.add_case("all",
@@ -171,7 +171,7 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
                      {"shape": (-1, 1), "dtype": "float16", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
-                     "0", "dynamic_gather_v2_06", RuntimeError))
+                     0, "dynamic_gather_v2_06", RuntimeError))
 
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
