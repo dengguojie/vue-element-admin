@@ -175,7 +175,7 @@ COMMON_INFER_FUNC_REG(TanhGrad, TanhGradInferShape);
 
 // ----------------PRelu-------------------
 IMPLEMT_COMMON_INFERFUNC(PReluInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  if (OneInOneOutDynamicInfer(op, 0, {0})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
