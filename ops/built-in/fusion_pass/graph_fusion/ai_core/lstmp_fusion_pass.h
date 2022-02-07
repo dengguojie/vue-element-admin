@@ -33,15 +33,14 @@ class LSTMPFusionPass : public PatternFusionBasePass {
   Status ProcessLSTMb(const ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr);
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
-  Status CreateConcatNode(ge::ComputeGraph& graph, const ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
-  Status CreateWcConstNode(ge::ComputeGraph& graph, const ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
+
   Status CreateTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& input_desc, ge::NodePtr& new_node,
-                             const std::vector<int32_t>& perm, const std::string& name);
+                             std::vector<int32_t>& perm, const std::string& name);
   Status CreateDynamicV3Node(ge::ComputeGraph& graph, const ge::OpDescPtr& fused_desc, const ge::NodePtr& fused_node,
                              ge::NodePtr& new_node);
-  Status CreateConstNode(ge::ComputeGraph& graph, const ge::OpDescPtr& fused_desc, ge::NodePtr& new_node);
+
   Status CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDescPtr& dynamicv3_desc, ge::NodePtr& new_node,
-                         const std::string& output_name);
+                         const std::string& name);
   Status AddEdgeForInput(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
   Status AddEdgeForOutput(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
   Status RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node);

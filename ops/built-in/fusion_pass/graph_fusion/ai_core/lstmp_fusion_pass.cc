@@ -71,8 +71,7 @@ static map<std::string, int> LSTMP_INPUT_INDEX = {
 static map<std::string, int> OUTPUT_INDEX = {{"y", 0}, {"output_h", 1}, {"output_c", 2}};
 
 static map<std::string, int> V3_INPUT_INDEX = {
-    {"x", 0}, {"w", 1}, {"b", 2}, {"init_h", 3}, {"init_c", 4}, {"wci", 5},
-    {"wcf", 6}, {"wco", 7}, {"real_mask", 8}, {"project", 9}};
+    {"x", 0}, {"w", 1}, {"b", 2}, {"init_h", 3}, {"init_c", 4}, {"project", 5}};
 
 vector<FusionPattern*> LSTMPFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -119,107 +118,12 @@ Status LSTMPFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   return SUCCESS;
 }
 
-Status LSTMPFusionPass::CreateWcConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc,
-                                          ge::NodePtr& new_node) {
-  std::shared_ptr<ge::OpDesc> wc_const_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    (wc_const_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_const", "Const")),
-    return FAILED);
-
-  FUSION_PASS_CHECK(wc_const_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
-                    return FAILED);
-
-  int h_val = fused_desc->GetInputDesc("bias").GetShape().GetDims().at(0);
-  int b_val = fused_desc->GetInputDesc("x").GetShape().GetDims().at(0);
-  h_val = h_val / ROW_NUM;
-
-  DataType dataType = fused_desc->GetInputDesc("x").GetDataType();
-  std::vector<int64_t>dims = {b_val, h_val};
-  ge::GeShape shape(dims);
-  ge::GeTensorDesc desc(shape, ge::FORMAT_ND, dataType);
-  ge::GeTensorPtr tensor_ptr = nullptr;
-  if (dataType == ge::DT_FLOAT16) {
-    std::vector<uint16_t> val(b_val * h_val, 0);
-    FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()),
-                               b_val * h_val * sizeof(uint16_t))),
-                            tensor_ptr = nullptr;
-                            return PARAM_INVALID);
-  } else if (dataType == ge::DT_FLOAT) {
-    std::vector<float> val(b_val * h_val, 0);
-    FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()),
-                               b_val * h_val * sizeof(float))),
-                            tensor_ptr = nullptr;
-                            return PARAM_INVALID);
-  } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "x's dtype is not in (float16, float32), fusion failed.");
-    return FAILED;
-  }
-
-  ge::AttrUtils::SetTensor(wc_const_desc, "value", tensor_ptr);
-  wc_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
-  new_node = graph.AddNode(wc_const_desc);
-  FUSION_PASS_CHECK(new_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateConstNode node"),
-                    return FAILED);
-  return SUCCESS;
-}
-
-Status LSTMPFusionPass::CreateConstNode(ge::ComputeGraph&graph, const ge::OpDescPtr& fused_desc,
-                                        ge::NodePtr& new_node) {
-  std::shared_ptr<ge::OpDesc> mask_const_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    (mask_const_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "_mask_const", "Const")),
-    return FAILED);
-
-  FUSION_PASS_CHECK(mask_const_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
-                    return FAILED);
-
-  int t_val = fused_desc->GetInputDesc("x").GetShape().GetDims().at(1);
-  int b_val = fused_desc->GetInputDesc("x").GetShape().GetDims().at(0);
-
-  DataType dataType = fused_desc->GetInputDesc("x").GetDataType();
-  std::vector<int64_t>dims = {t_val, b_val, FORMAT_ALIGN};
-  ge::GeShape shape(dims);
-  ge::GeTensorDesc desc(shape, ge::FORMAT_ND, dataType);
-  ge::GeTensorPtr tensor_ptr = nullptr;
-  if (dataType == ge::DT_FLOAT16) {
-    std::vector<uint16_t> val(t_val * b_val * FORMAT_ALIGN, 1);
-    FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()),
-                               t_val * b_val * FORMAT_ALIGN * sizeof(uint16_t))),
-                            tensor_ptr = nullptr;
-                            return PARAM_INVALID);
-  } else if (dataType == ge::DT_FLOAT) {
-    std::vector<float> val(t_val * b_val * FORMAT_ALIGN, 1);
-    FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
-                               desc, reinterpret_cast<uint8_t*>(val.data()),
-                               t_val * b_val * FORMAT_ALIGN * sizeof(float))),
-                            tensor_ptr = nullptr;
-                            return PARAM_INVALID);
-  } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "x's dtype is not in (float16, float32), fusion failed.");
-    return FAILED;
-  }
-
-  ge::AttrUtils::SetTensor(mask_const_desc, "value", tensor_ptr);
-  mask_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
-  new_node = graph.AddNode(mask_const_desc);
-  FUSION_PASS_CHECK(new_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateConstNode node"),
-                    return FAILED);
-  return SUCCESS;
-}
-
 Status LSTMPFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& input_desc,
-                                            ge::NodePtr& new_node, const std::vector<int32_t>& perm,
+                                            ge::NodePtr& new_node, std::vector<int32_t>& perm,
                                             const std::string& name) {
   std::shared_ptr<ge::OpDesc> trans_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
-    (trans_desc = std::make_shared<ge::OpDesc>(name + "_transpose", "TransposeD")),
+    (trans_desc = std::make_shared<ge::OpDesc>(name + "_transpose", "Transpose")),
     return FAILED);
 
   FUSION_PASS_CHECK(trans_desc == nullptr,
@@ -240,16 +144,55 @@ Status LSTMPFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::G
     new_dims.push_back(input_dims[perm[i]]);
   }
 
+  std::vector<int64_t> perm_dims = {dim_num};
+  ge::GeShape shape(perm_dims);
+  ge::GeTensorDesc perm_desc(shape, ge::FORMAT_ND, DT_INT32);
+
   auto output_desc = input_desc.Clone();
   output_desc.SetShape(ge::GeShape(new_dims));
   output_desc.SetOriginShape(ge::GeShape(new_dims));
+
   trans_desc->AddInputDesc("x", input_desc);
+  trans_desc->AddInputDesc("perm", perm_desc);
   trans_desc->AddOutputDesc("y", output_desc);
-  ge::AttrUtils::SetListInt(trans_desc, "perm", perm);
+
+  vector<string> permVec;
+  permVec.push_back("perm");
+  trans_desc->SetOpInferDepends(permVec);
+
   new_node = graph.AddNode(trans_desc);
   FUSION_PASS_CHECK(new_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create ConcatD node"),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create Transpose node"),
                     return FAILED);
+
+  std::shared_ptr<ge::OpDesc> perm_const_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+    (perm_const_desc = std::make_shared<ge::OpDesc>(name + "_perm_const", "Const")),
+    return FAILED);
+
+  FUSION_PASS_CHECK(perm_const_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
+                    return FAILED);
+
+  ge::GeTensorPtr tensor_ptr = nullptr;
+
+  FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
+                              perm_desc, reinterpret_cast<uint8_t*>(perm.data()),
+                              dim_num * sizeof(int32_t))),
+                          return PARAM_INVALID);
+ 
+  ge::AttrUtils::SetTensor(perm_const_desc, ge::ATTR_NAME_WEIGHTS, tensor_ptr);
+  perm_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
+  auto perm_node = graph.AddNode(perm_const_desc);
+  FUSION_PASS_CHECK(perm_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to CreateConstNode node"),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(perm_node->GetOutDataAnchor(0), new_node->GetInDataAnchor(1)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add perm edge to transpose failed."),
+        return FAILED);
+
   return SUCCESS;
 }
 
@@ -280,6 +223,10 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, const ge::O
   int num_step = dims_x[1];
   int input_size = dims_x[I_IDX];
 
+  ge::AttrUtils::SetInt(dynamic_desc, "input_size", input_size);
+  ge::AttrUtils::SetInt(dynamic_desc, "hidden_size", hidden_size);
+  ge::AttrUtils::SetInt(dynamic_desc, "state_size", state);
+
   std::vector<int64_t> dims_x_trans = {num_step, batch_size, input_size};
   x_desc.SetShape(ge::GeShape(dims_x_trans));
   x_desc.SetOriginShape(ge::GeShape(dims_x_trans));
@@ -297,7 +244,6 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, const ge::O
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process b fail."), return FAILED);
   dynamic_desc->AddInputDesc("b", bTensorPtrs[0]->GetTensorDesc());
 
-  auto init_desc = fused_desc->GetInputDesc("x").Clone();
   if (fused_desc->MutableInputDesc("init_h") != nullptr) {
       auto input_desc = fused_desc->GetInputDesc("init_h");
       dynamic_desc->AddInputDesc("init_h", input_desc);
@@ -307,20 +253,6 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, const ge::O
       auto input_desc = fused_desc->GetInputDesc("init_c");
       dynamic_desc->AddInputDesc("init_c", input_desc);
   }
-
-  auto wc_desc = fused_desc->GetInputDesc("x").Clone();
-  std::vector<int64_t> wc_dims = {batch_size, hidden_size};
-  wc_desc.SetShape(ge::GeShape(wc_dims));
-  wc_desc.SetOriginShape(ge::GeShape(wc_dims));
-  dynamic_desc->AddInputDesc("wci", wc_desc);
-  dynamic_desc->AddInputDesc("wcf", wc_desc);
-  dynamic_desc->AddInputDesc("wco", wc_desc);
-
-  auto input_mask_desc = fused_desc->GetInputDesc("x").Clone();
-  std::vector<int64_t> dims = {num_step, batch_size, FORMAT_ALIGN};
-  input_mask_desc.SetShape(ge::GeShape(dims));
-  input_mask_desc.SetOriginShape(ge::GeShape(dims));
-  dynamic_desc->AddInputDesc("real_mask", input_mask_desc);
 
   std::vector<int64_t> dims_project = {hidden_size, state};
   input_wp.SetShape(ge::GeShape(dims_project));
@@ -352,7 +284,7 @@ Status LSTMPFusionPass::CreateDynamicV3Node(ge::ComputeGraph& graph, const ge::O
 
   new_node = graph.AddNode(dynamic_desc);
   FUSION_PASS_CHECK(new_node == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateDynamicV3Node node"),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to CreateDynamicV3Node node"),
                     return FAILED);
 
   // connect w
@@ -477,7 +409,7 @@ Status LSTMPFusionPass::ProcessLSTMWxr(const ge::NodePtr fused_node, vector<ge::
 
   ge::GeTensorDesc weightTensorDesc;
   std::vector<int64_t> dimsIn = {wCol + rCol, wRow};
-  SetTensorDescription(weightTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
+  SetTensorDescription(weightTensorDesc, dimsIn, ge::FORMAT_ND, dataType);
 
   std::vector<int32_t> inputDims{wRow, wCol, rRow, rCol};
   Status ret = SUCCESS;
@@ -555,7 +487,7 @@ Status LSTMPFusionPass::ProcessLSTMb(const ge::NodePtr fused_node, vector<ge::Ge
 
   ge::GeTensorDesc biasTensorDesc;
   std::vector<int64_t> dimsIn = {biasLen};
-  SetTensorDescription(biasTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
+  SetTensorDescription(biasTensorDesc, dimsIn, ge::FORMAT_ND, dataType);
 
   Status ret = SUCCESS;
 
@@ -616,47 +548,6 @@ Status LSTMPFusionPass::AddEdgeForInput(ge::ComputeGraph& graph, const ge::NodeP
     ++idx_offset;
   }
 
-  ge::NodePtr const_wc = nullptr;
-  FUSION_PASS_CHECK(CreateWcConstNode(graph, fused_desc, const_wc) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateConstNode wc FAIL"),
-                      return FAILED);
-  FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::AddEdge(const_wc->GetOutDataAnchor(0),
-                                             dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["wci"] - idx_offset)),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const_wci input edge to fusion node failed."),
-          return FAILED);
-
-  FUSION_PASS_CHECK(
-    SUCCESS != ge::GraphUtils::AddEdge(const_wc->GetOutDataAnchor(0),
-                                       dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["wcf"] - idx_offset)),
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const_wcf input edge to fusion node failed."),
-    return FAILED);
-
-  FUSION_PASS_CHECK(
-    SUCCESS != ge::GraphUtils::AddEdge(const_wc->GetOutDataAnchor(0),
-                                       dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["wco"] - idx_offset)),
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const_wco input edge to fusion node failed."),
-    return FAILED);
-
-  if (fused_desc->MutableInputDesc("real_mask") == nullptr) {
-    ge::NodePtr const_mask = nullptr;
-    FUSION_PASS_CHECK(CreateConstNode(graph, fused_desc, const_mask) != SUCCESS,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CreateConstNode real_mask FAIL"),
-                        return FAILED);
-    FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(
-              const_mask->GetOutDataAnchor(0),
-              dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["real_mask"] - idx_offset)),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const_mask input edge to fusion node failed."),
-            return FAILED);
-  } else {
-      FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(
-          fused_node->GetInDataAnchor(LSTMP_INPUT_INDEX["real_mask"])->GetPeerOutAnchor(),
-          dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["real_mask"] - idx_offset)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add real_mask input edge to fusion node  failed."),
-        return FAILED);
-  }
   ge::NodePtr trans_wp = nullptr;
   std::vector<int32_t> perm_p = {1, 0};
   auto input_desc = fused_desc->GetInputDesc("project");
@@ -755,11 +646,11 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
 }
 
 Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDescPtr& dynamicv3_desc,
-                                        ge::NodePtr& new_node, const std::string& output_name) {
-  auto input_desc = dynamicv3_desc->GetOutputDesc(output_name);
+                                        ge::NodePtr& new_node, const std::string& name) {
+  auto input_desc = dynamicv3_desc->GetOutputDesc(name);
   std::shared_ptr<ge::OpDesc> split_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
-    (split_desc = std::make_shared<ge::OpDesc>(output_name + "_split", "SplitVD")),
+    (split_desc = std::make_shared<ge::OpDesc>(name + "_split", "SplitV")),
     return FAILED);
 
   FUSION_PASS_CHECK(split_desc == nullptr,
@@ -788,14 +679,90 @@ Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDes
   output_desc1.SetOriginShape(ge::GeShape(new_dims1));
   split_desc->AddOutputDesc("y1", output_desc1);
 
-  ge::Operator::OpListInt size_split = {num_size - 1, 1};
-  ge::AttrUtils::SetListInt(split_desc, "size_splits", size_split);
-  ge::AttrUtils::SetInt(split_desc, "split_dim", 0);
+  ge::Operator::OpListInt size_splits = {num_size - 1, 1};
+  ge::Operator::OpListInt split_dim = {0};
+
+  std::vector<int64_t> size_splits_dims = {2};
+  ge::GeShape size_splits_shape(size_splits_dims);
+  ge::GeTensorDesc size_splits_desc(size_splits_shape, ge::FORMAT_ND, DT_INT64);
+
+  split_desc->AddInputDesc("size_splits", size_splits_desc);
+
+  std::vector<int64_t> split_dims = {1};
+ 
+  ge::GeShape split_dims_shape(split_dims);
+  ge::GeTensorDesc split_dim_desc(split_dims_shape, ge::FORMAT_ND, DT_INT32);
+
+  split_desc->AddInputDesc("split_dim", split_dim_desc);
+
   ge::AttrUtils::SetInt(split_desc, "num_split", SPLIT_LEN);
+
+  vector<string> constVec = {"size_splits", "split_dim"};
+  split_desc->SetOpInferDepends(constVec);
+
   new_node = graph.AddNode(split_desc);
   FUSION_PASS_CHECK(new_node == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to  CreateSplitNode node"),
                     return FAILED);
+
+  std::shared_ptr<ge::OpDesc> size_splits_const_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+    (size_splits_const_desc = std::make_shared<ge::OpDesc>(name + "_size_splits_const", "Const")),
+    return FAILED);
+
+  FUSION_PASS_CHECK(size_splits_const_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
+                    return FAILED);
+
+  ge::GeTensorPtr size_splits_tensor_ptr = nullptr;
+
+  FUSION_PASS_MAKE_SHARED((size_splits_tensor_ptr = std::make_shared<ge::GeTensor>(
+                              size_splits_desc, reinterpret_cast<uint8_t*>(size_splits.data()),
+                              2 * sizeof(int64_t))),
+                          return PARAM_INVALID);
+ 
+  ge::AttrUtils::SetTensor(size_splits_const_desc, ge::ATTR_NAME_WEIGHTS, size_splits_tensor_ptr);
+  size_splits_const_desc->AddOutputDesc(size_splits_tensor_ptr->GetTensorDesc());
+  auto size_splits_node = graph.AddNode(size_splits_const_desc);
+  FUSION_PASS_CHECK(size_splits_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to CreateConstNode node"),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(size_splits_node->GetOutDataAnchor(0),
+                                           new_node->GetInDataAnchor(1)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add size_splits_node edge to split failed."),
+        return FAILED);
+
+  std::shared_ptr<ge::OpDesc> split_dim_const_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+    (split_dim_const_desc = std::make_shared<ge::OpDesc>(name + "_split_dim_const", "Const")),
+    return FAILED);
+
+  FUSION_PASS_CHECK(split_dim_const_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create const node"),
+                    return FAILED);
+
+  ge::GeTensorPtr tensor_ptr = nullptr;
+
+  FUSION_PASS_MAKE_SHARED((tensor_ptr = std::make_shared<ge::GeTensor>(
+                              split_dim_desc, reinterpret_cast<uint8_t*>(split_dim.data()),
+                              sizeof(int32_t))),
+                          return PARAM_INVALID);
+ 
+  ge::AttrUtils::SetTensor(split_dim_const_desc, ge::ATTR_NAME_WEIGHTS, tensor_ptr);
+  split_dim_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
+  auto split_dim_node = graph.AddNode(split_dim_const_desc);
+  FUSION_PASS_CHECK(split_dim_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to CreateConstNode node"),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(split_dim_node->GetOutDataAnchor(0),
+                                           new_node->GetInDataAnchor(2)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add split_dim_node edge to split failed."),
+        return FAILED);
+
   return SUCCESS;
 }
 

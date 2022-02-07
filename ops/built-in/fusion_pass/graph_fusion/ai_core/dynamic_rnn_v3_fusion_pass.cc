@@ -39,7 +39,7 @@ using namespace ge;
 namespace fe {
 static const char *FUSED_NODE = "DynamicRNNV3";
 static const std::string PATTERN_FUSEDNODE = "DynamicRNNV3";
-
+static const int64_t mask_idx = 10;
 vector<FusionPattern *> DynamicRNNV3FusionPass::DefinePatterns()
 {
   vector<FusionPattern *> patterns;
@@ -81,11 +81,11 @@ ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, g
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   fusedDesc->UpdateInputDesc(10, outputTensorDesc);
 
-  ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(10)->GetPeerOutAnchor(), broadcast_node1->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(mask_idx)->GetPeerOutAnchor(), broadcast_node1->GetInDataAnchor(0));
 
-  InDataAnchorPtr inAnchorPtr = fusedNode->GetInDataAnchor(10);
+  InDataAnchorPtr inAnchorPtr = fusedNode->GetInDataAnchor(mask_idx);
   inAnchorPtr->UnlinkAll();
-  ge::GraphUtils::AddEdge(broadcast_node1->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(10));
+  ge::GraphUtils::AddEdge(broadcast_node1->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(mask_idx));
 
   return broadcast_node1;
 }
@@ -151,8 +151,10 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   int64_t stateSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0);
 
   bool failStatus = false;
+  if (fusedDesc->GetInputDescPtr(mask_idx) != nullptr) {
+    AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, stateSize);
+  }
 
-  AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, stateSize);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wco fail."),
                     return FAILED);
 

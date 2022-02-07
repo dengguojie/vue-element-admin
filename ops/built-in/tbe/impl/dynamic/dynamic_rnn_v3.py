@@ -1278,6 +1278,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                              update_h_tmp1, update_h_tmp, update_h_tmp2_fp32]
     else:
         update_h_tmp = update_h_mad
+        pjc_after_tensors = [update_h_mad, s_state_h_ub_tmp]
 
     if fp16_input_output:
         update_h_fp16 = tvm.compute(pjc_shape_c,
@@ -1572,12 +1573,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[barrier_tensor].compute_at(s[update_h_gm], vn_o_inner)
     elewise_after_tensors = []
     if project_gm is not None:
-        pjc_after_tensors.append(update_h_tmp2)
-        pjc_after_tensors.append(update_h_tmp.op.input_tensors[1])
-        pjc_after_tensors.append(update_h_tmp1)
-        pjc_after_tensors.append(update_h_tmp1.op.input_tensors[0])
-        pjc_after_tensors.append(update_h_tmp1.op.input_tensors[1])
-        pjc_after_tensors.append(one_sub_mth.op.input_tensors[1])
+        if mask_gm is not None:
+            pjc_after_tensors.append(update_h_tmp2)
+            pjc_after_tensors.append(update_h_tmp.op.input_tensors[1])
+            pjc_after_tensors.append(update_h_tmp1)
+            pjc_after_tensors.append(update_h_tmp1.op.input_tensors[0])
+            pjc_after_tensors.append(update_h_tmp1.op.input_tensors[1])
+            pjc_after_tensors.append(one_sub_mth.op.input_tensors[1])
         for tensor in elewise_tensors:
             if tensor not in elewise_before_barrier_tensors and tensor not in pjc_after_tensors:
                 s[tensor].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
