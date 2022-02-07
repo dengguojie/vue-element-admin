@@ -158,6 +158,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/concat_fusion_pass.cc
   graph_fusion/ai_core/concat_v2d_fusion_pass.cc
   graph_fusion/ai_core/concat_v2_fusion_pass.cc
+  graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc
   graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
   graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
   graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
@@ -245,6 +246,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/argmax_onehot_fusion_pass.cc
   graph_fusion/ai_core/one_hot_fusion_pass.cc
   graph_fusion/ai_core/pack_fusion_pass.cc
+  graph_fusion/ai_core/pad_addn_fusion_pass.cc
   graph_fusion/ai_core/pad_conv2d_fusion_pass.cc
   graph_fusion/ai_core/pad_depthwise_conv2d_fusion_pass.cc
   graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
