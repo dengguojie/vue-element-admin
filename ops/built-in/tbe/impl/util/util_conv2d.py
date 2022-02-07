@@ -768,7 +768,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
             format_dict = {
                 "input0": "NC1HWC0_C04", # fmap
                 "input1": "FRACTAL_Z_C04", # weight
-                "input2": "NC1HWC0", # bias
+                "input2": "ND", # bias
                 "input3": "ND", # offset_w
                 "output0": "NC1HWC0", # y
             }
@@ -784,7 +784,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
             format_dict = {
                 "input0": "NC1HWC0,NC1HWC0,NC1HWC0", # fmap
                 "input1": "FRACTAL_Z_C04,FRACTAL_Z_C04,FRACTAL_Z_C04", # weight
-                "input2": "NC1HWC0,NC1HWC0,NC1HWC0", # bias
+                "input2": "ND,ND,ND", # bias
                 "input3": "ND,ND,ND", # offset_w
                 "output0": "NC1HWC0,NC1HWC0,NC1HWC0", # y
             }
@@ -799,7 +799,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
         format_dict = {
             "input0": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # fmap
             "input1": "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z", # weight
-            "input2": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # bias
+            "input2": "ND,ND,ND,ND", # bias
             "input3": "ND,ND,ND,ND", # offset_w
             "output0": "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0", # y
         }

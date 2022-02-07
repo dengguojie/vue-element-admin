@@ -22,8 +22,6 @@ from functools import reduce
 import tbe
 from tbe import tvm
 from tbe.common.utils import log
-from tbe.common.platform import platform_info as cce
-from te.platform.cce_params import scope_fb0, scope_fb1, scope_fb2, scope_fb3, scope_bt, scope_cbuf
 from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling import tiling_api
@@ -41,11 +39,11 @@ ELTWISE_SRC_STR = "eltwise_src"
 INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
 UNIT_POST_ELTWISE = "post_eltwise"
 FIXPIPE_SCOPE_MAP = {
-    QUANT_SCALE_0_STR: scope_fb0,
-    QUANT_SCALE_1_STR: scope_fb3,
-    RELU_WEIGHT_0_STR: scope_fb1,
-    RELU_WEIGHT_1_STR: scope_fb2,
-    ELTWISE_SRC_STR: scope_cbuf
+    QUANT_SCALE_0_STR: cce_params.scope_fb0,
+    QUANT_SCALE_1_STR: cce_params.scope_fb3,
+    RELU_WEIGHT_0_STR: cce_params.scope_fb1,
+    RELU_WEIGHT_1_STR: cce_params.scope_fb2,
+    ELTWISE_SRC_STR: cce_params.scope_cbuf
 }
 
 NON_L1_FUSION = -1
@@ -199,7 +197,7 @@ class FixpipeFusionNew(object):
                 continue
 
             input_fb = sch.cache_read(tensor, scope, next_op_map[tensor])
-            input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
+            input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
             self.cache_read_tensors.extend([input_fb, input_l1])
 
     def fixpipe_inputs_emit_insn(self,sch):
@@ -301,7 +299,7 @@ class FixpipeFusion:
                 scope_inputs = cce_params.scope_fb0
 
             input_fb = sch.cache_read(tensor, scope_inputs, next_op_map[tensor]) # fb0: QUANT_PRE, fb1: RELU_PRE
-            input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
+            input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
             self.cache_read_tensors.extend([input_fb, input_l1])
 
     def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
@@ -447,8 +445,8 @@ class LxFusion:
         Config L1 scope to scope_cbuf_fusion when l1fusion is enabled.
         """
         if self.l1_fusion_flag:
-            return cce.scope_cbuf_fusion
-        return cce.scope_cbuf
+            return cce_params.scope_cbuf_fusion
+        return cce_params.scope_cbuf
 
     def align_al1_lxfusion(self, sch, al1):
         """
@@ -590,10 +588,10 @@ class DynamicShape:
             cl0 = tensor_param["cl0"]
 
             # sequential_malloc
-            sch.sequential_malloc(cce.scope_cbuf)
-            sch.sequential_malloc(cce.scope_ca)
-            sch.sequential_malloc(cce.scope_cb)
-            sch.sequential_malloc(cce.scope_cc)
+            sch.sequential_malloc(cce_params.scope_cbuf)
+            sch.sequential_malloc(cce_params.scope_ca)
+            sch.sequential_malloc(cce_params.scope_cb)
+            sch.sequential_malloc(cce_params.scope_cc)
 
             # mem_unique
             sch[al1].mem_unique()
@@ -777,7 +775,7 @@ class Im2colDma:
         """
         if self.flag:
             al1_im2col = tensor_map["fmap_im2col"]
-            sch[al1_im2col].set_scope(cce.scope_cbuf)
+            sch[al1_im2col].set_scope(cce_params.scope_cbuf)
         else:
             al1_im2col = None
         return al1_im2col
@@ -786,7 +784,7 @@ class Im2colDma:
         """
         Cache read al1_im2col into L0.
         """
-        al0 = sch.cache_read(al1_im2col, cce.scope_ca, [cl0])
+        al0 = sch.cache_read(al1_im2col, cce_params.scope_ca, [cl0])
         return al0
 
     def align_al1_im2col(self, sch, al1_im2col, block_k0):
@@ -1203,7 +1201,7 @@ class Conv2dSchedule:
             Config cl0 scope.
             """
             cl0 = tensor_map["cl0"]
-            sch[cl0].set_scope(cce.scope_cc)
+            sch[cl0].set_scope(cce_params.scope_cc)
             return cl0
 
         def config_fmap_row_major():
@@ -1213,7 +1211,7 @@ class Conv2dSchedule:
             if self._dynamic_shape.flag or self._l0a_load2d.flag:
                 return None
             fmap_row_major = tensor_map["fmap_row_major"]
-            sch[fmap_row_major].set_scope(cce.scope_cbuf)
+            sch[fmap_row_major].set_scope(cce_params.scope_cbuf)
             return fmap_row_major
 
         def config_al1():
@@ -1245,7 +1243,7 @@ class Conv2dSchedule:
                 return self._im2col_dma.config_al0_im2coldma(sch, al1_im2col, cl0)
 
             al0 = tensor_map["fmap_im2col"]
-            sch[al0].set_scope(cce.scope_ca)
+            sch[al0].set_scope(cce_params.scope_ca)
             return al0
 
         def config_bl1():
@@ -1256,9 +1254,9 @@ class Conv2dSchedule:
                 bl1 = None
             elif self._weight_nd2nz.flag:
                 bl1 = weight
-                sch[bl1].set_scope(cce.scope_cbuf)
+                sch[bl1].set_scope(cce_params.scope_cbuf)
             else:
-                bl1 = sch.cache_read(weight, cce.scope_cbuf, [cl0])
+                bl1 = sch.cache_read(weight, cce_params.scope_cbuf, [cl0])
             return bl1
 
         def config_bl0():
@@ -1266,9 +1264,9 @@ class Conv2dSchedule:
             Config bl0 scope.
             """
             if self._tiling["BL1_shape"] is None:
-                bl0 = sch.cache_read(weight, cce.scope_cb, [cl0])
+                bl0 = sch.cache_read(weight, cce_params.scope_cb, [cl0])
             else:
-                bl0 = sch.cache_read(bl1, cce.scope_cb, [cl0])
+                bl0 = sch.cache_read(bl1, cce_params.scope_cb, [cl0])
             return bl0
 
         def config_bias():
@@ -1276,8 +1274,10 @@ class Conv2dSchedule:
             Config bias scope.
             """
             if self._bias_flag:
-                bias_l1 = sch.cache_read(self._bias_tensor, cce.scope_cbuf, [cl0])
-                bias_bt = sch.cache_read(bias_l1, cce_params.scope_bt, [cl0])
+                bias_l1 = tensor_map["bias_l1"]
+                sch[bias_l1].set_scope(cce_params.scope_cbuf)
+                bias_bt = tensor_map["bias_bt"]
+                sch[bias_bt].set_scope(cce_params.scope_bt)
                 return bias_l1, bias_bt
 
             return None, None
@@ -1453,8 +1453,11 @@ class Conv2dSchedule:
             Handle bias attach.
             """
             if self._bias_flag:
-                sch[bias_l1].compute_at(sch[res], fixpipe_slice_axis)
-                sch[bias_bt].compute_at(sch[res], fixpipe_slice_axis)
+                if CUB_channel_wise_flag:  # use INPUT_L1_BT_param later
+                    sch[bias_l1].compute_at(sch[res], cl0_at_res_axis)
+                else:
+                    sch[bias_l1].compute_at(sch[res], bindcore_axis)
+                sch[bias_bt].compute_at(sch[res], cl0_at_res_axis)
 
         def anti_quant_spilt_flag(res):
             """
@@ -1473,6 +1476,7 @@ class Conv2dSchedule:
         bl0_tiling = self._tiling["BL0_matrix"]
         cl0_tiling = self._tiling["CL0_matrix"]
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
+        CUB_channel_wise_flag = self._tiling["CUB_channel_wise_flag"]
         batch = self._batch
         kernel_h = self._kernel_h
         kernel_w = self._kernel_w
@@ -1975,6 +1979,8 @@ class Conv2dSchedule:
                         "BL0_pbuffer": bl0,
                         "CL0_pbuffer": cl0}
 
+        # need to do bt doublebuffer with INPUT_L1_BT_pbuffer
+
         for key, value in pingpong_buffer.items():
             if value == 2 and pingpong_map[key] is not None:
                 self._sch[pingpong_map[key]].double_buffer()
@@ -2149,7 +2155,7 @@ class Conv2dSchedule:
             Emit insn for bias.
             """
             if self._bias_flag:
-                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy", attrs={"layout_transform": "nd2nz"})
                 sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
 
         #=============================prepare params=========================================

@@ -124,6 +124,34 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         return fmap
 
+    def bias_compute(bias_tensor, bias_shape):
+        """
+        compute bias_l1 and bias_bt
+        """
+        if bias_tensor is not None:
+            bias_co_ori = bias_tensor.shape[0]
+            _, _, co1_opt, _, block_n0 = bias_shape
+            bias_dtype = bias_tensor.dtype
+            bias_l1 = tvm.compute(bias_shape,
+                                  lambda group_idx, n_idx, co1_idx, hw_idx, co0_idx:
+                                      tvm.select(
+                                          (group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx) >= bias_co_ori,
+                                          tvm.const(0, bias_dtype),
+                                          bias_tensor(group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx)),
+                                  name="bias_l1",
+                                  tag=OP_TAG + "bias_l1")
+            bias_l1_to_bt_map = {
+                "float16": "float32",
+            }
+            bias_bt_dtype = bias_l1_to_bt_map.get(bias_dtype, bias_dtype)
+            bias_bt = tvm.compute(bias_shape,
+                                  lambda *indice:
+                                      bias_l1(*indice).astype(bias_bt_dtype),
+                                      name="bias_bt",
+                                      tag=OP_TAG + "bias_bt")
+            return bias_l1, bias_bt
+        return None, None
+
     def load2d_l0a_compute(fmap_l1):
         """
         Compute of al0 in fmap load2d.
@@ -327,7 +355,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         fmap_im2col_res = im2col_fractal_compute(fmap_l0_shape, fmap_row_major_reshape)
         return fmap_im2col_res
 
-    def l0c_compute(fmap_im2col, bias_tensor=None):
+    def l0c_compute(fmap_im2col, bias_bt=None):
         # CL0's M is aligned by block_m0.
         mad_m = ceil_div(out_height * out_width, block_m0) * block_m0
         mad_shape = (group_opt, batch, co1_opt, mad_m, block_n0)
@@ -338,7 +366,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         axis_k1 = tvm.reduce_axis((0, reduce_k1), name='cin_1_kh_kw')
         axis_k0 = tvm.reduce_axis((0, block_k0), name='cin_0')
 
-        if bias_tensor is not None:
+        if bias_bt is not None:
             c_col = tvm.compute(
                 mad_shape,
                 lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
@@ -357,7 +385,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                     co1_idx,
                                     co0_idx,
                                     axis_k0]).astype(mad_dtype) +
-                            bias_tensor[0, group_idx * co1_opt + co1_idx, 0, 0, co0_idx],
+                            bias_bt[group_idx, 0, co1_idx, 0, co0_idx],
                             (fmap_im2col[group_idx,
                                          batch_idx,
                                          howo_idx // block_m0,
@@ -564,6 +592,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     #==========================conv compute begin==============================
     fmap_l1 = al1_compute(fmap)
+    bias_shape = group_opt, 1, co1_opt, 1, block_n0
+    bias_l1, bias_bt = bias_compute(bias_tensor, bias_shape)
 
     if l0a_load2d_flag:
         fmap_im2col = load2d_l0a_compute(fmap_l1)
@@ -573,7 +603,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         fmap_row_major, fmap_row_major_reshape = row_major_compute(fmap_l1)
         fmap_im2col = l0a_compute(fmap_row_major_reshape)
 
-    cl0 = l0c_compute(fmap_im2col, bias_tensor)
+    cl0 = l0c_compute(fmap_im2col, bias_bt)
     conv_res = res_compute(cl0)
 
     #===========================update tensormap=============================
@@ -583,6 +613,11 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         "fmap_im2col": fmap_im2col,
         "fmap_l1": fmap_l1
     }
+    if bias_l1 is not None:
+        update_tensormap.update({
+            "bias_l1": bias_l1,
+            "bias_bt": bias_bt
+        })
     if not dynamic_flag and not l0a_load2d_flag:
         update_tensormap.update({
             "fmap_row_major": fmap_row_major,

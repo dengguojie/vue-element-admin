@@ -572,12 +572,10 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
         tensor_list.append(weight)
         bias_tensor = None
+        bias_shape = (cout_ori * groups,)
         if util_conv2d.is_support_v220():
-            ori_co1 = weight_ori_shape_nchw[1]
-            bias_shape = (1, (ori_co1 + 15) // 16, 1, 1, 16)
             bias_dtype = "int32" if in_dtype in ("int4", "int8") else "float32"
         else:
-            bias_shape = (cout_ori * groups,)
             bias_dtype = res_dtype
         offset_w_tensor = None
 
