@@ -105,10 +105,11 @@ bool MatmulAtomicAddUbFusion::EnableAtomicAdd(const ge::NodePtr &matmul_node) {
 bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
   vector<int64_t> shapes = GetMatMulDims(matmul_node);
   auto src_dtype = matmul_node->GetOpDesc()->GetInputDesc(0).GetDataType();
-  if (src_dtype != ge::DT_FLOAT16) {
-    OP_LOGD(kFusedOpType.c_str(), "only support float16 input, actal is %s, will not split k.", src_dtype);
-    return false;
-  }
+
+  FUSION_PASS_CHECK(src_dtype != ge::DT_FLOAT16,
+                    OP_LOGD(kFusedOpType.c_str(), "only support float16 input, will not split k."),
+                    return false);
+
   if (core_num < kLimitCoreNumber) {
     OP_LOGD(kFusedOpType.c_str(), "core number is less than 8 will not enable split k.");
     return false;
