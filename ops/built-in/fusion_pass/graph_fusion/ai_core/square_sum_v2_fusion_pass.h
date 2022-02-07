@@ -29,12 +29,12 @@ namespace fe {
 
 class SquareSumV2FusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern*> DefinePatterns() override;
+  std::vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  vector<ge::NodePtr> GetNodesFromMapping(const string& id, Mapping& mapping);
-  const string FUSED_OP_TYPE = "SquareSumV2";
+  std::vector<ge::NodePtr> GetNodesFromMapping(const std::string& id, Mapping& mapping);
+  const std::string FUSED_OP_TYPE = "SquareSumV2";
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_SQUARE_SUM_V2_FUSION_PASS_H_

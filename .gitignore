@@ -42,3 +42,6 @@ kernel_meta/
 
 # UT report file
 ut_report.txt
+
+# ascend package download dir
+ascend_download

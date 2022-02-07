@@ -23,6 +23,7 @@
 #define CANN_OPS_BUILT_IN_OP_UTIL_H_
 
 #include <memory>
+#include <utility>
 
 namespace ops {
 

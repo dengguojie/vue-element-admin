@@ -26,7 +26,8 @@
 #include "graph/utils/node_utils.h"
 
 #define NOT_CHANGED_WITH_DYNAMIC_NODE(fused_nodes)                                                            \
-  for (auto fused_node : fused_nodes) {                                                                       \
+  const auto& nodes = fused_nodes;                                                                            \
+  for (auto fused_node : nodes) {                                                                             \
     bool unknown_shape = false;                                                                               \
     if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(fused_node.get()), unknown_shape) == ge::GRAPH_SUCCESS &&  \
         unknown_shape) {                                                                                      \
