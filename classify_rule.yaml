@@ -367,6 +367,7 @@ cube-tiling:
       - ops/built-in/tbe/impl/dynamic/conv2d.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d.py
+      - ops/built-in/tbe/impl/util/util_conv2d_dynamic.py
       - ops/built-in/tbe/impl/fused_bn2_reluv2_conv2d_bn1.py
       - auto_schedule/python/lang/cce/te_compute/conv_compute.py
       - auto_schedule/python/lang/cce/te_compute/max_pool2d_3_2_fusion_compute.py
@@ -1734,6 +1735,7 @@ cube-conv2d-python:
       - ops/built-in/tbe/impl/dynamic/conv2d.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d.py
+      - ops/built-in/tbe/impl/util/util_conv2d_dynamic.py
       - auto_schedule/python/lang/cce/te_compute/conv_compute.py
       - auto_schedule/python/lang/cce/te_compute/max_pool2d_3_2_fusion_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv_compute.py
