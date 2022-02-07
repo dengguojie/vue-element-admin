@@ -2187,7 +2187,6 @@ class GemmSchedule:
         c_type = self.res.dtype
         a_shape, b_shape = self._get_tiling_param()
         a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
-        self.container.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
 
         stride_w = GEMMComputeParam.get_stride_w_value(tail_block, self.status_controller.split_k)
         new_fused_num = fused_num
@@ -2200,7 +2199,7 @@ class GemmSchedule:
             multi_ub = CalculateMultiUB(self.container.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
             ub_res, scalar_size = multi_ub.calculate_start()
             new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP.get(c_type) * 2) - 1
-
+        self.container.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, new_fused_num]
         mad_type = self.MAD_TYPE.get(str(self.status_controller.ops_data_flow_mode))
         bias_flag = self.container.TENSOR_MAP.get("c_add_bias") is not None
         trans_flag = GEMMComputeParam.get_trans_flag(
