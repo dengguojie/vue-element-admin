@@ -141,7 +141,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_1) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_1";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2 14 256 1 0 1 0 0 4 0 10 34 56 56 112 112 0 34 0 0 0 0 0 17 0 0 0 0 3152 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "3 2 2 0 0 1 0 1 0 0 0 0 0 34 56 56 112 112 0 0 0 0 0 0 0 17 0 0 0 0 0 ");
 }
 
 // not tiling nc1h

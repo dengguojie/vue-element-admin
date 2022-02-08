@@ -23,13 +23,15 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-
+from impl.dynamic import max_pool_grad_with_argmax_v2_resnet50 as resnet50
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
+    def __init__(self):
+        pass
     # # tiling param num
     TILING_ARG_NUM = 32
     # MIN VALUE OF FP16
@@ -225,6 +227,10 @@ class MaxpoolGrad:
         self.shape_ho = self.tik_instance.Scalar("int32", name="shape_ho")
         self.shape_hi = self.tik_instance.Scalar("int32", name="shape_hi")
         self.one_window_size = self.tik_instance.Scalar("int32", name="one_window_size")
+
+        self.resnet50_branch = resnet50.MaxpoolGradV2Resnet50(self.dtype,
+                                                              self.ori_input_gm, self.grad_gm, self.argmax_gm,
+                                                              self.res_gm, self.tik_instance)
 
         self.total_repeate_time = None
         self.remain_ele = None
@@ -1899,233 +1905,245 @@ class MaxpoolGrad:
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
             # define tiling ub and move tiling gm to tiling ub,then get tiling args
             self.get_tiling_args()
-            self.init_ub_scalar()
-            self.init_ub_tensor()
 
-            # call select tiling mode function
-            with self.tik_instance.if_scope(block_index <= self.act_core_num - 1):
-                self.pad = (self.pad_left, self.pad_right, self.pad_top, self.pad_bottom)
-                # `real_block == 32`
-                with self.tik_instance.if_scope(self.real_block == Constant.CORE_NUM):
-                    with self.tik_instance.for_range(0, self.block_cycle) as cycle_index:
-                        n_index = self.tik_instance.Scalar(dtype='int64', name='n_axis')
-                        c1_index = self.tik_instance.Scalar(dtype='int64', name='c1_index')
-                        index_sum = self.tik_instance.Scalar(dtype='int64', name='index_sum')
-                        index_sum.set_as(block_index * self.block_cycle + cycle_index)
-                        with self.tik_instance.if_scope(index_sum < self.block_num):
-                            n_index.set_as(index_sum // self.c1)
-                            c1_index.set_as(index_sum % self.c1)
-                            shape = (self.ho, self.wo, self.hi, self.wi)
-                            self.offset_gm.set_as(
-                                (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
-                            with self.tik_instance.if_scope(self.tiling_mode == 2):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
+            with self.tik_instance.if_scope(self.tiling_mode == 3):
+                # Instead of defining new tiling parameters for resnet50,
+                # using block_cycle represents one_core_ele
+                # using real_block represents last_core_ele
+                one_core_ele = self.block_cycle
+                last_core_ele = self.real_block
+                with self.tik_instance.if_scope(block_index < self.act_core_num - 1):
+                    self.resnet50_branch.maxpool_resnet50(block_index, one_core_ele, one_core_ele)
+                with self.tik_instance.if_scope(block_index == self.act_core_num - 1):
+                    self.resnet50_branch.maxpool_resnet50(block_index, last_core_ele, one_core_ele)
+
+            with self.tik_instance.else_scope():
+                self.init_ub_scalar()
+                self.init_ub_tensor()
+                # call select tiling mode function
+                with self.tik_instance.if_scope(block_index <= self.act_core_num - 1):
+                    self.pad = (self.pad_left, self.pad_right, self.pad_top, self.pad_bottom)
+                    # `real_block == 32`
+                    with self.tik_instance.if_scope(self.real_block == Constant.CORE_NUM):
+                        with self.tik_instance.for_range(0, self.block_cycle) as cycle_index:
+                            n_index = self.tik_instance.Scalar(dtype='int64', name='n_axis')
+                            c1_index = self.tik_instance.Scalar(dtype='int64', name='c1_index')
+                            index_sum = self.tik_instance.Scalar(dtype='int64', name='index_sum')
+                            index_sum.set_as(block_index * self.block_cycle + cycle_index)
+                            with self.tik_instance.if_scope(index_sum < self.block_num):
+                                n_index.set_as(index_sum // self.c1)
+                                c1_index.set_as(index_sum % self.c1)
+                                shape = (self.ho, self.wo, self.hi, self.wi)
+                                self.offset_gm.set_as(
+                                    (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
+                                with self.tik_instance.if_scope(self.tiling_mode == 2):
+                                    with self.tik_instance.new_stmt_scope():
+                                        self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
+                                                            self.ho, self.hi,
+                                                            self.ho, self.hi,
+                                                            0, 0,
+                                                            0,
+                                                            None, shape, self.pad)
+                                with self.tik_instance.if_scope(self.tiling_mode == 1):
+                                    with self.tik_instance.new_stmt_scope():
+                                        self._tilling_ho(self.each_process_ho, n_index, c1_index,
                                                         self.ho, self.hi,
                                                         self.ho, self.hi,
                                                         0, 0,
                                                         0,
                                                         None, shape, self.pad)
-                            with self.tik_instance.if_scope(self.tiling_mode == 1):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._tilling_ho(self.each_process_ho, n_index, c1_index,
-                                                     self.ho, self.hi,
-                                                     self.ho, self.hi,
-                                                     0, 0,
-                                                     0,
-                                                     None, shape, self.pad)
-                            with self.tik_instance.if_scope(self.tiling_mode == 0):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._not_tilling(n_index, c1_index,
-                                                      self.ho, self.hi,
-                                                      self.ho, self.hi,
-                                                      0, 0,
-                                                      0, None, shape, self.pad)
-                with self.tik_instance.else_scope():
-                    with self.tik_instance.if_scope(self.if_block == 1):
-                        block_outer_index = self.tik_instance.Scalar(dtype='int64', name='block_outer_index')
-                        block_outer_index.set_as(block_index)
-                        with self.tik_instance.for_range(0, self.block_num_inner) as block_innner_index:
-                            nc1_index = self.tik_instance.Scalar(dtype='int64', name='nc1_index')
-                            nc1_index.set_as(
-                                block_outer_index // self.ho_outer * self.block_num_inner + block_innner_index)
-                            with self.tik_instance.if_scope(nc1_index < self.block_num):
-                                n_index = self.tik_instance.Scalar(dtype='int64', name='n_index')
-                                c1_index = self.tik_instance.Scalar(dtype='int64', name='c1_index')
-                                ho_outer_index = self.tik_instance.Scalar(dtype='int64',
-                                                                          name='ho_outer_index')
-                                offset_gm_block = self.tik_instance.Scalar(dtype='int64',
-                                                                           name='offset_gm_block')
-                                n_index.set_as(nc1_index // self.c1)
-                                c1_index.set_as(nc1_index % self.c1)
-                                ho_outer_index.set_as(block_outer_index % self.ho_outer)
+                                with self.tik_instance.if_scope(self.tiling_mode == 0):
+                                    with self.tik_instance.new_stmt_scope():
+                                        self._not_tilling(n_index, c1_index,
+                                                        self.ho, self.hi,
+                                                        self.ho, self.hi,
+                                                        0, 0,
+                                                        0, None, shape, self.pad)
+                    with self.tik_instance.else_scope():
+                        with self.tik_instance.if_scope(self.if_block == 1):
+                            block_outer_index = self.tik_instance.Scalar(dtype='int64', name='block_outer_index')
+                            block_outer_index.set_as(block_index)
+                            with self.tik_instance.for_range(0, self.block_num_inner) as block_innner_index:
+                                nc1_index = self.tik_instance.Scalar(dtype='int64', name='nc1_index')
+                                nc1_index.set_as(
+                                    block_outer_index // self.ho_outer * self.block_num_inner + block_innner_index)
+                                with self.tik_instance.if_scope(nc1_index < self.block_num):
+                                    n_index = self.tik_instance.Scalar(dtype='int64', name='n_index')
+                                    c1_index = self.tik_instance.Scalar(dtype='int64', name='c1_index')
+                                    ho_outer_index = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='ho_outer_index')
+                                    offset_gm_block = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='offset_gm_block')
+                                    n_index.set_as(nc1_index // self.c1)
+                                    c1_index.set_as(nc1_index % self.c1)
+                                    ho_outer_index.set_as(block_outer_index % self.ho_outer)
 
-                                start_hi_index = self.tik_instance.Scalar(dtype='int64',
-                                                                          name='start_hi_index')
-                                start_ho_index = self.tik_instance.Scalar(dtype='int64',
-                                                                          name='start_ho_index')
-                                actual_start_ho_index = self.tik_instance.Scalar(
-                                    dtype='int64', name='actual_start_ho_index')
-                                actual_start_hi_index = self.tik_instance.Scalar(
-                                    dtype='int64', name='actual_start_hi_index')
-                                each_process_ho_block = self.tik_instance.Scalar(
-                                    dtype='int64', name='each_process_ho_block')
-                                each_process_hi_block = self.tik_instance.Scalar(
-                                    dtype='int64', name='each_process_hi_block')
-                                pad_top_block = self.tik_instance.Scalar(dtype='int64',
-                                                                         name='pad_top_block')
-                                pad_bottom_block = self.tik_instance.Scalar(dtype='int64',
-                                                                            name='pad_bottom_block')
-                                start_threshold = self.tik_instance.Scalar(dtype='int64',
-                                                                           name='start_threshold')
-                                mov_len_ho = self.tik_instance.Scalar(dtype='int64', name='mov_len_ho')
-                                mov_len_hi = self.tik_instance.Scalar(dtype='int64', name='mov_len_hi')
+                                    start_hi_index = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='start_hi_index')
+                                    start_ho_index = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='start_ho_index')
+                                    actual_start_ho_index = self.tik_instance.Scalar(
+                                        dtype='int64', name='actual_start_ho_index')
+                                    actual_start_hi_index = self.tik_instance.Scalar(
+                                        dtype='int64', name='actual_start_hi_index')
+                                    each_process_ho_block = self.tik_instance.Scalar(
+                                        dtype='int64', name='each_process_ho_block')
+                                    each_process_hi_block = self.tik_instance.Scalar(
+                                        dtype='int64', name='each_process_hi_block')
+                                    pad_top_block = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='pad_top_block')
+                                    pad_bottom_block = self.tik_instance.Scalar(dtype='int64',
+                                                                                name='pad_bottom_block')
+                                    start_threshold = self.tik_instance.Scalar(dtype='int64',
+                                                                            name='start_threshold')
+                                    mov_len_ho = self.tik_instance.Scalar(dtype='int64', name='mov_len_ho')
+                                    mov_len_hi = self.tik_instance.Scalar(dtype='int64', name='mov_len_hi')
 
-                                # each block's start ho pos and hi pos
-                                # calculate the offset gm
-                                start_ho_index.set_as(ho_outer_index * self.ho_inner)
-                                start_hi_index.set_as(start_ho_index * self.stride_h)
-                                actual_start_ho_index.set_as(start_ho_index)
-                                actual_start_hi_index.set_as(start_hi_index)
-                                start_threshold.set_as(0)
+                                    # each block's start ho pos and hi pos
+                                    # calculate the offset gm
+                                    start_ho_index.set_as(ho_outer_index * self.ho_inner)
+                                    start_hi_index.set_as(start_ho_index * self.stride_h)
+                                    actual_start_ho_index.set_as(start_ho_index)
+                                    actual_start_hi_index.set_as(start_hi_index)
+                                    start_threshold.set_as(0)
 
-                                with self.tik_instance.if_scope(start_hi_index <= self.pad_top):
-                                    offset_gm_block.set_as(
-                                        (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
-                                    pad_top_block.set_as(self.pad_top - start_hi_index)
-                                    self.tik_instance.scalar_max(start_threshold, start_threshold,
-                                                                 pad_top_block)
-                                    actual_start_hi_index.set_as(0)
-                                with self.tik_instance.else_scope():
-                                    offset_gm_block.set_as(((n_index * self.c1 + c1_index) * self.hi +
-                                                            start_hi_index - self.pad_top) * self.wi * Constant.C0)
-                                    pad_top_block.set_as(0)
-                                    actual_start_hi_index.set_as(actual_start_hi_index - self.pad_top)
-
-                                with self.tik_instance.if_scope(ho_outer_index != self.ho_outer - 1):
-                                    each_process_ho_block.set_as(self.ho_inner)
-                                with self.tik_instance.else_scope():
-                                    each_process_ho_block.set_as(self.ho - self.ho_inner * (self.ho_outer - 1))
-                                mov_len_ho.set_as(each_process_ho_block)
-                                mov_len_hi.set_as(each_process_ho_block * self.stride_h)
-
-                                if self.stride_h < self.kh:
-                                    overlap = self.kh - self.stride_h
-                                    overlap_num = int(math.ceil(overlap * 1.0 / self.stride_h))
-
-                                    actual_start_hi_index.set_as(
-                                        (start_ho_index - overlap_num) * self.stride_h)
-
-                                    with self.tik_instance.if_scope(actual_start_hi_index <= 0):
-                                        actual_start_hi_index.set_as(0)
-                                        actual_start_ho_index.set_as(0)
-                                        pad_top_block.set_as(self.pad_top)
-                                        mov_len_ho.set_as(start_ho_index + each_process_ho_block)
-                                        start_threshold.set_as(start_ho_index * self.stride_h)
+                                    with self.tik_instance.if_scope(start_hi_index <= self.pad_top):
+                                        offset_gm_block.set_as(
+                                            (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
+                                        pad_top_block.set_as(self.pad_top - start_hi_index)
                                         self.tik_instance.scalar_max(start_threshold, start_threshold,
-                                                                     pad_top_block)
-
+                                                                    pad_top_block)
+                                        actual_start_hi_index.set_as(0)
                                     with self.tik_instance.else_scope():
-                                        pad_top_block.set_as(self.pad_top - actual_start_hi_index)
-                                        self.tik_instance.scalar_max(pad_top_block, pad_top_block, 0)
-                                        actual_start_ho_index.set_as(start_ho_index - overlap_num)
-                                        with self.tik_instance.if_scope(
-                                                actual_start_hi_index <= self.pad_top):
+                                        offset_gm_block.set_as(((n_index * self.c1 + c1_index) * self.hi +
+                                                                start_hi_index - self.pad_top) * self.wi * Constant.C0)
+                                        pad_top_block.set_as(0)
+                                        actual_start_hi_index.set_as(actual_start_hi_index - self.pad_top)
+
+                                    with self.tik_instance.if_scope(ho_outer_index != self.ho_outer - 1):
+                                        each_process_ho_block.set_as(self.ho_inner)
+                                    with self.tik_instance.else_scope():
+                                        each_process_ho_block.set_as(self.ho - self.ho_inner * (self.ho_outer - 1))
+                                    mov_len_ho.set_as(each_process_ho_block)
+                                    mov_len_hi.set_as(each_process_ho_block * self.stride_h)
+
+                                    if self.stride_h < self.kh:
+                                        overlap = self.kh - self.stride_h
+                                        overlap_num = int(math.ceil(overlap * 1.0 / self.stride_h))
+
+                                        actual_start_hi_index.set_as(
+                                            (start_ho_index - overlap_num) * self.stride_h)
+
+                                        with self.tik_instance.if_scope(actual_start_hi_index <= 0):
                                             actual_start_hi_index.set_as(0)
+                                            actual_start_ho_index.set_as(0)
+                                            pad_top_block.set_as(self.pad_top)
+                                            mov_len_ho.set_as(start_ho_index + each_process_ho_block)
+                                            start_threshold.set_as(start_ho_index * self.stride_h)
+                                            self.tik_instance.scalar_max(start_threshold, start_threshold,
+                                                                        pad_top_block)
+
                                         with self.tik_instance.else_scope():
-                                            actual_start_hi_index.set_as(
-                                                actual_start_hi_index - self.pad_top)
-                                        mov_len_ho.set_as(overlap_num + each_process_ho_block)
-                                        start_threshold.set_as(overlap_num * self.stride_h)
-                                    mov_len_hi.set_as(
-                                        (mov_len_ho - 1) * self.stride_h + self.kh)
+                                            pad_top_block.set_as(self.pad_top - actual_start_hi_index)
+                                            self.tik_instance.scalar_max(pad_top_block, pad_top_block, 0)
+                                            actual_start_ho_index.set_as(start_ho_index - overlap_num)
+                                            with self.tik_instance.if_scope(
+                                                    actual_start_hi_index <= self.pad_top):
+                                                actual_start_hi_index.set_as(0)
+                                            with self.tik_instance.else_scope():
+                                                actual_start_hi_index.set_as(
+                                                    actual_start_hi_index - self.pad_top)
+                                            mov_len_ho.set_as(overlap_num + each_process_ho_block)
+                                            start_threshold.set_as(overlap_num * self.stride_h)
+                                        mov_len_hi.set_as(
+                                            (mov_len_ho - 1) * self.stride_h + self.kh)
 
-                                with self.tik_instance.if_scope(start_hi_index < self.pad_top):
-                                    each_process_hi_block.set_as(
-                                        each_process_ho_block * self.stride_h - (
-                                                self.pad_top - start_hi_index))
-                                with self.tik_instance.else_scope():
-                                    each_process_hi_block.set_as(
-                                        each_process_ho_block * self.stride_h)
+                                    with self.tik_instance.if_scope(start_hi_index < self.pad_top):
+                                        each_process_hi_block.set_as(
+                                            each_process_ho_block * self.stride_h - (
+                                                    self.pad_top - start_hi_index))
+                                    with self.tik_instance.else_scope():
+                                        each_process_hi_block.set_as(
+                                            each_process_ho_block * self.stride_h)
 
-                                with self.tik_instance.if_scope(
-                                        actual_start_ho_index + mov_len_ho > self.ho):
-                                    mov_len_ho.set_as(self.ho - actual_start_ho_index)
+                                    with self.tik_instance.if_scope(
+                                            actual_start_ho_index + mov_len_ho > self.ho):
+                                        mov_len_ho.set_as(self.ho - actual_start_ho_index)
 
-                                with self.tik_instance.if_scope(
-                                        actual_start_hi_index + mov_len_hi < self.hi):
-                                    pad_bottom_block.set_as(0)
-                                with self.tik_instance.else_scope():
-                                    pad_bottom_block.set_as(
-                                        actual_start_hi_index + mov_len_hi - self.hi)
-                                    mov_len_hi.set_as(self.hi - actual_start_hi_index)
+                                    with self.tik_instance.if_scope(
+                                            actual_start_hi_index + mov_len_hi < self.hi):
+                                        pad_bottom_block.set_as(0)
+                                    with self.tik_instance.else_scope():
+                                        pad_bottom_block.set_as(
+                                            actual_start_hi_index + mov_len_hi - self.hi)
+                                        mov_len_hi.set_as(self.hi - actual_start_hi_index)
 
-                                with self.tik_instance.if_scope(ho_outer_index == self.ho_outer - 1):
-                                    each_process_hi_block.set_as(self.hi + self.pad_top - start_hi_index)
-                                with self.tik_instance.if_scope(
-                                        start_hi_index + each_process_hi_block > self.hi + self.pad_top):
-                                    each_process_hi_block.set_as(self.hi + self.pad_top - start_hi_index)
+                                    with self.tik_instance.if_scope(ho_outer_index == self.ho_outer - 1):
+                                        each_process_hi_block.set_as(self.hi + self.pad_top - start_hi_index)
+                                    with self.tik_instance.if_scope(
+                                            start_hi_index + each_process_hi_block > self.hi + self.pad_top):
+                                        each_process_hi_block.set_as(self.hi + self.pad_top - start_hi_index)
 
-                                pad = (self.pad_left, self.pad_right, pad_top_block, pad_bottom_block)
-                                shape = (self.shape_ho, self.wo, self.shape_hi, self.wi)
+                                    pad = (self.pad_left, self.pad_right, pad_top_block, pad_bottom_block)
+                                    shape = (self.shape_ho, self.wo, self.shape_hi, self.wi)
+
+                                    with self.tik_instance.if_scope(self.tiling_mode == 2):
+                                        with self.tik_instance.new_stmt_scope():
+                                            self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
+                                                                each_process_ho_block, each_process_hi_block,
+                                                                mov_len_ho, mov_len_hi,
+                                                                actual_start_ho_index, actual_start_hi_index,
+                                                                start_threshold,
+                                                                offset_gm_block, shape, pad)
+                                    with self.tik_instance.if_scope(self.tiling_mode == 1):
+                                        with self.tik_instance.new_stmt_scope():
+                                            self._tilling_ho_nc1h(self.each_process_ho, n_index, c1_index,
+                                                                each_process_ho_block, each_process_hi_block,
+                                                                mov_len_ho, mov_len_hi,
+                                                                actual_start_ho_index, actual_start_hi_index,
+                                                                start_threshold,
+                                                                offset_gm_block, shape, pad)
+                                    with self.tik_instance.if_scope(self.tiling_mode == 0):
+                                        with self.tik_instance.new_stmt_scope():
+                                            self._not_tilling_nc1h(n_index, c1_index,
+                                                                each_process_ho_block, each_process_hi_block,
+                                                                mov_len_ho, mov_len_hi,
+                                                                actual_start_ho_index, actual_start_hi_index,
+                                                                start_threshold,
+                                                                offset_gm_block, shape, pad)
+
+                        with self.tik_instance.else_scope():
+                            with self.tik_instance.for_range(0, self.nc1, thread_num=1) as nc1_index:
+                                self.offset_gm.set_as((block_index * self.nc1 + nc1_index) *
+                                                    self.hi * self.wi * Constant.C0)
+                                n_index = (block_index * self.nc1 + nc1_index) // self.c1
+                                c1_index = (block_index * self.nc1 + nc1_index) % self.c1
+
+                                shape = (self.ho, self.wo, self.hi, self.wi)
 
                                 with self.tik_instance.if_scope(self.tiling_mode == 2):
                                     with self.tik_instance.new_stmt_scope():
                                         self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
-                                                            each_process_ho_block, each_process_hi_block,
-                                                            mov_len_ho, mov_len_hi,
-                                                            actual_start_ho_index, actual_start_hi_index,
-                                                            start_threshold,
-                                                            offset_gm_block, shape, pad)
+                                                            self.ho, self.hi,
+                                                            self.ho, self.hi,
+                                                            0, 0,
+                                                            0,
+                                                            None, shape, self.pad)
                                 with self.tik_instance.if_scope(self.tiling_mode == 1):
                                     with self.tik_instance.new_stmt_scope():
-                                        self._tilling_ho_nc1h(self.each_process_ho, n_index, c1_index,
-                                                              each_process_ho_block, each_process_hi_block,
-                                                              mov_len_ho, mov_len_hi,
-                                                              actual_start_ho_index, actual_start_hi_index,
-                                                              start_threshold,
-                                                              offset_gm_block, shape, pad)
-                                with self.tik_instance.if_scope(self.tiling_mode == 0):
-                                    with self.tik_instance.new_stmt_scope():
-                                        self._not_tilling_nc1h(n_index, c1_index,
-                                                               each_process_ho_block, each_process_hi_block,
-                                                               mov_len_ho, mov_len_hi,
-                                                               actual_start_ho_index, actual_start_hi_index,
-                                                               start_threshold,
-                                                               offset_gm_block, shape, pad)
-
-                    with self.tik_instance.else_scope():
-                        with self.tik_instance.for_range(0, self.nc1, thread_num=1) as nc1_index:
-                            self.offset_gm.set_as((block_index * self.nc1 + nc1_index) *
-                                                  self.hi * self.wi * Constant.C0)
-                            n_index = (block_index * self.nc1 + nc1_index) // self.c1
-                            c1_index = (block_index * self.nc1 + nc1_index) % self.c1
-
-                            shape = (self.ho, self.wo, self.hi, self.wi)
-
-                            with self.tik_instance.if_scope(self.tiling_mode == 2):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
+                                        self._tilling_ho(self.each_process_ho, n_index, c1_index,
                                                         self.ho, self.hi,
                                                         self.ho, self.hi,
                                                         0, 0,
                                                         0,
                                                         None, shape, self.pad)
-                            with self.tik_instance.if_scope(self.tiling_mode == 1):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._tilling_ho(self.each_process_ho, n_index, c1_index,
-                                                     self.ho, self.hi,
-                                                     self.ho, self.hi,
-                                                     0, 0,
-                                                     0,
-                                                     None, shape, self.pad)
-                            with self.tik_instance.if_scope(self.tiling_mode == 0):
-                                with self.tik_instance.new_stmt_scope():
-                                    self._not_tilling(n_index, c1_index,
-                                                      self.ho, self.hi,
-                                                      self.ho, self.hi,
-                                                      0, 0,
-                                                      0, None, shape, self.pad)
+                                with self.tik_instance.if_scope(self.tiling_mode == 0):
+                                    with self.tik_instance.new_stmt_scope():
+                                        self._not_tilling(n_index, c1_index,
+                                                        self.ho, self.hi,
+                                                        self.ho, self.hi,
+                                                        0, 0,
+                                                        0, None, shape, self.pad)
 
     # 'pylint: disable=unused-variable
     def tik_instance_function(self):

@@ -33,6 +33,7 @@ namespace {
   constexpr int32_t TILING_MODE_0 = 0;
   constexpr int32_t TILING_MODE_1 = 1;
   constexpr int32_t TILING_MODE_2 = 2;
+  constexpr int32_t TILING_MODE_3 = 3;
   constexpr int32_t TILING_FACTOR_TWO = 2;
   constexpr int32_t C0 = 16;
   constexpr int32_t ALLING_MASK_128 = 128;
@@ -43,8 +44,17 @@ namespace {
   constexpr int32_t SHAPE_INDEX_C1 = 1;
   constexpr int32_t SHAPE_INDEX_H = 2;
   constexpr int32_t SHAPE_INDEX_W = 3;
+  constexpr int32_t SHAPE_INDEX_C0 = 4;
   constexpr int64_t DTYPE_SIZE_FP32 = 4;
   constexpr int32_t BLOCK_ALLIGN = 16;
+  constexpr int32_t RESNET50_KSIZE = 3;
+  constexpr int32_t RESNET50_STRIDE = 2;
+  constexpr int32_t RESNET50_PADS = 1;
+  constexpr int32_t RESNET50_DILATION = 1;
+  constexpr int32_t RESNET50_IN_GRAD = 56;
+  constexpr int32_t RESNET50_IN_ARGMAX_H = 9;
+  constexpr int32_t RESNET50_IN_ARGMAX_W = 197;
+  constexpr int32_t RESNET50_IN_X = 112;
 }
 
 namespace optiling {
@@ -179,6 +189,33 @@ static int32_t CeilDiv(int32_t num, int32_t divisor) {
   return num / divisor;
 }
 
+bool check_resnet50(const vector<int64_t>& grad_shape, const vector<int64_t>& argmax_shape,
+                    const vector<int64_t>& x_shape, int32_t ksize_h, int32_t ksize_w, 
+                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l) {
+  OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_H]=%d.", grad_shape[SHAPE_INDEX_H]);
+  OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_W]=%d.", grad_shape[SHAPE_INDEX_W]);
+  OP_LOGD("Resnet50", "argmax_shape[SHAPE_INDEX_H]=%d.", argmax_shape[SHAPE_INDEX_H]);
+  OP_LOGD("Resnet50", "argmax_shape[SHAPE_INDEX_W]=%d.", argmax_shape[SHAPE_INDEX_W]);
+  OP_LOGD("Resnet50", "x_shape[SHAPE_INDEX_H]=%d.", x_shape[SHAPE_INDEX_H]);
+  OP_LOGD("Resnet50", "x_shape[SHAPE_INDEX_W]=%d.", x_shape[SHAPE_INDEX_W]);
+
+  if ((ksize_h == RESNET50_KSIZE) && (ksize_w == RESNET50_KSIZE) && 
+      (strides_h == RESNET50_STRIDE) && (strides_w == RESNET50_STRIDE) && 
+      (pad_t == RESNET50_PADS) && (pad_l == RESNET50_PADS) &&
+      (grad_shape[SHAPE_INDEX_H] == RESNET50_IN_GRAD) &&
+      (grad_shape[SHAPE_INDEX_W] == RESNET50_IN_GRAD) &&
+      (grad_shape[SHAPE_INDEX_C0] == C0) &&
+      (argmax_shape[SHAPE_INDEX_H] == RESNET50_IN_ARGMAX_H) &&
+      (argmax_shape[SHAPE_INDEX_W] == RESNET50_IN_ARGMAX_W) &&
+      (argmax_shape[SHAPE_INDEX_C0] == C0) &&
+      (x_shape[SHAPE_INDEX_H] == RESNET50_IN_X) &&
+      (x_shape[SHAPE_INDEX_W] == RESNET50_IN_X) &&
+      (x_shape[SHAPE_INDEX_C0] == C0)) {
+        return true;
+      }
+  return false;
+}
+
 static void TilingFactor(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const CompileInfoParams& compile_info) {
   int32_t one_seventh_ub_ele = compile_info.ub_ele / 7;
   int32_t col2img_process_wo;
@@ -266,7 +303,8 @@ static bool IfBlock(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, const Co
 }
 
 static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, CompileInfoParams& compile_info,
-                           std::vector<int64_t> grad_shape, std::vector<int64_t> input_shape) {
+                           const std::vector<int64_t>& grad_shape, const std::vector<int64_t>& argmax_shape,
+                           const std::vector<int64_t>& input_shape) {
   // shape params
   int32_t hi = input_shape[SHAPE_INDEX_H];
   int32_t wi = input_shape[SHAPE_INDEX_W];
@@ -337,105 +375,37 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "wo is %d", wo);
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "tiling_params.wo is %d", tiling_params.wo);
   }
+  // branch for resnet50
+  if (check_resnet50(grad_shape, argmax_shape, input_shape, kh, kw, stride_h, stride_w, pad_top, pad_left)) {
+    tiling_params.tiling_mode = TILING_MODE_3;
+    int32_t total_ele = grad_shape[SHAPE_INDEX_N] * grad_shape[SHAPE_INDEX_C1];
+    // Instead of defining a new tiling parameter for resnet50,
+    // using block_cycle represents one_core_ele
+    // using real_block stands for last_core_ele
+    int32_t &one_core_ele = tiling_params.block_cycle;
+    int32_t &last_core_ele = tiling_params.real_block;
 
-  // get block num
-  tiling_params.block_num = n * c1;
-  if (tiling_params.block_num > core_num) {
-    tiling_params.real_block = core_num;
-    tiling_params.block_cycle = (tiling_params.block_num + core_num - 1) / core_num;
+    one_core_ele = (total_ele + core_num - 1) / core_num;
+    tiling_params.act_core_num = total_ele / one_core_ele;
+    if (total_ele % one_core_ele != 0) {
+      ++tiling_params.act_core_num;
+    }
+    last_core_ele = total_ele - (tiling_params.act_core_num - 1) * one_core_ele;
+
   } else {
-    tiling_params.real_block = tiling_params.block_num;
-    tiling_params.block_cycle = 1;
-  }
+    // get block num
+    tiling_params.block_num = n * c1;
+    if (tiling_params.block_num > core_num) {
+      tiling_params.real_block = core_num;
+      tiling_params.block_cycle = (tiling_params.block_num + core_num - 1) / core_num;
+    } else {
+      tiling_params.real_block = tiling_params.block_num;
+      tiling_params.block_cycle = 1;
+    }
 
-  // tiling factor
-  if (tiling_params.real_block == core_num) {
-    tiling_params.tile_h_to_block = 0;
-    // calc tiling mode
-    TilingFactor(tiling_params, compile_info);
-    // set ceil Scalars
-    if (tiling_params.tiling_mode == 0) {
-      tiling_params.ho_wo_16 = CeilDiv(tiling_params.ho * tiling_params.wo, C0);
-    } else if (tiling_params.tiling_mode == 1) {
-      tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_ho * tiling_params.wo, C0);
-    } else {
-      tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_wo, C0);
-    }
-    tiling_params.mask_shape_128 = ALLING_MASK_128 * CeilDiv(tiling_params.ho_wo_16 * C0, ALLING_MASK_128);
-    tiling_params.one_window_size = C0 * (CeilDiv(tiling_params.ho * tiling_params.wo, C0) + 1);
-  } else {
-    // get core divlist
-    std::vector<int32_t> div_list;
-    for (int i = 1; i < core_num + 1; i++) {
-      if (core_num % i == 0) {
-        if (std::find(div_list.begin(), div_list.end(), core_num / i) == div_list.end()) {
-          div_list.push_back(core_num / i);
-        }
-      }
-    }
-    for (auto& iter : div_list) {
-      if (tiling_params.block_num >= iter) {
-        if (tiling_params.ho >= core_num / iter) {
-          tiling_params.block_num_outer = iter;
-          tiling_params.block_num_inner = (tiling_params.block_num + iter - 1) / iter;
-          break;
-        }
-      }
-    }
-    if (tiling_params.block_num * tiling_params.ho < core_num) {
-      tiling_params.ho_outer = tiling_params.ho;
-      tiling_params.block_num_outer = tiling_params.block_num;
-      tiling_params.block_num_inner = 1;
-    } else {
-      if (tiling_params.block_num_outer == 0) {
-        tiling_params.ho_outer = core_num / tiling_params.block_num;
-        tiling_params.block_num_outer = tiling_params.block_num;
-        tiling_params.block_num_inner = 1;
-      } else {
-        tiling_params.ho_outer = core_num / tiling_params.block_num_outer;
-      }
-    }
-    tiling_params.ho_inner = ceil(tiling_params.ho * 1.0 / tiling_params.ho_outer);
-    tiling_params.ho_outer = ceil(tiling_params.ho * 1.0 / tiling_params.ho_inner);
-
-    bool if_block = IfBlock(tiling_params, compile_info, tiling_params.ho_outer, tiling_params.ho_inner);
-    if (if_block) {
-      tiling_params.if_block = 1;
-      tiling_params.tile_h_to_block = 1;
-      // tiling factor
-      int32_t overlap = kh - stride_h;
-      int32_t overlap_num = ceil(overlap * 1.0 / stride_h);
-      if (kh > stride_h) {
-        tiling_params.shape_ho = tiling_params.ho_inner + overlap_num;
-        tiling_params.shape_hi = (tiling_params.ho_inner + overlap_num - 1) * stride_h + kh;
-      } else {
-        tiling_params.shape_ho = tiling_params.ho_inner;
-        tiling_params.shape_hi = tiling_params.ho_inner * stride_h;
-      }
-      if ((tiling_params.hi - tiling_params.ho_inner * stride_h * tiling_params.ho_outer) > 0) {
-        tiling_params.shape_hi =
-            tiling_params.shape_hi + (tiling_params.hi - tiling_params.ho_inner * stride_h * tiling_params.ho_outer);
-      }
-      // calc tiling mode
-      TilingFactor(tiling_params, compile_info);
-      // set ceil Scalars
-      if (tiling_params.tiling_mode == 0) {
-        tiling_params.ho_wo_16 = CeilDiv(tiling_params.shape_ho * tiling_params.wo, C0);
-      } else if (tiling_params.tiling_mode == 1) {
-        tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_ho * tiling_params.wo, C0);
-      } else {
-        tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_wo, C0);
-      }
-      tiling_params.mask_shape_128 = ALLING_MASK_128 * CeilDiv(tiling_params.ho_wo_16 * C0, ALLING_MASK_128);
-      tiling_params.one_window_size = C0 * (CeilDiv(tiling_params.ho * tiling_params.wo, C0) + 1);
-    } else {
-      tiling_params.if_block = 0;
-      tiling_params.nc1 = n * c1;
-      tiling_params.block = core_num;
-      while (tiling_params.nc1 % tiling_params.block != 0) {
-        tiling_params.block = tiling_params.block - 1;
-      }
-      tiling_params.nc1 = tiling_params.nc1 / tiling_params.block;
+    // tiling factor
+    if (tiling_params.real_block == core_num) {
+      tiling_params.tile_h_to_block = 0;
       // calc tiling mode
       TilingFactor(tiling_params, compile_info);
       // set ceil Scalars
@@ -448,16 +418,102 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
       }
       tiling_params.mask_shape_128 = ALLING_MASK_128 * CeilDiv(tiling_params.ho_wo_16 * C0, ALLING_MASK_128);
       tiling_params.one_window_size = C0 * (CeilDiv(tiling_params.ho * tiling_params.wo, C0) + 1);
-    }
-  }
-  // set loop params
-  if (tiling_params.real_block == core_num) {
-    tiling_params.act_core_num = CeilDiv(n * c1, tiling_params.block_cycle);
-  } else {
-    if (tiling_params.if_block == 1) {
-      tiling_params.act_core_num = tiling_params.block_num_outer * tiling_params.ho_outer;
     } else {
-      tiling_params.act_core_num = tiling_params.block;
+      // get core divlist
+      std::vector<int32_t> div_list;
+      for (int i = 1; i < core_num + 1; i++) {
+        if (core_num % i == 0) {
+          if (std::find(div_list.begin(), div_list.end(), core_num / i) == div_list.end()) {
+            div_list.push_back(core_num / i);
+          }
+        }
+      }
+      for (auto& iter : div_list) {
+        if (tiling_params.block_num >= iter) {
+          if (tiling_params.ho >= core_num / iter) {
+            tiling_params.block_num_outer = iter;
+            tiling_params.block_num_inner = (tiling_params.block_num + iter - 1) / iter;
+            break;
+          }
+        }
+      }
+      if (tiling_params.block_num * tiling_params.ho < core_num) {
+        tiling_params.ho_outer = tiling_params.ho;
+        tiling_params.block_num_outer = tiling_params.block_num;
+        tiling_params.block_num_inner = 1;
+      } else {
+        if (tiling_params.block_num_outer == 0) {
+          tiling_params.ho_outer = core_num / tiling_params.block_num;
+          tiling_params.block_num_outer = tiling_params.block_num;
+          tiling_params.block_num_inner = 1;
+        } else {
+          tiling_params.ho_outer = core_num / tiling_params.block_num_outer;
+        }
+      }
+      tiling_params.ho_inner = ceil(tiling_params.ho * 1.0 / tiling_params.ho_outer);
+      tiling_params.ho_outer = ceil(tiling_params.ho * 1.0 / tiling_params.ho_inner);
+
+      bool if_block = IfBlock(tiling_params, compile_info, tiling_params.ho_outer, tiling_params.ho_inner);
+      if (if_block) {
+        tiling_params.if_block = 1;
+        tiling_params.tile_h_to_block = 1;
+        // tiling factor
+        int32_t overlap = kh - stride_h;
+        int32_t overlap_num = ceil(overlap * 1.0 / stride_h);
+        if (kh > stride_h) {
+          tiling_params.shape_ho = tiling_params.ho_inner + overlap_num;
+          tiling_params.shape_hi = (tiling_params.ho_inner + overlap_num - 1) * stride_h + kh;
+        } else {
+          tiling_params.shape_ho = tiling_params.ho_inner;
+          tiling_params.shape_hi = tiling_params.ho_inner * stride_h;
+        }
+        if ((tiling_params.hi - tiling_params.ho_inner * stride_h * tiling_params.ho_outer) > 0) {
+          tiling_params.shape_hi =
+              tiling_params.shape_hi + (tiling_params.hi - tiling_params.ho_inner * stride_h * tiling_params.ho_outer);
+        }
+        // calc tiling mode
+        TilingFactor(tiling_params, compile_info);
+        // set ceil Scalars
+        if (tiling_params.tiling_mode == 0) {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.shape_ho * tiling_params.wo, C0);
+        } else if (tiling_params.tiling_mode == 1) {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_ho * tiling_params.wo, C0);
+        } else {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_wo, C0);
+        }
+        tiling_params.mask_shape_128 = ALLING_MASK_128 * CeilDiv(tiling_params.ho_wo_16 * C0, ALLING_MASK_128);
+        tiling_params.one_window_size = C0 * (CeilDiv(tiling_params.ho * tiling_params.wo, C0) + 1);
+      } else {
+        tiling_params.if_block = 0;
+        tiling_params.nc1 = n * c1;
+        tiling_params.block = core_num;
+        while (tiling_params.nc1 % tiling_params.block != 0) {
+          tiling_params.block = tiling_params.block - 1;
+        }
+        tiling_params.nc1 = tiling_params.nc1 / tiling_params.block;
+        // calc tiling mode
+        TilingFactor(tiling_params, compile_info);
+        // set ceil Scalars
+        if (tiling_params.tiling_mode == 0) {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.ho * tiling_params.wo, C0);
+        } else if (tiling_params.tiling_mode == 1) {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_ho * tiling_params.wo, C0);
+        } else {
+          tiling_params.ho_wo_16 = CeilDiv(tiling_params.each_process_wo, C0);
+        }
+        tiling_params.mask_shape_128 = ALLING_MASK_128 * CeilDiv(tiling_params.ho_wo_16 * C0, ALLING_MASK_128);
+        tiling_params.one_window_size = C0 * (CeilDiv(tiling_params.ho * tiling_params.wo, C0) + 1);
+      }
+    }
+    // set loop params
+    if (tiling_params.real_block == core_num) {
+      tiling_params.act_core_num = CeilDiv(n * c1, tiling_params.block_cycle);
+    } else {
+      if (tiling_params.if_block == 1) {
+        tiling_params.act_core_num = tiling_params.block_num_outer * tiling_params.ho_outer;
+      } else {
+        tiling_params.act_core_num = tiling_params.block;
+      }
     }
   }
 }
@@ -572,8 +628,9 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
   MaxPoolGradWithArgmaxV2TilingParams tiling_params;
   InitTilingParams(tiling_params);
 
-  const std::vector<int64_t>& input_shape = op_paras.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& grad_shape = op_paras.inputs[1].tensor[0].shape;
+  const std::vector<int64_t>& input_shape = op_paras.inputs[INPUT_X_INDEX].tensor[0].shape;
+  const std::vector<int64_t>& grad_shape = op_paras.inputs[INPUT_GRAD_INDEX].tensor[0].shape;
+  const std::vector<int64_t>& argmax_shape = op_paras.inputs[INPUT_ARGMAX_INDEX].tensor[0].shape;
   OP_TILING_CHECK(
       input_shape.size() != 5,
       VECTOR_INNER_ERR_REPORT_TILIING(
@@ -593,7 +650,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
                     op_type, "Get grad shape failed, dim 5 of grad shape must be 16, but got %lu.", grad_shape[4]),
                   return false);
 
-  CalTilingParam(tiling_params, compile_params, grad_shape, input_shape);
+  CalTilingParam(tiling_params, compile_params, grad_shape, argmax_shape, input_shape);
   SetTilingParam(tiling_params, run_info);
   PrintTilingParam(tiling_params);
 
