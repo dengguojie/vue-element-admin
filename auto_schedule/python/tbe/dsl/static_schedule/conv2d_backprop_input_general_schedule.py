@@ -1584,21 +1584,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 _raise_dx_general_err("c_ub attach error.")
             return status
 
-        def _fusion_cub_process_quant():
-            if deconv_res.op.tag == "requant_remove_pad":
-                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
-            elif tensor_attr.get("quant_fuse"):
-                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
-                for ub_tensor in tensor_map.get("ub_list"):
-                    if "broadcast" in ub_tensor.op.tag:
-                        sch[ub_tensor].compute_inline()
-                    else:
-                        sch_agent.same_attach(ub_tensor, c_ub)
-                for input_tensor_mem in tensor_map.get("input_tensor"):
-                    sch_agent.same_attach(input_tensor_mem, c_ub)
-                for double_out_tensor_mem in double_out_tensor:
-                    sch_agent.same_attach(double_out_tensor_mem, c_ub)
-
         def _fusion_cub_process():
             if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
                 (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")):
@@ -1614,6 +1599,19 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
                 sch_agent.same_attach(c_ub_cut, c_ub)
                 sch_agent.same_attach(c_ub_drelu, c_ub)
+            elif deconv_res.op.tag == "requant_remove_pad":
+                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
+            elif tensor_attr.get("quant_fuse"):
+                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
+                for ub_tensor in tensor_map.get("ub_list"):
+                    if "broadcast" in ub_tensor.op.tag:
+                        sch[ub_tensor].compute_inline()
+                    else:
+                        sch_agent.same_attach(ub_tensor, c_ub)
+                for input_tensor_mem in tensor_map.get("input_tensor"):
+                    sch_agent.same_attach(input_tensor_mem, c_ub)
+                for double_out_tensor_mem in double_out_tensor:
+                    sch_agent.same_attach(double_out_tensor_mem, c_ub)
             elif "elewise" in deconv_res.op.tag:
                 scope, unit = sch_agent[c_ddr].get_active_scope_and_unit()
                 _, _, _, ax_hw, _ = scope
@@ -1694,7 +1692,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 (1, tbe_platform.CUBE_MKN.get(c_ub.dtype)["mac"][2])
             )
 
-        _fusion_cub_process_quant()
         _fusion_cub_process()
 
         return affine_cub
