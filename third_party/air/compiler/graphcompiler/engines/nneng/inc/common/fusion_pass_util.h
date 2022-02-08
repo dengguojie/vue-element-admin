@@ -21,7 +21,7 @@
 #include <unordered_set>
 namespace fe {
 
-static const std::unordered_set<std::string> ForbiddenClosedPass = {
+const std::unordered_set<std::string> ForbiddenClosedPass = {
         // Graph Fusion
         "ArgMaxWithFusionPass",
         "COPYPass",
@@ -70,7 +70,41 @@ static const std::unordered_set<std::string> ForbiddenClosedPass = {
         "TbeCommonRules0FusionPass",
         "TbeAntiquantMaxpoolingFusionPass",
         "TbeConvRequantFusionPass",
-        "TbeConvDequantS16FusionPass"
+        "TbeConvDequantS16FusionPass",
+        "PackFusionPass",
+        "UnpackFusionPass",
+        "ConstToAttrPass",
+        "ApplyAddOutputPass",
+        "ZSplitVFusionPass",
+        "ZConfusionSoftmaxGradFusionPass",
+        "AvgPool3DGradFusionPass",
+        "AvgPoolGradFusionPass",
+        "AddNFusionPass",
+        "MaxPoolWithArgmaxFusionPass",
+        "TransdataCastFusionPass",
+        "ConstToAttrGatherV2Fusion",
+        "FusedBatchNormGradFusionPass",
+        "FusedBatchnormFusionPass",
+        "ApplyAddOutputPass",
+        "TileConstToAttrFusion",
+	"TransposedUpdateFusionPass",
+	"AReduceMeanFusionPass",
+	"AReduceSumFusionPass",
+        "BatchNormBnInferFusionPass",
+        "BatchNormGradInfGradFusion",
+        "FusedBatchNormBertFusionPass",
+        "FusedBatchNormGradFusionPass",
+        "BatchNormGradBnInferGradFusion",
+        "SingleBatchNormFusion",
+        "ConstToAttrResizeNearestNeighborGradFusion",
+        "ADepthwiseFusionPass",
+        "DepthwiseDfFusionPass",
+        "DepthwiseDwMulFusionPass",
+        "AABiasaddConvFusion",
+        "sedBatchNormGradFusionPass",
+        "Globalavgpoolpass",
+        "DreluFusionPass",
+        "SoftmaxGradExtFusion"
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_FUSION_PASS_UTIL_H_

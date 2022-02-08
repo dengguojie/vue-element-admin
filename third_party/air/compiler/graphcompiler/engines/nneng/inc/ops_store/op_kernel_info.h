@@ -25,15 +25,14 @@
 #include "common/aicore_util_types.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/op_desc.h"
-#include "graph/operator.h"
 #include "graph/types.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/type_utils.h"
 
 namespace fe {
 using AttrTypePair = std::pair<std::string, ge::GeAttrValue::ValueType>;
-static const std::string kReshapeTypeForbidden = "FORBIDDEN";
-static const std::string kReshapeTypeDefault = "DEFAULT";
+const std::string kReshapeTypeForbidden = "FORBIDDEN";
+const std::string kReshapeTypeDefault = "DEFAULT";
 
 
 class InputOrOutputInfo {
@@ -49,14 +48,14 @@ class InputOrOutputInfo {
   const std::string GetName() const;
   const bool& GetIsInput();
   bool GetNeedCompile();
-  uint32_t GetIndex();
+  uint32_t GetIndex() const;
   std::vector<ge::DataType> GetDataType();
   std::vector<ge::Format> GetFormat();
   std::vector<ge::DataType> GetUnknownShapeDataType();
   std::vector<ge::Format> GetUnknownShapeFormat();
   std::vector<ge::GeShape> GetShape();
-  OpParamType GetParamType();
-  OpConstValueDepend GetConstValueDepend();
+  OpParamType GetParamType() const;
+  OpConstValueDepend GetConstValueDepend() const;
   std::string GetReshapeType();
   void SetReshapeType(std::string reshape_type);
   const string GetUniqueName();
@@ -123,7 +122,7 @@ class AttrInfo {
 
   const bool& GetSupportAllValue() const;
 
-  bool GetIsRequired();
+  bool GetIsRequired() const;
 
   const std::vector<ge::GeAttrValue>& GetSupportedAttrValueVector() const;
 
@@ -200,15 +199,17 @@ class OpKernelInfo {
 
   ge::OpInfo GetOpInfo();
   OpStoreInfo GetOpStoreInfo();
+  OpStoreInfo GetOpStoreInfoBf16();
 
   const std::vector<InputOrOutputInfoPtr>& GetAllInputInfo() const;
   const std::vector<InputOrOutputInfoPtr>& GetAllOutputInfo() const;
   /* The following function is an interface for operations
    * which is the same for input and output. */
-  Status GetTensorInfoByName(const bool& isinput, const string& tensor_name, InputOrOutputInfoPtr& tensor_info_ptr);
+  Status GetTensorInfoByName(const bool& isinput, const string& tensor_name,
+                             InputOrOutputInfoPtr& tensor_info_ptr);
 
-  Status GetInputInfoByName(const std::string& input_name, InputOrOutputInfoPtr& input_info_ptr);
-  Status GetOutputInfoByName(const std::string& output_name, InputOrOutputInfoPtr& output_info_ptr);
+  Status GetInputInfoByName(const std::string& input_name, InputOrOutputInfoPtr& input_info_ptr) const;
+  Status GetOutputInfoByName(const std::string& output_name, InputOrOutputInfoPtr& output_info_ptr) const;
   bool GetHeavyOpFlag() const;
   bool GetInputMemContinuesFlag() const;
   bool GetOutputMemContinuesFlag() const;
@@ -222,7 +223,9 @@ class OpKernelInfo {
   bool GetSupportDynamicRank() const;
   bool GetNeedCheckSupportFlag() const;
   bool GetFlagDynamicCompileStatic() const;
+  std::string GetRangeLimitValue() const;
   SlicePattern GetOpSlicePattern() const;
+  CoreType GetCoreType() const;
 
  private:
   bool init_flag_;
@@ -237,6 +240,7 @@ class OpKernelInfo {
   bool is_heavy_o_p_;
   OpPattern op_pattern_ = OP_PATTERN_OP_KERNEL;
   OpStoreInfo op_store_info_;
+  OpStoreInfo op_store_info_bf16_;
   bool input_mem_continues_ = false;
   bool output_mem_continues_ = false;
   std::string op_imp_path_;
@@ -244,6 +248,8 @@ class OpKernelInfo {
   bool is_support_dynamic_rank_ = false;
   SlicePattern slice_pattern_;
   bool dynamic_compile_static_ = false;
+  CoreType core_type_ = CoreType::VECTOR_CORE;
+  std::string is_limited_range_;
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_OPS_STORE_OP_KERNEL_INFO_H_

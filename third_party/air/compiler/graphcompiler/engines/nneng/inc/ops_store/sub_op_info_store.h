@@ -30,7 +30,7 @@ using SubOpInfoStorePtr = std::shared_ptr<SubOpInfoStore>;
 
 class SubOpInfoStore {
  public:
-  SubOpInfoStore(const FEOpsStoreInfo &ops_store_info);
+  explicit SubOpInfoStore(const FEOpsStoreInfo &ops_store_info);
   virtual ~SubOpInfoStore();
 
   /*
@@ -53,7 +53,7 @@ class SubOpInfoStore {
 
   OpKernelInfoPtr GetOpKernelByOpType(const std::string &op_type);
 
-  Status GetOpContentByOpType(const std::string &op_type, OpContent &op_content);
+  Status GetOpContentByOpType(const std::string &op_type, OpContent &op_content) const;
 
   Status SetOpContent(const OpContent &op_content);
 
@@ -71,7 +71,8 @@ class SubOpInfoStore {
 
   Status UpdateOpInfoStore(const std::map<std::string, uint8_t> &update_map);
 
-  void UpdateStrToOpContent(OpContent &op_content, const std::string key1, const std::string key2, std::string &value);
+  void UpdateStrToOpContent(OpContent &op_content, const std::string key1,
+                            const std::string key2, const std::string &value);
 
  private:
   bool init_flag_;
@@ -84,7 +85,7 @@ class SubOpInfoStore {
    * @brief : read the op information json file, and load the op
    * information to this sub store;
    */
-  Status LoadOpInfo(const std::string &filename);
+  Status LoadOpInfo(const std::string &real_path);
 
 
 };

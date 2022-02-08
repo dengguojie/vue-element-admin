@@ -29,8 +29,8 @@
 /** Assigned FE name in log */
 const std::string FE_MODULE_NAME = "FE";
 
-inline pid_t FeGetTid() {
-  thread_local static pid_t tid = syscall(__NR_gettid);
+inline uint64_t FeGetTid() {
+  thread_local static uint64_t tid = static_cast<uint64_t>(syscall(__NR_gettid));
   return tid;
 }
 

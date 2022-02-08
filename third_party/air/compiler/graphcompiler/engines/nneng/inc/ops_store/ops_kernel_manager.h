@@ -60,7 +60,7 @@ public:
   Status AddSubOpsKernel(SubOpInfoStorePtr sub_op_info_store_ptr);
 
 private:
-  OpsKernelManager(const std::string &engine_name);
+  explicit OpsKernelManager(const std::string &engine_name);
   ~OpsKernelManager();
   bool is_init_;
   std::string engine_name_;

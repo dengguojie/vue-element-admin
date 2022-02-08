@@ -21,8 +21,8 @@
 #include <string>
 #include <vector>
 #include "graph/anchor.h"
-#include "graph/types.h"
 #include "runtime/kernel.h"
+#include "graph/op_desc.h"
 
 namespace fe {
 const uint32_t L2_MAXDATANUM = 8;
@@ -43,30 +43,30 @@ struct FusionDataFlow {
   std::pair<std::string, ge::AnchorPtr> node_dataindex_pair;
 };
 
-typedef struct tag_l2_fusion_data {
+using L2FusionData_t = struct tag_l2_fusion_data {
   uint32_t l2Index;
   uint64_t l2Addr;
   uint64_t l2PageNum;
-} L2FusionData_t;
-typedef std::map<uint64_t, L2FusionData_t> L2FusionDataMap_t;
+};
+using L2FusionDataMap_t = std::map<uint64_t, L2FusionData_t>;
 
-typedef struct tag_fe_sm_desc {
+using fe_sm_desc_t = struct tag_fe_sm_desc {
   rtL2Ctrl_t l2ctrl;
   std::string node_name[L2_MAXDATANUM];
   uint8_t output_index[L2_MAXDATANUM];
-} fe_sm_desc_t;
+};
 
-typedef struct TagTaskL2FusionInfo {
+using TaskL2FusionInfo_t = struct TagTaskL2FusionInfo {
   std::string node_name;
   fe_sm_desc_t l2_info;
   L2FusionDataMap_t input;
   L2FusionDataMap_t output;
   uint32_t is_used;
-} TaskL2FusionInfo_t;
+};
 
 using L2FusionInfoPtr = std::shared_ptr<TaskL2FusionInfo_t>;
 
-typedef struct ToOpStruct {
+using ToOpStruct_t = struct ToOpStruct {
   int64_t op_l1_space = 0;
   std::vector<int64_t> op_l1_fusion_type;
   int64_t op_l1_workspace_flag = 0; // for workspace flag
@@ -83,7 +83,7 @@ typedef struct ToOpStruct {
     op_l1_space = -1;
     op_l1_workspace_size = -1;
   }
-} ToOpStruct_t;
+};
 
 enum SlicePattern {
   ELEMENT_WISE = 0,
@@ -97,6 +97,13 @@ enum SlicePattern {
   SLICE_PATTERN_SCATTER,
   SLICE_PATTERN_SEGMENT,
   PATTERN_RESERVED
+};
+
+enum AICoreMode {
+  FFTS_MODE_NO_FFTS = 0,
+  FFTS_MODE_FFTS,
+  FFTS_MODE_FFTS_PLUS,
+  FFTS_MODE_RESERVED
 };
 
 enum OpImplType {
@@ -118,6 +125,7 @@ enum OpImplType {
 enum AOEOption {
   AOE_OPT_USE_KB = 0,
   AOE_OPT_NOT_USE_KB,
+  AOE_OPT_ONLY_USE_KB,
   AOE_OPT_RESERVED
 };
 
@@ -144,10 +152,10 @@ struct FEOpsStoreInfo {
                    need_pre_compile(false), need_compile(false) {}
 };
 
-enum ISAArchVersion { EN_ISA_ARCH_V100 = 0, EN_ISA_ARCH_V200, EN_ISA_ARCH_V210 };
+enum class ISAArchVersion { EN_ISA_ARCH_V100 = 0, EN_ISA_ARCH_V200, EN_ISA_ARCH_V210, EN_ISA_ARCH_V300 };
 
 // Don't change the order, only add new mode in the end.
-enum AppendArgsMode { NO_ARGS = 0, L2_BUFFER_ARGS = 1, L2_CACHE_ARGS = 999};
+enum class AppendArgsMode { NO_ARGS = 0, L2_BUFFER_ARGS = 1, L2_CACHE_ARGS = 999};
 
 enum BufferFusionMode { EN_OPTIMIZE_DISABLE = 0, EN_L2_BUFFER, EN_L2_FUSION };
 
@@ -165,12 +173,52 @@ enum OpPattern {
   OP_PATTERN_REDUCE
 };
 
+enum class CoreType {
+  AICORE = 0,
+  VECTOR_CORE = 1,
+  MIX = 2,
+  DYNAMIC = 3,
+  CORE_TYPE_BOTTOM = 4
+};
+extern const std::map<std::string, CoreType> kCoreTypeMap;
+
 enum OpParamType { REQUIRED = 0, OPTIONAL, DYNAMIC, RESERVED };
 
 enum OpConstValueDepend { CONST_IGNORE = 0, CONST_REQUIRED, CONST_OPTIONAL };
 
-enum OpReduceType { REDUCE_MEAN = 0, REDUCE_ADD, REDUCE_MAX, REDUCE_MIN };
+const std::unordered_set<std::string> kWeightTypes = {"Const", "Constant", "Variable"};
 
-enum OpL1FusionType { L1FUSION_DISABLE = 0, L1FUSION_BASIC, L1FUSION_INPUT_CTR };
+const std::unordered_set<std::string> kConstTypes = {"Const", "Constant"};
+
+enum class CmoType {
+  CMO_TYPE_PREFETCH = 0,
+  CMO_TYPE_INVALID,
+  CMO_TYPE_BARRIER,
+  CMO_TYPE_WRITEBACK,
+  CMO_TYPE_BUTT
+};
+
+enum class CmoTypeObject {
+  INPUT = 0,
+  WEIGHT,
+  OUTPUT,
+  WORKSPACE
+};
+
+using CmoAttr = struct CMO_ATTR {
+  ge::NodePtr   node;
+  CmoTypeObject object;
+  int32_t       object_index;
+};
+
+using CmoExtraAttr = map<std::string, std::vector<CmoAttr>>;
+
+inline bool IsWeight(const ge::OpDescPtr &op_desc_ptr) {
+  return kWeightTypes.count(op_desc_ptr->GetType());
+}
+
+inline bool IsConst(const ge::OpDescPtr &op_desc_ptr) {
+  return kConstTypes.count(op_desc_ptr->GetType());
+}
 }
 #endif  // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_TYPES_H_

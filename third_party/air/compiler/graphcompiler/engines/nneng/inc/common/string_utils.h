@@ -138,7 +138,7 @@ class StringUtils {
  * @param[in] str input string
  * @param[out] true/false
  */
-  static bool IsInteger(string &str) {
+  static bool IsInteger(const string &str) {
     if (str.empty()) {
       return false;
     }
@@ -169,6 +169,9 @@ class StringUtils {
       }
       result += ele_str;
       result += ",";
+    }
+    if (result.empty()) {
+      return "";
     }
     /* Get rid of the last comma. */
     if (result.back() == ',') {

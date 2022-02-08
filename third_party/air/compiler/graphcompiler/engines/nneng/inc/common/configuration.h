@@ -22,10 +22,8 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include <mutex>
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 #include "common/aicore_util_types.h"
-#include "graph/types.h"
 
 namespace fe {
 /** @brief Configuration.
@@ -47,7 +45,7 @@ class Configuration {
    * and build the ops_store_info_vector_ with them.
    * @return Whether the object has been initialized successfully.
    */
-  Status Initialize(const std::map<std::string, std::string> &options, std::string &soc_version);
+  Status Initialize(const std::map<std::string, std::string> &options, const std::string &soc_version);
 
   Status Finalize();
 
@@ -72,23 +70,24 @@ class Configuration {
   /*
    *  get small channel
    */
-  bool GetEnableSmallChannel();
+  bool GetEnableSmallChannel() const;
 
   /*
    *  get compress weight
    */
-  bool GetEnableCompressWeight();
+  bool GetEnableCompressWeight() const;
 
   /*
    * get is_auto_mix_precision switch, default value is false
    */
-  bool GetAutoMixPrecisionSwitch();
+  bool GetAutoMixPrecisionSwitch() const;
+  bool GetAutoMixPrecisionBF16Switch() const;
 
   /*
    * to get l1fusion option out of the current configuration object
    * @return true/false
    */
-  bool EnableL1Fusion();
+  bool EnableL1Fusion() const;
 
   bool EnableL2Fusion();
 
@@ -98,18 +97,23 @@ class Configuration {
 
   bool IsMDCSoc() const;
 
-  bool IsCloudSoc();
+  bool IsCloudSoc() const;
 
-  bool GetAllowAllScopeId();
+  bool IsLhisiSoc() const;
 
   bool GetDuplicationSwitch();
 
+  bool IsEnableNetworkAnalysis() const;
   /*
    * to get switch switch of dump original nodes to fusion node
    * @return true/false
    */
   bool GetDumpOriginalNodesEnable();
-
+  /*
+   * to get switch switch of mix_l2
+   * @return true/false
+   */
+  bool GetMixL2Enable() const;
   /*
    * to get the soc version out of the current configuration object
    * @return soc version
@@ -126,15 +130,16 @@ class Configuration {
 
   const std::string &GetLicenseFusionStr();
 
-  AppendArgsMode GetAppendArgsMode();
+  AppendArgsMode GetAppendArgsMode() const;
 
   AutoTuneMode GetAutoTuneMode();
 
+  void SetAppendArgsMode(AppendArgsMode args_mode);
   /*
    * to get isa arch version out of the current configuration object
    * @return the value of chipset version
    */
-  ISAArchVersion GetIsaArchVer();
+  ISAArchVersion GetIsaArchVer() const;
 
   /*
    * to get BufferFusionMode option out of the current configuration object
@@ -144,7 +149,7 @@ class Configuration {
 
   bool IsEnableReuseMem() const;
 
-  std::string GetBuiltInFusionConfigFilePath();
+  std::string GetBuiltInFusionConfigFilePath() const;
 
   std::string GetCustomFusionConfigFilePath();
 
@@ -177,24 +182,30 @@ class Configuration {
   Status InitPrecisionMode();
 
   void InitLicenseFusion(std::string &license_fusion_value);
-  bool IsInLicenseControlMap(const std::string &key);
+  bool IsInLicenseControlMap(const std::string &key) const;
+
+  void InitSmallChannel(const std::string &enable_small_channel);
+
 
   std::vector<int64_t> GetQualifiedScopeId();
-  std::string GetGeContextOptionValue(const std::string &key);
+  std::string GetGeContextOptionValue(const std::string &key) const;
 
   std::string GetBuildStep();
   std::string GetBuildMode();
   std::string GetFeLibPath() const;
   int32_t GetDataVisitDistThreshold() const;
 
+  int32_t GetMemReuseDistThreshold() const;
   void GetLicenseFusionDetailInfo(std::set<std::string> &license_detail_info) const;
 
   void GetModifyMixlist(std::string &modify_mixlist_path) const;
 
   void GetOpSelectImplModeStr(std::string &op_select_impl_mode_str) const;
 
+  bool CheckSupportCMO() const;
+
  private:
-  Configuration(std::string engine_name);
+  explicit Configuration(std::string engine_name);
   ~Configuration();
   static const std::string CONFIG_FILE_RELATIVE_PATH;
   static const std::string CONFIG_OPS_RELATIVE_PATH;
@@ -212,6 +223,7 @@ class Configuration {
   bool enable_small_channel_;
   bool enable_compress_weight_;
   bool allow_all_scope_id_;
+  bool enable_network_analysis_ = false;
   ISAArchVersion isa_arch_ver_;
   AppendArgsMode append_args_mode_;
   BufferFusionMode buffer_fusion_mode_;
@@ -221,6 +233,8 @@ class Configuration {
   std::vector<int64_t> qualified_scope_id_;
   mutable std::mutex ops_store_info_vector_mutex_;
   int32_t data_visit_dist_threshold_;
+  int32_t mem_reuse_dist_threshold_;
+  std::string use_cmo_;
   std::map<std::string, std::string> op_select_impl_mode_map_;
   std::string modify_mixlist_path_;
   /**
@@ -230,11 +244,11 @@ class Configuration {
   Status InitOptions(const std::map<std::string, std::string> &options);
 
   template <typename T>
-  Status InitFromGeContext(const std::map<std::string, T> str_map, const std::string &key, T &value);
+  Status InitFromGeContext(const std::map<std::string, T> str_map, const std::string &key, T &value) const;
 
   template <typename T>
   Status InitSingleParamFromOptions(const std::map<std::string, std::string> &options,
-                                    const std::map<std::string, T> str_map, const std::string &key, T &value);
+                                    const std::map<std::string, T> str_map, const std::string &key, T &value) const;
 
   /**
    * Get the real Path of current so lib
@@ -247,6 +261,12 @@ class Configuration {
    */
   Status InitAscendOpsPath();
 
+   /**
+   * Get the value of ENABLE_NETWORK_ANALYSIS_DEBUG which
+   * control whether the is_enable_check_graph_cycle is open
+   */
+  void InitEnableNetworkAnalysis();
+
   /**
    * Read the content of configuration file(FE_CONFIG_FILE_PATH)
    * Save the data into content_map
@@ -258,7 +278,7 @@ class Configuration {
    * Validate whether all the mandatory config items is configured.
    * @return whether they are configured.
    */
-  Status ValidateConfigItems();
+  Status ValidateConfigItems() const;
 
   /**
    * If the config keys in DEFAULT_CONFIG_ITEM_VALUE is not configured,
@@ -274,20 +294,20 @@ class Configuration {
   Status AssembleOpsStoreInfoVector();
 
   Status AssembleEachOpsStoreInfo(std::string &op_store_name, std::vector<std::string> &op_store_vector,
-                                 std::vector<OpImplType> &existed_op_impl_types, FEOpsStoreInfo &ops_store_info);
+                                  FEOpsStoreInfo &ops_store_info);
 
-  Status VerifyOpStoreVector(std::vector<std::string> &op_store_vector, const std::string &store_name);
+  Status VerifyOpStoreVector(std::vector<std::string> &op_store_vector, const std::string &op_store_name) const;
 
-  bool IsIgnoreOpStore(FEOpsStoreInfo &ops_store_info);
+  bool IsIgnoreOpStore(const FEOpsStoreInfo &ops_store_info) const;
 
-  Status CheckOpStoreInfo(const FEOpsStoreInfo &op_store_info);
+  Status CheckOpStoreInfo(const FEOpsStoreInfo &op_store_info) const;
 
   /**
    * Check whether the content_map contain the input key.
    * @param key
    * @return Whether the content_map contain the input key.
    */
-  bool ContainKey(const std::string &key);
+  bool ContainKey(const std::string &key) const;
 
   /**
    * Get the value from the content_map if the content_map contains the input key.
@@ -308,7 +328,7 @@ class Configuration {
    *   This value will be returned if the input key can be found in content_map.
    * @return bool value
    */
-  bool GetBoolValue(const std::string &key, bool default_value);
+  bool GetBoolValue(const std::string &key, bool default_value) const;
 
   /**
    * Find the value from the ge context by the input key,
@@ -319,9 +339,9 @@ class Configuration {
    *   This value will be returned if the input key can be found in content_map.
    * @return bool value
    */
-  bool GetGeContextBoolValue(const std::string &key, bool default_value);
+  bool GetGeContextBoolValue(const std::string &key, bool default_value) const;
 
-  Status GetGeContextStringValue(const std::string &key, std::string &option_value);
+  Status GetGeContextStringValue(const std::string &key, std::string &option_value) const;
 
   void InitParametersOfConfigFile();
 
@@ -336,6 +356,10 @@ class Configuration {
   void InitAppendArgsMode();
 
   int32_t ParseDataVisitDistThreshold();
+
+  void InitMemReuseDistThreshold();
+
+  void InitUseCmo();
 
   std::vector<std::string> ParseConfig(const std::string &key, char pattern);
 

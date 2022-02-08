@@ -31,7 +31,7 @@ using GraphCommImplPtr = std::unique_ptr<GraphCommImpl>;
 
 class GraphComm {
 public:
-  GraphComm(const string &engine_name);
+  explicit GraphComm(const string &engine_name);
   virtual ~GraphComm();
   GraphComm(const GraphComm &in) = delete;
   GraphComm &operator=(const GraphComm &in) = delete;
@@ -40,11 +40,11 @@ public:
 
   Status GetscopeNodeMap(ge::ComputeGraph &graph, ScopeNodeMap &fusion_map);
 
-  Status CopyFusionOpNodes(vector<FusionDataFlow> &fus_input_edge_list,
-                           vector<FusionDataFlow> &fus_output_edge_list,
-                           vector<ge::NodePtr> &fus_nodelist,
+  Status CopyFusionOpNodes(const vector<FusionDataFlow> &fus_input_edge_list,
+                           const vector<FusionDataFlow> &fus_output_edge_list,
+                           const vector<ge::NodePtr> &fus_nodelist,
                            ge::OpDescPtr fusion_op_desc,
-                           ge::ComputeGraphPtr fusion_graph);
+                           ge::ComputeGraphPtr fusion_graph) const;
 
   Status CopyFusionOpEdges(ge::ComputeGraph &orig_graph,
                            ge::ComputeGraphPtr fusion_graph);
@@ -91,9 +91,9 @@ public:
                                  vector<FusionDataFlow> &fus_output_edge_list);
 
   Status MergeFusionNodeCtrlEdgeList(ge::NodePtr &fus_node,
-                                     vector<ge::NodePtr> &fus_nodelist,
-                                     vector<FusionDataFlow> &fus_input_edge_list,
-                                     vector<FusionDataFlow> &fus_output_edge_list);
+                                     const vector<ge::NodePtr> &fus_nodelist,
+                                     vector<FusionDataFlow> &fus_input_ctrl_edge_list,
+                                     vector<FusionDataFlow> &fus_output_ctrl_edge_list);
 
   string GetEngineName();
 
@@ -104,7 +104,6 @@ private:
                                std::vector<FusionDataFlow> &fus_input_edge_list);
   Status
   MergeFusionNodeOutputEdgeList(ge::NodePtr fus_node,
-                                std::vector<ge::NodePtr> &fus_nodelist,
                                 std::vector<FusionDataFlow> &fus_output_edge_list);
 
   Status CopyOutDataEdges(const ge::NodePtr &src_node,
@@ -115,7 +114,7 @@ private:
                           const ge::NodePtr &node,
                           const ge::ComputeGraphPtr &fusion_graph);
 
-  void UnlinkOldEdges(vector<FusionDataFlow> &fus_output_edge_list);
+  void UnlinkOldEdges(const vector<FusionDataFlow> &fus_output_edge_list);
 
   string engine_name_;
 

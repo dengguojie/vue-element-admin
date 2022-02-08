@@ -36,6 +36,10 @@ std::string GetPrecisionPolicyString(PrecisionPolicy precision_policy);
 
 bool IsMemoryEmpty(const ge::GeTensorDesc &tensor_desc);
 
+bool IsSubGraphData(const ge::OpDescPtr &op_desc_ptr);
+
+bool IsSubGraphNetOutput(const ge::OpDescPtr &op_desc_ptr);
+
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_FE_TYPE_UTILS_H_
 

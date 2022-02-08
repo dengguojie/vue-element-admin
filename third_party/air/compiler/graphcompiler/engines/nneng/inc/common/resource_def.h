@@ -20,66 +20,38 @@
 #include "runtime/rt.h"
 
 namespace fe {
-
-/**
- * @ingroup cce
- * @brief return value
- */
-typedef enum tagCcStatus {
-  CC_STATUS_SUCCESS = 0,         /**< succ */
-  CC_STATUS_NOT_INITIALIZED = 1, /**< not init */
-  CC_STATUS_ALLOC_FAILED = 2,    /**< alloc mem failed */
-  CC_STATUS_BAD_PARAM = 3,       /**< para check failed */
-  CC_STATUS_INTERNAL_ERROR = 4,  /**< internal error */
-  CC_STATUS_KERNEL_ERROR = 5,    /**< kernel error */
-  CC_STATUS_RUNTIME_ERROR = 6,   /**< runtime error */
-  CC_STATUS_NOT_SUPPORTED = 7,   /**< unsupport error */
-  CC_STATUS_INVALID_VALUE = 7,   /**< invalid value error for blas*/
-  CC_STATUS_RESERVED             /**< just for check */
-} ccStatus_t;
-
 /**
  * @ingroup fe
  * @brief save context of fe library
  */
-typedef struct tagCcContext {
+using ccContext_t = struct tagCcContext {
   rtStream_t streamId;
   uint32_t opIndex;
-} ccContext_t;
+};
 
-typedef struct tagCcContext *ccHandle_t;
-
-typedef struct tagContextInfo {
-  ccHandle_t handle;
-  rtStream_t stream;
-  uint8_t *memBase;
-  uint64_t totalMemSize;
-  uint8_t *weightsMemBase;
-  uint64_t weightsMemSize;
-  uint8_t *weightsMemBaseHost;
-} ContextInfo;
+using ccHandle_t = struct tagCcContext*;
 
 /**
  * @ingroup fe
  * @brief function parameter type
  */
-typedef enum tagFuncType {
+enum class FuncParamType {
   FUSION_L2,
   GLOBAL_MEMORY_CLEAR,
   MAX_NUM,
-} funcParamType_t;
+};
 
 /**
  * @ingroup fe
  * @brief set function point state
  */
-ccStatus_t setFuncState(funcParamType_t type, bool isOpen);
+bool setFuncState(FuncParamType type, bool isOpen);
 
 /**
  * @ingroup cce
  * @brief cce get function point state
  */
-bool getFuncState(funcParamType_t type);
+bool getFuncState(FuncParamType type);
 
 }  // namespace fe
 #endif  // RESOURCE_DEF_H__
