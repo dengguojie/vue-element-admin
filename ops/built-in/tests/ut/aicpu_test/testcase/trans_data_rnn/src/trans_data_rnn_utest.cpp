@@ -30,7 +30,7 @@ TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_1) {
       .Attr("dst_format", format_dst)
       .Attr("input_size", 16)
       .Attr("hidden_size", 4)
-      .Output({"src",
+      .Output({"dst",
                DT_FLOAT16,
                {64},
                (void*)output_data,
@@ -54,7 +54,7 @@ TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_2) {
       .Attr("dst_format", format_dst)
       .Attr("input_size", 10)
       .Attr("hidden_size", 16)
-      .Output({"src",
+      .Output({"dst",
                DT_FLOAT16,
                {1,4,16,16},
                (void*)output_data,
@@ -78,7 +78,7 @@ TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_3) {
       .Attr("dst_format", format_dst)
       .Attr("input_size", 16)
       .Attr("hidden_size", 16)
-      .Output({"src",
+      .Output({"dst",
                DT_FLOAT16,
                {2,4,16,16},
                (void*)output_data,
@@ -102,7 +102,7 @@ TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_4) {
       .Attr("dst_format", format_dst)
       .Attr("input_size", 16)
       .Attr("hidden_size", 4)
-      .Output({"src",
+      .Output({"dst",
                DT_FLOAT,
                {64},
                (void*)output_data,
