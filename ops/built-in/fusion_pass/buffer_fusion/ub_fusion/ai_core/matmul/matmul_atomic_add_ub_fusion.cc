@@ -497,6 +497,7 @@ Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, 
   matmul_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginShape(ge::GeShape(matmul_output_nz_shape));
 
   ge::AttrUtils::SetBool(transdata_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
+  ge::AttrUtils::SetBool(transdata_node->GetOpDesc(), "_node_need_compile", true);
   ge::AttrUtils::SetBool(matmul_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
   Operator op_transdata = ge::OpDescUtils::CreateOperatorFromNode(transdata_node);
 
@@ -564,7 +565,7 @@ Status MatmulAtomicAddUbFusion::GenerateCastNode(ge::NodePtr &matmul_node, ge::N
 
   cast_node = graph_ptr->AddNode(new_desc_ptr);
   ge::AttrUtils::SetBool(cast_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
-
+  ge::AttrUtils::SetBool(cast_node->GetOpDesc(), "_node_need_compile", true);
   matmul_node->GetOpDesc()->MutableOutputDesc(0)->SetDataType(ge::DT_FLOAT);
   matmul_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginDataType(ge::DT_FLOAT);
   ge::AttrUtils::SetBool(matmul_node->GetOpDesc(), NEED_RE_PRECOMPILE, true);
