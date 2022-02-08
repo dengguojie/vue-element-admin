@@ -16,6 +16,7 @@
 trans_data
 """
 from __future__ import absolute_import
+from tbe.dsl.base.operation import get_te_var
 from impl.util import fusion_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
@@ -171,6 +172,41 @@ def _nchw_to_5hd(input_x):
     return res
 
 
+def _nc1hwc0_to_nchw(src, dst):
+    """
+    algorithm: trans nc1hwc0 to nchw
+
+    Parameters
+    ----------
+    src : Tensor, Tensor of input
+
+    dst: dict, shape and dtype of output, should be same shape and type as input
+
+    Returns
+    -------
+    Tensor
+    """
+    src_n, src_c1, src_hw, src_c0 = src.shape
+    if src.op.tag == "conv2d_backprop_input":
+        real_c = get_te_var("dx_c").get_tvm_var()
+    else:
+        real_c = dst.get("ori_shape")[1]
+    transpose_shape = (src_n, src_c1, src_c0, src_hw)
+    transpose_tensor = tvm.compute(
+        transpose_shape,
+        lambda n_idx, c1_idx, c0_idx, hw_idx:
+            src(n_idx, c1_idx, hw_idx, c0_idx),
+        name="transpose")
+    dst_shape = (src_n, real_c, src_hw)
+    dst_tensor = tvm.compute(
+        dst_shape,
+        lambda n_idx, c_idx, hw_idx:
+            transpose_tensor(n_idx, c_idx // src_c0, c_idx % src_c0, hw_idx),
+        name="res_nchw",
+        tag="5HD_TRANS_NCHW")
+    return dst_tensor
+
+
 @register_operator_compute("TransData", op_mode="dynamic", support_fusion=True)
 def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=1, kernel_name="trans_data"):
     """
@@ -214,7 +250,7 @@ def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=
     if src_format == "NCHW" and dst_format == "NC1HWC0":
         return _nchw_to_5hd(src)
     elif src_format == "NC1HWC0" and dst_format == "NCHW":
-        pass
+        return _nc1hwc0_to_nchw(src, dst)
     else:
         error_manager_vector.raise_err_specific_reson(
             "trans_data", "only support format transfer between NCHW and NC1HWC0"

@@ -174,8 +174,6 @@ namespace optiling {
       run_info.AddTilingData(static_cast<int32_t>(params.wo));
       run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
       run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
-      run_info.AddTilingData(run_info_params.g_extend);
-      run_info.AddTilingData(run_info_params.dx_c1_extend);
     } else {
       run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
       run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
@@ -186,20 +184,12 @@ namespace optiling {
     }
     run_info.AddTilingData(static_cast<int32_t>(params.cin));
     run_info.AddTilingData(static_cast<int32_t>(params.c1));
-    if (stride_equal_one) {
-      run_info.AddTilingData(static_cast<int32_t>(params.co));
-    }
     run_info.AddTilingData(static_cast<int32_t>(params.h));
     run_info.AddTilingData(static_cast<int32_t>(params.w));
     run_info.AddTilingData(static_cast<int32_t>(params.kh));
     run_info.AddTilingData(static_cast<int32_t>(params.kw));
-    if (stride_equal_one) {
-      run_info.AddTilingData(run_info_params.dy_c_ori);
-    }
-    if (!stride_equal_one) {
-      run_info.AddTilingData(run_info_params.g_extend);
-      run_info.AddTilingData(run_info_params.dx_c1_extend);
-    }
+    run_info.AddTilingData(run_info_params.g_extend);
+    run_info.AddTilingData(run_info_params.dx_c1_extend);
     run_info.AddTilingData(run_info_params.multiple_extend);
     run_info.AddTilingData(static_cast<int32_t>(params.padu));
     run_info.AddTilingData(static_cast<int32_t>(params.padd));

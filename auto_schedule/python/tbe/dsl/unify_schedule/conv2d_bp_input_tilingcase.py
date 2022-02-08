@@ -20,6 +20,7 @@ conv2d backprop input tiling case
 import copy
 import json
 from collections import OrderedDict
+from itertools import product
 from functools import reduce
 
 from tbe.common.context import get_context
@@ -32,6 +33,7 @@ from tbe.dsl.base.operation import get_context as op_get_context
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
+from tbe.tvm import expr
 from tbe.tvm.expr import Expr
 
 from .cube_tilingcase import TilingSelection
@@ -302,6 +304,25 @@ def build_pointcut_conv2d_backprop_input(func, *args, **kwargs):
     func(*args, **kwargs)
 
 
+def _get_target_area(conv_info, tgt_list, var_names):
+    shape_dict = {"batch_n": conv_info.get("C_shape")[0],
+                  "dx_h": conv_info.get("C_shape")[2],
+                  "dx_w": conv_info.get("C_shape")[3]}
+    tgt_area = {}
+    if DynamicConv2dBpInputParams.binary_mode:
+        tgt_area = {
+            "batch_n": (1, None),
+            "dx_h": (1, None),
+            "dx_w": (1, None)
+        }
+    else:
+        for var_name in var_names:
+            if get_te_var(var_name):
+                tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
+            else:
+                tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
+    tgt_list.append(tgt_area)
+
 @register_tiling_case(pattern=Pattern.CONV2D_BACKPROP_INPUT)
 def calc_conv2dbp_input(outs, option=None):
     """
@@ -325,17 +346,8 @@ def calc_conv2dbp_input(outs, option=None):
             conv_info["fused_double_operand_num"] += 1
             conv_info["fusion_type"] = 4
     tgt_list = []
-    tgt_area = {}
-    shape_dict = {"batch_n": conv_info.get("C_shape")[0],
-                  "dx_h": conv_info.get("C_shape")[2],
-                  "dx_w": conv_info.get("C_shape")[3]}
+    _get_target_area(conv_info, tgt_list, var_names)
 
-    for var_name in var_names:
-        if get_te_var(var_name):
-            tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
-        else:
-            tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
-    tgt_list.append(tgt_area)
     max_id = DEFAULT_KERNEL_ID
     if fuzz_build:  # parse input range
         # generate tgt_area by format
@@ -390,7 +402,7 @@ def calc_conv2dbp_input(outs, option=None):
     total_info = {}
     for tgt in tgt_list:
         new_info = copy.deepcopy(conv_info)
-        tiling_op = Conv2dBpInputTiling(new_info, DynamicConv2dBpInputParams.var_map)
+        tiling_op = Conv2dBpInputTiling(new_info)
         selector_dx = TilingSelection(tiling_op, max_id)
         tiling_cases += selector_dx.calc_tiling(tgt, var_names)
         # >>> start: gather compile_info process
@@ -435,14 +447,17 @@ class Conv2dBpInputTiling(CubeTilingOp):
     """
     get_tiling class for dynamic shape conv2d_bp_input
     """
-    def __init__(self, tiling_info, var_map):
-        super().__init__(tiling_info, None, var_map)
+    def __init__(self, tiling_info):
+        super().__init__(tiling_info, None)
         self.a_info = self.tiling_info['A_shape']
         self.b_info = self.tiling_info['B_shape']
         self.c_info = self.tiling_info['C_shape']
         self.a_type = self.tiling_info["A_dtype"]
         self.c_type = self.tiling_info["C_dtype"]
-        self.var_map = var_map
+        self.stride_h = self.tiling_info["strideH_expand"]
+        self.binary_mode = DynamicConv2dBpInputParams.binary_mode
+        self.attrs = DynamicConv2dBpInputParams.attrs
+        self.var_map = DynamicConv2dBpInputParams.var_map
         self._get_calc_info()
         self.key = 'C_shape'
         self.op_type = "conv2d_bp_input"
@@ -455,6 +470,36 @@ class Conv2dBpInputTiling(CubeTilingOp):
         nc = tiling.get("CL0_matrix")[0]
         n_factor = utils.icd(n_size // block_dim[1], nc)
         block_dim[1] = n_size // nc // n_factor
+
+    @staticmethod
+    def _check_template_valid(choice):
+        """
+        Check if the template is valid
+
+        Returns
+        -------
+        bool: True, the template is valid
+        """
+        al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, _ = choice
+        # al1 full load
+        invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
+            (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or
+            (bl1_attach_flag == 2 and abkl1_attach != 1))
+
+        invalid_choice = invalid_choice or (
+            (al1_attach_flag == utils.ATTACH_FULL_LOAD and al1_pb == 2) or
+            (bl1_attach_flag == utils.ATTACH_FULL_LOAD and bl1_pb == 2))
+
+        # al1 attach at c_ddr
+        invalid_choice = invalid_choice or (al1_attach_flag == utils.ATTACH_EQUAL and (
+            (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+            abkl1_attach != 0) or (bl1_attach_flag == utils.ATTACH_LESS and abkl1_attach != 1)))
+
+        # if al1 attach at l0c and full load in l1 buffer, there is no need to open double buffer
+        invalid_choice = invalid_choice or (al1_attach_flag == utils.ATTACH_LESS and
+            (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 2))
+
+        return invalid_choice
 
     def get_repo_tiling(self):
         """
@@ -486,6 +531,74 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 and self.check_tiling_ub(tiling_mess)):
                 res_list.append(tiling_mess)
         return res_list
+
+    def get_cache_tiling(self):
+        '''
+        according to size in l1, generate 9 kind of templates, each subdivided into 132 different
+        templates as follows templates according to size in l1 sub template
+        --------------------------------------------|-----
+        al1 @l0c and bl1 @l0c                       | 48
+        al1 @l0c and bl1 @ddr                       | 16
+        al1 @l0c and bl1 full load                  | 8
+        al1 @ddr and bl1 @l0c                       | 16
+        al1 @ddr and bl1 @ddr                       | 16
+        al1 @ddr and bl1 full load                  | 8
+        al1 full load and bl1 @l0c                  | 8
+        al1 full load and bl1 @ddr                  | 8
+        al1 full load and bl1 full load             | 4
+
+        Returns
+        ----------
+        cache_tiling_all: list, include 132 different tiling templates
+        '''
+        cache_tiling_all = {}
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
+        bl1_attach_flag, min_kl1_cmp_kl0) = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1])
+        attach_choices = list(
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
+        stride_expand_flag = 0 if isinstance(self.stride_h, int) else 1
+        for choice in attach_choices:
+            cache_tiling = {
+                'block_dim': [-1, -1, -1, 1],
+                'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CUB_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BUB_shape': [-1, -1, 1, 1],
+                'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
+                'AUB_shape': [-1, -1, 1, 1],
+                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
+                'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
+                'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_ON, 'BUB_pbuffer': utils.DB_ON,
+                'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
+                'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
+                'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
+                'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
+                'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
+                'bl0_attach_flag': utils.ATTACH_LESS,
+                'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
+            }
+            al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0 = choice
+            if self._check_template_valid(choice):
+                continue
+
+            cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = al1_pb
+            cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = bl1_pb
+            cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = l0c_pb
+            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = abkl1_attach
+            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = al1_attach_flag
+            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = bl1_attach_flag
+            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = min_kl1_cmp_kl0
+            name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
+            cache_tiling_all[name] = [[], cache_tiling, []]
+            tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]
+        return tiling_cases
 
     def check_tiling_ub(self, tiling_mess):
         """
@@ -813,20 +926,21 @@ class Conv2dBpInputTiling(CubeTilingOp):
         """
 
         var_range = OrderedDict()
-        if "batch_n" in self.var_map:
-            var_range['batch_n'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
-        if "dedy_h" in self.var_map:
-            dx_h_low, dx_h_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
-            dedy_h_low = self.get_output_h(dx_h_low)
-            dedy_h_high = self.get_output_h(dx_h_high)
-            var_range['dx_h'] = (dx_h_low, dx_h_high)
-            var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
-        if "dedy_w" in self.var_map:
-            dx_w_low, dx_w_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
-            dedy_w_low = self.get_output_w(dx_w_low)
-            dedy_w_high = self.get_output_w(dx_w_high)
-            var_range['dx_w'] = (dx_w_low, dx_w_high)
-            var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
+        if not self.binary_mode:
+            if "batch_n" in self.var_map:
+                var_range['batch_n'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
+            if "dedy_h" in self.var_map:
+                dx_h_low, dx_h_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
+                dedy_h_low = self.get_output_h(dx_h_low)
+                dedy_h_high = self.get_output_h(dx_h_high)
+                var_range['dx_h'] = (dx_h_low, dx_h_high)
+                var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
+            if "dedy_w" in self.var_map:
+                dx_w_low, dx_w_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
+                dedy_w_low = self.get_output_w(dx_w_low)
+                dedy_w_high = self.get_output_w(dx_w_high)
+                var_range['dx_w'] = (dx_w_low, dx_w_high)
+                var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
         correct_range_flag = DynamicConv2dBpInputParams.dynamic_para.get("correct_range_flag", False)
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "correct_range_flag": correct_range_flag}

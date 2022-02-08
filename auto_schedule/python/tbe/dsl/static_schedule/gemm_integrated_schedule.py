@@ -325,7 +325,7 @@ class GemmSchedule:
         self.m1_name = "m"
         self.k1_name = "k"
         self.n1_name = "n"
-        self.split_mode = {"ceil_mode": True}
+        self.ceil_mode = {"factor_ceil_mode": True, "split_ceil_mode": True}
         self.status_ori_dict = {
             0: Compare.EQUAL,
             1: Compare.LESS_EQ,
@@ -1955,7 +1955,7 @@ class GemmSchedule:
         if -1 not in tiling['block_dim']:
             return tiling
 
-        self.split_mode = {"ceil_mode": False, "round_mode": "round_up"}
+        self.ceil_mode = {"factor_ceil_mode": False, "split_ceil_mode": False}
         self.res.op.attrs["cache_tiling"] = 1
         skip_bound_check_list = [self.container.TENSOR_MAP.get("a_l1"), self.container.TENSOR_MAP.get("b_l1"),
             self.container.TENSOR_MAP.get("a_l0a"), self.container.TENSOR_MAP.get("b_l0b"),
@@ -2606,7 +2606,7 @@ class GemmSchedule:
                 affine_cub[-1] *= 2
                 self._print_debug(affine_cub, "affine_cub in quant_fusion and requant_fusion")
             self.sch_agent.attach_at(
-                c_ub_fract, self.root_tensor, affine_shape=affine_cub, split_mode=self.split_mode)
+                c_ub_fract, self.root_tensor, affine_shape=affine_cub, ceil_mode_dict=self.ceil_mode)
             self.status_controller.c_ub_attach_status = "c_gm"
 
             for tensor in same_attach_cub:
@@ -2706,7 +2706,7 @@ class GemmSchedule:
                 affine_l0c[-4] //= 2
 
             self.sch_agent.attach_at(
-                c_l0c, self.root_tensor, affine_shape=affine_l0c, split_mode=self.split_mode)
+                c_l0c, self.root_tensor, affine_shape=affine_l0c, ceil_mode_dict=self.ceil_mode)
             self.status_controller.c_l0c_attach_status = "c_gm"
         else:
             args_dict = {
@@ -2833,11 +2833,11 @@ class GemmSchedule:
             self.sch_agent.attach_at(
                 a_l0a, self.container.TENSOR_MAP.get("c_l0c"),
                 affine_shape=l0a2l0c_affine_shape,
-                split_mode=self.split_mode
+                ceil_mode_dict=self.ceil_mode
             )
         elif status == Compare.GREATE_EQ:
             self.sch_agent.attach_at(
-                a_l0a, self.root_tensor, affine_shape=l0a2out_affine_shape, split_mode=self.split_mode)
+                a_l0a, self.root_tensor, affine_shape=l0a2out_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2932,11 +2932,11 @@ class GemmSchedule:
         elif status == Compare.LESS_EQ:
             self.sch_agent.attach_at(
                 b_l0b, self.container.TENSOR_MAP.get("c_l0c"),
-                affine_shape=l0b2l0c_affine_shape, split_mode=self.split_mode)
+                affine_shape=l0b2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             l0b2out_affine_shape = self._fix_affine_out_int8(b_l0b.dtype, l0b2out_affine_shape)
             self.sch_agent.attach_at(
-                b_l0b, self.root_tensor, affine_shape=l0b2out_affine_shape, split_mode=self.split_mode)
+                b_l0b, self.root_tensor, affine_shape=l0b2out_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -3061,18 +3061,18 @@ class GemmSchedule:
             # reduce duplicate loading, probably not only in cachetiling scene
             if self.cache_tiling and self.format_out == "ND":
                 self.sch_agent.attach_at(a_l1, self.root_tensor, affine_shape=l1a2out_affine_shape,
-                    split_mode=self.split_mode)
+                    ceil_mode_dict=self.ceil_mode)
             else:
                 self.sch_agent.same_attach(a_l1, self.container.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.status_controller.al1_attach_status = "c_l0c"
             self.sch_agent.attach_at(
                 a_l1, self.container.TENSOR_MAP.get("c_l0c"),
-                affine_shape=l1a2l0c_affine_shape, split_mode=self.split_mode)
+                affine_shape=l1a2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             self.status_controller.al1_attach_status = "c_gm"
             self.sch_agent.attach_at(
-                a_l1, self.root_tensor, affine_shape=l1a2out_affine_shape, split_mode=self.split_mode)
+                a_l1, self.root_tensor, affine_shape=l1a2out_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -3206,7 +3206,7 @@ class GemmSchedule:
                     l1b2out_affine_shape[-3] = self.cache_tiling.get("m_single_core") * \
                                                self.cache_tiling.get("m_al1") * self.cache_tiling.get("m_l0")
                 self.sch_agent.attach_at(
-                    b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, split_mode=self.split_mode)
+                    b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.bl1_attach_status = self.status_controller.c_l0c_attach_status
                 self.sch_agent.same_attach(b_l1, self.container.TENSOR_MAP.get("c_l0c"))
@@ -3214,12 +3214,12 @@ class GemmSchedule:
             self.status_controller.bl1_attach_status = "c_l0c"
             self.sch_agent.attach_at(
                 b_l1, self.container.TENSOR_MAP.get("c_l0c"),
-                affine_shape=l1b2l0c_affine_shape, split_mode=self.split_mode)
+                affine_shape=l1b2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             self.status_controller.bl1_attach_status = "c_gm"
             l1b2out_affine_shape = self._fix_affine_out_int8(b_l1.dtype, l1b2out_affine_shape)
             self.sch_agent.attach_at(
-                b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, split_mode=self.split_mode)
+                b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -3375,7 +3375,7 @@ class GemmSchedule:
         elif status_l1 == Compare.LESS_EQ:
             self.status_controller.aub_attach_status = "a_l1"
             self.sch_agent.attach_at(
-                a_ub, self.container.TENSOR_MAP.get("a_l1"), aub_l1_affine_shape, split_mode=self.split_mode)
+                a_ub, self.container.TENSOR_MAP.get("a_l1"), aub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.status_controller.aub_attach_status = "c_gm"
@@ -3384,11 +3384,11 @@ class GemmSchedule:
                 self.status_controller.aub_attach_status = "c_l0c"
                 self.sch_agent.attach_at(
                     a_ub, self.container.TENSOR_MAP.get("c_l0c"),
-                    affine_shape=aub_l0c_affine_shape, split_mode=self.split_mode)
+                    affine_shape=aub_l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.aub_attach_status = "c_gm"
                 self.sch_agent.attach_at(
-                    a_ub, self.root_tensor, affine_shape=aub_out_affine_shape, split_mode=self.split_mode)
+                    a_ub, self.root_tensor, affine_shape=aub_out_affine_shape, ceil_mode_dict=self.ceil_mode)
 
         same_attach_tensors = self.container.tensors_in_aub
         for tensor in same_attach_tensors:
@@ -3528,7 +3528,7 @@ class GemmSchedule:
         elif status_l1 == Compare.LESS_EQ:
             self.status_controller.bub_attach_status = "b_l1"
             self.sch_agent.attach_at(
-                b_ub, self.container.TENSOR_MAP.get("b_l1"), bub_l1_affine_shape, split_mode=self.split_mode)
+                b_ub, self.container.TENSOR_MAP.get("b_l1"), bub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.status_controller.bub_attach_status = "c_gm"
@@ -3537,12 +3537,12 @@ class GemmSchedule:
                 self.status_controller.bub_attach_status = "c_l0c"
                 self.sch_agent.attach_at(
                     b_ub, self.container.TENSOR_MAP.get("c_l0c"),
-                    affine_shape=bub_l0c_affine_shape, split_mode=self.split_mode)
+                    affine_shape=bub_l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.bub_attach_status = "c_gm"
                 bub_out_affine_shape = self._fix_affine_out_int8(b_ub.dtype, bub_out_affine_shape)
                 self.sch_agent.attach_at(
-                    b_ub, self.root_tensor, affine_shape=bub_out_affine_shape, split_mode=self.split_mode)
+                    b_ub, self.root_tensor, affine_shape=bub_out_affine_shape, ceil_mode_dict=self.ceil_mode)
 
         for tensor in self.container.tensors_in_bub:
             if tensor == b_ub:
@@ -3606,23 +3606,17 @@ class GemmSchedule:
         bind multi core for cache tiling
         """
         batch_dim, n_dim, m_dim, _ = self.tiling.get("block_dim")
-        if self.split_mode.get("round_mode"):
-            ax_m_out, ax_m_inner = self.sch[root_tensor].split(
-                ax_m, nparts=m_dim, tail_strategy=self.split_mode["round_mode"]
-            )
-            ax_n_out, ax_n_inner = self.sch[root_tensor].split(
-                ax_n, nparts=n_dim, tail_strategy=self.split_mode["round_mode"]
-            )
-        else:
-            ax_m_out, ax_m_inner = self.sch[root_tensor].split(ax_m, nparts=m_dim)
-            ax_n_out, ax_n_inner = self.sch[root_tensor].split(ax_n, nparts=n_dim)
+        ax_m_out, ax_m_inner = self.sch[root_tensor].split(
+            ax_m, nparts=m_dim, tail_strategy="round_up"
+        )
+        ax_n_out, ax_n_inner = self.sch[root_tensor].split(
+            ax_n, nparts=n_dim, tail_strategy="round_up"
+        )
+
         if self.status_controller.have_batch:
-            if self.split_mode.get("round_mode"):
-                ax_batch_out, ax_batch_inner = self.sch[root_tensor].split(
-                    ax_batch, nparts=batch_dim, tail_strategy=self.split_mode["round_mode"]
-                    )
-            else:
-                ax_batch_out, ax_batch_inner = self.sch[root_tensor].split(ax_batch, nparts=batch_dim)
+            ax_batch_out, ax_batch_inner = self.sch[root_tensor].split(
+                ax_batch, nparts=batch_dim, tail_strategy="round_up"
+                )
             self.sch[root_tensor].reorder(ax_batch_out, ax_n_out, ax_m_out,
                                           ax_batch_inner, ax_n_inner, ax_m_inner)
             axes_list = [ax_batch_out, ax_n_out, ax_m_out]
@@ -4055,13 +4049,13 @@ class GemmSchedule:
         else:
             scope_outer, scope_inner = self.sch_agent[ori_tensor].get_active_scopes()
         outer_outer, outer_inner = self.sch_agent[ori_tensor].split(scope_outer, self.block_in,
-            split_mode=self.split_mode)
+            ceil_mode=self.ceil_mode.get("split_ceil_mode"))
         inner_outer, inner_inner = self.sch_agent[ori_tensor].split(scope_inner, self.block_out,
-            split_mode=self.split_mode)
+            ceil_mode=self.ceil_mode.get("split_ceil_mode"))
         self.sch_agent[ori_tensor].reorder(outer_outer, inner_outer, outer_inner, inner_inner)
         if self.cache_tiling:
             m_inner_outer, _ = self.sch_agent[ori_tensor].split(outer_inner, self.BLOCKS_PER_REPEAT,
-                                                           split_mode=self.split_mode)
+                                                                ceil_mode_dict=self.ceil_mode.get("split_ceil_mode"))
             self.sch_agent[ori_tensor].reorder(m_inner_outer, outer_outer, inner_outer)
             self.sch_agent[ori_tensor].emit_insn(outer_outer, emit_insn_cmd, attrs=attrs)
         elif self.status_controller.have_batch:

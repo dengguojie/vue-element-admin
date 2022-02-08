@@ -225,6 +225,8 @@ def _collect_ori_tensors(ori_paras):
 
 
 @register_operator_compute("Conv2DBackpropInput", op_mode="dynamic", support_fusion=True)
+@para_check.check_input_type((dict, tvm.tensor.Tensor), (dict, tvm.tensor.Tensor), (dict, tvm.tensor.Tensor),
+                             dict, (tuple, list), (tuple, list), (tuple, list), int, str, str)
 def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
                                   filters, out_backprop, y, strides, pads, dilations=(1, 1, 1, 1),
                                   groups=1, data_format='NHWC', kernel_name='conv2d_backprop_input'):
@@ -233,49 +235,41 @@ def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R09
 
     Parameters
     ----------
-    input_size: dict, will not be used
-            input tensor size.
+    input_size: Tensor or dict, will not be used input tensor size.
 
-    filter: dict with keys(ori_shape, ori_format, dtype)
-            convolution kernel
+    filter: Tensor or dict w, convolution kernel.
 
-    out_backprop: dict with keys(ori_shape, ori_format, dtype)
-                  gradients.
+    out_backprop: Tensor or dict, gradients.
 
-    y: dict with keys(ori_shape, ori_format, dtype and range)
-       conv2d_backprop_input output tensor
+    y: dict with keys(ori_shape, ori_format, dtype and range) conv2d_backprop_input output tensor
 
-    strides: tuple/list of 4 integers
-             filter move stride
+    strides: tuple/list of 4 integers, filter move stride
 
-    pads: tuple/list of 4 integers
-          str: "SAME" or "VALID"
-          tuple/list of 4 integers: [pad_top, pad_bottom, pad_left, pad_right]
+    pads: tuple/list of 4 integers, [pad_top, pad_bottom, pad_left, pad_right]
 
-    dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_input
-    groups: int
-            param for group conv2d_backprop_input
+    dilations: tuple/list of 4 integers, filter expand size of dilated conv2d_backprop_input
 
-    data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
+    groups: int, param for group conv2d_backprop_input
 
-    kernel_name: str
-            kernel name, default value is "conv2d_backprop_input"
+    data_format: str, An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+    Specify the data format of the input and output data.
+
+    kernel_name: str, kernel name, default value is "conv2d_backprop_input"
 
     Returns
     -------
     None
     """
 
-    fusion_util.check_fusion_input([input_size, filters, out_backprop])
     # set fusion build config
-    build_cfg = tbe_register.get_fusion_buildcfg()
-    build_cfg['constant_realize_extent_in_infer_bound'] = False
+    build_cfg = {"constant_realize_extent_in_infer_bound": False}
+    tbe_register.set_fusion_buildcfg("Conv2DBackpropInput", build_cfg)
 
-    return _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides,
+    res = _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides,
                                           pads, dilations, groups, data_format, kernel_name)
+    if isinstance(out_backprop, tvm.tensor.Tensor):
+        return res.get('op_res')[0]
+    return res
 
 
 def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides, pads,
@@ -288,15 +282,22 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
     }
 
     default_para = set_default_para()
-    if not input_size.get("ori_shape"):
+    if isinstance(input_size, dict) and not input_size.get("ori_shape"):
         ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
     conv2dbp_para = Conv2dBackpropParaProcess(ori_paras)
-    paras = conv2dbp_para.config_paras()
+    conv2dbp_para.config_paras()
     res_dtype = y.get("dtype").lower()
-    dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
-                                     out_backprop=paras.get("dy_tensor"),
-                                     filter_sizes=paras.get("filter_shape"),
-                                     input_sizes=paras.get("input_size"),
+    attrs_info = {
+        "strides": strides,
+        "pads": pads,
+        "dilations": dilations,
+        "groups": groups,
+        "data_format": data_format
+    }
+    dedx = tbe.conv2d_backprop_input(filters=conv2dbp_para.tensors.get("filter_tensor"),
+                                     out_backprop=conv2dbp_para.tensors.get("dy_tensor"),
+                                     filter_sizes=conv2dbp_para.shape.get("filter_shape_nchw"),
+                                     input_sizes=conv2dbp_para.shape.get("dx_shape_nchw"),
                                      para_dict={
                                          "strides":
                                              (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
@@ -304,13 +305,17 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
                                          "dilations": conv2dbp_para.dilations,
                                          "res_dtype": res_dtype,
                                          "kernel_name": kernel_name,
-                                         "group_dict": paras.get("group_para"),
-                                         "correct_range_flag": paras.get("correct_range_flag", False),
+                                         "group_dict": conv2dbp_para.attrs.get("group_para"),
+                                         "correct_range_flag": conv2dbp_para.attrs.get("correct_range_flag", False),
+                                         "binary_mode": conv2dbp_para.binary_mode,
+                                         "attrs": attrs_info,
                                          "ori_tensors": _collect_ori_tensors(ori_paras),
                                          "op_type": "Conv2DBackpropInput"
                                      })
 
-    return {'op_placeholder': [paras.get("input_tensor"), paras.get("filter_tensor"), paras.get("dy_tensor")],
+    return {'op_placeholder': [conv2dbp_para.tensors.get("input_tensor"),
+                               conv2dbp_para.tensors.get("filter_tensor"),
+                               conv2dbp_para.tensors.get("dy_tensor")],
             'op_res': [dedx]}
 
 

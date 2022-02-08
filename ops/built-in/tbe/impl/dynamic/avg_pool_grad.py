@@ -306,12 +306,12 @@ def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
 
     conv2dbp_para = Conv2dBackpropParaProcess(ori_paras)
 
-    paras = conv2dbp_para.config_paras()
+    conv2dbp_para.config_paras()
 
-    dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
-                                     out_backprop=paras.get("dy_tensor"),
-                                     filter_sizes=paras.get("filter_shape"),
-                                     input_sizes=paras.get("input_size"),
+    dedx = tbe.conv2d_backprop_input(filters=conv2dbp_para.tensors.get("filter_tensor"),
+                                     out_backprop=conv2dbp_para.tensors.get("dy_tensor"),
+                                     filter_sizes=conv2dbp_para.shape.get("filter_shape_nchw"),
+                                     input_sizes=conv2dbp_para.shape.get("dx_shape_nchw"),
                                      para_dict={
                                          "strides":
                                          (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
@@ -319,14 +319,16 @@ def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
                                          "dilations": conv2dbp_para.dilations,
                                          "res_dtype": default_para.get("res_dtype"),
                                          "kernel_name": kernel_name,
-                                         "group_dict": paras.get("group_para"),
-                                         "correct_range_flag": paras.get("correct_range_flag", False),
-                                         "pooling_mode": paras.get("pooling_mode"),
+                                         "group_dict": conv2dbp_para.attrs.get("group_para"),
+                                         "correct_range_flag": conv2dbp_para.attrs.get("correct_range_flag", False),
+                                         "pooling_mode": conv2dbp_para.pooling_mode,
                                          "ori_tensors": _collect_ori_tensors(ori_paras),
                                          "op_type": "AvgPoolGrad"
                                      })
 
-    return {'op_placeholder': [paras.get("input_tensor"), paras.get("dy_tensor"), paras.get("filter_tensor")],
+    return {'op_placeholder': [conv2dbp_para.tensors.get("input_tensor"),
+                               conv2dbp_para.tensors.get("dy_tensor"),
+                               conv2dbp_para.tensors.get("filter_tensor")],
             'op_res': [dedx]}
 
 

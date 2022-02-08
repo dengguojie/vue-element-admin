@@ -246,31 +246,35 @@ def _deconvolution_compute(x, filter, bias, offset_w,
         "data_format": data_format, "offset_x": offset_x, "kernel_name": kernel_name
     }
 
-    conv2dbp_para = DeconvolutionParaProcess(ori_paras)
-    paras = conv2dbp_para.config_paras()
+    deconv_para = DeconvolutionParaProcess(ori_paras)
+    deconv_para.config_paras()
     default_para = set_default_para()
-    dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
-                                     out_backprop=paras.get("x_tensor"),
-                                     filter_sizes=paras.get("filter_shape"),
-                                     input_sizes=paras.get("input_size"),
+    dedx = tbe.conv2d_backprop_input(filters=deconv_para.tensors.get("filter_tensor"),
+                                     out_backprop=deconv_para.tensors.get("x_tensor"),
+                                     filter_sizes=deconv_para.shape.get("filter_shape_nchw"),
+                                     input_sizes=deconv_para.shape.get("dx_shape_nchw"),
                                      para_dict={
                                          "strides":
-                                             (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
-                                         "padding": conv2dbp_para.pads,
-                                         "dilations": conv2dbp_para.dilations,
+                                             (deconv_para.strides[H_DIM], deconv_para.strides[W_DIM]),
+                                         "padding": deconv_para.pads,
+                                         "dilations": deconv_para.dilations,
                                          "res_dtype": default_para.get("res_dtype"),
-                                         "tensor_bias": paras.get("bias_tensor"),
+                                         "tensor_bias": deconv_para.tensors.get("bias_tensor"),
                                          "offset_x": offset_x,
                                          "kernel_name": kernel_name,
-                                         "group_dict": paras.get("group_para"),
-                                         "correct_range_flag": paras.get("correct_range_flag", False),
+                                         "group_dict": deconv_para.attrs.get("group_para"),
+                                         "correct_range_flag": deconv_para.attrs.get("correct_range_flag", False),
                                          "ori_tensors": _collect_ori_tensors(ori_paras),
                                          "op_type": "Deconvolution"
                                      })
     if bias:
-        return {'op_placeholder': [paras.get("x_tensor"), paras.get("filter_tensor"), paras.get("bias_tensor")],
+        return {'op_placeholder': [deconv_para.tensors.get("x_tensor"),
+                                   deconv_para.tensors.get("filter_tensor"),
+                                   deconv_para.tensors.get("bias_tensor")],
                 'op_res': [dedx]}
-    return {'op_placeholder': [paras.get("x_tensor"), paras.get("filter_tensor")], 'op_res': [dedx]}
+    return {'op_placeholder': [deconv_para.tensors.get("x_tensor"),
+                               deconv_para.tensors.get("filter_tensor")],
+            'op_res': [dedx]}
 
 
 @register_operator('Deconvolution')

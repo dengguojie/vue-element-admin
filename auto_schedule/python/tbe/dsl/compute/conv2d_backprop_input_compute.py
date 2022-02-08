@@ -26,6 +26,7 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
+from tbe.dsl.compute.cube_util import ceil_div
 from tbe.dsl.base.operation import get_te_var
 from tbe.tvm.tensor import Tensor
 
@@ -623,17 +624,32 @@ def _check_input_params(
     _check_chip_limitation()
 
 
-def _get_var_map(out_backprop):
+def _get_var_map(out_backprop, input_sizes):
     var_map = {}
     if isinstance(out_backprop.shape[0], tvm.expr.Var):
-        var_map["batch_n"] = get_te_var("batch_n").get_tvm_var()
+        var_map["batch_n"] = out_backprop.shape[0]
     if isinstance(out_backprop.shape[2], tvm.expr.Var):
-        var_map["dedy_h"] = get_te_var("dedy_h").get_tvm_var()
-        var_map["dx_h"] = get_te_var("dx_h").get_tvm_var()
+        var_map["dedy_h"] = out_backprop.shape[2]
+        var_map["dx_h"] = input_sizes[2]
     if isinstance(out_backprop.shape[3], tvm.expr.Var):
-        var_map["dedy_w"] = get_te_var("dedy_w").get_tvm_var()
-        var_map["dx_w"] = get_te_var("dx_w").get_tvm_var()
+        var_map["dedy_w"] = out_backprop.shape[3]
+        var_map["dx_w"] = input_sizes[3]
     return var_map
+
+
+def _get_dx_shape(input_sizes, filters, binary_mode):
+    """
+    Configure the shape of dx in different scenarios
+
+    """
+    dx_batch, dx_c, dx_h, dx_w = input_sizes
+    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
+    shape_dx = (dx_batch, ceil_div(dx_c, dx_n0), dx_h, dx_w, dx_n0)
+    if binary_mode:
+        shape_dx = (dx_batch, get_te_var('dx_c1').get_tvm_var(), dx_h, dx_w, dx_n0)
+    if filters.dtype == "float32":
+        shape_dx = (dx_batch, ceil_div(dx_c, dx_k0), dx_h, dx_w, dx_k0)
+    return shape_dx
 
 
 @tbe_utils.para_check.check_input_type(Tensor, Tensor, (list, tuple), (list, tuple), dict)
@@ -690,9 +706,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     group_dict = para_dict.get("group_dict")
     pooling_mode = para_dict.get("pooling_mode")
     impl_mode = para_dict.get("impl_mode", "")
-
-    def ceil(lhs, rhs):
-        return (lhs + rhs - 1) // rhs
+    binary_mode = para_dict.get("binary_mode", False)
+    attrs = para_dict.get("attrs", {})
 
     DeconvParam.set_default()
     if fusion_para is None:
@@ -709,7 +724,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             cube_util.GroupDictKeys.g_extend: 1,
             cube_util.GroupDictKeys.multiple_extend: 1,
             cube_util.GroupDictKeys.groups: 1,
-            cube_util.GroupDictKeys.dx_c1_extend: ceil(input_sizes[1], tbe_platform.C0_SIZE),
+            cube_util.GroupDictKeys.dx_c1_extend: ceil_div(input_sizes[1], tbe_platform.C0_SIZE),
             cube_util.GroupDictKeys.dy_c1_extend: cube_util.shape_to_list(out_backprop.shape)[1],
             cube_util.GroupDictKeys.dx_c_ori: input_sizes[1],
             cube_util.GroupDictKeys.dy_c_ori: filter_sizes[0],
@@ -738,31 +753,30 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         return (strides[0] > STRIDE_LOAD3D_MAX or strides[1] > STRIDE_LOAD3D_MAX or filter_h > FILTER_HW_LOAD3D_MAX or
         filter_w > FILTER_HW_LOAD3D_MAX or dilation_h > DILATION_MAX or dilation_w > DILATION_MAX)
 
-    DeconvParam.var_map = _get_var_map(out_backprop)
+    DeconvParam.var_map = _get_var_map(out_backprop, input_sizes)
 
     switch_to_general_scheme = _is_switch_to_general_scheme()
 
-    _check_input_params(filters,
-                        out_backprop,
-                        filter_sizes,
-                        input_sizes,
-                        strides,
-                        padding,
-                        dilations,
-                        res_dtype,
-                        offset_w,
-                        group_dict,
-                        fusion_para=fusion_para,
-                        switch_to_general_scheme=switch_to_general_scheme)
+    if not binary_mode:
+        _check_input_params(filters,
+                            out_backprop,
+                            filter_sizes,
+                            input_sizes,
+                            strides,
+                            padding,
+                            dilations,
+                            res_dtype,
+                            offset_w,
+                            group_dict,
+                            fusion_para=fusion_para,
+                            switch_to_general_scheme=switch_to_general_scheme)
 
     _, _, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
 
     _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
-    shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
-    if filters.dtype == "float32":
-        shape_dx = (dx_batch, ceil(dx_c, dx_k0), dx_h, dx_w, dx_k0)
 
+    shape_dx = _get_dx_shape(input_sizes, filters, binary_mode)
     shape_dy = cube_util.shape_to_list(out_backprop.shape)
     g_extend = group_dict.get(cube_util.GroupDictKeys.g_extend)
     dy_c1_extend = group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
@@ -803,6 +817,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "kernel_name": kernel_name,
         "dynamic_shape_flag": True
     }
+    DynamicConv2dBpInputParams.binary_mode = binary_mode
+    DynamicConv2dBpInputParams.attrs = attrs
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
     DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False),
                                                "op_type": para_dict.get("op_type", "")}
@@ -885,7 +901,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             var_map=DeconvParam.var_map,
             pooling_mode=pooling_mode,
             l0a_dma_flag=l0a_dma_flag,
-            impl_mode=impl_mode
+            impl_mode=impl_mode,
+            binary_mode=binary_mode
         )
 
     dy_col = pattc.generate_a(out_backprop)
@@ -907,3 +924,4 @@ class DynamicConv2dBpInputParams:
     var_map = {}
     dynamic_para = {}
     ori_tensor = {}
+    attrs = {}

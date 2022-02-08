@@ -17,7 +17,9 @@
 """
 util
 """
+from numpy import number
 from tbe.common.utils.errormgr import error_manager_util
+from tbe import tvm
 
 
 def raise_util_err(msg):
@@ -40,14 +42,34 @@ def ceil_div(number_m, number_n):
 
     Parameters:
     ----------
-    number_m : dividend, <type 'int'>
+    number_m : dividend, <type 'int', 'NoneType', 'tvm.expr'>
 
-    number_n : divisor, <type 'int'>
+    number_n : divisor, <type 'int', 'NoneType', 'tvm.expr'>
 
     Returns : Result of the compute
     ----------
     """
+    if number_m is None or number_n is None:
+        return None
     return (number_m + number_n - 1) // number_n
+
+
+def floor_div(number_m, number_n):
+    """
+    Calculate the ceil result of division
+
+    Parameters:
+    ----------
+    number_m : dividend, <type 'int', 'NoneType', 'tvm.expr'>
+
+    number_n : divisor, <type 'int', 'NoneType', 'tvm.expr'>
+
+    Returns : Result of the compute
+    ----------
+    """
+    if number_m is None or number_n is None:
+        return None
+    return tvm.div(number_m, number_n)
 
 
 class Compare:

@@ -21,6 +21,8 @@ import warnings
 import math
 import copy
 
+from tbe.tvm.api import select
+
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
@@ -47,6 +49,7 @@ FORMAT_NC1HWC0_DIM = 5
 DYNAMIC_FLAG = -1
 UNKNOWN_FLAG = -2
 UNKNOWN_SHAPE = [-2]
+BINARY_RANGE = ((1, None), (1, None), (1, None), (1, None))
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 INPUT_SIZE_DEFAULT_SHAPE = [4]
 DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input", "depthwise_conv2d_backprop_input"]
@@ -360,6 +363,8 @@ class CubeParaProcess:
         self.pads = paras.get("pads")
         self.dilations = paras.get("dilations")
         self.op_type = None
+        self.binary_mode = False
+        self.fusion_flag = False
         self.valid_paras = {
             "n_min": 1,
             "hw_min": 1,
@@ -414,11 +419,13 @@ class CubeParaProcess:
         if in_shape[C_DIM] == DYNAMIC_FLAG:
             in_shape[C_DIM] = channel
 
-    def check_range_valid(self, shape, dyn_range, name, in_format):
+    def check_range_valid(self, shape, dynamic_range, name, in_format):
         """
         check if the range is valid
         """
 
+        if self.binary_mode:
+            return
         def _check_range(in_range, dim):
             if in_range:
                 if not isinstance(in_range, (tuple, list)):
@@ -438,7 +445,7 @@ class CubeParaProcess:
                     if in_range[0] > in_range[1]:
                         err_man.raise_err_specific_user(self.op_type, "upper bound must be greater than lower bound.")
 
-        for index, dim in enumerate(zip(shape, dyn_range)):
+        for index, dim in enumerate(zip(shape, dynamic_range)):
             if dim[0] == DYNAMIC_FLAG:
                 if not dim[1]:
                     err_man.raise_err_specific_user(self.op_type, "must specify range when shape is -1")
@@ -600,11 +607,10 @@ class CubeParaProcess:
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
                 (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)], correct_range_flag, new_in_range
 
-    def check_pads(self, dy_shape, op_type):
+    def check_pads(self, op_type):
         """
         check pad
         """
-
         if op_type == "deconvolution":
             if DYNAMIC_FLAG in self.pads:
                 err_man.raise_err_specific_user(self.op_type,
@@ -612,10 +618,6 @@ class CubeParaProcess:
             if self.pads[0] != self.pads[1] or self.pads[2] != self.pads[3]:
                 err_man.raise_err_specific_user(self.op_type,
                 "value of pads for deconvolution should be [A, A, B, B].")
-        elif DYNAMIC_FLAG in dy_shape[1:] and (DYNAMIC_FLAG not in self.pads and sum(self.pads) != 0):
-            if op_type not in DX_OP_TYPE:
-                err_man.raise_err_specific_user(self.op_type,
-                "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1.")
 
     def calc_pads(self, in_shape_nc1hwc0, w_shape):
         """
@@ -680,6 +682,18 @@ class CubeParaProcess:
 
         return {"enlarge": enlarge, "c1_opt": c1_opt, "cout1_opt": cout1_opt, "group_opt": group_opt}
 
+    def get_binary_mode(self, dynamic_range):
+        """
+        get binary mode, True if -1 in attr or None in range
+        """
+        if self.fusion_flag:
+            for idx_range in dynamic_range:
+                if not idx_range:
+                    return True
+                if not idx_range[0] or not idx_range[1]:
+                    return True
+        return False
+
 
 class Conv2dParaProcess(CubeParaProcess):
     """
@@ -732,6 +746,7 @@ class Conv2dParaProcess(CubeParaProcess):
             self.bias = conver_tensor2dict(self.bias_tensor, False)
             self.dtype = self.input_tensor.dtype
 
+        self.none_range_flag = False
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
 
@@ -925,21 +940,167 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.out_backprop = paras.get("out_backprop")
         self.y = paras.get("y")
         self.data_format = paras.get("data_format")
-        self.dtype = paras.get("filters").get("dtype")
-        if paras.get("input_size"):
+        if isinstance(self.filters, dict):
+            self.dtype = paras.get("filters").get("dtype")
+        else:
+            self.dtype = self.filters.dtype
+        if paras.get("input_size") is not None:
             self.input_size = paras.get("input_size")
         else:
             self.input_size = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
         self.pooling_mode = paras.get("pooling_mode")
+        self.shape = {}
+        self.range = {}
+        self.attrs = {}
+        self.tensors = {}
 
-    def __calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range, group_para):
+    def _calc_filter_shape_fz(self):
         """
-        calculate shape for mmad
+        calculate filter's shape with frac_z format
         """
-
-        self.round_channel(dy_shape, filter_shape, self.dtype, input_size)
+        group_para = self.attrs.get("group_para")
+        filter_shape = self.shape.get("filter_shape_nchw")
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]['mac'][1:3]
 
+        if self.dtype == "int8":
+            filter_shape_frac_z = (
+                group_para["g_extend"] * group_para["dy_c1_extend"] * filter_shape[H_DIM] * filter_shape[W_DIM],
+                group_para["dx_c1_extend"],
+                block_size_n,
+                block_size_k,
+            )
+        else:
+            filter_shape_frac_z = (
+                group_para["g_extend"] * group_para["dx_c1_extend"] * filter_shape[H_DIM] * filter_shape[W_DIM],
+                group_para["dy_c1_extend"],
+                block_size_k,
+                block_size_n,
+            )
+        self.shape["filter_shape_frac_z"] = filter_shape_frac_z
+
+    def _define_attrs_var(self):
+        """
+        define attrs vars for binary mode
+        """
+        self.pads = (operation.var("padt"), operation.var("padb"),
+                     operation.var("padl"), operation.var("padr"))
+        _, _, pos_h, pos_w = pos_from_format(self.data_format)
+        if self.strides[pos_h] != 1 or self.strides[pos_w] != 1:
+            self.strides = (1, 1, operation.var("stride_h"), operation.var("stride_w"))
+        operation.var("shape_up_modify")
+        operation.var("shape_left_modify")
+        operation.var("shape_down_modify")
+        operation.var("shape_right_modify")
+        operation.var("pad_up_before")
+        operation.var("pad_left_before")
+        operation.var("pad_down_after")
+        operation.var("pad_right_after")
+
+    def _define_tiling_var(self):
+        """
+        define tiling vars for binary mode
+        """
+        operation.var("batch_dim")
+        operation.var("n_dim")
+        operation.var("m_dim")
+        operation.var("batch_single_core")
+        operation.var("n_single_core")
+        operation.var("m_single_core")
+        operation.var("k_al1")
+        operation.var("k_bl1")
+        operation.var("m_al1")
+        operation.var("n_bl1")
+        operation.var("k_aub")
+        operation.var("m_aub")
+        operation.var("m_l0")
+        operation.var("n_l0_div_ub")
+        operation.var("n_ub")
+        operation.var("k_l0")
+        operation.var("k_al1_div_16")
+        operation.var("k_bl1_div_16")
+        operation.var("al1_bound")
+        operation.var("bl1_bound")
+        operation.var("aub_bound")
+
+    def _infer_binary_shape_range_attrs(self):
+        """
+        define vars for binary mode
+        """
+        # support both Tensor input and dict input
+        batch, dy_c1, dedy_h, dedy_w, dy_c0 = self.out_backprop.shape
+        filter_ci1hw, filter_co1, *_ = self.filters.shape
+
+        dx_c = operation.var("dx_c")
+        dx_c1 = operation.var("dx_c1")
+        dx_h = operation.var("dx_h")
+        dx_w = operation.var("dx_w")
+        kernel_h = operation.var("kernel_h")
+        kernel_w = operation.var("kernel_w")
+        g_extend = operation.var("g_extend")
+        dx_c1_extend = operation.var("dx_c1_extend")
+
+        self.attrs["group_para"] = {"g_extend": g_extend,
+                                    "multiple_extend": operation.var("multiple_extend"),
+                                    "dx_c1_extend": dx_c1_extend,
+                                    "dy_c1_extend": filter_co1}
+        filter_ci1hw = g_extend * dx_c1_extend * kernel_h * kernel_w
+
+        self.shape["dy_shape_nc1hwc0"] = (batch, dy_c1, dedy_h, dedy_w, dy_c0)
+        self.shape["dy_shape_nchw"] = (batch, dy_c1 * dy_c0, dedy_h, dedy_w)
+        self.shape["filter_shape_nchw"] = (dy_c1 * dy_c0, dx_c, kernel_h, kernel_w)
+        self.shape["dx_shape_nchw"] = (batch, dx_c, dx_h, dx_w)
+        self.shape["dx_shape_nc1hwc0"] = (batch, dx_c1, dx_h, dx_w, CUBE_SIZE)
+        self._calc_filter_shape_fz()
+        self._define_attrs_var()
+        self._define_tiling_var()
+        self.range["dy_range_nchw"] = BINARY_RANGE
+        self.range["new_dx_range_nchw"] = BINARY_RANGE
+
+    def check_paras(self):
+        """
+        check original paras
+        """
+        if isinstance(self.filters, dict):
+            self.check_input_dict(self.filters, "filters", False)
+            self.check_input_dict(self.out_backprop, "out_backprop", False)
+            self.check_input_dict(self.y, "y", False)
+            if UNKNOWN_FLAG in self.input_size.get("ori_shape") or DYNAMIC_FLAG in self.input_size.get("ori_shape"):
+                err_man.raise_err_specific_user(
+                    self.op_type, "dynamic shape not support input size's shape [-1] and [-2]")
+            if self.dtype != self.out_backprop.get("dtype"):
+                err_man.raise_err_specific_user(
+                    "conv2d_backprop_input", "the dtype of filter and out_backprop are not the same.")
+            self.check_format(self.filters.get("ori_format"), "weights")
+            if self.out_backprop.get("ori_format") != self.data_format:
+                err_man.raise_err_specific_user(
+                    "conv2d_backprop_input", "the format of out_backprop and data_format are not the same.")
+        else:
+            self.fusion_flag = True
+
+        para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
+        para_check.check_dtype_rule(self.y.get("dtype"), self.valid_paras.get("valid_dtype"))
+        self.check_format(self.data_format, "output")
+        if self.y.get("ori_format") != self.data_format:
+            err_man.raise_err_specific_user(
+                "conv2d_backprop_input", "the format of y and data_format are not the same.")
+        para_check.check_kernel_name(self.paras.get("kernel_name"))
+        self.check_para_dim(self.strides, "strides")
+        self.check_para_dim(self.dilations, "dilations")
+        self.check_para_dim(self.pads, "pads")
+        self.binary_mode = self.get_binary_mode(self.y.get("range"))
+
+    def _config_shape(self):
+        """
+        calculate shape for mad
+        """
+
+        dy_shape = self.shape.get("dy_shape_nchw")
+        input_size = self.shape.get("dx_shape_nchw")
+        dy_range = self.range.get("dy_range_nchw")
+        input_range = self.range.get("dx_range_nchw")
+
+        self.round_channel(dy_shape, self.shape.get("filter_shape_nchw"), self.dtype, input_size)
+        block_size_k = tbe_platform.CUBE_MKN[self.dtype]['mac'][1]
         dy_shape_nc1hwc0 = [dy_shape[N_DIM], dy_shape[C_DIM] // block_size_k,
                             dy_shape[H_DIM], dy_shape[W_DIM], block_size_k]
 
@@ -958,27 +1119,18 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             operation.add_exclude_bound_var(dy_shape_nc1hwc0[W_DIM])
             operation.add_exclude_bound_var(input_size[W_DIM])
 
-        if self.dtype == "int8":
-            filter_shape_frac_z = (
-                group_para["g_extend"] * group_para["dy_c1_extend"] * filter_shape[H_DIM] * filter_shape[W_DIM],
-                group_para["dx_c1_extend"],
-                block_size_n,
-                block_size_k,
-            )
-        else:
-            filter_shape_frac_z = (
-                group_para["g_extend"] * group_para["dx_c1_extend"] * filter_shape[H_DIM] * filter_shape[W_DIM],
-                group_para["dy_c1_extend"],
-                block_size_k,
-                block_size_n,
-            )
-        return dy_shape, filter_shape, input_size, dy_shape_nc1hwc0, filter_shape_frac_z
+        self.shape['dy_shape_nc1hwc0'] = dy_shape_nc1hwc0
+        self.calc_pads(input_size, self.shape.get("filter_shape_nchw"))
+        self._calc_filter_shape_fz()
 
-
-    def infer_shape_and_range(self):
+    def _infer_shape_range_attrs(self):
         """
         infer range from dx to dy
         """
+
+        if self.binary_mode:
+            self._infer_binary_shape_range_attrs()
+            return
         self.check_input_dict(self.y, "y", False)
 
         dy_shape = list(self.out_backprop.get("ori_shape"))
@@ -986,11 +1138,12 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         dx_shape = self.y.get("ori_shape")
         self.check_para_dim(dx_shape, "input_size")
         self.check_para_dim(filter_shape, "filters")
-        self.check_pads(dy_shape, self.op_type)
+        self.check_pads(self.op_type)
         filter_shape_nchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
         self.get_attr_nchw(self.data_format)
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
 
+        correct_range_flag = False
         if self.check_unknown_scene(dy_shape, dx_shape_nchw, filter_shape_nchw[C_DIM] * self.groups):
             dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
 
@@ -1027,71 +1180,49 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                                              group_dict=group_para)
             self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        dy_range_nchw, correct_range_flag, new_dx_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
+            dy_range_nchw, correct_range_flag,\
+                dx_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
 
-        output_range = copy.deepcopy(dy_range_nchw)
-        if output_range[W_DIM][1]:
-            if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
-                output_range[W_DIM] = (output_range[W_DIM][0],
-                                       output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-        self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
+            output_range = copy.deepcopy(dy_range_nchw)
+            if output_range[W_DIM][1]:
+                if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
+                    output_range[W_DIM] = (output_range[W_DIM][0],
+                                        output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
+            self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw, \
-            group_para, correct_range_flag
-
-    def check_paras(self):
-        """
-        check original paras
-        """
-        self.check_input_dict(self.filters, "filters", False)
-        self.check_input_dict(self.out_backprop, "out_backprop", False)
-        self.check_input_dict(self.y, "y", False)
-        para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
-        para_check.check_dtype_rule(self.y.get("dtype"), self.valid_paras.get("valid_dtype"))
-        if UNKNOWN_FLAG in self.input_size.get("ori_shape") or DYNAMIC_FLAG in self.input_size.get("ori_shape"):
-            err_man.raise_err_specific_user(
-                self.op_type, "dynamic shape not support input size's shape [-1] and [-2]")
-        if self.dtype != self.out_backprop.get("dtype"):
-            err_man.raise_err_specific_user(
-                "conv2d_backprop_input", "the dtype of filter and out_backprop are not the same.")
-
-        self.check_format(self.data_format, "output")
-        self.check_format(self.filters.get("ori_format"), "weights")
-        if self.out_backprop.get("ori_format") != self.data_format:
-            err_man.raise_err_specific_user(
-                "conv2d_backprop_input", "the format of out_backprop and data_format are not the same.")
-        if self.y.get("ori_format") != self.data_format:
-            err_man.raise_err_specific_user(
-                "conv2d_backprop_input", "the format of y and data_format are not the same.")
-        para_check.check_kernel_name(self.paras.get("kernel_name"))
-        self.check_para_dim(self.strides, "strides")
-        self.check_para_dim(self.dilations, "dilations")
-        self.check_para_dim(self.pads, "pads")
-
-        (dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw,
-         group_para, correct_range_flag) = self.infer_shape_and_range()
-
-        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self.__calc_shape(
-            dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw, group_para)
-        self.calc_pads(input_size_nchw, filter_shape_nchw)
-
-        return {"dy_shape_nc1hwc0": dy_shape_nc1hwc0, "filter_shape_frac_z": filter_shape_frac_z,
-                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para,
-                "correct_range_flag": correct_range_flag, "pooling_mode": self.pooling_mode}
+        self.shape = {
+            "dy_shape_nchw": dy_shape_nchw,
+            "filter_shape_nchw": filter_shape_nchw,
+            "dx_shape_nchw": dx_shape_nchw
+        }
+        self.range = {
+            "dy_range_nchw": dy_range_nchw,
+            "dx_range_nchw": dx_range_nchw,
+        }
+        self.attrs = {
+            "group_para": group_para,
+            "correct_range_flag": correct_range_flag
+        }
+        self._config_shape()
 
     def config_paras(self):
         """
         config paras and placeholders
         """
-        param = self.check_paras()
-        input_tensor = tvm.placeholder([4], name="input_size", dtype="int32")
-        dy_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
-        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
-
-        return {"dy_tensor": dy_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
-                "filter_shape": param.get("filter_shape"), "input_size": param.get("input_size"),
-                "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False),
-                "pooling_mode": param.get("pooling_mode")}
+        self.check_paras()
+        self._infer_shape_range_attrs()
+        if self.fusion_flag:
+            self.tensors = {
+                "input_tensor": self.input_size,
+                "dy_tensor": self.out_backprop,
+                "filter_tensor": self.filters
+            }
+        else:
+            self.tensors["input_tensor"] = tvm.placeholder([4], name="input_size", dtype="int32")
+            self.tensors["dy_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"),
+                                                        name="dedy", dtype=self.dtype)
+            self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"),
+                                                            name="filter", dtype=self.dtype)
 
 
 class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
@@ -1250,7 +1381,7 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
         dx_shape = self.y.get("ori_shape")
         self.check_para_dim(dx_shape, "input_size")
         self.check_para_dim(filter_shape, "filters")
-        self.check_pads(dy_shape, self.op_type)
+        self.check_pads(self.op_type)
         filter_shape_nchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
         self.get_attr_nchw(self.data_format)
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
@@ -1289,32 +1420,38 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
                     output_range[W_DIM] = (output_range[W_DIM][0],
                                            output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-        dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
+        dx_range_nchw, correct_range_flag, dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
         self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, new_dy_range_nchw, dx_range_nchw, \
-            group_para, correct_range_flag
+        self.shape = {
+            "dy_shape_nchw": dy_shape_nchw,
+            "filter_shape_nchw": filter_shape_nchw,
+            "dx_shape_nchw": dx_shape_nchw,
+        }
+        self.range = {
+            "dy_range_nchw": dy_range_nchw,
+            "dx_range_nchw": dx_range_nchw,
+        }
+        self.attrs = {
+            "group_para": group_para,
+            "correct_range_flag": correct_range_flag
+        }
 
     def config_paras(self):
         """
         check original paras
         """
-        param = super().check_paras()
+        super().check_paras()
+        self.infer_shape_and_range()
+        self._config_shape()
 
-        input_tensor = tvm.placeholder([4], name="input_size", dtype="int32")
-        x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
-        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+        self.tensors["input_tensor"] = tvm.placeholder([4], name="input_size", dtype="int32")
+        self.tensors["x_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
+        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
-            input_channel = align(param.get("input_size")[C_DIM], tbe_platform.CUBE_MKN[self.dtype]['mac'][2])
-            bias_tensor = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.y.get("dtype"))
-        else:
-            bias_tensor = None
-
-        return {"x_tensor": x_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
-                "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
-                "input_size": param.get("input_size"), "group_para": param.get("group_para"),
-                "correct_range_flag": param.get("correct_range_flag", False)}
+            input_channel = align(self.shape.get("dx_shape_nchw")[C_DIM], tbe_platform.CUBE_MKN[self.dtype]['mac'][2])
+            self.tensors["bias_tensor"] = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.y.get("dtype"))
 
 
 class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
@@ -1446,7 +1583,7 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
         dx_shape = self.y.get("ori_shape")
         self.check_para_dim(dx_shape, "input_size")
         self.check_para_dim(filter_shape, "filters")
-        self.check_pads(dy_shape, self.op_type)
+        self.check_pads(self.op_type)
         filter_shape_nchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
         self.get_attr_nchw(self.data_format)
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
@@ -1485,13 +1622,23 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
                     output_range[W_DIM] = (output_range[W_DIM][0],
                                            output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-        dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
+        dx_range_nchw, correct_range_flag, dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
         self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, new_dy_range_nchw, dx_range_nchw, \
-            group_para, correct_range_flag
-
+        self.shape = {
+            "dy_shape_nchw": dy_shape_nchw,
+            "filter_shape_nchw": filter_shape_nchw,
+            "dx_shape_nchw": dx_shape_nchw
+        }
+        self.range = {
+            "dy_range_nchw": dy_range_nchw,
+            "dx_range_nchw": dx_range_nchw,
+        }
+        self.attrs = {
+            "group_para": group_para,
+            "correct_range_flag": correct_range_flag
+        }
 
     def config_paras(self):
         """
@@ -1502,20 +1649,15 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
                 self.op_type, "length of stride in deconvolution should be 2.")
         self.strides = [1, 1, self.strides[H_DIM_2D], self.strides[W_DIM_2D]]
 
-        param = super().check_paras()
+        super().check_paras()
+        self.infer_shape_and_range()
+        self._config_shape()
 
-        x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
-        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+        self.tensors["x_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
+        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
-            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias",
+            self.tensors["bias_tensor"] = tvm.placeholder((self.shape.get("filter_shape_nchw")[N_DIM],), name="tensor_bias",
             dtype=self.bias.get("dtype"))
-        else:
-            bias_tensor = None
-
-        return {"x_tensor": x_tensor, "filter_tensor": filter_tensor,
-                "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
-                "input_size": param.get("input_size"), "group_para": param.get("group_para"),
-                "correct_range_flag": param.get("correct_range_flag", False)}
 
 
 class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
@@ -1540,7 +1682,7 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
 
         self.check_para_dim(dx_shape, "input_size")
         self.check_para_dim(filter_shape, "filters")
-        self.check_pads(dy_shape, self.op_type)
+        self.check_pads(self.op_type)
         self.get_attr_nchw(self.data_format)
 
         filter_shape_kchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
@@ -1582,7 +1724,7 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
                                              group_dict=group_para)
             self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        dy_range_nchw, correct_range_flag, new_dx_range_nchw = self.get_output_range(
+        dy_range_nchw, correct_range_flag, dx_range_nchw = self.get_output_range(
             filter_shape_nchw, dx_range_nchw)
 
         output_range = copy.deepcopy(dy_range_nchw)
@@ -1592,9 +1734,32 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
                                        output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
-        return (dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw,
-                group_para, correct_range_flag)
+        self.shape = {
+            "dy_shape_nchw": dy_shape_nchw,
+            "filter_shape_nchw": filter_shape_nchw,
+            "dx_shape_nchw": dx_shape_nchw,
+        }
+        self.range = {
+            "dy_range_nchw": dy_range_nchw,
+            "dx_range_nchw": dx_range_nchw,
+        }
+        self.attrs = {
+            "group_para": group_para,
+            "correct_range_flag": correct_range_flag
+        }
 
+    def config_paras(self):
+        """
+        config paras and placeholders
+        """
+        super().check_paras()
+        self.infer_shape_and_range()
+        self._config_shape()
+        self.tensors["input_tensor"] = tvm.placeholder([4], name="input_size", dtype="int32")
+        self.tensors["dy_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"),
+                                                    name="dedy", dtype=self.dtype)
+        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"),
+                                                        name="filter", dtype=self.dtype)
 
 class Conv3dBackpropParaProcess():
     """

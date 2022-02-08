@@ -21,6 +21,7 @@ from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.compute import cube_util
+from tbe.dsl.base.operation import get_te_var
 from tbe.tvm import api as tvm
 from tbe.tvm.intrin import abs as tvm_abs
 
@@ -70,7 +71,8 @@ class DeConvPattern(cube_util.CubeDslPattern):
         var_map,
         pooling_mode,
         l0a_dma_flag,
-        impl_mode
+        impl_mode,
+        binary_mode
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -96,7 +98,8 @@ class DeConvPattern(cube_util.CubeDslPattern):
         self.pooling_mode = pooling_mode
         self.l0a_dma_flag = l0a_dma_flag
         self.load3d_special_multiply = 1
-        self.impl_mode = impl_mode
+        self.impl_mode = impl_mode,
+        self.binary_mode = binary_mode
 
     def generate_a(self, dy_ddr):
         """
@@ -281,15 +284,26 @@ class DeConvPattern(cube_util.CubeDslPattern):
         pad_list = (pad_up_before, pad_down_after,
                     pad_left_before, pad_right_after)
         # stride > 1 ub->l1 may cut
-        shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
-        shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
-        shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
-        shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+        if self.binary_mode:
+            shape_up_modify = get_te_var("shape_up_modify").get_tvm_var()
+            shape_left_modify = get_te_var("shape_left_modify").get_tvm_var()
+            shape_down_modify = get_te_var("shape_down_modify").get_tvm_var()
+            shape_right_modify = get_te_var("shape_right_modify").get_tvm_var()
 
-        pad_up_before = (pad_up_before + tvm_abs(pad_up_before)) // 2
-        pad_left_before = (pad_left_before + tvm_abs(pad_left_before)) // 2
-        pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
-        pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
+            pad_up_before = get_te_var("pad_up_before").get_tvm_var()
+            pad_left_before = get_te_var("pad_left_before").get_tvm_var()
+            pad_down_after = get_te_var("pad_down_after").get_tvm_var()
+            pad_right_after = get_te_var("pad_right_after").get_tvm_var()
+        else:
+            shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
+            shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
+            shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
+            shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+
+            pad_up_before = (pad_up_before + tvm_abs(pad_up_before)) // 2
+            pad_left_before = (pad_left_before + tvm_abs(pad_left_before)) // 2
+            pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
+            pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
 
         new_pad = (pad_up_before, pad_down_after,
                    pad_left_before, pad_right_after)
@@ -434,7 +448,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
         else:
             w_k1, _, kernel_cout0, w_k0 = cube_util.shape_to_list(kernels.shape)
             kernel_h, kernel_w = self._kernel_h, self._kernel_w
-            if w_k1 % (kernel_h * kernel_w) != 0:
+            if not self.binary_mode and w_k1 % (kernel_h * kernel_w) != 0:
                 error_manager_cube.raise_err_specific(
                     "Conv2dBackpropInputD",
                     "w_k1 could not be divided by kernel_h*kernel_w"

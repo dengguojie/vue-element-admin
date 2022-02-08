@@ -21,6 +21,7 @@ from tbe import tvm
 from tbe.common.utils.errormgr import error_manager_util
 from .util import Compare
 from .util import ceil_div
+from .util import floor_div
 
 
 def raise_schedule_agent_err(msg):
@@ -300,16 +301,18 @@ class ScopeManager:
         # add g_axis split list
         self._axis_split_list.insert(0, [outer])
 
-    def _split_with_nparts(self, parent, factor, nparts, split_mode):
+    def _split_with_nparts(self, parent, factor, nparts, ceil_mode=True):
         """
         split scopes with nparts
         """
         unit, extent = self._axis_unit.get(parent)
-        if split_mode and split_mode.get("round_mode"):
-            outer, inner = self._stage.split(parent, nparts=nparts, tail_strategy=split_mode["round_mode"])
-        else:
+        if ceil_mode:
             outer, inner = self._stage.split(parent, nparts=nparts)
-        factor = ceil_div(extent, nparts)
+            factor = ceil_div(extent, nparts)
+        else:
+            outer, inner = self._stage.split(parent, nparts=nparts, tail_strategy="round_up")
+            factor = floor_div(extent, nparts)
+
         self._axis_unit[inner] = [unit, factor]
         self._axis_unit[outer] = [factor * unit, nparts]
 
@@ -317,28 +320,28 @@ class ScopeManager:
             self._update_active_scope(parent, inner)
         return outer, inner
 
-    def _split_with_factor(self, parent, factor, split_mode):
+    def _split_with_factor(self, parent, factor, ceil_mode=True):
         """
         split scopes with factor
         """
         unit, extent = self._axis_unit.get(parent)
         if isinstance(factor, tvm.expr.Var):
             factor = tvm.ir_pass.Simplify(factor)
-        if split_mode and split_mode.get("round_mode"):
-            outer, inner = self._stage.split(parent, factor=factor, tail_strategy=split_mode["round_mode"])
-        else:
+        if ceil_mode:
             outer, inner = self._stage.split(parent, factor=factor)
-        self._axis_unit[inner] = [unit, factor]
-        if split_mode and split_mode.get("ceil_mode"):
-            self._axis_unit[outer] = [unit * factor, ceil_div(extent, factor)]
+            nparts =  ceil_div(extent, factor)
         else:
-            self._axis_unit[outer] = [unit * factor, tvm.div(extent, factor)]
+            outer, inner = self._stage.split(parent, factor=factor, tail_strategy="round_up")
+            nparts = floor_div(extent, factor)
+
+        self._axis_unit[inner] = [unit, factor]
+        self._axis_unit[outer] = [unit * factor, nparts]
 
         if parent in self._active_scopes:
             self._update_active_scope(parent, outer)
         return outer, inner
 
-    def split(self, parent, factor=None, nparts=None, split_mode=None):
+    def split(self, parent, factor=None, nparts=None, ceil_mode=True):
         """
         apply split to scope
 
@@ -347,7 +350,7 @@ class ScopeManager:
         parent : Itervar
         factor : int
         nparts : int
-        split_mode : dict, include ceil_mode and round_mode.default is None
+        ceil_mode : bool
 
         Returns
         -------
@@ -363,9 +366,9 @@ class ScopeManager:
             raise_schedule_agent_err("parent scope can not be None")
 
         if nparts is not None:
-            outer, inner = self._split_with_nparts(parent, factor, nparts, split_mode)
+            outer, inner = self._split_with_nparts(parent, factor, nparts, ceil_mode)
         else:
-            outer, inner = self._split_with_factor(parent, factor, split_mode)
+            outer, inner = self._split_with_factor(parent, factor, ceil_mode)
         for axis_list in self._axis_split_list:
             if parent in axis_list:
                 self._updata_axis_split_list(axis_list, parent, outer, inner)
@@ -711,7 +714,7 @@ class ScheduleAgent:
         return self._attach_map.record_same_attach(sch[tensor_a],
                                                    sch[tensor_b])
 
-    def _get_axis_info(self, factor_list, parent, split_mode):
+    def _get_axis_info(self, factor_list, parent, ceil_mode_dict):
         """
         get infor of axis.
 
@@ -721,7 +724,7 @@ class ScheduleAgent:
 
         parent: Tensor.
 
-        split_mode: dict, include ceil_mode and round_mode.default is None.
+        ceil_mode_dict: include factor_ceil_mode and split_ceil_mode
 
         Returns:
 
@@ -734,10 +737,16 @@ class ScheduleAgent:
         axis_ori_unrelate = []
 
         origin_axis = scopes.origin_axis
-        for factor, axis in zip(factor_list, ax_list):
-            if factor is not None and (isinstance(factor, tvm.expr.Expr)
-                                        or factor > 1 or axis in origin_axis):
-                axo, axi = scopes.split(axis, factor=factor, split_mode=split_mode)
+        split_ceil_mode = len(factor_list) * [True]
+        if ceil_mode_dict:
+            split_ceil_mode = ceil_mode_dict.get("split_ceil_mode")
+            if isinstance(split_ceil_mode, bool):
+                split_ceil_mode = len(factor_list) * [split_ceil_mode]
+
+        for factor, axis, ceil_mode in zip(factor_list, ax_list, split_ceil_mode):
+            if factor is not None and (isinstance(factor, (tvm.expr.Expr, tvm.expr.Var))
+                                       or factor > 1 or axis in origin_axis):
+                axo, axi = scopes.split(axis, factor=factor, ceil_mode=ceil_mode)
                 self._attach_map.update_scope(axis, axi)
                 axis_outer.append(axo)
                 axis_intrinsic.append(axi)
@@ -748,7 +757,7 @@ class ScheduleAgent:
 
         return axis_outer, axis_intrinsic, axis_ori_unrelate
 
-    def _start_attach(self, factor_list, tensor, parent, split_mode):
+    def _start_attach(self, factor_list, tensor, parent, ceil_mode_dict):
         """
         get info of scope_attach.
 
@@ -760,13 +769,13 @@ class ScheduleAgent:
 
         parent: Tensor.
 
-        split_mode: dict, include ceil_mode and round_mode.default is None.
+        ceil_mode_dict: dict, include factor_ceil_mode and split_ceil_mode. default is None.
 
         Returns:
 
         scope_attach value.
         """
-        axis_outer, axis_intrinsic, axis_ori_unrelate = self._get_axis_info(factor_list, parent, split_mode)
+        axis_outer, axis_intrinsic, axis_ori_unrelate = self._get_axis_info(factor_list, parent, ceil_mode_dict)
 
         scope_attach = None
         if axis_intrinsic:  # len(axis_intrinsic) > 0:
@@ -787,7 +796,7 @@ class ScheduleAgent:
 
         return scope_attach
 
-    def attach_at(self, tensor, parent, affine_shape, split_mode=None):
+    def attach_at(self, tensor, parent, affine_shape, ceil_mode_dict=None):
         """
         attach tensor to parent according to the affine_shape
 
@@ -797,7 +806,7 @@ class ScheduleAgent:
         parent : Tenosr
         affine_shape : shape of tensor affine to parent
         flag_nparts : the flag of splited by nparts, default to false
-        split_mode : dict, include ceil_mode and round_mode.default is None
+        ceil_mode_dict : dict, include factor_ceil_mode and split_ceil_mode. default is None
 
         Returns
         -------
@@ -809,18 +818,16 @@ class ScheduleAgent:
             raise_schedule_agent_err("len(affine_shape) should be equal to "
                                      "len(shape)+len(reduce_axis) of {} "
                                      .format(parent))
-        if split_mode and not split_mode.get("ceil_mode"):
-            factor_list = [
-                tvm.div(i, j) if i is not None else None
-                for i, j in zip(affine_shape, unit)
-            ]
-        else:
-            factor_list = [
-                ceil_div(i, j) if i is not None else None
-                for i, j in zip(affine_shape, unit)
-            ]
+        factor_ceil_mode = len(affine_shape) * [True]
+        if ceil_mode_dict:
+            factor_ceil_mode = ceil_mode_dict.get("factor_ceil_mode")
+            if isinstance(factor_ceil_mode, bool):
+                factor_ceil_mode = len(affine_shape) * [factor_ceil_mode]
 
-        scope_attach = self._start_attach(factor_list, tensor, parent, split_mode)
+        factor_list = [(ceil_div(i, j) if ceil_mode else floor_div(i, j))
+            for i, j, ceil_mode in zip(affine_shape, unit, factor_ceil_mode)]
+
+        scope_attach = self._start_attach(factor_list, tensor, parent, ceil_mode_dict)
 
         return scope_attach
 

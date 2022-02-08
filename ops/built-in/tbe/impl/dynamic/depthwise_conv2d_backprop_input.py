@@ -169,25 +169,27 @@ def _depthwise_conv2d_backprop_input_compute(
     default_para = set_default_para()
     if not input_size.get("ori_shape"):
         ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
-    conv2dbp_para = DepthwiseConv2dBackpropParaProcess(ori_paras)
-    paras = conv2dbp_para.config_paras()
+    depthwise_conv2dbp_para = DepthwiseConv2dBackpropParaProcess(ori_paras)
+    depthwise_conv2dbp_para.config_paras()
     res_dtype = input_grad.get("dtype").lower()
     dedx = tbe.conv2d_backprop_input(
-        filters=paras.get("filter_tensor"),
-        out_backprop=paras.get("dy_tensor"),
-        filter_sizes=paras.get("filter_shape"),
-        input_sizes=paras.get("input_size"),
-        para_dict={"strides": (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
-                   "padding": conv2dbp_para.pads,
-                   "dilations": conv2dbp_para.dilations,
+        filters=depthwise_conv2dbp_para.tensors.get("filter_tensor"),
+        out_backprop=depthwise_conv2dbp_para.tensors.get("dy_tensor"),
+        filter_sizes=depthwise_conv2dbp_para.shape.get("filter_shape_nchw"),
+        input_sizes=depthwise_conv2dbp_para.shape.get("dx_shape_nchw"),
+        para_dict={"strides": (depthwise_conv2dbp_para.strides[H_DIM], depthwise_conv2dbp_para.strides[W_DIM]),
+                   "padding": depthwise_conv2dbp_para.pads,
+                   "dilations": depthwise_conv2dbp_para.dilations,
                    "res_dtype": res_dtype,
                    "kernel_name": kernel_name,
-                   "group_dict": paras.get("group_para"),
-                   "correct_range_flag": paras.get("correct_range_flag", False),
+                   "group_dict": depthwise_conv2dbp_para.attrs.get("group_para"),
+                   "correct_range_flag": depthwise_conv2dbp_para.attrs.get("correct_range_flag", False),
                    "ori_tensors": _collect_ori_tensors(ori_paras),
                    "op_type": "depthwise_conv2d_backprop_input"})
 
-    return {'op_placeholder': [paras.get("input_tensor"), paras.get("filter_tensor"), paras.get("dy_tensor")],
+    return {'op_placeholder': [depthwise_conv2dbp_para.tensors.get("input_tensor"),
+                               depthwise_conv2dbp_para.tensors.get("filter_tensor"),
+                               depthwise_conv2dbp_para.tensors.get("dy_tensor")],
             'op_res': [dedx]}
 
 

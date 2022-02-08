@@ -155,7 +155,7 @@ bool CheckL1SizeLimit(const DxParas& dx_paras) {
     h_value_max += 1;
   }
   int64_t a_l1_size = h_value_max * w_value * kC0 * kFp16Bytes;
-  int64_t b_l1_size = dx_paras.kw * kC0 * dx_paras.kw * kC0 * kFp16Bytes;
+  int64_t b_l1_size = dx_paras.kh * kC0 * dx_paras.kw * kC0 * kFp16Bytes;
   CHECK_OP_FUNC(a_l1_size + b_l1_size > kL1size, return false, "check l1size fail");
   return true;
 }
