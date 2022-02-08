@@ -44,6 +44,8 @@ static const string PATTERN_INPUT0 = "Input0";
 static const string PATTERN_INPUT1 = "Input1";
 static const string PATTERN_INPUT2 = "Input2";
 static const int64_t INPUT_NUM = 2;
+static const uint8_t INPUT_NODE_NUM = 2;
+static const uint8_t OUTPUT_NODE_NUM = 1;
 
 vector<FusionPattern*> SoftmaxGradExtFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxGradExtFusionPass pattern begin!");
@@ -111,6 +113,19 @@ Status SoftmaxGradExtFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
 
   FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null."),
                     return PARAM_INVALID);
+
+  auto subInputDataNodes = subNode->GetInDataNodes();
+  auto subOutputDataNodes = subNode->GetOutDataNodes();
+  auto mulInputDataNodes = mulNode->GetInDataNodes();
+  auto mulOutputDataNodes = mulNode->GetOutDataNodes();
+  auto mul1InputDataNodes = mul1Node->GetInDataNodes();
+  auto mul1OutputDataNodes = mul1Node->GetOutDataNodes();
+  if ((subInputDataNodes.size() != INPUT_NODE_NUM) || (mulInputDataNodes.size() != INPUT_NODE_NUM) ||
+      (mul1InputDataNodes.size() != INPUT_NODE_NUM) || (subOutputDataNodes.size() != OUTPUT_NODE_NUM) ||
+      (mulOutputDataNodes.size() != OUTPUT_NODE_NUM) || (mul1OutputDataNodes.size() != OUTPUT_NODE_NUM)) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition.");
+    return NOT_CHANGED;
+  }
 
   // add inputs
   string newOpName = newOpdesc->GetName();
