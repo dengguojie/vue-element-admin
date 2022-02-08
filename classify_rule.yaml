@@ -246,6 +246,8 @@ cube:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/tbe_dx_transdata_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/tbe_dx_transdata_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_confusiontranspose_ub_fusion.cc

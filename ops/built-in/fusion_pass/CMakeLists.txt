@@ -119,6 +119,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_atomic_add_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/tbe_dx_transdata_fusion_pass.cc
   graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.cc
   graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
   graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
