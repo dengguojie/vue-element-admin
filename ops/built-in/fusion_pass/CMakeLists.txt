@@ -276,6 +276,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/scanpqcodes_fusion_pass.cc
   graph_fusion/ai_core/deep_md_fusion_pass_util.cc
   graph_fusion/ai_core/prodvirialsea_fusion_pass.cc
+  graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.cc
   graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.cc
   graph_fusion/ai_core/prodenvmata_fusion_pass.cc
   graph_fusion/ai_core/single_batch_norm_fusion_pass.cc

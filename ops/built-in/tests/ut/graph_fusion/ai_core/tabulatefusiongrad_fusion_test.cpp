@@ -71,15 +71,13 @@ TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_01) {
   int32_t split_index = 0;
 
   int32_t tableDim0 = 1024;
-  int32_t descriptorDim0 = 1024;
-  int32_t descriptorDim1 = 1024;
 
   auto table = CreateDataNode("table", {tableDim0, lastLayerSize * 6}, FORMAT_ND, DT_FLOAT);
   auto table_info = CreateDataNode("table_info", {6,}, FORMAT_ND, DT_FLOAT);
   auto em_x = CreateDataNode("em_x", {nloc, nnei}, FORMAT_ND, DT_FLOAT);
   auto em = CreateDataNode("em", {nloc, nnei, 4}, FORMAT_ND, DT_FLOAT);
   auto dy = CreateDataNode("dy", {nloc, 4, lastLayerSize}, FORMAT_ND, DT_FLOAT);
-  auto descriptor = CreateDataNode("descriptor", {descriptorDim0, descriptorDim1, lastLayerSize}, FORMAT_ND, DT_FLOAT);
+  auto descriptor = CreateDataNode("descriptor", {nloc, 4, lastLayerSize}, FORMAT_ND, DT_FLOAT);
 
   std::string opName = "TabulateFusionGrad_01";
   auto op = TabulateFusionGrad(opName.c_str());
@@ -138,15 +136,13 @@ TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_02) {
   int32_t split_index = 0;
 
   int32_t tableDim0 = 1024;
-  int32_t descriptorDim0 = 1024;
-  int32_t descriptorDim1 = 1024;
 
   auto table = CreateDataNode("table", {tableDim0, lastLayerSize * 6}, FORMAT_ND, DT_FLOAT);
   auto table_info = CreateDataNode("table_info", {6,}, FORMAT_ND, DT_FLOAT);
   auto em_x = CreateDataNode("em_x", {nloc, nnei}, FORMAT_ND, DT_FLOAT);
   auto em = CreateDataNode("em", {nloc, nnei, 4}, FORMAT_ND, DT_FLOAT);
   auto dy = CreateDataNode("dy", {nloc, 4, lastLayerSize}, FORMAT_ND, DT_FLOAT);
-  auto descriptor = CreateDataNode("descriptor", {descriptorDim0, descriptorDim1, lastLayerSize}, FORMAT_ND, DT_FLOAT);
+  auto descriptor = CreateDataNode("descriptor", {nloc, 4, lastLayerSize}, FORMAT_ND, DT_FLOAT);
 
   std::string opName = "TabulateFusionGrad_02";
   auto op = TabulateFusionGrad(opName.c_str());

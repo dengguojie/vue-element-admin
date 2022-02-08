@@ -29,6 +29,17 @@ class TabulateFusionGrad:
     """Function: use to calc tabulate fusion grad for all loc
     """
 
+    NUM_2 = 2
+    NUM_3 = 3
+    NUM_4 = 4
+    NUM_5 = 5
+    NUM_6 = 6
+    NUM_8 = 8
+    NUM_16 = 16
+    NUM_32 = 32
+    NUM_64 = 64
+    MIN_FLOAT = -3.0e+38
+
     def __init__(self, table, table_info, em_x, em_, dy_, descriptor, dy_dem_x, dy_dem,
                  split_count, split_index, kernel_name):
         """
@@ -39,11 +50,11 @@ class TabulateFusionGrad:
         table : dict. shape and dtype of input data table
         table_info : dict. shape and dtype of input data table_info
         em_x : dict. shape and dtype of input data em_x
-        em : dict. shape and dtype of input data em
-        dy : dict. shape and dtype of input data dy
+        em_ : dict. shape and dtype of input data em
+        dy_ : dict. shape and dtype of input data dy
         descriptor : dict. shape and dtype of input data descriptor
-        dy_dem_x : dict. shape and dtype of input data dy_dem_x
-        dy_dem : dict. shape and dtype of input data dy_dem
+        dy_dem_x : dict. shape and dtype of output data dy_dem_x
+        dy_dem : dict. shape and dtype of output data dy_dem
         kernel_name : str. cce kernel name
 
         Returns
@@ -51,19 +62,16 @@ class TabulateFusionGrad:
         None
         """
         self.kernel_name = kernel_name
-        self.tik_inst = tik.Tik(tik.Dprofile)
+        self.tik_inst = tik.Tik()
 
         self.op_dtype = "float32"
 
         self.split_count = split_count
         self.split_index = split_index
 
-        self.nei_tile = 16
-        self.size_tile = 64
-        self.tile_size = self.nei_tile * self.size_tile
-        self.em_tile_size = self.nei_tile * 4
-        self.dy_tile_size = self.size_tile * 4
-        self.table_tile_size = self.size_tile * 6
+        self.size_tile = self.NUM_64
+        self.nei_tile = self.NUM_64
+        self.tile_size = self.size_tile * self.nei_tile
 
         self.loc = self.tik_inst.Scalar(dtype="int64", name="loc")
         self.nnei = self.tik_inst.Scalar(dtype="int64", name="nnei")
@@ -93,24 +101,33 @@ class TabulateFusionGrad:
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-        self.nei_max_size = 256  # max nei per loc
-        self.layer_size_max_size = 256  # max nei per loc
+        self.size_batch_num = self.tik_inst.Scalar("int64", name="nei_batch_num")
 
-        self.nei_tile_floor = self.tik_inst.Scalar("int64", name="nei_tile_floor")
-        self.nei_tile_ceil = self.tik_inst.Scalar("int64", name="nei_tile_ceil")
-        self.nei_batch = self.tik_inst.Scalar("int64", name="nei_batch")
-        self.nei_repeats_align64 = self.tik_inst.Scalar("int64", name="nei_repeats_align64")
-        self.nei_repeats = self.tik_inst.Scalar("int64", name="nei_repeats")
-        self.size_tile_ceil = self.tik_inst.Scalar("int64", name="size_tile_ceil")
-        self.size_align8 = self.tik_inst.Scalar("int64", name="size_align8")
-        self.size_offset = self.tik_inst.Scalar("int64", name="size_offset")
+        self.tiling_gm = None
+        self.table_gm = None
+        self.table_info_gm = None
+        self.em_x_gm = None
+        self.em_gm = None
+        self.dy_gm = None
+        self.descriptor_gm = None
+        self.dy_dem_x_gm = None
+        self.dy_dem_gm = None
 
-        # init gm tensor
+        self.em_x = None
+        self.offset = None
+        self.em_x_tile = None
+        self.dy_dem_x = None
+        self.dy_dem = None
+
+    def _init_tensor(self):
+        """
+        init gm/ub tensor
+        """
         self.tiling_gm = self.tik_inst.Tensor("int64", (constant.SIZE_SIXTEEN,), name="tiling_gm",
                                               scope=tik.scope_gm)
         self.table_gm = self.tik_inst.Tensor(self.op_dtype, (constant.SHAPE_SIZE_LIMIT,),
                                              name="table_gm", scope=tik.scope_gm)
-        self.table_info_gm = self.tik_inst.Tensor(self.op_dtype, (8,),
+        self.table_info_gm = self.tik_inst.Tensor(self.op_dtype, (self.NUM_8,),
                                                   name="table_info_gm", scope=tik.scope_gm)
         self.em_x_gm = self.tik_inst.Tensor(self.op_dtype, (constant.SHAPE_SIZE_LIMIT,),
                                             name="em_x_gm", scope=tik.scope_gm)
@@ -124,6 +141,13 @@ class TabulateFusionGrad:
                                                 name="dy_dem_x_gm", scope=tik.scope_gm)
         self.dy_dem_gm = self.tik_inst.Tensor(self.op_dtype, (constant.SHAPE_SIZE_LIMIT,),
                                               name="dy_dem_gm", scope=tik.scope_gm)
+
+        self.em_x = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="em_x", scope=tik.scope_ubuf)
+        self.offset = self.tik_inst.Tensor("int32", (self.nei_tile,), name="offset", scope=tik.scope_ubuf)
+        self.em_x_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="em_x_tile", scope=tik.scope_ubuf)
+        self.dy_dem_x = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="dy_dem_x", scope=tik.scope_ubuf)
+        self.dy_dem = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,),
+                                           name="dy_dem", scope=tik.scope_ubuf)
 
     def _init_scalar_var(self):
         tiling_ub = self.tik_inst.Tensor("int64", (constant.SIZE_SIXTEEN,), name="tiling_ub", scope=tik.scope_ubuf)
@@ -140,11 +164,11 @@ class TabulateFusionGrad:
         self.loc_per_high_core.set_as(tiling_ub[7])
         self.loc_per_low_core.set_as(tiling_ub[8])
 
-        self.em_row_size.set_as(self.nnei * 4)
-        self.dy_row_size.set_as(self.size * 4)
-        self.table_row_size.set_as(self.size * 6)
+        self.em_row_size.set_as(self.nnei * self.NUM_4)
+        self.dy_row_size.set_as(self.size * self.NUM_4)
+        self.table_row_size.set_as(self.size * self.NUM_6)
 
-        table_info_ub = self.tik_inst.Tensor(self.op_dtype, (8,), name="table_info_ub", scope=tik.scope_ubuf)
+        table_info_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_8,), name="table_info_ub", scope=tik.scope_ubuf)
         self.tik_inst.data_move(table_info_ub, self.table_info_gm, 0, 1, 1, 0, 0)
 
         self.lower.set_as(table_info_ub[0])
@@ -164,588 +188,441 @@ class TabulateFusionGrad:
         self.tik_inst.scalar_conv('none', self.max_tbl_idx, self.tmp_scalar_int32)
         self.max_tbl_idx.set_as(self.first_stride + self.max_tbl_idx - 1)
 
-        self.nei_tile_floor.set_as(self.nnei // self.nei_tile * self.nei_tile)
-        self.nei_tile_ceil.set_as((self.nnei + self.nei_tile - 1) // self.nei_tile * self.nei_tile)
-        self.nei_batch.set_as((self.nnei + self.nei_tile - 1) // self.nei_tile)
-        self.nei_repeats_align64.set_as((self.nnei + constant.MASK64 - 1) // constant.MASK64)
-        self.nei_repeats.set_as(self.nei_tile_ceil * 4 // self.nei_tile)
-        self.size_tile_ceil.set_as((self.size + self.size_tile - 1) // self.size_tile * self.size_tile)
-        self.size_align8.set_as((self.size + constant.REPEAT_STRIDE_EIGHT - 1) // constant.REPEAT_STRIDE_EIGHT)
-        self.size_offset.set_as(self.size // self.size_tile)
+        self.size_batch_num.set_as((self.size + self.size_tile - 1) // self.size_tile)
 
-    def _load_em_x_one_loc(self, loc):
-        em_x_one_loc = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="em_x_one_loc",
-                                            scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(constant.MASK64, em_x_one_loc, 0, self.nei_repeats_align64, 8)
-        table_offset_one_loc = self.tik_inst.Tensor("int32", (self.nei_max_size,), name="table_offset_one_loc",
-                                                    scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(constant.MASK64, table_offset_one_loc, 0, self.nei_repeats_align64, 8)
-        tmp_cmp_mask = self.tik_inst.Tensor("uint64", (self.nei_max_size // constant.MASK64,),
-                                            name="tmp_cmp_mask", scope=tik.scope_ubuf)
+    def _locate_em_x(self, nei_mask, in_ub, out_ub):
+        em_x = in_ub[0]
+        em_x_new, offset = out_ub[0], out_ub[1]
+        
+        cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
 
-        em_x = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="em_x", scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(constant.MASK64, em_x, -1, self.nei_repeats_align64, 8)
+        em_x_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="em_x_tmp", scope=tik.scope_ubuf)
+        offset_fp32 = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="offset_fp32", scope=tik.scope_ubuf)
+        table_idx_ub = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="table_idx_ub", scope=tik.scope_ubuf)
+        self.tik_inst.vec_dup(nei_mask, table_idx_ub, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT)
 
-        self.tik_inst.data_move(em_x, self.em_x_gm[loc * self.nnei], 0, 1,
-                                self.nei_tile_floor // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+        # 'condition 1: x >= lower
+        # 'table_offset = (x - lower) // s0
+        self.tik_inst.vadds(nei_mask, em_x_tmp, em_x, -1 * self.lower, 1, 1, 1, 8, 8)
+        self.tik_inst.vmuls(nei_mask, em_x_tmp, em_x_tmp, self.rec_stride0, 1, 1, 1, 8, 8)
+        self.tik_inst.vconv(nei_mask, "floor", offset, em_x_tmp, 1, 1, 1, 8, 8)
+        self.tik_inst.vconv(nei_mask, "none", offset_fp32, offset, 1, 1, 1, 8, 8)
+        # 'x -= (table_offset * s0) + lower
+        self.tik_inst.vmuls(nei_mask, em_x_tmp, offset_fp32, self.stride0, 1, 1, 1, 8, 8)
+        self.tik_inst.vadds(nei_mask, em_x_tmp, em_x_tmp, self.lower, 1, 1, 1, 8, 8)
+        self.tik_inst.vsub(nei_mask, em_x_tmp, em_x, em_x_tmp, 1, 1, 1, 1, 8, 8, 8)
+        # 'mask and selection: x >= lower
+        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self.lower, 1, 1, 8)
+        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
-        with self.tik_inst.if_scope(self.nnei % self.nei_tile != 0):
-            self.tik_inst.data_move(em_x[self.nei_tile_floor],
-                                    self.em_x_gm[loc * self.nnei + self.nnei - self.nei_tile],
-                                    0, 1, self.nei_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+        # 'condition 2: x >= upper
+        # 'table_offset = (x - upper) // s1
+        self.tik_inst.vadds(nei_mask, em_x_tmp, em_x, -1 * self.upper, 1, 1, 1, 8, 8)
+        self.tik_inst.vmuls(nei_mask, em_x_tmp, em_x_tmp, self.rec_stride1, 1, 1, 1, 8, 8)
+        self.tik_inst.vconv(nei_mask, "floor", offset, em_x_tmp, 1, 1, 1, 8, 8)
+        self.tik_inst.vconv(nei_mask, "none", offset_fp32, offset, 1, 1, 1, 8, 8)
+        # 'x -= (table_offset * s1) + upper
+        self.tik_inst.vmuls(nei_mask, em_x_tmp, offset_fp32, self.stride1, 1, 1, 1, 8, 8)
+        self.tik_inst.vadds(nei_mask, em_x_tmp, em_x_tmp, self.upper, 1, 1, 1, 8, 8)
+        self.tik_inst.vsub(nei_mask, em_x_tmp, em_x, em_x_tmp, 1, 1, 1, 1, 8, 8, 8)
+        # 'table_offset = table_offset + first_stride
+        self.tik_inst.vadds(nei_mask, offset_fp32, offset_fp32, self.first_stride, 1, 1, 1, 8, 8)
+        # 'mask and selection: x >= upper
+        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self.upper, 1, 1, 8)
+        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
-        em_x_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="em_x_tmp", scope=tik.scope_ubuf)
-        table_offset_fp32 = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="table_offset_fp32",
-                                                 scope=tik.scope_ubuf)
-        table_idx_ub = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="table_idx_ub",
-                                            scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(constant.MASK64, table_idx_ub, 0, self.nei_repeats_align64, 8)
+        # 'condition 3: x >= max
+        # 'table_offset = max_tbl_idx
+        self.tik_inst.vec_dup(nei_mask, offset_fp32, self.max_tbl_idx, 1, 8)
+        # 'x = 0
+        self.tik_inst.vec_dup(nei_mask, em_x_tmp, 0, 1, 8)
+        # 'mask and selection: x >= max
+        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self._max, 1, 1, 8)
+        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
-        # condition 1: x >= lower
-        # `table_offset = (x - lower) // s0`
-        self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x, -self.lower,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vmuls(constant.MASK64, em_x_tmp, em_x_tmp, self.rec_stride0,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vconv(constant.MASK64, "floor", table_offset_one_loc, em_x_tmp,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vconv(constant.MASK64, "none", table_offset_fp32, table_offset_one_loc,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        # `x -= (table_offset * s0) + lower`
-        self.tik_inst.vmuls(constant.MASK64, em_x_tmp, table_offset_fp32, self.stride0,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x_tmp, self.lower,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vsub(constant.MASK64, em_x_tmp, em_x, em_x_tmp,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        # mask and selection: x >= lower
-        self.tik_inst.vcmpvs_ge(tmp_cmp_mask, em_x, self.lower, self.nei_repeats_align64, 1, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, table_idx_ub, tmp_cmp_mask, table_offset_fp32, table_idx_ub,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, em_x_one_loc, tmp_cmp_mask, em_x_tmp, em_x_one_loc,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vconv(nei_mask, "floor", offset, table_idx_ub, 1, 1, 1, 8, 8)
 
-        # condition 2: x >= upper
-        # `table_offset = (x - upper) // s1`
-        self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x, -self.upper, self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vmuls(constant.MASK64, em_x_tmp, em_x_tmp, self.rec_stride1,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vconv(constant.MASK64, "floor", table_offset_one_loc, em_x_tmp,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vconv(constant.MASK64, "none", table_offset_fp32, table_offset_one_loc,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        # `x -= (table_offset * s1) + upper`
-        self.tik_inst.vmuls(constant.MASK64, em_x_tmp, table_offset_fp32, self.stride1,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vadds(constant.MASK64, em_x_tmp, em_x_tmp, self.upper, self.nei_repeats_align64, 1, 1, 8, 8)
-        self.tik_inst.vsub(constant.MASK64, em_x_tmp, em_x, em_x_tmp, self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        # `table_offset = table_offset + first_stride`
-        self.tik_inst.vadds(constant.MASK64, table_offset_fp32, table_offset_fp32, self.first_stride,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
-        # mask and selection: x >= upper
-        self.tik_inst.vcmpvs_ge(tmp_cmp_mask, em_x, self.upper, self.nei_repeats_align64, 1, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, table_idx_ub, tmp_cmp_mask, table_offset_fp32, table_idx_ub,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, em_x_one_loc, tmp_cmp_mask, em_x_tmp, em_x_one_loc,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
+    def _em_dy_dot_tile(self, loc, nei_mask, size_offset, in_ub, out_ub):
+        em_bc = in_ub[0]
+        em_dy_dot_tile, dy = out_ub[0], out_ub[1]
+        loc_offset = self.tik_inst.Scalar("int64", name="loc_offset", init_value=loc * self.dy_row_size)
 
-        # condition 3: x >= max
-        # `table_offset = max_tbl_idx`
-        self.tik_inst.vec_dup(constant.MASK64, table_offset_fp32, self.max_tbl_idx, self.nei_repeats_align64, 8)
-        # `x = 0`
-        self.tik_inst.vec_dup(constant.MASK64, em_x_tmp, 0, self.nei_repeats_align64, 8)
-        # mask and selection: x >= max
-        self.tik_inst.vcmpvs_ge(tmp_cmp_mask, em_x, self._max, self.nei_repeats_align64, 1, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, table_idx_ub, tmp_cmp_mask, table_offset_fp32, table_idx_ub,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(constant.MASK64, 2, em_x_one_loc, tmp_cmp_mask, em_x_tmp, em_x_one_loc,
-                           self.nei_repeats_align64, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.data_move(dy, self.dy_gm[loc_offset + size_offset], 0, 1, 
+                                self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+        self.tik_inst.data_move(dy[self.size_tile], self.dy_gm[loc_offset + self.size + size_offset], 0, 1,
+                                self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+        self.tik_inst.data_move(dy[self.size_tile * self.NUM_2],
+                                self.dy_gm[loc_offset + self.size * self.NUM_2 + size_offset], 0, 1,
+                                self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+        self.tik_inst.data_move(dy[self.size_tile * self.NUM_3],
+                                self.dy_gm[loc_offset + self.size * self.NUM_3 + size_offset], 0, 1,
+                                self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
 
-        self.tik_inst.vconv(constant.MASK64, "floor", table_offset_one_loc, table_idx_ub,
-                            self.nei_repeats_align64, 1, 1, 8, 8)
+        self.tik_inst.vmul(self.size_tile, em_dy_dot_tile, em_bc, dy, nei_mask, 1, 1, 1,
+                           self.size_tile // constant.REPEAT_STRIDE_EIGHT, 
+                           self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
+        self.tik_inst.vmla(self.size_tile, em_dy_dot_tile, em_bc[self.tile_size], dy[self.size_tile],
+                           nei_mask, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 
+                           self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
+        self.tik_inst.vmla(self.size_tile, em_dy_dot_tile,
+                           em_bc[self.tile_size * self.NUM_2], dy[self.size_tile * self.NUM_2],
+                           nei_mask, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
+                           self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
+        self.tik_inst.vmla(self.size_tile, em_dy_dot_tile,
+                           em_bc[self.tile_size * self.NUM_3], dy[self.size_tile * self.NUM_3],
+                           nei_mask, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
+                           self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
 
-        return em_x_one_loc, table_offset_one_loc
+    def _va_tile(self, nei_mask, size_offset, in_ub, out_ub):
+        offset = in_ub[0]
+        va_tile = out_ub[0]
 
-    def _load_em_one_loc(self, loc):
-        em_one_loc = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size * 4,), name="em_one_loc",
-                                          scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(self.nei_tile, em_one_loc, 0, self.nei_repeats, self.nei_tile // 8)
+        with self.tik_inst.for_range(0, nei_mask) as nei_idx:
+            table_offset = self.tik_inst.Scalar(dtype="int32", init_value=offset[nei_idx])
+            table_offset.set_as(table_offset * self.table_row_size)
+            self.tik_inst.data_move(va_tile[nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(va_tile[self.tile_size + nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + self.size + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(va_tile[self.tile_size * self.NUM_2 + nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + self.size * self.NUM_2 + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(va_tile[self.tile_size * self.NUM_3 + nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + self.size * self.NUM_3 + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(va_tile[self.tile_size * self.NUM_4 + nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + self.size * self.NUM_4 + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(va_tile[self.tile_size * self.NUM_5 + nei_idx * self.size_tile],
+                                    self.table_gm[table_offset + self.size * self.NUM_5 + size_offset],
+                                    0, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
 
-        self.tik_inst.data_move(em_one_loc, self.em_gm[loc * self.em_row_size],
-                                0, 1, (self.nei_tile_floor * 4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-        with self.tik_inst.if_scope(self.nnei % self.nei_tile != 0):
-            self.tik_inst.data_move(em_one_loc[self.nei_tile_floor * 4],
-                                    self.em_gm[loc * self.em_row_size + self.em_row_size - self.em_tile_size],
-                                    0, 1, self.em_tile_size // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+    def _compute_tile(self, nei_mask, size_offset, in_ub, out_ub):
+        em_x_tile, em_dy_dot_tile, va_tile, dy = in_ub[0], in_ub[1], in_ub[2], in_ub[3]
+        dy_dem_x, dy_dem = out_ub[0], out_ub[1]
 
-        return em_one_loc
+        dy_dem_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,),
+                                          name="dy_dem_tmp", scope=tik.scope_ubuf)
+        dy_dem_x_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="dy_dem_x_tmp", scope=tik.scope_ubuf)
 
-    def _load_dy_one_loc(self, loc):
-        repeats = (self.layer_size_max_size * 4) // self.size_tile
-        dy_one_loc = self.tik_inst.Tensor(self.op_dtype, (self.layer_size_max_size * 4,), name="dy_one_loc",
-                                          scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(self.size_tile, dy_one_loc, 0, repeats, self.size_tile // 8)
+        # 'res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0
+        # 'grad = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
+        # 'vpx = x
+        vpx = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vpx", scope=tik.scope_ubuf)
+        self.tik_inst.vadds(self.size_tile, vpx, em_x_tile, 0, nei_mask, 1, 1, 8, 8)
+        # 'res = res + a1 * x
+        self.tik_inst.vmla(self.size_tile, va_tile, va_tile[self.tile_size], vpx, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'vxa = 2 * a2
+        vxa = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vxa", scope=tik.scope_ubuf)
+        self.tik_inst.vmuls(self.size_tile, vxa, va_tile[self.tile_size * self.NUM_2], self.NUM_2, nei_mask, 1, 1, 8, 8)
+        # 'grad = grad + 2 * a2 * x
+        self.tik_inst.vmla(self.size_tile, va_tile[self.tile_size], vxa, vpx, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'vpx = x2
+        self.tik_inst.vmul(self.size_tile, vpx, vpx, em_x_tile, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'res = res + a2 * x2
+        self.tik_inst.vmla(self.size_tile, va_tile, va_tile[self.tile_size * self.NUM_2], vpx, nei_mask,
+                           1, 1, 1, 8, 8, 8)
+        # 'vxa = 3 * a3
+        self.tik_inst.vmuls(self.size_tile, vxa, va_tile[self.tile_size * self.NUM_3], self.NUM_3, nei_mask, 1, 1, 8, 8)
+        # 'grad = grad + 3 * a3 * x2
+        self.tik_inst.vmla(self.size_tile, va_tile[self.tile_size], vxa, vpx, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'vpx = x3
+        self.tik_inst.vmul(self.size_tile, vpx, vpx, em_x_tile, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'res = res + a3 * x3
+        self.tik_inst.vmla(self.size_tile, va_tile, va_tile[self.tile_size * self.NUM_3], vpx, nei_mask,
+                           1, 1, 1, 8, 8, 8)
+        # 'vxa = self.NUM_4 * a4
+        self.tik_inst.vmuls(self.size_tile, vxa, va_tile[self.tile_size * self.NUM_4], self.NUM_4, nei_mask, 1, 1, 8, 8)
+        # 'grad = grad + 4 * a4 * x3
+        self.tik_inst.vmla(self.size_tile, va_tile[self.tile_size], vxa, vpx, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'vpx = x4
+        self.tik_inst.vmul(self.size_tile, vpx, vpx, em_x_tile, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'res = res + a4 * x4
+        self.tik_inst.vmla(self.size_tile, va_tile, va_tile[self.tile_size * self.NUM_4], vpx, nei_mask,
+                           1, 1, 1, 8, 8, 8)
+        # 'vxa = 5 * a5
+        self.tik_inst.vmuls(self.size_tile, vxa, va_tile[self.tile_size * self.NUM_5], self.NUM_5, nei_mask, 1, 1, 8, 8)
+        # 'grad = grad + 5 * a5 * x4
+        self.tik_inst.vmla(self.size_tile, va_tile[self.tile_size], vxa, vpx, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'vpx = x5
+        self.tik_inst.vmul(self.size_tile, vpx, vpx, em_x_tile, nei_mask, 1, 1, 1, 8, 8, 8)
+        # 'res = res + a5 * x5
+        self.tik_inst.vmla(self.size_tile, va_tile, va_tile[self.tile_size * self.NUM_5], vpx, nei_mask,
+                           1, 1, 1, 8, 8, 8)
+        # 'dy_dem_0 = res * rr0
+        self.tik_inst.vmul(self.size_tile, va_tile[self.tile_size * self.NUM_2], va_tile, dy, nei_mask,
+                           1, 1, 1, 8, 8, 0)
+        # 'dy_dem_1 = res * rr1
+        self.tik_inst.vmul(self.size_tile, va_tile[self.tile_size * self.NUM_3], va_tile, dy[self.size_tile], nei_mask,
+                           1, 1, 1, 8, 8, 0)
+        # 'dy_dem_2 = res * rr2
+        self.tik_inst.vmul(self.size_tile, va_tile[self.tile_size * self.NUM_4], va_tile,
+                           dy[self.size_tile * self.NUM_2], nei_mask, 1, 1, 1, 8, 8, 0)
+        # 'dy_dem_3 = res * rr3
+        self.tik_inst.vmul(self.size_tile, va_tile[self.tile_size * self.NUM_5], va_tile,
+                           dy[self.size_tile * self.NUM_3], nei_mask, 1, 1, 1, 8, 8, 0)
+        # 'dy_dem_4(grad) = grad * dy_dot
+        self.tik_inst.vmul(self.size_tile, em_dy_dot_tile, va_tile[self.tile_size], em_dy_dot_tile,
+                           nei_mask, 1, 1, 1, 8, 8, 8)
 
-        self.tik_inst.data_move(dy_one_loc, self.dy_gm[loc * self.dy_row_size],
-                                0, 1, self.size_align8, 0, 0)
-        self.tik_inst.data_move(dy_one_loc[self.size_tile_ceil], self.dy_gm[loc * self.dy_row_size + self.size],
-                                0, 1, self.size_align8, 0, 0)
-        self.tik_inst.data_move(dy_one_loc[self.size_tile_ceil * 2], self.dy_gm[loc * self.dy_row_size + self.size * 2],
-                                0, 1, self.size_align8, 0, 0)
-        self.tik_inst.data_move(dy_one_loc[self.size_tile_ceil * 3], self.dy_gm[loc * self.dy_row_size + self.size * 3],
-                                0, 1, self.size_align8, 0, 0)
+        with self.tik_inst.if_scope((self.size - size_offset) >= self.size_tile):
+            self.tik_inst.vcadd(self.size_tile, dy_dem_tmp, va_tile[self.tile_size * self.NUM_2],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size_tile, dy_dem_tmp[nei_mask], va_tile[self.tile_size * self.NUM_3],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size_tile, dy_dem_tmp[nei_mask * self.NUM_2], va_tile[self.tile_size * self.NUM_4],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size_tile, dy_dem_tmp[nei_mask * self.NUM_3], va_tile[self.tile_size * self.NUM_5],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size_tile, dy_dem_x_tmp, em_dy_dot_tile,
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+        with self.tik_inst.else_scope():
+            self.tik_inst.vcadd(self.size - size_offset, dy_dem_tmp, va_tile[self.tile_size * self.NUM_2],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size - size_offset, dy_dem_tmp[nei_mask], va_tile[self.tile_size * self.NUM_3],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size - size_offset, dy_dem_tmp[nei_mask * self.NUM_2],
+                                va_tile[self.tile_size * self.NUM_4],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size - size_offset, dy_dem_tmp[nei_mask * self.NUM_3],
+                                va_tile[self.tile_size * self.NUM_5],
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vcadd(self.size - size_offset, dy_dem_x_tmp, em_dy_dot_tile,
+                                nei_mask, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT)
 
-        return dy_one_loc
+        self.tik_inst.vadd(nei_mask, dy_dem, dy_dem, dy_dem_tmp, self.NUM_4, 1, 1, 1,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT)
+        self.tik_inst.vadd(nei_mask, dy_dem_x, dy_dem_x, dy_dem_x_tmp, 1, 1, 1, 1,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT,
+                           nei_mask // constant.REPEAT_STRIDE_EIGHT)
 
-    def _process_layer_size(self, input_dict, nei_offset):
-        vem_x_tile = input_dict["vem_x_tile"]
-        vem_dot_tile = input_dict["vem_dot_tile"]
-        vdy_dem = input_dict["vdy_dem"]
-        dy_one_loc = input_dict["dy_one_loc"]
-        table_offset_one_loc = input_dict["table_offset_one_loc"]
+    def _em_load(self, loc, nei_offset, nei_mask, in_ub, out_ub):
+        em_bc = out_ub[0]
 
-        vdy_out = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * 5,), name="vdy_out", scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(self.nei_tile, vdy_out, 0, 5, self.nei_tile // 8)
-
-        vdy_dot_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="vdy_dot_tile",
-                                            scope=tik.scope_ubuf)
-        vrr_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="vrr_tile",
-                                        scope=tik.scope_ubuf)
-        va_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 6,), name="va_tile",
-                                       scope=tik.scope_ubuf)
-
-        with self.tik_inst.for_range(0, self.size // self.size_tile) as size_offset:
-            # vrr ready : dy -> vrr
-            with self.tik_inst.new_stmt_scope(disable_sync=False):
-                self.tik_inst.vec_dup(constant.MASK64, vrr_tile, 0, (self.tile_size * 4) // constant.MASK64, 8)
-                # vrr0 : dy0 broadcast
-                self.tik_inst.vadd(self.size_tile, vrr_tile, vrr_tile, dy_one_loc[size_offset * self.size_tile],
-                                   self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                                   self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-                # vrr1 : dy1 broadcast
-                self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size], vrr_tile[self.tile_size],
-                                   dy_one_loc[self.size_tile_ceil + size_offset * self.size_tile],
-                                   self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                                   self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-                # vrr2 : dy2 broadcast
-                self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size * 2], vrr_tile[self.tile_size * 2],
-                                   dy_one_loc[self.size_tile_ceil * 2 + size_offset * self.size_tile],
-                                   self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                                   self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-                # vrr3 : dy3 broadcast
-                self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size * 3], vrr_tile[self.tile_size * 3],
-                                   dy_one_loc[self.size_tile_ceil * 3 + size_offset * self.size_tile],
-                                   self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                                   self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-                self.tik_inst.v4dtrans(True, vdy_dot_tile, vrr_tile, self.tile_size, 4)
-
-            # va0/va1/va2/va3/va4/va5 ready : table -> va
-            with self.tik_inst.new_stmt_scope(disable_sync=False):
-                table = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 6,), name="table", scope=tik.scope_ubuf)
-                with self.tik_inst.for_range(0, self.nei_tile) as nei_idx:
-                    offset = nei_offset * self.nei_tile + nei_idx
-                    table_offset = self.tik_inst.Scalar(dtype="int32", init_value=table_offset_one_loc[offset])
-                    offset = table_offset * self.table_row_size + size_offset * self.table_tile_size
-                    self.tik_inst.data_move(table[nei_idx * self.table_tile_size], self.table_gm[offset],
-                                            0, 1, self.table_tile_size // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-                self.tik_inst.v4dtrans(False, va_tile, table, self.tile_size, 6)
-
-            # all data required ready, let's go!
-            # `res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0`
-            # grad = res' = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
-            with self.tik_inst.new_stmt_scope(disable_sync=False):
-                # `res = a0`
-                vres = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vres", scope=tik.scope_ubuf)
-                self.tik_inst.vec_dup(constant.MASK64, vres, 0, self.tile_size // constant.MASK64, 8)
-                self.tik_inst.vadd(constant.MASK64, vres, vres, va_tile,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `grad = a1`
-                vgrad = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vgrad", scope=tik.scope_ubuf)
-                self.tik_inst.vec_dup(constant.MASK64, vgrad, 0, self.tile_size // constant.MASK64, 8)
-                self.tik_inst.vadd(constant.MASK64, vgrad, vgrad, va_tile[self.tile_size],
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `vpx = x`
-                vpx = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vpx", scope=tik.scope_ubuf)
-                self.tik_inst.vec_dup(constant.MASK64, vpx, 0, self.tile_size // constant.MASK64, 8)
-                self.tik_inst.vadd(constant.MASK64, vpx, vpx, vem_x_tile,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `res = res + a1 * x`
-                self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size], vpx,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `vxa = 2 * a2`
-                vxa = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vxa", scope=tik.scope_ubuf)
-                self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 2], 2,
-                                    self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # `grad = grad + 2 * a2 * x`
-                self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `vpx = x2`
-                self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `res = res + a2 * x2`
-                self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 2], vpx,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `vxa = 3 * a3`
-                self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 3], 3,
-                                    self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # `grad = grad + 3 * a3 * x2`
-                self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `vpx = x3`
-                self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `res = res + a3 * x3`
-                self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 3], vpx,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `vxa = 4 * a4`
-                self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 4], 4,
-                                    self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # `grad = grad + 4 * a4 * x3`
-                self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `vpx = x4`
-                self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `res = res + a4 * x4`
-                self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 4], vpx,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `vxa = 5 * a5`
-                self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 5], 5,
-                                    self.tile_size // constant.MASK64, 1, 1, 8, 8)
-                # `grad = grad + 5 * a5 * x4`
-                self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-
-                # `vpx = x5`
-                self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `res = res + a5 * x5`
-                self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 5], vpx,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `dy_dem_0 = res * rr0`
-                self.tik_inst.vmla(constant.MASK64, vdy_dem, vres, vrr_tile, self.tile_size // constant.MASK64,
-                                   1, 1, 1, 8, 8, 8)
-                # `y_dem_1 = res * rr1`
-                self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size], vres, vrr_tile[self.tile_size],
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `dy_dem_2 = res * rr2`
-                self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 2], vres, vrr_tile[self.tile_size * 2],
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `dy_dem_3 = res * rr3`
-                self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 3], vres, vrr_tile[self.tile_size * 3],
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                # `dy_dot : dot(ll, rr)`
-                self.tik_inst.vmul(constant.MASK64, vdy_dot_tile, vem_dot_tile, vdy_dot_tile,
-                                   (self.tile_size * 4) // constant.MASK64, 1, 1, 1, 8, 8, 8)
-                self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
-                                     (self.tile_size * 4) // constant.MASK64, 1, 1, 8)
-                self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
-                                     (self.tile_size * 2) // constant.MASK64, 1, 1, 8)
-                # `dy_dem_4(grad) = grad * dy_dot`
-                self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 4], vgrad, vdy_dot_tile,
-                                   self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-
-        # sum of all value in same size_tile
-        self.tik_inst.vcadd(self.size_tile, vdy_out, vdy_dem, (self.tile_size * 5) // self.size_tile,
-                            1, 1, self.size_tile // 8)
-
-        return vdy_out
-
-    def _process_layer_size_tail(self, input_dict, nei_offset):
-        vem_x_tile = input_dict["vem_x_tile"]
-        vem_dot_tile = input_dict["vem_dot_tile"]
-        vdy_dem = input_dict["vdy_dem"]
-        dy_one_loc = input_dict["dy_one_loc"]
-        table_offset_one_loc = input_dict["table_offset_one_loc"]
-
-        vdy_out = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * 5,), name="vdy_out", scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(self.nei_tile, vdy_out, 0, 5, self.nei_tile // 8)
-
-        vdy_dot_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="vdy_dot_tile",
-                                            scope=tik.scope_ubuf)
-        vrr_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="vrr_tile",
-                                        scope=tik.scope_ubuf)
-        va_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 6,), name="va_tile",
-                                       scope=tik.scope_ubuf)
-
-        # vrr ready : dy -> vrr
         with self.tik_inst.new_stmt_scope(disable_sync=False):
-            self.tik_inst.vec_dup(constant.MASK64, vrr_tile, 0, (self.tile_size * 4) // constant.MASK64, 8)
-            # vrr0 : dy0 broadcast
-            self.tik_inst.vadd(self.size_tile, vrr_tile, vrr_tile, dy_one_loc[self.size_offset * self.size_tile],
-                               self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                               self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-            # vrr1 : dy1 broadcast
-            self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size], vrr_tile[self.tile_size],
-                               dy_one_loc[self.size_tile_ceil + self.size_offset * self.size_tile],
-                               self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                               self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-            # vrr2 : dy2 broadcast
-            self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size * 2], vrr_tile[self.tile_size * 2],
-                               dy_one_loc[self.size_tile_ceil * 2 + self.size_offset * self.size_tile],
-                               self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                               self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-            # vrr3 : dy3 broadcast
-            self.tik_inst.vadd(self.size_tile, vrr_tile[self.tile_size * 3], vrr_tile[self.tile_size * 3],
-                               dy_one_loc[self.size_tile_ceil * 3 + self.size_offset * self.size_tile],
-                               self.nei_tile, 1, 1, 1, self.size_tile // constant.REPEAT_STRIDE_EIGHT,
-                               self.size_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(True, vdy_dot_tile, vrr_tile, self.tile_size, 4)
+            em = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,), name="em", scope=tik.scope_ubuf)
+            em_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,),
+                                          name="em_tmp", scope=tik.scope_ubuf)
+            em_bc_tmp = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="em_bc_tmp", scope=tik.scope_ubuf)
 
-        # va0/va1/va2/va3/va4/va5 ready : table -> va
+            self.tik_inst.data_move(em, self.em_gm[loc * self.em_row_size + nei_offset * self.NUM_4],
+                                    0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.v4dtrans(False, em_tmp, em, nei_mask, self.NUM_4)
+
+            self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp, 0, self.size_tile, 1, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
+            self.tik_inst.v4dtrans(False, em_bc, em_bc_tmp, self.size_tile, nei_mask)
+
+            self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask], 0, self.size_tile, 1, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
+            self.tik_inst.v4dtrans(False, em_bc[self.tile_size], em_bc_tmp, self.size_tile, nei_mask)
+
+            self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask * self.NUM_2], 0, self.size_tile, 1, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
+            self.tik_inst.v4dtrans(False, em_bc[self.tile_size * self.NUM_2], em_bc_tmp, self.size_tile, nei_mask)
+
+            self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask * self.NUM_3], 0, self.size_tile, 1, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
+            self.tik_inst.v4dtrans(False, em_bc[self.tile_size * self.NUM_3], em_bc_tmp, self.size_tile, nei_mask)
+
+    def _process_last_nei(self, loc, nei_offset, nei_mask, loop_break):
+        last_nei = self.tik_inst.Scalar(self.op_dtype, name="last_nei",
+                                        init_value=self.em_x_gm[(loc + 1) * self.nnei - 1])
+        dy_dem_out = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,),
+                                          name="dy_dem_out", scope=tik.scope_ubuf)
+
+        with self.tik_inst.if_scope(self.em_x[nei_mask - 1] == last_nei):
+            cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
+            s_num_bit1 = self.tik_inst.Scalar("uint64", name="s_num_bit1")
+            self.tik_inst.vcmpvs_eq(cmp_mask, self.em_x, last_nei, 1, 1, 8)
+            s_cmp_mask = self.tik_inst.Scalar("uint64", name="s_cmp_mask", init_value=cmp_mask[0])
+            self.tik_inst.scalar_countbit1(s_num_bit1, s_cmp_mask)
+            s_num_bit1.set_as(nei_mask - s_num_bit1)
+            times = self.tik_inst.Scalar("int64", name="times",
+                                         init_value=self.nnei - (nei_offset + s_num_bit1))
+            last_nei_update = self.tik_inst.Scalar(self.op_dtype, name="last_nei_update",
+                                                   init_value=self.dy_dem_x[s_num_bit1])
+            self.dy_dem_x[s_num_bit1].set_as(last_nei_update * times)
+            dem_x_update = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="dem_x_update",
+                                                scope=tik.scope_ubuf)
+            self.tik_inst.vec_dup(nei_mask, dem_x_update, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT)
+            self.tik_inst.vadd(s_num_bit1 + 1, dem_x_update, dem_x_update, self.dy_dem_x, 1, 1, 1, 1, 8, 8, 8)
+
+            dem_update = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,), name="dem_update",
+                                              scope=tik.scope_ubuf)
+            self.tik_inst.vec_dup(nei_mask, dem_update, 0, self.NUM_4, nei_mask // constant.REPEAT_STRIDE_EIGHT)
+
+            last_nei_update.set_as(self.dy_dem[s_num_bit1])
+            self.dy_dem[s_num_bit1].set_as(last_nei_update * times)
+            last_nei_update.set_as(self.dy_dem[s_num_bit1 + nei_mask])
+            self.dy_dem[s_num_bit1 + nei_mask].set_as(last_nei_update * times)
+            last_nei_update.set_as(self.dy_dem[s_num_bit1 + nei_mask * self.NUM_2])
+            self.dy_dem[s_num_bit1 + nei_mask * self.NUM_2].set_as(last_nei_update * times)
+            last_nei_update.set_as(self.dy_dem[s_num_bit1 + nei_mask * self.NUM_3])
+            self.dy_dem[s_num_bit1 + nei_mask * self.NUM_3].set_as(last_nei_update * times)
+
+            self.tik_inst.vadd(s_num_bit1 + 1, dem_update, dem_update,
+                               self.dy_dem, 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(s_num_bit1 + 1, dem_update[nei_mask], dem_update[nei_mask],
+                               self.dy_dem[nei_mask], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(s_num_bit1 + 1, dem_update[nei_mask * self.NUM_2], dem_update[nei_mask * self.NUM_2],
+                               self.dy_dem[nei_mask * self.NUM_2], 1, 1, 1, 1, 8, 8, 8)
+            self.tik_inst.vadd(s_num_bit1 + 1, dem_update[nei_mask * self.NUM_3], dem_update[nei_mask * self.NUM_3],
+                               self.dy_dem[nei_mask * self.NUM_3], 1, 1, 1, 1, 8, 8, 8)
+
+            self.tik_inst.v4dtrans(True, dy_dem_out, dem_update, nei_mask, self.NUM_4)
+            self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size +
+                                                   nei_offset * self.NUM_4],
+                                    dy_dem_out, 0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(self.dy_dem_x_gm[(loc - self.loc_offset) * self.nnei + nei_offset],
+                                    dem_x_update, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            loop_break.set_as(1)
+        with self.tik_inst.else_scope():
+            self.tik_inst.v4dtrans(True, dy_dem_out, self.dy_dem, nei_mask, self.NUM_4)
+            self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size
+                                                   + nei_offset * self.NUM_4],
+                                    dy_dem_out, 0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+            self.tik_inst.data_move(self.dy_dem_x_gm[(loc - self.loc_offset) * self.nnei + nei_offset],
+                                    self.dy_dem_x, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+
+    def _process_last_nei_tail(self, loc):
+        last_nei = self.tik_inst.Scalar(self.op_dtype, name="last_nei", init_value=self.em_x[7])
+        dy_dem_out = self.tik_inst.Tensor(self.op_dtype, (self.NUM_32,), name="dy_dem_out", scope=tik.scope_ubuf)
+
+        cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
+        s_num_bit1 = self.tik_inst.Scalar("uint64", name="s_num_bit1")
+        self.tik_inst.vcmpvs_eq(cmp_mask, self.em_x, last_nei, 1, 1, 8)
+        s_cmp_mask = self.tik_inst.Scalar("uint64", name="s_cmp_mask", init_value=cmp_mask[0])
+        self.tik_inst.scalar_countbit1(s_num_bit1, s_cmp_mask)
+        times = self.tik_inst.Scalar("int64", name="times", init_value=s_num_bit1)
+        s_num_bit1.set_as(self.NUM_8 - s_num_bit1)
+
+        last_nei_update = self.tik_inst.Scalar(self.op_dtype, name="last_nei_update",
+                                               init_value=self.dy_dem_x[s_num_bit1])
+        self.dy_dem_x[s_num_bit1].set_as(last_nei_update * times)
+        dem_x_update = self.tik_inst.Tensor(self.op_dtype, (self.NUM_8,), name="dem_x_update", scope=tik.scope_ubuf)
+        self.tik_inst.vec_dup(self.NUM_8, dem_x_update, 0, 1, 1)
+        self.tik_inst.vadd(s_num_bit1 + 1, dem_x_update, dem_x_update, self.dy_dem_x, 1, 1, 1, 1, 8, 8, 8)
+
+        dem_update = self.tik_inst.Tensor(self.op_dtype, (self.NUM_8 * self.NUM_4,),
+                                          name="dem_update", scope=tik.scope_ubuf)
+        self.tik_inst.vec_dup(self.NUM_8, dem_update, 0, self.NUM_4, 1)
+
+        last_nei_update.set_as(self.dy_dem[s_num_bit1])
+        self.dy_dem[s_num_bit1].set_as(last_nei_update * times)
+        last_nei_update.set_as(self.dy_dem[s_num_bit1 + self.NUM_8])
+        self.dy_dem[s_num_bit1 + self.NUM_8].set_as(last_nei_update * times)
+        last_nei_update.set_as(self.dy_dem[s_num_bit1 + self.NUM_8 * self.NUM_2])
+        self.dy_dem[s_num_bit1 + self.NUM_8 * self.NUM_2].set_as(last_nei_update * times)
+        last_nei_update.set_as(self.dy_dem[s_num_bit1 + self.NUM_8 * self.NUM_3])
+        self.dy_dem[s_num_bit1 + self.NUM_8 * self.NUM_3].set_as(last_nei_update * times)
+
+        self.tik_inst.vadd(s_num_bit1 + 1, dem_update, dem_update,
+                           self.dy_dem, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vadd(s_num_bit1 + 1, dem_update[self.NUM_8], dem_update[self.NUM_8],
+                           self.dy_dem[self.NUM_8], 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vadd(s_num_bit1 + 1, dem_update[self.NUM_8 * self.NUM_2], dem_update[self.NUM_8 * self.NUM_2],
+                           self.dy_dem[self.NUM_8 * self.NUM_2], 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vadd(s_num_bit1 + 1, dem_update[self.NUM_8 * self.NUM_3], dem_update[self.NUM_8 * self.NUM_3],
+                           self.dy_dem[self.NUM_8 * self.NUM_3], 1, 1, 1, 1, 8, 8, 8)
+
+        self.tik_inst.v4dtrans(True, dy_dem_out, dem_update, self.NUM_8, self.NUM_4)
+
+        self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size
+                                               + (self.nnei - self.NUM_8) * self.NUM_4],
+                                dy_dem_out, 0, 1, self.NUM_4, 0, 0)
+        self.tik_inst.data_move(self.dy_dem_x_gm[(loc - self.loc_offset) * self.nnei + self.nnei - self.NUM_8],
+                                dem_x_update, 0, 1, 1, 0, 0)
+
+    def _compute_kernel(self, loc, nei_offset, nei_mask):
+        self.tik_inst.vec_dup(self.nei_tile, self.em_x, self.MIN_FLOAT, 1,
+                              self.nei_tile // constant.REPEAT_STRIDE_EIGHT)
+        self.tik_inst.data_move(self.em_x, self.em_x_gm[loc * self.nnei + nei_offset], 0, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0, 0)
         with self.tik_inst.new_stmt_scope(disable_sync=False):
-            table = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 6,), name="table", scope=tik.scope_ubuf)
-            with self.tik_inst.for_range(0, self.nei_tile) as nei_idx:
-                offset = nei_offset * self.nei_tile + nei_idx
-                table_offset = self.tik_inst.Scalar(dtype="int32", init_value=table_offset_one_loc[offset])
-                offset = table_offset * self.table_row_size + self.size_offset * self.table_tile_size
-                self.tik_inst.data_move(table[nei_idx * self.table_tile_size], self.table_gm[offset],
-                                        0, 1, self.table_tile_size // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-            self.tik_inst.v4dtrans(False, va_tile, table, self.tile_size, 6)
+            em_x_new = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="em_x_new", scope=tik.scope_ubuf)
+            self._locate_em_x(nei_mask, in_ub=[self.em_x], out_ub=[em_x_new, self.offset])
 
-        # all data required ready, let's go!
-        # `res = a5 * x5 + a4 * x4 + a3 * x3 + a2 * x2 + a1 * x + a0`
-        # grad = res' = 5 * a5 * x4 + 4 * a4 * x3 + 3 * a3 * x2 + 2 * a2 * x + a1
-        with self.tik_inst.new_stmt_scope(disable_sync=False):
-            # `res = a0`
-            vres = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vres", scope=tik.scope_ubuf)
-            self.tik_inst.vec_dup(constant.MASK64, vres, 0, self.tile_size // constant.MASK64, 8)
-            self.tik_inst.vadd(constant.MASK64, vres, vres, va_tile,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `grad = a1`
-            vgrad = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vgrad", scope=tik.scope_ubuf)
-            self.tik_inst.vec_dup(constant.MASK64, vgrad, 0, self.tile_size // constant.MASK64, 8)
-            self.tik_inst.vadd(constant.MASK64, vgrad, vgrad, va_tile[self.tile_size],
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `vpx = x`
-            vpx = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vpx", scope=tik.scope_ubuf)
-            self.tik_inst.vec_dup(constant.MASK64, vpx, 0, self.tile_size // constant.MASK64, 8)
-            self.tik_inst.vadd(constant.MASK64, vpx, vpx, vem_x_tile,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `res = res + a1 * x`
-            self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size], vpx,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `vxa = 2 * a2`
-            vxa = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vxa", scope=tik.scope_ubuf)
-            self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 2], 2,
-                                self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # `grad = grad + 2 * a2 * x`
-            self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `vpx = x2`
-            self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `res = res + a2 * x2`
-            self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 2], vpx,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `vxa = 3 * a3`
-            self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 3], 3,
-                                self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # `grad = grad + 3 * a3 * x2`
-            self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `vpx = x3`
-            self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `res = res + a3 * x3`
-            self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 3], vpx,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `vxa = 4 * a4`
-            self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 4], 4,
-                                self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # `grad = grad + 4 * a4 * x3`
-            self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `vpx = x4`
-            self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `res = res + a4 * x4`
-            self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 4], vpx,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `vxa = 5 * a5`
-            self.tik_inst.vmuls(constant.MASK64, vxa, va_tile[self.tile_size * 5], 5,
-                                self.tile_size // constant.MASK64, 1, 1, 8, 8)
-            # `grad = grad + 5 * a5 * x4`
-            self.tik_inst.vmla(constant.MASK64, vgrad, vxa, vpx, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-
-            # `vpx = x5`
-            self.tik_inst.vmul(constant.MASK64, vpx, vpx, vem_x_tile, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `res = res + a5 * x5`
-            self.tik_inst.vmla(constant.MASK64, vres, va_tile[self.tile_size * 5], vpx,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `dy_dem_0 = res * rr0`
-            self.tik_inst.vmla(constant.MASK64, vdy_dem, vres, vrr_tile, self.tile_size // constant.MASK64,
-                               1, 1, 1, 8, 8, 8)
-            # `dy_dem_1 = res * rr1`
-            self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size], vres, vrr_tile[self.tile_size],
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `dy_dem_2 = res * rr2`
-            self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 2], vres, vrr_tile[self.tile_size * 2],
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `dy_dem_3 = res * rr3`
-            self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 3], vres, vrr_tile[self.tile_size * 3],
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            # `dy_dot : dot(ll, rr)`
-            self.tik_inst.vmul(constant.MASK64, vdy_dot_tile, vem_dot_tile, vdy_dot_tile,
-                               (self.tile_size * 4) // constant.MASK64, 1, 1, 1, 8, 8, 8)
-            self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
-                                 (self.tile_size * 4) // constant.MASK64, 1, 1, 8)
-            self.tik_inst.vcpadd(constant.MASK64, vdy_dot_tile, vdy_dot_tile,
-                                 (self.tile_size * 2) // constant.MASK64, 1, 1, 8)
-            # `dy_dem_4(grad) = grad * dy_dot`
-            self.tik_inst.vmla(constant.MASK64, vdy_dem[self.tile_size * 4], vgrad, vdy_dot_tile,
-                               self.tile_size // constant.MASK64, 1, 1, 1, 8, 8, 8)
-
-        # just sum of tail of each last_layer_size by mask setting
-        self.tik_inst.vcadd(self.size - self.size_offset * self.size_tile, vdy_out, vdy_dem,
-                            (self.tile_size * 5) // self.size_tile, 1, 1, self.size_tile // 8)
-
-        return vdy_out
-
-    def _process_nei(self, loc, input_dict):
-        em_x_one_loc = input_dict["em_x_one_loc"]
-        table_offset_one_loc = input_dict["table_offset_one_loc"]
-        em_one_loc = input_dict["em_one_loc"]
-        dy_one_loc = input_dict["dy_one_loc"]
-
-        dy_dem_x_ub = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size,), name="dy_dem_x_ub",
+            em_x_bc = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="em_x_bc",
                                            scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(self.nei_tile, dy_dem_x_ub, 0, self.nei_max_size // self.nei_tile, self.nei_tile // 8)
+            self.tik_inst.vadds(nei_mask, em_x_bc, em_x_new, 0, self.size_tile, 1, 1,
+                                nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
+            self.tik_inst.v4dtrans(False, self.em_x_tile, em_x_bc, self.size_tile, nei_mask)
 
-        dy_dem_ub = self.tik_inst.Tensor(self.op_dtype, (self.nei_max_size * 4,), name="dy_dem_ub",
-                                         scope=tik.scope_ubuf)
-        self.tik_inst.vec_dup(constant.MASK64, dy_dem_ub, 0, (self.nei_max_size * 4) // constant.MASK64, 8)
+        self.tik_inst.vec_dup(nei_mask, self.dy_dem_x, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT)
+        self.tik_inst.vec_dup(nei_mask, self.dy_dem, 0, self.NUM_4, nei_mask // constant.REPEAT_STRIDE_EIGHT)
 
-        vem_x_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="vem_x_tile", scope=tik.scope_ubuf)
-        vem_dot_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="vem_dot_tile",
-                                            scope=tik.scope_ubuf)
-        vdy_dem = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 5,), name="vdy_dem", scope=tik.scope_ubuf)
+        size_offset = self.tik_inst.Scalar("int64", name="size_offset")
+        with self.tik_inst.new_stmt_scope(disable_sync=False):
+            em_bc = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * self.NUM_4,),
+                                         name="em_bc", scope=tik.scope_ubuf)
+            self._em_load(loc, nei_offset, nei_mask, in_ub=None, out_ub=[em_bc])
 
-        with self.tik_inst.for_range(0, self.nei_batch) as nei_offset:
-            # em_x_tile ready : broadcast x by nei_tile
-            with self.tik_inst.new_stmt_scope(disable_sync=False):
-                em_x_tmp = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="em_x_tmp", scope=tik.scope_ubuf)
-                self.tik_inst.vec_dup(constant.MASK64, em_x_tmp, 0, self.tile_size // constant.MASK64, 8)
-                self.tik_inst.vadd(self.nei_tile, em_x_tmp, em_x_tmp, em_x_one_loc[nei_offset * self.nei_tile],
-                                   self.size_tile, 1, 1, 1, self.nei_tile // constant.REPEAT_STRIDE_EIGHT,
-                                   self.nei_tile // constant.REPEAT_STRIDE_EIGHT, 0)
-                self.tik_inst.v4dtrans(False, vem_x_tile, em_x_tmp, self.size_tile, self.nei_tile)
+            # last_layer_size tile process
+            with self.tik_inst.for_range(0, self.size_batch_num) as size_batch:
+                size_offset.set_as(size_batch * self.size_tile)
 
-            # em_dot_tile ready : em -> em_dot_tile by op sequence trans -> broadcast -> trans
-            with self.tik_inst.new_stmt_scope(disable_sync=False):
-                em_bc = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * 4,), name="em_bc", scope=tik.scope_ubuf)
-                self.tik_inst.vec_dup(constant.MASK64, em_bc, 0, (self.tile_size * 4) // constant.MASK64, 8)
-                em_tmp = self.tik_inst.Tensor(self.op_dtype, (self.em_tile_size,), name="em_tmp", scope=tik.scope_ubuf)
-                self.tik_inst.v4dtrans(False, em_tmp, em_one_loc[nei_offset * self.em_tile_size], self.nei_tile, 4)
-                # care!! Resolve the constrains that just copy max 64 in one repeating
-                # constrains!! nei_tile must be 16 or 32
-                self.tik_inst.vadd(constant.MASK64, em_bc, em_bc, em_tmp,
-                                   self.size_tile, 1, 1, 1, self.em_tile_size // constant.REPEAT_STRIDE_EIGHT,
-                                   self.em_tile_size // constant.REPEAT_STRIDE_EIGHT, 0)
-                self.tik_inst.v4dtrans(False, vem_dot_tile, em_bc, self.size_tile * 4, self.nei_tile)
+                em_dy_dot_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size,), name="em_dy_dot_tile",
+                                                      scope=tik.scope_ubuf)
+                dy = self.tik_inst.Tensor(self.op_dtype, (self.size_tile * self.NUM_4,),
+                                          name="dy", scope=tik.scope_ubuf)
+                self._em_dy_dot_tile(loc, nei_mask, size_offset, in_ub=[em_bc], out_ub=[em_dy_dot_tile, dy])
 
-            self.tik_inst.vec_dup(constant.MASK64, vdy_dem, 0, (self.tile_size * 5) // constant.MASK64, 8)
-            layer_size_input = {"vem_x_tile": vem_x_tile,
-                                "vem_dot_tile": vem_dot_tile,
-                                "vdy_dem": vdy_dem,
-                                "dy_one_loc": dy_one_loc,
-                                "table_offset_one_loc": table_offset_one_loc
-                                }
-            # calc part1 of last_layer_size data ( sum of tile by tile )
-            vdy_out_part1 = self._process_layer_size(layer_size_input, nei_offset)
-
-            # calc part2 of last_layer_size data ( tail )
-            with self.tik_inst.if_scope(self.size % self.size_tile != 0):
-                self.tik_inst.vec_dup(constant.MASK64, vdy_dem, 0, (self.tile_size * 5) // constant.MASK64, 8)
-                vdy_out_part2 = self._process_layer_size_tail(layer_size_input, nei_offset)
-                self.tik_inst.vadd(self.nei_tile, vdy_out_part1, vdy_out_part1, vdy_out_part2,
-                                   5, 1, 1, 1, self.nei_tile // 8, self.nei_tile // 8, self.nei_tile // 8)
-
-            # output dy_dem0/dy_dem1/dy_dem2/dy_dem3
-            self.tik_inst.v4dtrans(True, dy_dem_ub[nei_offset * self.em_tile_size], vdy_out_part1, self.nei_tile, 4)
-            # output dy_dem_x
-            self.tik_inst.vadd(self.nei_tile, dy_dem_x_ub[nei_offset * self.nei_tile],
-                               dy_dem_x_ub[nei_offset * self.nei_tile], vdy_out_part1[self.em_tile_size],
-                               1, 1, 1, 1, 8, 8, 8)
-
-        last_dem_x = self.tik_inst.Scalar(self.op_dtype, init_value=dy_dem_x_ub[self.nei_tile_ceil - 1])
-        last_dem_4 = self.tik_inst.Scalar(self.op_dtype,
-                                          init_value=dy_dem_ub[self.nei_tile_ceil * 4 - 1])
-        last_dem_3 = self.tik_inst.Scalar(self.op_dtype,
-                                          init_value=dy_dem_ub[self.nei_tile_ceil * 4 - 2])
-        last_dem_2 = self.tik_inst.Scalar(self.op_dtype,
-                                          init_value=dy_dem_ub[self.nei_tile_ceil * 4 - 3])
-        last_dem_1 = self.tik_inst.Scalar(self.op_dtype,
-                                          init_value=dy_dem_ub[self.nei_tile_ceil * 4 - 4])
-
-        for_loop = self.tik_inst.Scalar("int32", init_value=self.nei_tile_ceil)
-        with self.tik_inst.for_range(1, for_loop) as nei_idx:
-            last_dem_x_pre = self.tik_inst.Scalar(self.op_dtype,
-                                                  init_value=dy_dem_x_ub[self.nei_tile_ceil - 1 - nei_idx])
-            count = self.tik_inst.Scalar("int32", init_value=nei_idx)
-            with self.tik_inst.if_scope(last_dem_x_pre == last_dem_x):
-                dy_dem_x_ub[self.nei_tile_ceil - nei_idx].set_as(0)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 3].set_as(0)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 2].set_as(0)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 1].set_as(0)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4].set_as(0)
-            with self.tik_inst.else_scope():
-                with self.tik_inst.if_scope(tik.all(self.nnei % self.nei_tile != 0, nei_idx >= self.nei_tile)):
-                    count.set_as(nei_idx - self.nei_tile + self.nnei % self.nei_tile)
-                dy_dem_x_ub[self.nei_tile_ceil - nei_idx].set_as(last_dem_x * count)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 3].set_as(last_dem_4 * count)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 2].set_as(last_dem_3 * count)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4 + 1].set_as(last_dem_2 * count)
-                dy_dem_ub[(self.nei_tile_ceil - nei_idx) * 4].set_as(last_dem_1 * count)
-                for_loop.set_as(1)
-
-        self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size], dy_dem_ub, 0, 1,
-                                (self.nei_tile_floor * 4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-        self.tik_inst.data_move(self.dy_dem_x_gm[(loc - self.loc_offset) * self.nnei], dy_dem_x_ub, 0, 1,
-                                self.nei_tile_floor // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-
-        with self.tik_inst.if_scope(self.nnei % self.nei_tile != 0):
-            dy_dem_x_ub[self.nei_tile_floor].set_as(dy_dem_x_ub[self.nei_tile_floor - self.nei_tile_ceil + self.nnei])
-
-            dy_dem_ub[self.nei_tile_floor * 4].set_as(dy_dem_ub[(self.nei_tile_floor -
-                                                                 self.nei_tile_ceil + self.nnei) * 4])
-            dy_dem_ub[self.nei_tile_floor * 4 + 1].set_as(dy_dem_ub[(self.nei_tile_floor -
-                                                                     self.nei_tile_ceil + self.nnei) * 4 + 1])
-            dy_dem_ub[self.nei_tile_floor * 4 + 2].set_as(dy_dem_ub[(self.nei_tile_floor -
-                                                                     self.nei_tile_ceil + self.nnei) * 4 + 2])
-            dy_dem_ub[self.nei_tile_floor * 4 + 3].set_as(dy_dem_ub[(self.nei_tile_floor -
-                                                                     self.nei_tile_ceil + self.nnei) * 4 + 3])
-
-            self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset + 1) * self.em_row_size - self.em_tile_size],
-                                    dy_dem_ub[self.nei_tile_floor * 4], 0, 1,
-                                    self.em_tile_size // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-            self.tik_inst.data_move(self.dy_dem_x_gm[(loc - self.loc_offset + 1) * self.nnei - self.nei_tile],
-                                    dy_dem_x_ub[self.nei_tile_floor], 0, 1,
-                                    self.nei_tile // constant.REPEAT_STRIDE_EIGHT, 0, 0)
+                va_tile = self.tik_inst.Tensor(self.op_dtype, (self.tile_size * self.NUM_6,), name="va_tile",
+                                               scope=tik.scope_ubuf)
+                self._va_tile(nei_mask, size_offset, in_ub=[self.offset], out_ub=[va_tile])
+                self._compute_tile(nei_mask, size_offset, in_ub=[self.em_x_tile, em_dy_dot_tile, va_tile, dy],
+                                   out_ub=[self.dy_dem_x, self.dy_dem])
 
     def _compute_loc_grad(self, loc):
         """
         compute grad loc by loc
         """
-        em_x_one_loc, table_offset_one_loc = self._load_em_x_one_loc(loc)
+        nei_batch_max = self.tik_inst.Scalar("int32", name="nei_batch_max",
+                                             init_value=(self.nnei + self.NUM_8 - 1) // self.NUM_8)
+        loop_break = self.tik_inst.Scalar("int32", name="loop_break", init_value=0)
+        nei_offset = self.tik_inst.Scalar("int32", name="nei_offset", init_value=0)
+        nei_mask = self.tik_inst.Scalar("int32", name="nei_mask", init_value=0)
 
-        dy_one_loc = self._load_dy_one_loc(loc)
+        with self.tik_inst.for_range(0, nei_batch_max):
+            with self.tik_inst.if_scope(loop_break == 0):
+                with self.tik_inst.if_scope(self.nnei >= nei_offset + self.NUM_64):
+                    nei_mask.set_as(self.NUM_64)
+                with self.tik_inst.elif_scope(self.nnei >= nei_offset + self.NUM_32):
+                    nei_mask.set_as(self.NUM_32)
+                with self.tik_inst.elif_scope(self.nnei >= nei_offset + self.NUM_16):
+                    nei_mask.set_as(self.NUM_16)
+                with self.tik_inst.elif_scope(self.nnei >= nei_offset + self.NUM_8):
+                    nei_mask.set_as(self.NUM_8)
+                with self.tik_inst.elif_scope(self.nnei > nei_offset):
+                    nei_mask.set_as(self.NUM_8)
+                    nei_offset.set_as(self.nnei - self.NUM_8)
+                    loop_break.set_as(1)
+                with self.tik_inst.else_scope():
+                    loop_break.set_as(1)
 
-        em_one_loc = self._load_em_one_loc(loc)
-
-        data_load = {"em_x_one_loc": em_x_one_loc,
-                     "table_offset_one_loc": table_offset_one_loc,
-                     "em_one_loc": em_one_loc,
-                     "dy_one_loc": dy_one_loc
-                     }
-        self._process_nei(loc, data_load)
+                with self.tik_inst.if_scope(self.nnei > nei_offset):
+                    self._compute_kernel(loc, nei_offset, nei_mask)
+                    with self.tik_inst.if_scope(self.nnei >= nei_offset + self.NUM_8):
+                        self._process_last_nei(loc, nei_offset, nei_mask, loop_break)
+                    with self.tik_inst.else_scope():
+                        self._process_last_nei_tail(loc)
+                    nei_offset.set_as(nei_offset + nei_mask)
 
     def compute(self):
         """
         compute
         """
+        self._init_tensor()
+
         loc_start = self.tik_inst.Scalar(init_value=0, dtype="int32")
         loc_end = self.tik_inst.Scalar(init_value=0, dtype="int32")
 
@@ -827,9 +704,9 @@ def tabulate_fusion_grad(table, table_info, em_x, em_, dy_, descriptor, dy_dem_x
     table : dict. shape and dtype of input data table
     table_info : dict. shape and dtype of input data table_info
     em_x : dict. shape and dtype of input data em_x
-    em : dict. shape and dtype of input data em
-    dy : dict. shape and dtype of output data dy
-    descriptor : dict. shape and dtype of output data descriptor
+    em_ : dict. shape and dtype of input data em
+    dy_ : dict. shape and dtype of input data dy
+    descriptor : dict. shape and dtype of input data descriptor
     dy_dem_x : dict. shape and dtype of output data dy_dem_x
     dy_dem : dict. shape and dtype of output data dy_dem
     split_count : int. enable/disable vector core. 1-disable, 2-enable
