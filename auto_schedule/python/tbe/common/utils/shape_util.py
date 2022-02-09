@@ -391,9 +391,9 @@ def _dw_variable_shape(inputs: list):
     c_index = dedx_ori_format.index("C")
     h_index = dedx_ori_format.index("H")
     w_index = dedx_ori_format.index("W")
+    batch_var = operation.var("batch", [1, None])
     for i, input_member in enumerate(inputs):
         input_shape = input_member.get("shape")
-        batch_var = operation.var("batch", [1, None])
         if i in (dedx_index, dedy_index):
             input_name = "fmap" if i == dedx_index else "dedy"
             input_shape[n_index] = batch_var

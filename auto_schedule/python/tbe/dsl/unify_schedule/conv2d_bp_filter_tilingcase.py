@@ -22,6 +22,7 @@ import json
 import copy
 from collections import OrderedDict
 from functools import reduce
+from itertools import product
 
 from tbe import tvm
 from tbe.common.tiling.get_tiling import get_tiling
@@ -296,7 +297,9 @@ def calc_conv2dbp_filter(outs, option=None):
                   "fmap_h": info.get("B_shape")[2],
                   "fmap_w": info.get("B_shape")[3]}
     for var_name in var_names:
-        if get_te_var(var_name):
+        if DynamicParams.is_binary_flag:
+            tgt_area[var_name] = (1, None)
+        elif get_te_var(var_name):
             tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
@@ -396,6 +399,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self.key = 'B_shape'
         self.op_type = 'conv2d_bp_filter'
         self.var_map = var_map
+        self.is_binary_flag = DynamicParams.is_binary_flag
+        self.attrs = DynamicParams.attrs
+        op_get_context().add("_use_cache_tiling", self.is_binary_flag)
 
     def get_repo_tiling(self):
         """
@@ -635,24 +641,24 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         dict: describe a tiling strategy
         """
         var_range = OrderedDict()
-        if 'batch' in self.var_map:
-            var_range['batch'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
-        if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
-            x_h_low, x_h_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
-            x_w_low, x_w_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
-            self._set_padding_list(x_h_low, x_w_low)
-            dedy_h_low = self._get_output_h(x_h_low)
-            dedy_w_low = self._get_output_w(x_w_low)
-            if x_h_high and x_w_high:
-                self._set_padding_list(x_h_high, x_w_high)
-            dedy_h_high = self._get_output_h(x_h_high)
-            dedy_w_high = self._get_output_w(x_w_high)
+        if not self.is_binary_flag:
+            if 'batch' in self.var_map:
+                var_range['batch'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
+            if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
+                x_h_low, x_h_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
+                x_w_low, x_w_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
+                self._set_padding_list(x_h_low, x_w_low)
+                dedy_h_low = self._get_output_h(x_h_low)
+                dedy_w_low = self._get_output_w(x_w_low)
+                if x_h_high and x_w_high:
+                    self._set_padding_list(x_h_high, x_w_high)
+                dedy_h_high = self._get_output_h(x_h_high)
+                dedy_w_high = self._get_output_w(x_w_high)
 
-            var_range['fmap_h'] = (x_h_low, x_h_high)
-            var_range['fmap_w'] = (x_w_low, x_w_high)
-            var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
-            var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
-
+                var_range['fmap_h'] = (x_h_low, x_h_high)
+                var_range['fmap_w'] = (x_w_low, x_w_high)
+                var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
+                var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
 
         block_dim_multi = tiling["AUB_shape"][0] \
             if tiling["AUB_shape"] else 1
@@ -1124,3 +1130,145 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             bl1_attach = "dw_cc" if fmap_l1_tiling_nparts[0] != 1 or \
                 batch_num_sc != 1 else "dw_ddr"
         return al1_attach, bl1_attach
+
+    def _check_invalid_choice(self, choice):
+        ## Drop invalid choices
+        # 1) a_l1 full_load or a_l1 full_k, b_l1 full_load or full_k => a_kl1 = a_bkl1;
+        invalid_choice = (
+            choice[4] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+            choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+            choice[3] != utils.ATTACH_FULL_LOAD
+        )
+
+        # 2) a_l1 full_load or full_k, b_l1 k_split => a_kl1 > b_kl1 & reorder_l1_mn = 1;
+        invalid_choice |= (
+            choice[4] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+            choice[5] == utils.ATTACH_LESS and
+            (choice[3] != utils.ATTACH_EQUAL or choice[9] != 1)
+        )
+
+        # 3) a_l1 k_split, b_l1 full_load or full_k => a_kl1 < b_kl1 & reorder_l1_mn = 0;
+        invalid_choice |= (
+            choice[4] == utils.ATTACH_LESS and
+            choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+            (choice[3] != utils.ATTACH_LESS or choice[9] != 0)
+        )
+
+        # 4) a_l1 k_split, b_l1 k_split => reorder_l1_mn = 0
+        invalid_choice |= (
+            choice[4] == utils.ATTACH_LESS and
+            choice[5] == utils.ATTACH_LESS and
+            choice[9] != 0
+        )
+
+        # 5) a_l1 full_load, b_l1 full_load => reorder_l1_mn = 0
+        invalid_choice |= (
+            choice[4] == utils.ATTACH_FULL_LOAD and
+            choice[5] == utils.ATTACH_FULL_LOAD and
+            choice[9] != 0
+        )
+
+        # 6) a_l1@l0c or b_l1@l0c or min_kl1_cmp_kl0 = 1 => reorder_l0_mn = 0
+        invalid_choice |= (
+            (choice[4] == utils.ATTACH_LESS or
+            choice[5] == utils.ATTACH_LESS or
+            choice[6] == 1) and
+            choice[10] == 1
+        )
+
+        # 7) a_l1 full_load => a_l1_pb off
+        invalid_choice |= (
+            choice[4] == utils.ATTACH_FULL_LOAD and
+            choice[0] != utils.DB_OFF
+        )
+
+        # 8) b_l1 full_load => b_l1_pb off
+        invalid_choice |= (
+            choice[5] == utils.ATTACH_FULL_LOAD and
+            choice[1] != utils.DB_OFF
+        )
+
+        return invalid_choice
+
+    def get_cache_tiling(self):
+        '''
+        Generate tiling cases based on combinations of all attach flags.
+        ---------------------------------------------
+        al1 @l0c and bl1 @l0c                       |
+        al1 @l0c and bl1 @ddr                       |
+        al1 @l0c and bl1 full load                  |
+        al1 @ddr and bl1 @l0c                       |
+        al1 @ddr and bl1 @ddr                       |
+        al1 @ddr and bl1 full load                  |
+        al1 full load and bl1 @l0c                  |
+        al1 full load and bl1 @ddr                  |
+        al1 full load and bl1 full load             |
+
+        Returns
+        ----------
+        tiling_cases: list of all tiling templates.
+        '''
+        # get cache_tiling
+        cache_tiling_all = {}
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag,
+        min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn) = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [0, 1],
+            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
+            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
+            [0, 1],
+            [0, 1])
+
+        l1_choice = list(
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
+                    aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn))
+
+        for choice in l1_choice:
+            cache_tiling = {
+                'block_dim': [-1, -1, -1, 1],
+                'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CUB_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BUB_shape': [-1, -1, 1, 1],
+                'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
+                'AUB_shape': [-1, -1, 1, 1],
+                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
+                'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
+                'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_ON, 'BUB_pbuffer': utils.DB_ON,
+                'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
+                'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
+                'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
+                'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
+                'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
+                'bl0_attach_flag': utils.ATTACH_LESS,
+                'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1},
+                'reorder_l1_mn': -1,
+                'reorder_l0_mn': -1,
+            }
+
+            if self._check_invalid_choice(choice):
+                continue
+
+            cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = choice[0]
+            cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = choice[1]
+            cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = choice[2]
+            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[3]
+            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
+            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
+            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
+            cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
+            cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
+            cache_tiling['reorder_l1_mn'] = choice[9]
+            cache_tiling['reorder_l0_mn'] = choice[10]
+
+            name = reduce(lambda x, y: 5*x + y, choice)
+            cache_tiling_all[name] = [[], cache_tiling, []]
+            tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]
+
+        return tiling_cases

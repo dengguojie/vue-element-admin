@@ -267,6 +267,10 @@ class TilingSelection:
             add_compile_info("tiling_type", "binary")
             add_compile_info("attrs", self.op.attrs)
             tiling_cases = self.op.get_cache_tiling()
+        elif self.op.op_type == "conv2d_bp_filter" and self.op.is_binary_flag:
+            add_compile_info("tiling_type", "binary")
+            add_compile_info("max_core_num", tbe_platform_info.get_soc_spec("CORE_NUM"))
+            tiling_cases = self.op.get_cache_tiling()
         elif None in tgt_area:
             seed_cnt = next(self.seed_cnt)
             default_tiling = self.op.get_default_tiling(target_area.get(w_name)[0])
@@ -336,7 +340,7 @@ class TilingSelection:
                                                 int(reduce(lambda x, y: x * y,
                                                 case['tiling_strategy']['block_dim'])) *
                                                 case['tiling_strategy']['BUB_shape'][0])
-            elif (self.op.op_type in ("matmul", "batch_matmul", "conv2d_bp_input") and
+            elif (self.op.op_type in ("matmul", "batch_matmul", "conv2d_bp_input", "conv2d_bp_filter") and
                 -1 in case['tiling_strategy']['block_dim']):
                 tiling_blockdim["CORE_NUM"] = tbe_platform_info.get_soc_spec("CORE_NUM")
             else:

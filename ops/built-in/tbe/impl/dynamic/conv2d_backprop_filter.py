@@ -20,6 +20,7 @@ from __future__ import absolute_import
 import warnings
 
 from impl.util import util_select_op_base
+from impl.util import fusion_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
@@ -28,6 +29,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import check_graph_mode
@@ -782,17 +784,16 @@ def _check_and_config_para(x, out_backprop, y,
     dict, information of shape and range.
     """
 
-    dedw_ori_shape = list(y.get("ori_shape"))
-    x_dtype = x.get("dtype")
-    dedy_dtype = out_backprop.get("dtype")
-    dedw_dtype = y.get("dtype")
+    x_dtype = x.get("dtype", "float16").lower()
+    dedy_dtype = out_backprop.get("dtype", "float16").lower()
+    dedw_dtype = y.get("dtype", "float32").lower()
     x_format = x.get("ori_format")
     dedy_format = out_backprop.get("ori_format")
     dedw_format = y.get("ori_format")
+    dedw_ori_shape = list(y.get("ori_shape"))
 
-    x_dtype = x_dtype.lower()
-    dedy_dtype = dedy_dtype.lower()
-    dedw_dtype = dedw_dtype.lower()
+    para_check.check_shape_rule(dedw_ori_shape, min_dim=CONV_BACKPROP_SHAPE_DIM, max_dim=CONV_BACKPROP_SHAPE_DIM)
+
     _check_data_format(x_format, "x")
     _check_data_format(dedy_format, "out_backprop")
     _check_data_format(dedw_format, "res", ["NHWC", "NCHW", "HWCN"])
@@ -806,15 +807,12 @@ def _check_and_config_para(x, out_backprop, y,
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "strides should be 4d list")
     if len(dilations) != CONV_BACKPROP_SHAPE_DIM:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "dilations should be 4d list")
-
     if dilations[H_DIM] != 1 or dilations[W_DIM] != 1:
         error_manager_cube.raise_err_specific_user(
             "conv2d_backprop_filter", "dilations is not supported in dynamic shape yet.")
-
     if len(pads) != CONV_BACKPROP_SHAPE_DIM:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "pads should be 4d list")
 
-    para_check.check_shape_rule(dedw_ori_shape, min_dim=CONV_BACKPROP_SHAPE_DIM, max_dim=CONV_BACKPROP_SHAPE_DIM)
     ret_nchw = _get_nchw_shape(x, out_backprop, y, groups)
     x_nchw = ret_nchw.get("x_shape")
     dedy_nchw = ret_nchw.get("dedy_shape")
@@ -860,20 +858,132 @@ def _check_and_config_para(x, out_backprop, y,
     return config_dict
 
 
+def _is_binary_mode():
+    '''
+    Get binary flag. Return True if None in range.
+    '''
+    var_vector = []
+    var_vector.append(operation.get_te_var("batch"))
+    var_vector.append(operation.get_te_var("fmap_c"))
+    var_vector.append(operation.get_te_var("fmap_h"))
+    var_vector.append(operation.get_te_var("fmap_w"))
+    var_vector.append(operation.get_te_var("dedy_c"))
+    var_vector.append(operation.get_te_var("dedy_h"))
+    var_vector.append(operation.get_te_var("dedy_w"))
+
+    for var in var_vector:
+        range = var.get_bound() if var is not None else None
+        if range is not None and list(range) != [1, None]:
+            return False
+    return True
+
+
+def _binary_mode_para_check(strides, pads, dilations, kernel_name):
+    '''
+    Check params for binary mode.
+    '''
+    para_check.check_kernel_name(kernel_name)
+    if len(strides) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "strides should be 4d list")
+    if len(dilations) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "dilations should be 4d list")
+    if len(pads) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "pads should be 4d list")
+
+
+def _define_optional_vars(var_name):
+    if operation.get_te_var(var_name) is None:
+        return operation.var(var_name)
+    return operation.get_te_var(var_name).get_tvm_var()
+
+
+def _define_binary_mode_vars():
+    '''
+    Define vars for binary mode.
+    '''
+    batch = _define_optional_vars("batch")
+    fmap_c = _define_optional_vars("fmap_c")
+    fmap_h = _define_optional_vars("fmap_h")
+    fmap_w = _define_optional_vars("fmap_w")
+    dedy_c = _define_optional_vars("dedy_c")
+    dedy_h = _define_optional_vars("dedy_h")
+    dedy_w = _define_optional_vars("dedy_w")
+
+    kernel_h = operation.var("kernel_h")
+    kernel_w = operation.var("kernel_w")
+    fmap_c1 = operation.var("fmap_c1")
+    dedy_c1 = operation.var("dedy_c1")
+    stride_h = operation.var("stride_h")
+    stride_w = operation.var("stride_w")
+    padt = operation.var("padt")
+    padb = operation.var("padb")
+    padl = operation.var("padl")
+    padr = operation.var("padr")
+    dilation_h = operation.var("dilation_h")
+    dilation_w = operation.var("dilation_w")
+    groups = operation.var("groups")
+
+    cache_tiling_vars = (
+        "group_dim",
+        "batch_dim",
+        "k_dim",
+        "batch_single_core",
+        "n_single_core",
+        "n_dim",
+        "n_bl1",
+        "n_ub_l0_time",
+        "cub_n1",
+        "m_dim",
+        "m_single_core",
+        "m_al1",
+        "m_l0",
+        "k_l0",
+        "kal1_factor",
+        "kbl1_factor",
+        "kal0_factor",
+        "kbl0_factor",
+        "kal1_16",
+        "kbl1_16",
+        "kl1_times",
+        "bl1_bound",
+        "m_aub",
+        "n_bub",
+        "k_aub",
+        "k_bub",
+        "ho_bL1",
+        "multi_n_ub_l1",
+        "multi_m_ub_l1",
+        "multi_k_aub_l1",
+        "multi_k_bub_l1",
+    )
+    for var_name in cache_tiling_vars:
+        operation.var(var_name)
+
+    var_shape_map = {}
+    var_shape_map["fmap_nchw"] = (batch, fmap_c, fmap_h, fmap_w)
+    var_shape_map["dedy_nchw"] = (batch, dedy_c, dedy_h, dedy_w)
+    var_shape_map["dedw_nchw"] = (dedy_c, fmap_c, kernel_h, kernel_w)
+    var_shape_map["fmap_nc1hwc0"] = (batch, fmap_c1, fmap_h, fmap_w, 16)
+    var_shape_map["dedy_nc1hwc0"] = (batch, dedy_c1, dedy_h, dedy_w, 16)
+    var_shape_map["strides"] = (stride_h, stride_w)
+    var_shape_map["pads"] = (padt, padb, padl, padr)
+    var_shape_map["dilations"] = (1, 1, dilation_h, dilation_w)
+    var_shape_map["groups"] = groups
+
+    return var_shape_map
+
+
 def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
                                     strides, pads, dilations,
                                     groups, data_format, kernel_name):
-    x_dtype = x.get("dtype")
-    dedy_dtype = out_backprop.get("dtype")
-    dedw_dtype = y.get("dtype")
-    x_dtype = x_dtype.lower()
-    dedy_dtype = dedy_dtype.lower()
-    dedw_dtype = dedw_dtype.lower()
 
-    config_dict = _check_and_config_para(x, out_backprop, y,
-                           strides, pads, dilations,
-                           groups, data_format, kernel_name)
+    fmap_dtype = x.get("dtype", "float16").lower()
+    dedy_dtype = out_backprop.get("dtype", "float16").lower()
+    dedw_dtype = y.get("dtype", "float32").lower()
+    fmap_range = x.get("range") if x.get("range") else x.get("ori_range")
 
+    config_dict = _check_and_config_para(x, out_backprop, y, strides, pads,
+                                        dilations, groups, data_format, kernel_name)
     fmap_shape = config_dict.get("fmap_shape")
     dedy_shape = config_dict.get("dedy_shape")
     dedw_nchw = config_dict.get("dedw_nchw")
@@ -899,13 +1009,11 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
         dedy_shape[W_DIM] = operation.var("dedy_w", bound=dedy_range[3])
         operation.add_exclude_bound_var(dedy_shape[W_DIM])
 
-    fmap = tvm.placeholder(fmap_shape, name="fmap", dtype=x_dtype)
+    fmap = tvm.placeholder(fmap_shape, name="fmap", dtype=fmap_dtype)
     filter_size = tvm.placeholder([4], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape, name="dedy", dtype=dedy_dtype)
-
     pads = _calc_pads(fmap_shape, dedw_nchw, strides, dilations, pads)
-
-    org_tensors = {"x": x, "filter_size": filter_size, "out_backprop": out_backprop, "y": y}
+    ori_tensors = {"x": x, "filter_size": filter_size, "out_backprop": out_backprop, "y": y}
 
     para_dict = {
         "strides": strides,
@@ -915,7 +1023,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
         "res_dtype": dedw_dtype,
         "kernel_name": kernel_name,
         "correct_range_flag": correct_range_flag,
-        "ori_tensors": org_tensors,
+        "ori_tensors": ori_tensors,
     }
 
     dedw = tbe.conv2d_backprop_filter(input_x=fmap,
@@ -1178,6 +1286,94 @@ def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pa
                 {"groups": groups}, {"data_format": data_format}])
         return result
     return
+
+
+@register_operator_compute("Conv2DBackpropFilter", op_mode="dynamic", support_fusion=True)
+@para_check.check_input_type(
+    tvm.tensor.Tensor, tvm.tensor.Tensor, tvm.tensor.Tensor, dict, (tuple, list),
+    (tuple, list), (tuple, list), int, str, str)
+def conv2d_backprop_filter_fusion_compute(fmap, filter_tensor, out_backprop, y, strides, pads,
+    dilations=(1, 1, 1, 1), groups=1, data_format='NHWC', kernel_name="conv2d_backprop_filter"):
+    """
+    algorithm: conv2d_backprop_filter
+
+    Parameters
+    ----------
+    fmap:
+    Tvm tensor for input feature map
+
+    filter_tensor:
+    Tvm tensor for filter size.
+
+    out_backprop:
+    Tvm tensor for input grads.
+
+    y:
+    Dict with keys(ori_shape, ori_format, shape, format, dtype, range).
+
+    strides:
+    Tuple/list of 4 integers.
+
+    pads:
+    Tuple/list of 4 integers
+    [pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations:
+    Tuple/list of 4 integers
+    filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
+
+    groups:
+    int. The number of filter's group. Default value is 1.
+
+    data_format:
+    str. An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
+    Specify the data format of the input and output data.
+
+    kernel_name:
+    str. kernel name, default value is "conv2d_backprop_filter"
+
+    Returns
+    -------
+    Tvm tensor for dedw.
+    """
+    fusion_util.check_fusion_input([fmap])
+    fusion_util.check_fusion_input([filter_tensor])
+    fusion_util.check_fusion_input([out_backprop])
+    # set fusion build config
+    build_cfg = tbe_register.get_fusion_buildcfg()
+    if "fusion_op" in build_cfg:
+        build_cfg["fusion_op"]["constant_realize_extent_in_infer_bound"] = False
+    else:
+        build_cfg["fusion_op"] = {"constant_realize_extent_in_infer_bound": False}
+
+    is_binary_flag = _is_binary_mode()
+    if is_binary_flag:
+        _binary_mode_para_check(strides, pads, dilations, kernel_name)
+        var_shape_map = _define_binary_mode_vars()
+        _, _, dilations = _get_attrs(strides, pads, dilations, data_format)
+        strides = var_shape_map.get("strides")
+        pads = var_shape_map.get("pads")
+        dedw_dtype = y.get("dtype", "float32").lower()
+        filter_size = var_shape_map.get("dedw_nchw")
+    else:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "only support binary mode")
+
+    ori_tensors = {"fmap": fmap, "filter_size": filter_tensor, "out_backprop": out_backprop, "y": y}
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "groups": groups,
+        "res_dtype": dedw_dtype,
+        "kernel_name": kernel_name,
+        "ori_tensors": ori_tensors,
+        "is_binary_flag": is_binary_flag,
+    }
+
+    return tbe.conv2d_backprop_filter(input_x=fmap,
+                                      out_backprop=out_backprop,
+                                      filter_sizes=filter_size,
+                                      para_dict=para_dict)
 
 
 @register_operator('Conv2DBackpropFilter')

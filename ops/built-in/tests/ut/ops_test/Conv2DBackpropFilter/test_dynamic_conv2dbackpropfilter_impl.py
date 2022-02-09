@@ -3,6 +3,7 @@
 from op_test_frame.ut import OpUT
 from impl.dynamic.conv2d_backprop_filter import get_op_support_info
 from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+from impl.dynamic.conv2d_backprop_filter import conv2d_backprop_filter_fusion_compute
 from impl.dynamic.trans_data import trans_data_fusion_compute
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import tvm
@@ -129,7 +130,7 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case5",
                                         "success"))
 
-# dynamic h VALID NHWC 
+# dynamic h VALID NHWC
 ut_case.add_case(
     "all",
     gen_dynamic_conv2d_backprop_filter_case([2, 2, 64, 64], [7, -1, 2, 64], [7, -1, 3, 64],
@@ -142,7 +143,7 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case6",
                                         "success"))
 
-# dynamic_nh hw VALID NHWC 
+# dynamic_nh hw VALID NHWC
 ut_case.add_case(
     "all",
     gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, 50, 64], [64, -1, -1, 64],
@@ -1103,6 +1104,36 @@ def test_transdata_fusion_compute_2(test_arg):
     ]
     shape_util.variable_shape(inputs, op_mode="conv2d_backprop_filter")
 ut_case.add_cust_test_func(test_func=test_transdata_fusion_compute_2)
+
+def test_conv2d_backprop_filter_binary_mode(test_arg):
+    batch_idx = operation.var("batch")
+    fmap_c = operation.var("fmap_c")
+    fmap_h = operation.var("fmap_h")
+    fmap_w = operation.var("fmap_w")
+    dedy_c = operation.var("dedy_c")
+    dedy_h = operation.var("dedy_h")
+    dedy_w = operation.var("dedy_w")
+
+    fmap_nchw = (batch_idx, fmap_c, fmap_h, fmap_w)
+    dedy_nchw = (batch_idx, dedy_c, dedy_h, dedy_w)
+    fmap_nc_hw = (batch_idx, fmap_c, fmap_h * fmap_w)
+    dedy_nc_hw = (batch_idx, dedy_c, dedy_h * dedy_w)
+
+    fmap = tvm.placeholder(fmap_nc_hw, name="fmap", dtype="float16", attrs={"shape": fmap_nchw})
+    dedy = tvm.placeholder(dedy_nc_hw, name="dedy", dtype="float16", attrs={"shape": dedy_nchw})
+    filter_tensor = tvm.placeholder([4,], name="filter_tensor", dtype="int32")
+    y = {"shape": (-1, -1, -1, -1), "dtype": "float32", "format": "NCHW"}
+    strides = (1, 1, 1, 1)
+    pads = (0, 0, 0, 0)
+    dilations = (1, 1, 1, 1)
+
+    fmap_nc1hwc0 = trans_data_fusion_compute(fmap, None, "NCHW", "NC1HWC0")
+    dedy_nc1hwc0 = trans_data_fusion_compute(dedy, None, "NCHW", "NC1HWC0")
+
+    dedw = conv2d_backprop_filter_fusion_compute(fmap_nc1hwc0, filter_tensor, dedy_nc1hwc0, y, strides, pads, dilations)
+
+
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_binary_mode)
 
 
 if __name__ == '__main__':

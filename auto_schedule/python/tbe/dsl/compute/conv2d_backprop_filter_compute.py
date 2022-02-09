@@ -303,6 +303,7 @@ class Conv2dBackpropFilter:
         w_dim = 3
         fmap_range = []
         var_map = {}
+
         if isinstance(self.fmap.shape[n_dim], Var):
             fmap_range.append(get_te_var("batch").get_bound())
             var_map["batch"] = get_te_var("batch").get_tvm_var()
@@ -633,22 +634,32 @@ class Conv2dBackpropFilter:
         cout, cin, _, _ = self.weight_shape
         fmap_c = cin * groups
         c0_size = self.c0_size
-        mag_factor0 = lcm(fmap_c // groups, BLOCK_SIZE) // (fmap_c // groups)
-        mag_factor1 = lcm(cout // groups, BLOCK_SIZE) // (cout // groups)
-        mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
+        if not DynamicConv2dBpFilterParams.is_binary_flag:
+            mag_factor0 = lcm(fmap_c // groups, BLOCK_SIZE) // (fmap_c // groups)
+            mag_factor1 = lcm(cout // groups, BLOCK_SIZE) // (cout // groups)
+            mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
 
-        cin_g = (mag_factor * fmap_c // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
-        cin1_g = cin_g // c0_size
-        cout_g = (mag_factor * cout // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+            cin_g = (mag_factor * fmap_c // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+            cin1_g = cin_g // c0_size
+            cout_g = (mag_factor * cout // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
 
-        group_dict = {
-            "real_g": (groups + mag_factor - 1) // mag_factor,
-            "mag_factor": mag_factor,
-            "cin1_g": cin1_g,
-            "cout_g": cout_g,
-            "cin_ori": fmap_c,
-            "cout_ori": cout
-        }
+            group_dict = {
+                "real_g": (groups + mag_factor - 1) // mag_factor,
+                "mag_factor": mag_factor,
+                "cin1_g": cin1_g,
+                "cout_g": cout_g,
+                "cin_ori": fmap_c,
+                "cout_ori": cout
+            }
+        else:
+            group_dict = {
+                "real_g": groups,
+                "mag_factor": 1,
+                "cin1_g": _ceil_div(cin, self.c0_size),
+                "cout_g": _ceil_div(cout, self.c0_size) * self.c0_size,
+                "cin_ori": fmap_c,
+                "cout_ori": cout
+            }
         tiling_info_dict_tmp = DynamicConv2dBpFilterParams.tiling_info_dict
         tiling_info_dict_tmp["group"] = group_dict.get("real_g")
         tiling_info_dict_tmp.get("A_shape")[1] = group_dict.get("cout_g") // c0_size
@@ -664,11 +675,11 @@ class Conv2dBackpropFilter:
         compute definition and result record
 
         """
-
-        self._deconv_dw_input_check_1()
-        self._deconv_dw_input_check_2()
-        if not self.var_map:
-            self._deconv_dw_input_check_3()
+        if not DynamicConv2dBpFilterParams.is_binary_flag:
+            self._deconv_dw_input_check_1()
+            self._deconv_dw_input_check_2()
+            if not self.var_map:
+                self._deconv_dw_input_check_3()
         self._compute_group_dict()
         self.deconv_dw_compute()
         self.res_tensor = self.dw_ddr  # return tensor of this file to topi
@@ -697,13 +708,14 @@ class Conv2dBackpropFilter:
             grads_width = grads_width * 2
             self.shapelist.get('grads_5hd')[-2] = grads_width
             self.shape_grads_5hd[-2] = grads_width
-        if self.var_map:
+        if self.var_map and not DynamicConv2dBpFilterParams.is_binary_flag:
             w_one_flag = tvm.var("w_one_flag")
             self.var_map["w_one_flag"] = w_one_flag
             stride_w = tvm.select(w_one_flag == 2,
                                   fmap_width + self.pad[2] + self.pad[3],
                                   self.stride[1])
             self.stride[1] = stride_w
+
             pad_r = tvm.select(w_one_flag == 2,
                                self.pad[3] + (kernel_width - 1) * dilation_w + 1,
                                self.pad[3])
@@ -946,7 +958,7 @@ class Conv2dBackpropFilter:
             if not self.var_map and self.flag_load3d_special_case:
                 # make sure the index won't exceed real grads_w
                 grads_width_index = (hw_mad_indices % (grads_width // 2))
-            if self.var_map:
+            if self.var_map and not DynamicConv2dBpFilterParams.is_binary_flag:
                 w_one_flag = self.var_map["w_one_flag"]
                 grads_width_index = (hw_mad_indices % (grads_width // w_one_flag))
 
@@ -1494,9 +1506,11 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
     groups = para_dict.get("groups", 1)
     res_dtype = para_dict.get("res_dtype", "float32")
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_filter_cce")
+    DynamicConv2dBpFilterParams.is_binary_flag = para_dict.get("is_binary_flag", False)
     DynamicConv2dBpFilterParams.correct_range_flag = para_dict.get("correct_range_flag", False)
     DynamicConv2dBpFilterParams.ori_tensors = para_dict.get("ori_tensors")
     DynamicConv2dBpFilterParams.op_type = para_dict.get("op_type", "Conv2DBackpropFilter")
+    DynamicConv2dBpFilterParams.attrs = para_dict.get("attrs", {})
 
     deconv_dw_object = Conv2dBackpropFilter(input_x, out_backprop,
                                             filter_sizes,
@@ -1520,4 +1534,7 @@ class DynamicConv2dBpFilterParams:
     correct_range_flag = False
     ori_tensors = {}
     tiling_info_dict = {}
+    flag_all_one_case = False
+    is_binary_flag = False
     op_type = ""
+    attrs = {}
