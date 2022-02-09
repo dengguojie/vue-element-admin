@@ -246,8 +246,8 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
             return max((r[i][0] for r in range_local)), _select_min_upper_bound((r[i][1] for r in range_local))
 
         shape_local = [x["shape"] for x in inputs_before_reduce]
-        range_local = [
-            x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0]) for x in inputs_before_reduce
+        range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0])
+                       for x in inputs_before_reduce
         ]
 
         _process_all_unknown_shape(shape_local, range_local)
@@ -380,6 +380,14 @@ class ComputeGraphInfo:
         self._collect_info(output_tensors)
         self._init_max_ub_count(output_tensors)
 
+    def gen_endpoint_output_tensor_set(self):
+        """
+        :return:
+        """
+        for output_tensor in self.output_tensor_set:
+            if not self.tensor_consumers_map[output_tensor]:
+                self.endpoint_output_tensor_set.add(output_tensor)
+
     def _collect_info(self, output_tensors):
         """
         :param output_tensors:
@@ -392,14 +400,6 @@ class ComputeGraphInfo:
         self.gen_mid_tensor_sets()
         # endpoint_output_tensor_set
         self.gen_endpoint_output_tensor_set()
-
-    def gen_endpoint_output_tensor_set(self):
-        """
-        :return:
-        """
-        for output_tensor in self.output_tensor_set:
-            if not self.tensor_consumers_map[output_tensor]:
-                self.endpoint_output_tensor_set.add(output_tensor)
 
     def gen_mid_tensor_sets(self):
         """
@@ -587,14 +587,6 @@ class BNReduceInfo:
             reduce_tensor_axes[idx] = axis.var
         return reduce_tensor_axes
 
-    def get_reduce_axis_indices(self, reduce_tensor):
-        """
-        Get all reduce axis index
-        :param reduce_tensor:
-        :return:
-        """
-        return [self.get_reduce_all_axes(reduce_tensor).index(axis) for axis in self.get_reduce_axes(reduce_tensor)]
-
     @staticmethod
     def get_reduce_all_axes(reduce_tensor):
         """
@@ -604,6 +596,14 @@ class BNReduceInfo:
         """
         reduce_tensor_body = reduce_tensor.op.body
         return list(reduce_tensor_body[0].source[0].args)
+
+    def get_reduce_axis_indices(self, reduce_tensor):
+        """
+        Get all reduce axis index
+        :param reduce_tensor:
+        :return:
+        """
+        return [self.get_reduce_all_axes(reduce_tensor).index(axis) for axis in self.get_reduce_axes(reduce_tensor)]
 
     @staticmethod
     def is_reduce_tensor(tensor):
@@ -859,25 +859,6 @@ class GenBnReduceTilingCase:
 
         return [const_tiling_case]
 
-    def calculate_atomic_tiling_cases(self, info):
-        """
-        :param info:
-        :return:
-        """
-        tiling_case_list = []
-        if self.check_atomic_add_support(info):
-            shape_before_reduce = info.shape_before_reduce
-            reduce_axis_index = info.reduce_axis_indices
-            if info.is_reduce_all_axes():
-                tiling_case_list += self._gen_atomic_tiling_case_reduce_all(shape_before_reduce)
-
-            elif info.is_reduce_not_last_axis():
-                tiling_case_list += self._gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index)
-
-            elif info.is_reduce_last_axis():
-                tiling_case_list += self._gen_atomic_tiling_case_last_axis(shape_before_reduce, reduce_axis_index)
-        return tiling_case_list
-
     @staticmethod
     def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index):
         """
@@ -905,6 +886,45 @@ class GenBnReduceTilingCase:
                     tiling_case_list.append(tiling_case)
         return tiling_case_list
 
+    def calculate_atomic_tiling_cases(self, info):
+        """
+        :param info:
+        :return:
+        """
+        tiling_case_list = []
+        if self.check_atomic_add_support(info):
+            shape_before_reduce = info.shape_before_reduce
+            reduce_axis_index = info.reduce_axis_indices
+            if info.is_reduce_all_axes():
+                tiling_case_list += self._gen_atomic_tiling_case_reduce_all(shape_before_reduce)
+
+            elif info.is_reduce_not_last_axis():
+                tiling_case_list += self._gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index)
+
+            elif info.is_reduce_last_axis():
+                tiling_case_list += self._gen_atomic_tiling_case_last_axis(shape_before_reduce, reduce_axis_index)
+        return tiling_case_list
+
+    @staticmethod
+    def get_block_size(dtype):
+        """
+        :param dtype:
+        :return:
+        """
+        if dtype in ["float32", "fp32", "int32"]:
+            block_size = 8
+        elif dtype in ["bool", "int8", "uint8"]:
+            block_size = 32
+        elif dtype in ["float16", "fp16"]:
+            block_size = 16
+        elif dtype in ["int64"]:
+            block_size = 4
+        else:
+            excepted_dtype_list = ["float32", "fp32", "int32", "bool", "int8", "uint8", "float16", "fp16", "int64"]
+            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "dtype", \
+            excepted_dtype_list, dtype)
+        return block_size
+
     @staticmethod
     def _gen_atomic_tiling_case_last_axis(shape_before_reduce, reduce_axis_index):
         """
@@ -931,26 +951,6 @@ class GenBnReduceTilingCase:
                     tiling_case.multi_core = True
                     tiling_case_list.append(tiling_case)
         return tiling_case_list
-
-    @staticmethod
-    def get_block_size(dtype):
-        """
-        :param dtype:
-        :return:
-        """
-        if dtype in ["float32", "fp32", "int32"]:
-            block_size = 8
-        elif dtype in ["bool", "int8", "uint8"]:
-            block_size = 32
-        elif dtype in ["float16", "fp16"]:
-            block_size = 16
-        elif dtype in ["int64"]:
-            block_size = 4
-        else:
-            excepted_dtype_list = ["float32", "fp32", "int32", "bool", "int8", "uint8", "float16", "fp16", "int64"]
-            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "dtype", \
-            excepted_dtype_list, dtype)
-        return block_size
 
     @staticmethod
     def check_atomic_add_support(reduce_info):
@@ -1052,23 +1052,6 @@ class GenBnReduceTilingCase:
         return key
 
     @staticmethod
-    def _gen_const_tiling_key(reduce_axis):
-        """
-        generate dict key from reduce_axis
-        :param reduce_axis:
-        :return:
-        """
-        if not reduce_axis:
-            return -1
-        reduce_axis_local = list(reduce_axis)[:]
-        reduce_axis_local = sorted(reduce_axis_local)
-        dict_key = 0
-        for i in reduce_axis_local:
-            dict_key = 10 * dict_key + i + 1
-
-        return dict_key
-
-    @staticmethod
     def calculate_customised_tiling_cases(info):
         """
         :param info:
@@ -1131,6 +1114,23 @@ class GenBnReduceTilingCase:
             tiling_case_list.append(tiling_case)
 
         return tiling_case_list
+
+    @staticmethod
+    def _gen_const_tiling_key(reduce_axis):
+        """
+        generate dict key from reduce_axis
+        :param reduce_axis:
+        :return:
+        """
+        if not reduce_axis:
+            return -1
+        reduce_axis_local = list(reduce_axis)[:]
+        reduce_axis_local = sorted(reduce_axis_local)
+        dict_key = 0
+        for i in reduce_axis_local:
+            dict_key = 10 * dict_key + i + 1
+
+        return dict_key
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -1274,6 +1274,20 @@ class BnReduceCustomisedSchedule:
         }
         funcs[self._tiling_strategy]()
 
+    @staticmethod
+    def get_reduce_axis_from_split_axis(ub_split_axis):
+        """
+        :param ub_split_axis:
+        :return:
+        """
+        if ub_split_axis == 0:
+            ub_split_reduce_axis = 0
+        elif ub_split_axis == 2:
+            ub_split_reduce_axis = 1
+        else:
+            ub_split_reduce_axis = 2
+        return ub_split_reduce_axis
+
     def _calc_tiling_cut_c1(self):
         """
         create block factor and ub factor var if it's necessary
@@ -1300,20 +1314,6 @@ class BnReduceCustomisedSchedule:
             self._ub_tiling_vars[u_i] = operation.var("ub_factor_" + str(u_i), u_bound)
         else:
             self._ub_tiling_vars[u_i] = ub_factor
-
-    @staticmethod
-    def get_reduce_axis_from_split_axis(ub_split_axis):
-        """
-        :param ub_split_axis:
-        :return:
-        """
-        if ub_split_axis == 0:
-            ub_split_reduce_axis = 0
-        elif ub_split_axis == 2:
-            ub_split_reduce_axis = 1
-        else:
-            ub_split_reduce_axis = 2
-        return ub_split_reduce_axis
 
     # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _do_tiling_cut_c1(self):
@@ -1700,34 +1700,6 @@ class BnReduceCustomisedSchedule:
         self._schedule = sch
 
     @staticmethod
-    def _schedule_cut_h_twice_do_reorder(sch, sum_x_global, sum_x_ub_rf):
-        """
-        :param sch:
-        :param sum_x_global:
-        :param sum_x_ub_rf:
-        :return:
-        """
-        sch[sum_x_global].reorder(
-            sum_x_global.op.reduce_axis[0],
-            sum_x_global.op.axis[0],
-            sum_x_global.op.axis[1],  # C1 axis
-            sum_x_global.op.axis[2],
-            sum_x_global.op.axis[3],
-            sum_x_global.op.axis[4])  # C0 axis
-
-        sch[sum_x_ub_rf].reorder(
-            sum_x_ub_rf.op.axis[0],
-            sum_x_ub_rf.op.axis[1],  # N axis
-            sum_x_ub_rf.op.axis[2],  # C1 axis
-            sum_x_ub_rf.op.axis[3],
-            sum_x_ub_rf.op.axis[4],
-            sum_x_ub_rf.op.reduce_axis[0],
-            sum_x_ub_rf.op.reduce_axis[2],
-            sum_x_ub_rf.op.reduce_axis[3],
-            sum_x_ub_rf.op.reduce_axis[1],
-            sum_x_ub_rf.op.axis[5])  # C0 axis
-
-    @staticmethod
     def get_bound(expr):
         """
         :param expr:
@@ -1781,6 +1753,34 @@ class BnReduceCustomisedSchedule:
             return _lower, _upper
 
         return _parse(expr)
+
+    @staticmethod
+    def _schedule_cut_h_twice_do_reorder(sch, sum_x_global, sum_x_ub_rf):
+        """
+        :param sch:
+        :param sum_x_global:
+        :param sum_x_ub_rf:
+        :return:
+        """
+        sch[sum_x_global].reorder(
+            sum_x_global.op.reduce_axis[0],
+            sum_x_global.op.axis[0],
+            sum_x_global.op.axis[1],  # C1 axis
+            sum_x_global.op.axis[2],
+            sum_x_global.op.axis[3],
+            sum_x_global.op.axis[4])  # C0 axis
+
+        sch[sum_x_ub_rf].reorder(
+            sum_x_ub_rf.op.axis[0],
+            sum_x_ub_rf.op.axis[1],  # N axis
+            sum_x_ub_rf.op.axis[2],  # C1 axis
+            sum_x_ub_rf.op.axis[3],
+            sum_x_ub_rf.op.axis[4],
+            sum_x_ub_rf.op.reduce_axis[0],
+            sum_x_ub_rf.op.reduce_axis[2],
+            sum_x_ub_rf.op.reduce_axis[3],
+            sum_x_ub_rf.op.reduce_axis[1],
+            sum_x_ub_rf.op.axis[5])  # C0 axis
 
 
 # 'pylint: disable=too-few-public-methods, too-many-instance-attributes
@@ -2034,12 +2034,6 @@ class BnReduceAtomicSchedule:
             if temp_write_buffer:
                 self._recursive_double_buffer(temp_write_buffer)
 
-    def _do_emit_insn(self):
-        for stage in self._emit_insn_map:
-            scope_iter_var = self._emit_insn_map[stage]["scope"]
-            instruction = self._emit_insn_map[stage]["instruction"]
-            self._schedule[stage].emit_insn(scope_iter_var, instruction)
-
     @staticmethod
     def _map_apend(input_map, key, value):
         """
@@ -2061,6 +2055,12 @@ class BnReduceAtomicSchedule:
                 input_map[key] = value
             else:
                 input_map[key] = [value]
+
+    def _do_emit_insn(self):
+        for stage in self._emit_insn_map:
+            scope_iter_var = self._emit_insn_map[stage]["scope"]
+            instruction = self._emit_insn_map[stage]["instruction"]
+            self._schedule[stage].emit_insn(scope_iter_var, instruction)
 
     def get_dst_tensor_map(self, reslist, tensor_map):
         """
@@ -2175,6 +2175,16 @@ class BnReduceAtomicSchedule:
         for i in self._mid_output_tensors:
             self._map_apend(self._cache_read_tensors_and_readers_map, i, self._mid_output_tensors_dst_tensor_map[i])
 
+    @staticmethod
+    def _is_reduce_all_axis(shape_before_reduce, reduce_axis_index):
+        """
+        :return:
+        """
+        for i, _ in enumerate(shape_before_reduce):
+            if i not in reduce_axis_index:
+                return False
+        return True
+
     def _calculate_cache_write(self):
         """
         cache read operations
@@ -2190,16 +2200,6 @@ class BnReduceAtomicSchedule:
         for i in self._mid_tensors:
             if i not in self._cache_write_exclude_tensors:
                 self._cache_write_tensors.append(i)
-
-    @staticmethod
-    def _is_reduce_all_axis(shape_before_reduce, reduce_axis_index):
-        """
-        :return:
-        """
-        for i, _ in enumerate(shape_before_reduce):
-            if i not in reduce_axis_index:
-                return False
-        return True
 
     @staticmethod
     def _is_reduce_last_axis(shape_before_reduce, reduce_axis_index):
@@ -2355,6 +2355,32 @@ class BnReduceAtomicSchedule:
             offset = self._storage_align_para[stage]["offset"]
             self._schedule[stage].storage_align(scope_iter_var, align_factor, offset)
 
+    @staticmethod
+    def _find_last_reduce_axis(shape_before_reduce, reduce_axis_index):
+        """
+        :param shape_before_reduce:
+        :param reduce_axis_index:
+        :return:
+        """
+        # shape_before_reduce:(ak+1,rk,..,r2,a2,r1,a1) or (ak,rk,..,r2,a1,r1),
+        # find r1 position, r1 may contain continues axis
+        r1_end_index = None
+        for i in range(len(shape_before_reduce) - 1, -1, -1):
+            if i in reduce_axis_index:
+                r1_end_index = i
+                break
+        r1_start_index = r1_end_index
+        if r1_end_index is None:
+            return r1_start_index, r1_end_index
+        for i in range(r1_end_index, -1, -1):
+            if i not in reduce_axis_index:
+                r1_start_index = i + 1
+                break
+            if i == 0:
+                r1_start_index = i
+
+        return r1_start_index, r1_end_index
+
     def _need_storage_align(self):
         """
         :return:
@@ -2384,32 +2410,6 @@ class BnReduceAtomicSchedule:
             return False
 
         return True
-
-    @staticmethod
-    def _find_last_reduce_axis(shape_before_reduce, reduce_axis_index):
-        """
-        :param shape_before_reduce:
-        :param reduce_axis_index:
-        :return:
-        """
-        # shape_before_reduce:(ak+1,rk,..,r2,a2,r1,a1) or (ak,rk,..,r2,a1,r1),
-        # find r1 position, r1 may contain continues axis
-        r1_end_index = None
-        for i in range(len(shape_before_reduce) - 1, -1, -1):
-            if i in reduce_axis_index:
-                r1_end_index = i
-                break
-        r1_start_index = r1_end_index
-        if r1_end_index is None:
-            return r1_start_index, r1_end_index
-        for i in range(r1_end_index, -1, -1):
-            if i not in reduce_axis_index:
-                r1_start_index = i + 1
-                break
-            if i == 0:
-                r1_start_index = i
-
-        return r1_start_index, r1_end_index
 
     # 'pylint: disable=too-many-locals
     def _calculate_tiling(self):
@@ -3010,6 +3010,27 @@ class BnReduceAtomicSchedule:
         # if ub split axis in (ak,..a2)
         if ub_split_axis not in reduce_axis_index:
             __reorder_case_3(ub_rf_reordered_axis_list)
+    
+    @staticmethod
+    def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index, keep_dims):
+        """
+        :param shape_before_reduce:
+        :param reduce_axis_index:
+        :return:
+        """
+        none_reduce_index_map = {}
+        if keep_dims:
+            for i in range(0, len(shape_before_reduce)):
+                if i not in reduce_axis_index:
+                    none_reduce_index_map[i] = i
+        else:
+            count = 0
+            for i in range(0, len(shape_before_reduce)):
+                if i not in reduce_axis_index:
+                    none_reduce_index_map[i] = count
+                    count += 1
+
+        return none_reduce_index_map
 
     def _reorder_atomic_reduce_last_axis(self, out_tensor_ub_rf, out_tensor_global):
         """
@@ -3104,27 +3125,6 @@ class BnReduceAtomicSchedule:
                 ub_rf_reordered_axis_list.append(reduce_axis)
 
         self._schedule[out_tensor_ub_rf].reorder(*ub_rf_reordered_axis_list)
-
-    @staticmethod
-    def _find_none_reduce_axis_map(shape_before_reduce, reduce_axis_index, keep_dims):
-        """
-        :param shape_before_reduce:
-        :param reduce_axis_index:
-        :return:
-        """
-        none_reduce_index_map = {}
-        if keep_dims:
-            for i in range(0, len(shape_before_reduce)):
-                if i not in reduce_axis_index:
-                    none_reduce_index_map[i] = i
-        else:
-            count = 0
-            for i in range(0, len(shape_before_reduce)):
-                if i not in reduce_axis_index:
-                    none_reduce_index_map[i] = count
-                    count += 1
-
-        return none_reduce_index_map
 
     def _calculate_compute_inline(self):
         """

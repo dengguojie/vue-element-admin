@@ -95,8 +95,10 @@ class ResizeBilinearV2(OpBase):
                                                   init_value=assist_value)
 
         self.stride_threshold = Constant.MAX_UINT16 if self.images_dtype in ("float16",) else Constant.MAX_UINT16 // 2
-        self.dst_stride_threshold = Constant.MAX_UINT16 if self.output_dtype in (
-            "float16",) else Constant.MAX_UINT16 // 2
+        if self.output_dtype in ("float16",):
+            self.dst_stride_threshold = Constant.MAX_UINT16
+        else:
+            self.dst_stride_threshold = Constant.MAX_UINT16 // 2
         self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
@@ -2169,6 +2171,30 @@ class ResizeBilinearV2(OpBase):
             # process case: input h = output h and input w = output w
             self._function_reisze_with_no_bilinear(is_equal=True)
 
+    def resize_bilinear_v2_operator(self):
+        """
+        resize_bilinear_v2_operator
+        """
+        # regist compute base on tiling_key
+        self.regist_compute(100110, self._function_reisze_with_nc_process)
+        self.regist_compute(999999, self._tiling_compute_with_no_bilinear)
+        self.regist_compute(100000, self._tiling_compute_default)
+        # run all regist compute base tiling key
+        self.op_run_compute()
+        tbe_context.get_context().add_compile_info("global_variable_link", True)
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size_bytes,
+                "core_num": self.core_nums,
+                "max_w_len": self.ub_max_num // self.images_shape_c0,
+                "align_corners": int(self.align_corners),
+                "half_pixel_centers": int(self.half_pixel_centers)
+            })
+        # Build CCE
+        self.op_build_cce()
+
+        return self.tik_instance
+
     def _function_reisze_with_nc_process(self):
         """
         _function_reisze_with_nc_process
@@ -2410,30 +2436,6 @@ class ResizeBilinearV2(OpBase):
                     w_idx = (total_idx * 2 + 1) % self.core_width_num
                     h_idx = (total_idx * 2 + 1) // self.core_width_num
                     _do_resize_with_nc(w_idx, h_idx, nc_idx, nc_num, pang_ub_list)
-
-    def resize_bilinear_v2_operator(self):
-        """
-        resize_bilinear_v2_operator
-        """
-        # regist compute base on tiling_key
-        self.regist_compute(100110, self._function_reisze_with_nc_process)
-        self.regist_compute(999999, self._tiling_compute_with_no_bilinear)
-        self.regist_compute(100000, self._tiling_compute_default)
-        # run all regist compute base tiling key
-        self.op_run_compute()
-        tbe_context.get_context().add_compile_info("global_variable_link", True)
-        tbe_context.get_context().add_compile_info(
-            "vars", {
-                "ub_size": self.ub_size_bytes,
-                "core_num": self.core_nums,
-                "max_w_len": self.ub_max_num // self.images_shape_c0,
-                "align_corners": int(self.align_corners),
-                "half_pixel_centers": int(self.half_pixel_centers)
-            })
-        # Build CCE
-        self.op_build_cce()
-
-        return self.tik_instance
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=6, block_num=16):

@@ -125,7 +125,7 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
 
-    if not x_dtype in check_list or not y_dtype in check_list:
+    if x_dtype not in check_list or y_dtype not in check_list:
         error_detal = "sub only support float16, float32, int32"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name,
                                                                "input_x",

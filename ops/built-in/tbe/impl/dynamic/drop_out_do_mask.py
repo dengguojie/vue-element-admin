@@ -275,6 +275,17 @@ class DropOutDoMask:
                     copy_loop * self.max_process_num + (copy_tail // self.vcetor_num) * self.vcetor_num
                 self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec, True)
 
+    def drop_do_mask_operator(self):
+        """_drop_do_mask_operator"""
+        self._keep_prob_the_var()
+        opt_config = {"out_of_bound_sync_check": True}
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
+                                   outputs=(self.out_gm,),
+                                   flowtable=(self.tiling_gm,), config=opt_config)
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+
     def _keep_prob_the_var(self):
         """
         main process of dropout_do_mask
@@ -291,17 +302,6 @@ class DropOutDoMask:
                 self._run_one_core(_core_idx, self.do_num_per_core, self.prob_rec)
             with self.tik_instance.if_scope(_core_idx == self.core_used_num - 1):
                 self._run_one_core(_core_idx, self.do_num_tail_core, self.prob_rec, True)
-
-    def drop_do_mask_operator(self):
-        """_drop_do_mask_operator"""
-        self._keep_prob_the_var()
-        opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
-                                   outputs=(self.out_gm,),
-                                   flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars",
-                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=2, block_num=16):

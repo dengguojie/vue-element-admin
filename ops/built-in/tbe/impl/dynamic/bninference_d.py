@@ -255,20 +255,28 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
         if x_input_tensor is not None:
             l1_fusion_type = -1
             if not get_current_build_config("enable_op_prebuild"):
-                l1_fusion_type = x_input_tensor.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in x_input_tensor.op.attrs else -1
+                if "L1_fusion_type" in x_input_tensor.op.attrs:
+                    l1_fusion_type = x_input_tensor.op.attrs["L1_fusion_type"].value
+                else:
+                    l1_fusion_type = -1
                 if l1_fusion_type == 1:
                     error_detail = 'bninference does not support l1 width fusion, l1_fusion_type:', l1_fusion_type
                     error_manager_vector.raise_err_specific_reson("bninference_d", error_detail)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-            in_l1_flag = x_input_tensor.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in x_input_tensor.op.attrs else False
+            if "addr_type" in x_input_tensor.op.attrs:
+                in_l1_flag = x_input_tensor.op.attrs["addr_type"].value == 1
+            else: 
+                in_l1_flag = False
             in_l1_flag_list.append(in_l1_flag)
-            in_valid_shape = x_input_tensor.op.attrs["valid_shape"] \
-                if "valid_shape" in x_input_tensor.op.attrs else []
+            if "valid_shape" in x_input_tensor.op.attrs:
+                in_valid_shape = x_input_tensor.op.attrs["valid_shape"]
+            else:
+                in_valid_shape = []
             in_valid_shape_list.append(in_valid_shape)
-            in_slice_offset = x_input_tensor.op.attrs["slice_offset"] \
-                if "slice_offset" in x_input_tensor.op.attrs else []
+            if "slice_offset" in x_input_tensor.op.attrs:
+                in_slice_offset = x_input_tensor.op.attrs["slice_offset"]
+            else:
+                in_slice_offset = []
             in_slice_offset_list.append(in_slice_offset)
             in_select_read_flag = x_input_tensor.op.tag == "read_select_5d"
             in_select_read_flag_list.append(in_select_read_flag)
@@ -368,7 +376,7 @@ def brodcast_inputs_shape(x, mean, variance, scale, offset):
             _, l1_fusion_type = get_l1_paras(offset)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
-    return shape_x, shape_mean, shape_variance, shape_scale_new, shape_offset_new, is_l1_depth_fusion
+    return [shape_x, shape_mean, shape_variance, shape_scale_new, shape_offset_new, is_l1_depth_fusion]
 
 
 def get_param_scale_shape(shape_x, shape_scale):

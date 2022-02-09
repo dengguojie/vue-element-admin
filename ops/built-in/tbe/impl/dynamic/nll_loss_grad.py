@@ -206,8 +206,8 @@ class NllLossGradCompute:
         self.tiling_ub = self.tik_instance.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
                                                   name="tiling_ub",
                                                   scope=tik.scope_ubuf)
-        self.tiling_params = [
-            self.tik_instance.Scalar(Constant.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_CTRL_PARAM[1])
+        self.tiling_params = [self.tik_instance.Scalar(Constant.TILING_CTRL_PARAM[0])
+                              for i in range(Constant.TILING_CTRL_PARAM[1])
         ]
         self.get_tiling_params()
         self.init_tiling_params()
@@ -380,6 +380,35 @@ class NllLossGradCompute:
             with self.tik_instance.if_scope(tik.all(tmp_target_value >= 0, tmp_target_value < self.c_dim)):
                 dst[dst_offset].set_as(src[src_offset])
 
+    def compute_valid_value(self, dst, src, index, offset, repeat):
+        """
+        compute valid value.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if self.reduction != "none":
+            scalar = self.tik_instance.Scalar(dtype="float32")
+            scalar.set_as(src[0])
+            self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], scalar, repeat, 1, 1, 8, 8)
+        else:
+            self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], src[index * offset], repeat, 1, 1,
+                                   1, Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
+        self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], Constant.NEGATIVE, repeat, 1, 1, 8,
+                                8)
+        if self.reduction == "mean":
+            if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
+                self.tik_instance.vdiv(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
+                                       1, 1, 1, 8, 8, 0)
+            else:
+                self.tik_instance.vrec(MASK64, dst[index * offset], dst[index * offset], repeat, 1, 1, 8, 8)
+                self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
+                                       1, 1, 1, 8, 8, 0)
+
     def _normal_two_tim_process(self, line_num, core_offset, repeat, burst, output_burst):
         """
         deal with two normal dims function
@@ -442,35 +471,6 @@ class NllLossGradCompute:
                 temp_out_ub[i].set_as(self.dup_ub[line_num * self.c_dim - 8 + i])
             self.tik_instance.data_move(self.output[(core_offset + line_num) * self.c_dim - 8], temp_out_ub, 0, 1, 1,
                                         8, 8)
-
-    def compute_valid_value(self, dst, src, index, offset, repeat):
-        """
-        compute valid value.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if self.reduction != "none":
-            scalar = self.tik_instance.Scalar(dtype="float32")
-            scalar.set_as(src[0])
-            self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], scalar, repeat, 1, 1, 8, 8)
-        else:
-            self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], src[index * offset], repeat, 1, 1,
-                                   1, Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
-        self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], Constant.NEGATIVE, repeat, 1, 1, 8,
-                                8)
-        if self.reduction == "mean":
-            if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
-                self.tik_instance.vdiv(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
-                                       1, 1, 1, 8, 8, 0)
-            else:
-                self.tik_instance.vrec(MASK64, dst[index * offset], dst[index * offset], repeat, 1, 1, 8, 8)
-                self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
-                                       1, 1, 1, 8, 8, 0)
 
     def normal_two_dim_compute(self, cycle):
         """

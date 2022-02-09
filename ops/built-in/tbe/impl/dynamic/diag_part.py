@@ -92,6 +92,16 @@ class DiagPart():
         self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
         scope=tik.scope_gm)
 
+    def compute_assist(self):
+        """
+        func compute_assist
+        """
+        assist_data = [[0] * 128 for _ in range(128)]
+        for i in range(0, 128):
+            assist_data[i][i] = 1
+        self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_128, Constant.NUM_128), name="assist_gm",
+                                                  scope=tik.scope_gm, init_value=assist_data)
+
     def _diag_part_compute_tiling(self):
         """
         tiling info:
@@ -107,16 +117,6 @@ class DiagPart():
         self.tiling_act_core_num.set_as(self.tiling_ub[1])
         self.tiling_each_core_line_num.set_as(self.tiling_ub[2])
         self.tiling_last_core_line_num.set_as(self.tiling_ub[3])
-
-    def compute_assist(self):
-        """
-        func compute_assist
-        """
-        assist_data = [[0] * 128 for _ in range(128)]
-        for i in range(0, 128):
-            assist_data[i][i] = 1
-        self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_128, Constant.NUM_128), name="assist_gm",
-                                                  scope=tik.scope_gm, init_value=assist_data)
 
     def core_scedule_args(self, core_idx):
         """

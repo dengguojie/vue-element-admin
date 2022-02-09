@@ -131,7 +131,7 @@ def pretreat_to_maxpool(padding_mode, pads, global_pooling, ceil_mode):
         ceil_mode = 1
     else:
         ceil_mode = 0
-    return padding_mode, pads, global_pooling, ceil_mode
+    return [padding_mode, pads, global_pooling, ceil_mode]
 
 
 @register_operator("MaxPoolV3")

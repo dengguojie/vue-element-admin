@@ -1980,11 +1980,6 @@ class GatherV2():
             pre_i = self.need_core_num * self.params_pre_each_core + block_id
             self.compute_mode_32b_aligned_tiling_params(pre_i, indices_ub, res_ub, self.x)
 
-    def _set_mode_paras(self, aligned_types_params, cached_types_params, cached_types_indices):
-        self.cached_types["aligned_types_params"] = aligned_types_params
-        self.cached_types["cached_types_params"] = cached_types_params
-        self.cached_types["cached_types_indices"] = cached_types_indices
-
     # 'pylint:disable=E1136
     def params_row_less_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
@@ -2005,9 +2000,10 @@ class GatherV2():
         output_offset_base = batch_i * self.params_pre * self.indices_row
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
-        indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and \
-            self.is_remaining == 0 else 0
+        if self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and self.is_remaining == 0:
+            indices_offset_base = (batch_i - batch_base) * self.indices_row 
+        else:
+            indices_offset_base = 0
         if self.cached_types.get("cached_types_params") == Constant.PARAMS_CACHED_UB:
             params_batch_diff = (batch_i - batch_base) if self.is_remaining == 0 else 0
         else:
@@ -2073,6 +2069,11 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
+    def _set_mode_paras(self, aligned_types_params, cached_types_params, cached_types_indices):
+        self.cached_types["aligned_types_params"] = aligned_types_params
+        self.cached_types["cached_types_params"] = cached_types_params
+        self.cached_types["cached_types_indices"] = cached_types_indices
+
     # 'pylint:disable=E1136
     def params_row_more_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
@@ -2085,9 +2086,10 @@ class GatherV2():
         burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
-        indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and \
-            self.is_remaining == 0 else 0
+        if self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and self.is_remaining == 0:
+            indices_offset_base = (batch_i - batch_base) * self.indices_row
+        else:
+            indices_offset_base = 0
         params_offset_base = batch_i * self.params_pre * self.params_axis + pre_i * self.params_axis
         output_offset_base = batch_i * self.params_pre * self.indices_row
 
@@ -2134,9 +2136,10 @@ class GatherV2():
 
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
-        indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and \
-            self.is_remaining == 0 else 0
+        if self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and self.is_remaining == 0:
+            indices_offset_base = (batch_i - batch_base) * self.indices_row
+        else:
+            indices_offset_base = 0
         if self.cached_types.get("cached_types_params") == Constant.PARAMS_CACHED_UB:
             params_batch_diff = (batch_i - batch_base) if self.is_remaining == 0 else 0
         else:
@@ -2194,9 +2197,10 @@ class GatherV2():
         burst_len_sub_row_last = ceil_value(self.one_row_tail, self.block_elem)
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
-        indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL \
-            and self.is_remaining == 0 else 0
+        if self.cached_types.get("cached_types_indices") == Constant.INDICES_CACHED_ALL and self.is_remaining == 0:
+            indices_offset_base = (batch_i - batch_base) * self.indices_row 
+        else:
+            indices_offset_base = 0
         params_offset_base = batch_i * self.params_pre * self.params_axis + pre_i * self.params_axis
         output_offset_base = batch_i * self.params_pre * self.indices_row
         inner_indices_offset = self.indices_row_num_once if is_last else 0
@@ -2333,8 +2337,10 @@ class GatherV2():
         burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset_base = batch_base * self.params_pre * self.indices_row
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-        params_batch_diff = batch_base if self.cached_types.get("cached_types_params") != \
-                                          Constant.PARAMS_CACHED_UB else 0
+        if self.cached_types.get("cached_types_params") != Constant.PARAMS_CACHED_UB:
+            params_batch_diff = batch_base
+        else:
+            params_batch_diff = 0
         batch_num = self.row_num_once_ub // self.params_pre // self.indices_row
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
@@ -2467,8 +2473,10 @@ class GatherV2():
             self.buffers["params_ub"] = tik_instance.Tensor(self.params_dtype,
                                                             (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                                             name="params_ub", scope=tik.scope_ubuf)
-            params_offset = self.params_total * block_id if \
-                self.cached_types.get("cached_types_indices") != Constant.INDICES_SMALL_ROW else 0
+            if self.cached_types.get("cached_types_indices") != Constant.INDICES_SMALL_ROW:
+                params_offset = self.params_total * block_id
+            else:
+                params_offset = 0
             tik_instance.data_move(self.buffers.get("params_ub"), self.x[params_offset], 0, 1,
                                    ceil_value(self.params_total, self.block_elem), 0, 0)
         else:

@@ -775,6 +775,30 @@ class ResizeNearestNeighbor(OpBase):
 
         _run_h_loop_default(self.core_height_start, self.core_height_num)
 
+    def resize_nearest_neighbor_v2_operator(self):
+        """
+        resize_nearest_neighbor_v2_operator
+        """
+        # regist compute base on tiling_key
+        self.regist_compute(100000, self._function_default, is_w_algin=False)
+        self.regist_compute(101000, self._function_default, is_w_algin=True)
+        self.regist_compute(111000, self._function_hw_to_nhnw_resize)
+        self.regist_compute(111001, self._function_hw_to_nhnw_resize_for_small_hw)
+        self.regist_compute(113000, self._function_hw_to_nhnw_resize, is_w_equal=True)
+
+        # run all regist compute base tiling key
+        self.op_run_compute()
+        # Build CCE
+
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
+                                                            "core_num": self.core_nums,
+                                                            "max_w_len": self.ub_max_num // self.images_shape_c0,
+                                                            "align_corners": int(self.align_corners),
+                                                            "half_pixel_centers": int(self.half_pixel_centers)})
+        self.op_build_cce()
+
+        return self.tik_instance
+
     def _function_hw_to_nhnw_resize(self, is_w_equal=False):
         """
         _function_hw_to_nhnw_resize, when `tiling key = 111000, run this`
@@ -909,30 +933,6 @@ class ResizeNearestNeighbor(OpBase):
                     _run_w_loop_double_nc(_w_loop_idx, w_output_size_one_line // size_w_n)
                 with self.tik_instance.if_scope(_w_tail_num != 0):
                     _run_w_loop_double_nc(_w_loop_num, _w_tail_num)
-
-    def resize_nearest_neighbor_v2_operator(self):
-        """
-        resize_nearest_neighbor_v2_operator
-        """
-        # regist compute base on tiling_key
-        self.regist_compute(100000, self._function_default, is_w_algin=False)
-        self.regist_compute(101000, self._function_default, is_w_algin=True)
-        self.regist_compute(111000, self._function_hw_to_nhnw_resize)
-        self.regist_compute(111001, self._function_hw_to_nhnw_resize_for_small_hw)
-        self.regist_compute(113000, self._function_hw_to_nhnw_resize, is_w_equal=True)
-
-        # run all regist compute base tiling key
-        self.op_run_compute()
-        # Build CCE
-
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
-                                                            "core_num": self.core_nums,
-                                                            "max_w_len": self.ub_max_num // self.images_shape_c0,
-                                                            "align_corners": int(self.align_corners),
-                                                            "half_pixel_centers": int(self.half_pixel_centers)})
-        self.op_build_cce()
-
-        return self.tik_instance
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=6, block_num=16):

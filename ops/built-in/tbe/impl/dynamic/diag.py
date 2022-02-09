@@ -108,6 +108,14 @@ class Diag():
         self.tiling_each_core_num.set_as(self.tiling_ub[2])
         self.tiling_last_core_num.set_as(self.tiling_ub[3])
 
+    @staticmethod
+    def ceil(data_a, data_b):
+        """
+        func ceil
+        """
+        res = (data_a + data_b - 1) // data_b
+        return res
+
     def compute_assist(self):
         """
         func compute_assist
@@ -117,14 +125,6 @@ class Diag():
             assist_data[i][i] = 1
         self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_64, Constant.NUM_64), name="assist_gm",
                                                   scope=tik.scope_gm, init_value=assist_data)
-
-    @staticmethod
-    def ceil(data_a, data_b):
-        """
-        func ceil
-        """
-        res = (data_a + data_b - 1) // data_b
-        return res
 
     def core_scedule_args(self, core_idx):
         """

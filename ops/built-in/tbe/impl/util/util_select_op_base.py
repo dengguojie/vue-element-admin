@@ -18,7 +18,7 @@ util_select_op_base
 import json
 
 
-def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1FusionEnable=0, minTbeL1Space=0):
+def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1_fusion_enable=0, min_tbeL1_space=0):
     """
     Function
     --------
@@ -28,29 +28,29 @@ def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1FusionEnable=0, mi
     op_slice_info = {}
 
     def _get_axis_split_in_json(axis_split_list):
-        splitMaps = []
+        split_maps = []
         if axis_split_list is None:
-            return splitMaps
+            return split_maps
 
         split_info = _gen_multi_split_list(axis_split_list)
         for item in split_info:
-            splitMaps.append(item)
-        return splitMaps
+            split_maps.append(item)
+        return split_maps
 
     def _get_axis_reduce_in_json(axis_reduce_list):
-        reduceMaps = []
+        reduce_maps = []
         if axis_reduce_list is None:
-            return reduceMaps
+            return reduce_maps
 
         reduce_info = _gen_multi_reduce_list(axis_reduce_list)
         for item in reduce_info:
-            reduceMaps.append(item)
-        return reduceMaps
+            reduce_maps.append(item)
+        return reduce_maps
 
     op_slice_info["splitMaps"] = _get_axis_split_in_json(axis_split_list)
     op_slice_info["reduceMaps"] = _get_axis_reduce_in_json(axis_reduce_list)
-    op_slice_info["l1FusionEnable"] = l1FusionEnable
-    op_slice_info["minTbeL1Space"] = minTbeL1Space
+    op_slice_info["l1FusionEnable"] = l1_fusion_enable
+    op_slice_info["minTbeL1Space"] = min_tbeL1_space
     op_cal_info["_op_slice_info"] = op_slice_info
     op_cal_info_in_json = json.dumps(op_cal_info)
     return op_cal_info_in_json

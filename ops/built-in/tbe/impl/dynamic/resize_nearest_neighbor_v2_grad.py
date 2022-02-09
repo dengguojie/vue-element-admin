@@ -201,19 +201,6 @@ class ResizeNearestNeighborV2Grad:
         avail_block = avail_bytes // 32 // 2
         self.ub_max_num = avail_block * self.block_num
 
-    def _init_ub_tensor_for_grads(self, mode="all"):
-        """
-        _init_ub_tensor_for_grads
-        """
-        if mode in ("all",):
-            self.grad_out_ub = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
-                                                        name="grad_out_ub", scope=tik.scope_ubuf)
-            self.grad_in_gm_ping = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
-                                                            name="grad_in_gm_ping", scope=tik.scope_gm)
-        if mode in ("ub",):
-            self.grad_out_ub = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
-                                                        name="grad_out_ub", scope=tik.scope_ubuf)
-
     def scalar_vconv_int32_to_fp32(self, int32_value, float32_value):
         """
         vconv one scalar from int32 to fp32 usr vector
@@ -226,6 +213,19 @@ class ResizeNearestNeighborV2Grad:
             idx_int32_tmp[0].set_as(int32_value)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, idx_fp32_tmp, idx_int32_tmp, 1)
             float32_value.set_as(idx_fp32_tmp[0])
+
+    def _init_ub_tensor_for_grads(self, mode="all"):
+        """
+        _init_ub_tensor_for_grads
+        """
+        if mode in ("all",):
+            self.grad_out_ub = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
+                                                        name="grad_out_ub", scope=tik.scope_ubuf)
+            self.grad_in_gm_ping = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
+                                                            name="grad_in_gm_ping", scope=tik.scope_gm)
+        if mode in ("ub",):
+            self.grad_out_ub = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
+                                                        name="grad_out_ub", scope=tik.scope_ubuf)
 
     def calcu_out_in_idx(self, scale, des_idx_ub, src_idx_fp_ub, idx_num):
         """
@@ -695,6 +695,53 @@ class ResizeNearestNeighborV2Grad:
         _run_h_loop_default(0, self.core_height_num)
         self.tik_instance.set_atomic_add(0)
 
+    def calculate_scale(self):
+        """
+        calculate scale user input h/w and output h/w
+        """
+        with self.tik_instance.new_stmt_scope():
+            height_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                         name="height_input_fp32", scope=tik.scope_ubuf)
+            width_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                        name="width_input_fp32", scope=tik.scope_ubuf)
+            height_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
+                                                          name="height_input_int32", scope=tik.scope_ubuf)
+            width_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
+                                                         name="width_input_int32", scope=tik.scope_ubuf)
+            height_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                          name="height_output_fp32", scope=tik.scope_ubuf)
+            width_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                         name="width_output_fp32", scope=tik.scope_ubuf)
+
+            height_input_int32[0].set_as(self.tiling_out_height)
+            width_input_int32[0].set_as(self.tiling_out_width)
+            height_input_int32[self.block_num].set_as(self.tiling_in_height)
+            width_input_int32[self.block_num].set_as(self.tiling_in_width)
+
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_input_fp32,
+                                              height_input_int32, 1)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_input_fp32,
+                                              width_input_int32, 1)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_output_fp32,
+                                              height_input_int32[self.block_num:], 1)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_output_fp32,
+                                              width_input_int32[self.block_num:], 1)
+
+            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_height > 1)):
+                self.tik_instance.vadds(1, height_output_fp32, height_output_fp32, -1.0, 1, 1, 1, 8, 8)
+                self.tik_instance.vadds(1, height_input_fp32, height_input_fp32, -1.0, 1, 1, 1, 8, 8)
+
+            self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32,
+                                   1, 1, 1, 1, 8, 8, 8)
+            self.resize_scale_h.set_as(height_input_fp32[0])
+
+            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
+                self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
+                self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
+            self.tik_instance.vdiv(1, width_input_fp32, width_input_fp32, width_output_fp32,
+                                   1, 1, 1, 1, 8, 8, 8)
+            self.resize_scale_w.set_as(width_input_fp32[0])
+
     def _function_hw_to_nhnw_resize(self):
         """
         _function_hw_to_nhnw_resize, when `tiling key = 111000, run this`
@@ -773,53 +820,6 @@ class ResizeNearestNeighborV2Grad:
         with self.tik_instance.if_scope(_w_tail_num != 0):
             _run_w_loop(_w_loop_num, _w_tail_num)
 
-    def calculate_scale(self):
-        """
-        calculate scale user input h/w and output h/w
-        """
-        with self.tik_instance.new_stmt_scope():
-            height_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                         name="height_input_fp32", scope=tik.scope_ubuf)
-            width_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                        name="width_input_fp32", scope=tik.scope_ubuf)
-            height_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
-                                                          name="height_input_int32", scope=tik.scope_ubuf)
-            width_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
-                                                         name="width_input_int32", scope=tik.scope_ubuf)
-            height_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                          name="height_output_fp32", scope=tik.scope_ubuf)
-            width_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                         name="width_output_fp32", scope=tik.scope_ubuf)
-
-            height_input_int32[0].set_as(self.tiling_out_height)
-            width_input_int32[0].set_as(self.tiling_out_width)
-            height_input_int32[self.block_num].set_as(self.tiling_in_height)
-            width_input_int32[self.block_num].set_as(self.tiling_in_width)
-
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_input_fp32,
-                                              height_input_int32, 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_input_fp32,
-                                              width_input_int32, 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_output_fp32,
-                                              height_input_int32[self.block_num:], 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_output_fp32,
-                                              width_input_int32[self.block_num:], 1)
-
-            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_height > 1)):
-                self.tik_instance.vadds(1, height_output_fp32, height_output_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.tik_instance.vadds(1, height_input_fp32, height_input_fp32, -1.0, 1, 1, 1, 8, 8)
-
-            self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32,
-                                   1, 1, 1, 1, 8, 8, 8)
-            self.resize_scale_h.set_as(height_input_fp32[0])
-
-            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
-                self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
-            self.tik_instance.vdiv(1, width_input_fp32, width_input_fp32, width_output_fp32,
-                                   1, 1, 1, 1, 8, 8, 8)
-            self.resize_scale_w.set_as(width_input_fp32[0])
-
     def _do_resize_base_tiling_key(self):
         """
         tiling braches
@@ -854,19 +854,6 @@ class ResizeNearestNeighborV2Grad:
             with self.tik_instance.new_stmt_scope():
                 self._function_hw_to_nhnw_resize()
 
-    def _do_resize(self):
-        """
-        main process of _do_resize
-        """
-        with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as _core_idx:
-            with self.tik_instance.new_stmt_scope():
-                tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
-                                                     name="tiling_ub", scope=tik.scope_ubuf)
-                self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
-                self._tiling_args(tiling_ub, "read")
-            self._core_scalar_args(_core_idx)
-            self._do_resize_base_tiling_key()
-
     def resize_nearest_neighbor_v2_grad_operator(self):
         """
         resize_nearest_neighbor_v2_grad_operator
@@ -888,6 +875,19 @@ class ResizeNearestNeighborV2Grad:
                                    flowtable=(self.tiling_gm,), config=opt_config)
 
         return self.tik_instance
+
+    def _do_resize(self):
+        """
+        main process of _do_resize
+        """
+        with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as _core_idx:
+            with self.tik_instance.new_stmt_scope():
+                tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                     name="tiling_ub", scope=tik.scope_ubuf)
+                self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
+                self._tiling_args(tiling_ub, "read")
+            self._core_scalar_args(_core_idx)
+            self._do_resize_base_tiling_key()
 
 
 def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):

@@ -110,6 +110,14 @@ class Flatten:
         self.last_copy_loop.set_as(self.tiling_ub[4])
         self.last_copy_tail.set_as(self.tiling_ub[5])
 
+    def copy_only(self, core_index, loop_num, tail_num):
+        """Only execute move in and move out
+        """
+        with self.tik_instance.for_range(0, loop_num) as loop_idx:
+            self.copy_in_and_out(core_index, loop_idx, self.copy_segment)
+        with self.tik_instance.if_scope(tail_num > 0):
+            self.copy_in_and_out(core_index, loop_num, tail_num)
+
     # 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
     def _get_ceil_int(self, int1, int2):
         """Get ceil
@@ -120,14 +128,6 @@ class Flatten:
         with self.tik_instance.else_scope():
             result.set_as(int1 // int2 + 1)
         return result
-
-    def copy_only(self, core_index, loop_num, tail_num):
-        """Only execute move in and move out
-        """
-        with self.tik_instance.for_range(0, loop_num) as loop_idx:
-            self.copy_in_and_out(core_index, loop_idx, self.copy_segment)
-        with self.tik_instance.if_scope(tail_num > 0):
-            self.copy_in_and_out(core_index, loop_num, tail_num)
 
     def copy_in_and_out(self, core_index, loop_idx, loop_len):
         """Copy in and out
