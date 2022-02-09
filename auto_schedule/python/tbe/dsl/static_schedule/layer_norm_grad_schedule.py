@@ -1165,7 +1165,8 @@ def layer_norm_grad_schedule(res, input_tensors):
     if op_type not in ["layer_norm_beta_gamma_backprop", "layer_norm_beta_gamma_backprop_v2"]:
         return None
     dichotomy_add_unsupported_list = [[[5120, 4, 16], [1, 1, 16]], [[5120, 16, 4], [1, 1, 4]],
-                                      [[1, 640, 16], [1, 1, 16]]]
+                                      [[1, 640, 16], [1, 1, 16]], [[5120, 32, 4], [1, 1, 4]],
+                                      [[5120, 128, 4], [1, 1, 4]]]
     if [shape_x, shape_res] in dichotomy_add_unsupported_list:
         return None
 

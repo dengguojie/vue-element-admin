@@ -88,6 +88,17 @@ case8 = {"params": [
          "format_expect": [],
          "support_expect": True}
 
+case9 = {"params": [
+    {"shape": (5120, 32, 4), "dtype": "float32", "format": "ND", "ori_shape": (5120, 32, 4), "ori_format": "ND"},
+    {"shape": (5120, 32, 4), "dtype": "float32", "format": "ND", "ori_shape": (5120, 32, 4), "ori_format": "ND"},
+    {"shape": (4,), "dtype": "float32", "format": "ND", "ori_shape": (4,), "ori_format": "ND"},
+    {"shape": (4,), "dtype": "float32", "format": "ND", "ori_shape": (4,), "ori_format": "ND"},
+    [4]],
+         "case_name": "layer_norm_beta_gamma_backprop_v2_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
@@ -96,6 +107,7 @@ ut_case.add_case(["Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend710", "Ascend910A"], case7)
 ut_case.add_case(["Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend710", "Ascend910A"], case9)
 
 def test_op_select_format(test_arg):
     from impl.layer_norm_beta_gamma_backprop_v2 import op_select_format
