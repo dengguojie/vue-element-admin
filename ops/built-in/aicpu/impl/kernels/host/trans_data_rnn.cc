@@ -117,7 +117,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
       outputData[i][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] = inputData[i * shape1 + j];
     }
   }
-  for (int32_t i = 0; i < (stateSize == 0) ? hiddenSize : stateSize; i++) {
+  for (int32_t i = 0; i < ((stateSize == 0) ? hiddenSize : stateSize); i++) {
     for (int32_t j = 0; j < shape1; j++) {
       outputData[i + inputSizeAlign][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] =
         inputData[inputSize * shape1 + i * shape1 + j];
@@ -206,15 +206,26 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZn(std::vector<int64_t> &dims, int
                      shape0, shape1, hiddenSize);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-
-  if (inputSize > 0) {
-    return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
-  } else if ((stateSize > 0 && (shape0 == stateSize)) || (inputSize > 0 && (shape0 == inputSize))){
-    return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
+  if (stateSize == 0){
+    if (inputSize > 0 && (shape0 == hiddenSize + inputSize)) {
+      return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
+    } else if ((hiddenSize > 0 && (shape0 == hiddenSize)) || (inputSize > 0 && (shape0 == inputSize))){
+      return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
+    } else {
+      KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
+                      shape0, hiddenSize, inputSize, stateSize);
+    }
   } else {
-    KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
-                     shape0, hiddenSize, inputSize, stateSize);
+    if (inputSize > 0 && (shape0 == stateSize + inputSize)) {
+      return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
+    } else if ((stateSize > 0 && (shape0 == stateSize)) || (inputSize > 0 && (shape0 == inputSize))){
+      return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
+    } else {
+      KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
+                      shape0, hiddenSize, inputSize, stateSize);
+    }
   }
+
   KERNEL_LOG_ERROR("TransDataRNN GenDataFractalZn failed.");
   return KERNEL_STATUS_PARAM_INVALID;
 }

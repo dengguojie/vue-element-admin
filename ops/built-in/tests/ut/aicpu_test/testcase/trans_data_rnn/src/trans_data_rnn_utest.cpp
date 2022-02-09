@@ -110,3 +110,53 @@ TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_4) {
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
   std::cout << "Test TransData end" << std::endl;
 }
+
+TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_5) {
+  std::cout << "Test TransData begin" << std::endl;
+  float input_data[3072] = {59.2, 62.1, 22.5,  40.5, -97.8, 68.1, 52.3, -50.9,
+                          22.4, 7.2,  -51.3, 63.5, 75.2,  82.3, 37.1, 10.4};
+  auto node_def = CpuKernelUtils::CreateNodeDef();
+  float output_data[3072];
+  string format_src("ND");
+  string format_dst("FRACTAL_ZN_RNN");
+  NodeDefBuilder(node_def.get(), "TransDataRNN", "TransDataRNN")
+      .Input(
+          {"src", DT_FLOAT16, {48, 64}, (void*)input_data, FORMAT_ND})
+      .Attr("src_format", format_src)
+      .Attr("dst_format", format_dst)
+      .Attr("input_size", 16)
+      .Attr("hidden_size", 16)
+      .Attr("state_size", 32)
+      .Output({"dst",
+               DT_FLOAT16,
+               {3,4,16,16},
+               (void*)output_data,
+               FORMAT_ND});
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  std::cout << "Test TransData end" << std::endl;
+}
+
+TEST_F(TRANSDATARNN_UT, TransDataRNN_TEST_6) {
+  std::cout << "Test TransData begin" << std::endl;
+  float input_data[2048] = {59.2, 62.1, 22.5,  40.5, -97.8, 68.1, 52.3, -50.9,
+                          22.4, 7.2,  -51.3, 63.5, 75.2,  82.3, 37.1, 10.4};
+  auto node_def = CpuKernelUtils::CreateNodeDef();
+  float output_data[2048];
+  string format_src("ND");
+  string format_dst("FRACTAL_ZN_RNN");
+  NodeDefBuilder(node_def.get(), "TransDataRNN", "TransDataRNN")
+      .Input(
+          {"src", DT_FLOAT16, {32, 64}, (void*)input_data, FORMAT_ND})
+      .Attr("src_format", format_src)
+      .Attr("dst_format", format_dst)
+      .Attr("input_size", 16)
+      .Attr("hidden_size", 16)
+      .Attr("state_size", 32)
+      .Output({"dst",
+               DT_FLOAT16,
+               {2,4,16,16},
+               (void*)output_data,
+               FORMAT_ND});
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  std::cout << "Test TransData end" << std::endl;
+}
