@@ -263,8 +263,6 @@ class InplaceIndexAdd():
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
-            if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
-                self.updates_ub_number -= self.var_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 2):
             # if indices size is smaller than 0.2 ub size
@@ -279,8 +277,6 @@ class InplaceIndexAdd():
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
-            if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
-                self.updates_ub_number -= self.var_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 3):
             self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_3 * \
@@ -294,8 +290,6 @@ class InplaceIndexAdd():
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
-            if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
-                self.updates_ub_number -= self.var_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 4):
             self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
