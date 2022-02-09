@@ -175,26 +175,25 @@ class MaxpoolGradBase():
         dialate_w = self.dilation[2]
         wo_max = math.ceil(dyw / 16) * 16
 
-        ho_max = 1 if hoverlap == 0 \
-            else (dialate_h * (kernelh - 1) + strideh) // strideh
-        col2img_w = wo_max * stridew if woverlap == 0 \
-            else (wo_max - 1) * stridew + dialate_w * kernelw
+        ho_max = 1 if hoverlap == 0 else (dialate_h * (kernelh - 1) + strideh) // strideh
+        col2img_w = \
+            wo_max * stridew if woverlap == 0 else (wo_max - 1) * stridew + dialate_w * kernelw
         if col2img_w < dxw:
             col2img_w = dxw
 
-        col2img_h = ho_max * strideh if hoverlap == 0 \
-            else (ho_max - 1) * strideh + dialate_h * kernelh
+        col2img_h = \
+            ho_max * strideh if hoverlap == 0 else (ho_max - 1) * strideh + dialate_h * kernelh
         flag = 0
         while col2img_w * col2img_h * channel * dtype_size < \
                 self.ub_limit and ho_max <= dyh:
             ho_max += 1
-            col2img_h = ho_max * strideh if hoverlap == 0 \
-                else (ho_max - 1) * strideh + dialate_h * kernelh
+            col2img_h = \
+                ho_max * strideh if hoverlap == 0 else (ho_max - 1) * strideh + dialate_h * kernelh
             flag = 1
         if flag == 1:
             ho_max -= 1
-            col2img_h = ho_max * strideh if hoverlap == 0 \
-                else (ho_max - 1) * strideh + dialate_h * kernelh
+            col2img_h = \
+                ho_max * strideh if hoverlap == 0 else (ho_max - 1) * strideh + dialate_h * kernelh
 
         if hoverlap == 0:
             h_cycle = math.ceil(dyh / ho_max)
@@ -532,40 +531,40 @@ class MaxpoolGradBase():
         all_blocknum = ho_count * batch * channel1
 
         wo_max = math.ceil(dyw / 16) * 16
-        col2img_w = wo_max * stridew if woverlap == 0 \
-            else (wo_max - 1) * stridew + dialate_w * kernelw
+        col2img_w = \
+            wo_max * stridew if woverlap == 0 else (wo_max - 1) * stridew + dialate_w * kernelw
 
         if col2img_w < dxw:
             col2img_w = dxw
         ho_max_every = 1 if hoverlap == 0 else 2
         ho_max_last = ho_max_every
         flag_every = 0
-        col2img_h_every = ho_max_every * strideh if hoverlap == 0 \
-            else (ho_max_every - 1) * strideh + dialate_h * kernelh
+        col2img_h_every = \
+            ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + dialate_h * kernelh
         while col2img_w * col2img_h_every * channel * dtype_size < \
                 self.ub_limit and col2img_h_every <= ho_every:
             ho_max_every += 1
-            col2img_h_every = ho_max_every * strideh if hoverlap == 0 \
-                else (ho_max_every - 1) * strideh + dialate_h * kernelh
+            col2img_h_every = \
+                ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + dialate_h * kernelh
             flag_every = 1
         if flag_every == 1:
             ho_max_every -= 1
-            col2img_h_every = ho_max_every * strideh if hoverlap == 0 \
-                else (ho_max_every - 1) * strideh + dialate_h * kernelh
+            col2img_h_every = \
+                ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + dialate_h * kernelh
 
         flag_last = 0
-        col2img_h_last = ho_max_last * strideh if hoverlap == 0 \
-            else (ho_max_last - 1) * strideh + dialate_h * kernelh
+        col2img_h_last = \
+            ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + dialate_h * kernelh
         while col2img_w * col2img_h_last * channel * dtype_size < \
                 self.ub_limit and ho_max_last <= ho_last:
             ho_max_last += 1
-            col2img_h_last = ho_max_last * strideh if hoverlap == 0 \
-                else (ho_max_last - 1) * strideh + dialate_h * kernelh
+            col2img_h_last = \
+                ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + dialate_h * kernelh
             flag_last = 1
         if flag_last == 1:
             ho_max_last -= 1
-            col2img_h_last = ho_max_last * strideh if hoverlap == 0 \
-                else (ho_max_last - 1) * strideh + dialate_h * kernelh
+            col2img_h_last = \
+                ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + dialate_h * kernelh
 
         if hoverlap == 0:
             h_cycle_every = math.ceil(ho_every / ho_max_every)

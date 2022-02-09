@@ -409,8 +409,8 @@ class MaxpoolGardObject(argmax_cut_h.MaxpoolGradBase):
         all_blocknum = ho_count * batch * channel1
 
         ho_max_every = 1 if hoverlap == 0 else 2
-        col2img_h_every = ho_max_every * strideh if \
-            hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
+        col2img_h_every = \
+            ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
         ho_max_last = ho_max_every
         col2img_h_last = col2img_h_every
         if hoverlap == 0:

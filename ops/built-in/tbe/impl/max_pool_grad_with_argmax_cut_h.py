@@ -495,32 +495,32 @@ class MaxpoolGradBase():
         ho_max_every = 1 if hoverlap == 0 else 2
         ho_max_last = ho_max_every
         flag_every = 0
-        col2img_h_every = ho_max_every * strideh if \
-            hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
+        col2img_h_every = \
+            ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
         while col2img_w * col2img_h_every * channel * dtype_size < self.ub_limit \
                 and col2img_h_every <= ho_every:
             ho_max_every += 1
-            col2img_h_every = ho_max_every * strideh if \
-                hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
+            col2img_h_every = \
+                ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
             flag_every = 1
         if flag_every == 1:
             ho_max_every -= 1
-            col2img_h_every = ho_max_every * strideh if \
-                hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
+            col2img_h_every = \
+                ho_max_every * strideh if hoverlap == 0 else (ho_max_every - 1) * strideh + windowh
 
         flag_last = 0
-        col2img_h_last = ho_max_last * strideh if \
-            hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
+        col2img_h_last = \
+            ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
         while col2img_w * col2img_h_last * channel * dtype_size < self.ub_limit \
                 and ho_max_last <= ho_last:
             ho_max_last += 1
-            col2img_h_last = ho_max_last * strideh if \
-                hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
+            col2img_h_last = \
+                ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
             flag_last = 1
         if flag_last == 1:
             ho_max_last -= 1
-            col2img_h_last = ho_max_last * strideh if \
-                hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
+            col2img_h_last = \
+                ho_max_last * strideh if hoverlap == 0 else (ho_max_last - 1) * strideh + windowh
 
         if hoverlap == 0:
             h_cycle_every = math.ceil(ho_every / ho_max_every)
