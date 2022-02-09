@@ -411,13 +411,15 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     FUSION_PASS_CHECK(add_const_nodes.size() <= 0,
                       OP_LOGI(fused_op_type_.c_str(), " add const_node's size %u is invalid.", add_const_nodes.size()),
                       return NOT_CHANGED);
-
     NodePtr add_const_node = add_const_nodes[0];
-    OutDataAnchorPtr const_add_anchor = add_const_node->GetOutDataAnchor(0);
-    OP_LOGI(fused_op_type_.c_str(), "add_const_node[0] [%s]: ", add_const_node->GetName().c_str());
-    FUSION_PASS_CHECK(
-        const_add_anchor == nullptr,
-        CommonRuntimeErrLog(fused_op_type_.c_str(), "Node const output anchor is null"), return FAILED);
+    OP_LOGI(fused_op_type_.c_str(), "add_const_nod_dtype[%s]: [%s]", add_const_node->GetName().c_str(), add_const_node->GetType().c_str());
+    bool check_null = add_node->GetInDataAnchor(1) == nullptr ||
+                      add_node->GetInDataAnchor(1)->GetPeerOutAnchor() == nullptr ||
+                      add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() == nullptr;
+    FUSION_PASS_CHECK(check_null,
+                      OP_LOGI(fused_op_type_.c_str(), "The input of add %s is null!", add_node->GetName().c_str()),
+                      return NOT_CHANGED);
+    OutDataAnchorPtr const_add_anchor = add_node->GetInDataAnchor(1)->GetPeerOutAnchor();
     // copy add opDesc, update input_shape & out_shape
     OpDescPtr bias_add_node_desc = AttrUtils::CloneOpDesc(add_node_desc);
     FUSION_PASS_CHECK(bias_add_node_desc == nullptr,
