@@ -4055,7 +4055,7 @@ class GemmSchedule:
         self.sch_agent[ori_tensor].reorder(outer_outer, inner_outer, outer_inner, inner_inner)
         if self.cache_tiling:
             m_inner_outer, _ = self.sch_agent[ori_tensor].split(outer_inner, self.BLOCKS_PER_REPEAT,
-                                                                ceil_mode_dict=self.ceil_mode.get("split_ceil_mode"))
+                                                                ceil_mode=self.ceil_mode.get("split_ceil_mode"))
             self.sch_agent[ori_tensor].reorder(m_inner_outer, outer_outer, inner_outer)
             self.sch_agent[ori_tensor].emit_insn(outer_outer, emit_insn_cmd, attrs=attrs)
         elif self.status_controller.have_batch:
