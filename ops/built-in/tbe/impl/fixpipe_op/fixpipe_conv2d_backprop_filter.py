@@ -45,22 +45,42 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
         shape = self.output.get("shape")
         out_shape = shape
         if len(shape) == 4 and self.output.get("format") == "NHWC":
+            # 1) input dtype: float16 or float32; out format: Fractal_Z -> NHWC
             out_shape = [shape[0], shape[1] * shape[2], shape[3]]
         elif len(shape) == 4 and self.output.get("format") == "FRACTAL_Z":
+            # 2) input dtype: float16; out format: FRACTAL_Z
             # (C1HW, N1, N0, C0) -> (real_g, fkk, Cout_g, fmap_c0)
+            # only support group = 1
             out_shape = [1, shape[0], shape[1] * shape[2], shape[3]]
+        elif len(shape) == 5 and \
+            self.output.get("format") == "FRACTAL_Z" and \
+            self.output.get("need_channel_split", False):
+            # 3) input dtype: float32; out format: FRACTAL_Z (with channel split)
+            # (C1, HW, N1, N0, C0) -> (real_g, Cin1_g, kk, Cout_g, fmap_c0)
+            # only support group = 1
+            out_shape = [1, shape[0], shape[1], shape[2] * shape[3], shape[4]]
         else:
             raise RuntimeError("error output shape or format")
 
         return out_shape
 
+    def _is_channel_split(self):
+        """
+        check channel spilt scene
+        """
+        if self._is_nz2nd():
+            return False
+        # Conv2d_bp_filter only perform channel split when input dtype is float32
+        if self.output.get("need_channel_split", False):
+            return True
+        return False
+
     def fixpipe_reform(self, res):
         """
         shape or format transform for fixpipe_op
         """
-        fixpipe_op_tag = "fixpipe"
+        fixpipe_op_name = "fixpipe"
         fixpipe_reform_tag = "fixpipe_reform"
-        fixpipe_no_trans_tag = "fixpipe_no_trans"
         self.attrs["kernel_name"] = self.x1.op.attrs["kernel_name"]
         if self._is_nz2nd():
             _, _, cout_g, fmap_c0 = tuple(i.value for i in self.x1.shape)
@@ -71,15 +91,28 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
                                             c_idx // fmap_c0 * hk_wk + hw_idx,
                                             n_idx % cout_g,
                                             c_idx % fmap_c0),
-                                     name=fixpipe_op_tag + "_nz2nd",
+                                     name=fixpipe_op_name + "_nz2nd",
                                      tag=fixpipe_reform_tag,
                                      attrs=self.attrs)
+            return res_reform
 
+        if self._is_channel_split():
+            _, _, hk_wk, _, fmap_c0 = self.output_shape
+            res_reform = tvm.compute(self.output_shape,
+                                     lambda g_idx, c1_idx, kk_idx, grads_c_idx, c0_idx:
+                                     res(g_idx,
+                                         c1_idx // 2 * hk_wk + kk_idx,
+                                         grads_c_idx,
+                                         c1_idx % 2 * fmap_c0 + c0_idx
+                                         ),
+                                     name=fixpipe_op_name + "_channel_split",
+                                     tag=fixpipe_reform_tag,
+                                     attrs=self.attrs)
             return res_reform
 
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
-                                 name=fixpipe_op_tag + "_out",
-                                 tag=fixpipe_no_trans_tag,
+                                 name=fixpipe_op_name + "_out",
+                                 tag=fixpipe_reform_tag,
                                  attrs=self.attrs)
         return res_reform

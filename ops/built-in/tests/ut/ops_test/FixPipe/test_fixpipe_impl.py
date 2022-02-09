@@ -92,6 +92,7 @@ def test_conv2d_bp_filter_fixpipe_2():
         tensor_list = [fmap_tensor, dedy_tensor, res]
         # sch = auto_schedule(res)
 
+
 def test_conv2d_bp_filter_fixpipe_3():
     try:
         with cce():
@@ -108,9 +109,29 @@ def test_conv2d_bp_filter_fixpipe_3():
             output_dict = {"shape": (18, 1, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ"}
             res = fixpipe_compute(dedw_tensor, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
             tensor_list = [fmap_tensor, dedy_tensor, res]
-            # sch = auto_schedule(res)
+            sch = auto_schedule(res)
     except RuntimeError as e:
-        print("fixpipe test mock")
+        print("Conv2d_bp_filter fixpipe mock: Output format exception")
+        print("Exception:\n", e)
+
+
+def test_conv2d_bp_filter_fixpipe_4():
+    with cce():
+        fmap_tensor = tvm.placeholder((1, 4, 28, 28, 8), name="fmap", dtype="float32", attrs={"ori_shape": (1, 32, 28, 28), "format": "NC1HWC0", "ori_format": "NCHW"})
+        dedy_tensor = tvm.placeholder((1, 2, 26, 26, 8), name="dedy", dtype="float32", attrs={"ori_shape": (1, 16, 26, 26), "format": "NC1HWC0", "ori_format": "NCHW"})
+        dedw = {"shape": (16, 32, 3, 3), "dtype": "float32", "ori_shape": (16, 32, 3, 3), "format": "NCHW", "ori_format": "NCHW"}
+        filter_size = (16, 32, 3, 3)
+        strides = (1, 1, 1, 1)
+        pads = (0, 0, 0, 0)
+        dilations=(1, 1, 1, 1)
+        groups = 1
+        data_format = "NCHW"
+        dedw_tensor = conv2d_backprop_filter_compute(fmap_tensor, dedy_tensor, dedw, filter_size, strides, pads, dilations, groups, data_format)
+        output_dict = {"shape": (4, 9, 1, 16, 8), "dtype": "float32", "format": "FRACTAL_Z", "need_channel_split": True}
+        res = fixpipe_compute(dedw_tensor, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
+        tensor_list = [fmap_tensor, dedy_tensor, res]
+        # sch = auto_schedule(res)
+
 
 def fixpie_deconv_case0():
     filter_frac = (18, 2, 16, 16)
@@ -137,6 +158,7 @@ def fixpie_deconv_case0():
     except RuntimeError as e:
         print("deconv fixpipe base exception.")
         print("exception:", e)
+
 
 def fixpipe_deconv_channel_split():
     filter_frac = (36, 2, 16, 8)
@@ -203,6 +225,7 @@ def test_matmul_fixpipe_op_name():
         sch = auto_schedule(res)
         assert res.op.name != res.op.input_tensors[0].op.name
 
+
 def test_fixpipe_cases(test_args):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=get_soc_mock)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
@@ -212,6 +235,7 @@ def test_fixpipe_cases(test_args):
                     test_conv2d_bp_filter_fixpipe_1()
                     test_conv2d_bp_filter_fixpipe_2()
                     test_conv2d_bp_filter_fixpipe_3()
+                    test_conv2d_bp_filter_fixpipe_4()
                     fixpie_deconv_case0()
                     fixpipe_deconv_channel_split()
                     fixpipe_deconv_shape_error()

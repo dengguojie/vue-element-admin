@@ -203,7 +203,7 @@ def _test_get_op_support_info(test_arg):
 
 
 def _gen_conv2d_bp_filter_op_case():
-    
+
     for test_case in conv2d_bp_filter_ut_testcase.conv2d_bp_filter_op_testcase:
         ut_case.add_case(["Ascend910A"], _gen_trans_data_case(*test_case))
     ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
@@ -354,7 +354,7 @@ def _test_conv2d_backprop_filter_compute(test_args):
                     "tensor_list": tensor_list
                 }
                 tbe.build(sch, config)
-        
+
     for test_case in conv2d_bp_filter_ut_testcase.conv2d_bp_filter_compute_testcase:
         formatted_case = _gen_trans_data_case(*test_case)
         formatted_case["params"][5] = test_case[11]
@@ -382,3 +382,4 @@ ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
     sys.exit(0)
+

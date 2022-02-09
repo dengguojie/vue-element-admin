@@ -94,6 +94,25 @@ def test_conv2d_bp_filter_fixpipe_2():
         tensor_list = [fmap_tensor, dedy_tensor, res]
         # sch = auto_schedule(res)
 
+
+def test_conv2d_bp_filter_fixpipe_3():
+    with cce():
+        fmap_tensor = tvm.placeholder((1, 4, 28, 28, 8), name="fmap", dtype="float32", attrs={"ori_shape": (1, 32, 28, 28), "format": "NC1HWC0", "ori_format": "NCHW"})
+        dedy_tensor = tvm.placeholder((1, 2, 26, 26, 8), name="dedy", dtype="float32", attrs={"ori_shape": (1, 16, 26, 26), "format": "NC1HWC0", "ori_format": "NCHW"})
+        dedw = {"shape": (16, 32, 3, 3), "dtype": "float32", "ori_shape": (16, 32, 3, 3), "format": "NCHW", "ori_format": "NCHW"}
+        filter_size = (16, 32, 3, 3)
+        strides = (1, 1, 1, 1)
+        pads = (0, 0, 0, 0)
+        dilations=(1, 1, 1, 1)
+        groups = 1
+        data_format = "NCHW"
+        dedw_tensor = conv2d_backprop_filter_compute(fmap_tensor, dedy_tensor, dedw, filter_size, strides, pads, dilations, groups, data_format)
+        output_dict = {"shape": (4, 9, 1, 16, 8), "dtype": "float32", "format": "FRACTAL_Z", "need_channel_split": True}
+        res = fixpipe_compute(dedw_tensor, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
+        tensor_list = [fmap_tensor, dedy_tensor, res]
+        # sch = auto_schedule(res)
+
+
 def test_conv2d_dx_fixpie_deconv_eltwise_0():
     filter_frac = (18, 2, 16, 16)
     out_shape_5hd = (16, 2, 2, 2, 16)
@@ -199,6 +218,7 @@ def test_fixpipe_cases():
                 test_conv2d_bp_filter_fixpipe_0()
                 test_conv2d_bp_filter_fixpipe_1()
                 test_conv2d_bp_filter_fixpipe_2()
+                test_conv2d_bp_filter_fixpipe_3()
                 test_conv2d_dx_fixpie_deconv_eltwise_0()
                 test_conv2d_dx_fixpie_deconv_dequant()
                 test_conv2d_dx_fixpie_deconv_nz2nd()

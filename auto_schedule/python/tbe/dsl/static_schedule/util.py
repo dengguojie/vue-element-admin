@@ -28,6 +28,7 @@ from typing import Union
 
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
@@ -95,6 +96,9 @@ INIT_SIZE = 1
 TILING_RADICAL = 0
 TILING_CONSERVATIVE = 1
 
+INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
+UNIT_POST_ELTWISE = "post_eltwise"
+
 
 class L1CommonParam:
     """"L1 common parameter"""
@@ -102,6 +106,13 @@ class L1CommonParam:
 
     def __init__(self):
         pass
+
+
+def check_fixpipe_op_support():
+    if tbe_platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
+        return tbe_platform_info.intrinsic_check_support(
+            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
+    return False
 
 
 def parse_tbe_compile_para(compile_para):

@@ -28,6 +28,7 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilterParams
 from tbe.dsl.compute import cube_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.dsl.static_schedule.util import check_fixpipe_op_support
 from tbe.common import platform as tbe_platform
 from tbe.common.context import op_context
 
@@ -871,10 +872,13 @@ class CceConv2dBackpropFilterOp:
                 sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
 
             # move dw from UB to ddr
-            if dw_trans_flag:
-                sch[dw_ddr].emit_insn(c_grads_mad_insn, 'dma_copy', {"layout_transform": "nz2nd"})
+            dw_ddr_emit_axis = c_grads_mad_insn if dw_trans_flag else c_fmap_2_ub_insn
+            if dw_ddr.op.tag == "fixpipe_reform" and check_fixpipe_op_support():
+                sch[dw_ddr].emit_insn(dw_ddr_emit_axis, "fixpipe_op")
+            elif dw_trans_flag:
+                sch[dw_ddr].emit_insn(dw_ddr_emit_axis, 'dma_copy', {"layout_transform": "nz2nd"})
             else:
-                sch[dw_ddr].emit_insn(c_fmap_2_ub_insn, 'dma_copy')
+                sch[dw_ddr].emit_insn(dw_ddr_emit_axis, 'dma_copy')
             sch_list.append(dw_ddr)
 
 
@@ -1001,21 +1005,46 @@ class CceConv2dBackpropFilterOp:
         self.var_map = DynamicConv2dBpFilterParams.var_map
 
         # ####################### get computing graph #######################
-        # support NZ2ND transdata
-        # dw_ddr -> dw_res_trans
+        ## (1) input dtype: float16
+        # orig:
+        #   dw_ddr -> (dw_res_trans)
+        # atomic_add:
+        #   dw_ddr.rf -> (dw_ub) -> dw_ddr -> (dw_res_trans)
+        # inline 'dw_ddr' (optional):
+        #   dw_ddr.rf -> (dw_ub) -> dw_res_trans
+
+        ## (2) input dtype: float32
+        # orig:
+        #   dw_ddr -> dw_ddr_c_split -> (dw_res_trans)
+        # atomic_add:
+        #   dw_ddr.rf -> (dw_ub) -> dw_ddr -> dw_ddr_c_split -> (dw_res_trans)
+        # inline 'dw_ddr':
+        #   dw_ddr.rf -> (dw_ub) -> dw_ddr_c_split -> (dw_res_trans)
+        # inline 'dw_ddr_c_split' (optional):
+        #   dw_ddr.rf -> (dw_ub) -> dw_res_trans
+
+        ## (3) with fixpipe, input dtype: float32
+        # orig:
+        #   dw_ddr -> dw_ddr_c_split
+        # fixpipe fusion:
+        #   dw_ddr -> fixpipe_op -> fixpipe_reform
+        # atomic_add:
+        #   dw_ddr.rf -> dw_ddr -> fixpipe_op -> fixpipe_reform
+        # inline 'dw_ddr':
+        #   dw_ddr.rf -> fixpipe_op -> fixpipe_reform
+        # inline 'fixpipe_op':
+        #   dw_ddr.rf -> fixpipe_reform
+
         sch = sch_list[0]
         dw_res_trans = None
         dw_trans_flag = False
+        dw_fixpipe_flag = False
         fmap_trans_flag = False
         grads_trans_flag = False
         if res.op.tag == "FZ_trans_NHWC":
             dw_trans_flag = True
             dw_res_trans = res
             dw_ddr = res.op.input_tensors[0]
-        elif res.op.tag == "fixpipe_reform":
-            dw_trans_flag = True
-            dw_res_trans = res
-            dw_ddr = res
         else:
             dw_ddr = res
 
@@ -1026,6 +1055,7 @@ class CceConv2dBackpropFilterOp:
             c_split_flag = True
             dw_cc = dw_ddr.op.input_tensors[0]
         elif dw_ddr.op.tag == "fixpipe_reform":
+            dw_fixpipe_flag = True
             fixpipe_tensor = dw_ddr.op.input_tensors[0]
             dw_cc = fixpipe_tensor.op.input_tensors[0]
 
@@ -1044,7 +1074,8 @@ class CceConv2dBackpropFilterOp:
                     fixpipe_fb_dict[fixpipe_scope_name] = fixpipe_input_fb
                 else:
                     self.tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
-            sch[fixpipe_tensor].compute_inline()
+            self.tensor_map["fixpipe_tensor"] = fixpipe_tensor
+            self.tensor_map["fixpipe_reform"] = dw_ddr
             self.tensor_map["fixpipe_fb"] = fixpipe_fb_dict
             self.tensor_map["fixpipe_l1"] = fixpipe_l1_list
         else:
@@ -1384,9 +1415,23 @@ class CceConv2dBackpropFilterOp:
                                                     _compute_tiling_factors()
 
         dw_cc, dw_ub, dw_rfactor = _atomic_add(sch, dw_cc)
-        if not c_split_flag:
-            # c_split: dw_cc -> dw_rfactor -> dw_ddr
-            # not c_split: dw_cc -> dw_ddr(dw_rfactor)
+        if dw_fixpipe_flag:
+            # dw_ddr.rf -> dw_ddr -> fixpipe_tensor -> fixpipe_reform
+            # after inline: dw_ddr.rf -> fixpipe_reform
+            fixpipe_tensor = self.tensor_map["fixpipe_tensor"]
+            dw_ddr = fixpipe_tensor.op.input_tensors[0]
+            sch[dw_ddr].compute_inline(instant=True)
+            sch[fixpipe_tensor].compute_inline(instant=True)
+
+            dw_ddr = self.tensor_map["fixpipe_reform"]
+            dw_trans_flag = dw_ddr.op.name == "fixpipe_nz2nd"
+            c_split_flag = dw_ddr.op.name == "fixpipe_channel_split"
+        elif c_split_flag:
+            # dw_ddr.rf -> dw_ddr -> dw_c_split
+            # after inline: dw_ddr.rf -> dw_c_split
+            sch[dw_rfactor].compute_inline(instant=True)
+        else:
+            # dw_ddr.rf -> dw_ddr
             dw_ddr = dw_rfactor
         # #######################tiling parameters analyze####################
         batch_num_sc = batch_num // block_dim_batch
@@ -1423,8 +1468,6 @@ class CceConv2dBackpropFilterOp:
         factor_kw, factor_kh = _get_n_factor()
 
         # #############################split axis N##########################
-        if c_split_flag:
-            sch[dw_rfactor].compute_inline(instant=True)
         if c_split_flag and not dw_trans_flag:
             # dw_shape is (real_g, fmap_channel_1, kernel_height*kernel_width,
             #              grads_channel, C0_fmap)
@@ -1486,8 +1529,9 @@ class CceConv2dBackpropFilterOp:
                                 c_fmap_mad_at, c_grads_mad_at,
                                 c_fmap_mad_insn, c_grads_mad_insn, sch[dw_ddr].op.axis[3])
         else:
-            sch[dw_ddr].compute_inline(instant=True)
-            dw_ddr = dw_res_trans
+            if not dw_fixpipe_flag:
+                sch[dw_ddr].compute_inline(instant=True)
+                dw_ddr = dw_res_trans
             ddr_batch, ddr_hw, ddr_c = sch[dw_ddr].op.axis
             # split the tensor axis to get [group, grads_c, hw, fmap_c1, fmap_c0]
             ddr_g, ddr_n = sch[dw_ddr].split(ddr_batch, nparts=real_g)
