@@ -50,7 +50,7 @@ static const int32_t kInputNum = 2;
 vector<FusionPattern*> MatmulCastFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulCastFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusionName, "Create pattern fail!"), patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusionName, "Create pattern fail!"), return patterns);
   pattern->AddOpDesc(PATTERN_MATMUL, {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"})
       .AddOpDesc(PATTERN_CAST, {"Cast"})
       .SetInputs(PATTERN_CAST, {PATTERN_MATMUL})

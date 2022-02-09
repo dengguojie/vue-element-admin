@@ -143,7 +143,7 @@ bool BatchMatMulFusionPass::CheckAndDoTransposeFusion(ge::ComputeGraph &graph, c
 
 // check transpose node
 bool BatchMatMulFusionPass::CheckTransposeFusion(const ge::NodePtr &transpose_node) const {
-  FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusionName, "Transpose node is null."), false);
+  FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusionName, "Transpose node is null."), return false);
   auto transpose_type = transpose_node->GetType();
   if (transpose_type != kTransposeD && transpose_type != kTranspose) {
     OP_LOGD(kFusionName, "Transpose type is %s.", transpose_type.c_str());
