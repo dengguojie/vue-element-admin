@@ -56,7 +56,7 @@ vector<FusionPattern *> DynamicRNNV3FusionPass::DefinePatterns()
 }
 
 ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, ge::NodePtr fusedNode, bool &failStatus,
-                                                      int64_t batchSize, int64_t stateSize){
+                                                      int64_t batchSize, int64_t stateSize) {
   ge::OpDescPtr broadcast_op_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
       (broadcast_op_desc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "BroadCast", "BroadcastToD")),

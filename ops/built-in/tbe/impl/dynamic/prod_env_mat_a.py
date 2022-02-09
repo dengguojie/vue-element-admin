@@ -107,11 +107,11 @@ class ProdEnvMatA:
         self.cur_loc_nei_num = self.tik_instance.Scalar("uint32",
                                                         "cur_loc_nei_num",
                                                         init_value=self.max_nbor_size)
-        self.INT32_TYPE = "int32"
-        self.nloc_d = self.tik_instance.Scalar(self.INT32_TYPE, "nloc_d", init_value=0)
-        self.nall_d = self.tik_instance.Scalar(self.INT32_TYPE, "nall_d", init_value=0)
-        self.total_nloc = self.tik_instance.Scalar(self.INT32_TYPE, "total_nloc", init_value=0)
-        self.nloc_offset = self.tik_instance.Scalar(self.INT32_TYPE, "nloc_offset", init_value=0)
+        self.int32_type = "int32"
+        self.nloc_d = self.tik_instance.Scalar(self.int32_type, "nloc_d", init_value=0)
+        self.nall_d = self.tik_instance.Scalar(self.int32_type, "nall_d", init_value=0)
+        self.total_nloc = self.tik_instance.Scalar(self.int32_type, "total_nloc", init_value=0)
+        self.nloc_offset = self.tik_instance.Scalar(self.int32_type, "nloc_offset", init_value=0)
         self.nnei_once_repeat_nums = self.block_num * self.block_num
         self.nnei_repeat_times = self.nnei // self.nnei_once_repeat_nums
         self.max_value = self.tik_instance.Scalar("float32", "max_value",
@@ -125,7 +125,7 @@ class ProdEnvMatA:
         if self.split_count > 1:
             self.cur_op_core_num = dif_enginer_core_num[self.split_index]
 
-        self.cur_op_core_num_scalar = self.tik_instance.Scalar(self.INT32_TYPE, "cur_op_core_num_scalar",
+        self.cur_op_core_num_scalar = self.tik_instance.Scalar(self.int32_type, "cur_op_core_num_scalar",
                                                                init_value=self.cur_op_core_num)
 
         self.init_buffer()
@@ -167,7 +167,7 @@ class ProdEnvMatA:
         """
         copy type data in ub from gm.
         """
-        src_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src_offset",
+        src_offset = self.tik_instance.Scalar(self.int32_type, "src_offset",
                                               init_value=cur_nsample_index * self.nall_d *
                                                          self.coord_dim_num)
         self.tik_instance.data_move(type_ub[0], self.type_gm[src_offset // 3],
@@ -178,7 +178,7 @@ class ProdEnvMatA:
         """
         copy mesh data in ub from gm.
         """
-        mesh_offset = self.tik_instance.Scalar(self.INT32_TYPE, "mesh_offset",
+        mesh_offset = self.tik_instance.Scalar(self.int32_type, "mesh_offset",
                                                init_value=1 + 2 * self.total_nloc + cur_nloc_index * 1024)
 
         self.tik_instance.data_move(mesh_ub[0], self.mesh_gm[mesh_offset],
@@ -189,7 +189,7 @@ class ProdEnvMatA:
         """
         copy davg data in ub from gm.
         """
-        avg_offset = self.tik_instance.Scalar(self.INT32_TYPE, "avg_offset",
+        avg_offset = self.tik_instance.Scalar(self.int32_type, "avg_offset",
                                                init_value=cur_type_idx * self.descrpt_size)
         self.tik_instance.data_move(davg_ub[0], self.davg_gm[avg_offset],
                                     sid=0, nburst=1, burst=self.descrpt_size // self.block_num,
@@ -230,7 +230,7 @@ class ProdEnvMatA:
         """
         last_block_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.block_num],
                                                      name="last_block_tensor", scope=self.tik.scope_ubuf)
-        descrpt_offset = self.tik_instance.Scalar(self.INT32_TYPE, "rij_dst_offset",
+        descrpt_offset = self.tik_instance.Scalar(self.int32_type, "rij_dst_offset",
                                                   init_value=cur_nsample_index * self.nloc_d * self.nnei * 4 +
                                                              cur_nloc_index * self.nnei * 4)
 
@@ -239,7 +239,7 @@ class ProdEnvMatA:
         self.data_move_res_to_gm(res_descrpt_a_tensor, self.descrpt_gm, last_block_tensor, descrpt_move_blocks,
                                  descrpt_offset, 4)
 
-        descrpt_deriv_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_offset",
+        descrpt_deriv_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_offset",
                                                         init_value=cur_nsample_index * self.nloc_d * self.nnei * 12 +
                                                              cur_nloc_index * self.nnei * 12)
 
@@ -249,7 +249,7 @@ class ProdEnvMatA:
                                  descrpt_deriv_move_blocks, descrpt_deriv_offset, 12)
 
         nlist_move_blocks = self.nnei // self.block_num
-        nlist_dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "nlist_dst_offset",
+        nlist_dst_offset = self.tik_instance.Scalar(self.int32_type, "nlist_dst_offset",
                                                     init_value=cur_nsample_index * self.nloc_d * self.nnei +
                                                                    cur_nloc_index * self.nnei)
 
@@ -271,7 +271,7 @@ class ProdEnvMatA:
             abstract copy rij data to gm func.
             """
             rij_move_blocks = (self.nnei * 3 + self.block_num - 1) // self.block_num
-            rij_dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "rij_dst_offset",
+            rij_dst_offset = self.tik_instance.Scalar(self.int32_type, "rij_dst_offset",
                                                       init_value=cur_nsample_index * self.nloc_d * self.nnei * 3 +
                                                                    cur_nloc_index * self.nnei * 3)
             self.tik_instance.data_move(self.rij_gm[rij_dst_offset], res_rij_tensor,
@@ -286,7 +286,7 @@ class ProdEnvMatA:
                 last_block_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.block_num],
                                                              name="last_block_tensor", scope=self.tik.scope_ubuf)
                 rij_move_blocks = (self.nnei * 3) // self.block_num
-                rij_dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "rij_dst_offset",
+                rij_dst_offset = self.tik_instance.Scalar(self.int32_type, "rij_dst_offset",
                                                           init_value=cur_nsample_index * self.nloc_d * self.nnei * 3 +
                                                                      cur_nloc_index * self.nnei * 3)
                 self.data_move_res_to_gm(res_rij_tensor, self.rij_gm, last_block_tensor,
@@ -298,29 +298,29 @@ class ProdEnvMatA:
         """
         copy nlist descrpt descrpt_derive data to gm from ub buffer when block align.
         """
-        descrpt_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_offset",
+        descrpt_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_offset",
                                                   init_value=cur_nsample_index * self.nloc_d * self.nnei * 4 +
                                                              cur_nloc_index * self.nnei * 4)
 
-        descrpt_move_blocks = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_move_blocks",
+        descrpt_move_blocks = self.tik_instance.Scalar(self.int32_type, "descrpt_move_blocks",
                                                        init_value=(self.nnei * 4 + self.block_num - 1)
                                                                    // self.block_num)
         self.tik_instance.data_move(self.descrpt_gm[descrpt_offset], res_descrpt_a_tensor,
                                     sid=0, nburst=1, burst=descrpt_move_blocks, src_stride=0, dst_stride=0)
 
 
-        descrpt_deriv_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_offset",
+        descrpt_deriv_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_offset",
                                                         init_value=cur_nsample_index * self.nloc_d * self.nnei * 12 +
                                                                    cur_nloc_index * self.nnei * 12)
 
-        descrpt_deriv_move_blocks = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_move_blocks",
+        descrpt_deriv_move_blocks = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_move_blocks",
                                                              init_value=(self.nnei * 12 + self.block_num - 1)
                                                                   // self.block_num)
         self.tik_instance.data_move(self.descrpt_deriv_gm[descrpt_deriv_offset], res_descrpt_a_deriv_tensor,
                                     sid=0, nburst=1, burst=descrpt_deriv_move_blocks, src_stride=0, dst_stride=0)
 
         nlist_move_blocks = (self.nnei + self.block_num - 1) // self.block_num
-        nlist_dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "nlist_dst_offset",
+        nlist_dst_offset = self.tik_instance.Scalar(self.int32_type, "nlist_dst_offset",
                                                     init_value=cur_nsample_index * self.nloc_d * self.nnei +
                                                                cur_nloc_index * self.nnei)
 
@@ -1184,18 +1184,18 @@ class ProdEnvMatA:
         """
         extract data from proposal contains neighbour_coords, dis, nlist.
         """
-        cur_extract_length = self.tik_instance.Scalar(self.INT32_TYPE, "cur_extract_length",
+        cur_extract_length = self.tik_instance.Scalar(self.int32_type, "cur_extract_length",
                                                       init_value=(self.cur_type_neighbour_nums + 15) // 16)
         front_tail = self.block_num - self.sel_a_list[0] % self.block_num
 
-        dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "dst_offset",
+        dst_offset = self.tik_instance.Scalar(self.int32_type, "dst_offset",
                                               init_value=0)
 
         if front_tail % 8 != 0:
             with self.tik_instance.if_scope(temp_idx == 1):
                 dst_offset.set_as(front_tail * 8)
 
-        cur_move_length = self.tik_instance.Scalar(self.INT32_TYPE, "cur_move_length",
+        cur_move_length = self.tik_instance.Scalar(self.int32_type, "cur_move_length",
                                                    init_value=(self.cur_type_neighbour_nums + 7) // 8)
 
         nlist_temp_buffer = self.tik_instance.Tensor("float32", [self.max_nbor_size],
@@ -1280,20 +1280,20 @@ class ProdEnvMatA:
                                 self.repeat_stride, self.repeat_stride,
                                 0, "counter")
 
-        cur_range_target_nums = self.tik_instance.Scalar(self.INT32_TYPE, "cur_range_target_nums",
+        cur_range_target_nums = self.tik_instance.Scalar(self.int32_type, "cur_range_target_nums",
                                                          init_value=16 * 4)
 
-        vector_nums = self.tik_instance.Scalar(self.INT32_TYPE, "vector_nums", init_value=0)
+        vector_nums = self.tik_instance.Scalar(self.int32_type, "vector_nums", init_value=0)
 
-        src1_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src1_offset", init_value=0)
-        src2_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src2_offset", init_value=0)
-        src3_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src3_offset", init_value=0)
-        src4_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src4_offset", init_value=0)
+        src1_offset = self.tik_instance.Scalar(self.int32_type, "src1_offset", init_value=0)
+        src2_offset = self.tik_instance.Scalar(self.int32_type, "src2_offset", init_value=0)
+        src3_offset = self.tik_instance.Scalar(self.int32_type, "src3_offset", init_value=0)
+        src4_offset = self.tik_instance.Scalar(self.int32_type, "src4_offset", init_value=0)
 
-        dst_offset = self.tik_instance.Scalar(self.INT32_TYPE, "dst_offset", init_value=0)
+        dst_offset = self.tik_instance.Scalar(self.int32_type, "dst_offset", init_value=0)
 
-        single_qune_nums = self.tik_instance.Scalar(self.INT32_TYPE, "single_qune_nums", init_value=0)
-        cur_sort = self.tik_instance.Scalar(self.INT32_TYPE, "cur_sort",
+        single_qune_nums = self.tik_instance.Scalar(self.int32_type, "single_qune_nums", init_value=0)
+        cur_sort = self.tik_instance.Scalar(self.int32_type, "cur_sort",
                                             init_value=self.max_nbor_size + 100)
 
         with self.tik_instance.for_range(cur_range_target_nums, cur_sort):
@@ -1484,8 +1484,8 @@ class ProdEnvMatA:
         """
         Get all neighbour coords for nloc.
         """
-        gm_idx = self.tik_instance.Scalar(self.INT32_TYPE, "gm_idx", init_value=0)
-        ub_idx = self.tik_instance.Scalar(self.INT32_TYPE, "ub_idx", init_value=0)
+        gm_idx = self.tik_instance.Scalar(self.int32_type, "gm_idx", init_value=0)
+        ub_idx = self.tik_instance.Scalar(self.int32_type, "ub_idx", init_value=0)
 
         neighbour_coord = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size * 8],
                                                    name="neighbour_coord",
@@ -1494,7 +1494,7 @@ class ProdEnvMatA:
                                                         name="neighbour_coord_back",
                                                         scope=self.tik.scope_ubuf)
 
-        mul3s = self.tik_instance.Tensor(self.INT32_TYPE, [self.max_nbor_size], name="muls3",
+        mul3s = self.tik_instance.Tensor(self.int32_type, [self.max_nbor_size], name="muls3",
                                          scope=self.tik.scope_ubuf)
 
         self.tik_instance.vmuls(self.max_nbor_size,
@@ -1589,7 +1589,7 @@ class ProdEnvMatA:
         mesh_ub = self.tik_instance.Tensor(self.type_dtype, self.mesh_ub_shape,
                                            name="mesh_ub", scope=self.tik.scope_ubuf)
 
-        cur_type_tensor = self.tik_instance.Tensor(self.INT32_TYPE, [self.max_nbor_size],
+        cur_type_tensor = self.tik_instance.Tensor(self.int32_type, [self.max_nbor_size],
                                                    name="cur_type_tensor",
                                                    scope=self.tik.scope_ubuf)
 
@@ -1608,10 +1608,10 @@ class ProdEnvMatA:
         """
         Get core nums for comppute process.
         """
-        one_cor_nloc_num = self.tik_instance.Scalar(self.INT32_TYPE, "one_cor_nloc_num",
+        one_cor_nloc_num = self.tik_instance.Scalar(self.int32_type, "one_cor_nloc_num",
                                                     init_value=self.nloc_d // self.cur_op_core_num)
 
-        last_core_num = self.tik_instance.Scalar(self.INT32_TYPE, "last_core_num",
+        last_core_num = self.tik_instance.Scalar(self.int32_type, "last_core_num",
                                                  init_value=self.nloc_d -
                                                             one_cor_nloc_num * (self.cur_op_core_num - 1))
 
@@ -1681,21 +1681,21 @@ class ProdEnvMatA:
                                          extract_length_align // self.nnei_once_repeat_nums, self.block_stride,
                                          self.repeat_stride)
 
-            cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "loc_idx",
+            cur_loc = self.tik_instance.Scalar(self.int32_type, "loc_idx",
                                                init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
 
-            for_input_cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "for_input_cur_loc",
+            for_input_cur_loc = self.tik_instance.Scalar(self.int32_type, "for_input_cur_loc",
                                                          init_value=self.nloc_offset +
                                                                     block_idx * one_cor_nloc_num + loc_nei_idx)
 
-            cur_loc_index = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_index",
+            cur_loc_index = self.tik_instance.Scalar(self.int32_type, "cur_loc_index",
                                                      init_value=for_input_cur_loc + 1)
 
             cur_loc_index.set_as(self.mesh_gm[cur_loc_index])
 
-            cur_loc_type_id = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_type_id",
+            cur_loc_type_id = self.tik_instance.Scalar(self.int32_type, "cur_loc_type_id",
                                                        init_value=0)
-            nei_num_index = self.tik_instance.Scalar(self.INT32_TYPE, "nei_num_index",
+            nei_num_index = self.tik_instance.Scalar(self.int32_type, "nei_num_index",
                                                      init_value=1 + self.total_nloc  + for_input_cur_loc)
             self.cur_loc_nei_num.set_as(self.mesh_gm[nei_num_index])
             self.tik_instance.vector_dup(self.repeat_once_size, sorted_index, -1,

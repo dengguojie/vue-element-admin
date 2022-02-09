@@ -240,7 +240,7 @@ Status ProdEnvMatAFusionPass::SplitEnvmatNode(ge::ComputeGraph& graph, ge::NodeP
 Status ProdEnvMatAFusionPass::CreateConcatNode(ge::ComputeGraph& graph, ge::NodePtr& envmatNode,
                                                vector<ge::NodePtr>& newEnvmatNodes,
                                                ge::NodePtr& cocatNode,
-                                               const std::string& nodeName, int32_t outputIndex){
+                                               const std::string& nodeName, int32_t outputIndex) {
   ge::OpDescPtr concatDesc = nullptr;
   std::string concatNodeName = envmatNode->GetName() + "/" + nodeName + "/Concat";
   FUSION_PASS_MAKE_SHARED(concatDesc = std::make_shared<ge::OpDesc>(concatNodeName,
