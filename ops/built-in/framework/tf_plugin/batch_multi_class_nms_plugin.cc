@@ -32,20 +32,20 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-static const char* const nms_v2 = "NonMaxSuppressionV2";
-static const char* const nms_v3 = "NonMaxSuppressionV3";
-static const char* const scoreConstKey = "map/while/MultiClassNonMaxSuppression/FilterGreaterThan/Greater";
-static const char* const sizeConstKey = "map/while/MultiClassNonMaxSuppression/Minimum";
-static const char* const sizeConstKeySec = "map/while/MultiClassNonMaxSuppression/Minimum_";
+static const char * const nms_v2 = "NonMaxSuppressionV2";
+static const char * const nms_v3 = "NonMaxSuppressionV3";
+static const char * const scoreConstKey = "map/while/MultiClassNonMaxSuppression/FilterGreaterThan/Greater";
+static const char * const sizeConstKey = "map/while/MultiClassNonMaxSuppression/Minimum";
+static const char * const sizeConstKeySec = "map/while/MultiClassNonMaxSuppression/Minimum_";
 
-static const char* const scoreRetinanetConstKey = "map/while/Greater";
-static const char* const sizeRetinanetConstKey = "map/while/Minimum";
-static const char* const retinanet_out_num = "map/while/non_max_suppression_5/NonMaxSuppressionV3";
+static const char * const scoreRetinanetConstKey = "map/while/Greater";
+static const char * const sizeRetinanetConstKey = "map/while/Minimum";
+static const char * const retinanet_out_num = "map/while/non_max_suppression_5/NonMaxSuppressionV3";
 
-static const char* const SfscoreConstKey = "map/while/MultiClassNonMaxSuppression/GreaterEqual";
-static const char* const scoreFaceboxConstKey = "map/while/GreaterEqual";
-static const char* const sizeFaceboxConstKey = "map/while/non_max_suppression/NonMaxSuppressionV3";
-static const char* const Facebox_out_num = "map/while/non_max_suppression/NonMaxSuppressionV3";
+static const char * const SfscoreConstKey = "map/while/MultiClassNonMaxSuppression/GreaterEqual";
+static const char * const scoreFaceboxConstKey = "map/while/GreaterEqual";
+static const char * const sizeFaceboxConstKey = "map/while/non_max_suppression/NonMaxSuppressionV3";
+static const char * const Facebox_out_num = "map/while/non_max_suppression/NonMaxSuppressionV3";
 
 Status ParseFloatValueFromConstNms(const vector<const NodeDef*>& inputConstNodes, const string& names, float& value) {
   for (auto nodeDef : inputConstNodes) {

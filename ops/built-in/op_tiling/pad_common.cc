@@ -441,7 +441,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   int64_t baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
   int64_t size = inShape.size();
   int64_t baseData = (size != depth) ? _prod(depth, outShape) : block;
-  if (depth <= 0){
+  if (depth <= 0) {
     depth = 1;
   }
   // Record Status.
@@ -468,7 +468,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   // Only split two dims as core
   params.recur_inShape = inShape;
   if (depth - 1 > 0) {
-    for (int i = 0; i <= depth-2; i++){
+    for (int i = 0; i <= depth-2; i++) {
       params.recur_inShape[i] = 1;
     }
   }
@@ -546,7 +546,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
   }
   int64_t block = MINI_UNIT / numBit;
   int64_t size = inShape.size();
-  if (depth < 0){
+  if (depth < 0) {
     depth = 1;
   }
   if (depth == 0) {
@@ -596,7 +596,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
     // Only split two dims as core
     params.recur_inShape = inShape;
     if (depth - 1 > 0) {
-      for (int i = 0; i <= depth-2; i++){
+      for (int i = 0; i <= depth-2; i++) {
         params.recur_inShape[i] = 1;
       }
     }
@@ -609,7 +609,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
 
     params.recur_outShape = outShape;
     if (depth - 1 > 0) {
-      for (int i = 0; i <= depth-2; i++){
+      for (int i = 0; i <= depth-2; i++) {
         params.recur_outShape[i] = 1;
       }
     }

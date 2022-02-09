@@ -62,7 +62,6 @@ constexpr int64_t TILING_PADDING_INDEX_15 = 15;
 }  // namespace
 
 namespace optiling {
-
 const int64_t ONE_BLOCK_BYTES = 32;
 
 const int64_t TILING_MODE_0 = 0;
