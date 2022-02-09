@@ -27,4 +27,5 @@ def set_bool_storage_config():
     :return:
     """
     config = build_config_update(build_config, "bool_storage_as_1bit", False)
+    config = build_config_update(config, "dummy_placeholder", False)
     return build_config_update(config, "double_buffer_non_reuse", True)
