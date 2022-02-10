@@ -25,12 +25,12 @@
 
 namespace ge {
 namespace {
-const char* const kScopeType = "BatchMultiClassNonMaxSuppression";
-const char* const kScopeTypeBatchMultiClassNonMaxSuppression = "BatchMultiClassNonMaxSuppression";
-const char* const kScopeTypeSecondBatchMultiClassNonMaxSuppression = "BatchSecondhMultiClassNonMaxSuppression";
-const char* const kScopeTypeFaceBoxesBatchMultiClassNonMaxSuppression = "BatchFaceBoxeshMultiClassNonMaxSuppression";
-const char* const kScopeTypeFiltereBatchMultiClassNonMaxSuppression = "BatchFiltereMultiClassNonMaxSuppression";
-const char* const kOpType = "BatchMultiClassNonMaxSuppression";
+const char * const kScopeType = "BatchMultiClassNonMaxSuppression";
+const char * const kScopeTypeBatchMultiClassNonMaxSuppression = "BatchMultiClassNonMaxSuppression";
+const char * const kScopeTypeSecondBatchMultiClassNonMaxSuppression = "BatchSecondhMultiClassNonMaxSuppression";
+const char * const kScopeTypeFaceBoxesBatchMultiClassNonMaxSuppression = "BatchFaceBoxeshMultiClassNonMaxSuppression";
+const char * const kScopeTypeFiltereBatchMultiClassNonMaxSuppression = "BatchFiltereMultiClassNonMaxSuppression";
+const char * const kOpType = "BatchMultiClassNonMaxSuppression";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeBatchMultiClassNonMaxSuppressionPass::DefinePatterns() {
@@ -110,7 +110,8 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
   }
   ScopeBatchMultiClassNMSPattern->SetSubType(kScopeTypeBatchMultiClassNonMaxSuppression);
   ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 1, 0));
-  ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", 4, 0));
+  static const size_t maximum_num = 4;
+  ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", maximum_num, 0));
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeBatchMultiClassNMSPattern);
 
@@ -121,7 +122,8 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
   }
   ScopeSecondBatchMultiClassNMSPattern->SetSubType(kScopeTypeSecondBatchMultiClassNonMaxSuppression);
   ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 0, 1));
-  ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", 11, 0));
+  static const size_t merge_num = 11;
+  ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", merge_num, 0));
   ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeSecondBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeSecondBatchMultiClassNMSPattern);
@@ -144,9 +146,11 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
   }
   ScopeFilteredBatchMultiClassNMSPattern->SetSubType(kScopeTypeFiltereBatchMultiClassNonMaxSuppression);
   ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 0, 5));
+  static const size_t range_step = 5;
+  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 0, range_step));
   ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ConcatV2", 0, 1));
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Fill", 0, 80));
+  static const size_t fill_step = 80;
+  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Fill", 0, fill_step));
 
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeFilteredBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeFilteredBatchMultiClassNMSPattern);

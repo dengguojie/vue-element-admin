@@ -25,10 +25,10 @@
 
 namespace ge {
 namespace {
-const char* const kScopeTypeInstancenorm = "instancenorm";
-const char* const kScopeTypeMoments = "moments";
-const char* const kScopeRltType = "InstanceNorm";
-const char* const kOpType = "InstanceNorm";
+const char * const kScopeTypeInstancenorm = "instancenorm";
+const char * const kScopeTypeMoments = "moments";
+const char * const kScopeRltType = "InstanceNorm";
+const char * const kOpType = "InstanceNorm";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeInstanceNormPass::DefinePatterns() {

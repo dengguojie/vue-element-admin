@@ -106,7 +106,8 @@ ScopeFusionPatterns ScopeToAbsoluteBBoxPass::GenWhileScopePatterns() {
 
   while_cell->SetSubType("while");
   while_cell->AddScopeFeature(ScopeFeature("", -1, "while"));
-  while_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4));
+  static const size_t mul_num = 4;
+  while_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", mul_num));
 
   ScopeFusionPatterns while_scope_pattern = {{while_cell}};
   return while_scope_pattern;

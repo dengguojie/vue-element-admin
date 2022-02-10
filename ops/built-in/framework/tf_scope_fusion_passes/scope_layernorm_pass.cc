@@ -85,7 +85,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
                 return FAILED;
             }
         }
-        if (mode_def->GetName().find("moments/variance") != std::string::npos){
+        if (mode_def->GetName().find("moments/variance") != std::string::npos) {
           if (mode_def->GetName().find("generator/ResBlock") != std::string::npos) {
             OP_LOGI(kOpType, "generator/ResBlock is found, %s", mode_def->GetName().c_str());
             return FAILED;

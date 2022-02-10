@@ -457,9 +457,9 @@ Status AvgPoolV2FusionPass::GetWeightOfConvAvgpool(const string &opName, const i
   return SUCCESS;
 }
 
-Status AvgPoolV2FusionPass::DoBiasOptimizeAvgpool(ComputeGraph &graph, NodePtr poolingNode,
-                                                  vector<NodePtr> &fusionNodes, const int64_t &ksizeH, const int64_t &ksizeW,
-                                                  const int64_t &inputC) {
+Status AvgPoolV2FusionPass::DoBiasOptimizeAvgpool(ComputeGraph& graph, NodePtr poolingNode,
+                                                  vector<NodePtr>& fusionNodes, const int64_t& ksizeH,
+                                                  const int64_t& ksizeW, const int64_t& inputC) {
   FUSION_PASS_CHECK(poolingNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);

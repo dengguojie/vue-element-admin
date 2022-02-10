@@ -118,7 +118,8 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
             dynamic_tensor_num);
   }
-  auto graph_ret = op_desc->AddDynamicOutputDesc(dynamic_output, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
+  auto graph_ret =
+      op_desc->AddDynamicOutputDesc(dynamic_output, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
   if (graph_ret != ge::GRAPH_SUCCESS) {
     OP_LOGE("Op: %s AddDynamicOutputDesc failed.", op_desc->GetName().c_str());
     return FAILED;

@@ -71,7 +71,8 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) con
   batchnorm_grad->SetSubType("batchnorm_grad");
   batchnorm_grad->AddScopeFeature(ScopeFeature("", -1, "batchnorm", "Rsqrt_grad"));  // batchnorm grad
   batchnorm_grad->AddNodeOpTypeFeature(NodeOpTypeFeature("StackPopV2", -1));  // Convlstm net is not support.
-  batchnorm_grad->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 6, 0));
+  static const size_t mul_num = 6;
+  batchnorm_grad->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", mul_num, 0));
   batch1.push_back(batchnorm_grad);
   patterns.push_back(batch1);
   OP_LOGI(kOpType, "Mul of LayerNormGrad scope is 6");

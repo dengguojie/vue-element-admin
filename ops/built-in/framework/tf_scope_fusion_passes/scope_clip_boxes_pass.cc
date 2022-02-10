@@ -25,9 +25,9 @@
 
 namespace ge {
 namespace {
-const char* const kScopeType = "ClipBoxes";
-const char* const kScopeTypeClipBoxes = "ClipBoxes";
-const char* const kOpType = "ClipBoxes";
+const char * const kScopeType = "ClipBoxes";
+const char * const kScopeTypeClipBoxes = "ClipBoxes";
+const char * const kOpType = "ClipBoxes";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeClipBoxesPass::DefinePatterns() {

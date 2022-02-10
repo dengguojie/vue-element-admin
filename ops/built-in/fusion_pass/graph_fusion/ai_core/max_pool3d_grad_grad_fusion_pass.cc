@@ -210,7 +210,7 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   fusionDesc->AddInputDesc(tensorDesc);
   fusionDesc->SetType("MaxPool3DGradGradD");
-  if (!CheckOpSupported(fusionDesc)){
+  if (!CheckOpSupported(fusionDesc)) {
     assitPtr = nullptr;
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Op DiagPart Not Supported.");
     return NOT_CHANGED;
@@ -218,13 +218,13 @@ Status MaxPool3DGradGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   vector<ge::GeTensorPtr> weights = {assitPtr};
   ge::OpDescUtils::SetWeights(maxpool3dGradGradVNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(maxpool3dGradGradVNode);
-  if (constInputNodes.size() == 0){
+  if (constInputNodes.size() == 0) {
     assitPtr = nullptr;
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is empty, fusion failed.");
     return PARAM_INVALID;
   }
   NodePtr constInput = constInputNodes[0];
-  if (constInput == nullptr){
+  if (constInput == nullptr) {
     assitPtr = nullptr;
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInput is null, fusion failed.");
     return PARAM_INVALID;

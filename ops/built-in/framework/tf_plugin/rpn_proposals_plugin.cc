@@ -32,17 +32,17 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-static const char* const kScoreTthreshold = "score_threshold";
-static const char* const kK = "k";
-static const char* const kMinSize = "min_size";
-static const char* const kNmsTthreshold = "nms_threshold";
-static const char* const kPostNmsNum = "post_nms_num";
+static const char * const kScoreTthreshold = "score_threshold";
+static const char * const kK = "k";
+static const char * const kMinSize = "min_size";
+static const char * const kNmsTthreshold = "nms_threshold";
+static const char * const kPostNmsNum = "post_nms_num";
 
-static const char* const kScoreTthresholdOp = "Greater";            // 1
-static const char* const kKOp = "Minimum";                          // 0
-static const char* const kMinSizeOp = "Greater";                    // 1
-static const char* const kNmsTthresholdOp = "NonMaxSuppressionV2";  // 3
-static const char* const kPostNmsNumOp = "NonMaxSuppressionV2";     // 2
+static const char * const kScoreTthresholdOp = "Greater";            // 1
+static const char * const kKOp = "Minimum";                          // 0
+static const char * const kMinSizeOp = "Greater";                    // 1
+static const char * const kNmsTthresholdOp = "NonMaxSuppressionV2";  // 3
+static const char * const kPostNmsNumOp = "NonMaxSuppressionV2";     // 2
 
 Status ParseValueFromConstFloat(const vector<const NodeDef*>& v_input_const, const string& names, float& value) {
   for (auto nodeDef : v_input_const) {
@@ -180,7 +180,8 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
 
     // nms_threshold
     if (node_def->op() == kNmsTthresholdOp) {
-      inputy_node_name = node_def->input(3);
+      static const size_t input_node_name_index = 3;
+      inputy_node_name = node_def->input(input_node_name_index);
 
       float param = 0.0;
       if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
@@ -198,7 +199,8 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
 
     //  post_nms_num
     if (node_def->op() == kPostNmsNumOp) {
-      inputy_node_name = node_def->input(2);
+      static const size_t input_node_name_index = 2;
+      inputy_node_name = node_def->input(input_node_name_index);
 
       int param = 0;
       if (ParseValueFromConstInt(v_input_const, inputy_node_name, param) != SUCCESS) {
@@ -219,8 +221,8 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
     OP_LOGE(op.GetName().c_str(), "cann't find specific op node in rpn_proposals");
     return FAILED;
   }
-
-  if (attr_num != 5) {
+  static const size_t right_attr_num = 5;
+  if (attr_num != right_attr_num) {
     OP_LOGE(op.GetName().c_str(), "cann't find right num of attr node in rpn_proposals!");
     return FAILED;
   }

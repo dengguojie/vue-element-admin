@@ -60,7 +60,7 @@ vector<FusionPattern*> AdaptiveMaxPool2dFusionPass::DefinePatterns() {
   return patterns;
 }
 
-std::vector<int> compute_kernel(int input_size, int output_size){
+std::vector<int> compute_kernel(int input_size, int output_size) {
   int padding_size = 0;
   int kernel_size = 0;
   int stride_size = 0;
@@ -114,7 +114,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
                     return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
   std::vector<int> output_sizeList;
-  if (op.GetAttr("output_size", output_sizeList) != ge::GRAPH_SUCCESS){
+  if (op.GetAttr("output_size", output_sizeList) != ge::GRAPH_SUCCESS) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetOpAttr output_size failed");
     return FAILED;
   }
@@ -136,7 +136,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     in_size_h = shape.GetDim(2);
     in_size_w = shape.GetDim(3);
     data_format = "NCHW";
-  } else if (input_format == ge::FORMAT_ND){
+  } else if (input_format == ge::FORMAT_ND) {
     in_size_h = shape.GetDim(1);
     in_size_w = shape.GetDim(2);
     data_format = "ND";
@@ -146,7 +146,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
   out_size_h = output_sizeList[0];
   out_size_w = output_sizeList[1];
-  if (in_size_h % out_size_h != 0 || in_size_w % out_size_w != 0){
+  if (in_size_h % out_size_h != 0 || in_size_w % out_size_w != 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Not Fusion, because input_size can not be divided by output_size!");
     return NOT_CHANGED;
   }
@@ -155,7 +155,7 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   std::vector<int> flag_w;
   flag_w = compute_kernel(in_size_w, out_size_w);
 
-  if (flag_h[0] == -1 || flag_w[0] == -1){
+  if (flag_h[0] == -1 || flag_w[0] == -1) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Not support this scene!");
     return FAILED;
   }

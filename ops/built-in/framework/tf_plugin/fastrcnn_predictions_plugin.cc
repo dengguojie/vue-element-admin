@@ -32,9 +32,9 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-static const char* const nms = "NonMaxSuppressionV2";
-static const char* const greater = "Greater";
-static const char* const minimum = "Minimum";
+static const char * const nms = "NonMaxSuppressionV2";
+static const char * const greater = "Greater";
+static const char * const minimum = "Minimum";
 
 Status ParseFloatValueFromConst(const vector<const NodeDef*>& v_input_const, const string& names, float& value) {
   for (auto nodeDef : v_input_const) {
@@ -85,7 +85,8 @@ Status FastrcnnPredictionsParams(const std::vector<const google::protobuf::Messa
     }
     v_input_const.push_back(node_def);
     if (node_def->op() == nms) {
-      input_attr_name = node_def->input(3);
+      static const size_t input_attr_name_index = 3;
+      input_attr_name = node_def->input(input_attr_name_index);
       OP_LOGI(op.GetName().c_str(), "get node name %s .", input_attr_name.c_str());
     }
   }

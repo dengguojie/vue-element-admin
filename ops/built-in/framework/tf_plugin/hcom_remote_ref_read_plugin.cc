@@ -21,7 +21,7 @@
 #include "register/register.h"
 
 using namespace ge;
-namespace domi{
+namespace domi {
 REGISTER_CUSTOM_OP("HcomRemoteRefRead")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("HcomRemoteRefRead")

@@ -24,10 +24,10 @@
 
 namespace ge {
 namespace {
-const char* const kScopeType = "DecodeBbox";
-const char* const kScopeTypeDecodeBbox = "DecodeBbox";
-const char* const kOpType = "DecodeBbox";
-const char* const decode_box2_name = "transpose";
+const char * const kScopeType = "DecodeBbox";
+const char * const kScopeTypeDecodeBbox = "DecodeBbox";
+const char * const kOpType = "DecodeBbox";
+const char * const decode_box2_name = "transpose";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeDecodeBboxPass::DefinePatterns() {

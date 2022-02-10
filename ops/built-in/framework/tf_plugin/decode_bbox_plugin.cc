@@ -32,8 +32,8 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-static const char* const kDecodeClip = "decode_clip";
-static const char* const kMinium = "Minimum";
+static const char * const kDecodeClip = "decode_clip";
+static const char * const kMinium = "Minimum";
 
 Status ParseValueFromConst(const vector<const NodeDef*>& v_input_const, const string& names, float& value) {
   for (auto nodeDef : v_input_const) {

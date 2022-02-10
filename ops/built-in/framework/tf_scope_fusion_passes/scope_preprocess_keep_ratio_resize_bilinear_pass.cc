@@ -208,8 +208,9 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
 
     auto constBeginNode = fusion_rlt->AddInnerNode("const_begin_node", "Const");
     CHECK_INNER_NODE_CONDITION(constBeginNode != nullptr, fusion_rlt);
+    static const size_t batch_slice_node_index = 2;
     ret = constBeginNode->InsertOutput("slice_node", 1)
-              .InsertOutput("batch_slice_node", 2)
+              .InsertOutput("batch_slice_node", batch_slice_node_index)
               .InsertOutput("concat_batch_node", 0)
               .BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
@@ -228,7 +229,8 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
 
     auto constSizeNode = fusion_rlt->AddInnerNode("const_size_node", "Const");
     CHECK_INNER_NODE_CONDITION(constSizeNode != nullptr, fusion_rlt);
-    ret = constSizeNode->InsertOutput("slice_node", 2).BuildInnerNode();
+    static const size_t slice_node_index = 2;
+    ret = constSizeNode->InsertOutput("slice_node", slice_node_index).BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     int32_t* sizeData = nullptr;
     sizeData = new(std::nothrow) int32_t[1];

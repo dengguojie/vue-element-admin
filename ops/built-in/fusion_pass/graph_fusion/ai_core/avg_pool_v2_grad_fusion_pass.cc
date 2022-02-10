@@ -469,12 +469,12 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
     // gen kernel matrix, origInputShapeV[3] must be channel
     int64_t kernelTableSize = origInputShapeV[3] * ksize[1] * ksize[2];
-    if (((ksize[1] * ksize[2]) == 0) || (kernelTableSize <= 0)){
+    if (((ksize[1] * ksize[2]) == 0) || (kernelTableSize <= 0)) {
       AvgTableAssitPtr = nullptr;
       CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTableSize have O element");
       return FAILED;
     }
-    if (origInputShapeV[3] != kernelTableSize / (ksize[1] * ksize[2])){
+    if (origInputShapeV[3] != kernelTableSize / (ksize[1] * ksize[2])) {
       AvgTableAssitPtr = nullptr;
       CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTableSize overlap , over int64");
       return FAILED;

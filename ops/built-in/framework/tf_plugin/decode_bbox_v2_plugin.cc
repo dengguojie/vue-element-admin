@@ -32,8 +32,8 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-static const char* const kBoxesUnpack = "/unstack";
-static const char* const kBoxesDiv = "RealDiv";
+static const char * const kBoxesUnpack = "/unstack";
+static const char * const kBoxesDiv = "RealDiv";
 
 Status ParseValueFromConstV2(const vector<const NodeDef*>& v_input_const, const string& names, float& value) {
   for (auto nodeDef : v_input_const) {
@@ -77,22 +77,26 @@ Status DecodeBboxV2Params(const std::vector<const google::protobuf::Message*> in
   float scale_1 = 1.0;
   float scale_2 = 1.0;
   float scale_3 = 1.0;
+  static const size_t INDEX_0 = 0;
+  static const size_t INDEX_1 = 1;
+  static const size_t INDEX_2 = 2;
+  static const size_t INDEX_3 = 3;
   if (v_const_str.size() != 4) {
     OP_LOGI(op.GetName().c_str(), "Boxes don't need to scale.");
   } else {
-    if (ParseValueFromConstV2(v_input_const, v_const_str[0], scale) != SUCCESS) {
+    if (ParseValueFromConstV2(v_input_const, v_const_str[INDEX_0], scale) != SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Convert div const failed");
       return PARAM_INVALID;
     }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[1], scale_1) != SUCCESS) {
+    if (ParseValueFromConstV2(v_input_const, v_const_str[INDEX_1], scale_1) != SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Convert div_1 const failed");
       return PARAM_INVALID;
     }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[2], scale_2) != SUCCESS) {
+    if (ParseValueFromConstV2(v_input_const, v_const_str[INDEX_2], scale_2) != SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Convert div_2 const failed");
       return PARAM_INVALID;
     }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[3], scale_3) != SUCCESS) {
+    if (ParseValueFromConstV2(v_input_const, v_const_str[INDEX_3], scale_3) != SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Convert div_3 const failed");
       return PARAM_INVALID;
     }
@@ -106,8 +110,8 @@ Status DecodeBboxV2Params(const std::vector<const google::protobuf::Message*> in
     OP_LOGE(op.GetName().c_str(), "Set scales_list failed.");
     return FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "DecodeBboxV2's attr scales is [%.1f, %.1f, %.1f, %.1f]", scales_list[0],
-          scales_list[1], scales_list[2], scales_list[3]);
+  OP_LOGD(op.GetName().c_str(), "DecodeBboxV2's attr scales is [%.1f, %.1f, %.1f, %.1f]", scale, scale_1, scale_2,
+          scale_3);
 
   return SUCCESS;
 }
