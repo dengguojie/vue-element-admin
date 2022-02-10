@@ -312,8 +312,7 @@ class Reduce5HDCSchedule:  # 'pylint: disable=R0902
         if intermediate is None:
             intermediate = []
         total_size = self.get_calculation_unit_size(intermediate)
-        available_axis = [axis for axis in range(len(self.in_shape))
-                          if axis not in self.reduce_idx + intermediate]
+        available_axis = [axis for axis in range(len(self.in_shape)) if axis not in self.reduce_idx + intermediate]
         available_axis_size = 1
         for axis in available_axis:
             available_axis_size *= self.in_shape[axis]
@@ -438,8 +437,7 @@ class Reduce5HDCSchedule:  # 'pylint: disable=R0902
     def do_reorder(self):
         """It it necessary do reorder all tensor's axes"""
         def __reorder(_tensor):
-            iter_vars = [self._schedule[_tensor].op.axis[i] for i in [*self.normal_idx,
-                                                                      *self.reduce_idx]]
+            iter_vars = [self._schedule[_tensor].op.axis[i] for i in [*self.normal_idx, *self.reduce_idx]]
             self._schedule[_tensor].reorder(*iter_vars)
             if _tensor not in self.all_reduce_var_dict:
                 self.all_reduce_var_dict[_tensor] = \

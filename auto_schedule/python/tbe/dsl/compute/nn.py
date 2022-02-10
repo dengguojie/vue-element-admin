@@ -454,8 +454,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
                 else:
                     index.append(tvm.select(orig_shape[i] == 1, 0, indices[i]))
             return tensor(*(index[difference:]))
-        return tensor(*([0 if orig_shape[i] == 1 else
-                         indices[i] for i in range(len(orig_shape))][difference:]))
+        return tensor(*([0 if orig_shape[i] == 1 else indices[i] for i in range(len(orig_shape))][difference:]))
 
     with tvm.tag_scope(_op):
         out = tvm.compute(shape, lambda_func, name=name)

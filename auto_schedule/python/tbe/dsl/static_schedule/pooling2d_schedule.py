@@ -129,8 +129,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
     # regard l1 size as infinite
     if is_l1fusion:
         l1_valid_size = fusion_params.get("L1_valid_size", DEFAULT_VALUE)
-        l1_size = l1_valid_size if l1_valid_size > 0  \
-            else L1FUSION_MAX_VALUE_OF_L1
+        l1_size = l1_valid_size if l1_valid_size > 0 else L1FUSION_MAX_VALUE_OF_L1
 
     can_enable_double_buffer = False
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
@@ -1361,8 +1360,7 @@ def pooling2d_schedule(res, sch_list):
         # fused_op, l1 fusion info should get from fused_op output
         is_fused_compute = fusion_params.get("is_fused_compute")
         if is_fused_compute:
-            out_l1_flag = res.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in res.op.attrs else False
+            out_l1_flag = res.op.attrs["addr_type"].value == 1 if "addr_type" in res.op.attrs else False
             fusion_params["out_l1_flag"] = out_l1_flag
 
         return fusion_params
@@ -1669,9 +1667,7 @@ def pooling2d_schedule(res, sch_list):
             :schedule of cut l1 to ub
             :return: valid schedule
             """
-            pooling2d_res_at = \
-                pooling2d_res_outer if block_tag == "c1" \
-                else pooling2d_res_c1_outer
+            pooling2d_res_at = pooling2d_res_outer if block_tag == "c1" else pooling2d_res_c1_outer
 
             pooling_outer, pooling_inner = \
                 sch[pooling_out_ub].split(pooling_out_ub.op.axis[1],
@@ -1871,9 +1867,7 @@ def pooling2d_schedule(res, sch_list):
                                                             (1, BLOCK_SIZE))
                 _input_ub_buffer_align()
 
-            c1_or_res_outer = \
-                pooling2d_res_outer if block_tag == "c1" \
-                else pooling2d_res_c1_outer
+            c1_or_res_outer = pooling2d_res_outer if block_tag == "c1" else pooling2d_res_c1_outer
 
             sch[fmap_img2col].compute_at(sch[pooling2d_res], c1_or_res_outer)
 

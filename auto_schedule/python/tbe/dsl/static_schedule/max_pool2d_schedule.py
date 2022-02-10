@@ -543,8 +543,7 @@ def schedule(res, sch_list):
         # so there is revise out l1 flag
         is_fused_compute = fusion_params.get("is_fused_compute")
         if is_fused_compute:
-            revise_out_l1_flag = res.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in res.op.attrs else False
+            revise_out_l1_flag = res.op.attrs["addr_type"].value == 1 if "addr_type" in res.op.attrs else False
             fusion_params["out_l1_flag"] = revise_out_l1_flag
         return fusion_params
 
@@ -555,8 +554,7 @@ def schedule(res, sch_list):
     is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
     in_l1_flag = fusion_params.get("in_l1_flag", False)
     out_l1_flag = fusion_params.get("out_l1_flag", False)
-    device_core_num = 1 if is_l1fusion else \
-        get_soc_spec("CORE_NUM")
+    device_core_num = 1 if is_l1fusion else get_soc_spec("CORE_NUM")
 
     # dequant params
     pool_tensors = _crawl_pool_tensor(pool_res)
@@ -648,8 +646,7 @@ def schedule(res, sch_list):
                              res1i, res2i, res3i, res.op.axis[4])
             axis_first = res2oi
         else:
-            n_factor = 1 if is_no_bind else \
-                _find_core_factor(p_n, device_core_num)
+            n_factor = 1 if is_no_bind else _find_core_factor(p_n, device_core_num)
             block_tag = None if is_no_bind else "batch_block_tag"
             res0o, re0i = sch[res].split(res.op.axis[0], factor=n_factor)
             block_axis = res0o
@@ -701,8 +698,7 @@ def schedule(res, sch_list):
             swrite_stride = res.op.attrs["stride"].value
             _, _, swrite_h, swrite_w, swrite_c0 = list(
                 i.value for i in res.shape)
-            sch[res].bind_buffer(res.op.axis[0],
-                                 swrite_stride * swrite_h * swrite_w * swrite_c0, 0)
+            sch[res].bind_buffer(res.op.axis[0], swrite_stride * swrite_h * swrite_w * swrite_c0, 0)
 
     _stirde_write_for_ub_fusion()
 

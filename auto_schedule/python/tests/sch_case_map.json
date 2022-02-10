@@ -452,5 +452,11 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_v2_schedule.py":[
         "layer_norm_x_backprop_v2/test_dynamic_layer_norm_x_backprop_v2_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transdata/transdata_backward_schedule.py":[
+        "transdata"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transdata/transdata_forward_schedule.py":[
+        "transdata"
     ]
 }

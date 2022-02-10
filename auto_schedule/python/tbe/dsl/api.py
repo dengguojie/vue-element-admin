@@ -1543,8 +1543,10 @@ def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", form
 def gather(params, indices, axis=None, batch_dims=0):
     """
     :param params: The tensor from which to gather values. Must be at least rank axis + 1
-    :param indices: The index tensor. Must be one of the following types: int32, int64. The values must be in range [0, params.shape[axis]].
-    :param axis: The axis in params to gather indices from. Must be greater than or equal to batch_dims. Defaults to fisrt non-batch dimension.
+    :param indices: The index tensor. Must be one of the following types: int32, int64.
+                    The values must be in range [0, params.shape[axis]].
+    :param axis: The axis in params to gather indices from. Must be greater than or equal to batch_dims.
+                 Defaults to fisrt non-batch dimension.
     :param batch_dims: An integer. The number of batch dimensions. Must be less than or equal to rank(indices).
     :return:
     """
@@ -1559,6 +1561,7 @@ def gather_nd(params, indices, batch_dims=0):
     :return:
     """
     return array.gather_nd(params, indices, batch_dims)
+
 
 def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     """

@@ -219,9 +219,10 @@ class TransdataComputation(Computation):
                                         TransdataCategory.GENERAL_BACKWARD]:
             return _forward_case_0() if self.graph_info.is_forward else _backward_case_0()
         else:
-            dict_args = {"errCode": "E90001", "detailed_cause": " TilingCases not match the "
-                                                                "transdata_category that in [general.forward, general.backward], but "
-                                                                "is %s" % self.graph_info.category}
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": " TilingCases not match the "
+                                           "transdata_category that in [general.forward, general.backward], but "
+                                           "is %s" % self.graph_info.category}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def calc_const_tiling_case(self):

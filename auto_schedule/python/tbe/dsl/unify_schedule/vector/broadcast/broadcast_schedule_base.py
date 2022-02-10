@@ -154,8 +154,8 @@ class BaseBroadcastSchedule:
 
         self._need_do_block = False
         self._block_dims = 1
-        self._block_split_axis = -1 if self._tiling_case.block_split_axis is None \
-            else self._tiling_case.block_split_axis
+        self._block_split_axis = \
+            -1 if self._tiling_case.block_split_axis is None else self._tiling_case.block_split_axis
         self._block_factor = 1
         self._ub_split_axis = 0 if self._tiling_case.ub_split_axis is None else self._tiling_case.ub_split_axis
         self._ub_factor = 1
@@ -243,8 +243,7 @@ class BaseBroadcastSchedule:
                 return False
             if tensor_ in self._out_tensors:
                 return False
-            if all(util.support_scalar(tensor_o) for tensor_o in
-                   self._in_out_map.get(tensor_)):
+            if all(util.support_scalar(tensor_o) for tensor_o in self._in_out_map.get(tensor_)):
                 return True
             return False
 
@@ -1109,5 +1108,5 @@ def _fake_node(tensors):
 def _copy_node(tensor):
     shape = tensor.shape
     with tvm.tag_scope("dma_copy"):
-        res = tvm.compute(shape, lambda *i:tensor(*i), name ="copy_node")
+        res = tvm.compute(shape, lambda *i: tensor(*i), name="copy_node")
     return res

@@ -208,13 +208,12 @@ class TransBackwardSchedule(TransdataBaseSchedule):
 
         def parses_factor(_case):
             # define factor
-            _case.block_factor = _case.block_factor if _case.block_factor \
-                else var_inner("_block_factor", (1, None))
-            _case.ub_first_factor = _case.ub_first_factor if _case.ub_first_factor \
-                else var_inner("_ub_first_factor", (1, None))
+            _case.block_factor = _case.block_factor if _case.block_factor else var_inner("_block_factor", (1, None))
+            _case.ub_first_factor = \
+                _case.ub_first_factor if _case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
             if not self.split_once:
-                _case.ub_second_factor = _case.ub_second_factor if _case.ub_second_factor \
-                    else var_inner("_ub_second_factor", (1, None))
+                _case.ub_second_factor = \
+                    _case.ub_second_factor if _case.ub_second_factor else var_inner("_ub_second_factor", (1, None))
 
         def parses_split_one():
             """

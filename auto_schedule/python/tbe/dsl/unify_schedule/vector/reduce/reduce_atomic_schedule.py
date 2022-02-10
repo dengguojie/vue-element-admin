@@ -400,10 +400,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
     def _do_reorder(self):
 
-        final_out_tensor_global = self.reduce_repls if isinstance(self.reduce_repls, Tensor) \
-            else self.reduce_repls[0]
-        final_out_tensor_ub_rf = self.reduce_rfs if isinstance(self.reduce_rfs, Tensor) \
-            else self.reduce_rfs[0]
+        final_out_tensor_global = self.reduce_repls if isinstance(self.reduce_repls, Tensor) else self.reduce_repls[0]
+        final_out_tensor_ub_rf = self.reduce_rfs if isinstance(self.reduce_rfs, Tensor) else self.reduce_rfs[0]
 
         if self._reduce_case == ReduceCategory.ALL_REDUCE:
             # don't need reorder
@@ -586,8 +584,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             stage = self.schedule[tensor]
             if is_reduce_tensor(tensor):
                 if self.reduce_info.is_reduce_last_axis():
-                    axis = tensor.op.reduce_axis[-1] if len(tensor.op.reduce_axis) == 1 \
-                        else tensor.op.reduce_axis[-2]
+                    axis = tensor.op.reduce_axis[-1] if len(tensor.op.reduce_axis) == 1 else tensor.op.reduce_axis[-2]
                 else:
                     axis = tensor.op.axis[-1]
             else:
@@ -885,8 +882,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 # For dma tensor
                 extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
                 length = len(self.reduce_info.shape_before_reduce)
-                axis_range = range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1,
-                                                                                                  length - 3, -1)
+                axis_range = \
+                    range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1, length - 3, -1)
 
                 for axis_idx in range(self.ub_tiling_result_pair[1],
                                       len(self.reduce_info.shape_before_reduce)):

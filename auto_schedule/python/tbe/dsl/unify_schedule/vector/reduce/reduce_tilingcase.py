@@ -572,8 +572,8 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     const_tiling_case.ub_factor = tiling_data["ub_factor"]
     const_tiling_case.tensor_ub_size_before_reduce = tiling_data["tensor_ub_size_before_reduce"]
     const_tiling_case.tensor_ub_size_after_reduce = tiling_data["tensor_ub_size_after_reduce"]
-    const_tiling_case.type = const_tiling_case.Type.ATOMIC_REDUCE if run_info["clear_atomic"] else \
-        const_tiling_case.Type.NORMAL_REDUCE
+    const_tiling_case.type = \
+        const_tiling_case.Type.ATOMIC_REDUCE if run_info["clear_atomic"] else const_tiling_case.Type.NORMAL_REDUCE
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
     _calc_tiling_key(single_reduce_info, const_tiling_case)
     # the flag of invoking op_tiling interface during running

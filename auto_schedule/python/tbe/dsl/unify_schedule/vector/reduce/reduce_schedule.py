@@ -281,8 +281,8 @@ class ReduceSchedule(VectorSchedule):
             res_block_outer = self.block_tiling_result_pair[0]
 
             fuse_axis_list = [res_block_outer]
-            fusable_axis_indexes = [idx for idx in range(0, block_split_axis_index)
-                                    if idx not in self.tensor_reduced_axis_indexes[tensor]]
+            fusable_axis_indexes = \
+                [idx for idx in range(0, block_split_axis_index) if idx not in self.tensor_reduced_axis_indexes[tensor]]
             fuse_axis_list.extend(fusable_axis_indexes)
 
             self.multi_core_bind_tensor = \
@@ -762,8 +762,8 @@ class ReduceSchedule(VectorSchedule):
                 # For dma tensor
                 extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
                 length = len(self.reduce_info.shape_before_reduce)
-                axis_range = range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1,
-                                                                                                  length - 3, -1)
+                axis_range = \
+                    range(length - 1, length - 1 - extend, -1) if extend != 1 else range(length - 1, length - 3, -1)
 
                 for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
                                       len(self.reduce_info.shape_before_reduce)):

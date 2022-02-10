@@ -98,8 +98,7 @@ class BroadcastElewiseClassifier:
 
             in_x = _in.copy()
             in_x["shape"] = [1] * d_v + _shape
-            in_x["range"] = util.generate_range(_shape) if _range is None else \
-                [(1, 1)] * d_v + list(_range)
+            in_x["range"] = (util.generate_range(_shape) if _range is None else [(1, 1)] * d_v + list(_range))
             return in_x
 
         return [clone_complete(x) for x in self.ins]

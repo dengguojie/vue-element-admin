@@ -199,8 +199,8 @@ def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce
         inputs_before_reduce.extend(inputs_after_reduce)
 
     shape_local = [x["shape"] for x in inputs_before_reduce]
-    range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0]) for x in
-                   inputs_before_reduce]
+    range_local = \
+        [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0]) for x in inputs_before_reduce]
 
     _process_all_unknown_shape(shape_local, range_local)
 
