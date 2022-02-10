@@ -95,7 +95,7 @@ bool MdimTune(const DxParas &params, const int64_t &m1, const int64_t &n_dim_fac
 bool GenNearestFactor(const int64_t& factor, const int64_t& dim, vector<int64_t>& factor_optional) {
   int64_t cur_factor = min(factor + 1, dim);
   CHECK_OP_FUNC(cur_factor == 0, return false, "cur_factor is 0");
-  while(dim % cur_factor != 0) {
+  while (dim % cur_factor != 0) {
     cur_factor++;
   }
   factor_optional[0] = cur_factor;
@@ -238,13 +238,14 @@ bool GetBlockDim(const DxParas &params, const int64_t &core_num, Tiling &tiling)
 }
 
 bool CheckL0Overflow(const int64_t &m0, const int64_t &n0, const int64_t &k0) {
-  bool l0_invalid = (m0 * k0 * kFp16Bytes * kDbOn * kBlockSize * kBlockSize> kL0aSize) ||
+  bool l0_invalid = (m0 * k0 * kFp16Bytes * kDbOn * kBlockSize * kBlockSize > kL0aSize) ||
                     (n0 * m0 * kFp32Bytes * kBlockSize * kBlockSize * kDbOn > kL0cSize) ||
                     (n0 * k0 * kFp16Bytes * kDbOn * kBlockSize * kBlockSize > kL0bSize);
   return !l0_invalid;
 }
 
-bool CheckL1Overflow(const DxParas &params, Tiling &tiling, const int64_t &m0, const int64_t &n0, const int64_t &k0) {
+bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
+                     const int64_t &m0, const int64_t &n0, const int64_t &k0) {
   int64_t l1_fp16_size = kL1Size / kFp16Bytes;
   int64_t m_al1 = 1;
   int64_t n_bl1 = 1;
@@ -270,7 +271,7 @@ bool CheckL1Overflow(const DxParas &params, Tiling &tiling, const int64_t &m0, c
   return a_l1_size + b_l1_size <= l1_fp16_size;
 }
 
-bool CheckUbDb(const DxParas &params, Tiling &tiling, const int64_t &m0) {
+bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int64_t &m0) {
   int64_t aub_h = 1;
   int64_t aub_k = 1;
   int64_t cub_n = 1;
@@ -520,7 +521,7 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
   for (auto &m0 : m0_factor) {
     for (auto &n0 : n0_factor) {
       int64_t k0 = min(min(kL0aNzSize / m0, kL0bNzSize / n0), tiling.k_single_core_size);
-      bool l0_invalid = k0 <= 0 || m0 * n0 > kL0cNzSize || !CheckL0Overflow(m0, n0, k0) ||
+      l0_invalid = k0 <= 0 || m0 * n0 > kL0cNzSize || !CheckL0Overflow(m0, n0, k0) ||
                         !CheckL1Overflow(params, tiling, m0, n0, k0) || !CheckUbDb(params, tiling, m0);
       if (l0_invalid) {
         continue;
@@ -593,7 +594,7 @@ int64_t GetAl1MExtent(const int64_t& al1_m, const DxParas &params) {
   return al1_h;
 }
 
-bool GetHosh(const DxParas &params, Tiling &tiling, const vector<int64_t> &kn_factors, const int64_t &h2,
+bool GetHosh(const DxParas &params, const Tiling &tiling, const vector<int64_t> &kn_factors, const int64_t &h2,
              vector<int64_t> &l1_para) {
   int64_t l1_fp16_size = kL1Size / kFp16Bytes;
   size_t idx = 0;
@@ -609,9 +610,9 @@ bool GetHosh(const DxParas &params, Tiling &tiling, const vector<int64_t> &kn_fa
              tiling.init_db_al1;
   }
   int64_t hosh = h2 < params.kh + 1 ? params.kh + 1 : m_size / (k_al1 * params.wo * params.stride_w * kC0);
-  int64_t m_1;
   if (k_al1 == params.co1) {
     if (hosh >= params.kh + 1) {
+      int64_t m_1;
       if (hosh >= params.kh + kHoshWNoDivided) {
         m_1 = max(((hosh - params.kh - 1 + 1) * params.w - 1) / (tiling.m_l0 * kBlockSize), 1L);
       } else {
@@ -634,7 +635,7 @@ bool GetHosh(const DxParas &params, Tiling &tiling, const vector<int64_t> &kn_fa
   } else {
     hosh = params.kh - 1 + (tiling.m_l0 * kBlockSize / params.w) + kHoshWNoDivided;
     if (tiling.m_l0 * kBlockSize < params.w) {
-      hosh = params.kh -1 + kHoshWNoDivided;
+      hosh = params.kh - 1 + kHoshWNoDivided;
     }
     l1_para = {hosh, 1};
   }
@@ -686,7 +687,7 @@ vector<int64_t> GetMinloadSize(map<std::string, vector<int64_t>> &factor_size, T
 }
 
 bool CheckL1Size(const vector<int64_t> &kn_factors, const vector<int64_t> &m_h,
-                 Tiling &tiling, const int64_t &load_h, const DxParas &params) {
+                 const Tiling &tiling, const int64_t &load_h, const DxParas &params) {
   int64_t a_size;
   size_t idx = 0;
   int64_t k_bl1 = kn_factors[idx++];
@@ -829,7 +830,8 @@ bool GetL1Factors(const DxParas &params, Tiling &tiling) {
   return true;
 }
 
-void GetAubM(const int64_t &aub_size, const DxParas &params, const int64_t &k_aub, Tiling &tiling, int64_t &aub_m) {
+void GetAubM(const int64_t &aub_size, const DxParas &params,
+             const int64_t &k_aub, const Tiling &tiling, int64_t &aub_m) {
   aub_m = 1;
   int64_t aub_in = aub_size / (k_aub * params.wo * kC0);
   if (params.stride_h != 1 || params.stride_w != 1) {

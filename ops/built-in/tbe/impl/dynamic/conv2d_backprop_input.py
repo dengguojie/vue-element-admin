@@ -8,7 +8,6 @@ conv2d_backprop_input
 
 from __future__ import absolute_import
 import warnings
-from impl.util import fusion_util
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from impl.util.util_conv2d import transform_shape_with_format

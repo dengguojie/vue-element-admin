@@ -13,25 +13,25 @@ dynamic_conv2d_transpose_testcase = [
     ((3, 3, 16, 16), (2, 1, 1, 16), (2, 4, 3, 16), (2, 1), (0, 0, 0, 0), "NHWC", 1, [1, 2], 0, None, "success", "conv2d_transpose_dynamic_ch"),
     ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 3], 0, None, "success", "conv2d_transpose_nw_dim_upper_boud_None"),
     ((3, 3, 256, 256), (2, 34, 32, 256), (2, 36, 34, 256), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nhw_padding_valid"),
-    ((5, 5, 240, 240), (2, 1, 1, 240), (2, 2, 1, 240), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nhw_padding_same"),    
+    ((5, 5, 240, 240), (2, 1, 1, 240), (2, 2, 1, 240), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nhw_padding_same"),
     ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nchw_padding_same"),
     ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], 0, None, "success", "conv2d_transpose_dynamic_n"),
     ((1, 32, 1, 1), (1, 1, 4096, 4096), (1, 32, 4096, 4096), (1, 1), (100, 100, 100, 100), "NCHW", 1, [2, 3], 0, None, "success", "conv2d_transpose_dynamic_hw"),
     ((1, 1, 55, 2), (1, 16, 55, 2), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NHWC", 1, [2, 3], 0, None, "success", "conv2d_transpose_dynamic_hw_padding_valid"),
     ((16, 7, 3, 3), [-2], (1, 7, 3, 3), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 1, 2, 3], 0, None, "success", "conv2d_transpose_unknown_rank_padding_same"),
     ((7, 6, 64, 10), [-2], (1, 7, 6, 64), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 1, 2, 3], 0, None, "success", "conv2d_transpose_unknown_rank_padding_valid"),
-    ((55, 5, 1, 1), (241, 55, 261, 4), (241, 5, 1044, 13), (4, 4), (0, 0, 0, 0), "NCHW", 1, [0, 2, 3], 1, 
+    ((55, 5, 1, 1), (241, 55, 261, 4), (241, 5, 1044, 13), (4, 4), (0, 0, 0, 0), "NCHW", 1, [0, 2, 3], 1,
      [[(212, 246), (4, 4), (54, 547), (1, 216), (16, 16)], [(212, 246), (1, 1), (717, 3978), (5, 247), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_gor_large_m"),
-    
-    ((3, 3, 16, 16), (2, 2500, 16, 16), (2, 5000, 16, 16), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, 
+
+    ((3, 3, 16, 16), (2, 2500, 16, 16), (2, 5000, 16, 16), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0,
      [[(1, 10), (1, 1), (2000, 2500), (1, 16), (16, 16)], [(1, 10), (1, 1), (4000, 5000), (1, 16), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_for_large_h_dyn_pad"),
-    ((3, 3, 16, 16), (2, 2500, 16, 16), (2, 5000, 16, 16), (2, 1), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0, 
+    ((3, 3, 16, 16), (2, 2500, 16, 16), (2, 5000, 16, 16), (2, 1), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0,
      [[(1, 10), (1, 1), (2000, 2500), (1, 16), (16, 16)], [(1, 10), (1, 1), (4000, 5000), (1, 16), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_for_large_h_fix_pad"),
-    ((3, 3, 16, 16), (2, 16, 2500, 16), (2, 16, 5000, 16), (1, 2), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, 
+    ((3, 3, 16, 16), (2, 16, 2500, 16), (2, 16, 5000, 16), (1, 2), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0,
      [[(1, 10), (1, 1), (1, 16), (2000, 2500), (16, 16)], [(1, 10), (1, 1), (1, 16), (4000, 5000), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_for_large_w_dyn_pad"),
-    ((3, 3, 16, 16), (2, 16, 2500, 16), (2, 16, 5000, 16), (1, 2), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0, 
+    ((3, 3, 16, 16), (2, 16, 2500, 16), (2, 16, 5000, 16), (1, 2), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0,
      [[(1, 10), (1, 1), (1, 16), (2000, 2500), (16, 16)], [(1, 10), (1, 1), (1, 16), (4000, 5000), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_for_large_w_fix_pad"),
-    ((2, 2, 16, 16), (2, 1, 16, 16), (2, 1, 16, 16), (1, 1), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0, 
+    ((2, 2, 16, 16), (2, 1, 16, 16), (2, 1, 16, 16), (1, 1), (1, 1, 1, 1), "NHWC", 1, [0, 2, 3], 0,
      [[(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)], [(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)]], "success", "conv2d_transpose_dynamic_nhw_modify_tiling_for_small_hw"),
 
     ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, None, RuntimeError, "conv2d_transpose_dedy_c_not_equal_filer"),
@@ -104,6 +104,7 @@ def _gen_trans_data_case(param):
     dtype = "float16"
     data_format = data_format.upper()
     filter_format = 'NCHW' if data_format == 'NCHW' else 'HWCN'
+
     if out_backprop_ori_shape == [-2]:
         input_size_op = [-1, input_size[data_format.index("C")], -1, -1] if data_format == 'NCHW' else [-1, -1, -1,
                                                                                                         input_size[

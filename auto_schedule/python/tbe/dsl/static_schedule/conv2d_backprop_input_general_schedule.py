@@ -18,7 +18,6 @@
 conv2d backprop input general schedule.
 """
 from functools import reduce
-from types import DynamicClassAttribute
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
@@ -3055,6 +3054,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
 
 class DxDynamicUtil():
+    """
+    DxDynamic custom schedule method
+    """
     def __init__(self, tiling_case, var_range) -> None:
         self.tiling_case = tiling_case
         self.var_range = var_range
@@ -3077,8 +3079,9 @@ class DxDynamicUtil():
         }
         self.shape_var_names = ('batch_n', 'dedy_h', 'dedy_w', 'dx_h', 'dx_w', 'dx_c', 'dx_c1', 'dy_c', 'dy_c1',
                                 'kernel_h', 'kernel_w', 'padt', 'padb', 'padl', 'padr', 'stride_h', 'stride_w',
-                                'g_extend', 'multiple_extend', 'dx_c1_extend', 'dy_c1_extend', 'dy_c_ori', 'filter_ci1hw',
-                                'pad_up_before', 'pad_left_before', 'pad_down_after', 'pad_right_after',
+                                'g_extend', 'multiple_extend', 'dx_c1_extend', 'dy_c1_extend', 'dy_c_ori',
+                                'filter_ci1hw', 'pad_up_before', 'pad_left_before',
+                                'pad_down_after', 'pad_right_after',
                                 'shape_up_modify', 'shape_left_modify', 'shape_down_modify', 'shape_right_modify')
         self.tiling_var_names = ('batch_dim', 'n_dim', 'm_dim', 'batch_single_core', 'n_single_core', 'm_single_core',
                                  'm_al1', 'n_bl1', 'k_al1_div_16', 'k_bl1_div_16', 'k_aub', 'm_aub',
@@ -3128,12 +3131,12 @@ class DxDynamicUtil():
             self.shape_vars['dedy_w'], _) = dy.shape
         (self.shape_vars['filter_ci1hw'], self.shape_vars['dy_c1_extend'], _, _) = weight.shape
 
-    def set_var_range(self, sch, var_range):
+    def set_var_range(self, sch, dim_var_range):
         """
         set var range for all variables
         """
         if self.dynamic_mode == "dynamic_nhw":
-            for var_name, var_range in var_range.items():
+            for var_name, var_range in dim_var_range.items():
                 sch.set_var_range(self.shape_vars.get(var_name), *var_range)
         elif self.dynamic_mode == "binary":
             range_one = self.range_const.get("range_one")
@@ -3204,18 +3207,17 @@ class DxDynamicUtil():
         if self.dynamic_mode != "binary":
             return
 
-        self.cache_tiling = self.tiling_case
-        self.cache_tiling['block_dim'][:3] = (self.tiling_vars.get('batch_dim'), self.tiling_vars.get('n_dim'),
+        self.tiling_case['block_dim'][:3] = (self.tiling_vars.get('batch_dim'), self.tiling_vars.get('n_dim'),
                                                 self.tiling_vars.get('m_dim'))
-        self.cache_tiling['AUB_shape'][:2] = self.tiling_vars['k_aub'], self.tiling_vars['m_aub']
-        self.cache_tiling['AL1_shape'][:2] = self.tiling_vars['k_al1_div_16'] * 16, self.tiling_vars['m_al1']
-        self.cache_tiling['BL1_shape'][:2] = self.tiling_vars['k_bl1_div_16'] * 16, self.tiling_vars['n_bl1']
-        self.cache_tiling['AL0_matrix'][:2] = self.tiling_vars['m_l0'], self.tiling_vars['k_l0']
-        self.cache_tiling['BL0_matrix'][:2] = (self.tiling_vars['k_l0'],
-                                                self.tiling_vars['n_l0_div_ub'] * self.tiling_vars['n_ub'])
-        self.cache_tiling['CL0_matrix'][:2] = (self.tiling_vars['n_l0_div_ub'] * self.tiling_vars['n_ub'],
-                                                self.tiling_vars['m_l0'])
-        self.cache_tiling['CUB_matrix'][:2] = (self.tiling_vars['n_ub'], self.tiling_vars['m_l0'])
+        self.tiling_case['AUB_shape'][:2] = self.tiling_vars.get('k_aub'), self.tiling_vars.get('m_aub')
+        self.tiling_case['AL1_shape'][:2] = self.tiling_vars.get('k_al1_div_16') * 16, self.tiling_vars.get('m_al1')
+        self.tiling_case['BL1_shape'][:2] = self.tiling_vars.get('k_bl1_div_16') * 16, self.tiling_vars.get('n_bl1')
+        self.tiling_case['AL0_matrix'][:2] = self.tiling_vars.get('m_l0'), self.tiling_vars.get('k_l0')
+        self.tiling_case['BL0_matrix'][:2] = (self.tiling_vars.get('k_l0'),
+                                                self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'))
+        self.tiling_case['CL0_matrix'][:2] = (self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'),
+                                                self.tiling_vars.get('m_l0'))
+        self.tiling_case['CUB_matrix'][:2] = (self.tiling_vars.get('n_ub'), self.tiling_vars.get('m_l0'))
 
     def get_buffer_status(self):
         """
@@ -3280,6 +3282,9 @@ class DxDynamicUtil():
         return buffer_ceil_mode.get(buffer)
 
     def l1_full_load(self, c_ddr, a_l1, b_l1, sch):
+        """
+        handle l1 full load
+        """
         if self.dynamic_mode != "binary":
             return
         if self.attach_flag.get("al1_attach_flag") == 0:
@@ -3288,4 +3293,3 @@ class DxDynamicUtil():
         if self.attach_flag.get("bl1_attach_flag") == 0:
             sch.set_var_value(self.tiling_vars.get("n_single_core"), 1)
             sch[b_l1].compute_at(sch[c_ddr], sch[c_ddr].leaf_iter_vars[5])
-

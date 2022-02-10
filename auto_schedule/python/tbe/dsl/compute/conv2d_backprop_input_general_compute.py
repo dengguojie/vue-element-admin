@@ -98,7 +98,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
         self.pooling_mode = pooling_mode
         self.l0a_dma_flag = l0a_dma_flag
         self.load3d_special_multiply = 1
-        self.impl_mode = impl_mode,
+        self.impl_mode = impl_mode
         self.binary_mode = binary_mode
 
     def generate_a(self, dy_ddr):

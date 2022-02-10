@@ -21,8 +21,6 @@ import warnings
 import math
 import copy
 
-from tbe.tvm.api import select
-
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
@@ -426,6 +424,7 @@ class CubeParaProcess:
 
         if self.binary_mode:
             return
+
         def _check_range(in_range, dim):
             if in_range:
                 if not isinstance(in_range, (tuple, list)):
@@ -996,7 +995,8 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         operation.var("pad_down_after")
         operation.var("pad_right_after")
 
-    def _define_tiling_var(self):
+    @staticmethod
+    def _define_tiling_var():
         """
         define tiling vars for binary mode
         """
@@ -1028,7 +1028,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         """
         # support both Tensor input and dict input
         batch, dy_c1, dedy_h, dedy_w, dy_c0 = self.out_backprop.shape
-        filter_ci1hw, filter_co1, *_ = self.filters.shape
+        _, filter_co1, *_ = self.filters.shape
 
         dx_c = operation.var("dx_c")
         dx_c1 = operation.var("dx_c1")
@@ -1043,7 +1043,6 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                                     "multiple_extend": operation.var("multiple_extend"),
                                     "dx_c1_extend": dx_c1_extend,
                                     "dy_c1_extend": filter_co1}
-        filter_ci1hw = g_extend * dx_c1_extend * kernel_h * kernel_w
 
         self.shape["dy_shape_nc1hwc0"] = (batch, dy_c1, dedy_h, dedy_w, dy_c0)
         self.shape["dy_shape_nchw"] = (batch, dy_c1 * dy_c0, dedy_h, dedy_w)
@@ -1448,10 +1447,12 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
 
         self.tensors["input_tensor"] = tvm.placeholder([4], name="input_size", dtype="int32")
         self.tensors["x_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
-        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"),
+                                                        name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
             input_channel = align(self.shape.get("dx_shape_nchw")[C_DIM], tbe_platform.CUBE_MKN[self.dtype]['mac'][2])
-            self.tensors["bias_tensor"] = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.y.get("dtype"))
+            self.tensors["bias_tensor"] = tvm.placeholder((input_channel,),
+                                                          name="tensor_bias", dtype=self.y.get("dtype"))
 
 
 class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
@@ -1654,10 +1655,8 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
         self._config_shape()
 
         self.tensors["x_tensor"] = tvm.placeholder(self.shape.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
-        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
-        if self.paras.get("bias"):
-            self.tensors["bias_tensor"] = tvm.placeholder((self.shape.get("filter_shape_nchw")[N_DIM],), name="tensor_bias",
-            dtype=self.bias.get("dtype"))
+        self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"),
+                                                        name="filter", dtype=self.dtype)
 
 
 class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
@@ -1760,6 +1759,7 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
                                                     name="dedy", dtype=self.dtype)
         self.tensors["filter_tensor"] = tvm.placeholder(self.shape.get("filter_shape_frac_z"),
                                                         name="filter", dtype=self.dtype)
+
 
 class Conv3dBackpropParaProcess():
     """

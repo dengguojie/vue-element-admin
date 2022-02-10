@@ -772,7 +772,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                             switch_to_general_scheme=switch_to_general_scheme)
 
     _, _, filter_h, filter_w = filter_sizes
-    dx_batch, dx_c, dx_h, dx_w = input_sizes
+    _, _, dx_h, dx_w = input_sizes
 
     _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
 

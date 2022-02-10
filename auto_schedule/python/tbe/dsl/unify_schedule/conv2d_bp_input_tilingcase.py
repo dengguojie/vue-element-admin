@@ -33,7 +33,6 @@ from tbe.dsl.base.operation import get_context as op_get_context
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
-from tbe.tvm import expr
 from tbe.tvm.expr import Expr
 
 from .cube_tilingcase import TilingSelection
@@ -323,6 +322,7 @@ def _get_target_area(conv_info, tgt_list, var_names):
                 tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
     tgt_list.append(tgt_area)
 
+
 @register_tiling_case(pattern=Pattern.CONV2D_BACKPROP_INPUT)
 def calc_conv2dbp_input(outs, option=None):
     """
@@ -480,7 +480,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         bool: True, the template is valid
         """
-        al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, _ = choice
+        al1_pb, bl1_pb, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, _ = choice
         # al1 full load
         invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
             (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or

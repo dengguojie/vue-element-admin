@@ -3,7 +3,7 @@
     "op": "Conv2DTranspose",
     "case_name" : "test_conv2d_transpose_001",
     "calc_expect_func_file" : "test_conv2d_transpose_golden.py:calc_expect_func",
-    "input_desc": [
+    "input_desc":  [
       {
         "format": "ND",
         "ori_format": "ND",
