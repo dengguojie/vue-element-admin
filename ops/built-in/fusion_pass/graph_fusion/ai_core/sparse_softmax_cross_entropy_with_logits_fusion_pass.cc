@@ -48,7 +48,8 @@ static const char* SPARSE_SOFTMAX = "SparseSoftmaxCrossEntropyWithLogits";
 vector<FusionPattern*> SparseSoftMaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SparseSoftMaxFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_SPARSE_SOFTMAX, {SPARSE_SOFTMAX}).SetOutput(PATTERN_SPARSE_SOFTMAX);
@@ -57,13 +58,17 @@ vector<FusionPattern*> SparseSoftMaxFusionPass::DefinePatterns() {
 
   return patterns;
 }
+
 Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_SPARSE_SOFTMAX, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   // Get the description (input, output, name, attribute) of the node in the original image
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   ge::GeTensorDesc fusedDesc1 = fusedDesc->GetInputDesc(0);
   // Define auxiliary matrix shape
@@ -72,7 +77,7 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   vector<int64_t> dimInfo = sparseSoftmaxInputShape.GetDims();
   int32_t depth_size = dimInfo[1];
   int32_t labels_size = dimInfo[0];
-  
+
   NOT_CHANGED_WITH_DYNAMIC_NODE({fusedNode});
 
   // Add the description (input, output, name, attribute) of the Onehot node
@@ -107,7 +112,8 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::TensorUtils::SetRealDimCnt(tensorDesc11, realDimCnt11);
   ge::TensorUtils::SetRealDimCnt(tensorDesc0, realDimCnt0);
   FUSION_PASS_CHECK(OneHot->AddInputDesc("x", tensorDesc11) != SUCCESS,
-                   VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input x for OneHot after valid num is null, fusion failed."),
+                   VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                  "add input x for OneHot after valid num is null, fusion failed."),
                    return FAILED);
 
   OneHot->AddOutputDesc("y", tensorDesc0);
@@ -117,7 +123,7 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "OneHotNode fusionNode is null, fusion failed."),
       return PARAM_INVALID);
   fusionNodes.push_back(OneHotNode);
-  
+
   // Construct pointer value(input2 of onehot--->Default value 1)
   ge::GeTensorPtr assitPtr2 = nullptr;
   vector<int64_t> on_value;
@@ -191,17 +197,19 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   SoftMax->MutableOutputDesc(1)->SetFormat(ge::FORMAT_ND);
   SoftMax->MutableInputDesc(1)->SetDataType(ge::DT_FLOAT16);
 
-  if (SoftMax == nullptr){
+  if (SoftMax == nullptr) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str());
     return PARAM_INVALID;
   }
   // OPTYPE
   SoftMax->SetType("SoftmaxCrossEntropyWithLogits");
   auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", "SoftmaxCrossEntropyWithLogits");
   if (realFusedOp.IsEmpty()) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create fusion node %s failed", "SoftmaxCrossEntropyWithLogits");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "create fusion node %s failed", "SoftmaxCrossEntropyWithLogits");
     return FAILED;
   }
   auto realFusedOpDescPtr = ge::OpDescUtils::GetOpDescFromOperator(realFusedOp);
@@ -219,22 +227,25 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   fusionNodes.push_back(SoftMaxNode);
   // Even side
   // Put OneHot Output0 side add to SoftMaxNode Input0 side
-  if (SUCCESS != ge::GraphUtils::AddEdge(OneHotNode->GetOutDataAnchor(0), SoftMaxNode->GetInDataAnchor(1))){
+  if (SUCCESS != ge::GraphUtils::AddEdge(OneHotNode->GetOutDataAnchor(0), SoftMaxNode->GetInDataAnchor(1))) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
-            OneHotNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str(), 1);
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        OneHotNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str(), 1);
     return FAILED;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d].",
           OneHotNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str(), 1);
 
   // Put origin Input1 side add to OneHotNode Input0 side
-  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(), OneHotNode->GetInDataAnchor(0))){
+  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                         OneHotNode->GetInDataAnchor(0))) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
-            fusedNode->GetName().c_str(), 1, OneHotNode->GetName().c_str(), 0);
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        fusedNode->GetName().c_str(), 1, OneHotNode->GetName().c_str(), 0);
     return FAILED;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d].",
@@ -244,24 +255,27 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     int64_t Anchorssize = fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors().size();
     OP_LOGI(FUSED_OP_TYPE.c_str(), "PeerOutControlAnchors Size:%d", Anchorssize);
     if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(0),
-                                           OneHotNode->GetInControlAnchor())){
+                                           OneHotNode->GetInControlAnchor())) {
       assitPtr2 = nullptr;
       assitPtr3 = nullptr;
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-              "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
-              fusedNode->GetName().c_str(), 0, OneHotNode->GetName().c_str());
+          "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
+          fusedNode->GetName().c_str(), 0, OneHotNode->GetName().c_str());
       return FAILED;
     }
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
+    OP_LOGD(FUSED_OP_TYPE.c_str(),
+            "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
             fusedNode->GetName().c_str(), 0, OneHotNode->GetName().c_str());
   }
 
   // Put origin Input0 side add to SoftMax Input0 side
-  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), SoftMaxNode->GetInDataAnchor(0))){
+  if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                         SoftMaxNode->GetInDataAnchor(0))) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
-            fusedNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str(), 0);
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        fusedNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str(), 0);
     return FAILED;
   }
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d].",
@@ -269,15 +283,16 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   if (fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors().size() > 0) {
     if (SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInControlAnchor()->GetPeerOutControlAnchors().at(0),
-                                           SoftMaxNode->GetInControlAnchor())){
+                                           SoftMaxNode->GetInControlAnchor())) {
       assitPtr2 = nullptr;
       assitPtr3 = nullptr;
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-              "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
-              fusedNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str());
+          "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index failed.",
+          fusedNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str());
       return FAILED;
     }
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
+    OP_LOGI(FUSED_OP_TYPE.c_str(),
+            "Add edge from fused node:%s's control index[%d] to fusion node:%s's control index.",
             fusedNode->GetName().c_str(), 0, SoftMaxNode->GetName().c_str());
   }
 
@@ -287,12 +302,12 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
             fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      if (SUCCESS != ge::GraphUtils::AddEdge(SoftMaxNode->GetOutDataAnchor(0), inAnchorPtr)){
+      if (SUCCESS != ge::GraphUtils::AddEdge(SoftMaxNode->GetOutDataAnchor(0), inAnchorPtr)) {
         assitPtr2 = nullptr;
         assitPtr3 = nullptr;
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                "Add edge from fused node:%s's 2nd index to fusion node:%s's 1st index failed.",
-                fusedNode->GetName().c_str(), SoftMaxNode->GetName().c_str());
+            "Add edge from fused node:%s's 2nd index to fusion node:%s's 1st index failed.",
+            fusedNode->GetName().c_str(), SoftMaxNode->GetName().c_str());
         return FAILED;
       }
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge1 from fused node:%s's 2nd index to fusion node:%s's 1st index.",
@@ -305,12 +320,12 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
             fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      if (SUCCESS != ge::GraphUtils::AddEdge(SoftMaxNode->GetOutDataAnchor(1), inAnchorPtr)){
+      if (SUCCESS != ge::GraphUtils::AddEdge(SoftMaxNode->GetOutDataAnchor(1), inAnchorPtr)) {
         assitPtr2 = nullptr;
         assitPtr3 = nullptr;
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                "Add edge from fused node:%s's 2nd index to fusion node:%s's 1st index failed.",
-                fusedNode->GetName().c_str(), SoftMaxNode->GetName().c_str());
+            "Add edge from fused node:%s's 2nd index to fusion node:%s's 1st index failed.",
+            fusedNode->GetName().c_str(), SoftMaxNode->GetName().c_str());
         return FAILED;
       }
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Add edge2 from fused node:%s's 2nd index to fusion node:%s's 1st index.",
@@ -334,10 +349,11 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
 
   // delete  fusedNode
-  if (ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode)){
+  if (ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode)) {
     assitPtr2 = nullptr;
     assitPtr3 = nullptr;
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+        "remove fusedNode node[%s] failed", fusedNode->GetName().c_str());
     return FAILED;
   }
 

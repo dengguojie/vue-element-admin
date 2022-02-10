@@ -272,8 +272,9 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   vector<int64_t> permValue_cond2({2, 1, 0, 3, 4});
   vector<int64_t> trans_after_reshape_cond2(
       {transdata_diminfo1_shape[0], transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * 16 * 16});
-  vector<int64_t> transpose_out_shape2({transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * BLOCK_ALLIGN,
-                                        transdata_diminfo1_shape[0] / BLOCK_ALLIGN, 16, 16});
+  vector<int64_t> transpose_out_shape2(
+      {transdata_diminfo1_shape[1] * transdata_diminfo1_shape[DIM_INDEX_TWO] * BLOCK_ALLIGN,
+      transdata_diminfo1_shape[0] / BLOCK_ALLIGN, 16, 16});
   vector<int64_t> permValue_cond3({0, 1, 2, 3, 4});
   vector<int64_t> transpose_out_shape3(TRANSOPSE_OUT_LEN);
   if (transdata_diminfo1_out_shape.size() == TRANSDATA_OUT_LEN) {

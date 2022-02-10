@@ -157,8 +157,8 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   linSpaceDDesc->AddInputDesc(0, newConstantOp->GetOutputDesc(0));
   linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_START_IDX, linspaceDesc->GetInputDesc(0));
-  linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX, linspaceDesc->GetInputDesc(
-                              LIN_SPACE_NODE_INPUT_START_IDX));
+  linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX,
+                              linspaceDesc->GetInputDesc(LIN_SPACE_NODE_INPUT_START_IDX));
   linSpaceDDesc->AddInputDesc(LIN_SPACE_NODE_INPUT_NUM_IDX, linspaceDesc->GetInputDesc(LIN_SPACE_NODE_INPUT_STOP_IDX));
 
   ge::NodePtr linSpaceDNode = graph.AddNode(linSpaceDDesc);

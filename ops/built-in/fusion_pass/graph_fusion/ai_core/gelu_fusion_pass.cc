@@ -18,7 +18,7 @@
  * \file gelu_fusion_pass.cpp
  * \brief gelu usion pass
  * gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
- *case1:                            | case2:
+ * case1:                           | case2:
  *        x                         |              x
  *     /  |  \                      |           /  |   \
  *    |   |   Pow0                  |          |   |   Pow0

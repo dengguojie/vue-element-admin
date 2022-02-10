@@ -47,7 +47,9 @@ vector<FusionPattern*> softmaxTransFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("softmaxTransFusionPass");
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter softmaxTransFusionPass::DefinePatterns.");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."),
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_Softmax, {SOFTMAX}).SetOutput(PATTERN_Softmax);
   patterns.push_back(pattern);
@@ -58,10 +60,12 @@ vector<FusionPattern*> softmaxTransFusionPass::DefinePatterns() {
 Status softmaxTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter GoSoftmaxV2");
   ge::NodePtr inNode = GetNodeFromMapping(PATTERN_Softmax, mapping);
-  FUSION_PASS_CHECK(inNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node SoftmaxV2 is null, fusion failed."),
+  FUSION_PASS_CHECK(inNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node SoftmaxV2 is null, fusion failed."),
                     return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "check SoftmaxV2");
-  FUSION_PASS_CHECK(CheckParameter(inNode) != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "Check SoftmaxV2 param failed."),
+  FUSION_PASS_CHECK(CheckParameter(inNode) != SUCCESS,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Check SoftmaxV2 param failed."),
                     return NOT_CHANGED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "fusion SoftmaxV2");
@@ -94,12 +98,14 @@ Status softmaxTransFusionPass::CheckParameter(const ge::NodePtr& inNodePtr) cons
   // get psroipooling node inputs.
   Node::Vistor<NodePtr> inNodes = inNodePtr->GetInDataNodes();
   FUSION_PASS_CHECK((inNodes.size() != 1),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the input data size num(%lu) != 1", inNodes.size()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                  "the input data size num(%lu) != 1", inNodes.size()),
                     return PARAM_INVALID);
   return SUCCESS;
 }
 
-Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr, const ge::OpDescPtr& newOpDescPtr,
+Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOpDescPtr,
+                                                      const ge::OpDescPtr& newOpDescPtr,
                                                       const int64_t shapeSize) {
   vector<int32_t> axisValue;
   ge::AttrUtils::GetListInt(preOpDescPtr, AXIS, axisValue);
@@ -119,7 +125,7 @@ Status softmaxTransFusionPass::SetAttrValueForNewNode(const ge::OpDescPtr& preOp
 }
 
 bool softmaxTransFusionPass::CheckStatus(const ge::OpDescPtr& inOpDescPtr, const vector<int64_t> inputShape,
-                                         const uint32_t lastDimsVal,const uint32_t times,
+                                         const uint32_t lastDimsVal, const uint32_t times,
                                          const uint32_t maxDimsVal) {
   uint32_t shapeSize = inputShape.size();
   vector<int32_t> axisValue;
@@ -127,7 +133,8 @@ bool softmaxTransFusionPass::CheckStatus(const ge::OpDescPtr& inOpDescPtr, const
   ge::AttrUtils::GetListInt(inOpDescPtr, AXIS, axisValue);
   iterNegAxis = find(axisValue.begin(), axisValue.end(), -1);
   iterPosAxis = find(axisValue.begin(), axisValue.end(), shapeSize - 1);
-  // The penultimate axis must be more than 10 times the last axis in 4 hd and more than 25 times the last axis in 5 hd
+  // The penultimate axis must be more than 10 times the last axis in 4 hd
+  // or more than 25 times the last axis in 5 hd
   return shapeSize > 1 && (iterNegAxis != axisValue.end() || iterPosAxis != axisValue.end()) &&
          inputShape.back() < lastDimsVal && inputShape[shapeSize - 1] * times < inputShape[shapeSize - 2] &&
          inputShape[shapeSize - 2] < maxDimsVal;
@@ -155,13 +162,14 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
       return NOT_CHANGED);
 
   FUSION_PASS_CHECK(inputOrishape.empty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's input ori shape is null, fusion failed.",
-                            inOpDescPtr->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "Node:%s's input ori shape is null, fusion failed.",
+                        inOpDescPtr->GetName().c_str()),
                     return PARAM_INVALID);
   vector<int64_t> transposeShape;
   uint32_t shapeSize = 0;
 
-  if (inputFormat == ge::FORMAT_NC1HWC0){
+  if (inputFormat == ge::FORMAT_NC1HWC0) {
       shapeSize = oriShapelens;
       transposeShape = inputOrishape;
   } else {
@@ -175,7 +183,7 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     return NOT_CHANGED;
   }
   for (uint64_t i = 0; i < oriShapelens; i++) {
-      if (PatternFusionUtil::IsUnknownShape(inputOrishape[i])){
+      if (PatternFusionUtil::IsUnknownShape(inputOrishape[i])) {
           OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s is unknownshape, not changed", inOpDescPtr->GetName().c_str());
           return NOT_CHANGED;
       }
@@ -215,7 +223,7 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
 
     // get transpose input
     ge::GeTensorDesc tpsXInputTensorDesc = inOpDescPtr->GetInputDesc(0);
-    if (inputFormat == ge::FORMAT_NC1HWC0){
+    if (inputFormat == ge::FORMAT_NC1HWC0) {
         tpsXInputTensorDesc.SetShape(xInputDesc.GetOriginShape());
         tpsXInputTensorDesc.SetOriginShape(xInputDesc.GetOriginShape());
         tpsXInputTensorDesc.SetFormat(FORMAT_ND);
@@ -243,7 +251,7 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Set tpsyOutputTensorDesc shape Done");
 
     ge::GeTensorDesc tpsOutyOutputTensorDesc = inOpDescPtr->GetInputDesc(0);
-    if (inputFormat == ge::FORMAT_NC1HWC0){
+    if (inputFormat == ge::FORMAT_NC1HWC0) {
         tpsOutyOutputTensorDesc.SetShape(xInputDesc.GetOriginShape());
         tpsOutyOutputTensorDesc.SetOriginShape(xInputDesc.GetOriginShape());
         tpsOutyOutputTensorDesc.SetFormat(FORMAT_ND);
@@ -278,33 +286,39 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     newNodes.push_back(transposeOutNodePtr);
 
     FUSION_PASS_CHECK(transposeNodePtr == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: transposeNodePtr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode: transposeNodePtr is null, fusion failed."),
                       return FAILED);
     FUSION_PASS_CHECK(SoftmaxV2NodePtr == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: SoftmaxV2NodePtr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode: SoftmaxV2NodePtr is null, fusion failed."),
                       return FAILED);
     FUSION_PASS_CHECK(transposeOutNodePtr == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode: transposeOutNodePtr is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "fusionNode: transposeOutNodePtr is null, fusion failed."),
                       return FAILED);
 
     // add the edge
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(inNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                          transposeNodePtr->GetInDataAnchor(0)),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from data node:%s to transpose node:%s failed.",
-                              inNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
-                              transposeNodePtr->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "Add edge from data node:%s to transpose node:%s failed.",
+                          inNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
+                          transposeNodePtr->GetName().c_str()),
                       return FAILED);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(transposeNodePtr->GetOutAnchor(0), SoftmaxV2NodePtr->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from outputedge node:%s to transpose node:%s failed.",
-                SoftmaxV2NodePtr->GetName().c_str(), transposeNodePtr->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+            "Add edge from outputedge node:%s to transpose node:%s failed.",
+            SoftmaxV2NodePtr->GetName().c_str(), transposeNodePtr->GetName().c_str()),
         return FAILED);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(SoftmaxV2NodePtr->GetOutAnchor(0), transposeOutNodePtr->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from outputedge node:%s to transpose node:%s failed.",
-                SoftmaxV2NodePtr->GetName().c_str(), transposeOutNodePtr->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+            "Add edge from outputedge node:%s to transpose node:%s failed.",
+            SoftmaxV2NodePtr->GetName().c_str(), transposeOutNodePtr->GetName().c_str()),
         return FAILED);
 
     // add the output of transpose edge
@@ -312,16 +326,21 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     for (size_t outindex = 0; outindex < outanchorsize; outindex++) {
       for (auto inDataAnchor : inNodePtr->GetOutDataAnchor(outindex)->GetPeerInDataAnchors()) {
         FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(inNodePtr->GetOutDataAnchor(outindex), inDataAnchor) != SUCCESS,
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove SoftmaxV2 out data edge failed."), return FAILED);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                              "Remove SoftmaxV2 out data edge failed."),
+                          return FAILED);
         FUSION_PASS_CHECK(
             ge::GraphUtils::AddEdge(transposeOutNodePtr->GetOutDataAnchor(outindex), inDataAnchor) != SUCCESS,
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add SoftmaxV2 out data edge failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                           "Add SoftmaxV2 out data edge failed."),
+            return FAILED);
       }
     }
 
     // remove Normalize from graph
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(inNodePtr),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inNodePtr node[%s] failed", inNodePtr->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "remove inNodePtr node[%s] failed", inNodePtr->GetName().c_str()),
                       return FAILED);
     return SUCCESS;
   } else {

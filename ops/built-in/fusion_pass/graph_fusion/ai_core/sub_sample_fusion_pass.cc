@@ -100,7 +100,7 @@ Status SubSamplePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   int64_t label_size = label_shape[0];
   vector<int32_t> shuffle_matrix;
   shuffle_matrix_gen(label_size, shuffle_matrix);
-  // create const node 
+  // create const node
   int64_t size = label_size;
   unique_ptr<int32_t[]> data(new (std::nothrow) int32_t[size]());
   const int32_t init_value = 0;

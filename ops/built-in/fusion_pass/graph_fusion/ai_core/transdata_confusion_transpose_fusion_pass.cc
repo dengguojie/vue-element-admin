@@ -53,17 +53,23 @@ Status TransDataConfusionTransposeFusionPass::RemoveNode(ge::NodePtr node, ge::C
   for (size_t i = 0; i < node->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = node->GetInDataAnchor(i);
     FUSION_PASS_CHECK(inDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "inDataAnchor is null, remove node failed."),
+                      return FAILED);
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(preOutDataAnchor == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preOutDataAnchor is null, remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                     "preOutDataAnchor is null, remove node failed."),
+                      return FAILED);
 
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutDataAnchor, inDataAnchor) != ge::GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."),
+                      return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, node->GetName().c_str());
   }
   // delete the node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != ge::GRAPH_SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
                     return FAILED);
   return SUCCESS;
 }
@@ -72,7 +78,9 @@ vector<FusionPattern*> TransDataConfusionTransposeFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransDataConfusionTransposeFusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TransDataConfusionTransposeFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
+                    return patterns);
 
   pattern->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_REFORMAT, {"ReFormat"})
@@ -95,15 +103,19 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Ma
   ge::NodePtr transData_2 = GetNodeFromMapping(PATTERN_TRANSDATA_2, mapping);
   ge::NodePtr confusionTransposeD = GetNodeFromMapping(PATTERN_CONFUSIONTRANSPOSE, mapping);
 
-  FUSION_PASS_CHECK(transData_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
+  FUSION_PASS_CHECK(transData_1 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(transData_2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 is null"),
+  FUSION_PASS_CHECK(transData_2 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 is null"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(confusionTransposeD == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "confusionTransposeD is null"),
+  FUSION_PASS_CHECK(confusionTransposeD == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "confusionTransposeD is null"),
                     return PARAM_INVALID);
-  //must be NZ to ND
+  // must be NZ to ND
   ge::OpDescPtr firstTransDataOpDesc = transData_1->GetOpDesc();
-  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 opdesc is null"),
+  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 opdesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc firstTransDataInputTensor = firstTransDataOpDesc->GetInputDesc(0);
   ge::GeTensorDesc firstTransDataOutputTensor = firstTransDataOpDesc->GetOutputDesc(0);
@@ -115,9 +127,10 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Ma
             "TransDataConfusionTransposeFusionPass fusion end");
     return NOT_CHANGED;
   }
-  //must be ND to NZ
+  // must be ND to NZ
   ge::OpDescPtr secondTransDataOpDesc = transData_2->GetOpDesc();
-  FUSION_PASS_CHECK(secondTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 opdesc is null"),
+  FUSION_PASS_CHECK(secondTransDataOpDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 opdesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc secondTransDataInputTensor = secondTransDataOpDesc->GetInputDesc(0);
   ge::GeTensorDesc secondTransDataOutputTensor = secondTransDataOpDesc->GetOutputDesc(0);
@@ -129,7 +142,7 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Ma
             "not support fusion, TransDataConfusionTransposeFusionPass fusion end");
     return NOT_CHANGED;
   }
-  //perm must be [0, 2, 1, 3]
+  // perm must be [0, 2, 1, 3]
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(confusionTransposeD);
   // get perm of confusion_transpose_d
   std::vector<int64_t> permList;
@@ -148,18 +161,18 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Ma
     OP_LOGI(TbeGetName(op).c_str(), "the dims of transdata shape not match the fusion condition!");
     return NOT_CHANGED;
   }
-  if (firstShapeSize == 3){
+  if (firstShapeSize == 3) {
     if (!(transDataShape_1.GetDim(0) == transDataShape_2.GetDim(0) &&
-    transDataShape_1.GetDim(1) == transDataShape_2.GetDim(2) &&
-    transDataShape_1.GetDim(2) == transDataShape_2.GetDim(1) * transDataShape_2.GetDim(3))){
+        transDataShape_1.GetDim(1) == transDataShape_2.GetDim(2) &&
+        transDataShape_1.GetDim(2) == transDataShape_2.GetDim(1) * transDataShape_2.GetDim(3))) {
       OP_LOGI(TbeGetName(op).c_str(), "the dims of transdata shape not match the fusion condition!");
       return NOT_CHANGED;
     }
   }
-  if (firstShapeSize == 4){
+  if (firstShapeSize == 4) {
     if (!(transDataShape_2.GetDim(0) == transDataShape_1.GetDim(0) &&
-    transDataShape_2.GetDim(1) == transDataShape_1.GetDim(2) &&
-    transDataShape_2.GetDim(2) == transDataShape_1.GetDim(1) * transDataShape_1.GetDim(3))){
+        transDataShape_2.GetDim(1) == transDataShape_1.GetDim(2) &&
+        transDataShape_2.GetDim(2) == transDataShape_1.GetDim(1) * transDataShape_1.GetDim(3))) {
       OP_LOGI(TbeGetName(op).c_str(), "the shape of transdata not match the fusion condition!");
       return NOT_CHANGED;
     }
@@ -182,11 +195,14 @@ Status TransDataConfusionTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Ma
   }
   // delete transData and confusionTransposeD node
   FUSION_PASS_CHECK(graph.RemoveNode(transData_1) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_1 node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_1 node failed"),
+                    return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(transData_2) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_2 node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove transData_2 node failed"),
+                    return FAILED);
   FUSION_PASS_CHECK(RemoveNode(confusionTransposeD, graph) == FAILED,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove confusionTransposeD node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove confusionTransposeD node failed"),
+                    return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransDataConfusionTransposeFusionPass fusion end");
   return SUCCESS;
 }

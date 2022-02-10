@@ -53,17 +53,17 @@ static const std::string PATTERN_MUL0 = "FusedNodeMul0";
 static const std::string PATTERN_MUL1 = "FusedNodeMul1";
 static const std::string GELU = "Gelu";
 /*
-case1: mul0 has const input       | case2:mul1 has const input                           
-        x                         |              x                  
-     /     \                      |           /     \          
-    |      RealDiv                |          |      RealDiv            
-    |        |                    |          |        |                    
-    |       Erf           x       |          |       Erf           x    
+case1: mul0 has const input       | case2:mul1 has const input
+        x                         |              x
+     /     \                      |           /     \
+    |      RealDiv                |          |      RealDiv
+    |        |                    |          |        |
+    |       Erf           x       |          |       Erf           x
     |        |            |       |          |        |            |
-   Mul0     Add   ==>    Gelu     |          |       Add   ==>    Gelu                
-    \        /            |       |          \        /            |        
+   Mul0     Add   ==>    Gelu     |          |       Add   ==>    Gelu
+    \        /            |       |          \        /            |
      \      /             y       |           \      /             y
-      \    /                      |             Mul0                        
+      \    /                      |             Mul0
        Mul1                       |              |
         |                         |             Mul1
         y                         |              y
