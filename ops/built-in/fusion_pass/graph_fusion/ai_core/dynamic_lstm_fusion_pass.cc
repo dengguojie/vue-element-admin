@@ -286,14 +286,14 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
                                                  ge::GeTensorDesc &staticTensorDesc,
                                                  int32_t outputSize)
 {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),"Enter add DynamicLSTM node");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter add DynamicLSTM node");
     // get x
     ge::GeTensorDesc inputX = formerOpDesc->GetInputDesc(0);
     // set x input
     ge::GeTensorDesc x = inputX;
     x.SetFormat(ge::FORMAT_ND);
     x.SetOriginFormat(ge::FORMAT_ND);
-    thisOpDesc->AddInputDesc("x",x);
+    thisOpDesc->AddInputDesc("x", x);
 
     vector<int64_t> tensorXDims = inputX.GetShape().GetDims();
     if (tensorXDims.size() == dimThree) {
@@ -301,46 +301,46 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
       ge::AttrUtils::SetInt(thisOpDesc, "input_size", inputSize);
     }
     // set w input
-    thisOpDesc->AddInputDesc("w",wxhTensorDesc);
+    thisOpDesc->AddInputDesc("w", wxhTensorDesc);
 
     // get bias to b
     ge::GeTensorDesc biasDesc = formerOpDesc->GetInputDesc(inputIndexInfo.biasIndex);
     ge::GeTensorDesc bias = biasDesc;
     bias.SetFormat(ge::FORMAT_ND);
     bias.SetOriginFormat(ge::FORMAT_ND);
-    thisOpDesc->AddInputDesc("b",bias);
+    thisOpDesc->AddInputDesc("b", bias);
 
     // get cont to cont
     ge::GeTensorDesc contDesc = formerOpDesc->GetInputDesc(1);
     ge::GeTensorDesc cont = contDesc;
     cont.SetFormat(ge::FORMAT_ND);
     cont.SetOriginFormat(ge::FORMAT_ND);
-    thisOpDesc->AddInputDesc("cont",cont);
+    thisOpDesc->AddInputDesc("cont", cont);
 
     // set static
-    if (inputIndexInfo.hasStatic){
-        thisOpDesc->AddInputDesc("w_xc_x_static",staticTensorDesc);
+    if (inputIndexInfo.hasStatic) {
+        thisOpDesc->AddInputDesc("w_xc_x_static", staticTensorDesc);
     }
 
     // set h0, c0
-    if (expose_hidden){
-        thisOpDesc->AddInputDesc("h0",formerOpDesc->GetInputDesc(inputIndexInfo.h0Index));
-        thisOpDesc->AddInputDesc("c0",formerOpDesc->GetInputDesc(inputIndexInfo.c0Index));
+    if (expose_hidden) {
+        thisOpDesc->AddInputDesc("h0", formerOpDesc->GetInputDesc(inputIndexInfo.h0Index));
+        thisOpDesc->AddInputDesc("c0", formerOpDesc->GetInputDesc(inputIndexInfo.c0Index));
     }
 
     int32_t num_output = 0;
-    ge::AttrUtils::GetInt(formerOpDesc,"num_output",num_output);
+    ge::AttrUtils::GetInt(formerOpDesc, "num_output", num_output);
     // set num_output
-    ge::AttrUtils::SetInt(thisOpDesc,"num_output",num_output);
+    ge::AttrUtils::SetInt(thisOpDesc, "num_output", num_output);
     // set expose_hidden
-    ge::AttrUtils::SetBool(thisOpDesc,"expose_hidden",expose_hidden);
+    ge::AttrUtils::SetBool(thisOpDesc, "expose_hidden", expose_hidden);
 
     // set output y
     ge::GeTensorDesc outputY = formerOpDesc->GetOutputDesc(0);
     ge::GeTensorDesc outputYTensorDesc = outputY;
-    thisOpDesc->AddOutputDesc("y",outputYTensorDesc);
-    thisOpDesc->AddOutputDesc("output_h",outputYTensorDesc);
-    thisOpDesc->AddOutputDesc("output_c",outputYTensorDesc);
+    thisOpDesc->AddOutputDesc("y", outputYTensorDesc);
+    thisOpDesc->AddOutputDesc("output_h", outputYTensorDesc);
+    thisOpDesc->AddOutputDesc("output_c", outputYTensorDesc);
 
     vector<int64_t> tensorYDims = outputY.GetShape().GetDims();
     if (tensorYDims.size() == dimThree) {
@@ -351,7 +351,7 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
     // set last_h and last_c
     if (outputSize == dimThree) {
         // set need_output_last
-        ge::AttrUtils::SetBool(thisOpDesc,"need_output_last",true);
+        ge::AttrUtils::SetBool(thisOpDesc, "need_output_last", true);
         ge::GeShape shapeY = outputY.GetShape();
         std::vector<int64_t> lastOutputShape;
         lastOutputShape.push_back(1);
@@ -371,7 +371,7 @@ Status DynamicLSTMFusionPass::AddDynamicLSTMNode(ge::OpDescPtr &thisOpDesc, cons
     return SUCCESS;
 }
 
-Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) 
+Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes)
 {
     // get the NodePtr of LSTM
     OP_LOGI(FUSED_OP_TYPE.c_str(), "lstm fusion start fusion");
