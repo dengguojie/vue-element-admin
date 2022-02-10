@@ -158,6 +158,61 @@ class SwapClass():
     """
     Function: class that execute swap_ci
     """
+    def __init__(self, x_dict, y_dict, param_tup, params_obj):
+        """
+        constructor of SwapClass
+
+        Parameters
+        ----------
+        x_dict: dict describes input fm, nchw
+        y_dict: output size and data type, 5HD
+        param_tup: contain output_dim, group_size, and kernel_name
+            output_dim: number of output channels for psroipooling
+            group_size: number of groups encoding position sensitive score maps
+            kernel_name: kernel name of swap_ci op
+        params_obj: SwapParams Class object
+
+        Returns
+        -------
+        None
+        """
+        self.x_shape = x_dict["shape"]
+        self.dtype = x_dict["dtype"].lower()
+        self.y_shape = y_dict["shape"]
+        self.y_dtype = y_dict["dtype"].lower()
+        self.output_dim = param_tup[0]
+        self.group_size = param_tup[1]
+        self.kernel_name = param_tup[2]
+        self.params = params_obj
+
+        profile = tik.Dprofile()
+        self.input_param_check()
+
+        self.dsize = TYPE_LEN_DICT[self.dtype]
+        self.fm_batch = self.x_shape[0]
+        self.fm_c = self.x_shape[1]
+        self.fm_h = self.x_shape[2]
+        self.fm_w = self.x_shape[3]
+        self.hw = self.fm_h*self.fm_w
+        self.x_shape_size = self.fm_batch*self.fm_c*self.hw
+        self.y_shape_size = self.y_shape[0]*self.y_shape[1]*self.y_shape[2]*self.y_shape[3]*self.y_shape[4]
+
+        self.k2 = self.group_size*self.group_size
+        self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
+        self.mask = self.vec_elem_num
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        # divide the available UB space into four parts
+        one_buf = (self.ub_size - UB_16K_SIZE) // 4
+        self.ub_one_buf = one_buf if (one_buf % BLOCK_SIZE == 0) else (one_buf // BLOCK_SIZE*BLOCK_SIZE)
+        self.ub_one_buf_elem = self.ub_one_buf // self.dsize
+        self.tik_instance = tik.Tik(profile, disable_debug=True)
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+
+        self.x = None
+        self.y = None
+
+        self.init_parameters()
+
     def input_param_check(self):
         """
         check if the inputs are valid
@@ -210,63 +265,6 @@ class SwapClass():
             error_detail = "x shape and y shape is not match"
             error_manager_vector.raise_err_two_input_shape_invalid("swap_ci", "x", "y",
                                                                 error_detail)
-
-
-    def __init__(self, x_dict, y_dict, param_tup, params_obj):
-        """
-        constructor of SwapClass
-
-        Parameters
-        ----------
-        x_dict: dict describes input fm, nchw
-        y_dict: output size and data type, 5HD
-        param_tup: contain output_dim, group_size, and kernel_name
-            output_dim: number of output channels for psroipooling
-            group_size: number of groups encoding position sensitive score maps
-            kernel_name: kernel name of swap_ci op
-        params_obj: SwapParams Class object
-
-        Returns
-        -------
-        None
-        """
-        self.x_shape = x_dict["shape"]
-        self.dtype = x_dict["dtype"].lower()
-        self.y_shape = y_dict["shape"]
-        self.y_dtype = y_dict["dtype"].lower()
-        self.output_dim = param_tup[0]
-        self.group_size = param_tup[1]
-        self.kernel_name = param_tup[2]
-        self.params = params_obj
-
-        profile = tik.Dprofile()
-        self.input_param_check()
-
-        self.dsize = TYPE_LEN_DICT[self.dtype]
-        self.fm_batch = self.x_shape[0]
-        self.fm_c = self.x_shape[1]
-        self.fm_h = self.x_shape[2]
-        self.fm_w = self.x_shape[3]
-        self.hw = self.fm_h*self.fm_w
-        self.x_shape_size = self.fm_batch*self.fm_c*self.hw
-        self.y_shape_size = self.y_shape[0]*self.y_shape[1]*self.y_shape[2]*self.y_shape[3]*self.y_shape[4]
-
-        self.k2 = self.group_size*self.group_size
-        self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
-        self.mask = self.vec_elem_num
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        # divide the available UB space into four parts
-        one_buf = (self.ub_size - UB_16K_SIZE) // 4
-        self.ub_one_buf = one_buf if (one_buf % BLOCK_SIZE == 0) \
-            else (one_buf // BLOCK_SIZE*BLOCK_SIZE)
-        self.ub_one_buf_elem = self.ub_one_buf // self.dsize
-        self.tik_instance = tik.Tik(profile, disable_debug=True)
-        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-
-        self.x = None
-        self.y = None
-
-        self.init_parameters()
 
     def init_parameters(self):
         """
@@ -356,9 +354,10 @@ class SwapClass():
         params.inner_loop = _ceil_value(params.input_c0_size, self.ub_one_buf)
         params.loop_num = params.input_c1*params.inner_loop
         params.load_size = self.ub_one_buf
-        params.load_size_l = params.load_size \
-            if (params.input_c0_size % params.load_size == 0) \
-            else (params.input_c0_size % params.load_size)
+        if (params.input_c0_size % params.load_size == 0):
+            params.load_size_l = params.load_size
+        else:
+            params.load_size_l = params.input_c0_size % params.load_size
 
         params.s1_burst_len = (params.load_size_l // C0) // BLOCK_SIZE
         # the last src_stride is bigger when load_size_l!=0
@@ -427,8 +426,7 @@ class SwapClass():
 
         s2_one_vec_size_l = params.load_size_l // C0
         params.s2_repeat_l = s2_one_vec_size_l // BLOCK_SIZE
-        params.s2_repeat_l = 1 if params.s2_repeat_l == 0 \
-                else params.s2_repeat_l
+        params.s2_repeat_l = 1 if params.s2_repeat_l == 0 else params.s2_repeat_l
         params.s2_src_rep_stride_l = 0 if params.s2_repeat_l == 1 else 1
         params.s2_dest_rep_stride_l = 0 if params.s2_repeat_l == 1 else 16
 
@@ -592,18 +590,15 @@ class SwapClass():
         is_last = self.tik_instance.Scalar(INT32, name="is_last")
         is_last.set_as((loop_i + 1) % params.inner_loop)
 
-        dst_list = [dst_ub[params.s2_va_dst_idx[i]] for i in
-                    range(TWO_VA_EIGHT_PART)]
+        dst_list = [dst_ub[params.s2_va_dst_idx[i]] for i in range(TWO_VA_EIGHT_PART)]
 
         with self.tik_instance.if_scope(is_last != 0):
-            src_list = [src_ub[params.s2_va_src_idx[i]] for i in
-                        range(TWO_VA_EIGHT_PART)]
+            src_list = [src_ub[params.s2_va_src_idx[i]] for i in range(TWO_VA_EIGHT_PART)]
             self.tik_instance.vnchwconv(False, False, dst_list, src_list, \
                     params.s2_repeat, params.s2_dest_rep_stride, \
                     params.s2_src_rep_stride)
         with self.tik_instance.else_scope():
-            src_list_l = [src_ub[params.s2_va_src_idx_l[i]] for i in
-                          range(TWO_VA_EIGHT_PART)]
+            src_list_l = [src_ub[params.s2_va_src_idx_l[i]] for i in range(TWO_VA_EIGHT_PART)]
             self.tik_instance.vnchwconv(False, False, dst_list, src_list_l,
                                         params.s2_repeat_l,
                                         params.s2_dest_rep_stride_l,

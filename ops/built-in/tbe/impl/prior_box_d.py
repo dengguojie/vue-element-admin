@@ -16,7 +16,6 @@
 prior_box_d
 """
 # 'pylint: disable=locally-disabled,ungrouped-imports,import-error,unused-import,wrong-import-order
-
 import math
 
 import te.platform as tbe_platform
@@ -86,7 +85,8 @@ def _check_parameters(min_size, max_size, img_h, img_w, step_h, step_w, variance
         if variance[i] <= 0:
             error_manager_vector.raise_err_input_value_invalid("prior_box_d", "variance", "larger than 0", variance[i])
 
-    return img_h, img_w, step_h, step_w
+    return_list = [img_h, img_w, step_h, step_w]
+    return return_list
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
@@ -125,10 +125,9 @@ def _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, im
             error_manager_vector.raise_err_input_value_invalid("prior_box_d", "value of C0", shape_c0,
                                                                shape_feature[DIM_5HD - 1])
 
-    img_h, img_w, step_h, step_w = \
-        _check_parameters(min_size, max_size, img_h, img_w,
-                          step_h, step_w, variance)
-    return img_h, img_w, step_h, step_w
+    return_list = _check_parameters(min_size, max_size, img_h, img_w, step_h, step_w, variance)
+
+    return return_list
 
 
 def _buffer_mapping(schedule, op_list):
@@ -168,7 +167,7 @@ def _ins_emit(schedule, op_list, axis_list, ins_list):
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,invalid-name
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-lines
 def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
                       rec_img_h, rec_img_w, step_h, step_w, clip, offset, scale, variance):
     """
@@ -464,15 +463,16 @@ def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
         ins_list += ["data_mov"]
 
     y = tvm.compute((1, 2, h_length, w_length, num_box, 4), \
-                    lambda i, idx, j, k, l, m: tvm.select(idx == 1, \
-                                                          variance_data[j, k, l, m],
-                                                          top_data_true[j, k, l, m], \
+                    lambda i, idx, j, k, c, m: tvm.select(idx == 1, \
+                                                          variance_data[j, k, c, m],
+                                                          top_data_true[j, k, c, m], \
                                                           ), name='result')
     tensor_dic["y"] = y
     op_list += [y]
     ins_list += ["dma_copy"]
     tensor_list.append(y)
-    return op_list, ins_list, tensor_dic, y, tensor_list
+    return_list = [op_list, ins_list, tensor_dic, y, tensor_list]
+    return return_list
 
 
 def get_compute_axis(schedule, tensor_dic):
@@ -587,6 +587,7 @@ def _double_buf(schedule, ops):
         schedule[ops[i]].double_buffer()
 
 
+# 'pylint: disable=too-many-lines
 def _multicore_factor_calculate(shape, element):
     """
     the compute produce, calculate multicore information
@@ -703,7 +704,8 @@ def _multicore_factor_calculate(shape, element):
             npart_4 = 1
             split_axis = 0
             split_size = 1
-    return npart_0, npart_1, npart_2, npart_3, npart_4, split_axis, split_size, fuse_num
+    return_list = [npart_0, npart_1, npart_2, npart_3, npart_4, split_axis, split_size, fuse_num]
+    return return_list
 
 
 def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_limit, fuse_num):
@@ -964,7 +966,7 @@ def prior_box_d(feature,
     TODO:
     Please refer to the TE DSL Manual, And code here with TE DSL.
     """
-    img_h, img_w, step_h, step_w = _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, img_w,
+    [img_h, img_w, step_h, step_w] = _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, img_w,
                                                     step_h, step_w, variance, kernel_name)
     shape_img = img.get("shape")
     shape_feature = feature.get("shape")
@@ -982,7 +984,7 @@ def prior_box_d(feature,
         step_w = 1.0 * img_w / shape_feature[INDEX_W]
     scale = 0.5
 
-    op_list, ins_list, tensor_dic, y, tensor_list = prior_box_compute(feature, img, data_h, data_w, box_height,
+    [op_list, ins_list, tensor_dic, y, tensor_list] = prior_box_compute(feature, img, data_h, data_w, box_height,
                                                                       box_width, y, rec_img_h, rec_img_w, step_h,
                                                                       step_w, clip, offset, scale, variance)
 
@@ -997,7 +999,7 @@ def prior_box_d(feature,
     _align(schedule, op_list, tensor_dic, clip, element, 0)
 
     # muti core
-    npart_0, npart_1, npart_2, npart_3, npart_4, split_axis_0, split_size, fuse_num = \
+    [npart_0, npart_1, npart_2, npart_3, npart_4, split_axis_0, split_size, fuse_num] = \
         _multicore_factor_calculate(tensor_dic.get("y").shape, element)
     xr1o, xr1i = schedule[y].split(y.op.axis[0], nparts=npart_0)
     xr2o, xr2i = schedule[y].split(y.op.axis[1], nparts=npart_1)
