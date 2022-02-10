@@ -40,6 +40,7 @@ static const char *FUSED_NODE = "CommonLSTM";
 static const std::string PATTERN_FUSEDNODE = "CommonLSTM";
 static const string DIRECTION = "direction";
 static const std::string ATTR_NAME_OP_INFER_DEPENDS = "_op_infer_depends";
+static const int CONCAT_NUM = 2;
 
 vector<FusionPattern *> CommonLSTMFusionPass::DefinePatterns()
 {
@@ -629,7 +630,7 @@ Status CommonLSTMFusionPass::AddExpandDimsConcatNode(ge::ComputeGraph &graph, ge
   concatDesc->UpdateOutputDesc("y", originTensorDesc);
 
   ge::AttrUtils::SetInt(concatDesc, "concat_dim", 1);
-  ge::AttrUtils::SetInt(concatDesc, "N", 2);
+  ge::AttrUtils::SetInt(concatDesc, "N", CONCAT_NUM);
 
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   newNodes.push_back(concatNode);

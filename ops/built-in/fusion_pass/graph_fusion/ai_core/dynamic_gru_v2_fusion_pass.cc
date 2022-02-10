@@ -372,7 +372,8 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
       ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_3)->GetPeerOutAnchor(), cast_node->GetInDataAnchor(0));
       ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(INDEX_2));
     } else {
-      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_3)->GetPeerOutAnchor(), matmul_node->GetInDataAnchor(INDEX_2));
+      ge::GraphUtils::AddEdge(gru_node->GetInDataAnchor(INDEX_3)->GetPeerOutAnchor(),
+                              matmul_node->GetInDataAnchor(INDEX_2));
     }
   }
 

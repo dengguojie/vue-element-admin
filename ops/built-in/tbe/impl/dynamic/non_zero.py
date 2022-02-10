@@ -109,190 +109,6 @@ class NonZero():
                                                                  Constant.REPEAT_STRIDE)
         self.workspace = [workspace_data_out, workspace_shape_out, workspace_sync_barrier]
 
-    # 'pylint: disable=too-many-locals,too-many-arguments
-    def _build_row_index_mtr(self, blk_idx, t_idx, col, row_auxiliary_matrix, blk_size):
-        """
-        build row index matrix for input
-        :return: row_auxiliary_matrix
-        """
-        row_add_tensor = self.tik_instance.Tensor(self.y_dtype, (Constant.UB_REPEAT_SIZE,),
-                                                  name="add_tensor",
-                                                  scope=tik.scope_ubuf)
-        row_offset = self.tik_instance.Scalar("int64",
-                                              "row_offset",
-                                              init_value=blk_idx * self.one_core_num + t_idx * self.tiling)
-        self.tik_instance.vector_dup(Constant.UB_REPEAT_SIZE, row_add_tensor, row_offset // col, Constant.BLOCK_STRIDE,
-                                     Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE)
-        init_start = self.tik_instance.Scalar("int64", "init_start", init_value=0)
-        mask = self.tik_instance.Scalar("int64", "mask", init_value=0)
-        repeat_times = self.tik_instance.Scalar("int64", "repeat_times", init_value=0)
-        front_nums = self.tik_instance.Scalar("int64", "front_nums", init_value=0)
-        cur_tail = self.tik_instance.Scalar("int64", "cur_tail", init_value=0)
-        with self.tik_instance.if_scope(row_offset % col != 0):  # for front_nums
-            front_nums.set_as(col - (row_offset - row_offset // col * col))
-            with self.tik_instance.if_scope(front_nums > blk_size):
-                front_nums.set_as(blk_size)
-            mask.set_as(Constant.UB_REPEAT_SIZE)
-            dst_star = 0
-            repeat_times.set_as(front_nums // mask)
-            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
-                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            cur_tail.set_as(front_nums % Constant.UB_REPEAT_SIZE)
-            with self.tik_instance.if_scope(cur_tail != 0):
-                self.tik_instance.vadds(cur_tail, row_auxiliary_matrix[repeat_times * Constant.UB_REPEAT_SIZE],
-                                        row_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
-                                        Constant.REPEAT_STRIDE, 0)
-            self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, row_add_tensor, row_add_tensor, 1, 1,
-                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            init_start.set_as(front_nums)
-        no_front_blk_size = self.tik_instance.Scalar("int64", "no_front_blk_size", init_value=blk_size - front_nums)
-        build_index_row_loop = self.tik_instance.Scalar("int64",
-                                                        "build_index_row_loop",
-                                                        init_value=no_front_blk_size // col)
-        with self.tik_instance.for_range(0, build_index_row_loop) as row_idx:  # for full-col rows
-            cur_loop_nums = col
-            mask = min(cur_loop_nums, Constant.UB_REPEAT_SIZE)
-            dst_star = row_idx * col + init_start
-            repeat_times.set_as(cur_loop_nums // mask)
-            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
-                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            cur_tail.set_as(cur_loop_nums % Constant.UB_REPEAT_SIZE)
-            with self.tik_instance.if_scope(cur_tail != 0):
-                self.tik_instance.vadds(cur_tail, row_auxiliary_matrix[dst_star + repeat_times * mask], row_add_tensor,
-                                        0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, row_add_tensor, row_add_tensor, 1, 1,
-                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-
-        row_index_tail_nums = self.tik_instance.Scalar("int64",
-                                                       "row_index_tail_nums",
-                                                       init_value=no_front_blk_size - build_index_row_loop * col)
-        with self.tik_instance.if_scope(row_index_tail_nums > 0):  # for last tail
-            front_nums.set_as(row_index_tail_nums)
-            mask = self.tik_instance.Scalar("int64", "mask", init_value=Constant.UB_REPEAT_SIZE)
-            dst_star = self.tik_instance.Scalar("int64", "dst_star", init_value=build_index_row_loop * col + init_start)
-            repeat_times.set_as(front_nums // mask)
-            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
-                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            cur_tail.set_as(front_nums % Constant.UB_REPEAT_SIZE)
-            with self.tik_instance.if_scope(cur_tail != 0):
-                self.tik_instance.vadds(cur_tail,
-                                        row_auxiliary_matrix[dst_star + repeat_times * Constant.UB_REPEAT_SIZE],
-                                        row_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
-                                        Constant.REPEAT_STRIDE, 0)
-        return row_auxiliary_matrix
-
-    # 'pylint: disable=too-many-locals,too-many-statements,too-many-arguments
-    def _build_col_index_mtr(self, blk_align_size, blk_size, col, col_auxiliary_matrix, blk_idx, t_idx):
-        """
-        build col index matrix for input
-        :return: col_auxiliary_matrix
-        """
-        col_add_tensor = self.tik_instance.Tensor(self.y_dtype,
-                                                  (max(min(blk_align_size, col), Constant.UB_REPEAT_SIZE),),
-                                                  name="add_tensor",
-                                                  scope=tik.scope_ubuf)
-        col_offset = self.tik_instance.Scalar("int32",
-                                              "col_offset",
-                                              init_value=blk_idx * self.one_core_num + t_idx * self.tiling)
-        front_size = self.tik_instance.Scalar("int32", "front_size", init_value=0)
-        build_index_col_loop = self.tik_instance.Scalar("int32", "build_index_col_loop", init_value=0)
-        with self.tik_instance.if_scope(col_offset % col != 0):
-            front_size.set_as(col - (col_offset % col))
-            with self.tik_instance.if_scope(front_size > blk_size):
-                front_size.set_as(blk_size)
-            build_index_col_loop.set_as(build_index_col_loop + 1)
-        blk_size_no_front = self.tik_instance.Scalar("int32", "blk_size_no_front", init_value=blk_size - front_size)
-        build_index_col_loop.set_as(build_index_col_loop + (blk_size_no_front // col))
-        col_tail_nums = self.tik_instance.Scalar("int32", "col_tail_nums", init_value=blk_size_no_front % col)
-
-        with self.tik_instance.if_scope(col_tail_nums != 0):
-            build_index_col_loop.set_as(build_index_col_loop + 1)
-
-        col_loop_nums_ald = self.tik_instance.Scalar("int32", "col_loop_nums_ald", init_value=0)
-        with self.tik_instance.for_range(0, build_index_col_loop) as col_idx:
-            value_start = self.tik_instance.Scalar("int32",
-                                                   "value_start",
-                                                   init_value=(col_offset + col_loop_nums_ald) % col)
-            init_nums = min(min(blk_align_size, col), Constant.UB_REPEAT_SIZE)
-            for init_idx in range(0, init_nums):
-                col_add_tensor[init_idx].set_as(value_start + init_idx)
-
-            cur_loop_nums = self.tik_instance.Scalar("int32", "cur_loop_nums", init_value=col)
-            with self.tik_instance.if_scope(col_idx == 0):
-                with self.tik_instance.if_scope(front_size != 0):
-                    cur_loop_nums.set_as(front_size)
-            with self.tik_instance.if_scope(col_idx == (build_index_col_loop - 1)):
-                with self.tik_instance.if_scope(col_tail_nums != 0):
-                    cur_loop_nums.set_as(col_tail_nums)
-
-            mulps_align_num = self.tik_instance.Scalar("int32",
-                                                       "mulps_align_num",
-                                                       init_value=cur_loop_nums // Constant.UB_REPEAT_SIZE)
-            mulps_tail = self.tik_instance.Scalar("int32",
-                                                  "mulps_tail",
-                                                  init_value=mulps_align_num * Constant.UB_REPEAT_SIZE)
-            this_col_nums_alr = self.tik_instance.Scalar("int32", "this_col_nums_alr", init_value=0)
-            this_add_tensor_nums = self.tik_instance.Scalar("int32", "this_add_tensor_nums", init_value=0)
-
-            with self.tik_instance.if_scope(mulps_align_num > 0):
-                self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, col_auxiliary_matrix[col_loop_nums_ald],
-                                        col_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
-                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
-                this_col_nums_alr.set_as(Constant.UB_REPEAT_SIZE)
-                this_add_tensor_nums.set_as(Constant.UB_REPEAT_SIZE)
-
-            ln_max_loop = self.tik_instance.Scalar("int32",
-                                                   "ln_max_loop",
-                                                   init_value=mulps_align_num * Constant.UB_REPEAT_SIZE -
-                                                   Constant.UB_REPEAT_SIZE)
-            start_init_nums = self.tik_instance.Scalar("int32", "start_init_nums", init_value=Constant.UB_REPEAT_SIZE)
-
-            with self.tik_instance.for_range(0, ln_max_loop):
-                cur_emit_nums = self.tik_instance.Scalar("int32", "cur_emit_nums", init_value=start_init_nums)
-                mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
-                repeat_times = self.tik_instance.Scalar("int32",
-                                                        "repeat_times",
-                                                        init_value=cur_emit_nums // Constant.UB_REPEAT_SIZE)
-                dst_star = self.tik_instance.Scalar("int32",
-                                                    "dst_star",
-                                                    init_value=col_loop_nums_ald + this_col_nums_alr)
-                src_star = self.tik_instance.Scalar("int32", "src_star", init_value=this_add_tensor_nums)
-                self.tik_instance.vadds(mask, col_auxiliary_matrix[dst_star], col_add_tensor, cur_emit_nums,
-                                        repeat_times, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
-                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
-                self.tik_instance.vadds(mask, col_add_tensor[src_star], col_auxiliary_matrix[dst_star], 0, repeat_times,
-                                        Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE,
-                                        Constant.REPEAT_STRIDE)
-                this_col_nums_alr.set_as(this_col_nums_alr + cur_emit_nums)
-                this_add_tensor_nums.set_as(this_add_tensor_nums + cur_emit_nums)
-                start_init_nums.set_as(start_init_nums * 2)
-
-                with self.tik_instance.if_scope(start_init_nums >= mulps_tail):
-                    ln_max_loop.set_as(0)
-                with self.tik_instance.if_scope(2 * start_init_nums > mulps_tail):
-                    ln_max_loop.set_as(0)
-            mulps_tail.set_as(mulps_align_num * Constant.UB_REPEAT_SIZE - start_init_nums)
-            with self.tik_instance.if_scope(mulps_tail > 0):
-                mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
-                repeat_times = self.tik_instance.Scalar("int32", "repeat_times", init_value=mulps_tail // mask)
-                dst_star = self.tik_instance.Scalar("int32",
-                                                    "dst_star",
-                                                    init_value=col_loop_nums_ald + this_col_nums_alr)
-                self.tik_instance.vadds(mask, col_auxiliary_matrix[dst_star], col_add_tensor, this_col_nums_alr,
-                                        repeat_times, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
-                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
-                this_col_nums_alr.set_as(this_col_nums_alr + mulps_tail)
-            tail_nums = self.tik_instance.Scalar("int32",
-                                                 "tail_nums",
-                                                 init_value=cur_loop_nums % Constant.UB_REPEAT_SIZE)
-            with self.tik_instance.if_scope(tail_nums > 0):
-                self.tik_instance.vadds(tail_nums, col_auxiliary_matrix[col_loop_nums_ald + this_col_nums_alr],
-                                        col_add_tensor, this_col_nums_alr, 1, Constant.BLOCK_STRIDE,
-                                        Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
-            col_loop_nums_ald.set_as(col_loop_nums_ald + cur_loop_nums)
-
-        return col_auxiliary_matrix
-
     def multi_core_partition(self):
         """
         multi_core_partition
@@ -756,6 +572,190 @@ class NonZero():
                                                 burst=1,
                                                 src_stride=0,
                                                 dst_stride=0)
+    
+    # 'pylint: disable=too-many-locals,too-many-arguments
+    def _build_row_index_mtr(self, blk_idx, t_idx, col, row_auxiliary_matrix, blk_size):
+        """
+        build row index matrix for input
+        :return: row_auxiliary_matrix
+        """
+        row_add_tensor = self.tik_instance.Tensor(self.y_dtype, (Constant.UB_REPEAT_SIZE,),
+                                                  name="add_tensor",
+                                                  scope=tik.scope_ubuf)
+        row_offset = self.tik_instance.Scalar("int64",
+                                              "row_offset",
+                                              init_value=blk_idx * self.one_core_num + t_idx * self.tiling)
+        self.tik_instance.vector_dup(Constant.UB_REPEAT_SIZE, row_add_tensor, row_offset // col, Constant.BLOCK_STRIDE,
+                                     Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE)
+        init_start = self.tik_instance.Scalar("int64", "init_start", init_value=0)
+        mask = self.tik_instance.Scalar("int64", "mask", init_value=0)
+        repeat_times = self.tik_instance.Scalar("int64", "repeat_times", init_value=0)
+        front_nums = self.tik_instance.Scalar("int64", "front_nums", init_value=0)
+        cur_tail = self.tik_instance.Scalar("int64", "cur_tail", init_value=0)
+        with self.tik_instance.if_scope(row_offset % col != 0):  # for front_nums
+            front_nums.set_as(col - (row_offset - row_offset // col * col))
+            with self.tik_instance.if_scope(front_nums > blk_size):
+                front_nums.set_as(blk_size)
+            mask.set_as(Constant.UB_REPEAT_SIZE)
+            dst_star = 0
+            repeat_times.set_as(front_nums // mask)
+            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
+                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            cur_tail.set_as(front_nums % Constant.UB_REPEAT_SIZE)
+            with self.tik_instance.if_scope(cur_tail != 0):
+                self.tik_instance.vadds(cur_tail, row_auxiliary_matrix[repeat_times * Constant.UB_REPEAT_SIZE],
+                                        row_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
+                                        Constant.REPEAT_STRIDE, 0)
+            self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, row_add_tensor, row_add_tensor, 1, 1,
+                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            init_start.set_as(front_nums)
+        no_front_blk_size = self.tik_instance.Scalar("int64", "no_front_blk_size", init_value=blk_size - front_nums)
+        build_index_row_loop = self.tik_instance.Scalar("int64",
+                                                        "build_index_row_loop",
+                                                        init_value=no_front_blk_size // col)
+        with self.tik_instance.for_range(0, build_index_row_loop) as row_idx:  # for full-col rows
+            cur_loop_nums = col
+            mask = min(cur_loop_nums, Constant.UB_REPEAT_SIZE)
+            dst_star = row_idx * col + init_start
+            repeat_times.set_as(cur_loop_nums // mask)
+            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
+                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            cur_tail.set_as(cur_loop_nums % Constant.UB_REPEAT_SIZE)
+            with self.tik_instance.if_scope(cur_tail != 0):
+                self.tik_instance.vadds(cur_tail, row_auxiliary_matrix[dst_star + repeat_times * mask], row_add_tensor,
+                                        0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, row_add_tensor, row_add_tensor, 1, 1,
+                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+
+        row_index_tail_nums = self.tik_instance.Scalar("int64",
+                                                       "row_index_tail_nums",
+                                                       init_value=no_front_blk_size - build_index_row_loop * col)
+        with self.tik_instance.if_scope(row_index_tail_nums > 0):  # for last tail
+            front_nums.set_as(row_index_tail_nums)
+            mask = self.tik_instance.Scalar("int64", "mask", init_value=Constant.UB_REPEAT_SIZE)
+            dst_star = self.tik_instance.Scalar("int64", "dst_star", init_value=build_index_row_loop * col + init_start)
+            repeat_times.set_as(front_nums // mask)
+            self.tik_instance.vadds(mask, row_auxiliary_matrix[dst_star], row_add_tensor, 0, repeat_times,
+                                    Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            cur_tail.set_as(front_nums % Constant.UB_REPEAT_SIZE)
+            with self.tik_instance.if_scope(cur_tail != 0):
+                self.tik_instance.vadds(cur_tail,
+                                        row_auxiliary_matrix[dst_star + repeat_times * Constant.UB_REPEAT_SIZE],
+                                        row_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
+                                        Constant.REPEAT_STRIDE, 0)
+        return row_auxiliary_matrix
+
+    # 'pylint: disable=too-many-locals,too-many-statements,too-many-arguments
+    def _build_col_index_mtr(self, blk_align_size, blk_size, col, col_auxiliary_matrix, blk_idx, t_idx):
+        """
+        build col index matrix for input
+        :return: col_auxiliary_matrix
+        """
+        col_add_tensor = self.tik_instance.Tensor(self.y_dtype,
+                                                  (max(min(blk_align_size, col), Constant.UB_REPEAT_SIZE),),
+                                                  name="add_tensor",
+                                                  scope=tik.scope_ubuf)
+        col_offset = self.tik_instance.Scalar("int32",
+                                              "col_offset",
+                                              init_value=blk_idx * self.one_core_num + t_idx * self.tiling)
+        front_size = self.tik_instance.Scalar("int32", "front_size", init_value=0)
+        build_index_col_loop = self.tik_instance.Scalar("int32", "build_index_col_loop", init_value=0)
+        with self.tik_instance.if_scope(col_offset % col != 0):
+            front_size.set_as(col - (col_offset % col))
+            with self.tik_instance.if_scope(front_size > blk_size):
+                front_size.set_as(blk_size)
+            build_index_col_loop.set_as(build_index_col_loop + 1)
+        blk_size_no_front = self.tik_instance.Scalar("int32", "blk_size_no_front", init_value=blk_size - front_size)
+        build_index_col_loop.set_as(build_index_col_loop + (blk_size_no_front // col))
+        col_tail_nums = self.tik_instance.Scalar("int32", "col_tail_nums", init_value=blk_size_no_front % col)
+
+        with self.tik_instance.if_scope(col_tail_nums != 0):
+            build_index_col_loop.set_as(build_index_col_loop + 1)
+
+        col_loop_nums_ald = self.tik_instance.Scalar("int32", "col_loop_nums_ald", init_value=0)
+        with self.tik_instance.for_range(0, build_index_col_loop) as col_idx:
+            value_start = self.tik_instance.Scalar("int32",
+                                                   "value_start",
+                                                   init_value=(col_offset + col_loop_nums_ald) % col)
+            init_nums = min(min(blk_align_size, col), Constant.UB_REPEAT_SIZE)
+            for init_idx in range(0, init_nums):
+                col_add_tensor[init_idx].set_as(value_start + init_idx)
+
+            cur_loop_nums = self.tik_instance.Scalar("int32", "cur_loop_nums", init_value=col)
+            with self.tik_instance.if_scope(col_idx == 0):
+                with self.tik_instance.if_scope(front_size != 0):
+                    cur_loop_nums.set_as(front_size)
+            with self.tik_instance.if_scope(col_idx == (build_index_col_loop - 1)):
+                with self.tik_instance.if_scope(col_tail_nums != 0):
+                    cur_loop_nums.set_as(col_tail_nums)
+
+            mulps_align_num = self.tik_instance.Scalar("int32",
+                                                       "mulps_align_num",
+                                                       init_value=cur_loop_nums // Constant.UB_REPEAT_SIZE)
+            mulps_tail = self.tik_instance.Scalar("int32",
+                                                  "mulps_tail",
+                                                  init_value=mulps_align_num * Constant.UB_REPEAT_SIZE)
+            this_col_nums_alr = self.tik_instance.Scalar("int32", "this_col_nums_alr", init_value=0)
+            this_add_tensor_nums = self.tik_instance.Scalar("int32", "this_add_tensor_nums", init_value=0)
+
+            with self.tik_instance.if_scope(mulps_align_num > 0):
+                self.tik_instance.vadds(Constant.UB_REPEAT_SIZE, col_auxiliary_matrix[col_loop_nums_ald],
+                                        col_add_tensor, 0, 1, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
+                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
+                this_col_nums_alr.set_as(Constant.UB_REPEAT_SIZE)
+                this_add_tensor_nums.set_as(Constant.UB_REPEAT_SIZE)
+
+            ln_max_loop = self.tik_instance.Scalar("int32",
+                                                   "ln_max_loop",
+                                                   init_value=mulps_align_num * Constant.UB_REPEAT_SIZE -
+                                                   Constant.UB_REPEAT_SIZE)
+            start_init_nums = self.tik_instance.Scalar("int32", "start_init_nums", init_value=Constant.UB_REPEAT_SIZE)
+
+            with self.tik_instance.for_range(0, ln_max_loop):
+                cur_emit_nums = self.tik_instance.Scalar("int32", "cur_emit_nums", init_value=start_init_nums)
+                mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
+                repeat_times = self.tik_instance.Scalar("int32",
+                                                        "repeat_times",
+                                                        init_value=cur_emit_nums // Constant.UB_REPEAT_SIZE)
+                dst_star = self.tik_instance.Scalar("int32",
+                                                    "dst_star",
+                                                    init_value=col_loop_nums_ald + this_col_nums_alr)
+                src_star = self.tik_instance.Scalar("int32", "src_star", init_value=this_add_tensor_nums)
+                self.tik_instance.vadds(mask, col_auxiliary_matrix[dst_star], col_add_tensor, cur_emit_nums,
+                                        repeat_times, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
+                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
+                self.tik_instance.vadds(mask, col_add_tensor[src_star], col_auxiliary_matrix[dst_star], 0, repeat_times,
+                                        Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE,
+                                        Constant.REPEAT_STRIDE)
+                this_col_nums_alr.set_as(this_col_nums_alr + cur_emit_nums)
+                this_add_tensor_nums.set_as(this_add_tensor_nums + cur_emit_nums)
+                start_init_nums.set_as(start_init_nums * 2)
+
+                with self.tik_instance.if_scope(start_init_nums >= mulps_tail):
+                    ln_max_loop.set_as(0)
+                with self.tik_instance.if_scope(2 * start_init_nums > mulps_tail):
+                    ln_max_loop.set_as(0)
+            mulps_tail.set_as(mulps_align_num * Constant.UB_REPEAT_SIZE - start_init_nums)
+            with self.tik_instance.if_scope(mulps_tail > 0):
+                mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
+                repeat_times = self.tik_instance.Scalar("int32", "repeat_times", init_value=mulps_tail // mask)
+                dst_star = self.tik_instance.Scalar("int32",
+                                                    "dst_star",
+                                                    init_value=col_loop_nums_ald + this_col_nums_alr)
+                self.tik_instance.vadds(mask, col_auxiliary_matrix[dst_star], col_add_tensor, this_col_nums_alr,
+                                        repeat_times, Constant.BLOCK_STRIDE, Constant.BLOCK_STRIDE,
+                                        Constant.REPEAT_STRIDE, Constant.REPEAT_STRIDE)
+                this_col_nums_alr.set_as(this_col_nums_alr + mulps_tail)
+            tail_nums = self.tik_instance.Scalar("int32",
+                                                 "tail_nums",
+                                                 init_value=cur_loop_nums % Constant.UB_REPEAT_SIZE)
+            with self.tik_instance.if_scope(tail_nums > 0):
+                self.tik_instance.vadds(tail_nums, col_auxiliary_matrix[col_loop_nums_ald + this_col_nums_alr],
+                                        col_add_tensor, this_col_nums_alr, 1, Constant.BLOCK_STRIDE,
+                                        Constant.BLOCK_STRIDE, Constant.REPEAT_STRIDE, 0)
+            col_loop_nums_ald.set_as(col_loop_nums_ald + cur_loop_nums)
+
+        return col_auxiliary_matrix
 
 
 # 'pylint: disable=unused-argument,invalid-name

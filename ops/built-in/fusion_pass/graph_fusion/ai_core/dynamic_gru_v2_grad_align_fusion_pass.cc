@@ -41,6 +41,8 @@ static map<std::string, int> OUTPUT_INDEX = {{"dw_input", 0},  {"dw_hidden", 1},
 static map<std::string, int> HIDDENGRAD_OUTPUT_INDEX = {{"dh_prev", 0}, {"dgate_h", 1}, {"dnt_x", 2}};
 static int64_t splitSize = 2;
 static int64_t fzDim = 16;
+static int64_t CONCAT_NUM = 2;
+static int64_t INDEX_2 = 2;
 vector<FusionPattern*> DynamicGRUV2GradAlignFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicGRUV2GradAFusionPass");
@@ -58,11 +60,11 @@ void DynamicGRUV2GradAlignFusionPass::GetNodeInfo(ge::NodePtr dynamicGRUGradNode
   t_size = inputTensorDescH.GetShape().GetDim(0);
   batch = inputTensorDescH.GetShape().GetDim(1);
   nzBatch = (batch + fzDim - 1) / fzDim;
-  hidden_dim = inputTensorDescH.GetShape().GetDim(2);
-  nzHiddenDim = (hidden_dim + 15) / 16;
+  hidden_dim = inputTensorDescH.GetShape().GetDim(INDEX_2);
+  nzHiddenDim = (hidden_dim + fzDim - 1) / fzDim;
 
   ge::GeTensorDesc inputTensorDescX = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["x"]);
-  input_dim = inputTensorDescX.GetShape().GetDim(2);
+  input_dim = inputTensorDescX.GetShape().GetDim(INDEX_2);
   nzInputDim = (input_dim + fzDim - 1) / fzDim;
   inputHType = inputTensorDescH.GetDataType();
   return;
@@ -95,8 +97,8 @@ void DynamicGRUV2GradAlignFusionPass::AddOutputNodeDesc(ge::OpDescPtr opDesc, co
 
 void DynamicGRUV2GradAlignFusionPass::AddOutputNodeDesc(ge::OpDescPtr opDesc, const std::string& name,
                                                         const vector<int64_t>& dims, const ge::Format& format,
-                                                        const vector<int64_t>& originDims, const ge::Format& originFormat,
-                                                        const ge::DataType& dtype) {
+                                                        const vector<int64_t>& originDims,
+                                                        const ge::Format& originFormat, const ge::DataType& dtype) {
   ge::GeShape originShape(originDims);
   ge::GeShape curShape(dims);
   ge::GeTensorDesc addNodeDesc = ge::GeTensorDesc(curShape, format, dtype);
@@ -595,7 +597,7 @@ ge::NodePtr DynamicGRUV2GradAlignFusionPass::AddHConcatNode(ge::NodePtr dynamicG
 
   // attr
   ge::AttrUtils::SetInt(concatDesc, "concat_dim", 0);
-  ge::AttrUtils::SetInt(concatDesc, "N", 2);
+  ge::AttrUtils::SetInt(concatDesc, "N", CONCAT_NUM);
 
   // create concat node
   ge::NodePtr concatNode = AddNewNode(graph, concatDesc, newNodes, failStatus);
@@ -1030,7 +1032,7 @@ ge::NodePtr DynamicGRUV2GradAlignFusionPass::AddDbReduceSumTransNode(
                                                                "check failed, fusion failed."),
                     return nullptr);
 
-  // trans_data_rnn 
+  // create trans_data_rnn node
   ge::OpDescPtr transdataDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((transdataDesc = std::make_shared<ge::OpDesc>(
       dynamicGRUGradNode->GetName() + "GRUWeightGrad/" + nodeName + "/TransDataRNN", "TransDataRNN")),
@@ -1200,7 +1202,7 @@ Status DynamicGRUV2GradAlignFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicGR
                     return FAILED);
   
   AddDwReduceSumTransNode(dynamicGRUGradNode, dwhMatmulNode, anchorOutputIndex, reduceDwAxis, "dwh", "dw_hidden",
-                          graph, newNodes, {3 * nzHiddenDim, nzHiddenDim, fzDim, fzDim}, "weight_hidden", isFailure);  
+                          graph, newNodes, {3 * nzHiddenDim, nzHiddenDim, fzDim, fzDim}, "weight_hidden", isFailure); 
   FUSION_PASS_CHECK(isFailure, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                               "AddDwhReduceSumNode:check failed, fusion failed."),
                     return FAILED);
@@ -1289,7 +1291,7 @@ Status DynamicGRUV2GradAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   if (batch % fzDim == 0 && hidden_dim % fzDim == 0 && input_dim % fzDim == 0 && t_size != 1) {
     fusion_reduce = true;
   }
-  if (hidden_dim % 16 == 0 && input_dim % 16 == 0) {
+  if (hidden_dim % fzDim == 0 && input_dim % fzDim == 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "inputsize or hiddensize is 16 align, will not changed");
     return NOT_CHANGED;
   }

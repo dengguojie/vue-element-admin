@@ -25,10 +25,12 @@
 
 namespace {
   constexpr int64_t INPUT_SIZE = 4;
+  constexpr int64_t INDEX_NLIST = 2;
+  constexpr int64_t SPLIT_NUM_2 = 2;
 }
 
 namespace optiling {
-struct ProdForceSeATilingParams{
+struct ProdForceSeATilingParams {
   int64_t nloc;
   int64_t nall;
   int64_t coreLoopUnit;
@@ -82,11 +84,11 @@ bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op_paras.outputs cannot be empty");
     return false;
   }
-  if (op_paras.inputs[2].tensor.empty()) {
+  if (op_paras.inputs[INDEX_NLIST].tensor.empty()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "nlist tensor shape cannot be empty");
     return false;
   }
-  std::vector<int64_t> nlistShape = op_paras.inputs[2].tensor[0].shape;
+  std::vector<int64_t> nlistShape = op_paras.inputs[INDEX_NLIST].tensor[0].shape;
   if (nlistShape.size() < NLIST_SHAPE) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op_paras.inputs.size() < 4.");
     return false;
@@ -124,7 +126,7 @@ bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
   int64_t nall = forceShape[2];
   int64_t coreLoopLeft = 0;
   int64_t coreNumsUsed = 0;
-  coreNums = (splitCount == 2) ? AI_CORE_NUM + VECTOR_CORE_NUM : coreNums;
+  coreNums = (splitCount == SPLIT_NUM_2) ? AI_CORE_NUM + VECTOR_CORE_NUM : coreNums;
   int64_t coreLoopUnit = ProdForceSeACeilDiv(nloc, coreNums);
   if (splitCount == 1) {
     coreNumsUsed = ProdForceSeACeilDiv(nloc, coreLoopUnit);

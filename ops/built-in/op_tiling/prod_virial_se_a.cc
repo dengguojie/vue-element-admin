@@ -36,6 +36,9 @@ constexpr int64_t OUTPUT_VIRIAL_FACTOR = 9;
 constexpr int64_t NNEI_UB = 256;
 constexpr int64_t CUSTOM_AICORE_NUM = 8;
 constexpr int64_t CUSTOM_VECTORCORE_NUM = 7;
+constexpr int64_t INDEX_RIJ = 2;
+constexpr int64_t INDEX_NLIST = 3;
+constexpr int64_t SPLIT_NUM_2 = 2;
 
 struct ProdVirialSeAParams {
   int64_t nframes;
@@ -106,11 +109,11 @@ bool CheckProdVirialSeAShapeInfo(const std::string& opType, const TeOpParas& opP
   OP_TILING_CHECK(inShape.size() != 2, VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of in_deriv should be 2"),
                   return false);
 
-  std::vector<int64_t> rijShape = opParas.inputs[2].tensor[0].shape;
+  std::vector<int64_t> rijShape = opParas.inputs[INDEX_RIJ].tensor[0].shape;
   OP_TILING_CHECK(rijShape.size() != 2, VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of rij should be 2"),
                   return false);
 
-  std::vector<int64_t> nlistShape = opParas.inputs[3].tensor[0].shape;
+  std::vector<int64_t> nlistShape = opParas.inputs[INDEX_NLIST].tensor[0].shape;
   OP_TILING_CHECK(nlistShape.size() != 2, VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of nlist should be 2"),
                   return false);
 
@@ -216,7 +219,7 @@ bool ProdVirialSeATiling(const std::string& opType, const TeOpParas& opParas, co
 
   int64_t repTimesOffset = 0;
   int64_t repTimesFix = repTimesTotal;
-  if (splitCount == 2) {  // Split by 8:7
+  if (splitCount == SPLIT_NUM_2) {  // Split by 8:7
     int64_t totalCoreNum = CUSTOM_AICORE_NUM + CUSTOM_VECTORCORE_NUM;
     int64_t repTimesSplit = (repTimesTotal + totalCoreNum - 1) / totalCoreNum;
     if (splitIndex == 0) {
