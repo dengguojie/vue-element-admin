@@ -4462,8 +4462,8 @@ class GemmSchedule:
             c_ub_storage_align: bool, Matrix C uses storage_align.
         """
         tiling = self.tiling
-        need_aub_storage_align = (self.container.TENSOR_MAP.get("a_ub") is not None)
-        need_bub_storage_align = (self.container.TENSOR_MAP.get("b_ub") is not None)
+        need_aub_storage_align = (self.container.TENSOR_MAP.get("a_ub") is not None) and (self.format_a == "ND")
+        need_bub_storage_align = (self.container.TENSOR_MAP.get("b_ub") is not None) and (self.format_b == "ND")
         need_cub_storage_align = (((self.container.TENSOR_MAP.get("c_add_bias_ub") is not None) or
                                   (self.container.TENSOR_MAP.get("before_c_gm") is not None)) and
                                   (not self.cache_tiling and self.format_out == "ND"))
@@ -4515,12 +4515,14 @@ class GemmSchedule:
         need_aub_storage_align, gap_value, a_fused_num, a_trans):
         tiling = self.tiling
         a_add_size = 0
-        if need_aub_storage_align:
+        if self.container.TENSOR_MAP.get("a_ub") is not None:
             aub_k, aub_m = tiling.get("AUB_shape")[0:2]
             aub_m *= self.block_in
             a_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
             base_buffer_size += (aub_m * aub_k * a_fused_num *
-                                    self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * a_db)
+                                 self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * a_db)
+
+        if need_aub_storage_align:
             # if use storage_align, need UB size
             a_add_size = (gap_value * (aub_k if a_trans else aub_m) *
                             self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * a_db)
@@ -4530,12 +4532,14 @@ class GemmSchedule:
         need_bub_storage_align, gap_value, b_fused_num, b_trans):
         tiling = self.tiling
         b_add_size = 0
-        if need_bub_storage_align:
+        if self.container.TENSOR_MAP.get("b_ub") is not None:
             bub_k, bub_n = tiling.get("BUB_shape")[0:2]
             bub_n *= self.block_out
             b_db = tiling.get("manual_pingpong_buffer").get("BUB_pbuffer")
             base_buffer_size += (bub_k * bub_n * b_fused_num *
-                                    self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * b_db)
+                                 self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * b_db)
+
+        if need_bub_storage_align:
             # if use storage_align, need UB size
             b_add_size = (gap_value * (bub_n if b_trans else bub_k) *
                             self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * b_db)

@@ -632,6 +632,7 @@ ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
 ut_case.add_cust_test_func(test_func=test_auto_tiling)
 
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     from case_nd_in_nd_out import cases
