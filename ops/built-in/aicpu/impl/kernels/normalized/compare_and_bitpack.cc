@@ -112,7 +112,7 @@ uint32_t CompareAndBitpackCpuKernel::CompareAndBitpackCompute(CpuKernelContext &
     };
     KERNEL_HANDLE_ERROR(
         CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
-                                    shard), "CompareAndBitpack Compute failed.")
+        shard), "CompareAndBitpack Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
