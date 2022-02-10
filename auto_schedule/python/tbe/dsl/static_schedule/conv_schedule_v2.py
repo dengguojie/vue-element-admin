@@ -15,9 +15,8 @@
 # limitations under the License.
 # ============================================================================
 """
-Schedule of conv2d in v220.
+Schedule of conv2d in v220/v300.
 """
-from collections import deque
 from functools import reduce
 import tbe
 from tbe import tvm
@@ -27,24 +26,13 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling import tiling_api
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule import util
+from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusion
+from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusionNew
+from tbe.dsl.static_schedule.conv_schedule_util import ceil, ceil_div, is_support_fixpipe_op, get_src_tensor
+from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
+from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
 from te.platform import cce_params
 
-FIXPIPE_REFORM_TAG = "fixpipe_reform"
-QUANT_SCALE_0_STR = "quant_scale_0"
-QUANT_SCALE_1_STR = "quant_scale_1"
-RELU_WEIGHT_0_STR = "relu_weight_0"
-RELU_WEIGHT_1_STR = "relu_weight_1"
-ELTWISE_SRC_STR = "eltwise_src"
-
-INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
-UNIT_POST_ELTWISE = "post_eltwise"
-FIXPIPE_SCOPE_MAP = {
-    QUANT_SCALE_0_STR: cce_params.scope_fb0,
-    QUANT_SCALE_1_STR: cce_params.scope_fb3,
-    RELU_WEIGHT_0_STR: cce_params.scope_fb1,
-    RELU_WEIGHT_1_STR: cce_params.scope_fb2,
-    ELTWISE_SRC_STR: cce_params.scope_cbuf
-}
 
 NON_L1_FUSION = -1
 DEPTH_L1_FUSION = 0
@@ -53,276 +41,6 @@ BREADTH_L1_FUSION = 1
 DDR_SCOPE = 0
 L1_SCOPE = 1
 L2_SCOPE = 2
-
-
-def ceil_div(num_a, num_b):
-    """
-    Do upper division.
-    """
-    if num_b == 0:
-        err_man.raise_err_specific("conv2d", "division by zero")
-    return (num_a + num_b - 1) // num_b
-
-
-def ceil(num_a, num_b):
-    """
-    Do upper align.
-    """
-    if num_b == 0:
-        err_man.raise_err_specific("conv2d", "division by zero")
-    return (num_a + num_b - 1) // num_b*num_b
-
-
-def get_src_tensor(tensor):
-    """
-    Get the source tensor of input tensor.
-    """
-    src_tensor = tensor.op.input_tensors[0]
-    return src_tensor
-
-
-def is_placeholder(tensor):
-    """
-    Check whether the input tensor is a placeholder.
-    """
-    if tensor.op.input_tensors:
-        return False
-    return True
-
-
-def is_support_fixpipe_op():
-    if tbe.common.platform.platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
-        return tbe.common.platform.platform_info.intrinsic_check_support(
-            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
-
-    return False
-
-class FixpipeFusionNew(object):
-    """
-    """
-    def __init__(self):
-        """
-        class FixpipeFusionNew init func
-        """
-        self.fixpipe_flag = False
-        self.inline_tensors = []
-        self.fixpipe_params = []
-        self.fixpipe_tensors = [] # param tensors
-        self.eltwise_src = None
-        self.eltwise_dtype = "float16"
-        self.eltwise_flag = False
-        self.quant_pre_flag = False
-        self.relu_pre_flag = False
-        self.quant_post_flag = False
-        self.relu_post_flag = False
-        self.anti_quant_flag = False
-        self.nz2nd_flag = False
-        self.cache_read_tensors = []
-        self.cache_read_tensors_channelwise = []
-
-    def fetch_quant_relu_flag(self):
-        """
-        fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
-        """
-        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag, self.anti_quant_flag
-
-    def fetch_eltwise_info(self):
-        """
-        return eltwise src info
-        """
-        return self.eltwise_flag, self.eltwise_dtype
-
-    def get_eltwise_info(self):
-        """
-        get eltwise src info
-        """
-        for idx, tensor_param in enumerate(self.fixpipe_params):
-            if tensor_param.value == ELTWISE_SRC_STR:
-                self.eltwise_src = self.fixpipe_tensors[idx]
-                self.eltwise_dtype = self.eltwise_src.dtype
-                self.eltwise_flag = True
-
-    def parse_fusion_pattern(self, res):
-        """
-        parse fixpipe fusion
-        """
-        tensor_queue = deque()
-        tensor_queue.append(res)
-        find_fixpipe = False
-        while tensor_queue:
-            src_tensor = tensor_queue.popleft()
-            tag = src_tensor.op.tag
-
-            if tag in ("convolution_c_col", "convolution_c_col_bias"):
-                break
-
-            if find_fixpipe:
-                if not is_placeholder(src_tensor):
-                    self.inline_tensors.append(src_tensor)
-
-            if tag == FIXPIPE_REFORM_TAG:
-                find_fixpipe = True
-                self.fixpipe_flag = True
-                self.fixpipe_params = src_tensor.op.attrs["vector_params"]
-                self.fixpipe_tensors = src_tensor.op.attrs["vector_tensors"]
-                self.nz2nd_flag = bool(src_tensor.op.attrs["nz2nd_flag"].value)
-                self.anti_quant_flag = bool(src_tensor.op.attrs["anti_quant_flag"].value)
-                self.get_eltwise_info()
-
-                tensor_queue.clear()
-            if src_tensor.op.input_tensors:
-                append_list = list(i for i in src_tensor.op.input_tensors)
-                append_list.reverse()
-                tensor_queue.extend(append_list)
-        log.debug("fixpipe inline tensors:{}".format(self.inline_tensors))
-
-    def fixpipe_inputs_set_scope(self, sch, op_graph):
-        """
-        set scope for fixpipe vector input tensors
-        """
-        next_op_map = {}
-
-        for input_op in op_graph.input_ops:
-            next_op_map[input_op["dst_buffer"]] = input_op["next_op"][0]["dst_buffer"]
-
-        for idx, tensor_param in enumerate(self.fixpipe_params):
-            if tensor_param.value not in FIXPIPE_SCOPE_MAP.keys():
-                raise RuntimeError("tensor {} cannot set scope to fb".format(tensor_param))
-
-            tensor = self.fixpipe_tensors[idx]
-            scope = FIXPIPE_SCOPE_MAP.get(tensor_param.value)
-            if tensor_param.value == ELTWISE_SRC_STR:
-                input_l1 = sch.cache_read(tensor, scope, next_op_map[tensor])
-                self.cache_read_tensors_channelwise.extend([input_l1])
-                continue
-
-            input_fb = sch.cache_read(tensor, scope, next_op_map[tensor])
-            input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
-            self.cache_read_tensors.extend([input_fb, input_l1])
-
-    def fixpipe_inputs_emit_insn(self,sch):
-        """
-        Dma for the inputs of fixpipe fusion ops.
-        """
-        for tensor in self.cache_read_tensors:
-            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
-
-        for tensor in self.cache_read_tensors_channelwise:
-            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
-
-    def inline_fixpipe_tensor(self, sch):
-        """
-        Inline the body tensors in fixpipe fusion compute.
-        """
-        for tensor in self.inline_tensors:
-            sch[tensor].compute_inline()
-
-    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
-        """
-        Attach the inputs of fixpipe fusion ops to res tensor.
-        """
-        for tensor in self.cache_read_tensors:
-            sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
-
-        for tensor in self.cache_read_tensors_channelwise:
-            sch[tensor].compute_at(sch[res], cl0_at_res_axis)
-
-
-class FixpipeFusion:
-    """
-    Class of fixpipe on-the-fly fusion.
-    """
-    def __init__(self):
-        self.quant_pre_flag = False
-        self.relu_pre_flag = False
-        self.quant_post_flag = False
-        self.relu_post_flag = False
-        self.nz2nd_flag = False
-        self.anti_quant_flag = False
-        self.weight_input = None
-        self.inline_tensors = []
-        self.fixpipe_inputs = [] # scale of dequant/requant, weight_input of prelu
-        self.cache_read_tensors = []
-
-    def parse_fusion_pattern(self, res):
-        """
-        Parse the fixpipe fusion type.
-        find out the tensors to be inlined and the inputs to be cache readed.
-        """
-        tensor_queue = deque()
-        tensor_queue.append(res)
-        while tensor_queue:
-            src_tensor = tensor_queue.popleft()
-            tag = src_tensor.op.tag
-
-            if tag in ("convolution_c_col", "convolution_c_col_bias"):
-                break
-            if is_placeholder(src_tensor):
-                self.fixpipe_inputs.append(src_tensor)
-            else: # exclude placeholders
-                self.inline_tensors.append(src_tensor)
-
-            if tag == "elewise_binary_add" and "weight_input" in src_tensor.op.attrs:
-                self.weight_input = src_tensor.op.attrs["weight_input"].op.input_tensors[0]
-                self.relu_pre_flag = True
-            if tag in ("dequant_remove_pad", "requant_remove_pad"):
-                self.quant_pre_flag = True
-
-            if src_tensor.op.input_tensors:
-                append_list = list(i for i in src_tensor.op.input_tensors)
-                append_list.reverse()
-                tensor_queue.extend(append_list)
-
-        self.inline_tensors = self.inline_tensors[1: ] # res cannot be inlined
-        self.inline_tensors = list(set(self.inline_tensors))
-        self.fixpipe_inputs = list(set(self.fixpipe_inputs))
-
-    def fetch_quant_relu_flag(self):
-        """
-        fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
-        """
-        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag, self.anti_quant_flag
-
-    def fixpipe_inputs_set_scope(self, sch, op_graph):
-        """
-        Cache read fixpipe params into L1 and fixpipe.
-        """
-        next_op_map = {} # save the next tensor of fixpipe inputs
-
-        for input_op in op_graph.input_ops:
-            next_op_map[input_op["dst_buffer"]] = input_op["next_op"][0]["dst_buffer"]
-
-        for tensor in self.fixpipe_inputs:
-            if tensor == self.weight_input:
-                scope_inputs = cce_params.scope_fb1
-            elif next_op_map[tensor].op.tag in ("dequant_vector", "requant_vector"):
-                scope_inputs = cce_params.scope_fb0
-
-            input_fb = sch.cache_read(tensor, scope_inputs, next_op_map[tensor]) # fb0: QUANT_PRE, fb1: RELU_PRE
-            input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
-            self.cache_read_tensors.extend([input_fb, input_l1])
-
-    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
-        """
-        Attach the inputs of fixpipe fusion ops to res tensor.
-        """
-        _ = cl0_at_res_axis
-        for tensor in self.cache_read_tensors:
-            sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
-
-    def inline_fixpipe_tensor(self, sch):
-        """
-        Inline the body tensors in fixpipe fusion compute.
-        """
-        for tensor in self.inline_tensors:
-            sch[tensor].compute_inline()
-
-    def fixpipe_inputs_emit_insn(self, sch):
-        """
-        Dma for the inputs of fixpipe fusion ops.
-        """
-        for tensor in self.cache_read_tensors:
-            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
 
 
 class InputNd2Nz:
@@ -341,7 +59,8 @@ class InputNd2Nz:
             input_nd_dynamic = tensor_map["fmap"]
             sch[input_nd_dynamic].compute_inline()
 
-    def al1_nd2nz_emit_insn(self, sch, al1):
+    @staticmethod
+    def al1_nd2nz_emit_insn(sch, al1):
         """
         Dma for the al1 tensor in nd2nz situation.
         """
@@ -366,7 +85,8 @@ class WeightNd2Nz:
             err_man.raise_err_specific(
                 "conv2d", "BL1 tiling cannot be None when weight nd2nz.")
 
-    def bl1_nd2nz_emit_insn(self, sch, bl1):
+    @staticmethod
+    def bl1_nd2nz_emit_insn(sch, bl1):
         """
         Dma for the bl1 tensor in weight nd2nz situation.
         """
@@ -383,7 +103,8 @@ class OutputNz2Nd:
     def __init__(self, res):
         self.flag = res.op.tag == "5HD_trans_NHWC"
 
-    def res_nz2nd_emit_insn(self, sch, res, res_pragma_axis):
+    @staticmethod
+    def res_nz2nd_emit_insn(sch, res, res_pragma_axis):
         """
         Emit insn for res in output nz2nd situation.
         """
@@ -448,7 +169,8 @@ class LxFusion:
             return cce_params.scope_cbuf_fusion
         return cce_params.scope_cbuf
 
-    def align_al1_lxfusion(self, sch, al1):
+    @staticmethod
+    def align_al1_lxfusion(sch, al1):
         """
         AL1 buffer_align in l1fusion breadth fusion.
         """
@@ -493,7 +215,8 @@ class AippFusion:
     def __init__(self, conv_param):
         self.flag = conv_param.aipp_fuse_flag
 
-    def al1_aipp_emit_insn(self, sch, al1):
+    @staticmethod
+    def al1_aipp_emit_insn(sch, al1):
         """
         Emit insn for al1 in aipp fusion.
         """
@@ -664,7 +387,8 @@ class DynamicShape:
         if self.hw_dynamic:
             sch[res].pragma(res_pragma_axis, "gm_no_sync", 1)
 
-    def dynamic_mode_im2col_v2(self, sch, conv_param, tensor_param, tiling_param,
+    @staticmethod
+    def dynamic_mode_im2col_v2(sch, conv_param, tensor_param, tiling_param,
                                emit_insn_dict, input_nd_flag, l0a_load2d_flag):
         """
         Use im2col_v2 in dynamic shape situation.
@@ -780,7 +504,8 @@ class Im2colDma:
             al1_im2col = None
         return al1_im2col
 
-    def config_al0_im2coldma(self, sch, al1_im2col, cl0):
+    @staticmethod
+    def config_al0_im2coldma(sch, al1_im2col, cl0):
         """
         Cache read al1_im2col into L0.
         """
@@ -808,7 +533,8 @@ class Im2colDma:
             sch[al1].compute_inline()
             sch[fmap_row_major].compute_inline()
 
-    def im2col_dma_emit_insn(self, sch, al1_im2col, al0, al0_axis_list):
+    @staticmethod
+    def im2col_dma_emit_insn(sch, al1_im2col, al0, al0_axis_list):
         """
         Emit insn for al1_im2col and al0.
         """
@@ -866,7 +592,8 @@ class L0aLoad2d:
         if self.flag:
             sch[al1].storage_align(al1.op.axis[1], 256, 0)
 
-    def load2d_emit_insn(self, sch, al1, al0):
+    @staticmethod
+    def load2d_emit_insn(sch, al1, al0):
         """
         Emit insn for al1 and al0 when al1_load2d is enabled.
         """
@@ -899,7 +626,8 @@ class Conv1dSplitw:
     def __init__(self, conv_param):
         self.flag = conv_param.conv1d_split_w_flag
 
-    def align_row_major_conv1d(self, sch, fmap_row_major, block_k0):
+    @staticmethod
+    def align_row_major_conv1d(sch, fmap_row_major, block_k0):
         """
         Buffer align row major in Conv1d.
         """
@@ -963,8 +691,14 @@ class Conv2dSchedule:
         # device params
         self._core_num = get_soc_spec("CORE_NUM")
 
+        #===========================parse ub fusion=======================================
+        self._eltwise_ub_fusion = EltwiseUBFusion(res, op_graph)
+        self._fixpipe_res = self._eltwise_ub_fusion.cub if self._eltwise_ub_fusion.flag else res
+
+        self._quant_fusion = QuantFusion(res, op_graph)
         #====================create feature instance=============================
-        self._fixpipe_fusion = FixpipeFusionNew() if is_support_fixpipe_op() else FixpipeFusion()
+        self._fixpipe_fusion = FixpipeFusionNew(self._fixpipe_res) if is_support_fixpipe_op() \
+            else FixpipeFusion(self._fixpipe_res)
         self._input_nd2nz = InputNd2Nz(conv_param)
         self._weight_nd2nz = WeightNd2Nz(conv_param)
         self._output_nz2nd = OutputNz2Nd(res)
@@ -981,7 +715,7 @@ class Conv2dSchedule:
         self._conv1d = Conv1dSplitw(conv_param)
 
         #===================parse fusion pattern========================
-        self._fixpipe_fusion.parse_fusion_pattern(res)
+        self._fixpipe_fusion.parse_fusion_pattern()
 
         if self._aipp_fusion.flag:
             self._fmap_dtype = "float16"
@@ -990,6 +724,14 @@ class Conv2dSchedule:
         """
         Fetch the info_dict to get tiling.
         """
+        def cal_cub_coeff():
+            """
+            get cub space coefficient for get_tiling.
+            """
+            eltwise_coeff, channelwise_coeff, scalar_num = self._eltwise_ub_fusion.coeff_eltwise_cal(self._res)
+            eltwise_coeff += self._quant_fusion.cal_quant_coeff()
+            return eltwise_coeff, channelwise_coeff, scalar_num
+
         if self._dynamic_shape.flag and tiling_case: # pass when tiling_case
             return None
 
@@ -1001,11 +743,14 @@ class Conv2dSchedule:
         c_shape = tiling_query_param["c_shape"]
         mad_dtype = tiling_query_param["mad_dtype"]
         bias_flag = tiling_query_param["bias_flag"]
-        quant_pre_flag, relu_pre_flag, quant_post_flag, relu_post_flag, anti_quant_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
+        quant_pre_flag, relu_pre_flag, quant_post_flag, relu_post_flag, anti_quant_flag = \
+            self._fixpipe_fusion.fetch_quant_relu_flag()
         eltwise_flag = False
         eltwise_dtype = "float16"
         if is_support_fixpipe_op():
             eltwise_flag, eltwise_dtype = self._fixpipe_fusion.fetch_eltwise_info()
+
+        eltwise_coeff, channelwise_coeff, scalar_num = cal_cub_coeff()
 
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
@@ -1039,14 +784,15 @@ class Conv2dSchedule:
                      "kernel_name": conv_param.kernel_name,
                      "special_mode": {"use_c04_mode": 2 if self._c04.flag else 0, # 3 for v220 c04
                                       # disable strideh opti when input nd2nz.
-                                      "input_nd_flag": self._input_nd2nz.flag},
+                                      "input_nd_flag": self._input_nd2nz.flag,
+                                      "scalar_num": scalar_num,
+                                     },
                      "placeholder_fmap_5hd_shape": list(self._dim_map["fmap_5hd_shape"]),
-                     #=============to be deleted====================
-                     "fused_coefficient": [0, 0, 0],
-                     "fused_channel_wise": [0, 0, 0],
+                     "fused_coefficient": [0, 0, eltwise_coeff],
+                     "fused_channel_wise": [0, 0, channelwise_coeff],
                      "pooling_shape": [0, 0],
                      "pooling_stride": [0, 0],
-                     }
+                    }
         return info_dict
 
     def fetch_tiling(self, info_dict, tiling_case):
@@ -1107,7 +853,6 @@ class Conv2dSchedule:
             Get tiling in v220 situation.
             """
             tiling = tiling_api.get_tiling(info_dict)
-            tiling["CUB_matrix"] = tiling["CL0_matrix"]
             if tiling is None or tiling["AL0_matrix"][2] == 32:
                 log.warn("get invalid tiling, default tiling will be used")
                 tiling = get_default_tiling()
@@ -1167,6 +912,13 @@ class Conv2dSchedule:
                 elif ceil_div(self._group_opt, group_dim) > 1 and self._tiling["BL1_shape"] is not None:
                     self._tiling["BL1_shape"] = []
 
+        def check_cub_tiling():
+            """
+            check cub tiling in no ub fusion situation.
+            """
+            if not self._eltwise_ub_fusion.flag and tiling["CUB_matrix"] != tiling["CL0_matrix"]:
+                err_man.raise_err_specific("conv2d", "CUB_matrix must be equal to CL0_matrix in no ub fusion cases!")
+
         tiling = self._tiling
         bl0_tiling = tiling["BL0_matrix"]
         ma_al0, ka_al0, _, _, _, _ = tiling["AL0_matrix"]
@@ -1187,6 +939,7 @@ class Conv2dSchedule:
 
         check_l0_tiling()
         check_overhead_opt_flag()
+        check_cub_tiling()
 
         #==================modify tiling to be deleted=========================
         modify_bl0_tiling()
@@ -1301,6 +1054,12 @@ class Conv2dSchedule:
 
         self._fixpipe_fusion.fixpipe_inputs_set_scope(sch, self._op_graph)
 
+        self._eltwise_ub_fusion.cub_set_scope(sch)
+        self._eltwise_ub_fusion.inputs_cache_read(sch, self._op_graph)
+        self._eltwise_ub_fusion.res_cache_write(sch, self._res)
+
+        self._quant_fusion.quant_tensors_set_scope(sch)
+
         tensor_param = {"al1": al1, "bl1": bl1,
                         "fmap": fmap, "weight": weight,
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
@@ -1362,11 +1121,19 @@ class Conv2dSchedule:
 
         self._im2col_dma.inline_al1_im2coldma(sch, al1, fmap_row_major)
         self._im2col_dma.align_al1_im2col(sch, al1_im2col, self._block_k0)
-        self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag, self._l0a_load2d.flag)
 
+
+        self._strided_read.process_strided_read(sch, al1, self._strideh_opti.flag, self._l0a_load2d.flag)
         self._strided_write.process_strided_write(sch, self._res)
+
         # inline input_nd
         self._input_nd2nz.inline_input_nd_dynamic(sch, self._tensor_map, self._dynamic_shape.flag)
+
+        # quant fusion
+        self._quant_fusion.inline_input_ub(sch)
+
+        # ub fusion
+        self._eltwise_ub_fusion.ub_tensors_inline(sch)
 
         # dynamic shape
         self._dynamic_shape.handle_var_range(sch)
@@ -1382,11 +1149,11 @@ class Conv2dSchedule:
             """
             if bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
                 if multi_bl0_group and group_cl0 == 1:
-                    sch[bl0].compute_at(sch[res], res_gio)
+                    sch[bl0].compute_at(sch[res], singlecore_out2bl0_loopg_axis)
                 else:
                     sch[bl0].compute_at(sch[cl0], cl0_co)
             else:
-                sch[bl0].compute_at(sch[res], res_gio)
+                sch[bl0].compute_at(sch[res], singlecore_out2bl0_loopg_axis)
 
         def al1_compute_at():
             """
@@ -1409,9 +1176,9 @@ class Conv2dSchedule:
                     return res, al1_at_res_axis
 
                 if self._lx_fusion.l1_fusion_type == DEPTH_L1_FUSION:
-                    return res, res_gio
+                    return res, singlecore_out2bl0_loopg_axis
 
-                return res, res_nioo
+                return res, out2al1_loopbatch_axis
 
             consumer, target_axis = get_al1_attach_info()
             sch[al1].compute_at(sch[consumer], target_axis)
@@ -1427,7 +1194,7 @@ class Conv2dSchedule:
                 Get the consumer tensor of bl1 and the target axis to be attached.
                 """
                 if self._inner_batch.flag:
-                    return res, res_ciooi
+                    return res, singlecore_out2bl1_loopn_axis
 
                 if bl1_tiling:
                     if bl1_nparts[0] != 1:
@@ -1436,13 +1203,13 @@ class Conv2dSchedule:
                     if bl1_nparts[0] == 1 and multi_cl0_group:
                         return cl0, cl0_co
                     if group_cl0 == 1 and multi_bl0_group:
-                        return res, res_gio
+                        return res, singlecore_out2bl0_loopg_axis
                     return res, bl1_at_res_axis
 
                 if bl1_tiling == [] and multi_cl0_group:
                     return cl0, cl0_co
 
-                return res, res_gio
+                return res, singlecore_out2bl0_loopg_axis
 
             if bl1_tiling is not None:
                 consumer, target_axis = get_bl1_attach_info()
@@ -1453,7 +1220,7 @@ class Conv2dSchedule:
             Handle bias attach.
             """
             if self._bias_flag:
-                if CUB_channel_wise_flag:  # use INPUT_L1_BT_param later
+                if cub_channel_wise_flag:  # use INPUT_L1_BT_param later
                     sch[bias_l1].compute_at(sch[res], cl0_at_res_axis)
                 else:
                     sch[bias_l1].compute_at(sch[res], bindcore_axis)
@@ -1475,8 +1242,9 @@ class Conv2dSchedule:
         al0_tiling = self._tiling["AL0_matrix"]
         bl0_tiling = self._tiling["BL0_matrix"]
         cl0_tiling = self._tiling["CL0_matrix"]
+        cub_tiling = self._tiling["CUB_matrix"]
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
-        CUB_channel_wise_flag = self._tiling["CUB_channel_wise_flag"]
+        cub_channel_wise_flag = self._tiling["CUB_channel_wise_flag"]
         batch = self._batch
         kernel_h = self._kernel_h
         kernel_w = self._kernel_w
@@ -1497,6 +1265,9 @@ class Conv2dSchedule:
 
         if cl0_tiling:
             nc_cl0, mc_cl0, m0_cl0, _, batch_cl0, group_cl0 = cl0_tiling
+
+        if cub_tiling:
+            nc_factor_cub, _, _, _, _, _ = cub_tiling
 
         batch_al1 = 1
 
@@ -1578,17 +1349,40 @@ class Conv2dSchedule:
                 """
                 if self._inner_batch.flag:
                     if reorder_mn_flag:
-                        sch[res].reorder(res_nioo, res_mooi, res_nioi, res_ciooi)
+                        sch[res].reorder(
+                            out2al1_loopbatch_axis,
+                            singlecore_out2al1_loopm_axis,
+                            res_batch_1_axis,
+                            singlecore_out2bl1_loopn_axis
+                            )
                     else:
-                        sch[res].reorder(res_nioo, res_ciooi, res_mooi, res_nioi)
+                        sch[res].reorder(
+                            out2al1_loopbatch_axis,
+                            singlecore_out2bl1_loopn_axis,
+                            singlecore_out2al1_loopm_axis,
+                            res_batch_1_axis
+                            )
                 else:
-                    # res_ciooi means nparts of co1 axis loading into L1 in single core. (N axis)
-                    # res_mooi means nparts of howo axis loading into L1 in single core. (M axis)
+                    # singlecore_out2bl1_loopn_axis means nparts of co1 axis loading into L1 in single core. (N axis)
+                    # singlecore_out2al1_loopm_axis means nparts of howo axis loading into L1 in single core. (M axis)
                     if reorder_mn_flag:
-                        sch[res].reorder(res_nioo, res_mooi, res_nioi, res_ciooi, res_cioi, res_nii)
-                        # False ori version is (res_nioo, res_mooi, res_nioi, res_cioi, res_ciooi, res_nii)
+                        sch[res].reorder(
+                            out2al1_loopbatch_axis,
+                            singlecore_out2al1_loopm_axis,
+                            res_batch_1_axis,
+                            singlecore_out2bl1_loopn_axis,
+                            bl12bl0_loopn_axis,
+                            res_al1_batch_axis
+                            )
                     else:
-                        sch[res].reorder(res_nioo, res_ciooi, res_mooi, res_cioi, res_nioi, res_nii)
+                        sch[res].reorder(
+                            out2al1_loopbatch_axis,
+                            singlecore_out2bl1_loopn_axis,
+                            singlecore_out2al1_loopm_axis,
+                            bl12bl0_loopn_axis,
+                            res_batch_1_axis,
+                            res_al1_batch_axis
+                            )
 
             reorder_mn_flag = False
             if not bl1_tiling:
@@ -1603,199 +1397,315 @@ class Conv2dSchedule:
 
             return reorder_mn_flag
 
-        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-            res_n_axis, res_hw_axis, res_c_axis = res.op.axis # [n, howo, co]
-            # split c axis into c1 and c0 to avoid nonlinear ir
-            res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16) # [n, howo, co1, co0]
-        else:
-            res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = res.op.axis # [n, co1, howo, co0]
 
-        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-            res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt)
-            res_cio, res_cii = sch[res].split(res_co1_ori, nc_cl0)
-        elif res.dtype == "int8":
-            _, _ = sch[res].split(res_c0_axis, factor=16) # split c0=16 in channel merging to avoid nonlinear ir
-            if multi_cl0_group:
-                res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt*group_cl0 // 2)
-                res_cio, res_cii = sch[res].split(res_co1_ori, factor=co1_opt*group_cl0 // 2)
+        # Only fixpipe fusion. The special axis split operation works on res.
+        fixpipe_nz2nd_flag = self._output_nz2nd.flag or \
+            (self._fixpipe_fusion.nz2nd_flag and not self._eltwise_ub_fusion.flag)
+        fixpipe_channelsplit_flag = res.dtype == "float32" and not self._eltwise_ub_fusion.flag
+        fixpipe_channelmerge_flag = res.dtype in ("int4", "int8") and not self._eltwise_ub_fusion.flag
+        fixpipe_antiquant_flag = anti_quant_spilt_flag(res)
+
+        if fixpipe_nz2nd_flag:
+            fixpipe_channelsplit_flag = False
+            fixpipe_channelmerge_flag = False
+
+        special_axis_dict = {}
+        dtype_coeff = {
+            "int4": 4,
+            "int8": 2,
+        }
+
+        def fetch_base_axis():
+            """
+            Fetch axes of the res tensor.
+            """
+            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                res_n_axis, res_hw_axis, res_c_axis = res.op.axis # [n, howo, co]
+                # split c axis into c1 and c0 to avoid nonlinear ir
+                res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16) # [n, howo, co1, co0]
             else:
-                res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=ceil_div(co1_opt, 2))
-                res_cio, res_cii = sch[res].split(res_co1_ori, nc_cl0 // 2)
-        elif res.dtype == "float32":
-            res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt*2)
-            res_co1_ori_o, res_co1_ori_i = sch[res].split(res_co1_ori, 2) # res_co1_ori_i = 2
-            res_cio, res_cii = sch[res].split(res_co1_ori_o, nc_cl0)
-        else:
-            res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt)
-            res_cio, res_cii = sch[res].split(res_co1_ori, nc_cl0)
-            # fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride
-            if anti_quant_spilt_flag(res):
-                res_cii_ori = res_cii
-                res_cii, res_ciii = sch[res].split(res_cii_ori, 2)
+                res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = res.op.axis # [n, co1, howo, co0]
 
-        res_mo, res_mi = sch[res].split(res_hw_axis, mc_cl0*m0_cl0)
+            return res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis
 
-        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-            sch[res].reorder(res_g,   # group_opt
-                             res_cio, # co1_opt // nc
-                             res_mo,  # howo // (mc*m0)
-                             res_mi,  # mc*m0
-                             res_cii) # nc
-            # [n, group_opt, co1_opt // nc, howo // (mc*m0), ||| mc*m0, nc, co0]
-        elif res.dtype == "float32":
-            sch[res].reorder(res_g,
-                             res_cio,
-                             res_mo,
-                             res_cii,       # nc
-                             res_co1_ori_i, # 2
-                             res_mi)        # mc*m0
-            # [n, group_opt, co1_opt // 2*nc, howo // (mc*m0), ||| nc, 2, mc*m0, co0]
-        else:
-            if res.dtype == "float16":
-                if anti_quant_spilt_flag(res):
-                    sch[res].reorder(res_cio,   # co1_opt // nc
-                                     res_mo,    # howo // (mc*m0)
-                                     res_cii,  # nc // 2
-                                     res_ciii,  # 2
-                                     res_mi)    # mc*m0
+        def cal_co1_opt_factor():
+            """
+            Calculate the co1_opt factor to split out group axis.
+            """
+            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                co1_opt_factor = co1_opt
+            elif res.dtype in ("int4", "int8"):
+                if multi_cl0_group: # group_cl0 is even while co1_opt is odd.
+                    co1_opt_factor = ceil_div(co1_opt * multi_cl0_group, dtype_coeff[res.dtype])
                 else:
-                    sch[res].reorder(res_cio,  # co1_opt // nc
-                                     res_mo,  # howo // (mc*m0)
-                                     res_cii,  # nc
-                                     res_mi)  # mc*m0
+                    co1_opt_factor = ceil_div(co1_opt, dtype_coeff[res.dtype])
+            elif res.dtype == "float32":
+                co1_opt_factor = co1_opt * 2
+            elif res.dtype in ("float16", "bfloat16", "int32"):
+                co1_opt_factor = co1_opt
             else:
-                sch[res].reorder(res_cio, # co1_opt // nc
-                                 res_mo,  # howo // (mc*m0)
-                                 res_cii, # nc
-                                 res_mi)  # mc*m0
-            # [n, group_opt, co1_opt // nc, howo // (mc*m0), ||| nc, mc*m0, co0]
+                err_man.raise_err_specific("conv2d", "res dtype is not supported!")
 
-        res_moo, res_moi = sch[res].split(res_mo, nparts=al1_nparts[1])
+            return co1_opt_factor
+
+        def cal_nc_cl0_factor():
+            """
+            Fetch nc_cl0 for various tiling situation.
+            """
+            nc_cl0_factor = nc_cl0
+            if res.dtype in ("int4", "int8") and not (self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag):
+                if multi_cl0_group:
+                    nc_cl0_factor = co1_opt * group_cl0 // dtype_coeff[res.dtype]
+                else:
+                    nc_cl0_factor = nc_cl0 // dtype_coeff[res.dtype]
+            return nc_cl0_factor
+
+        def split_group_opt_axis(co1_opt_factor):
+            """
+            Split out group_opt axis and co1_opt axis.
+            """
+            res_group_opt_axis, res_co1_opt_axis = sch[res].split(res_c1_axis, factor=co1_opt_factor)
+
+            if fixpipe_channelsplit_flag:
+                res_co1_opt_axis_ori = res_co1_opt_axis
+                res_co1_opt_axis, res_c0_npart_axis = sch[res].split(res_co1_opt_axis_ori, 2)
+                special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"] = res_c0_npart_axis
+
+            return res_group_opt_axis, res_co1_opt_axis
+
+        def split_nc_cl0_axis(nc_cl0_factor):
+            """
+            Split out nc_cl0_axis.
+            """
+            out2cl0_loopn_axis, res_nc_cl0_axis = sch[res].split(res_co1_opt_axis, factor=nc_cl0_factor)
+
+            if fixpipe_antiquant_flag:
+                # fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride
+                res_nc_cl0_axis_ori = res_nc_cl0_axis
+                res_nc_cl0_axis, res_c0_npart_axis = sch[res].split(res_nc_cl0_axis_ori, 2)
+                special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"] = res_c0_npart_axis
+
+            return out2cl0_loopn_axis, res_nc_cl0_axis
+
+        def special_axis_process(res_c0_axis):
+            """
+            Process special axes in fixpipe fusion situation.
+            """
+            if fixpipe_channelmerge_flag:
+                # split c0=16 in channel merging to avoid nonlinear ir
+                _, _ = sch[res].split(res_c0_axis, factor=16)
+
+
+        res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = fetch_base_axis()
+
+        co1_opt_factor = cal_co1_opt_factor()
+        res_group_opt_axis, res_co1_opt_axis = split_group_opt_axis(co1_opt_factor)
+
+        nc_cl0_factor = cal_nc_cl0_factor()
+        out2cl0_loopn_axis, res_nc_cl0_axis = split_nc_cl0_axis(nc_cl0_factor)
+
+        special_axis_process(res_c0_axis)
+
+        out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, mc_cl0 * m0_cl0)
+
+        # split cub tiling axis
+        cl02cub_loopn_axis, res_nc_factor_axis = sch[res].split(res_nc_cl0_axis,
+                                                                nparts=ceil_div(nc_cl0, nc_factor_cub))
+        cl02cub_loopm_axis, res_m_factor_axis = sch[res].split(res_m_cl0_axis, nparts=1)
+
+        if fixpipe_nz2nd_flag:
+            sch[res].reorder(res_group_opt_axis,
+                             out2cl0_loopn_axis,
+                             out2cl0_loopm_axis,
+                             #========cl0 tiling=================
+                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                             cl02cub_loopm_axis, # 1
+                             #========cub tiling=================
+                             res_m_factor_axis, # mc_factor_cub*m0_cl0
+                             res_nc_factor_axis) # nc_factor_cub
+            # [n, group_opt, co1_opt // nc, howo // (mc*m0),
+            # ||| nc // nc_factor, 1,
+            # ||| mc_factor*m0, nc_factor, co0]
+        elif fixpipe_channelsplit_flag:
+            sch[res].reorder(res_group_opt_axis,
+                             out2cl0_loopn_axis,
+                             out2cl0_loopm_axis,
+                             #========cl0 tiling=================
+                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                             cl02cub_loopm_axis, # 1
+                             #========cub tiling=================
+                             res_nc_factor_axis, # nc_factor_cub
+                             special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
+                             res_m_factor_axis) # mc_factor_cub*m0_cl0
+            # [n, group_opt, co1_opt // 2*nc, howo // (mc*m0),
+            # ||| nc // nc_factor, 1,
+            # ||| nc_factor, 2, mc_factor*m0, co0]
+        elif fixpipe_antiquant_flag:
+            sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
+                             out2cl0_loopm_axis, # howo // (mc*m0)
+                             #========cl0 tiling=================
+                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                             cl02cub_loopm_axis, # 1
+                             #========cub tiling=================
+                             res_nc_factor_axis, # nc_factor_cub // 2
+                             special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
+                             res_m_factor_axis) # mc_factor_cub*m0_cl0
+        else:
+            sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
+                             out2cl0_loopm_axis, # howo // (mc*m0)
+                             #========cl0 tiling=================
+                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                             cl02cub_loopm_axis, # 1
+                             #========cub tiling=================
+                             res_nc_factor_axis, # nc_factor_cub
+                             res_m_factor_axis) # mc_factor_cub*m0_cl0
+            # [n, group_opt, co1_opt // nc, howo // (mc*m0),
+            # ||| nc // nc_factor, 1,
+            # ||| nc_factor, mc_factor*m0, co0]
+        out2al1_loopm_axis, al12al0_loopm_axis = sch[res].split(out2cl0_loopm_axis, nparts=al1_nparts[1])
         # when multi_cl0_group, cl0_factor[0] is 1 and bl1_nparts[1] is 1
-        res_cioo, res_cioi = sch[res].split(res_cio, nparts=bl1_nparts[1])
+        out2bl1_loopn_axis, bl12bl0_loopn_axis = sch[res].split(out2cl0_loopn_axis, nparts=bl1_nparts[1])
 
         # split batch of res
         if self._dynamic_shape.n_dynamic:
             batch_dim_factor = tvm.max(1, ceil_div(batch, batch_dim))
-            res_no, res_ni = sch[res].split(res_n_axis, batch_dim_factor)
+            res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, batch_dim_factor)
         else:
-            res_no, res_ni = sch[res].split(res_n_axis, nparts=batch_dim)
+            res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, nparts=batch_dim)
 
-        res_go, res_gi = sch[res].split(res_g, nparts=group_dim)
+        res_group_dim_axis, res_singlecore_group_opt_axis = sch[res].split(res_group_opt_axis, nparts=group_dim)
 
         batch_factor = self._inner_batch.config_innerbatch_axis(batch_al1, batch_cl0)
-        res_nio, res_nii = sch[res].split(res_ni, batch_factor)
+        out2al1_loopbatch_axis, res_al1_batch_axis = sch[res].split(res_singlecore_batch_axis, batch_factor)
 
         if group_cl0 == 1 and multi_bl0_group:
-            res_gio, res_gii = sch[res].split(res_gi, factor=group_bl0)
+            singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis,
+                                                                                   factor=group_bl0)
         else:
-            res_gio, res_gii = sch[res].split(res_gi, 1)
+            singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis, 1)
 
         # split cout of res
-        res_ciooo, res_ciooi = sch[res].split(res_cioo, nparts=n_dim)
-        res_mooo, res_mooi = sch[res].split(res_moo, nparts=m_dim)
+        res_n_dim_axis, singlecore_out2bl1_loopn_axis = sch[res].split(out2bl1_loopn_axis, nparts=n_dim)
+        res_m_dim_axis, singlecore_out2al1_loopm_axis = sch[res].split(out2al1_loopm_axis, nparts=m_dim)
 
-        bl1_at_res_axis = res_ciooi
-        al1_at_res_axis = res_mooi
+        bl1_at_res_axis = singlecore_out2bl1_loopn_axis
+        al1_at_res_axis = singlecore_out2al1_loopm_axis
 
         if self._inner_batch.flag:
-            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+            if fixpipe_nz2nd_flag:
                 pass
-            elif res.dtype == "float32":
-                sch[res].reorder(res_no,
-                                 res_go,
-                                 res_ciooo,
-                                 res_mooo,
-                                 res_gio,
-                                 res_gii,
-                                 res_nio,
-                                 res_ciooi,
-                                 res_mooi,
-                                 res_cioi,
-                                 res_moi,
-                                 res_cii,
-                                 res_nii,
-                                 res_co1_ori_i, # third axis from bottom must be 2 for fp32
-                                 res_mi)
+            elif fixpipe_channelsplit_flag:
+                sch[res].reorder(res_batch_dim_axis,
+                                 res_group_dim_axis,
+                                 res_n_dim_axis,
+                                 res_m_dim_axis,
+                                 singlecore_out2bl0_loopg_axis,
+                                 res_bl0_group_opt_axis,
+                                 out2al1_loopbatch_axis,
+                                 singlecore_out2bl1_loopn_axis,
+                                 singlecore_out2al1_loopm_axis,
+                                 bl12bl0_loopn_axis,
+                                 al12al0_loopm_axis,
+                                 #===============cl0 tiling========================
+                                 cl02cub_loopn_axis,
+                                 cl02cub_loopm_axis,
+                                 #===============cub tiling========================
+                                 res_nc_factor_axis,
+                                 res_al1_batch_axis,
+                                 # third axis from bottom must be 2 for fp32
+                                 special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
+                                 res_m_factor_axis)
             else:
-                if anti_quant_spilt_flag(res):
-                    sch[res].reorder(res_no,
-                                     res_go,
-                                     res_ciooo,
-                                     res_mooo,
-                                     res_gio,
-                                     res_gii,
-                                     res_nio,
-                                     res_ciooi,
-                                     res_mooi,
-                                     res_cioi,
-                                     res_moi,
-                                     res_cii,
-                                     res_ciii,
-                                     res_nii,
-                                     res_mi)
+                if fixpipe_antiquant_flag:
+                    sch[res].reorder(res_batch_dim_axis,
+                                     res_group_dim_axis,
+                                     res_n_dim_axis,
+                                     res_m_dim_axis,
+                                     singlecore_out2bl0_loopg_axis,
+                                     res_bl0_group_opt_axis,
+                                     out2al1_loopbatch_axis,
+                                     singlecore_out2bl1_loopn_axis,
+                                     singlecore_out2al1_loopm_axis,
+                                     bl12bl0_loopn_axis,
+                                     al12al0_loopm_axis,
+                                     #===============cl0 tiling========================
+                                     cl02cub_loopn_axis,
+                                     cl02cub_loopm_axis,
+                                     #===============cub tiling========================
+                                     res_nc_factor_axis,
+                                     special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
+                                     res_al1_batch_axis,
+                                     res_m_factor_axis)
                 else:
-                    sch[res].reorder(res_no,
-                                     res_go,
-                                     res_ciooo,
-                                     res_mooo,
-                                     res_gio,
-                                     res_gii,
-                                     res_nio,
-                                     res_ciooi,
-                                     res_mooi,
-                                     res_cioi,
-                                     res_moi,
-                                     res_cii,
-                                     res_nii,
-                                     res_mi)
+                    sch[res].reorder(res_batch_dim_axis,
+                                     res_group_dim_axis,
+                                     res_n_dim_axis,
+                                     res_m_dim_axis,
+                                     singlecore_out2bl0_loopg_axis,
+                                     res_bl0_group_opt_axis,
+                                     out2al1_loopbatch_axis,
+                                     singlecore_out2bl1_loopn_axis,
+                                     singlecore_out2al1_loopm_axis,
+                                     bl12bl0_loopn_axis,
+                                     al12al0_loopm_axis,
+                                     #===============cl0 tiling========================
+                                     cl02cub_loopn_axis,
+                                     cl02cub_loopm_axis,
+                                     #===============cub tiling========================
+                                     res_nc_factor_axis,
+                                     res_al1_batch_axis,
+                                     res_m_factor_axis)
         else:
-            sch[res].reorder(res_no,
-                             res_go,
-                             res_ciooo,
-                             res_mooo,
-                             res_gio,
-                             res_gii,
-                             res_nio,
-                             res_ciooi,
-                             res_mooi,
-                             res_nii,
-                             res_cioi)
+            sch[res].reorder(res_batch_dim_axis,
+                             res_group_dim_axis,
+                             res_n_dim_axis,
+                             res_m_dim_axis,
+                             singlecore_out2bl0_loopg_axis,
+                             res_bl0_group_opt_axis,
+                             out2al1_loopbatch_axis,
+                             singlecore_out2bl1_loopn_axis,
+                             singlecore_out2al1_loopm_axis,
+                             res_al1_batch_axis,
+                             bl12bl0_loopn_axis)
 
-        cl0_at_res_axis = res_moi # c_slice_axis
+        cl0_at_res_axis = al12al0_loopm_axis # cl0_slice_axis
 
         if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-            res_pragma_axis = res_mi
+            res_pragma_axis = res_m_factor_axis
         else:
-            res_pragma_axis = res_cii
+            res_pragma_axis = res_nc_factor_axis
+
+        # cub_slice_axis
+        cub_slice_axis = cl02cub_loopm_axis
 
         blocks = batch_dim*n_dim*m_dim*group_dim
 
         if blocks != 1:
             multicore_axis = sch[res].fuse(
-                res_no,
-                res_go,
-                res_ciooo,
-                res_mooo)
+                res_batch_dim_axis,
+                res_group_dim_axis,
+                res_n_dim_axis,
+                res_m_dim_axis)
             if self._dynamic_shape.flag:
                 multicore_axis_o, _ = sch[res].split(multicore_axis, factor=1)
             else:
                 multicore_axis_o, _ = sch[res].split(multicore_axis, nparts=blocks)
 
-            bindcore_axis, multicore_axis_oi = sch[res].split(multicore_axis_o, 1)
+            bindcore_axis, batchbindonly_pragma_axis = sch[res].split(multicore_axis_o, 1)
             sch[res].bind(bindcore_axis, tvm.thread_axis("blockIdx.x"))
 
             if blocks == batch_dim:
-                sch[res].pragma(multicore_axis_oi, 'json_info_batchBindOnly', 1)
+                sch[res].pragma(batchbindonly_pragma_axis, 'json_info_batchBindOnly', 1)
         else:
-            bindcore_axis = res_no
+            bindcore_axis = res_batch_dim_axis
 
-        res_nioo, res_nioi = sch[res].split(res_nio, factor=1)
+        out2al1_loopbatch_axis_ori = out2al1_loopbatch_axis
+        out2al1_loopbatch_axis, res_batch_1_axis = sch[res].split(out2al1_loopbatch_axis_ori, factor=1)
 
         reorder_mn_flag = set_reorder_mn_flag()
 
         if self._tiling["n_bef_batch_flag"] and not reorder_mn_flag and not self._inner_batch.flag:
-            sch[res].reorder(res_ciooi, res_nioo)
+            sch[res].reorder(singlecore_out2bl1_loopn_axis, out2al1_loopbatch_axis)
 
         #=====================================tile cl0==============================================
         cl0_k1, cl0_k0 = cl0.op.reduce_axis
@@ -1873,9 +1783,53 @@ class Conv2dSchedule:
             al1_at_cl0_axis = cl0_kooo
             bl1_at_cl0_axis = cl0_kooi
 
+        #=======================tile fixpipe_res==============================
+        cub_pragma_axis = None
+
+        if self._eltwise_ub_fusion.flag:
+            cub = self._fixpipe_res
+            if self._fixpipe_fusion.nz2nd_flag:
+                cub_n1_axis, cub_n0_axis = sch[cub].split(cub.op.axis[2], self._block_n0)
+                cub_m_axis = cub.op.axis[1]
+            else:
+                cub_n1_axis = cub.op.axis[1]
+                cub_m_axis = cub.op.axis[2]
+
+            cub_out2ub_loopn_axis, cub_nc_factor_axis = sch[cub].split(cub_n1_axis, nc_factor_cub)
+            cub_out2ub_loopm_axis, cub_m_factor_axis = sch[cub].split(cub_m_axis, nparts=1)
+
+            if self._fixpipe_fusion.nz2nd_flag:
+                sch[cub].reorder(
+                    cub_out2ub_loopn_axis,
+                    cub_out2ub_loopm_axis,
+                    cub_m_factor_axis,
+                    cub_nc_factor_axis,
+                    cub_n0_axis
+                    )
+                cub_pragma_axis = cub_m_factor_axis
+            else:
+                sch[cub].reorder(
+                    cub_out2ub_loopn_axis,
+                    cub_out2ub_loopm_axis,
+                    cub_nc_factor_axis,
+                    cub_m_factor_axis
+                    )
+                cub_pragma_axis = cub_nc_factor_axis
+
+        #=================tile reform_by_vmuls/reform_by_vadds in quant op==================
+
+        self._quant_fusion.split_reform_axis(sch)
+
         #===============================attach=======================================
-        fixpipe_slice_axis = cl0_at_res_axis if self._group_opt*self._co1_opt > 16 else bindcore_axis
-        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cl0_at_res_axis)
+        # fixpipe
+        fixpipe_slice_axis = cub_slice_axis if self._group_opt*self._co1_opt > 16 else bindcore_axis
+        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_slice_axis)
+
+        # ub fusion
+        self._eltwise_ub_fusion.ub_tensors_attach(sch, res, cub_slice_axis)
+
+        # quant fusion
+        self._quant_fusion.quant_tensors_attach(sch, res, cub_slice_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
@@ -1904,9 +1858,10 @@ class Conv2dSchedule:
                           "k_outer": [cl0_kooo, cl0_kooi, cl0_koi],
                           "cl0_pragma_axis": cl0_ni,
                           "res_pragma_axis": res_pragma_axis,
+                          "cub_pragma_axis": cub_pragma_axis,
                           #================dynamic shape======================
                           "dynamic_al0_pragma_axis": al0_ni,
-                          }
+                         }
 
         return tiling_param, emit_insn_dict
 
@@ -1929,8 +1884,6 @@ class Conv2dSchedule:
             sch[cl0].preload()
 
         #=================================CL0 buffer align======================================
-        _, _, m0_cl0, n0_cl0, _, _ = cl0_tiling
-
         # CL0 shape: [group_opt, batch, co1_opt, howo, co0]
         sch[cl0].buffer_align(
             (1, 1),
@@ -1964,7 +1917,7 @@ class Conv2dSchedule:
         del pingpong_buffer["AUB_pbuffer"]
         if "BUB_pbuffer" in pingpong_buffer:
             del pingpong_buffer["BUB_pbuffer"]
-        del pingpong_buffer["CUB_pbuffer"]
+
         del pingpong_buffer["UBG_pbuffer"]
 
         al1 = tensor_param["al1"]
@@ -1980,6 +1933,14 @@ class Conv2dSchedule:
                         "CL0_pbuffer": cl0}
 
         # need to do bt doublebuffer with INPUT_L1_BT_pbuffer
+
+        if pingpong_buffer["CUB_pbuffer"] == 2:
+            for tensor in list(self._eltwise_ub_fusion.ub_body_tensors) + self._eltwise_ub_fusion.cache_write_tensors:
+                self._sch[tensor].double_buffer()
+            if self._eltwise_ub_fusion.flag:
+                self._sch[self._fixpipe_res].double_buffer()
+
+        del pingpong_buffer["CUB_pbuffer"]
 
         for key, value in pingpong_buffer.items():
             if value == 2 and pingpong_map[key] is not None:
@@ -2112,9 +2073,9 @@ class Conv2dSchedule:
                 weight_repeat_load_num = al1_nparts[1]
             sch[res].pragma(bindcore_axis, "json_info_weight_repeat", weight_repeat_load_num)
 
-        def res_emit_insn():
+        def fixpipe_res_emit_insn():
             """
-            Emit insn for res tensor.
+            Emit insn for fixpipe_res tensor.
             """
             layout_transform_dict = {
                 "int4": "channel_merge",
@@ -2123,32 +2084,43 @@ class Conv2dSchedule:
             }
 
             def get_res_insn_str():
+                """
+                Get res emit insn pragma.
+                """
                 if is_support_fixpipe_op():
                     return "fixpipe_op"
                 return "dma_copy"
 
-            def res_channel_merge_split_emit_insn():
+            def res_merge_split_emit_insn():
                 """
                 Emit insn for res tensor in channel merge/split situation.
                 """
-                sch[res].emit_insn(res_pragma_axis, "dma_copy",
-                                   attrs={"layout_transform": layout_transform_dict[res.dtype]})
+                sch[self._fixpipe_res].emit_insn(res_pragma_axis, "dma_copy",
+                                                 attrs={"layout_transform": layout_transform_dict[res.dtype]})
 
             def res_common_emit_insn():
                 """
                 Emit insn for res tensor in common usage.
                 """
-                sch[res].emit_insn(res_pragma_axis, get_res_insn_str())
+                fixpipe_res_pragma_axis = cub_pragma_axis if self._eltwise_ub_fusion.flag else res_pragma_axis
+                sch[self._fixpipe_res].emit_insn(fixpipe_res_pragma_axis, get_res_insn_str())
 
             if is_support_fixpipe_op():
                 return res_common_emit_insn()
 
             if self._output_nz2nd.flag:
-                return self._output_nz2nd.res_nz2nd_emit_insn(sch, res, res_pragma_axis)
+                return self._output_nz2nd.res_nz2nd_emit_insn(sch, self._fixpipe_res, res_pragma_axis)
             if res.dtype in ("int4", "int8", "float32"):
-                return res_channel_merge_split_emit_insn()
+                return res_merge_split_emit_insn()
 
             return res_common_emit_insn()
+
+        def res_emit_insn():
+            """
+            Emit insn for res tensor. 
+            """
+            if is_support_fixpipe_op() and not self._res.op.tag == "fixpipe_reform":
+                sch[res].emit_insn(res_pragma_axis, "dma_copy")
 
         def bias_emit_insn():
             """
@@ -2181,6 +2153,7 @@ class Conv2dSchedule:
         k_outer = emit_insn_dict["k_outer"]
         cl0_pragma_axis = emit_insn_dict["cl0_pragma_axis"]
         res_pragma_axis = emit_insn_dict["res_pragma_axis"]
+        cub_pragma_axis = emit_insn_dict["cub_pragma_axis"]
 
         #=============================emit insn=========================================
         im2col_emit_insn()
@@ -2191,11 +2164,17 @@ class Conv2dSchedule:
 
         cl0_emit_insn()
 
+        fixpipe_res_emit_insn()
+
         res_emit_insn()
 
         bias_emit_insn()
 
         self._fixpipe_fusion.fixpipe_inputs_emit_insn(sch)
+
+        self._eltwise_ub_fusion.ub_tensors_emit_insn(sch, res)
+
+        self._quant_fusion.quant_tensors_emit_insn(sch)
 
 
 def conv_v220_schedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_case=None, var_range=None):

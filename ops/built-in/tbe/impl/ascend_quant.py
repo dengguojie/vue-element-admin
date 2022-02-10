@@ -16,6 +16,7 @@
 ascend_quant
 """
 import functools
+import tbe.common.platform.platform_info as platform_info
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -45,7 +46,8 @@ def is_support_a100():
     True: a100 version.
     False: other version.
     """
-    if tbe_platform.api_check_support("tik.vgatherb"):
+    if tbe_platform.api_check_support("tik.vgatherb") and not platform_info.intrinsic_check_support(
+        "Intrinsic_fix_pipe_unit_list", "post_eltwise"):
         return True
     return False
 
