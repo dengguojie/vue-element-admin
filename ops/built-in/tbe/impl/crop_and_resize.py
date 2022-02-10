@@ -368,13 +368,15 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
         boxes_ub_small_fp16 = obj.apply_mem((men_len,), "boxes_ub_h1_fp16", tik.scope_ubuf, "float16")
         tik_instance.data_move(boxes_ub_small_fp16, obj.input_gm_list[1][box_num_offset * 4],
                                0, 1, copy_burst_len, 0, 0)
-        tik_instance.vconv(vconv_numbers_per_vector, "", boxes_ub_small, boxes_ub_small_fp16, men_len // vconv_numbers_per_vector, 1, 1, 8, 4)
+        tik_instance.vconv(vconv_numbers_per_vector, "", boxes_ub_small, boxes_ub_small_fp16,
+                           men_len // vconv_numbers_per_vector, 1, 1, 8, 4)
         # copy boxes[2] in boxes_ub_big
         copy_burst_len = get_ceil_int(box_num_sigment*4 - 2, obj.boxes_block_num * 2)
         boxes_ub_big_fp16 = obj.apply_mem((men_len,), "boxes_ub_h2_fp16", tik.scope_ubuf, "float16")
         tik_instance.data_move(boxes_ub_big_fp16, obj.input_gm_list[1][box_num_offset*4 + 2],
                                0, 1, copy_burst_len, 0, 0)
-        tik_instance.vconv(vconv_numbers_per_vector, "", boxes_ub_big, boxes_ub_big_fp16, men_len // vconv_numbers_per_vector, 1, 1, 8, 4)
+        tik_instance.vconv(vconv_numbers_per_vector, "", boxes_ub_big, boxes_ub_big_fp16,
+                           men_len // vconv_numbers_per_vector, 1, 1, 8, 4)
     else:
         copy_burst_len = get_ceil_int(box_num_sigment * 4, obj.boxes_block_num)
         tik_instance.data_move(boxes_ub_small, obj.input_gm_list[1][box_num_offset * 4],
@@ -696,11 +698,14 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                                 vconv_repeat_time = obj.image_c1 * obj.image_c0 // vconv_numbers_per_vector
                                 last_num = obj.image_c1 * obj.image_c0 % vconv_numbers_per_vector
                                 if vconv_repeat_time > 0:
-                                    tik_instance.vconv(vconv_numbers_per_vector, "", move_out_tmp, h1_w_ub[obj.image_c1 * obj.image_c0],
+                                    tik_instance.vconv(vconv_numbers_per_vector, "", move_out_tmp,
+                                                       h1_w_ub[obj.image_c1 * obj.image_c0],
                                                        vconv_repeat_time, 1, 1, 4, 8)
                                 if last_num > 0:
-                                    tik_instance.vconv(last_num, "", move_out_tmp[vconv_repeat_time * vconv_numbers_per_vector],
-                                                       h1_w_ub[obj.image_c1*obj.image_c0 + vconv_repeat_time*vconv_numbers_per_vector],
+                                    tik_instance.vconv(last_num, "",
+                                                       move_out_tmp[vconv_repeat_time * vconv_numbers_per_vector],
+                                                       h1_w_ub[obj.image_c1*obj.image_c0 +
+                                                               vconv_repeat_time*vconv_numbers_per_vector],
                                                        1, 1, 1, 4, 8)
                                 tik_instance.data_move(output_gm[output_offset],
                                                        move_out_tmp, 0, obj.image_c1, 1,
@@ -718,8 +723,7 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                             output_offset = \
                                 _out_batch_idx*obj.image_c1*obj.crop_width*obj.crop_height*obj.image_c0 \
                                 + _crop_height_idx*obj.crop_width*obj.image_c0 + _crop_width_idx*obj.image_c0
-                            blocks_per_c0 = (1 if obj.boxes_ori_type == "float16"
-                                            else 2)
+                            blocks_per_c0 = 1 if obj.boxes_ori_type == "float16" else 2
                             tik_instance.data_move(output_gm[output_offset],
                                                    h1_w_ub, 0, obj.image_c1, blocks_per_c0, 0,
                                                    obj.crop_height*obj.crop_width*blocks_per_c0 - blocks_per_c0)
@@ -734,8 +738,7 @@ def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
                     output_offset = \
                         _out_batch_idx*obj.image_c1*obj.crop_width*obj.crop_height*obj.image_c0 \
                         + _crop_height_idx*obj.crop_width*obj.image_c0
-                    blocks_per_c0 = (1 if obj.boxes_ori_type == "float16"
-                                    else 2)
+                    blocks_per_c0 = 1 if obj.boxes_ori_type == "float16" else 2
                     tik_instance.data_move(output_gm[output_offset],
                                            h0_w_ub, 0, obj.image_c1, blocks_per_c0 * obj.crop_width, 0,
                                            obj.crop_height*obj.crop_width*blocks_per_c0 - blocks_per_c0*obj.crop_width)
