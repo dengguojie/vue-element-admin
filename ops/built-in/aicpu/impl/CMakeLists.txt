@@ -122,6 +122,7 @@ if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
         kernels/normalized/custom/research/abs.cc
         kernels/normalized/custom/research/add_n.cc
+        kernels/normalized/custom/research/adjust_saturation.cc
         kernels/normalized/custom/research/bitwise_and.cc
         kernels/normalized/custom/research/bitwise_or.cc
         kernels/normalized/custom/research/bitwise_xor.cc

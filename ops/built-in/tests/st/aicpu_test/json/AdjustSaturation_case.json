@@ -1,0 +1,380 @@
+[
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_512",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[3, 3, 6, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[3, 3, 6, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[3, 3, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[3, 3, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[6, 6, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[6, 6, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[6, 12, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[6, 12, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[12, 12, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[12, 12, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[12, 24, 19, 3, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[12, 24, 19, 3, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[24, 24, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[24, 24, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[24, 48, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[24, 48, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[48, 48, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[48, 48, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[48, 96, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[48, 96, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 19, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 19, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 38, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 38, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 152, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[96, 96, 152, 3]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "AdjustSaturation",
+    "case_name": "DATA_TYPE_DT_FLOAT_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[267, 200, 200, 3]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      },
+      {
+        "format": "ND",
+        "shape": [[]],
+        "type": ["float32"],
+        "value_range": [[0, 1]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[267, 200, 200, 3]],
+        "type": ["float32"]
+      }
+    ]
+  }
+]
