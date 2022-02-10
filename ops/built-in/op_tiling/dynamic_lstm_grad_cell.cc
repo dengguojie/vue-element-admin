@@ -23,6 +23,8 @@ using namespace std;
 
 namespace optiling {
 static const int INPUT_SIZE = 11;
+const int64_t BLOCK_SIZE = 16;
+const int64_t TOTAL_INPUT_NUMS_NO_MASK = 20;
 static map<std::string, int64_t> TYPE_SIZE = {
     {
         "float16", 2
@@ -154,8 +156,8 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
 
   int64_t hiddenSize = op_paras.inputs[2].tensor[0].shape[1];
   int64_t batchSize = op_paras.inputs[2].tensor[0].shape[2];
-  tilingPara["hiddenSize"] = hiddenSize * 16;
-  tilingPara["batchSize"] = batchSize * 16;
+  tilingPara["hiddenSize"] = hiddenSize * BLOCK_SIZE;
+  tilingPara["batchSize"] = batchSize * BLOCK_SIZE;
   tilingPara["useCoreNum"] = hiddenSize * batchSize >= deviceCoreNum ? deviceCoreNum : hiddenSize * batchSize;
   tilingPara["fuseSize"] = shapeSize;
   std::string cDType = op_paras.inputs[1].tensor[0].dtype;
@@ -170,7 +172,7 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   int64_t outLoopEleNum = eachCoreHandNum / outLoopNum;
   int64_t ubTensorNum = 21;
   if (!maskInput) {
-    ubTensorNum = 20;
+    ubTensorNum = TOTAL_INPUT_NUMS_NO_MASK;
   }
   int64_t totalNumEachCore = ubTensorNum * eachCoreHandNum;
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling check input pass4", op_type.c_str());

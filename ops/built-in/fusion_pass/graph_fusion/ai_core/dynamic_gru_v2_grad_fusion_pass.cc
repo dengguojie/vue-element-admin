@@ -539,7 +539,7 @@ map<std::string, ge::NodePtr> DynamicGRUV2GradFusionPass::AddGRUHiddenGradNode(g
                         return result);
     } else {
       dntXConcatTNode = AddTConcatNode("/GRUV2Grad/ConcatDntX", "dnt_x", fzDims, dynamicGRUGradNode,
-                                              result_node[0], graph, newNodes, failStatus);
+                                       result_node[0], graph, newNodes, failStatus);
       FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                    "AddDntXConcatTNode:check failed, fusion failed."),
                         return result);
@@ -584,8 +584,8 @@ map<std::string, ge::NodePtr> DynamicGRUV2GradFusionPass::AddGRUHiddenGradNode(g
   return result;
 }
 
-ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
-                                                        vector<ge::NodePtr>& newNodes, bool& failStatus) {
+ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
+                                                      vector<ge::NodePtr> &newNodes, bool &failStatus) {
   ge::OpDescPtr transDataDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
       (transDataDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUweightGrad/Dwh/HTransData",
@@ -770,7 +770,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHConcatNode(ge::NodePtr dynamicGRUGra
   // Edge
   if (fusion_reduce) {
     ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["init_h"])->GetPeerOutAnchor(),
-                                                                concatNode->GetInDataAnchor(0));
+                            concatNode->GetInDataAnchor(0));
   } else {
     ge::GraphUtils::AddEdge(transNode->GetOutDataAnchor(0), concatNode->GetInDataAnchor(0));
   }
@@ -1456,9 +1456,9 @@ Status DynamicGRUV2GradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicGRUGrad
 }
 
 ge::NodePtr DynamicGRUV2GradFusionPass::GetConstNodeOne(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
-                                                        const vector<int64_t>& axis,
-                                                        ge::ComputeGraph& graph,
-                                                        vector<ge::NodePtr>& newNodes, bool& failStatus){
+                                                        const vector<int64_t> &axis,
+                                                        ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
+                                                        bool &failStatus) {
   int64_t n_size = batch;
   ge::GeTensorPtr assitPtr = nullptr;
   int64_t matrixSize = (n_size + fzDim - 1) / fzDim * fzDim * fzDim * t_size;

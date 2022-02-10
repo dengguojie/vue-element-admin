@@ -61,7 +61,8 @@ void PrintTilingParams(const std::string& opType, const DynamicRnnV3Param& param
 }
 
 // return tiling_indextiling_index
-int32_t GetRnnV3LibItem(const std::string& opType, const nlohmann::json& opCompileInfoJson, std::vector<int64_t> xShape) {
+int32_t GetRnnV3LibItem(const std::string &opType, const nlohmann::json &opCompileInfoJson,
+                        std::vector<int64_t> xShape) {
   OP_LOGD(opType.c_str(), "enter DynamicRnnV3Tiling GetRnnV3LibItem");
   const nlohmann::json& allVars = opCompileInfoJson["vars"];
   if (allVars.empty()) {
@@ -81,7 +82,8 @@ int32_t GetRnnV3LibItem(const std::string& opType, const nlohmann::json& opCompi
       return DEFAULT_RETURN;
     }
     if ((tune_shape_list[i][0] == -1) && (tune_shape_list[i][1] == -1)) {
-      OP_LOGD(opType.c_str(), "matched floor schedule, the matched schedule is %lld", tune_shape_list[i][DEFAULT_INDEX_TWO]);
+      OP_LOGD(opType.c_str(), "matched floor schedule, the matched schedule is %lld",
+              tune_shape_list[i][DEFAULT_INDEX_TWO]);
       int32_t res = static_cast<int32_t>(tune_shape_list[i][DEFAULT_INDEX_TWO]);
       return res;
     }
@@ -129,7 +131,6 @@ bool DynamicRnnV3Tiling(const std::string& opType, const TeOpParas& opParas, con
   int32_t sequenceLength = xShape[0];
   int32_t dynamicRnnBatch = xShape[DEFAULT_INDEX_TWO];
   int32_t chequeIndex = GetRnnV3LibItem(opType, op_info, xShape);
-
   if (chequeIndex == DEFAULT_RETURN) {
     OP_LOGE(opType.c_str(), "DynamicRnnV3Tiling has no matched schedule.");
     return false;
@@ -156,5 +157,4 @@ bool DynamicRnnV3Tiling(const std::string& opType, const TeOpParas& opParas, con
 
 // register tiling interface of the DynamicRnnV3 op
 REGISTER_OP_TILING_FUNC_BUFFERED(DynamicRNNV3, DynamicRnnV3Tiling);
-
 }  // namespace optiling

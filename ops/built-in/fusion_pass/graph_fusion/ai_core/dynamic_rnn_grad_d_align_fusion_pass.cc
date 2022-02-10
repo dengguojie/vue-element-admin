@@ -309,9 +309,7 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::GetDynamicReshapeNode(
   std::vector<string> dep_inputs = {"shape"};
   reshape_desc->SetOpInferDepends(dep_inputs);
 
-  ge::GeShape shapeConstShape = ge::GeShape({
-      W_INDEX,
-  });
+  ge::GeShape shapeConstShape = ge::GeShape({W_INDEX,});
   auto shapeDescConst = ge::GeTensorDesc(shapeConstShape, ge::FORMAT_ND, ge::DT_INT64);
   shapeDescConst.SetOriginShape(shapeConstShape);
   shapeDescConst.SetOriginFormat(ge::FORMAT_ND);
@@ -341,9 +339,7 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::GetDynamicReshapeNode(
   ge::NodePtr const_body_node = graph.AddNode(const_body_opdesc);
   FUSION_PASS_CHECK(const_body_node == nullptr, OP_LOGE("Create const Op operator error"), return result);
 
-  ge::GeShape lastConstShape = ge::GeShape({
-      W_INDEX,
-  });
+  ge::GeShape lastConstShape = ge::GeShape({W_INDEX,});
   auto lastDescConst = ge::GeTensorDesc(lastConstShape, ge::FORMAT_ND, ge::DT_INT64);
   lastDescConst.SetOriginShape(lastConstShape);
   lastDescConst.SetOriginFormat(ge::FORMAT_ND);
@@ -969,9 +965,9 @@ ge::ComputeGraphPtr DynamicRNNGradDAlignFusionPass::BuildBodyGraph(ge::ComputeGr
       .SetInput(I_INDEX, {cellNodeName}, {DH_INDEX})
       .SetInput(O_INDEX, {cellNodeName, addName}, {DC_INDEX, X_INDEX});
   if (hasSeqLength) {
-    graph_builder.SetInput(12, {cellNodeName}, {11});
+    graph_builder.SetInput(J_INDEX, {cellNodeName}, {I_INDEX});
   } else {
-    graph_builder.SetUselessInput(12);
+    graph_builder.SetUselessInput(J_INDEX);
   }
   graph_builder.SetUselessInput(TANHCT_INDEX);
   graph_builder.SetInput(W_INDEX, {transposeNodeName}, {X_INDEX});
@@ -1057,7 +1053,8 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::BuildWhileNodes(
           .AddInput("input10", dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["o"]).Clone())
           .AddInput("input11",
                     dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["tanhct"]).Clone())
-          .AddInput("input12", dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["tanhct"]).Clone())
+          .AddInput("input12",
+                    dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["tanhct"]).Clone())
           .AddInput("input13", concatDgateOriDesc)
           .AddInput("input14", curTDesc)
           .AddInput("input15", tDesc)
@@ -1132,7 +1129,7 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::BuildT0Graph(ge::NodePtr dyn
   ge::NodePtr t0MatmulNode = graph.AddNode(matmulNode);
 
   std::string t0castNodeName = DynamicRNNGradName + "T0CastCell";
-  ge::OpDescPtr t0CastDesc= AddCastNode(t0castNodeName, dynamicRNNGradNode, failStatus);
+  ge::OpDescPtr t0CastDesc = AddCastNode(t0castNodeName, dynamicRNNGradNode, failStatus);
   ge::NodePtr t0CastNode = graph.AddNode(t0CastDesc);
 
   std::string t0transposeNodeName = DynamicRNNGradName + "T0TransposeCell";
@@ -1674,11 +1671,11 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::DynamicAddLSTMInputGradNode(
   ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(TANHCT_INDEX)->GetPeerOutAnchor(),
                           whileNode->GetInDataAnchor(I_INDEX));
   if (hasSeqLength) {
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(16)->GetPeerOutAnchor(),
-                            whileNode->GetInDataAnchor(12));
+    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(MASK_INDEX)->GetPeerOutAnchor(),
+                            whileNode->GetInDataAnchor(J_INDEX));
   } else {
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(15)->GetPeerOutAnchor(),
-                            whileNode->GetInDataAnchor(12));
+    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(TANHCT_INDEX)->GetPeerOutAnchor(),
+                            whileNode->GetInDataAnchor(J_INDEX));
   }
   ge::GraphUtils::AddEdge(cellT0Node->GetOutDataAnchor(X_INDEX), dgateReshapeNode->GetInDataAnchor(X_INDEX));
   ge::GraphUtils::AddEdge(dgateReshapeNode->GetOutDataAnchor(X_INDEX), whileNode->GetInDataAnchor(F_INDEX));

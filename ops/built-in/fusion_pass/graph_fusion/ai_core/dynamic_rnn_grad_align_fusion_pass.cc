@@ -1559,7 +1559,7 @@ OpDescPtr &DynamicRNNGradAlignFusionPass::SetDescForTransdataDb(OpDescPtr &trans
   transDbInputDesc.SetOriginShape(GeShape(trans_origin_dims));
   transDbInputDesc.SetOriginFormat(FORMAT_ND);
   transdataDbDesc->AddInputDesc("trans_src", transDbInputDesc);
-  //output for tarnsdata
+  // output for tarnsdata
   GeTensorDesc transDboutputDesc =
       GeTensorDesc(GeShape(trans_origin_dims), FORMAT_ND, DT_FLOAT16);
   transDboutputDesc.SetOriginShape(GeShape(trans_origin_dims));
