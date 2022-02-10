@@ -191,6 +191,7 @@ set(_optiling_files
   vector_tiling.cc
   lru_cache_v2.cc
   cache_tiling.cc
+  dw_cache_tiling.cc
   tiling_handler.h
   prod_force_se_a.cc
   trace.cc

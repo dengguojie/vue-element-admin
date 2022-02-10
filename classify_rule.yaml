@@ -194,6 +194,10 @@ cube:
       - ops/built-in/op_tiling/conv2d_backprop_input.cc
       - ops/built-in/op_tiling/conv2d_bp_input_cache_tiling.cc
       - ops/built-in/op_tiling/conv2d_bp_input_cache_tiling.h
+      - ops/built-in/op_tiling/dw_cache_tiling.cc
+      - ops/built-in/op_tiling/dw_cache_tiling.h
+      - ops/built-in/op_tiling/cache_tiling.cc
+      - ops/built-in/op_tiling/cache_tiling.h
       - ops/built-in/op_tiling/conv2d_transpose.cc
       - ops/built-in/op_tiling/conv3d_backprop_filter.cc
       - ops/built-in/op_tiling/conv3d_backprop_input.cc
