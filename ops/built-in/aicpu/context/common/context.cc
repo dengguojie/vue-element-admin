@@ -59,7 +59,7 @@ uint32_t CpuKernelContext::Init(NodeDef *node_def) {
                          op_.c_str())
     auto ret =
         attrs_.insert(std::make_pair(iter->first, std::move(attr_value_ptr)));
-    if (ret.second != true) {
+    if (!ret.second) {
       KERNEL_LOG_ERROR("Insert attr[%s] failed in op[%s].", iter->first.c_str(),
                        op_.c_str());
       return KERNEL_STATUS_INNER_ERROR;

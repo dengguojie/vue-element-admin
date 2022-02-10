@@ -151,9 +151,9 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   size_t outer = 1;
   size_t depth = 1;
   for (int32_t i = 0; i < rank; ++i) {
-    if (i < axis){
+    if (i < axis) {
       inner *= shape->GetDimSize(i);
-    } else if (i > axis){
+    } else if (i > axis) {
       outer *= shape->GetDimSize(i);
     } else {
       depth = shape->GetDimSize(i);

@@ -84,7 +84,7 @@ uint32_t ConjCpuKernel::ConjCompute(CpuKernelContext &ctx) const {
       maxCoreNum = dataNum;
     }
     auto shardConj = [&inputX, &outputY](size_t start, size_t end) {
-      for (size_t i = start; i < end; i++){
+      for (size_t i = start; i < end; i++) {
         *(outputY + i) = std::conj(*(inputX + i));
       }
     };

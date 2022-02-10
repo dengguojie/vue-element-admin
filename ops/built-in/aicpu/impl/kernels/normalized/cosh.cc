@@ -41,7 +41,7 @@ inline T ScalarCosh(T x) {
 
 template <>
 inline Eigen::half ScalarCosh(Eigen::half x) {
-  const Eigen::half val{
+  const Eigen::half val {
       static_cast<Eigen::half>(std::cosh(static_cast<std::float_t>(x)))};
   return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
 }
