@@ -5994,7 +5994,7 @@ class CceConvOp:
                             and dim_map['out_img_shape'][2] > tiling["CL0_matrix"][1] * 16):
                         out_extract_axis = m_outer_outer_inner
                     elif not self._dynamic_flag and out_extract_axis == -1 and dim_map["out_img_shape"][0] > 1:
-                        out_extract_axis = -1
+                        out_extract_axis = cout1_group_inner_outer
 
         if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map:
             sch[res_c].pragma(c_pragma_axis, "gm_no_sync", 1)
