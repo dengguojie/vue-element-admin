@@ -144,8 +144,8 @@ IMPLEMT_COMMON_INFERFUNC(AscendAntiQuantInferShape) {
     int type;
     if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
       output_desc->SetDataType((ge::DataType)type);
-      return GRAPH_SUCCESS;
     }
+    return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
 }
