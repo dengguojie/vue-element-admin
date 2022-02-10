@@ -48,8 +48,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                    kernel_name):
         super(RoiClassOneC0FML1, self).init_param(roinum_pooledimg, \
                             shapedict_list, spatial_scale_list, kernel_name)
-        self.res_pad = 0 if((self.pooled_h % 8) == 0) else \
-            (roi_pooling_base.align(self.pooled_h, 8) - self.pooled_h)
+        self.res_pad = 0 if((self.pooled_h % 8) == 0) else (roi_pooling_base.align(self.pooled_h, 8) - self.pooled_h)
         self.fm_w_align = roi_pooling_base.align(self.fm_w, 8)
 
     def proposal_pooling_h(self, block_id, proposal_id, fm_c1_index):
@@ -84,7 +83,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
             scalar_roi_bin_h.set_as(self.roi_bin_h[poolh, proposal_id])
 
             with self.tik_instance.if_scope(tik.all(scalar_roi_bin_h != 0, scalar_roi_width != 0)):
-                coeff = self.fm_c0 * roi_pooling_base.TYPELEN_DICT[self.dtype] // 32
+                coeff = self.fm_c0 * roi_pooling_base.TYPELEN_DICT.get(self.dtype) // 32
                 self.tik_instance.data_move(proposal_fm_data,
                                             self.fm_c0_data[
                                                 scalar_roi_start_h,
@@ -98,9 +97,9 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                                             (self.fm_w_align -
                                              scalar_roi_width) * coeff)
 
-                ceil_loop = 16 // roi_pooling_base.TYPELEN_DICT[self.dtype]
+                ceil_loop = 16 // roi_pooling_base.TYPELEN_DICT.get(self.dtype)
                 with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(scalar_roi_width, ceil_loop)) as loop_w:
-                    self.tik_instance.vec_max(256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                    self.tik_instance.vec_max(256 // roi_pooling_base.TYPELEN_DICT.get(self.dtype),
                                               self.pooled_h_res[poolh, ceil_loop * loop_w, 0],
                                               proposal_fm_data[0, ceil_loop * loop_w, 0],
                                               self.pooled_h_res[poolh, ceil_loop * loop_w, 0],
@@ -131,7 +130,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                 with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(self.pooled_h + self.res_pad, 8)) \
                         as loop_h:
                     self.tik_instance.vmax(
-                        256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                        256 // roi_pooling_base.TYPELEN_DICT.get(self.dtype),
                         self.pooled_res[loop_h * 8, poolw, 0],
                         self.pooled_h_res[loop_h * 8, scalar_roi_start_w_from0, 0],
                         self.pooled_res[loop_h * 8, poolw, 0],
@@ -169,7 +168,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
             with self.tik_instance.for_range(0, roi_pooling_base.ceil_div(self.pooled_h + self.res_pad, 8)) as loop_h:
                 with self.tik_instance.for_range(0, 2) as c0_index:
                     self.tik_instance.vmax(
-                        256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                        256 // roi_pooling_base.TYPELEN_DICT.get(self.dtype),
                         self.pooled_res[loop_h * 8, poolw, c0_index, 0],
                         self.pooled_h_res[loop_h * 8, scalar_roi_start_w_from0, c0_index, 0],
                         self.pooled_res[loop_h * 8, poolw, c0_index, 0],
@@ -197,7 +196,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                                          name="fm_c0_data",
                                          scope=tbe_platform.scope_cbuf)
             c0_burst_len = self.fm_h * self.fm_w * self.fm_c0 * \
-                           roi_pooling_base.TYPELEN_DICT[self.dtype] // 32
+                           roi_pooling_base.TYPELEN_DICT.get(self.dtype) // 32
 
             self.tik_instance.data_move(self.fm_c0_data,
                                         self.x[block_id, fm_c1_index, 0, 0, 0],
@@ -224,13 +223,13 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                         scalar_propoal_width.set_as(
                             self.roi_width[proposal_id])
 
-                        ceil_loop = 16 // roi_pooling_base.TYPELEN_DICT[self.dtype]
-                        coeff = self.fm_c0 * roi_pooling_base.TYPELEN_DICT[self.dtype] // 32
+                        ceil_loop = 16 // roi_pooling_base.TYPELEN_DICT.get(self.dtype)
+                        coeff = self.fm_c0 * roi_pooling_base.TYPELEN_DICT.get(self.dtype) // 32
                         with self.tik_instance.for_range(
                                 0, roi_pooling_base.ceil_div(scalar_propoal_width,
                                                              ceil_loop)) as loop_w:
                             self.tik_instance.vec_dup(
-                                256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                                256 // roi_pooling_base.TYPELEN_DICT.get(self.dtype),
                                 self.pooled_h_res[0, ceil_loop * loop_w, 0],
                                 0, self.pooled_h + self.res_pad,
                                 self.fm_w_align * coeff)
@@ -244,10 +243,10 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                             name="pooled_res")
 
                         self.tik_instance.vec_dup(
-                            256 // roi_pooling_base.TYPELEN_DICT[self.dtype],
+                            256 // roi_pooling_base.TYPELEN_DICT.get(self.dtype),
                             self.pooled_res[0, 0, 0], 0,
                             ((self.pooled_h + self.res_pad) * self.pooled_w) * self.fm_c0 * \
-                            roi_pooling_base.TYPELEN_DICT[self.dtype] // 256,
+                            roi_pooling_base.TYPELEN_DICT.get(self.dtype) // 256,
                             8)
                         if self.dtype == "float32":
                             self.proposal_pooling_w_float32(proposal_id)
@@ -263,7 +262,7 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                                                     0, 1,
                                                     self.
                                                     pooled_h*self.pooled_w *
-                                                    roi_pooling_base.TYPELEN_DICT[self.dtype] *
+                                                    roi_pooling_base.TYPELEN_DICT.get(self.dtype) *
                                                     self.fm_c0//32, 0, 0)
         if self.feature_batch != 1:
             self.calced_rois.set_as(self.calced_rois +

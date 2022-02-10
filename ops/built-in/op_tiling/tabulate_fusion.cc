@@ -39,6 +39,8 @@ constexpr int64_t NUM_8 = 8;
 constexpr int64_t NUM_15 = 15;
 constexpr int64_t NUM_64 = 64;
 constexpr int64_t NUM_128 = 128;
+constexpr int64_t INDEX_2 = 2;
+constexpr int64_t INDEX_3 = 3;
 
 struct TabulateFusionTilingParams {
   int64_t needCoreNum;
@@ -88,7 +90,7 @@ bool CheckInOutSize(const std::string& opType, const TeOpParas& opParas) {
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The length of outputs should be 1"), return false);
 
   OP_TILING_CHECK(opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
-                      opParas.inputs[2].tensor.empty() || opParas.inputs[3].tensor.empty(),
+                      opParas.inputs[INDEX_2].tensor.empty() || opParas.inputs[INDEX_3].tensor.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "Some of input tensors is empty"), return false);
   OP_TILING_CHECK(opParas.outputs[0].tensor.empty() || opParas.outputs[1].tensor.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "Some of output tensors is empty"), return false);
@@ -109,11 +111,11 @@ bool CheckShapesInfo(const std::string& opType, const TeOpParas& opParas, int64_
   OP_TILING_CHECK(tableInfoShape.size() != NUM_1,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of table_info should be 1"), return false);
 
-  std::vector<int64_t> emXShape = opParas.inputs[2].tensor[0].shape;
+  std::vector<int64_t> emXShape = opParas.inputs[INDEX_2].tensor[0].shape;
   OP_TILING_CHECK(emXShape.size() != NUM_2, VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of em_x should be 2"),
                   return false);
 
-  std::vector<int64_t> emShape = opParas.inputs[3].tensor[0].shape;
+  std::vector<int64_t> emShape = opParas.inputs[INDEX_3].tensor[0].shape;
   OP_TILING_CHECK(emShape.size() != NUM_3, VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of em should be 3"),
                   return false);
 
@@ -131,12 +133,12 @@ bool CheckShapesInfo(const std::string& opType, const TeOpParas& opParas, int64_
   OP_TILING_CHECK(tableInfoShape[0] < NUM_5,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim 0 of table_info should not be less than 5"),
                   return false);
-  OP_TILING_CHECK((emXShape[0] * emXShape[1] != nloc * nnei) || (emShape[2] != NUM_4),
+  OP_TILING_CHECK((emXShape[0] * emXShape[1] != nloc * nnei) || (emShape[INDEX_2] != NUM_4),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of em_x or em is invalid"), return false);
 
   std::vector<int64_t> descriptorShape = opParas.outputs[0].tensor[0].shape;
   OP_TILING_CHECK(descriptorShape.size() != NUM_3 ||
-                      descriptorShape[1] != NUM_4 || descriptorShape[2] != lastLayerSize,
+                      descriptorShape[1] != NUM_4 || descriptorShape[INDEX_2] != lastLayerSize,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "The shape of output should be (nloc, 4, last_layer_size)"),
                   return false);
 

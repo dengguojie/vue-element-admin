@@ -115,72 +115,6 @@ class PsroiClass():
     """
     Function: class that execute psroipooling
     """
-    def _input_param_check(self):
-        """
-        check if the inputs are valid
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        if not tbe_platform.api_check_support("tik.vrelu", "float32"):
-            para_check.check_dtype(self.dtype, (FP16, ), param_name="x")
-            para_check.check_dtype(self.roi_dtype, (FP16, ), param_name="rois")
-        else:
-            para_check.check_dtype(self.dtype, (FP16, FP32), param_name="x")
-            para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
-
-        if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal("psroipooling", "x", "rois and y", self.dtype,
-                                                                  self.roi_dtype + "and" + self.y_dtype)
-
-        para_check.check_shape(self.x_shape, param_name="x")
-        para_check.check_shape(self.roi_shape, param_name="rois")
-        para_check.check_shape(self.y_shape, param_name="y")
-        # x and y must be 5HD
-        para_check.check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
-        para_check.check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
-
-        if self.roi_shape[0] != self.x_shape[0]:
-            error_manager_vector.raise_err_inputs_shape_not_equal("psroipooling", "x_shape[0]", "roi_shape[0]",
-                                                                  str(self.x_shape[0]), str(self.roi_shape[0]),
-                                                                  str(self.roi_shape[0]))
-
-        if self.roi_shape[1] != DIGIT_5:
-            error_manager_vector.raise_err_input_value_invalid("psroipooling", "roi_shape[1]", str(DIGIT_5),
-                                                               str(self.roi_shape[1]))
-
-        if self.roi_shape[0] * self.roi_shape[2] != self.y_shape[0]:
-            error_manager_vector.raise_err_input_value_invalid("psroipooling", "all num of rois",
-                                                               str(self.roi_shape[0] * self.roi_shape[2]),
-                                                               str(self.y_shape[0]))
-
-        if self.group_size >= DIGIT_128:
-            error_manager_vector.raise_err_input_value_invalid("psroipooling", "group_size",
-                                                               "less than " + str(DIGIT_128), str(self.group_size))
-
-        if self.x_shape[1] // self.y_shape[1] != self.y_shape[2] * self.y_shape[3]:
-            error_manager_vector.raise_err_check_params_rules(
-                "psroipooling", "it should follow the rule: \
-                                                              self.x_shape[1]//self.y_shape[1]== \
-                                                              self.y_shape[2]*self.y_shape[3].", "x_shape[1]",
-                str(self.x_shape[1]))
-
-        if self.group_size != self.y_shape[2] or self.group_size != self.y_shape[3]:
-            error_manager_vector.raise_err_inputs_shape_not_equal("psroipooling", "y_shape[2] and y_shape[3]",
-                                                                  "group_size",
-                                                                  str(self.y_shape[2]) + ", " + str(self.y_shape[3]),
-                                                                  str(self.group_size), str(self.group_size))
-
-        if ceil_value(self.output_dim, C0) != self.y_shape[1]:
-            error_manager_vector.raise_err_check_params_rules("psroipooling",
-                                                              "(output_dim + C0 -1) // C0 == y_shape[1]", "output_dim",
-                                                              str(self.output_dim))
-
     def __init__(self, x_dict, rois_dict, y_dict, params, kernel_name):
         """
         constructor of PsroiClass
@@ -258,6 +192,168 @@ class PsroiClass():
         self.cache_in_l1 = False
         self.cache_l1 = None
         self.const_0_127_ub = None
+
+    def psroi_pooling_compute(self):
+        """
+        compute of psroipooling.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        outer_loop = self.roi_num_b // self.aicore_num
+        outer_tail = self.roi_num_b % self.aicore_num
+        roi_step = self.roi_num_step
+
+        # outer_loop is 0
+        num1, num2 = 1, 1
+        block_num = outer_tail
+        roi_loop1, roi_step1_l = 1, 1
+        roi_loop2, roi_step2_l = 1, 1
+        if outer_loop > 0:
+            block_num = self.aicore_num
+            if outer_tail > 0:
+                num1 = outer_loop + 1
+                num2 = outer_loop
+            else:
+                num1 = outer_loop
+                num2 = outer_loop
+
+            roi_loop1 = ceil_value(num1, roi_step)
+            roi_step1_l = roi_step if (num1 % roi_step == 0) else (num1 % roi_step)
+            roi_loop2 = ceil_value(num2, roi_step)
+            roi_step2_l = roi_step if (num2 % roi_step == 0) else (num2 % roi_step)
+
+        with self.tik_instance.for_range(0, block_num, block_num=block_num) as block_id:
+            # process of one aicore
+            self._cache_fm_l1()
+            self._init_const_0_127_ub()
+
+            rois_num_offset = self.tik_instance.Scalar(INT32, name="rois_num_offset")
+
+            if self.fm_batch == 1:
+                # process roi nums: num1
+                with self.tik_instance.if_scope(block_id < outer_tail):
+                    # rois_num_offset is the offset in block_id aicore
+                    rois_num_offset.set_as(block_id * num1)
+                    self._process_rois(roi_step, rois_num_offset, roi_loop1, roi_step1_l)
+                # process roi nums: num2
+                with self.tik_instance.else_scope():
+                    if outer_loop > 0:
+                        rois_num_offset.set_as(outer_tail * num1 + (block_id - outer_tail) * num2)
+                        self._process_rois(roi_step, rois_num_offset, roi_loop2, roi_step2_l)
+
+            else:
+                # process roi nums: num1*fm_batch
+                with self.tik_instance.if_scope(block_id < outer_tail):
+                    # rois_num_offset is the offset in block_id aicore
+                    with self.tik_instance.for_range(0, self.fm_batch) \
+                            as batch_id:
+                        rois_num_offset.set_as(block_id * num1)
+                        self._process_rois_multi_batch(roi_step, \
+                                                       rois_num_offset, roi_loop1, \
+                                                       roi_step1_l, batch_id)
+                # process roi nums: num2*fm_batch
+                with self.tik_instance.else_scope():
+                    if outer_loop > 0:
+                        with self.tik_instance.for_range(0, self.fm_batch) \
+                                as batch_id:
+                            rois_num_offset.set_as(outer_tail*num1 + \
+                                                   (block_id - outer_tail)*num2)
+                            self._process_rois_multi_batch(roi_step, \
+                                                           rois_num_offset, roi_loop2, \
+                                                           roi_step2_l, batch_id)
+
+    def psroi_pooling_main(self):
+        """
+        Main process of psroipooling.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self.x = self.tik_instance.Tensor(self.dtype, self.x_shape, name="x", scope=tbe_platform.scope_gm)
+        rois_shape = (self.roi_shape[0] * self.roi_shape[2] * self.roi_shape[1] + self.vec_elem_num, )
+        self.rois = self.tik_instance.Tensor(self.dtype, rois_shape, name="rois", scope=tbe_platform.scope_gm)
+        self.y = self.tik_instance.Tensor(self.dtype, shape=self.y_shape, name="y", scope=tbe_platform.scope_gm)
+
+        self.psroi_pooling_compute()
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=(self.x, self.rois), outputs=(self.y, ))
+
+    def _input_param_check(self):
+        """
+        check if the inputs are valid
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        if not tbe_platform.api_check_support("tik.vrelu", "float32"):
+            para_check.check_dtype(self.dtype, (FP16, ), param_name="x")
+            para_check.check_dtype(self.roi_dtype, (FP16, ), param_name="rois")
+        else:
+            para_check.check_dtype(self.dtype, (FP16, FP32), param_name="x")
+            para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
+
+        if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal("psroipooling", "x", "rois and y", self.dtype,
+                                                                  self.roi_dtype + "and" + self.y_dtype)
+
+        para_check.check_shape(self.x_shape, param_name="x")
+        para_check.check_shape(self.roi_shape, param_name="rois")
+        para_check.check_shape(self.y_shape, param_name="y")
+        # x and y must be 5HD
+        para_check.check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
+        para_check.check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
+
+        if self.roi_shape[0] != self.x_shape[0]:
+            error_manager_vector.raise_err_inputs_shape_not_equal("psroipooling", "x_shape[0]", "roi_shape[0]",
+                                                                  str(self.x_shape[0]), str(self.roi_shape[0]),
+                                                                  str(self.roi_shape[0]))
+
+        if self.roi_shape[1] != DIGIT_5:
+            error_manager_vector.raise_err_input_value_invalid("psroipooling", "roi_shape[1]", str(DIGIT_5),
+                                                               str(self.roi_shape[1]))
+
+        if self.roi_shape[0] * self.roi_shape[2] != self.y_shape[0]:
+            error_manager_vector.raise_err_input_value_invalid("psroipooling", "all num of rois",
+                                                               str(self.roi_shape[0] * self.roi_shape[2]),
+                                                               str(self.y_shape[0]))
+
+        if self.group_size >= DIGIT_128:
+            error_manager_vector.raise_err_input_value_invalid("psroipooling", "group_size",
+                                                               "less than " + str(DIGIT_128), str(self.group_size))
+
+        if self.x_shape[1] // self.y_shape[1] != self.y_shape[2] * self.y_shape[3]:
+            error_manager_vector.raise_err_check_params_rules(
+                "psroipooling", "it should follow the rule: \
+                                                              self.x_shape[1]//self.y_shape[1]== \
+                                                              self.y_shape[2]*self.y_shape[3].", "x_shape[1]",
+                str(self.x_shape[1]))
+
+        if self.group_size != self.y_shape[2] or self.group_size != self.y_shape[3]:
+            error_manager_vector.raise_err_inputs_shape_not_equal("psroipooling", "y_shape[2] and y_shape[3]",
+                                                                  "group_size",
+                                                                  str(self.y_shape[2]) + ", " + str(self.y_shape[3]),
+                                                                  str(self.group_size), str(self.group_size))
+
+        if ceil_value(self.output_dim, C0) != self.y_shape[1]:
+            error_manager_vector.raise_err_check_params_rules("psroipooling",
+                                                              "(output_dim + C0 -1) // C0 == y_shape[1]", "output_dim",
+                                                              str(self.output_dim))
 
     def _load_rois_to_ub(self, rois_ub, rois_offset, roi_step):
         """
@@ -984,104 +1080,6 @@ class PsroiClass():
             else:
                 self.tik_instance.vconv(MASK64, '', self.const_0_127_ub, const_0_127_int32, REPEAT_2, STRIDE_ONE,
                                         STRIDE_ONE, REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT)
-
-    def psroi_pooling_compute(self):
-        """
-        compute of psroipooling.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        outer_loop = self.roi_num_b // self.aicore_num
-        outer_tail = self.roi_num_b % self.aicore_num
-        roi_step = self.roi_num_step
-
-        # outer_loop is 0
-        num1, num2 = 1, 1
-        block_num = outer_tail
-        roi_loop1, roi_step1_l = 1, 1
-        roi_loop2, roi_step2_l = 1, 1
-        if outer_loop > 0:
-            block_num = self.aicore_num
-            if outer_tail > 0:
-                num1 = outer_loop + 1
-                num2 = outer_loop
-            else:
-                num1 = outer_loop
-                num2 = outer_loop
-
-            roi_loop1 = ceil_value(num1, roi_step)
-            roi_step1_l = roi_step if (num1 % roi_step == 0) \
-                else (num1 % roi_step)
-            roi_loop2 = ceil_value(num2, roi_step)
-            roi_step2_l = roi_step if (num2 % roi_step == 0) \
-                else (num2 % roi_step)
-
-        with self.tik_instance.for_range(0, block_num, block_num=block_num) as block_id:
-            # process of one aicore
-            self._cache_fm_l1()
-            self._init_const_0_127_ub()
-
-            rois_num_offset = self.tik_instance.Scalar(INT32, name="rois_num_offset")
-
-            if self.fm_batch == 1:
-                # process roi nums: num1
-                with self.tik_instance.if_scope(block_id < outer_tail):
-                    # rois_num_offset is the offset in block_id aicore
-                    rois_num_offset.set_as(block_id * num1)
-                    self._process_rois(roi_step, rois_num_offset, roi_loop1, roi_step1_l)
-                # process roi nums: num2
-                with self.tik_instance.else_scope():
-                    if outer_loop > 0:
-                        rois_num_offset.set_as(outer_tail * num1 + (block_id - outer_tail) * num2)
-                        self._process_rois(roi_step, rois_num_offset, roi_loop2, roi_step2_l)
-
-            else:
-                # process roi nums: num1*fm_batch
-                with self.tik_instance.if_scope(block_id < outer_tail):
-                    # rois_num_offset is the offset in block_id aicore
-                    with self.tik_instance.for_range(0, self.fm_batch) \
-                            as batch_id:
-                        rois_num_offset.set_as(block_id * num1)
-                        self._process_rois_multi_batch(roi_step, \
-                                                       rois_num_offset, roi_loop1, \
-                                                       roi_step1_l, batch_id)
-                # process roi nums: num2*fm_batch
-                with self.tik_instance.else_scope():
-                    if outer_loop > 0:
-                        with self.tik_instance.for_range(0, self.fm_batch) \
-                                as batch_id:
-                            rois_num_offset.set_as(outer_tail*num1 + \
-                                                   (block_id - outer_tail)*num2)
-                            self._process_rois_multi_batch(roi_step, \
-                                                           rois_num_offset, roi_loop2, \
-                                                           roi_step2_l, batch_id)
-
-    def psroi_pooling_main(self):
-        """
-        Main process of psroipooling.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        self.x = self.tik_instance.Tensor(self.dtype, self.x_shape, name="x", scope=tbe_platform.scope_gm)
-        rois_shape = (self.roi_shape[0] * self.roi_shape[2] * self.roi_shape[1] + self.vec_elem_num, )
-        self.rois = self.tik_instance.Tensor(self.dtype, rois_shape, name="rois", scope=tbe_platform.scope_gm)
-        self.y = self.tik_instance.Tensor(self.dtype, shape=self.y_shape, name="y", scope=tbe_platform.scope_gm)
-
-        self.psroi_pooling_compute()
-
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=(self.x, self.rois), outputs=(self.y, ))
 
 
 # 'pylint: disable=too-many-arguments

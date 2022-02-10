@@ -17,6 +17,7 @@ aipp_comm
 """
 # 'pylint: disable=too-many-lines,invalid-name,too-many-statements,too-many-arguments,no-else-return
 # 'pylint: disable=too-many-locals,too-many-branches,ungrouped-imports,too-many-boolean-expressions
+# 'pylint: disable=too-many-return-values
 import numpy
 
 import te.platform as tbe_platform

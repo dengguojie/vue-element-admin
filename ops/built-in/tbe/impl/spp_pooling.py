@@ -389,8 +389,7 @@ class PoolingCompute(PoolingCommon):
         None
         """
         self.data_load(compute_size)
-        init_val = 0 if (self.mode == AVG_POOLING) else \
-            (FP16_MINI if (self.dtype == "float16") else FP32_MINI)
+        init_val = 0 if (self.mode == AVG_POOLING) else (FP16_MINI if (self.dtype == "float16") else FP32_MINI)
         self.tik_inst.vector_dup(self.mask,
                                  self.src_ub[compute_size*self.shape[4]],
                                  init_val, 1, 1, 8)
@@ -481,8 +480,7 @@ class PoolingCompute(PoolingCommon):
                 pooling_w = self.w_end - self.w_start
                 pool_real_size = pooling_h * pooling_w
 
-                init_val = 0 if (self.mode == AVG_POOLING) else \
-                    (FP16_MINI if (self.dtype == "float16") else FP32_MINI)
+                init_val = 0 if (self.mode == AVG_POOLING) else (FP16_MINI if (self.dtype == "float16") else FP32_MINI)
                 self.tik_inst.vector_dup(self.mask, self.dst_ub,
                                          init_val, 2, 1, 8)
                 self.tik_inst.vector_dup(16, self.res_ub, init_val, 1, 1, 8)

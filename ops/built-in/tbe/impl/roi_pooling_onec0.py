@@ -105,8 +105,7 @@ class RoiOneC0Class(roi_pooling_base.RoiClass):
                    kernel_name):
         super(RoiOneC0Class, self).init_param(roinum_pooledimg, shapedict_list,
                                               spatial_scale_list, kernel_name)
-        self.res_pad = 0 if((self.pooled_h % 8) == 0) else \
-            (_align(self.pooled_h, 8) - self.pooled_h)
+        self.res_pad = 0 if((self.pooled_h % 8) == 0) else (_align(self.pooled_h, 8) - self.pooled_h)
         self.fm_w_align = _align(self.fm_w, 8)
 
     def proposal_pooling_h(self, block_id, proposal_id, fm_c1_index,

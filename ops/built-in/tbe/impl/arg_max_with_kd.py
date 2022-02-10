@@ -15,7 +15,7 @@
 """
 arg_max_with_kd
 """
-# 'pylint: disable=too-many-lines,import-error
+# 'pylint: disable=too-many-lines,import-error,too-many-return-values
 import te.platform as tbe_platform
 from te import tik
 from te.utils import shape_util

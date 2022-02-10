@@ -141,6 +141,24 @@ class TabulateFusion():
         self.last_core_loops = None
         self.last_core_nloc_tail = None
 
+    def tabulate_fusion_compute(self):
+        """
+        main process of tabulate_fusion
+        """
+        with self.tik_inst.for_range(0, self.core_num, block_num=self.core_num) as core_i:
+            # get tiling data
+            self._get_tiling_args()
+
+            self._get_table_info_data()
+
+            with self.tik_inst.if_scope(core_i < self.need_core_num - 1):
+                with self.tik_inst.new_stmt_scope():
+                    self._pre_core_compute(core_i)
+
+            with self.tik_inst.if_scope(core_i == self.need_core_num - 1):
+                with self.tik_inst.new_stmt_scope():
+                    self._last_core_compute(core_i)
+
     def _init_gm_tensor(self):
         """
         init gm tensor
@@ -601,24 +619,6 @@ class TabulateFusion():
                                                          self.last_core_loops * self.nloc_per_loop)
                 self._one_loop_compute(core_id, self.last_core_loops, self.last_core_nloc_tail, elems_tail_align,
                                        nloc_offset)
-
-    def tabulate_fusion_compute(self):
-        """
-        main process of tabulate_fusion
-        """
-        with self.tik_inst.for_range(0, self.core_num, block_num=self.core_num) as core_i:
-            # get tiling data
-            self._get_tiling_args()
-
-            self._get_table_info_data()
-
-            with self.tik_inst.if_scope(core_i < self.need_core_num - 1):
-                with self.tik_inst.new_stmt_scope():
-                    self._pre_core_compute(core_i)
-
-            with self.tik_inst.if_scope(core_i == self.need_core_num - 1):
-                with self.tik_inst.new_stmt_scope():
-                    self._last_core_compute(core_i)
 
 
 def _check_input_params(table, table_info, em_x, em, descriptor, last_layer_size, split_count, split_index,

@@ -15,7 +15,7 @@
 """
 aipp_resize_padding
 """
-# 'pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements,too-many-return-values
 # 'pylint: disable=too-many-arguments,too-many-boolean-expressions,import-error,too-many-lines
 import math
 

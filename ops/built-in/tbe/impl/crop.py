@@ -75,6 +75,7 @@ def crop(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     return crop_process.instance
 
 
+# 'pylint: disable=too-many-return-values
 class Crop:
     """
     Function: store Crop parameters  and compute crop

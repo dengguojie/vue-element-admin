@@ -1,0 +1,69 @@
+[
+  {
+    "op": "SppPooling",
+    "case_name" : "test_spp_pooling_001",
+     "input_desc": [
+       {
+         "format": "NC1HWC0",
+         "ori_format": "NC1HWC0",
+         "shape": [1, 2, 299, 299, 16],
+         "ori_shape": [1, 2, 299, 299, 16],
+         "type": "float16",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+      {
+        "format": "NC1HWC0",
+        "ori_format": "NC1HWC0",
+        "shape": [1, 2, 15, 15, 16],
+        "ori_shape": [1, 2, 15, 15, 16],
+        "type": "float16",
+        "name": "y"
+      }
+     ],
+     "attr": [
+          {
+            "name": "global_pooling",
+            "type": "bool",
+            "value": false
+          },
+          {
+            "name": "mode",
+            "value": 1,
+            "type": "int"
+          },
+          {
+            "name": "window",
+            "type": "list_int",
+            "value": [
+              20,
+              20
+            ]
+          },
+          {
+            "name": "pad",
+            "type": "list_int",
+            "value": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "stride",
+            "type": "list_int",
+            "value": [
+              20,
+              20
+            ]
+          },
+          {
+            "name": "ceil_mode",
+            "value": 0,
+            "type": "int"
+          }
+     ]
+  }
+]
