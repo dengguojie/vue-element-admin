@@ -65,9 +65,8 @@ def log_warn(msg):
     :param msg: log msg
     :return: None
     """
-    WARN = "WARN"
     caller = inspect.stack()[1]
-    log(WARN, caller.filename, caller.lineno, msg)
+    log("WARN", caller.filename, caller.lineno, msg)
 
 
 def log_debug(msg):
@@ -76,11 +75,10 @@ def log_debug(msg):
     :param msg: log msg
     :return: None
     """
-    DEBUG = "DEBUG"
     if Constant.LOG_LEVEL not in ("DEBUG",):
         return
     caller = inspect.stack()[1]
-    log(DEBUG, caller.filename, caller.lineno, msg)
+    log("DEBUG", caller.filename, caller.lineno, msg)
 
 
 def log_info(msg):
@@ -89,11 +87,10 @@ def log_info(msg):
     :param msg: log msg
     :return: None
     """
-    INFO = "INFO"
     if Constant.LOG_LEVEL not in ("DEBUG", "INFO"):
         return
     caller = inspect.stack()[1]
-    log(INFO, caller.filename, caller.lineno, msg)
+    log("INFO", caller.filename, caller.lineno, msg)
 
 
 def log_err(msg, print_trace=False):
@@ -102,9 +99,8 @@ def log_err(msg, print_trace=False):
     :param msg: log msg
     :return: None
     """
-    ERROR = "ERROR"
     caller = inspect.stack()[1]
-    log(ERROR, caller.filename, caller.lineno, msg)
+    log("ERROR", caller.filename, caller.lineno, msg)
     if print_trace:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         trace_info = traceback.format_exception(exc_type, exc_value, exc_traceback)

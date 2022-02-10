@@ -42,6 +42,7 @@ class AscendOpKernel:
     """
     Class AscendOpKernel
     """
+
     def __init__(self, bin_path: str, json_path: str):
         if not os.path.exists(bin_path):
             raise IOError("bin_path not exist, path: %s" % bin_path)
@@ -70,6 +71,25 @@ class AscendOpKernel:
         """
         self.stub_func_p = stub_func_p
 
+    def set_input_info(self, input_infos):
+        """
+        set input info
+        """
+        self.input_infos = input_infos
+
+    def set_output_info(self, output_infos):
+        """
+        set output info
+        """
+        self.output_infos = output_infos
+
+    def set_compile_info(self, compile_info):
+        """
+        set compile info
+        """
+        self.compile_info = compile_info
+        self.need_do_tiling = True
+
     def _parse_json_file(self, json_path):
         """
         parse json file
@@ -94,25 +114,6 @@ class AscendOpKernel:
             self.has_tiling = True
             self.tiling_data_size = op_para_size
 
-    def set_input_info(self, input_infos):
-        """
-        set input info
-        """
-        self.input_infos = input_infos
-
-    def set_output_info(self, output_infos):
-        """
-        set output info
-        """
-        self.output_infos = output_infos
-
-    def set_compile_info(self, compile_info):
-        """
-        set compile info
-        """
-        self.compile_info = compile_info
-        self.need_do_tiling = True
-
 
 def calc_op_param_size(shape_size, dtype):
     """
@@ -128,6 +129,7 @@ class AscendOp:
     """
     Class AscendOp
     """
+
     def __init__(self, op_type, op_module_name, op_intf_name):
         if op_type is None or not isinstance(op_type, str):
             raise TypeError("op_type must be a str")
@@ -138,6 +140,18 @@ class AscendOp:
         self.op_type = op_type
         self.op_module_name = op_module_name
         self.op_intf_name = op_intf_name
+
+    @staticmethod
+    def _get_param_type(one_param):
+        if not one_param:
+            return None
+        if isinstance(one_param, (tuple, list)):
+            if not one_param or not isinstance(one_param[0], dict):
+                return None
+            return one_param[0].get("param_type", None)
+        if isinstance(one_param, dict):
+            return one_param.get("param_type")
+        return None
 
     def _load_op_func(self):
         try:
@@ -153,18 +167,6 @@ class AscendOp:
             raise RuntimeError("can't get op function in op module, op module name: %s, op function name: %s"
                                % (self.op_module_name, self.op_intf_name))
         return op_func
-
-    @staticmethod
-    def _get_param_type(one_param):
-        if not one_param:
-            return None
-        if isinstance(one_param, (tuple, list)):
-            if not one_param or not isinstance(one_param[0], dict):
-                return None
-            return one_param[0].get("param_type", None)
-        if isinstance(one_param, dict):
-            return one_param.get("param_type")
-        return None
 
     @staticmethod
     def _get_input_outputs(param_list: List):
@@ -399,27 +401,6 @@ class AscendOpKernelRunner:
                     or file_name.endswith("log.log") or file_name.endswith("log1.dump")):
                 os.remove(file_path)
 
-    def _collect_esl_log(self):
-        if os.path.exists("./log"):
-            if os.path.exists(self._simulator_dump_path):
-                dst_log_full_path = os.path.join(self._simulator_dump_path, "log")
-                if os.path.exists(dst_log_full_path):
-                    shutil.rmtree(dst_log_full_path)
-                shutil.move(os.path.realpath("./log"), self._simulator_dump_path)
-            summary_log_path = os.path.join(self._simulator_dump_path, "summary_log")
-            if os.path.exists(summary_log_path):
-                shutil.rmtree(summary_log_path)
-            file_util.makedirs(summary_log_path)
-            file_list = os.listdir("./")
-            base_path = os.path.realpath("./")
-            for file_name in file_list:
-                file_path = os.path.join(base_path, file_name)
-                if os.path.isfile(file_path) and (
-                        file_name.endswith("_summary_log") or file_name.endswith("wave.vcd")
-                        or file_name.endswith("log.toml") or file_name.endswith("dirSaveDump.txt")
-                        or file_name.endswith("log.log") or file_name.endswith("log1.dump")):
-                    shutil.move(file_path, summary_log_path)
-
     def __enter__(self):
         return self
 
@@ -451,6 +432,56 @@ class AscendOpKernelRunner:
         """
         if param not in self._kernel_params:
             self._kernel_params.append(param)
+
+    def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
+            tiling=None, block_dim=None, actual_output_info=None) -> Union[
+        AscendOpKernelParam, List[AscendOpKernelParam], None]:
+        """
+        run
+        """
+
+        if not isinstance(inputs, (list, tuple)):
+            inputs = [inputs]
+        input_params = []
+        kernel_args = []
+        self._fill_inputs(inputs, kernel_args, input_params)
+
+        output_params = []
+        self._fill_outputs(kernel, output_input_ref, actual_output_info, input_params, output_params, kernel_args)
+        workspace_hbm_p_list = []
+        self._fill_workspace(kernel, workspace_hbm_p_list, kernel_args)
+        tiling_hbm = []
+        self._fill_tiling(kernel, tiling, tiling_hbm, kernel_args)
+        knl_args = [arg.value for arg in kernel_args]
+        if not block_dim:
+            block_dim = kernel.block_dim
+        self._execute_kernel(kernel, knl_args, block_dim)
+        for workspace_hbm_p in workspace_hbm_p_list:
+            self.ascend_device.free(workspace_hbm_p)
+        for tiling_hbm_p in tiling_hbm:
+            self.ascend_device.free(tiling_hbm_p)
+        return output_params[0] if len(output_params) == 1 else output_params
+
+    def _collect_esl_log(self):
+        if os.path.exists("./log"):
+            if os.path.exists(self._simulator_dump_path):
+                dst_log_full_path = os.path.join(self._simulator_dump_path, "log")
+                if os.path.exists(dst_log_full_path):
+                    shutil.rmtree(dst_log_full_path)
+                shutil.move(os.path.realpath("./log"), self._simulator_dump_path)
+            summary_log_path = os.path.join(self._simulator_dump_path, "summary_log")
+            if os.path.exists(summary_log_path):
+                shutil.rmtree(summary_log_path)
+            file_util.makedirs(summary_log_path)
+            file_list = os.listdir("./")
+            base_path = os.path.realpath("./")
+            for file_name in file_list:
+                file_path = os.path.join(base_path, file_name)
+                if os.path.isfile(file_path) and (
+                        file_name.endswith("_summary_log") or file_name.endswith("wave.vcd")
+                        or file_name.endswith("log.toml") or file_name.endswith("dirSaveDump.txt")
+                        or file_name.endswith("log.log") or file_name.endswith("log1.dump")):
+                    shutil.move(file_path, summary_log_path)
 
     def _fill_inputs(self, inputs: List[Union[AscendOpKernelParam]], kernel_args: List, input_params: List):
         for input_info in inputs:
@@ -540,32 +571,3 @@ class AscendOpKernelRunner:
             cost_time = [float(profiling_data[i].totalcycle) for i in range(self.profiling_times)]
             print(cost_time)
             self.ascend_device.stop_online_profiling(self._stream)
-
-    def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
-            tiling=None, block_dim=None, actual_output_info=None) -> Union[
-                AscendOpKernelParam, List[AscendOpKernelParam], None]:
-        """
-        run
-        """
-
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-        input_params = []
-        kernel_args = []
-        self._fill_inputs(inputs, kernel_args, input_params)
-
-        output_params = []
-        self._fill_outputs(kernel, output_input_ref, actual_output_info, input_params, output_params, kernel_args)
-        workspace_hbm_p_list = []
-        self._fill_workspace(kernel, workspace_hbm_p_list, kernel_args)
-        tiling_hbm = []
-        self._fill_tiling(kernel, tiling, tiling_hbm, kernel_args)
-        knl_args = [arg.value for arg in kernel_args]
-        if not block_dim:
-            block_dim = kernel.block_dim
-        self._execute_kernel(kernel, knl_args, block_dim)
-        for workspace_hbm_p in workspace_hbm_p_list:
-            self.ascend_device.free(workspace_hbm_p)
-        for tiling_hbm_p in tiling_hbm:
-            self.ascend_device.free(tiling_hbm_p)
-        return output_params[0] if len(output_params) == 1 else output_params
