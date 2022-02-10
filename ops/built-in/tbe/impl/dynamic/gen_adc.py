@@ -137,6 +137,56 @@ class GenADC():
 
         self.reduce_0_local_ub = None
 
+    @staticmethod
+    def _compute_burst_len(dtype, shape):
+        block_bite_size = 32
+        dtype_bytes = tbe_platform.get_bit_len(dtype) // 8
+        data_each_block = block_bite_size // dtype_bytes
+
+        burst_len = math.ceil(para_check.check_tensor_shape_size(shape) / data_each_block)
+
+        return burst_len
+
+    def gen_adc_compute(self):
+        """
+        Generate adc tables.
+        """
+        factor_m, factor_k = self._get_m_ksub_factors()
+        self.dim_m_stride = self.dim_m // factor_m
+        self.dim_ksub_stride = self.dim_ksub // factor_k
+
+        with self.tik_inst.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as block_i:
+            self.tiling_ub = self.tik_inst.Tensor("int64", (self.tiling_para_num,), name="tiling_ub",
+                                                  scope=tik.scope_ubuf)
+            burst = math.ceil(self.tiling_para_num * GenADC.TYPE_LEN_DICT.get(self.tiling_dtype) / GenADC.BLOCK_SIZE)
+            self.tik_inst.data_move(self.tiling_ub, self.tiling_gm, 0, 1, burst, 0, 0)
+            self._tiling_args()
+
+            self._init_ub_data()
+
+            self.tik_inst.data_move(self.query_ub, self.query_gm, 0, 1,
+                                    self._compute_burst_len(self.op_query_data_type, self.query_shape), 0, 0)
+            if self.op_data_type != self.op_query_data_type:
+                conv_repeat = max(self.dim_d // 64, 1)
+                conv_mask = min(self.dim_d, 64)
+                self.tik_inst.vconv(conv_mask, "", self.query_fp16_ub,
+                                    self.query_ub, conv_repeat, 1, 1, 4, 8)
+
+            with self.tik_inst.if_scope(block_i == (self.core_used_num - 1)):
+                self._adc_compute(block_i, self.remaining_row, self.remain_bucket_list_burst_len,
+                                  self.row_num_each_core)
+            with self.tik_inst.if_scope(block_i < (self.core_used_num - 1)):
+                self._adc_compute(block_i, self.row_num_each_core, self.bucket_list_burst_len,
+                                  self.row_num_each_core)
+
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num})
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
+                               inputs=[self.query_gm, self.code_book_gm, self.centroids_gm, self.bucket_list_gm],
+                               outputs=[self.adc_tables_gm],
+                               flowtable=(self.tiling_gm,),
+                               config=opt_config)
+
     # 'pylint: disable=invalid-name
     def _get_m_ksub_factors(self):
         """
@@ -182,16 +232,6 @@ class GenADC():
         if not isinstance(self.dim_ns, int):
             self.dim_ns.set_as(self.tiling_ub[5])
 
-    @staticmethod
-    def _compute_burst_len(dtype, shape):
-        block_bite_size = 32
-        dtype_bytes = tbe_platform.get_bit_len(dtype) // 8
-        data_each_block = block_bite_size // dtype_bytes
-
-        burst_len = math.ceil(para_check.check_tensor_shape_size(shape) / data_each_block)
-
-        return burst_len
-
     def _init_ub_data(self):
         """
         Apply unified buffer for variables.
@@ -230,46 +270,6 @@ class GenADC():
         self.reduce_0_local_ub = self.tik_inst.Tensor(self.op_data_type, (self.dim_m_stride, self.dim_ksub_stride,
                                                                           self.dim_dsub),
                                                       name="reduce_0_local_ub", scope=tik.scope_ubuf)
-
-    def gen_adc_compute(self):
-        """
-        Generate adc tables.
-        """
-        factor_m, factor_k = self._get_m_ksub_factors()
-        self.dim_m_stride = self.dim_m // factor_m
-        self.dim_ksub_stride = self.dim_ksub // factor_k
-
-        with self.tik_inst.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as block_i:
-            self.tiling_ub = self.tik_inst.Tensor("int64", (self.tiling_para_num,), name="tiling_ub",
-                                                  scope=tik.scope_ubuf)
-            burst = math.ceil(self.tiling_para_num * GenADC.TYPE_LEN_DICT.get(self.tiling_dtype) / GenADC.BLOCK_SIZE)
-            self.tik_inst.data_move(self.tiling_ub, self.tiling_gm, 0, 1, burst, 0, 0)
-            self._tiling_args()
-
-            self._init_ub_data()
-
-            self.tik_inst.data_move(self.query_ub, self.query_gm, 0, 1,
-                                    self._compute_burst_len(self.op_query_data_type, self.query_shape), 0, 0)
-            if self.op_data_type != self.op_query_data_type:
-                conv_repeat = max(self.dim_d // 64, 1)
-                conv_mask = min(self.dim_d, 64)
-                self.tik_inst.vconv(conv_mask, "", self.query_fp16_ub,
-                                    self.query_ub, conv_repeat, 1, 1, 4, 8)
-
-            with self.tik_inst.if_scope(block_i == (self.core_used_num - 1)):
-                self._adc_compute(block_i, self.remaining_row, self.remain_bucket_list_burst_len,
-                                  self.row_num_each_core)
-            with self.tik_inst.if_scope(block_i < (self.core_used_num - 1)):
-                self._adc_compute(block_i, self.row_num_each_core, self.bucket_list_burst_len,
-                                  self.row_num_each_core)
-
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num})
-        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                               inputs=[self.query_gm, self.code_book_gm, self.centroids_gm, self.bucket_list_gm],
-                               outputs=[self.adc_tables_gm],
-                               flowtable=(self.tiling_gm,),
-                               config=opt_config)
 
     def _adc_compute(self, block_i, process_row, bucket_list_burst_len, core_row_offset):
         """

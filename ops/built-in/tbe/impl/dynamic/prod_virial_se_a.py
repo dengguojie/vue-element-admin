@@ -75,6 +75,23 @@ class ProdVirialSeA:
         self.nei_rep_times_pre_core = self.tik_inst.Scalar(dtype="int64", name="nei_rep_times_pre_core")
         self.nei_rep_times_post_core = self.tik_inst.Scalar(dtype="int64", name="nei_rep_times_post_core")
 
+    def compute(self):
+        """
+        compute
+        """
+        if self.op_data_type == "float32":
+            self._compute_fp32()
+
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num,
+                                                            "split_count": self.split_count,
+                                                            "split_index": self.split_index})
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
+                               inputs=[self.net_deriv_gm, self.in_deriv_gm, self.rij_gm, self.nlist_gm, self.natoms_gm],
+                               outputs=[self.virial_gm, self.atom_virial_gm],
+                               flowtable=(self.tiling_gm,),
+                               config=opt_config)
+
     def _tiling_args(self):
         """
         Get runtime tiling parameters from tiling.
@@ -89,6 +106,7 @@ class ProdVirialSeA:
         self.nei_rep_times_pre_core.set_as(self.tiling_ub[7])
         self.nei_rep_times_post_core.set_as(self.tiling_ub[8])
 
+    # 'pylint: disable=too-many-return-statements
     def _init_ub_data_fp32(self):
         """
         init ub data fp32
@@ -290,23 +308,6 @@ class ProdVirialSeA:
                 with self.tik_inst.else_scope():
                     with self.tik_inst.for_range(nnei_start, nnei_end, name="kk") as kk:
                         self._compute_virial_fp32(ub_tuple, kk, kk * self.nnei_per_frame, self.nnei_per_frame)
-
-    def compute(self):
-        """
-        compute
-        """
-        if self.op_data_type == "float32":
-            self._compute_fp32()
-
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num,
-                                                            "split_count": self.split_count,
-                                                            "split_index": self.split_index})
-        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                               inputs=[self.net_deriv_gm, self.in_deriv_gm, self.rij_gm, self.nlist_gm, self.natoms_gm],
-                               outputs=[self.virial_gm, self.atom_virial_gm],
-                               flowtable=(self.tiling_gm,),
-                               config=opt_config)
 
 
 # 'pylint: disable=too-many-locals,too-many-arguments
