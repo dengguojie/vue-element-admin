@@ -253,6 +253,7 @@ class GemmSchedule:
             self.al1_attach_status = "full_load"
             self.bl1_attach_status = "full_load"
             self.c_l0c_attach_status = "full_load"
+            self.al0_attach_status = "full_load"
             self.c_ub_attach_status = "full_load"
             self.ops_data_flow_mode = "fp162fp16"
             self.mad_pattern = tbe_platform.GEMM_MODE
@@ -631,8 +632,8 @@ class GemmSchedule:
         k_tail_block_stride_tail_core = (tail_core_k_len -
                                          tail_core_k_len // self.al0_tiling_ka * self.al0_tiling_ka) * block_size
 
-        if not self.is_dynamic and (tail_core_k_len % self.al0_tiling_ka == 0
-                                    and no_tail_core_k_len % self.al0_tiling_ka == 0):
+        al0_k_dim_full_load = self.status_controller.al0_attach_status != "c_l0c"
+        if (not self.is_dynamic and no_tail_core_k_len % self.al0_tiling_ka == 0) or al0_k_dim_full_load:
             return True
 
         self.sch[a_l0].set_store_predicate(
@@ -2829,15 +2830,18 @@ class GemmSchedule:
             pass
         elif status == Compare.EQUAL:
             self.sch_agent.same_attach(a_l0a, self.container.TENSOR_MAP.get("c_l0c"))
+            self.status_controller.al0_attach_status = self.status_controller.c_l0c_attach_status
         elif status == Compare.LESS_EQ:
             self.sch_agent.attach_at(
                 a_l0a, self.container.TENSOR_MAP.get("c_l0c"),
                 affine_shape=l0a2l0c_affine_shape,
                 ceil_mode_dict=self.ceil_mode
             )
+            self.status_controller.al0_attach_status = "c_l0c"
         elif status == Compare.GREATE_EQ:
             self.sch_agent.attach_at(
                 a_l0a, self.root_tensor, affine_shape=l0a2out_affine_shape, ceil_mode_dict=self.ceil_mode)
+            self.status_controller.al0_attach_status = "c_gm"
         else:
             args_dict = {
                 "errCode": "E60114",
