@@ -389,12 +389,13 @@ def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operat
 
     def _index_w(str_name, *index):
         if str_name == "it":
-            return index[0], index[1], index[2], index[3]
+            return [index[0], index[1], index[2], index[3]]
         if str_name == "jt":
-            return index[0], index[1] + output_dim, index[2], index[3]
+            return [index[0], index[1] + output_dim, index[2], index[3]]
         if str_name == "ft":
-            return index[0], index[1] + output_dim * 2, index[2], index[3]
-        return index[0], index[1] + output_dim * 3, index[2], index[3]
+            return [index[0], index[1] + output_dim * 2, index[2], index[3]]
+
+        return [index[0], index[1] + output_dim * 3, index[2], index[3]]
 
     def _index_bias(str_name):
         if str_name == "it":
@@ -731,7 +732,9 @@ def basic_lstm_cell_compute(x, h, c, w, b, forget_bias, product_info):
 
     get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operation_list, product_info["hisi_es"])
     unreused_flag = get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info)
-    return build_list, tensor_list, scope_list, operation_list, unreused_flag
+    compute_result = [build_list, tensor_list, scope_list, operation_list, unreused_flag]
+
+    return compute_result
 
 
 # 'pylint: disable=too-many-locals,too-many-statements

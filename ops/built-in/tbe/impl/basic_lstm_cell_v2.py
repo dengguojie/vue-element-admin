@@ -312,7 +312,7 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     ht = tvm.compute(gate_shape, lambda *i: tensor_ht_ub_true(*i), name="ht")
     tensor_list["ht"] = ht
     build_list["ht"] = ht
-    return tensor_list, scope_list, operation_list, build_list
+    return [tensor_list, scope_list, operation_list, build_list]
 
 
 # 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
@@ -356,12 +356,13 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
 
     def _index_w(str_name, *index):
         if str_name == "it":
-            return index[0], index[1], index[2], index[3]
+            return [index[0], index[1], index[2], index[3]]
         elif str_name == "ft":
-            return index[0], index[1] + output_dim, index[2], index[3]
+            return [index[0], index[1] + output_dim, index[2], index[3]]
         elif str_name == "ot":
-            return index[0], index[1] + output_dim * 2, index[2], index[3]
-        return index[0], index[1] + output_dim * 3, index[2], index[3]
+            return [index[0], index[1] + output_dim * 2, index[2], index[3]]
+
+        return [index[0], index[1] + output_dim * 3, index[2], index[3]]
 
     def _index_bias(str_name):
         if str_name == "it":
