@@ -1,0 +1,104 @@
+[
+    {
+        "case_name": "test_matrix_band_part_001",
+        "op": "MatrixBandPart",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[8,8],[2,8,8]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[]],
+                "value_range": [[-1,7]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[]],
+                "value_range": [[-1,7]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[8,8],[2,8,8]]
+            }
+        ]
+    },
+    {
+        "case_name": "test_matrix_band_part_002",
+        "op": "MatrixBandPart",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[2,16,16],[4,16,16],[8,16,16],[16,16,16]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[],[],[]],
+                "value_range": [[-1,15]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[],[],[]],
+                "value_range": [[-1,15]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[2,16,16],[4,16,16],[8,16,16],[16,16,16]]
+            }
+        ]
+    },
+    {
+        "case_name": "test_matrix_band_part_003",
+        "op": "MatrixBandPart",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[4,32,32],[8,32,32],[16,32,32],[32,32,32],[64,32,32],[128,32,32],[256,32,32],[1024,32,32]],
+                "value_range": [[0.0,10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[],[],[],[],[],[],[]],
+                "value_range": [[-1,31]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [[],[],[],[],[],[],[],[]],
+                "value_range": [[-1,31]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","double"],
+                "shape": [[4,32,32],[8,32,32],[16,32,32],[32,32,32],[64,32,32],[128,32,32],[256,32,32],[1024,32,32]]
+            }
+        ]
+    }
+]
