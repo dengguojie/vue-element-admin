@@ -872,10 +872,11 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
 
   const int64_t image_size_dim_value = op.get_input_desc_image_size().GetShape().GetDim(0);
   const int64_t bounding_boxes_dim2_value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
-  if ((image_size_dim_value != 3) || (bounding_boxes_dim2_value != 4)) {
+  if (((image_size_dim_value != 3) && (image_size_dim_value != -1)) ||
+     ((bounding_boxes_dim2_value != 4) && (bounding_boxes_dim2_value != -1))) {
     std::string err_msg = ConcatString(
-        "0th dim of input[image_size] must be 3, got[", image_size_dim_value,
-        "] and 2nd dim of input[bounding_boxes] must be 4, got[",
+        "0th dim of input[image_size] must be 3 or -1, got[", image_size_dim_value,
+        "] and 2nd dim of input[bounding_boxes] must be 4 or -1, got[",
         bounding_boxes_dim2_value, "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -943,10 +944,10 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxes, DrawBoundingBoxesInfer) {
             GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "3D")));
     return GRAPH_FAILED;
   }
-  if (boxes.GetDim(2) != 4) {
+  if ((boxes.GetDim(2) != 4) && (boxes.GetDim(2) != -1)) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
         ConcatString("invalid 2th dim[", boxes.GetDim(2),
-            "] of input[boxes], should 4"));
+            "] of input[boxes], should 4 or -1"));
     return GRAPH_FAILED;
   }
   DataType type = op.GetInputDesc("images").GetDataType();
