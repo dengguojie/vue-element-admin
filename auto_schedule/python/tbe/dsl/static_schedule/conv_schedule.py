@@ -6032,6 +6032,8 @@ class CceConvOp:
                     self.__pragma_for_op_vector(lop, res)
                 if "_convolution_A" in lop["op"]:
                     lop["op"] = lop["op"].replace("_convolution_A", "")
+                if lop["op"] == "unknown_broadcast":
+                    self._schedule[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], 'vector_auto')
                 if lop["op"] == "broadcast":
                     self._schedule[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], 'vector_dup')
                 if lop["op"] == "broadcast_for_tensor":
