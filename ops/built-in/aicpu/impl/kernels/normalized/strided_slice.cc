@@ -136,9 +136,9 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
   int64_t strides_j = strides[j];
   if (j < strides.size()) {
     if (ProcessEllipsisMask(begin, end, strides, x_shape, ellipsis_mask,
-            new_axis_mask, i, j, bit_mask, has_ellipsis,
-            begin_j, end_j, strides_j, begin_res, end_res, strides_res) ==
-          KERNEL_STATUS_INNER_ERROR) {
+        new_axis_mask, i, j, bit_mask, has_ellipsis,
+        begin_j, end_j, strides_j, begin_res, end_res, strides_res) ==
+        KERNEL_STATUS_INNER_ERROR) {
       return KERNEL_STATUS_INNER_ERROR;
     }
     ProcessBeginMask(strides, x_shape, begin_mask, shrink_axis_mask,
@@ -149,7 +149,7 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
       return KERNEL_STATUS_OK;
     }
     if (ProcessShrinkAxisMask(x_shape, shrink_axis_mask, i, bit_mask,
-            begin_j, strides_j, end_j) == KERNEL_STATUS_INNER_ERROR) {
+        begin_j, strides_j, end_j) == KERNEL_STATUS_INNER_ERROR) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   } else {
@@ -181,10 +181,10 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
   std::vector<int64_t> strides_res;
   while (i < x_shape.size()) {
     KERNEL_HANDLE_ERROR(ProcessMasks(begin, end, strides, x_shape,
-                            begin_mask, end_mask, ellipsis_mask, new_axis_mask,
-                            shrink_axis_mask, i, j, bit_mask, has_ellipsis,
-                            begin_res, end_res, strides_res),
-                        "[%s] process masks failed.", kStridedSlice);
+        begin_mask, end_mask, ellipsis_mask, new_axis_mask,
+        shrink_axis_mask, i, j, bit_mask, has_ellipsis,
+        begin_res, end_res, strides_res),
+        "[%s] process masks failed.", kStridedSlice);
     i++;
     j++;
     DataLeftShift(bit_mask);
@@ -234,9 +234,9 @@ uint32_t StridedSliceCpuKernel::Compute(CpuKernelContext &ctx) {
 
   // init params with masks
   KERNEL_HANDLE_ERROR(InitParamsWithMasks(x_shape_, begin_mask_, end_mask_,
-                          ellipsis_mask_, new_axis_mask_, shrink_axis_mask_,
-                          begin_, end_, strides_),
-                      "[%s] init params with masks failed.", kStridedSlice);
+      ellipsis_mask_, new_axis_mask_, shrink_axis_mask_,
+      begin_, end_, strides_),
+      "[%s] init params with masks failed.", kStridedSlice);
 
   // cal strided slice
   Tensor *x_tensor = ctx.Input(0);

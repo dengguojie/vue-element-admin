@@ -34,7 +34,7 @@ uint32_t EnvironGetCpuKernel::InitKernel(const CpuKernelContext &ctx) {
   }
 
   output_ = ctx.Output(0);
-  input_default_value_ = ctx.Input(2);
+  input_default_value_ = ctx.Input(kThirdInputIndex);
   KERNEL_CHECK_NULLPTR(output_, KERNEL_STATUS_PARAM_INVALID,
                        "Get output[0] failed.")
   value_type_attr_ = ctx.GetAttr(kEnvValueTypeAttr)->GetInt();

@@ -34,7 +34,7 @@ uint32_t EnvironSetCpuKernel::InitKernel(const CpuKernelContext &ctx) {
   // Check the output.
   output_handle_ = ctx.Output(0);
   input_handle_ = ctx.Input(0);
-  input_value_ = ctx.Input(2);
+  input_value_ = ctx.Input(kThirdInputIndex);
   KERNEL_CHECK_NULLPTR(output_handle_, KERNEL_STATUS_PARAM_INVALID,
                        "Get output[0] failed.")
   auto output_shape = output_handle_->GetTensorShape()->GetDimSizes();

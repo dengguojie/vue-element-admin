@@ -231,7 +231,7 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
 
   if (x_data_size_ == 0) {
     KERNEL_LOG_INFO("Input data is empty, input size: [%llu]",
-                     x_data_size_);
+                    x_data_size_);
     return KERNEL_STATUS_OK;
   }
   KERNEL_LOG_INFO("Cast input size: [%llu], output size: [%llu]",

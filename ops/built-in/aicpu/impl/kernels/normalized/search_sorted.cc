@@ -205,7 +205,7 @@ uint32_t SearchSortedKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "GetInputAndCheck failed, result = [%u].", res);
 
-  std::map<int,std::map<int, std::function<uint32_t(
+  std::map<int, std::map<int, std::function<uint32_t(
                         bool, Tensor *, Tensor *, Tensor *,
                         std::vector<int64_t>,
                         std::vector<int64_t>, CpuKernelContext &)>>> calls;

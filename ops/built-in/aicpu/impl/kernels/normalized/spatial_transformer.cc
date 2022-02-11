@@ -103,26 +103,26 @@ uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(CpuKernelContext &ct
   output_data_type_ = static_cast<DataType>(output_tensor_->GetDataType());
   if (input_data_type_ != output_data_type_) {
     KERNEL_LOG_ERROR("Input data type[%s] and output data type[%s] are not same.",
-      DTypeStr(input_data_type_).c_str(), DTypeStr(output_data_type_).c_str());
+        DTypeStr(input_data_type_).c_str(), DTypeStr(output_data_type_).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   // get theta list
   AttrValue *theta_ptr = ctx.GetAttr("default_theta");
   KERNEL_CHECK_NULLPTR(theta_ptr, KERNEL_STATUS_PARAM_INVALID,
-    "[%s] get attr default_theta fail.", kSpatialTransformer);
+      "[%s] get attr default_theta fail.", kSpatialTransformer);
   theta_ = theta_ptr->GetListFloat();
 
   // get theta valid list
   AttrValue *theta_valid_ptr = ctx.GetAttr("use_default_theta");
   KERNEL_CHECK_NULLPTR(theta_valid_ptr, KERNEL_STATUS_PARAM_INVALID,
-    "[%s] get attr use_default_theta fail.", kSpatialTransformer);
+      "[%s] get attr use_default_theta fail.", kSpatialTransformer);
   theta_valid_ = theta_valid_ptr->GetListInt();
 
   // get stn original channel
   AttrValue *ori_channel_ptr = ctx.GetAttr("stn_ori_channel");
   KERNEL_CHECK_NULLPTR(ori_channel_ptr, KERNEL_STATUS_PARAM_INVALID,
-    "[%s] get attr stn_ori_channel fail.", kSpatialTransformer);
+      "[%s] get attr stn_ori_channel fail.", kSpatialTransformer);
   stn_ori_channel_ = ori_channel_ptr->GetInt();
 
   return KERNEL_STATUS_OK;
@@ -474,7 +474,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute(CpuKernelContext &ctx) {
 uint32_t SpatialTransformerCpuKernel::Compute(CpuKernelContext &ctx) {
   uint32_t res = GetInputAndCheckValid(ctx);
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), KERNEL_STATUS_PARAM_INVALID,
-    "GetInputAndCheckValid process failed.");
+      "GetInputAndCheckValid process failed.");
 
   switch (input_data_type_) {
     STN_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
