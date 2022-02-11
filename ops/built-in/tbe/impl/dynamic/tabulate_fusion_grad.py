@@ -119,6 +119,45 @@ class TabulateFusionGrad:
         self.dy_dem_x = None
         self.dy_dem = None
 
+    def compute(self):
+        """
+        compute
+        """
+        self._init_tensor()
+
+        loc_start = self.tik_inst.Scalar(init_value=0, dtype="int32")
+        loc_end = self.tik_inst.Scalar(init_value=0, dtype="int32")
+
+        with self.tik_inst.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_i:
+            self._init_scalar_var()
+
+            with self.tik_inst.if_scope(core_i < self.high_core_num):
+                loc_start.set_as(self.loc_offset + core_i * self.loc_per_high_core)
+                loc_end.set_as(loc_start + self.loc_per_high_core)
+            with self.tik_inst.elif_scope(core_i < self.loc):
+                loc_start.set_as(self.loc_offset + self.high_core_num + core_i * self.loc_per_low_core)
+                loc_end.set_as(loc_start + self.loc_per_low_core)
+            with self.tik_inst.else_scope():
+                loc_start.set_as(0)
+                loc_end.set_as(0)
+
+            with self.tik_inst.for_range(loc_start, loc_end, name="loc") as loc_i:
+                self._compute_loc_grad(loc_i)
+
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num,
+                                                            "split_count": self.split_count,
+                                                            "split_index": self.split_index})
+
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
+                               inputs=[self.table_gm, self.table_info_gm, self.em_x_gm, self.em_gm,
+                                       self.dy_gm, self.descriptor_gm],
+                               outputs=[self.dy_dem_x_gm, self.dy_dem_gm],
+                               flowtable=(self.tiling_gm,),
+                               config=opt_config)
+
+        return self.tik_inst
+
     def _init_tensor(self):
         """
         init gm/ub tensor
@@ -616,45 +655,6 @@ class TabulateFusionGrad:
                     with self.tik_inst.else_scope():
                         self._process_last_nei_tail(loc)
                     nei_offset.set_as(nei_offset + nei_mask)
-
-    def compute(self):
-        """
-        compute
-        """
-        self._init_tensor()
-
-        loc_start = self.tik_inst.Scalar(init_value=0, dtype="int32")
-        loc_end = self.tik_inst.Scalar(init_value=0, dtype="int32")
-
-        with self.tik_inst.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_i:
-            self._init_scalar_var()
-
-            with self.tik_inst.if_scope(core_i < self.high_core_num):
-                loc_start.set_as(self.loc_offset + core_i * self.loc_per_high_core)
-                loc_end.set_as(loc_start + self.loc_per_high_core)
-            with self.tik_inst.elif_scope(core_i < self.loc):
-                loc_start.set_as(self.loc_offset + self.high_core_num + core_i * self.loc_per_low_core)
-                loc_end.set_as(loc_start + self.loc_per_low_core)
-            with self.tik_inst.else_scope():
-                loc_start.set_as(0)
-                loc_end.set_as(0)
-
-            with self.tik_inst.for_range(loc_start, loc_end, name="loc") as loc_i:
-                self._compute_loc_grad(loc_i)
-
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.ai_core_num,
-                                                            "split_count": self.split_count,
-                                                            "split_index": self.split_index})
-
-        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                               inputs=[self.table_gm, self.table_info_gm, self.em_x_gm, self.em_gm,
-                                       self.dy_gm, self.descriptor_gm],
-                               outputs=[self.dy_dem_x_gm, self.dy_dem_gm],
-                               flowtable=(self.tiling_gm,),
-                               config=opt_config)
-
-        return self.tik_inst
 
 
 def _check_params(table, table_info, em_x, em_, dy_, descriptor, dy_dem_x, dy_dem, split_count,

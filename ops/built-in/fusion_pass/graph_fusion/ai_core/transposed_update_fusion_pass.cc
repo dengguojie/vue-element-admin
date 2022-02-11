@@ -34,7 +34,8 @@ namespace fe {
 vector<FusionPattern*> TransposedUpdateFusionPass::DefinePatterns() {
     vector<FusionPattern*> patterns;
     FusionPattern* pattern = new (std::nothrow) FusionPattern("TransposedUpdatePattern");
-    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "new a pattern object failed."),
                       return patterns);
     pattern->AddOpDesc("TransposeD", {"TransposeD"}).SetOutput("TransposeD");
     patterns.push_back(pattern);
@@ -80,9 +81,8 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
         return FAILED;
     }
 
-    bool isTransposSupported = CheckOpSupported(transposeNode);
-
     // need do AddInferFunc, otherwise transpose can't find the true InferShape.
+    bool isTransposSupported = CheckOpSupported(transposeNode);
     if (isTransposSupported) {
         auto realFusedOp = ge::OperatorFactory::CreateOperator("realFusedOp", "Transpose");
         if (realFusedOp.IsEmpty()) {

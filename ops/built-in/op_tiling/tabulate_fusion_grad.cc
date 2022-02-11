@@ -31,6 +31,13 @@ namespace optiling {
 constexpr int64_t INPUT_LENGTH = 6;
 constexpr int64_t OUTPUT_LENGTH = 2;
 
+constexpr int64_t NUM_1 = 1;
+constexpr int64_t NUM_2 = 2;
+constexpr int64_t NUM_3 = 3;
+constexpr int64_t NUM_4 = 4;
+constexpr int64_t NUM_5 = 5;
+constexpr int64_t NUM_6 = 6;
+
 struct TabulateFusionGradParams {
   int64_t nloc;
   int64_t nnei;
@@ -78,7 +85,7 @@ static bool GetTabulateFusionGradCompileParams(const std::string& opType,
   OP_TILING_CHECK(allVars.count("split_count") == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "Failed to get split_count."), return false);
   splitCount = allVars["split_count"].get<std::int64_t>();
-  OP_TILING_CHECK(splitCount < 1 || splitCount > 2,
+  OP_TILING_CHECK(splitCount < NUM_1 || splitCount > NUM_2,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "Split count should be 1 or 2."),
                   return false);
 
@@ -97,49 +104,49 @@ static bool CheckTabulateFusionGradShapeInfo(const std::string& opType, const Te
   OP_LOGD(opType.c_str(), "CheckTabulateFusionGradShapeInfo begin.");
 
   std::vector<int64_t> descriptorShape = opParas.inputs[5].tensor[0].shape;
-  OP_TILING_CHECK(descriptorShape.size() != 3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(descriptorShape.size() != NUM_3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(3 vs %lu) of descriptor is incorrect", descriptorShape.size()),
                   return false);
-  OP_TILING_CHECK(descriptorShape[1] != 4 || descriptorShape[2] < 1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(descriptorShape[1] != NUM_4 || descriptorShape[2] < NUM_1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The shape[1](4 vs %ld) or shape[2](%ld > 0) of descriptor is incorrect",
                   descriptorShape[1], descriptorShape[2]),
                   return false);
 
   std::vector<int64_t> tableShape = opParas.inputs[0].tensor[0].shape;
-  OP_TILING_CHECK(tableShape.size() != 2, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(tableShape.size() != NUM_2, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(2 vs %lu) of table is incorrect", tableShape.size()),
                   return false);
-  OP_TILING_CHECK(tableShape[1] != 6 * descriptorShape[2], VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(tableShape[1] != NUM_6 * descriptorShape[2], VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The shape[1](%ld vs %ld) of table is incorrect",
-                  6 * descriptorShape[2], tableShape[1]),
+                  NUM_6 * descriptorShape[2], tableShape[1]),
                   return false);
 
   std::vector<int64_t> tableInfoShape = opParas.inputs[1].tensor[0].shape;
-  OP_TILING_CHECK(tableInfoShape.size() != 1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(tableInfoShape.size() != NUM_1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(1 vs %lu) of tableInfo is incorrect", tableInfoShape.size()),
                   return false);
-  OP_TILING_CHECK(tableInfoShape[0] < 5, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(tableInfoShape[0] < NUM_5, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The shape[0](%ld >= 5) of tableInfo is incorrect", tableInfoShape[0]),
                   return false);
 
   std::vector<int64_t> emXShape = opParas.inputs[2].tensor[0].shape;
-  OP_TILING_CHECK(emXShape.size() != 2, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(emXShape.size() != NUM_2, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(2 vs %lu) of emX is incorrect", emXShape.size()),
                   return false);
 
   std::vector<int64_t> emShape = opParas.inputs[3].tensor[0].shape;
-  OP_TILING_CHECK(emShape.size() != 3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(emShape.size() != NUM_3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(3 vs %lu) of em is incorrect", emShape.size()),
                   return false);
-  OP_TILING_CHECK(emShape[2] != 4, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(emShape[2] != NUM_4, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The shape[2](%ld = 4) of em is incorrect", emShape[2]),
                   return false);
 
   std::vector<int64_t> dyShape = opParas.inputs[4].tensor[0].shape;
-  OP_TILING_CHECK(dyShape.size() != 3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(dyShape.size() != NUM_3, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The dims(3 vs %lu) of dy is incorrect", dyShape.size()),
                   return false);
-  OP_TILING_CHECK(dyShape[1] != 4 || dyShape[2] < 1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
+  OP_TILING_CHECK(dyShape[1] != NUM_4 || dyShape[2] < NUM_1, VECTOR_INNER_ERR_REPORT_TILIING(opType,
                   "The shape[1](4 vs %ld) or shape[2](%ld > 0) of dy is incorrect", dyShape[1], dyShape[2]),
                   return false);
 
@@ -180,12 +187,12 @@ static bool SetTabulateFusionGradRunParams(const std::string& opType, const TeOp
   int64_t nlocOffset = 0;
   int64_t nlocSplit = runParams.nloc;
 
-  if (splitCount == 2) {
+  if (splitCount == NUM_2) {
     if (splitIndex == 0) {
       nlocOffset = 0;
-      nlocSplit = (runParams.nloc + 1) / 2;
+      nlocSplit = (runParams.nloc + 1) / NUM_2;
     } else {
-      nlocOffset = (runParams.nloc + 1) / 2;
+      nlocOffset = (runParams.nloc + 1) / NUM_2;
       nlocSplit = runParams.nloc - nlocOffset;
     }
   }

@@ -21,7 +21,7 @@ from tbe.common.platform.platform_info import set_current_compile_soc_info
 import tbe
 
 
-ut_case = OpUT("ProdForceSeA", "impl.prod_force_se_a", "prod_force_se_a")
+ut_case = OpUT("ProdForceSeA", "impl.dynamic.prod_force_se_a", "prod_force_se_a")
 
 
 def test_prod_force_se_a_case001(test_args):

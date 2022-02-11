@@ -39,7 +39,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const char *FUSED_NODE_1 = "StridedSlice";
 static const char *FUSED_NODE_2 = "StridedSliceD";
 static const std::string PATTERN_FUSEDNODE = "StridedSlice";

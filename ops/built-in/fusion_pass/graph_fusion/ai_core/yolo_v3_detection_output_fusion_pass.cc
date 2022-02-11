@@ -84,7 +84,8 @@ vector<FusionPattern*> YoloV3DetectionOutputPass::DefinePatterns() {
   return patterns;
 }
 
-Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                         vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloV3DetectionOutputPass");
   // diag node
   ge::NodePtr yolov3VNode = GetNodeFromMapping(PATTERN_YOLOV3, mapping);
