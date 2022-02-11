@@ -253,6 +253,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
   graph_fusion/ai_core/pad_fusion_pass.cc
   graph_fusion/ai_core/pad_v2_fusion_pass.cc
+  graph_fusion/ai_core/padd_update_fusion_pass.cc
   graph_fusion/ai_core/pass_through_fusion_pass.cc
   graph_fusion/ai_core/pass_through_second_fusion_pass.cc
   graph_fusion/ai_core/permute_fusion_pass.cc
