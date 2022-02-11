@@ -291,10 +291,23 @@ def add_test_matmul():
                   "relu_mode": False, "kernel_name": "ascend_dequant"}
         test_compute_prebuild_matmul(params)
 
+    def test_ascend_dequant_dynamic_prebuild_3005(_):
+        x = {"shape": (2, 1, 1, 16, 16), "dtype": "int32", "format": "NC1HWC0",
+             "ori_shape": (2, 4, 4), "ori_format": "NC1HWC0"}
+        deq_scale = {"shape": (1, 1, 1, 1, 16), "dtype": "float16",
+                     "format": "NC1HWC0", "ori_shape": (1,), "ori_format": "ND"}
+        y = {"shape": (2, 1, 1, 16, 16), "dtype": "float16", "format": "NC1HWC0",
+             "ori_shape": (1, 4, 4, 16, 16), "ori_format": "NC1HWC0"}
+
+        params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": False,
+                  "relu_mode": False, "kernel_name": "ascend_dequant"}
+        test_compute_prebuild_matmul(params)
+
     ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_3001)
     ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_3002)
     ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_3003)
     ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_3004)
+    ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_3005)
 
 
 def add_test_conv():

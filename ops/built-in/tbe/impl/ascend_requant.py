@@ -125,17 +125,18 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
 
         if tensor_flag:
             res_ub = tvm.compute(align_shape,
-                                 lambda i, j, a, k, l:
-                                 tvm.select(j < valid_c1,
-                                            tvm.vdeq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, j, 0, 0, l), "int8",
-                                                          do_relu=relu_flag),
+                                 lambda batch, c1, ho, wo, c0:
+                                 tvm.select(c1 < valid_c1,
+                                            tvm.vdeq_cast(x(batch, c1 // 2, c1 % 2, wo, c0), req_scale(0, c1, 0, 0, c0),
+                                                          "int8", do_relu=relu_flag),
                                             tvm.const(0, dtype="int8")), name="s32_to_s8", tag="requant_vector")
 
         else:
             res_ub = tvm.compute(align_shape,
-                                 lambda i, j, a, k, l:
-                                 tvm.select(j < valid_c1,
-                                            tvm.deq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, 0, 0, 0, 0), "int8"),
+                                 lambda batch, c1, ho, wo, c0:
+                                 tvm.select(c1 < valid_c1,
+                                            tvm.deq_cast(x(batch, c1 // 2, c1 % 2, wo, c0), req_scale(0, 0, 0, 0, 0),
+                                                         "int8"),
                                             tvm.const(0, dtype="int8")), name="s32_to_s8", tag="requant_scale")
     else:
         align_shape[c1_index] = (align_shape[c1_index] + 1) // 2 * 2

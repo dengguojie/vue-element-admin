@@ -34,5 +34,9 @@ ut_case.add_case("Ascend910A",
                  gen_ascend_anti_quant_case((-1,-1,-1,16,32),(-1,-1,-1,16,16),(-1,-1,-1),(-1,-1,-1),
                                       ((1, None),(1, None),(1, None),(16, 16),(32, 32)),((1, None),(1, None),(1, None),(16, 16),(16, 16)),
                                       "NC1HWC0","ND","int8",5.5,-4.0,True,"ascend_anti_quant_case_5", "success"))
+ut_case.add_case("Ascend910A",
+                 gen_ascend_anti_quant_case((1,1,2,16,32),(1,1,2,16,16),(1,2,16,1),(1,2,16,1),
+                                      ((1, 1),(1, 1),(2, 2),(16, 16),(32, 32)),((1, 1),(1, 1),(2, 2),(16, 16),(16, 16)),
+                                      "NC1HWC0","NHWC","int8",5.5,-4.0,True,"ascend_anti_quant_case_5", "success"))
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

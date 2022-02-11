@@ -140,7 +140,8 @@ def ascend_anti_quant_compute(x, y, scale, offset, sqrt_mode=False, kernel_name=
     if 0 < ori_c % 32 <= 16:
         tmp_res = tvm.compute(out_shape, lambda *indice: scale_ub(*indice), name="tmp_res")
 
-        align_shape = [ori_shape[0], (ori_shape[1] + util.Constant.FP16_BLOCK_VALUE - 1) // util.Constant.FP16_BLOCK_VALUE,
+        align_shape = [ori_shape[0],
+                       (ori_shape[1] + util.Constant.FP16_BLOCK_VALUE - 1) // util.Constant.FP16_BLOCK_VALUE,
                        ori_shape[2], ori_shape[3], util.Constant.FP16_BLOCK_VALUE]
 
         res = tvm.compute(align_shape, lambda *indice: tmp_res(*indice), name="res", tag="anti_quant",

@@ -41,11 +41,18 @@ def test_matmul_dequant_compute(test_arg):
     deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_tensor", attrs={'format': "NC1HWC0", "ori_shape": (1, 64, 1, 1)}, dtype="uint64")
     _matmul_compute(x, x_shape, deq_scale, False, False, (64, 64), 0, True)
 
+def test_matmul_dequant_compute_1(test_arg):
+    x = tvm.placeholder((1, 4, 1, 16), name="matmul_input", attrs={'format': "NC1HWC0", "ori_shape": (1, 64)}, dtype="int32")
+    x_shape = (1, 4, 1, 16)
+    deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_tensor", attrs={'format': "NC1HWC0", "ori_shape": (1, 64, 1, 1)}, dtype="uint64")
+    _matmul_compute(x, x_shape, deq_scale, False, False, (1, 64), 1, True)
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_cust_test_func(test_func=test_matmul_dequant_compute)
+ut_case.add_cust_test_func(test_func=test_matmul_dequant_compute_1)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
