@@ -217,9 +217,9 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
     return false;
   } else if ((c_size * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
     // for open multi-core
-    block_nparts = (n_h_w * dtype_size) >= (static_cast<int32_t>(compile_info.core_num) * BTYPE_PER_BLOCK)
+    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
                        ? compile_info.core_num
-                       : n_h_w * dtype_size / BTYPE_PER_BLOCK;
+                       : n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK);
     int32_t block_tiling_inner_loop = n_h_w / block_nparts;
     ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
   } else {
