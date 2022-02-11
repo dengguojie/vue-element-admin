@@ -66,7 +66,7 @@ class AICPU_VISIBILITY CpuKernelUtils {
    * @return std::shared_ptr<TensorShape>: TensorShape ptr
    */
   static std::shared_ptr<TensorShape> CreateTensorShape(
-      TensorShapeImpl *tensorShape);
+      TensorShapeImpl *tensor_shape);
 
   /*
    * get tensor shape impl.
