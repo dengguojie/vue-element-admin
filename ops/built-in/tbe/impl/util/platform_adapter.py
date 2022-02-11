@@ -96,9 +96,6 @@ class PlatformApi:
     """
     platform API
     """
-    fusion_manager = tbe_fusion_manager
-    cce_build = tbe_cce_build
-
     # Instructions Strings
     EXP = "vector_exp"
     RELU = "vector_relu"
@@ -212,23 +209,6 @@ class PlatformApi:
     HI3796CV300CSAIC = platform.HI3796CV300CSAIC
     SD3403AIC = platform.SD3403AIC
     ASCEND_SD_AIC = platform.ASCEND_SD_AIC
-    scope_cbuf = platform.scope_cbuf
-    scope_ubuf = platform.scope_ubuf
-    scope_ca = platform.scope_ca
-    scope_cb = platform.scope_cb
-    scope_cc = platform.scope_cc
-    scope_reg = platform.scope_reg
-    scope_vreg = platform.scope_vreg
-    scope_preg = platform.scope_preg
-    scope_areg = platform.scope_areg
-    scope_ureg = platform.scope_ureg
-    scope_wreg = platform.scope_wreg
-    scope_aicpu = platform.scope_aicpu
-    scope_gm = platform.scope_gm
-    scope_cbuf_fusion = platform.scope_cbuf_fusion
-    scope_smask = platform.scope_smask
-    dma_copy = platform.dma_copy
-    dma_copy_global = platform.dma_copy_global
     SOC_VERSION = platform.SOC_VERSION
     FULL_SOC_VERSION = platform.FULL_SOC_VERSION
     AICORE_TYPE = platform.AICORE_TYPE
@@ -249,7 +229,6 @@ class PlatformApi:
     CUBE_VECTOR_SPLIT = platform.CUBE_VECTOR_SPLIT
     COMPILER_ARCH = platform.COMPILER_ARCH
 
-    intrinsic_check_support = platform.intrinsic_check_support
     VECTOR_INST_BLOCK_NUM = platform.VECTOR_INST_BLOCK_NUM
     VECTOR_INST_BLOCK_WIDTH = platform.VECTOR_INST_BLOCK_WIDTH
     VECTOR_INST_MAX_REPEAT_TIMES = platform.VECTOR_INST_MAX_REPEAT_TIMES
@@ -263,6 +242,28 @@ class PlatformApi:
     C0_SIZE = platform.C0_SIZE
     ELEMENTS_VECTOR_OP_FP16 = platform.ELEMENTS_VECTOR_OP_FP16
     CUBE_MKN = platform.CUBE_MKN
+
+    scope_cbuf = platform.scope_cbuf
+    scope_ubuf = platform.scope_ubuf
+    scope_ca = platform.scope_ca
+    scope_cb = platform.scope_cb
+    scope_cc = platform.scope_cc
+    scope_reg = platform.scope_reg
+    scope_vreg = platform.scope_vreg
+    scope_preg = platform.scope_preg
+    scope_areg = platform.scope_areg
+    scope_ureg = platform.scope_ureg
+    scope_wreg = platform.scope_wreg
+    scope_aicpu = platform.scope_aicpu
+    scope_gm = platform.scope_gm
+    scope_cbuf_fusion = platform.scope_cbuf_fusion
+    scope_smask = platform.scope_smask
+    dma_copy = platform.dma_copy
+    dma_copy_global = platform.dma_copy_global
+    intrinsic_check_support = platform.intrinsic_check_support
+
+    fusion_manager = tbe_fusion_manager
+    cce_build = tbe_cce_build
 
     get_soc_spec = platform_info.get_soc_spec
     api_check_support = platform_info.api_check_support

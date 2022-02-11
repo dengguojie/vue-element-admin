@@ -2650,5 +2650,289 @@
       }
     ],
     "case_name": "test_LRN_041"
+  },
+  {
+    "op": "LRN",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2555,
+          255,
+          255
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          2555,
+          255,
+          255
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2555,
+          255,
+          255
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          2555,
+          255,
+          255
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 2e-05
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "norm_region",
+        "type": "string",
+        "value": "ACROSS_CHANNELS"
+      }
+    ],
+    "case_name": "test_LRN_042"
+  },
+  {
+    "op": "LRN",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          255,
+          255,
+          255
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          255,
+          255,
+          255
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          255,
+          255,
+          255
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          255,
+          255,
+          255
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 2e-05
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "norm_region",
+        "type": "string",
+        "value": "ACROSS_CHANNELS"
+      }
+    ],
+    "case_name": "test_LRN_043"
+  },
+  {
+    "op": "LRN",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          255,
+          3,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          255,
+          3,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          255,
+          3,
+          3
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          255,
+          3,
+          3
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 2e-05
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "norm_region",
+        "type": "string",
+        "value": "ACROSS_CHANNELS"
+      }
+    ],
+    "case_name": "test_LRN_044"
+  },
+  {
+    "op": "LRN",
+    "input_desc": [
+      {
+        "shape": [
+          2555,
+          25,
+          25,
+          25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2555,
+          25,
+          25,
+          25
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2555,
+          25,
+          25,
+          25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2555,
+          25,
+          25,
+          25
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "depth_radius",
+        "type": "int",
+        "value": 5
+      },
+      {
+        "name": "bias",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 2e-05
+      },
+      {
+        "name": "beta",
+        "type": "float",
+        "value": 0.5
+      },
+      {
+        "name": "norm_region",
+        "type": "string",
+        "value": "ACROSS_CHANNELS"
+      }
+    ],
+    "case_name": "test_LRN_045"
   }
 ]

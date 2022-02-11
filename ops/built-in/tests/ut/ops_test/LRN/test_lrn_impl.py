@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # import tensorflow as tf
-from op_test_frame.ut import OpUT
 import numpy as np
+from op_test_frame.ut import OpUT
 
 ut_case = OpUT("LRN", "impl.lrn", "lrn")
 
@@ -115,38 +115,36 @@ def gen_lrn_precision_case(shape, dtype, expect="success", depth_radius=5,
             "calc_expect_func": calc_expect_func}
 
 
-'''
-ut_case.add_precision_case("all",
-                           gen_lrn_precision_case((1, 32, 5, 5, 16),
-                                                  "float16", "success", 2, 1.0,
-                                                  0.5, 0.75, "NC1HWC0",
-                                                  kernel_name="lrn_104"))
+ut_case.add_case("all",
+                 gen_lrn_case((1, 32, 5, 5, 16),
+                              "float16", "success", 2, 1.0,
+                              0.5, 0.75, "NC1HWC0",
+                              kernel_name="lrn_099"))
 
-ut_case.add_precision_case("all",
-                           gen_lrn_precision_case((4, 1, 16, 32, 16),
-                                                  "float16", "success", 2, 1.0,
-                                                  0.0002, 0.75, "NC1HWC0",
-                                                  kernel_name="lrn_100"))
+ut_case.add_case("all",
+                 gen_lrn_case((4, 1, 16, 32, 16),
+                              "float16", "success", 2, 1.0,
+                              0.0002, 0.75, "NC1HWC0",
+                              kernel_name="lrn_100"))
 
-ut_case.add_precision_case("all",
-                           gen_lrn_precision_case((1, 8, 16, 32, 16),
-                                                  "float16", "success", 2, 1.0,
-                                                  0.5, 0.75, "NC1HWC0",
-                                                  kernel_name="lrn_101"))
+ut_case.add_case("all",
+                 gen_lrn_case((1, 8, 16, 32, 16),
+                              "float16", "success", 2, 1.0,
+                              0.5, 0.75, "NC1HWC0",
+                              kernel_name="lrn_101"))
 
 
-ut_case.add_precision_case("all",
-                           gen_lrn_precision_case((1, 12, 56, 56, 16),
-                                                  "float16", "success", 2, 1.0,
-                                                  0.5, 0.75, "NC1HWC0",
-                                                  kernel_name="lrn_103"))
+ut_case.add_case("all",
+                 gen_lrn_case((1, 12, 56, 56, 16),
+                              "float16", "success", 2, 1.0,
+                              0.5, 0.75, "NC1HWC0",
+                              kernel_name="lrn_103"))
 
-ut_case.add_precision_case("all",
-                           gen_lrn_precision_case((1, 4, 258, 256, 16),
-                                                  "float16", "success", 2, 1.0,
-                                                  0.5, 0.75, "NC1HWC0",
-                                                  kernel_name="lrn_104"))
-'''
+# ut_case.add_case("all",
+#                  gen_lrn_case((1, 4, 258, 256, 16),
+#                               "float16", "success", 2, 1.0,
+#                               0.5, 0.75, "NC1HWC0",
+#                               kernel_name="lrn_104"))
 
 ut_case.add_case("all",
                  gen_lrn_case((1, 128, 28, 28), "float16", "success",
@@ -208,47 +206,68 @@ ut_case.add_case("all",
                               -1, 1.0, 0.00002, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_102"))
 
-'''
 ut_case.add_case(["Ascend310"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_001"))
 ut_case.add_case(["Ascend310"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_002", "high_precision"))
 ut_case.add_case(["Ascend310"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_003", "high_precision"))
 ut_case.add_case(["Ascend620"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_004"))
 ut_case.add_case(["Ascend620"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_005", "high_precision"))
 ut_case.add_case(["Ascend620"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_006", "high_precision"))
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_007", "high_precision"))
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_008"))
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
-                              5, 1.0, 1.0, 0.5,
+                              5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_009"))
+ut_case.add_case("all",
+                 gen_lrn_case((1, 2555, 255, 255), "float16", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_010"))
 
-'''
+ut_case.add_case("all",
+                 gen_lrn_case((1, 255, 255, 255), "float16", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_011"))
+
+ut_case.add_case("all",
+                 gen_lrn_case((1, 255, 3, 3), "float16", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_012"))
+
+
+ut_case.add_case("all",
+                 gen_lrn_case((1, 2555, 3, 3), "float16", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_013"))
+
+ut_case.add_case("all",
+                 gen_lrn_case((2555, 25, 25, 25), "float16", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_014"))
+
 
 if __name__ == '__main__':
-
-    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
-
+    ut_case.run(["Ascend910A"])

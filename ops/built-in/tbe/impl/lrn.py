@@ -531,8 +531,7 @@ class LRNBase5HD(LRNBase):
         """
         CUT_C_HW_SIZE = 128
         tiling = {}
-        tiling["batch_once"] = self.n_size // self.device_aicore_num \
-            if self.n_size > self.device_aicore_num else 1
+        tiling["batch_once"] = self.n_size // self.device_aicore_num if self.n_size > self.device_aicore_num else 1
         tiling["batch_tail"] = self.n_size % tiling["batch_once"] \
             if self.n_size % tiling["batch_once"] != 0 else \
             tiling["batch_once"]
@@ -551,10 +550,10 @@ class LRNBase5HD(LRNBase):
             tiling["type"] = "cut_hw"
             hw_once = self.ub_split_size // self.c_size
             hw_once = hw_once if hw_once < self.hw_size else self.hw_size
-            tiling["hw_once"] = (hw_once // CUT_C_HW_SIZE) * CUT_C_HW_SIZE
-            tiling["hw_tail"] = self.hw_size % tiling["hw_once"] \
-                if self.hw_size % tiling["hw_once"] != 0 else tiling["hw_once"]
-            tiling["hw_loop"] = math.ceil(self.hw_size / tiling["hw_once"])
+            hw_once = (hw_once // CUT_C_HW_SIZE) * CUT_C_HW_SIZE
+            tiling["hw_once"] = hw_once
+            tiling["hw_tail"] = self.hw_size % hw_once if self.hw_size % hw_once != 0 else hw_once
+            tiling["hw_loop"] = math.ceil(self.hw_size / hw_once)
             tiling["c_once"] = self.c_size
             tiling["c_tail"] = self.c_size
             tiling["c_loop"] = 1
@@ -563,8 +562,7 @@ class LRNBase5HD(LRNBase):
             tiling["type"] = "cut_c"
             if self.hw_size > CUT_C_HW_SIZE:
                 tiling["hw_once"] = CUT_C_HW_SIZE
-                tiling["hw_tail"] = self.hw_size % CUT_C_HW_SIZE \
-                    if self.hw_size % CUT_C_HW_SIZE != 0 else CUT_C_HW_SIZE
+                tiling["hw_tail"] = self.hw_size % CUT_C_HW_SIZE if self.hw_size % CUT_C_HW_SIZE != 0 else CUT_C_HW_SIZE
                 tiling["hw_loop"] = math.ceil(self.hw_size / CUT_C_HW_SIZE)
                 max_c_with_overlap = self.ub_split_size // CUT_C_HW_SIZE
             else:
@@ -575,10 +573,10 @@ class LRNBase5HD(LRNBase):
             max_c_with_overlap = \
                 (max_c_with_overlap // self.alignment_standards) * \
                 self.alignment_standards
-            tiling["c_once"] = max_c_with_overlap - self.depth_radius_align * 2
-            tiling["c_tail"] = self.c_size % tiling["c_once"] \
-                if self.c_size % tiling["c_once"] != 0 else tiling["c_once"]
-            tiling["c_loop"] = math.ceil(self.c_size / tiling["c_once"])
+            c_once = max_c_with_overlap - self.depth_radius_align * 2
+            tiling["c_once"] = c_once
+            tiling["c_tail"] = self.c_size % c_once if self.c_size % c_once != 0 else c_once
+            tiling["c_loop"] = math.ceil(self.c_size / c_once)
         return tiling
 
     def do_cut_n(self, tiling):
@@ -633,18 +631,14 @@ class LRNBase5HD(LRNBase):
         in_gm_offset += tiling["hw_once"] * Constant.C0_SIZE
         for hw_idx in range(tiling["hw_loop"]):
             if hw_idx < tiling["hw_loop"] - 1:
-                hw_inner = tiling["hw_once"] \
-                    if hw_idx < tiling["hw_loop"] - 2 \
-                    else tiling["hw_tail"]
+                hw_inner = tiling["hw_once"] if hw_idx < tiling["hw_loop"] - 2 else tiling["hw_tail"]
                 self.move_data_stride_in(
                     self.data_ub1[(buffer_idx+1) % 2],
                     self.input_gm,
                     hw_inner, self.c_size,
                     in_gm_offset)
                 in_gm_offset += hw_inner * Constant.C0_SIZE
-            hw_inner = tiling["hw_once"] \
-                if hw_idx < tiling["hw_loop"] - 1 \
-                else tiling["hw_tail"]
+            hw_inner = tiling["hw_once"] if hw_idx < tiling["hw_loop"] - 1 else tiling["hw_tail"]
             out_ub = self.do_operation(self.data_ub1[buffer_idx % 2],
                                        self.data_ub2[buffer_idx % 2],
                                        self.data_ub3[buffer_idx % 2],
@@ -661,8 +655,7 @@ class LRNBase5HD(LRNBase):
         buffer_idx = 0
         hw_gm_offset = batch_gm_offset
         for hw_idx in range(tiling["hw_loop"]):
-            hw_inner = tiling["hw_once"] \
-                if hw_idx < tiling["hw_loop"] - 1 else tiling["hw_tail"]
+            hw_inner = tiling["hw_once"] if hw_idx < tiling["hw_loop"] - 1 else tiling["hw_tail"]
             in_gm_offset = hw_gm_offset
             out_gm_offset = hw_gm_offset
             c_top = 0
@@ -689,8 +682,7 @@ class LRNBase5HD(LRNBase):
                     in_gm_offset += tiling["c_once"] * self.hw_size
                 else:
                     c_bottom = 0
-                c_real = tiling["c_once"] \
-                    if c_idx < tiling["c_loop"] - 1 else tiling["c_tail"]
+                c_real = tiling["c_once"] if c_idx < tiling["c_loop"] - 1 else tiling["c_tail"]
                 out_ub = self.do_operation(self.data_ub1[buffer_idx % 2],
                                            self.data_ub2[buffer_idx % 2],
                                            self.data_ub3[buffer_idx % 2],
@@ -1340,6 +1332,9 @@ class LRNBase4HD(LRNBase):
         return align_size
 
     def _do_tiling(self):
+        """
+        tiling for lrn
+        """
         n_cut_flag = False
         c_cut_flag = False
         hw_cut_flag = False
@@ -1371,6 +1366,9 @@ class LRNBase4HD(LRNBase):
         return n_cut_flag, c_cut_flag, hw_cut_flag, hw_c_all_cut_flag
 
     def _do_tiling_not_align(self):
+        """
+        do tiling for h * w is not align
+        """
         n_cut_flag = False
         h_w_cut_flag = False
         hw_c_all_cut_flag = False
@@ -1393,6 +1391,9 @@ class LRNBase4HD(LRNBase):
         return n_cut_flag, h_w_cut_flag, hw_c_all_cut_flag
 
     def _do_tiling_not_align_hw_little(self):
+        """
+        tiling for h * w is not align, and h * w is little
+        """
         n_cut_flag = False
         c_cut_flag = False
 
@@ -2814,21 +2815,6 @@ class LRNBase4HD(LRNBase):
 
         return False
 
-    def _get_target_core_num_batch_one(self):
-        segment_num = self.one_column_size // self.alignment_standards
-        if self.one_column_size % self.alignment_standards != 0:
-            segment_num = segment_num + 1
-
-        if segment_num <= self.device_aicore_num:
-            core_num = segment_num
-            hw_num_each_core = self.alignment_standards
-        else:
-            core_num = self.device_aicore_num
-            hw_num_each_core = (segment_num // core_num)*self.alignment_standards
-        hw_num_first_core = self.one_column_size - (core_num - 1)*hw_num_each_core
-
-        return core_num, hw_num_each_core, hw_num_first_core
-
     def tik_instance_function(self):
         """
         do the LRN operation when H*W is 32B align
@@ -2910,26 +2896,6 @@ class LRNBase4HD(LRNBase):
                                    outputs=[self.output_gm])
 
         return self.tik_instance
-
-    def _do_operation_each_core_not_align(self, offset_gm):
-        n_cut_flag, h_w_cut_flag, hw_c_all_cut_flag =\
-            self._do_tiling_not_align()
-
-        if n_cut_flag is True:
-            self._do_operation_each_core_n_cut_branch_not_align(offset_gm)
-        elif h_w_cut_flag is True:
-            self._do_operation_each_core_h_w_cut_branch_not_align(offset_gm)
-        elif hw_c_all_cut_flag is True:
-            self._do_operation_each_core_hw_c_cut_branch_not_align(offset_gm)
-
-    def _do_operation_each_core_not_align_hw_little(self, offset_gm):
-        # cut batch or cut c axis
-        n_cut_flag, _ = self._do_tiling_not_align_hw_little()
-
-        if n_cut_flag is True:
-            self._do_operation_each_core_n_cut_branch_hw_little_not_align(offset_gm)
-        else:
-            self._do_operation_each_core_c_cut_branch_hw_little_not_align(offset_gm)
 
     def tik_instance_function_not_align(self):
         """
@@ -3019,3 +2985,38 @@ class LRNBase4HD(LRNBase):
                                    outputs=[self.output_gm])
 
         return self.tik_instance
+
+    def _get_target_core_num_batch_one(self):
+        segment_num = self.one_column_size // self.alignment_standards
+        if self.one_column_size % self.alignment_standards != 0:
+            segment_num = segment_num + 1
+
+        if segment_num <= self.device_aicore_num:
+            core_num = segment_num
+            hw_num_each_core = self.alignment_standards
+        else:
+            core_num = self.device_aicore_num
+            hw_num_each_core = (segment_num // core_num)*self.alignment_standards
+        hw_num_first_core = self.one_column_size - (core_num - 1)*hw_num_each_core
+
+        return core_num, hw_num_each_core, hw_num_first_core
+
+    def _do_operation_each_core_not_align(self, offset_gm):
+        n_cut_flag, h_w_cut_flag, hw_c_all_cut_flag =\
+            self._do_tiling_not_align()
+
+        if n_cut_flag is True:
+            self._do_operation_each_core_n_cut_branch_not_align(offset_gm)
+        elif h_w_cut_flag is True:
+            self._do_operation_each_core_h_w_cut_branch_not_align(offset_gm)
+        elif hw_c_all_cut_flag is True:
+            self._do_operation_each_core_hw_c_cut_branch_not_align(offset_gm)
+
+    def _do_operation_each_core_not_align_hw_little(self, offset_gm):
+        # cut batch or cut c axis
+        n_cut_flag, _ = self._do_tiling_not_align_hw_little()
+
+        if n_cut_flag is True:
+            self._do_operation_each_core_n_cut_branch_hw_little_not_align(offset_gm)
+        else:
+            self._do_operation_each_core_c_cut_branch_hw_little_not_align(offset_gm)
