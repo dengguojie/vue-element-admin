@@ -114,6 +114,49 @@ namespace fe{
         return SUCCESS;
     }
 
+    Status DepthwiseFusionPass::DealReshapeProcess(ge::ComputeGraph &graph, ge::NodePtr &depthwise_node,
+                                                   const vector<int64_t> &pre_shape, const vector<int64_t> &new_shape) {
+        auto in_anchor = depthwise_node->GetInDataAnchor(1);
+        FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        "Failed to get in data anchor 1."), return FAILED);
+        auto out_anchor = in_anchor->GetPeerOutAnchor();
+        FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        "Failed to get out data anchor 1."), return FAILED);
+
+        ge::NodePtr filter_ori_node = out_anchor->GetOwnerNode();
+        std::string filter_ori_node_type = filter_ori_node->GetType().c_str();
+        auto filter_out_all = filter_ori_node->GetAllOutDataAnchors();
+        for (auto iter_out : filter_out_all){
+            auto in_anchors_dst = iter_out->GetPeerInDataAnchors();
+            for (auto iter_in : in_anchors_dst) {
+                ge::NodePtr filter_reshape_node = nullptr;
+                ge::NodePtr cur_node = iter_in->GetOwnerNode();
+                std::string cur_node_type = cur_node->GetType().c_str();
+                if (cur_node_type == "QuantBiasOptimization" || cur_node_type == "DepthwiseConv2D") {
+                    auto create_res = CreateReshapeNode(graph, iter_in, pre_shape, new_shape, filter_reshape_node);
+                    FUSION_PASS_CHECK(create_res == FAILED,
+                                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create reshape node failed"),
+                                    return FAILED);
+                    ge::GeTensorDescPtr fusedNodeInputDescPtr = cur_node->GetOpDesc()->MutableInputDesc(1);
+                    FUSION_PASS_CHECK(fusedNodeInputDescPtr == nullptr,
+                                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."),
+                                    return FAILED);
+                    fusedNodeInputDescPtr->SetShape(ge::GeShape(new_shape));
+                    fusedNodeInputDescPtr->SetOriginShape(ge::GeShape(new_shape));
+                    Status ret = InsertNode(iter_out, iter_in, filter_reshape_node);
+                    if (ret != SUCCESS) {
+                        OP_LOGE(filter_reshape_node->GetType().c_str(), "Add node %s failed.",
+                                filter_reshape_node->GetName().c_str());
+                        return FAILED;
+                    }
+                } else {
+                    continue;
+                }
+            }
+        }
+        return SUCCESS;
+    }
+
     Status DepthwiseFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusionNodes) {
         OP_LOGD("Enter DepthwiseFusionPass");
         fe::DEPTHWISE_KERNEL_RESHAPE_NUM = 0;
@@ -153,44 +196,25 @@ namespace fe{
                 }
                 vector<int64_t> pre_shape = {h, w, c, n};
                 vector<int64_t> new_shape = {h, w, 1, c*n};
-                auto in_anchor = depthwise_node->GetInDataAnchor(1);
-                FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
-                                "Failed to get in data anchor 1."), return FAILED);
-                auto out_anchor = in_anchor->GetPeerOutAnchor();
-                FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
-                                "Failed to get out data anchor 1."), return FAILED);
-
-                ge::NodePtr filter_ori_node = out_anchor->GetOwnerNode();
-                std::string filter_ori_node_type = filter_ori_node->GetType().c_str();
-                auto filter_out_all = filter_ori_node->GetAllOutDataAnchors();
-                for (auto iter_out : filter_out_all){
-                    auto in_anchors_dst = iter_out->GetPeerInDataAnchors();
-                    for (auto iter_in : in_anchors_dst) {
-                        ge::NodePtr filter_reshape_node = nullptr;
-                        ge::NodePtr cur_node = iter_in->GetOwnerNode();
-                        std::string cur_node_type = cur_node->GetType().c_str();
-                        if (cur_node_type == "QuantBiasOptimization" || cur_node_type == "DepthwiseConv2D") {
-                            auto create_res = CreateReshapeNode(graph, iter_in, pre_shape, new_shape, filter_reshape_node);
-                            FUSION_PASS_CHECK(create_res == FAILED,
-                                            OP_LOGE(FUSED_OP_TYPE.c_str(), "Create reshape node failed"), 
-                                            return FAILED);
-                            ge::GeTensorDescPtr fusedNodeInputDescPtr = cur_node->GetOpDesc()->MutableInputDesc(1);
-                            FUSION_PASS_CHECK(fusedNodeInputDescPtr == nullptr,
-                                            OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNodeInputDescPtr is null."),
-                                            return FAILED);
-                            fusedNodeInputDescPtr->SetShape(ge::GeShape(new_shape));
-                            fusedNodeInputDescPtr->SetOriginShape(ge::GeShape(new_shape));
-                            Status ret = InsertNode(iter_out, iter_in, filter_reshape_node);
-                            if (ret != SUCCESS) {
-                                OP_LOGE(filter_reshape_node->GetType().c_str(), "Add node %s failed.",
-                                        filter_reshape_node->GetName().c_str());
-                                return FAILED;
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
+                auto deal_res = DealReshapeProcess(graph, depthwise_node, pre_shape, new_shape);
+                FUSION_PASS_CHECK(deal_res == FAILED,
+                                  OP_LOGE(FUSED_OP_TYPE.c_str(), "Deal HWCN Format failed"), return FAILED);
+            } else if (origin_format == FORMAT_NCHW) {
+                OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_HWCN, before swap N, C, H, W: [%d, %d, %d, %d]",
+                        (int)filter_shape[0], (int)filter_shape[1], (int)filter_shape[2], (int)filter_shape[3]);
+                n = filter_shape[0];
+                h = filter_shape[2];
+                w = filter_shape[3];
+                c = filter_shape[1];
+                if (c == 1){
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The input1 of depthwiseConv2d has satisfied that c == 1");
+                    return NOT_CHANGED;
                 }
+                vector<int64_t> pre_shape = {n, c, h, w};
+                vector<int64_t> new_shape = {n*c, 1, h, w};
+                auto deal_res = DealReshapeProcess(graph, depthwise_node, pre_shape, new_shape);
+                FUSION_PASS_CHECK(deal_res == FAILED,
+                                  OP_LOGE(FUSED_OP_TYPE.c_str(), "Deal HWCN Format failed"), return FAILED);
             }
         }else{
             OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");

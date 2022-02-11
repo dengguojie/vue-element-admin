@@ -36,6 +36,8 @@ class DepthwiseFusionPass : public PatternFusionBasePass {
                             const vector<int64_t> & pre_shape, const vector<int64_t> & new_shape,
                             ge::NodePtr& shape_node);
     Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,  ge::NodePtr& new_node);
+    Status DealReshapeProcess(ge::ComputeGraph &graph, ge::NodePtr &depthwise_node,
+                          const vector<int64_t> &pre_shape, const vector<int64_t> &new_shape);
     const string FUSED_OP_TYPE = "DepthwiseConv2D";
 };
 }// namespace fe
