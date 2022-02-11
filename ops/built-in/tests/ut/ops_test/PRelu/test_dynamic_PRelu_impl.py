@@ -1,6 +1,8 @@
 #!/usr/bin/env/ python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 # pylint: disable=invalid-name
 ut_case = OpUT("PRelu", "impl.dynamic.prelu", "prelu")
@@ -150,6 +152,11 @@ def test_op_select_format(test_arg):
         {"shape": (3, 2, 4, 5, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 16, 1, 1, 1),
          "ori_format": "NCHW", "range": [(1, 100), (2, 2), (4, 4), (4, 4), (2, 2)]}
         )
+    op_select_format(
+        {"shape": (32,32), "dtype": "float16", "format": "ND", "ori_shape": (32,32),"ori_format": "ND"},
+        {"shape": (32,), "dtype": "float16", "format": "NCHW", "ori_shape": (32,),"ori_format": "NCHW"},
+        {"shape": (32,32), "dtype": "float16", "format": "ND", "ori_shape": (32,32),"ori_format": "ND"}
+        )
 
 
 ut_case.add_case(["Ascend910A"], case1)
@@ -161,6 +168,18 @@ ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+
+def side_effects(*args):
+    # return vals[args]
+    return True
+
+def test_v220_mock(test_arg):
+    with patch("te.platform.api_check_support",MagicMock(side_effect=side_effects)):
+        from impl.dynamic.prelu import op_select_format
+        op_select_format({"shape": (32,32), "format": "NCHW", "dtype": "float16", "ori_shape": (32,32), "ori_format": "NCHW"},
+                         {"shape": (32,), "format": "NCHW", "dtype": "float16", "ori_shape": (32,), "ori_format": "NCHW"},
+                         {"shape": (32,32), "format": "NCHW", "dtype": "float16", "ori_shape": (32,32), "ori_format": "NCHW"})
+ut_case.add_cust_test_func(test_func=test_v220_mock)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

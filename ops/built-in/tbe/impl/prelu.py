@@ -65,9 +65,12 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
         format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
         format_weight = format_weight + ["FRACTAL_NZ"] * len(dtype_base)
     if len(x_shape) == 2 and len(weight_shape) == 1:
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            format_weight = format_weight + ["NC1HWC0"] * len(dtype_base)
+        else :
+            format_weight = format_weight + ["ND"] * len(dtype_base)
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
-        format_weight = format_weight + ["ND"] * len(dtype_base)
     if len(weight_shape) == 1 and weight_shape[0] == 1 and weight_ori_format == "NCHW":
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["NC1HWC0"] * len(dtype_base)

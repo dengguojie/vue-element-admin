@@ -147,8 +147,8 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
         dtype_list.remove("uint8")
         dtype_list.remove("int8")
 
-    if (cce_product == "Ascend910" or (cce_product != "Ascend910" and len(shape_x1) == 4)) and len(
-            shape_x2) == 1 and enum_x2 == 1:
+    if (cce_product == "Ascend910" or tbe_platform.api_check_support("tik.vgatherb") or (
+        cce_product != "Ascend910" and len(shape_x1) == 4)) and len(shape_x2) == 1 and enum_x2 == 1:
         format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
         dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
         format_list_for_non_one = format_list * len(dtype_list)

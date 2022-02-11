@@ -403,5 +403,50 @@
     ],
     "attr": [],
     "case_name": "test_PRelu_006"
+  },
+  {
+    "op": "PRelu",
+    "input_desc": [
+      {
+        "name": "input_x",
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1, 32],
+        "ori_shape": [-1, 32],
+        "typical_shape": [32,32],
+        "shape_range": [[1, 32]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [32],
+        "ori_shape": [32],
+        "typical_shape": [32],
+        "shape_range": [[1, 32]],
+        "type": "float16",
+        "value_range": [[0, 32]],
+        "data_distribute" : "uniform",
+        "name": "input_A"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1, 32],
+        "ori_shape": [-1, 32],
+        "typical_shape": [32,32],
+        "shape_range": [[1, 32]],
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "output_y"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_PRelu_007"
   }
 ]

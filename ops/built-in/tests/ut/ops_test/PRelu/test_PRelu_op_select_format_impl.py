@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+from unittest.mock import MagicMock
+from unittest.mock import patch
 ut_case = OpUT("PRelu", "impl.prelu", "op_select_format")
 
 
@@ -107,6 +109,14 @@ case7 = {
     "support_expect": True
 }
 
+case8 = {
+    "params": get_input((32,32), (32,), "float16", "NCHW"),
+    "case_name": "prelu_op_select_format_5hd+nd",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case3)
@@ -114,6 +124,19 @@ ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Hi3796CV300ES", "Ascend910"], case8)
+
+def side_effects(*args):
+    # return vals[args]
+    return True
+
+def test_v220_mock(test_arg):
+    with patch("te.platform.api_check_support",MagicMock(side_effect=side_effects)):
+        from impl.prelu import op_select_format
+        op_select_format({"shape": (32,32), "format": "NCHW", "dtype": "float16", "ori_shape": (32,32), "ori_format": "NCHW"},
+                         {"shape": (32,), "format": "NCHW", "dtype": "float16", "ori_shape": (32,), "ori_format": "NCHW"},
+                         {"shape": (32,32), "format": "NCHW", "dtype": "float16", "ori_shape": (32,32), "ori_format": "NCHW"})
+ut_case.add_cust_test_func(test_func=test_v220_mock)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
