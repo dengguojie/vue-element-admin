@@ -1638,8 +1638,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             for index, sch_list_value in enumerate(sch_list):
                 sch_list_value.set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[index][1], \
                 input_x.shape[2] > 0))
-        tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
-        return return_list, sch_list, index_list
 
     bank_manager.update_bank_hit_info(True)
     # schedule
@@ -2099,5 +2097,11 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')
 
-    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": [[-1, -1, 0]]})
-    return return_list, [s], [0]
+    default_index = 0
+    if index_list is not None and len(index_list) > 0:
+        default_index = index_list[-1] + 1
+    tune_shape_list.append([-1, -1, default_index])
+    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
+    sch_list.append(s)
+    index_list.append(default_index)
+    return return_list, sch_list, index_list
