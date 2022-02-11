@@ -39,13 +39,13 @@ class MatmulTransdataFusionPass : public BufferFusionPassBase {
                               const char *expect_dst_format) const;
   vector<BufferFusionPattern*> DefinePatterns() override;
   bool DelInputTransdata(ge::NodePtr& node_ptr_transdata, const uint32_t idx);
-  bool DelOutputTransdata();
+  bool DelOutputTransdata() const;
   bool DoFusion();
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
   bool IsAligned() const;
-  bool IsOutTransdataCorrect(const ge::Node::Vistor<ge::NodePtr>& out_node_matmuls);
+  void IsOutTransdataCorrect(const ge::Node::Vistor<ge::NodePtr>& out_node_matmuls);
   bool IsLinkRelationshipCorrect();
-  bool IsOutOfInTransdataCorrect() const;
+  bool IsOutOfInTransdataCorrect();
   bool IsStaticShape() const;
   bool ModifyTransdataInControlEdge(const ge::NodePtr& node_ptr_transdata) const;
   bool ModifyTransdataOutControlEdge(const ge::NodePtr& node_ptr_transdata) const;

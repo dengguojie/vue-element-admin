@@ -91,18 +91,19 @@ vector<BufferFusionPattern*> MatmulTransdataFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool MatmulTransdataFusionPass::IsOutTransdataCorrect(const ge::Node::Vistor<ge::NodePtr>& out_node_matmuls) {
+void MatmulTransdataFusionPass::IsOutTransdataCorrect(const ge::Node::Vistor<ge::NodePtr>& out_node_matmuls) {
   for (auto& out_node_matmul_ptr : out_node_matmuls) {
     FUSION_PASS_CHECK(out_node_matmul_ptr == nullptr, OP_LOGW(kFusedOpType,
-                      "Get out node of matmul failed"), return false);
+                      "Get out node of matmul failed"), return);
     if (out_node_matmul_ptr->GetType() == kOpTypeTransdata) {
       out_transdata_ptr = out_node_matmul_ptr;
     }
   }
   if (out_transdata_ptr != nullptr && out_node_matmuls.size() != 1) {
-    return false;
+    OP_LOGW(kFusedOpType, "Get out of matmul should only has one transdata.");
+    out_transdata_ptr = nullptr;
   }
-  return true;
+  return ;
 }
 
 bool MatmulTransdataFusionPass::CheckFormatOfTransData(const ge::NodePtr& node_ptr_transdata,
@@ -136,12 +137,9 @@ bool MatmulTransdataFusionPass::IsLinkRelationshipCorrect() {
   auto in_node_matmul_ptr_0 = in_node_matmuls.at(0);
   FUSION_PASS_CHECK(in_node_matmul_ptr_0 == nullptr, OP_LOGW(kFusedOpType,
                     "Get input node 0 of matmul failed"), return false);
-  if (in_node_matmul_ptr_0->GetType() == kOpTypeTransdata) {
+  if (in_node_matmul_ptr_0->GetType() == kOpTypeTransdata && in_node_matmul_ptr_0->GetInDataNodes().size() == 1) {
     transdata_ptr_0 = in_node_matmul_ptr_0;
     auto in_nodes_transdata0_in = transdata_ptr_0->GetInDataNodes();
-    FUSION_PASS_CHECK(in_nodes_transdata0_in.size() != 1, OP_LOGW(kFusedOpType,
-                      "Transdata(idx: 0) before matmul node should only have 1 input, actual %zu.",
-                      in_nodes_transdata0_in.size()), return false);
     in_ptr_0 = in_nodes_transdata0_in.at(0);
   } else {
     in_ptr_0 = in_node_matmul_ptr_0;
@@ -150,23 +148,20 @@ bool MatmulTransdataFusionPass::IsLinkRelationshipCorrect() {
   auto in_node_matmul_ptr_1 = in_node_matmuls.at(1);
   FUSION_PASS_CHECK(in_node_matmul_ptr_1 == nullptr, OP_LOGW(kFusedOpType,
                     "Get input node 1 of matmul failed"), return false);
-  if (in_node_matmul_ptr_1->GetType() == kOpTypeTransdata) {
+  if (in_node_matmul_ptr_1->GetType() == kOpTypeTransdata && in_node_matmul_ptr_1->GetInDataNodes().size() == 1) {
     transdata_ptr_1 = in_node_matmul_ptr_1;
     auto in_nodes_transdata1_in = transdata_ptr_1->GetInDataNodes();
-    FUSION_PASS_CHECK(in_nodes_transdata1_in.size() != 1, OP_LOGW(kFusedOpType,
-                      "Transdata(idx: 1) before matmul node should only have 1 input, actual %zu.",
-                      in_nodes_transdata1_in.size()), return false);
     in_ptr_1 = in_nodes_transdata1_in.at(0);
   } else {
     in_ptr_1 = in_node_matmul_ptr_1;
   }
 
   auto out_node_matmuls = matmul_node_ptr->GetOutDataNodes();
-  FUSION_PASS_CHECK(!IsOutTransdataCorrect(out_node_matmuls), OP_LOGW(kFusedOpType,
-                    "out relations is uncorrect"), return false);
+
+  IsOutTransdataCorrect(out_node_matmuls);
 
   FUSION_PASS_CHECK(out_transdata_ptr == nullptr && transdata_ptr_0 == nullptr && transdata_ptr_1 == nullptr,
-                    OP_LOGW(kFusedOpType, "there is no trandata connecting with matmul"), return false);
+                    OP_LOGW(kFusedOpType, "there is no transdata connecting with matmul"), return false);
 
   FUSION_PASS_CHECK(!CheckFormatOfTransData(transdata_ptr_0, kFormatNd, kFormatFractalNz),
                     OP_LOGW(kFusedOpType, "TransData(idx:0) format before MatMul node does not match."),
@@ -182,17 +177,21 @@ bool MatmulTransdataFusionPass::IsLinkRelationshipCorrect() {
   return true;
 }
 
-bool MatmulTransdataFusionPass::IsOutOfInTransdataCorrect() const {
+bool MatmulTransdataFusionPass::IsOutOfInTransdataCorrect() {
   if (transdata_ptr_0 != nullptr) {
-    FUSION_PASS_CHECK(transdata_ptr_0->GetOutDataNodesSize() != 1, OP_LOGW(kFusedOpType,
-                      "Transdata(index: 0) before matmul node should only have 1 output, actual %u.",
-                      transdata_ptr_0->GetOutDataNodesSize()), return false);
+    FUSION_PASS_CHECK(transdata_ptr_0->GetOutDataNodesSize() != 1,
+                      OP_LOGW(kFusedOpType, "Transdata(index: 0) before matmul node has %u outputs.",
+                              transdata_ptr_0->GetOutDataNodesSize()),
+                      transdata_ptr_0 = nullptr);
   }
   if (transdata_ptr_1 != nullptr) {
-    FUSION_PASS_CHECK(transdata_ptr_1->GetOutDataNodesSize() != 1, OP_LOGW(kFusedOpType,
-                      "Transdata(index: 1) before matmul node should only have 1 output, actual %u.",
-                      transdata_ptr_1->GetOutDataNodesSize()), return false);
+    FUSION_PASS_CHECK(transdata_ptr_1->GetOutDataNodesSize() != 1,
+                      OP_LOGW(kFusedOpType, "Transdata(index: 1) before matmul node has %u outputs.",
+                              transdata_ptr_1->GetOutDataNodesSize()),
+                      transdata_ptr_1 = nullptr);
   }
+  FUSION_PASS_CHECK(out_transdata_ptr == nullptr && transdata_ptr_0 == nullptr && transdata_ptr_1 == nullptr,
+                    OP_LOGW(kFusedOpType, "there is no matched transdata connecting with matmul"), return false);
   return true;
 }
 
@@ -329,7 +328,7 @@ bool MatmulTransdataFusionPass::DelInputTransdata(ge::NodePtr& node_ptr_transdat
   return true;
 }
 
-bool MatmulTransdataFusionPass::DelOutputTransdata() {
+bool MatmulTransdataFusionPass::DelOutputTransdata() const {
   if (out_transdata_ptr != nullptr) {
     // step0: update shape, range, format
     vector<pair<int64_t, int64_t>> range_data;
