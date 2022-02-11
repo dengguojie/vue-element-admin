@@ -32,6 +32,9 @@
 
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;
+const int64_t TOTAL_UB_COUNT = 16;
+const int64_t UB_FOR_VAR = 5;
+const int64_t UB_FOR_INDICES = 1;
 // 32b aligned, ub can store all var and updates
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can store all var
@@ -108,8 +111,8 @@ void CalScatterMulOrDivBranchRunningParams(ScatterMulOrDivTilingParams& runParam
   int64_t indicesUbSize = ubSize / 8 * 2;
   if (opType == "ScatterDiv") {
     if (supportDiv == 0) {
-      varUbSize = ubSize / 16 * 5;
-      indicesUbSize = ubSize / 16;
+      varUbSize = ubSize / TOTAL_UB_COUNT * UB_FOR_VAR;
+      indicesUbSize = ubSize / TOTAL_UB_COUNT * UB_FOR_INDICES;
     }
   }
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return);
@@ -252,17 +255,25 @@ bool GetScatterMulOrDivCompileParams(const std::string& opType, const std::vecto
   OP_TILING_CHECK((opType == "ScatterDiv" && COMPILE_INFO_KEY_DIV.size() != opCompileInfo.size()) ||
                       (opType == "ScatterMul" && COMPILE_INFO_KEY_MUL.size() != opCompileInfo.size()),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse opCompileInfo failed."), return false);
-  coreNum = opCompileInfo[0];
-  ubSize = opCompileInfo[1];
-  varSize = opCompileInfo[2];
-  indicesSize = opCompileInfo[3];
-  supportDiv = opCompileInfo[4];
+  static const size_t core_num_idx = 0;
+  static const size_t ubsize_idx = 1;
+  static const size_t var_size_idx = 2;
+  static const size_t indices_size_idx = 3;
+  static const size_t support_div_idx = 4;
+  coreNum = opCompileInfo[core_num_idx];
+  ubSize = opCompileInfo[ubsize_idx];
+  varSize = opCompileInfo[var_size_idx];
+  indicesSize = opCompileInfo[indices_size_idx];
+  supportDiv = opCompileInfo[support_div_idx];
   return true;
 }
 
 bool ScatterMulOrDivTiling(const std::string& opType, const ge::Operator& opParas,
                            const std::vector<int64_t>& opCompileInfo, utils::OpRunInfo& runInfo) {
   using namespace ge;
+  static const int64_t var_input_idx = 0;
+  static const int64_t indices_input_idx = 1;
+  static const int64_t updates_input_idx = 2;
 
   OP_LOGI(opType.c_str(), "%sTiling running.", opType.c_str());
 
@@ -270,17 +281,17 @@ bool ScatterMulOrDivTiling(const std::string& opType, const ge::Operator& opPara
   OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get op_info failed."),
                   return false);
   // get input var Desc
-  auto input_desc = operator_info->MutableInputDesc(0);
+  auto input_desc = operator_info->MutableInputDesc(var_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& varShape = input_desc->MutableShape();
   // get input indices Desc
-  input_desc = operator_info->MutableInputDesc(1);
+  input_desc = operator_info->MutableInputDesc(indices_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& indicesShape = input_desc->MutableShape();
   // get input updates Desc
-  input_desc = operator_info->MutableInputDesc(2);
+  input_desc = operator_info->MutableInputDesc(updates_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& updatesShape = input_desc->MutableShape();

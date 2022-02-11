@@ -22,7 +22,7 @@
 #include <math.h>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
@@ -40,6 +40,20 @@ const std::string DTYPE_INT64 = "int64";
 const std::string DTYPE_UINT64 = "uint64";
 
 namespace optiling {
+const int64_t BLOCK_SIZE = 32;
+// 32b aligned, ub can store all var and updates
+const int64_t SIZE_INT8 = 1;
+const int64_t SIZE_INT16 = 2;
+const int64_t SIZE_INT32 = 4;
+const int64_t SIZE_INT64 = 8;
+const int64_t TILING_MODE_1 = 1;
+// 32b aligned, ub can store all var
+const int64_t TILING_MODE_2 = 2;
+// 32b aligned, ub can store all updates
+const int64_t TILING_MODE_3 = 3;
+// 32b aligned, ub can't store all var and updates
+const int64_t TILING_MODE_4 = 4;
+// updateDataNum is less than 1 block, ub can store all var and updates
 struct SplitDTilingParams {
   int64_t tilingMode;
   int64_t inputSizeSplit;
@@ -97,18 +111,9 @@ int64_t CalCeilDiv(const int64_t& uValue, const int64_t& dValue) {
 
 int64_t GetDataOneBlock(const std::string& dtype) {
   int64_t dataBlock = 0;
-  if (dtype == "float32") {
-    dataBlock = 8;
-  } else if (dtype == "float16") {
-    dataBlock = 16;
-  } else if (dtype == "int8" || dtype == "uint8") {
-    dataBlock = 32;
-  } else if (dtype == "int16" || dtype == "uint16") {
-    dataBlock = 16;
-  } else if (dtype == "int32" || dtype == "uint32") {
-    dataBlock = 8;
-  } else if (dtype == "int64" || dtype == "uint64") {
-    dataBlock = 4;
+  int64_t type_size = GetByteLenByString(dtype);
+  if (type_size > 0) {
+    dataBlock = BLOCK_SIZE / type_size;
   }
   return dataBlock;
 }
@@ -241,15 +246,15 @@ void CalRunningParams(SplitDTilingParams& runParams, int64_t inputNum, std::vect
     runParams.coreNum = CalCeilDiv(shapeBefore, runParams.loopEachCore);
     runParams.loopLastCore = shapeBefore - (runParams.coreNum - 1) * runParams.loopEachCore;
     if (runParams.outputSizeSplit > dataBlock) {
-      runParams.tilingMode = 1;
+      runParams.tilingMode = TILING_MODE_1;
       GetLoopParamsFront(runParams, ubSize, runParams.outputSizeSplit, dataBlock);
     } else {
       if (runParams.loopEachCore < dataBlock) {
-        runParams.tilingMode = 3;
+        runParams.tilingMode = TILING_MODE_3;
         runParams.coreNum = 1;
         runParams.loopEachCore = shapeBefore;
       } else {
-        runParams.tilingMode = 2;
+        runParams.tilingMode = TILING_MODE_2;
         if (runParams.loopLastCore < dataBlock) {
           runParams.coreNum = runParams.coreNum - 1;
           runParams.loopLastCore = runParams.loopLastCore + runParams.loopEachCore;
@@ -277,10 +282,10 @@ void CalRunningParams(SplitDTilingParams& runParams, int64_t inputNum, std::vect
     runParams.dataLastCore = runParams.outputSizeSplit - (runParams.coreNum - 1) * runParams.dataEachCore;
     runParams.loopEachCore = shapeBefore;
     if (runParams.dataEachCore < dataBlock) {
-      runParams.tilingMode = 3;
+      runParams.tilingMode = TILING_MODE_3;
       runParams.coreNum = 1;
     } else {
-      runParams.tilingMode = 4;
+      runParams.tilingMode = TILING_MODE_4;
       if ((runParams.dataLastCore > 0) && (runParams.dataLastCore < dataBlock)) {
         runParams.coreNum = runParams.coreNum - 1;
         runParams.dataLastCore = runParams.dataLastCore + runParams.dataEachCore;

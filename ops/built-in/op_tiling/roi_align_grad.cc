@@ -47,6 +47,10 @@ const int64_t TILING_MODE_1 = 1;
 const int64_t TILING_MODE_2 = 2;
 const int64_t TILING_MODE_3 = 3;
 
+// DimNum of ydiff and rois
+const int64_t DIMNUM_5HD = 5;
+const int64_t DIMNUM_2D = 2;
+
 struct ROIAlignGradTilingParams {
   int64_t tilingMode;
   int64_t real_core_num;
@@ -61,7 +65,7 @@ void InitROIAlignGradParams(ROIAlignGradTilingParams& params) {
   params.tilingMode = 1;
   params.real_core_num = 1;
   params.rois_n = 1;
-  params.rois_row_lenth = 5;
+  params.rois_row_lenth = DIMNUM_5HD;
   params.c1_num = 1;
   params.x_height = 1;
   params.x_width = 1;
@@ -94,13 +98,13 @@ static bool CheckTensorShape(const std::string& opType, GeShape& y_diff_shape, G
   int64_t x_diff_shape_dims = x_diff_shape.GetDimNum();
   int64_t rois_shape_dims = rois_shape.GetDimNum();
 
-  if (x_diff_shape_dims != y_diff_shape_dims || x_diff_shape_dims != 5) {
+  if (x_diff_shape_dims != y_diff_shape_dims || x_diff_shape_dims != DIMNUM_5HD) {
     VECTOR_INNER_ERR_REPORT_TILIING(
         opType, "op [ROIAlignGradTiling] : CheckTensorShape, shape of x_diff or y_diff check failed.");
     return false;
   }
 
-  if (rois_shape_dims != 2) {
+  if (rois_shape_dims != DIMNUM_2D) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [ROIAlignGradTiling] : CheckTensorShape, dims of rois must be 2.");
     return false;
   }

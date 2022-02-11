@@ -84,17 +84,17 @@ void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, i
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "halfUbSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "indicesSize = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "coreNum = 0 is not support"), return);
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varSize = 0 is not support"), return);
   OP_TILING_CHECK(runParams.indicesLastDim == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "runParams.indicesLastDim = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(runParams.indicesLastDim == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "runParams.indicesLastDim = 0 is not support"),
-                  return );
+                  return);
   OP_TILING_CHECK(varDataEachBlock == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "varDataEachBlock = 0 is not support"), return);
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
@@ -127,14 +127,9 @@ void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, i
       runParams.tilingMode = TILING_MODE_5;
     }
   }
-  int64_t VarDtypeSize = 4;
-  if (VarDtype == ge::DT_INT64 || VarDtype == ge::DT_UINT64) {
-    VarDtypeSize = 8;
-  } else if (VarDtype == ge::DT_FLOAT16) {
-    VarDtypeSize = 2;
-  } else if (VarDtype == ge::DT_INT8 || VarDtype == ge::DT_UINT8) {
-    VarDtypeSize = 1;
-  }
+  int64_t VarDtypeSize = ge::GetSizeByDataType(VarDtype);
+  OP_TILING_CHECK(VarDtypeSize == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "var datatype is not support"),
+                  return);
   if (addDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
     runParams.indiceStep = ceil(float(maxIndice) / coreNum);

@@ -58,7 +58,12 @@ constexpr int32_t SPLIT_NUM = 16;
 constexpr int32_t ALLIGN_NUM_16 = 16;
 constexpr int32_t ALLIGN_NUM_15 = 15;
 constexpr int32_t NUMSPLIT_IDX = 2;
-
+constexpr int64_t MAX_SRC_STRIDE = 65536;
+constexpr int64_t MODE_7_BLOCK_NUM = 16;
+constexpr int64_t MODE_2_MAX_BLOCK = 4;
+constexpr int64_t MODE_6_MAX_SHAPE_AFTER = 300;
+constexpr int64_t MODE_7_MAX_SHAPE_AFTER = 128;
+constexpr int64_t MODE_7_MIN_SHAPE_BEFORE = 256;
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_elems", "num_split"};
 
@@ -188,7 +193,11 @@ bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, const GeShape& inputSha
 }
 
 bool CheckMode6(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim, int64_t shapeAfter) {
-  if (shapeAfter % dataBlock != 0 || shapeAfter > 300) {
+  // warning divisor dataBlock cannot be 0
+  if (dataBlock == 0) {
+    return false;
+  }
+  if (shapeAfter % dataBlock != 0 || shapeAfter > MODE_6_MAX_SHAPE_AFTER) {
     return false;
   }
 
@@ -213,7 +222,7 @@ bool CheckMode6(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t s
 
 bool CheckMode7(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim, int64_t shapeAfter,
                 int64_t shapeBefore) {
-  if (shapeAfter > 128 || shapeBefore < 256) {
+  if (shapeAfter > MODE_7_MAX_SHAPE_AFTER || shapeBefore < MODE_7_MIN_SHAPE_BEFORE) {
     return false;
   }
   int64_t num = sizeSplitsVec.size();
@@ -268,7 +277,11 @@ void GetLastLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t d
 
 bool CheckShapeDim(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t coreNum, int64_t shapeAfterDim,
                    int64_t shapeDim, bool isSplitV) {
-  if (shapeDim < coreNum || shapeAfterDim / coreNum > (4 * dataBlock)) {
+  // warning divisor coreNum cannot be 0
+  if (coreNum == 0) {
+    return false;
+  }
+  if (shapeDim < coreNum || shapeAfterDim / coreNum > (MODE_2_MAX_BLOCK * dataBlock)) {
     return false;
   }
 
@@ -290,7 +303,7 @@ void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t da
   int64_t unit = dataBlock;
   int64_t maxRows = 8 * unit;
   if (runParams.tilingMode == TILING_MODE_7) {
-    unit = 16 * dataBlock;
+    unit = MODE_7_BLOCK_NUM * dataBlock;
     maxRows = unit;
   }
 
@@ -461,8 +474,13 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, c
       runParams.needCoreNum = coreNum;
 
       runParams.multiMove = 0;
+
+      // warning divisor dataBlock cannot be 0
+      if (dataBlock == 0) {
+        return false;
+      }
       // 65535 is the max src_stride
-      if ((runParams.shapeAfter % dataBlock == 0) && (runParams.shapeAfter / dataBlock < 65536)) {
+      if ((runParams.shapeAfter % dataBlock == 0) && (runParams.shapeAfter / dataBlock < MAX_SRC_STRIDE)) {
         runParams.multiMove = 1;
       }
     }
@@ -545,7 +563,8 @@ bool GetSplitVCompileParams(const std::string& op_type, const std::vector<int64_
 
   return true;
 }
-
+const int64_t split_dim_idx_split = 0;
+const int64_t split_dim_idx_split_v = 2;
 bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
   using namespace ge;
@@ -566,15 +585,13 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   }
 
   bool isSplitV = false;  // split
-  int64_t splitDimInputIndex = 0;
   auto xInput_desc = input1_desc;
   auto splitDimInput_desc = input0_desc;
 
   if (opType == "SplitV") {  // splitv
     isSplitV = true;
-    splitDimInputIndex = 2;
     xInput_desc = input0_desc;
-    splitDimInput_desc = operator_info->MutableInputDesc(2);
+    splitDimInput_desc = operator_info->MutableInputDesc(split_dim_idx_split_v);
     if (splitDimInput_desc == nullptr) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "get splitDimInput_desc failed.");
       return false;
@@ -605,15 +622,14 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
 
   // get split_dim
   std::vector<int64_t> splitDimVec;
-  GELOGD("op SplitVTiling : splitDimInputIndex=%d.", splitDimInputIndex);
 
   if (isSplitV) {
     // input split_dim index is 2
-    OP_TILING_CHECK(!ops::GetConstIntData(opParas, 2, splitDimVec),
+    OP_TILING_CHECK(!ops::GetConstIntData(opParas, split_dim_idx_split_v, splitDimVec),
                     VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed."), return false);
   } else {
     // input split_dim index is 0
-    OP_TILING_CHECK(!ops::GetConstIntData(opParas, 0, splitDimVec),
+    OP_TILING_CHECK(!ops::GetConstIntData(opParas, split_dim_idx_split, splitDimVec),
                     VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed."), return false);
   }
 

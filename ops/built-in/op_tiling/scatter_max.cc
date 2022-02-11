@@ -240,36 +240,42 @@ bool CheckScatterMaxOrMinShape(const std::string& opType, const GeShape& varShap
 
 bool GetScatterMaxOrMinCompileParams(const std::string& opType, const std::vector<int64_t>& opCompileInfo,
                                      int64_t& coreNum, int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
+  static const size_t core_num_idx = 0;
+  static const size_t ubsize_idx = 1;
+  static const size_t var_size_idx = 2;
+  static const size_t indices_size_idx = 3;
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != opCompileInfo.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse opCompileInfo failed."), return false);
-  coreNum = opCompileInfo[0];
-  ubSize = opCompileInfo[1];
-  varSize = opCompileInfo[2];
-  indicesSize = opCompileInfo[3];
+  coreNum = opCompileInfo[core_num_idx];
+  ubSize = opCompileInfo[ubsize_idx];
+  varSize = opCompileInfo[var_size_idx];
+  indicesSize = opCompileInfo[indices_size_idx];
   return true;
 }
 
 bool ScatterMaxOrMinTiling(const std::string& opType, const ge::Operator& opParas,
                            const std::vector<int64_t>& opCompileInfo, utils::OpRunInfo& runInfo) {
   using namespace ge;
-
+  static const int64_t var_input_idx = 0;
+  static const int64_t indices_input_idx = 1;
+  static const int64_t updates_input_idx = 2;
   OP_LOGI(opType.c_str(), "%sTiling running.", opType.c_str());
 
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get op_info failed."),
                   return false);
   // get input var Desc
-  auto input_desc = operator_info->MutableInputDesc(0);
+  auto input_desc = operator_info->MutableInputDesc(var_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& varShape = input_desc->MutableShape();
   // get input indices Desc
-  input_desc = operator_info->MutableInputDesc(1);
+  input_desc = operator_info->MutableInputDesc(indices_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& indicesShape = input_desc->MutableShape();
   // get input updates Desc
-  input_desc = operator_info->MutableInputDesc(2);
+  input_desc = operator_info->MutableInputDesc(updates_input_idx);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed."),
                   return false);
   const GeShape& updatesShape = input_desc->MutableShape();
