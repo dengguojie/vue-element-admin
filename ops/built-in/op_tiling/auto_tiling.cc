@@ -24,7 +24,6 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-
 /*
  * @brief: tiling function of ops
  * @param [in] op_type: opType of ops

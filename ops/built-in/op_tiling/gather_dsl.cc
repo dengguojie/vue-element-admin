@@ -227,7 +227,6 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
         params_rows = params_shape[PARAMS_SHAPE_SIZE - 1];
       }
-
     } else {
       // dynamic
       // gather_type = 0 gather
@@ -451,7 +450,6 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::DoScalarTiling() {
-
     DoBaseTiling();
     key_special_pattern = SCALAR_TILING_KEY;
 
@@ -699,7 +697,6 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
       total_ub_size_tail = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
                                            total_ub_size_tail, std::multiplies<int64_t>());
-
       if ((total_ub_size < gather_compile_info.params_align) ||
       ((total_ub_size_tail < gather_compile_info.params_align) && (total_ub_size_tail > 0))) {
         SafeTiling();
@@ -730,8 +727,6 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
         }
       }
     }
-
-
   }
 
   bool GatherDsl::DoBaseTiling() {
@@ -760,7 +755,6 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
   }
 
   bool GatherDsl::CalcKey() {
-
     // gather nd delete reduction axis
     if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
       if (block_axis >= 1) {
