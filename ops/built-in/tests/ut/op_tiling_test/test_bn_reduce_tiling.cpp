@@ -477,3 +477,44 @@ TEST_F(BNReduceTiling, BNReduceTiling_const_post_failed) {
 }
 
 
+// _common_info_failed
+TEST_F(BNReduceTiling, BNReduceTiling_common_info_failed) {
+    std::string compile_info = R"({ "ori_axis": [0, 2, 3], "_ori_axis": [0, 2, 3], "_pattern": "bn_reduce", "push_status": 1,
+        "_common_info": [8192, 32, 1, 8, 1], "_reduce_shape_known": true, "_const_shape_post": false,
+        "_block_dims" : {"134": 32}, "_atomic_flags" : {"134": true},
+        "_vars": {
+            "3304100": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "block_factor_1", "ub_factor_0"],
+            "3204100": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "block_factor_1", "ub_factor_0"]
+         }})";
+
+    using namespace optiling;
+    std::string op_name = "BNTrainingReduce";
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+    std::vector<int64_t> input{8, 8, 56, 56, 16};
+    std::vector<int64_t> output{1, 8, 1, 1, 16};
+    std::string in_dtype = "float32";
+
+    TeOpTensor tensor_input;
+    tensor_input.shape = input;
+    tensor_input.dtype = in_dtype;
+    TeOpTensor tensor_output;
+    tensor_output.shape = output;
+    tensor_output.dtype = in_dtype;
+    TeOpTensorArg tensor_arg;
+    tensor_arg.tensor.push_back(tensor_input);
+    tensor_arg.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_arg_out;
+    tensor_arg_out.tensor.push_back(tensor_output);
+    tensor_arg_out.arg_type = TensorArgType::TA_SINGLE;
+    TeOpParas opParas;
+    opParas.inputs.push_back(tensor_arg);
+    opParas.outputs.push_back(tensor_arg_out);
+    opParas.op_type = op_name;
+    OpCompileInfo op_compile_info;
+    op_compile_info.str =compile_info;
+    op_compile_info.key = "REDUCE__COMMON__INFO__FAILED";
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+}

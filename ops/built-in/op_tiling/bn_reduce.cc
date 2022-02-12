@@ -255,7 +255,8 @@ bool BNReduce::GetCompileInfo() {
   std::vector<int32_t> info = op_info["_common_info"];
   const uint32_t info_item_count = 6;
   if (info.size() < info_item_count) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common info item count = %lu, is not equal to %d.", info.size(), info_item_count);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common info item count = %lu, is not equal to %d.", info.size(),
+                                    info_item_count);
     return false;
   }
 
@@ -303,7 +304,8 @@ bool BNReduce::ChooseAtomic() {
   // 4: (Priority) Check if it is outermost_reduce and is larger than or equal to core_num
   // Layer 0 (Required)
   bool atomic_available = compileInfo.atomic;
-  bool is_outermost_reduce = std::find(reduce_axis.begin(), reduce_axis.end(), 1) != reduce_axis.end() && input_shape[0] == 1;
+  bool is_outermost_reduce =
+      std::find(reduce_axis.begin(), reduce_axis.end(), 1) != reduce_axis.end() && input_shape[0] == 1;
   // Layer 1
   compileInfo.atomic = total_output_count <= compileInfo.max_ub_count &&
                          total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
