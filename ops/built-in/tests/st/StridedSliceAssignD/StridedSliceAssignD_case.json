@@ -603,5 +603,104 @@
       }
     ],
     "case_name": "test_StridedSliceAssignD_008"
+  },
+  {
+    "op": "StridedSliceAssignD",
+    "input_desc": [
+      {
+        "shape": [
+          1321,
+          73
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1321,
+          73
+        ],
+        "ori_format": "ND",
+        "name": "ref_dict",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3
+        ],
+        "ori_format": "ND",
+        "name": "input_value_dict",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1321,
+          73
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1321,
+          73
+        ],
+        "ori_format": "ND",
+        "name": "output_ref_dict",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin",
+        "type": "list_int",
+        "value": [
+          55,
+          0
+        ]
+      },
+      {
+        "name": "end",
+        "type": "list_int",
+        "value": [
+          386,
+          73
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1
+        ]
+      },
+      {
+        "name": "begin_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "end_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "ellipsis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "new_axis_mask",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "shrink_axis_mask",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_StridedSliceAssignD_009"
   }
 ]

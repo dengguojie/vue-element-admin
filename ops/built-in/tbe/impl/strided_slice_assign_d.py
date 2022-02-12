@@ -20,6 +20,8 @@ import functools
 import math
 
 import te.platform as tbe_platform
+from te.platform.cce_build import build_config
+from te.platform.cce_build import build_config_update
 from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -454,6 +456,7 @@ def strided_slice_assign_d(ref_dict,
     sch = _strided_slice_assign_schedule(schedule_list, out, slice_shape, input_shape, input_dtype)
 
     tensor_list = (out, input_value_tensor, input_tensor)
-
-    with tbe_platform.build_config:
+    
+    build_config_new = build_config_update(build_config, "dummy_placeholder", False)
+    with build_config_new:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)

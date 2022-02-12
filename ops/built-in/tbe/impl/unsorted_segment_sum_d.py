@@ -25,6 +25,7 @@ import te.platform.cce_params as cce_params
 from te import platform as cce
 from te import tvm
 from te.platform.cce_build import build_config
+from te.platform.cce_build import build_config_update
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import gen_param
@@ -2663,7 +2664,8 @@ def unsorted_segment_sum_d(x,
 
     sch = tvm.create_schedule(res[0].op)
     build_list = [data_a, segment_ids, res[0], res[1]]
-    with build_config:
+    build_config_new = build_config_update(build_config, "dummy_placeholder", False)
+    with build_config_new:
         tvm.build(sch, build_list, "cce", name=kernel_name)
 
         large_flag, align_flag = _is_input_too_large(shape_x, dtype)
