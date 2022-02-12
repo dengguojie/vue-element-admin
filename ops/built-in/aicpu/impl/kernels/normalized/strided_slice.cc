@@ -193,7 +193,7 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
   auto begin_iter = begin_res.begin();
   auto end_iter = end_res.begin();
   for (auto strides_iter = strides_res.begin();
-      strides_iter != strides_res.end(); ) {
+      strides_iter != strides_res.end();) {
     if (*strides_iter == 0) {
       begin_iter = begin_res.erase(begin_iter);
       end_iter = end_res.erase(end_iter);

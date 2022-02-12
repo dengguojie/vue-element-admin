@@ -25,16 +25,6 @@ const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 const char *kGeometric = "Geometric";
 const double PATTRDEFAULT = 0.5;
-
-#define GEOMETRIC_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
-  case (DTYPE): {                                           \
-    uint32_t result = DoCompute<TYPE>(CTX);                 \
-    if (result != KERNEL_STATUS_OK) {                       \
-      KERNEL_LOG_ERROR("Geometric kernel compute failed."); \
-      return result;                                        \
-    }                                                       \
-    break;                                                  \
-  }
 }  // namespace
 
 namespace aicpu {
@@ -68,6 +58,7 @@ uint32_t GeometricCpuKernel::DoCompute(CpuKernelContext &ctx) {
 
 uint32_t GeometricCpuKernel::Compute(CpuKernelContext &ctx) {
   std::vector<std::string> attr_names = {"p"};
+  uint32_t res = KERNEL_STATUS_OK;
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum, attr_names),
                       "Geometric Check Greater params failed.");
   KERNEL_HANDLE_ERROR(ExtraParamCheck(ctx),
@@ -76,11 +67,18 @@ uint32_t GeometricCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_LOG_DEBUG("%s op input[x] data type is [%s].", kGeometric,
                    DTypeStr(input_data_type).c_str());
   switch (input_data_type) {
-    GEOMETRIC_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    GEOMETRIC_COMPUTE_CASE(DT_FLOAT, float, ctx)
+    case DT_FLOAT16:
+      res = DoCompute<Eigen::half>(ctx);
+      break;
+    case DT_FLOAT:
+      res = DoCompute<float>(ctx);
+      break;
     default:
       KERNEL_LOG_ERROR("Geometric kernel data type [%s] not support.",
                        DTypeStr(input_data_type).c_str());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  if (res != KERNEL_STATUS_OK) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
