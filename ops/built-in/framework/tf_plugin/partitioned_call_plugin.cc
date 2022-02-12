@@ -40,14 +40,7 @@ Status ParseSubgraphPostFnPartitionedCall(const std::string& subgraph_name, cons
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("PartitionedCall")
-    .ParseParamsFn(AutoMappingFnPartitionedCall)
-    .ParseSubgraphPostFn(ParseSubgraphPostFnPartitionedCall)
-    .ImplyType(ImplyType::GELOCAL);
-
-REGISTER_CUSTOM_OP("StatefulPartitionedCall")
-    .FrameworkType(TENSORFLOW)
-    .OriginOpType("StatefulPartitionedCall")
+    .OriginOpType({"PartitionedCall", "StatefulPartitionedCall"})
     .ParseParamsFn(AutoMappingFnPartitionedCall)
     .ParseSubgraphPostFn(ParseSubgraphPostFnPartitionedCall)
     .ImplyType(ImplyType::GELOCAL);
