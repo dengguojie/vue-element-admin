@@ -284,7 +284,8 @@ def _get_tiling_params_func(args):
 
     (in_shape_new, out_shape_new,
      in_format_new, out_format_new) = _renew_input_output_shape_format(in_shape, out_shape, hidden_size)
-    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, block_elem_cnt, ub_size, in_dtype, hidden_size
+    args_get_tp = (in_shape_new, out_shape_new, in_format_new, out_format_new, block_elem_cnt, ub_size, in_dtype,
+                   hidden_size)
     tiling_params = _tiling_params_positive(args_get_tp)
 
     return tiling_params
@@ -654,7 +655,8 @@ def trans_data_rnn_positive_source(src, dst, input_size, hidden_size, kernel_nam
         used_core_cnt = tiling_params[3]
         with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
             with tik_inst.if_scope(block_idx < used_core_cnt):
-                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
+                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size,
+                               in_dtype]
                 tp_args = tiling_params
                 _func_transform_100(tensor_args, tp_args)
     else:
@@ -675,7 +677,8 @@ def trans_data_rnn_positive_source(src, dst, input_size, hidden_size, kernel_nam
         used_core_cnt1 = tiling_params1[3]
         with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
             with tik_inst.if_scope(block_idx < used_core_cnt0):
-                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
+                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size,
+                               in_dtype]
                 tp_args = tiling_params0
                 _func_transform_100(tensor_args, tp_args)
             with tik_inst.if_scope(block_idx < used_core_cnt1):

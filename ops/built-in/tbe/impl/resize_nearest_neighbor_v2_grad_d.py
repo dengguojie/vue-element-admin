@@ -619,24 +619,23 @@ def check_supported(grads, y, size, align_corners=False, half_pixel_centers=Fals
     """
     grads_format = grads.get("ori_format")
     grads_shape = grads.get("ori_shape")
-    try:
-        if grads_format == "NCHW":
-            grads_w = grads_shape[3]
-            grads_h = grads_shape[2]
-        elif grads_format == "NHWC":
-            grads_w = grads_shape[2]
-            grads_h = grads_shape[1]
-        elif grads_format == "NC1HWC0":
-            grads_w = grads_shape[3]
-            grads_h = grads_shape[2]
-        else:
-            reason = "the format is not in \"NCHW, NHWC, NC1HWC0\", format:%s" % grads_format
-            return False, reason
-        if (grads_w + grads_h) >= 8 * 1024:
-            reason = "the grads_shape is too big, grads_w + grads_h = %s" % grads_w + grads_h
-            return False, reason
-    except RuntimeError as e:
-        return False, e.args
+    shape_len = len(grads_shape)
+    if grads_format == "NCHW" and shape_len >= 4:
+        grads_w = grads_shape[3]
+        grads_h = grads_shape[2]
+    elif grads_format == "NHWC" and shape_len >= 3:
+        grads_w = grads_shape[2]
+        grads_h = grads_shape[1]
+    elif grads_format == "NC1HWC0" and shape_len >= 4:
+        grads_w = grads_shape[3]
+        grads_h = grads_shape[2]
+    else:
+        reason = "the format is not in \"NCHW, NHWC, NC1HWC0\", format:%s" % grads_format
+        return False, reason
+    if (grads_w + grads_h) >= 8 * 1024:
+        reason = "the grads_shape is too big, grads_w + grads_h = %s" % grads_w + grads_h
+        return False, reason
+
 
     return True, ""
 

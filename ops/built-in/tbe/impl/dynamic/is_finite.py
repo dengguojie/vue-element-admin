@@ -353,26 +353,6 @@ class IsFinite:
         self.core_left_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_left_size")
         self.real_per_loop_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "per_loop_size")
 
-    def _get_tiling_params(self, block_idx):
-        _data_move(self.tik_inst, self.ub_tiling, self.data_tiling, Constant.TILING_CTRL_PARAM[1])
-        self.need_core_num.set_as(self.ub_tiling[0])
-        self.total_element_size.set_as(self.ub_tiling[1])
-        self.per_core_size.set_as(self.ub_tiling[2])
-
-        with self.tik_inst.if_scope(tik.all(block_idx == self.need_core_num - 1, self.ub_tiling[5] != 0)):
-            self.core_size.set_as(self.ub_tiling[5])
-            self.core_loop_cnt.set_as(self.ub_tiling[6])
-            self.core_left_size.set_as(self.ub_tiling[7])
-        with self.tik_inst.else_scope():
-            self.core_size.set_as(self.ub_tiling[2])
-            self.core_loop_cnt.set_as(self.ub_tiling[3])
-            self.core_left_size.set_as(self.ub_tiling[4])
-
-        with self.tik_inst.if_scope(self.core_loop_cnt == 0):
-            self.real_per_loop_size.set_as(0)
-        with self.tik_inst.else_scope():
-            self.real_per_loop_size.set_as((self.core_size - self.core_left_size) // self.core_loop_cnt)
-
     def build(self):
         """
         build cce
@@ -393,6 +373,26 @@ class IsFinite:
             self._get_tiling_params(block_idx)
             core_offset = block_idx * self.per_core_size
             self._schedule(core_offset, self.core_loop_cnt, self.core_left_size)
+
+    def _get_tiling_params(self, block_idx):
+        _data_move(self.tik_inst, self.ub_tiling, self.data_tiling, Constant.TILING_CTRL_PARAM[1])
+        self.need_core_num.set_as(self.ub_tiling[0])
+        self.total_element_size.set_as(self.ub_tiling[1])
+        self.per_core_size.set_as(self.ub_tiling[2])
+
+        with self.tik_inst.if_scope(tik.all(block_idx == self.need_core_num - 1, self.ub_tiling[5] != 0)):
+            self.core_size.set_as(self.ub_tiling[5])
+            self.core_loop_cnt.set_as(self.ub_tiling[6])
+            self.core_left_size.set_as(self.ub_tiling[7])
+        with self.tik_inst.else_scope():
+            self.core_size.set_as(self.ub_tiling[2])
+            self.core_loop_cnt.set_as(self.ub_tiling[3])
+            self.core_left_size.set_as(self.ub_tiling[4])
+
+        with self.tik_inst.if_scope(self.core_loop_cnt == 0):
+            self.real_per_loop_size.set_as(0)
+        with self.tik_inst.else_scope():
+            self.real_per_loop_size.set_as((self.core_size - self.core_left_size) // self.core_loop_cnt)
 
     def _inner_compute(self, offset, element_size):
         self._data_move_in(offset, element_size)

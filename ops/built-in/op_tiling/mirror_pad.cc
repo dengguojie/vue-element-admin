@@ -41,6 +41,17 @@ const int64_t MAX_AXIS = 5;
 const int64_t BLOCK_NUM = 16;
 constexpr int32_t DIM_VAL = 16;
 
+// paddings values idx, paddings is an integer tensor with shape [n,2] 
+const int64_t DIM_ZERO_LEFT_PADDINGS_IDX = 0;
+const int64_t DIM_ZERO_RIGHT_PADDINGS_IDX = 1;
+const int64_t DIM_ONE_LEFT_PADDINGS_IDX = 2;
+const int64_t DIM_ONE_RIGHT_PADDINGS_IDX = 3;
+const int64_t DIM_TWO_LEFT_PADDINGS_IDX = 4;
+const int64_t DIM_TWO_RIGHT_PADDINGS_IDX = 5;
+const int64_t DIM_THREE_LEFT_PADDINGS_IDX = 6;
+const int64_t DIM_THREE_RIGHT_PADDINGS_IDX = 7;
+const int64_t DIM_FOUR_LEFT_PADDINGS_IDX = 8;
+const int64_t DIM_FOUR_RIGHT_PADDINGS_IDX = 9;
 struct MirrorPadCompileParams {
   int64_t core_num;
   int64_t output_dim4_max_cnt;
@@ -214,16 +225,16 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
   tiling_params.tiling_input_dim_2 = merge_input_shape_dims[2];
   tiling_params.tiling_input_dim_3 = merge_input_shape_dims[3];
   tiling_params.tiling_input_dim_4 = merge_input_shape_dims[4] * compile_params.dtype_rate;
-  tiling_params.tiling_padding_00 = merge_paddings_values[0];
-  tiling_params.tiling_padding_01 = merge_paddings_values[1];
-  tiling_params.tiling_padding_10 = merge_paddings_values[2];
-  tiling_params.tiling_padding_11 = merge_paddings_values[3];
-  tiling_params.tiling_padding_20 = merge_paddings_values[4];
-  tiling_params.tiling_padding_21 = merge_paddings_values[5];
-  tiling_params.tiling_padding_30 = merge_paddings_values[6];
-  tiling_params.tiling_padding_31 = merge_paddings_values[7];
-  tiling_params.tiling_padding_40 = merge_paddings_values[8] * compile_params.dtype_rate;
-  tiling_params.tiling_padding_41 = merge_paddings_values[9] * compile_params.dtype_rate;
+  tiling_params.tiling_padding_00 = merge_paddings_values[DIM_ZERO_LEFT_PADDINGS_IDX];
+  tiling_params.tiling_padding_01 = merge_paddings_values[DIM_ZERO_RIGHT_PADDINGS_IDX];
+  tiling_params.tiling_padding_10 = merge_paddings_values[DIM_ONE_LEFT_PADDINGS_IDX];
+  tiling_params.tiling_padding_11 = merge_paddings_values[DIM_ONE_RIGHT_PADDINGS_IDX];
+  tiling_params.tiling_padding_20 = merge_paddings_values[DIM_TWO_LEFT_PADDINGS_IDX];
+  tiling_params.tiling_padding_21 = merge_paddings_values[DIM_TWO_RIGHT_PADDINGS_IDX];
+  tiling_params.tiling_padding_30 = merge_paddings_values[DIM_THREE_LEFT_PADDINGS_IDX];
+  tiling_params.tiling_padding_31 = merge_paddings_values[DIM_THREE_RIGHT_PADDINGS_IDX];
+  tiling_params.tiling_padding_40 = merge_paddings_values[DIM_FOUR_LEFT_PADDINGS_IDX] * compile_params.dtype_rate;
+  tiling_params.tiling_padding_41 = merge_paddings_values[DIM_FOUR_RIGHT_PADDINGS_IDX] * compile_params.dtype_rate;
 
   auto output_dim_4 =
       tiling_params.tiling_input_dim_4 + tiling_params.tiling_padding_40 + tiling_params.tiling_padding_41;

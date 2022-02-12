@@ -302,7 +302,7 @@ class Argmax(ArgmaxBase):
             loop_times = 0
             buf_size = self.c_align_ubsize
             over_size = buf_size
-        return buf_size, loop_times, over_size, align_flag
+        return [buf_size, loop_times, over_size, align_flag]
 
     def max_last_axis(self):
         """
@@ -353,7 +353,9 @@ class Argmax(ArgmaxBase):
         -------
         None
         """
-        ub_buf_size, loop_times, over_size, align_flag = self.get_tiling_info()
+        tiling_info_list = self.get_tiling_info()
+        ub_buf_size, loop_times, over_size  = tiling_info_list[0], tiling_info_list[1], tiling_info_list[2]
+        align_flag = tiling_info_list[3]
         self.ub_result_64 = self.tik_instance.Tensor(self.dtype_x, (64, ), name="ub_result_8", scope=tik.scope_ubuf)
         self.ub_result_value = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN, ),
                                                         name="ub_result_value",

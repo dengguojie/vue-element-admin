@@ -24,6 +24,7 @@ from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import tbe_classify
 from impl.util.platform_adapter import OpPatternMode
 
+
 # 'pylint: disable=too-few-public-methods
 def is_special_cases(shape_dy, shape_variance, shape_gamma):
     """
@@ -231,7 +232,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype, reduce_axis):
     var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
     res_for_gamma = tbe.vmul(sub_x_mean, var_elta_2_cast)
 
-    return pd_var, var_elta_2, sub_x_mean, res_for_gamma
+    return [pd_var, var_elta_2, sub_x_mean, res_for_gamma]
 
 
 def _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype, reduce_axis):
@@ -303,7 +304,8 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype, reduce_axis):
         (data_x - data_mean)*np.power((data_variance + EPSLON), (-0.5))
     """
     pd_xl = _get_pd_xl(data, shape_x)
-    pd_var, var_elta_2, sub_x_mean, res_for_gamma = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype, reduce_axis)
+    pd_var_list = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype, reduce_axis)
+    pd_var, var_elta_2, sub_x_mean, res_for_gamma = pd_var_list[0], pd_var_list[1], pd_var_list[2], pd_var_list[3]
     pd_mean = _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype, reduce_axis)
     var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
@@ -312,7 +314,7 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype, reduce_axis):
     pd_x_2 = tbe.vmuls(pdx2_mul, tvm.const((2 * (params.get("mean_num")**(-1))), dtype=cast_dtype))
     pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
 
-    return pd_x_1, pd_x_2, pd_x_3, res_for_gamma
+    return [pd_x_1, pd_x_2, pd_x_3, res_for_gamma]
 
 
 def _get_pd_x(data, params, shape_x, dtype, cast_dtype, reduce_axis):
@@ -342,8 +344,9 @@ def _get_pd_x(data, params, shape_x, dtype, cast_dtype, reduce_axis):
     res_for_gamma: tvm.tensor
         (data_x - data_mean)*np.power((data_variance + EPSLON), (-0.5))
     """
-    pd_x_1, pd_x_2, pd_x_3, res_for_gamma = _get_pd_x_front(data, params, shape_x, cast_dtype, reduce_axis)
-
+    pd_x_front_list = _get_pd_x_front(data, params, shape_x, cast_dtype, reduce_axis)
+    pd_x_1, pd_x_2, pd_x_3 = pd_x_front_list[0], pd_x_front_list[1], pd_x_front_list[2]
+    res_for_gamma = pd_x_front_list[3]
     pdx_broad = tbe.broadcast(pd_x_3, shape_x)
     pdx_add = tbe.vadd(pd_x_1, pd_x_2)
     pd_x_ub = tbe.vadd(pdx_add, pdx_broad)

@@ -755,30 +755,6 @@ class NllLossGradCompute:
                                        dst[index*offset], self.total_weight_ub,
                                        repeat, 1, 1, 1, 8, 8, 0)
 
-    def _set_valid_target(self, names, var, dst_need_index, src_need_index):
-        """
-        set valid target when target index is out c range, x set 0, weight set -1.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if not self.invalid_target:
-            return
-
-        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
-                                                names["index_x" + str(var)] >= self.c_dim)):
-            if dst_need_index and src_need_index:
-                names["index_x" + str(var)].set_as(0)
-                names["index_x" + "w" + str(var)].set_as(-1)
-            elif src_need_index:
-                names["index_x" + str(var)].set_as(-1)
-            elif dst_need_index:
-                names["index_x" + str(var)].set_as(0)
-
     # 'pylint: disable=too-many-branches
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
@@ -841,66 +817,29 @@ class NllLossGradCompute:
             self._set_valid_target(names, i, dst_need_index, src_need_index)
             dst[dst_offset].set_as(src[src_offset])
 
-    def _normal_two_tim_process(self, line_num, core_offset,
-                                repeat, burst, output_burst):
-        if self.reduction == "none":
-            self.tik_instance.data_move(
-                self.y_grad_ub, self.data_y_grad[core_offset],
-                0, 1, burst, 0, 0)
-        self.tik_instance.data_move(
-            self.target_ub, self.data_target[core_offset],
-            0, 1, burst, 0, 0)
-        self.vector_dup_process(self.dup_ub, self.core_dup_repeat)
-        if self.reduction == "mean":
-            total_weight = self.tik_instance.Scalar(dtype="float32")
-            total_weight.set_as(self.total_weight_ub[0])
-            self.tik_instance.vector_dup(MASK64, self.total_weight_ub,
-                                         total_weight, 1, 1, 8)
-        if self.reduction == "none" and self.c_dim != 1:
-            self.select_valid_value(line_num, 1, self.refactor_weight_ub,
-                                    self.weight_ub, self.target_ub,
-                                    dst_need_index=False)
-        else:
-            self.select_valid_value(line_num, self.c_dim, self.dup_ub,
-                                    self.weight_ub, self.target_ub)
+    def _set_valid_target(self, names, var, dst_need_index, src_need_index):
+        """
+        set valid target when target index is out c range, x set 0, weight set -1.
 
-        vmul_repeat_times = math.ceil(repeat/Constant.MAX_REPEAT)
-        max_repeat_num = Constant.MAX_REPEAT*Constant.NUM_SIXTYFOUR
-        last_vmul_offset = max_repeat_num
-        last_vmul_repeat = repeat % Constant.MAX_REPEAT
-        if last_vmul_repeat == 0:
-            last_vmul_repeat = Constant.MAX_REPEAT
+        Parameters
+        ----------
 
-        if self.reduction == "none" and self.c_dim != 1:
-            compute_ub = self.refactor_weight_ub
-        else:
-            compute_ub = self.dup_ub
-        for i in range(0, vmul_repeat_times-1):
-            self.compute_valid_value(compute_ub, self.y_grad_ub, i,
-                                     max_repeat_num, Constant.MAX_REPEAT)
-        self.compute_valid_value(
-            compute_ub, self.y_grad_ub, vmul_repeat_times - 1,
-            last_vmul_offset, last_vmul_repeat)
-        if self.reduction == "none" and self.c_dim != 1:
-            self.select_valid_value(line_num, self.c_dim, self.dup_ub,
-                                    self.refactor_weight_ub, self.target_ub,
-                                    dst_need_index=True, src_need_index=False)
+        Returns
+        -------
+        None
+        """
+        if not self.invalid_target:
+            return
 
-        if line_num*self.c_dim % 8 == 0 or self.core_num == 1:
-            self.tik_instance.data_move(self.output[core_offset*self.c_dim],
-                                        self.dup_ub, 0, 1, output_burst, 8, 8)
-        else:
-            temp_out_ub = self.tik_instance.Tensor(
-                self.x_dtype, [Constant.NUM_EIGHT],
-                name="temp_out_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(
-                self.output[core_offset*self.c_dim], self.dup_ub, 0, 1,
-                output_burst - 1, 8, 8)
-            for i in range(0, 8):
-                temp_out_ub[i].set_as(self.dup_ub[line_num*self.c_dim - 8 + i])
-            self.tik_instance.data_move(
-                self.output[(core_offset + line_num)*self.c_dim - 8],
-                temp_out_ub, 0, 1, 1, 8, 8)
+        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
+                                                names["index_x" + str(var)] >= self.c_dim)):
+            if dst_need_index and src_need_index:
+                names["index_x" + str(var)].set_as(0)
+                names["index_x" + "w" + str(var)].set_as(-1)
+            elif src_need_index:
+                names["index_x" + str(var)].set_as(-1)
+            elif dst_need_index:
+                names["index_x" + str(var)].set_as(0)
 
     def normal_two_dim_compute(self):
         """
@@ -965,6 +904,67 @@ class NllLossGradCompute:
                             self.lower_line, loop_offset + core_offset,
                             compute_last_repeat, self.last_target_burst,
                             self.last_out_burst)
+
+    def _normal_two_tim_process(self, line_num, core_offset,
+                                repeat, burst, output_burst):
+        if self.reduction == "none":
+            self.tik_instance.data_move(
+                self.y_grad_ub, self.data_y_grad[core_offset],
+                0, 1, burst, 0, 0)
+        self.tik_instance.data_move(
+            self.target_ub, self.data_target[core_offset],
+            0, 1, burst, 0, 0)
+        self.vector_dup_process(self.dup_ub, self.core_dup_repeat)
+        if self.reduction == "mean":
+            total_weight = self.tik_instance.Scalar(dtype="float32")
+            total_weight.set_as(self.total_weight_ub[0])
+            self.tik_instance.vector_dup(MASK64, self.total_weight_ub,
+                                         total_weight, 1, 1, 8)
+        if self.reduction == "none" and self.c_dim != 1:
+            self.select_valid_value(line_num, 1, self.refactor_weight_ub,
+                                    self.weight_ub, self.target_ub,
+                                    dst_need_index=False)
+        else:
+            self.select_valid_value(line_num, self.c_dim, self.dup_ub,
+                                    self.weight_ub, self.target_ub)
+
+        vmul_repeat_times = math.ceil(repeat/Constant.MAX_REPEAT)
+        max_repeat_num = Constant.MAX_REPEAT*Constant.NUM_SIXTYFOUR
+        last_vmul_offset = max_repeat_num
+        last_vmul_repeat = repeat % Constant.MAX_REPEAT
+        if last_vmul_repeat == 0:
+            last_vmul_repeat = Constant.MAX_REPEAT
+
+        if self.reduction == "none" and self.c_dim != 1:
+            compute_ub = self.refactor_weight_ub
+        else:
+            compute_ub = self.dup_ub
+        for i in range(0, vmul_repeat_times-1):
+            self.compute_valid_value(compute_ub, self.y_grad_ub, i,
+                                     max_repeat_num, Constant.MAX_REPEAT)
+        self.compute_valid_value(
+            compute_ub, self.y_grad_ub, vmul_repeat_times - 1,
+            last_vmul_offset, last_vmul_repeat)
+        if self.reduction == "none" and self.c_dim != 1:
+            self.select_valid_value(line_num, self.c_dim, self.dup_ub,
+                                    self.refactor_weight_ub, self.target_ub,
+                                    dst_need_index=True, src_need_index=False)
+
+        if line_num*self.c_dim % 8 == 0 or self.core_num == 1:
+            self.tik_instance.data_move(self.output[core_offset*self.c_dim],
+                                        self.dup_ub, 0, 1, output_burst, 8, 8)
+        else:
+            temp_out_ub = self.tik_instance.Tensor(
+                self.x_dtype, [Constant.NUM_EIGHT],
+                name="temp_out_ub", scope=tik.scope_ubuf)
+            self.tik_instance.data_move(
+                self.output[core_offset*self.c_dim], self.dup_ub, 0, 1,
+                output_burst - 1, 8, 8)
+            for i in range(0, 8):
+                temp_out_ub[i].set_as(self.dup_ub[line_num*self.c_dim - 8 + i])
+            self.tik_instance.data_move(
+                self.output[(core_offset + line_num)*self.c_dim - 8],
+                temp_out_ub, 0, 1, 1, 8, 8)
 
     def nll_loss_compute_start(self):
         """

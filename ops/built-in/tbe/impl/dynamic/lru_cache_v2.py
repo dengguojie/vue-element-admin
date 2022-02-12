@@ -143,7 +143,11 @@ class Lru(OpBase):
                                                         name="sorted_index_ub",
                                                         scope=tik.scope_ubuf)
         # position_index help
-        position_index_list = [i for i in range(self.way_number) for j in range(self.tag_rate_int32)]
+        position_index_list = [
+                               i
+                               for i in range(self.way_number)
+                               for j in range(self.tag_rate_int32)
+        ]
         self.position_index_gm = self.tik_instance.Tensor("uint16", [self.way_number * self.tag_rate_int32],
                                                           name="position_index_gm",
                                                           scope=tik.scope_gm,
@@ -279,6 +283,16 @@ class Lru(OpBase):
         self.not_in_cache_index_list_gm = self.output_gm_list[4]
         self.not_in_cache_number_gm = self.output_gm_list[5]
 
+    @staticmethod
+    def is_power(k):
+        """
+        input is or not 2**n
+        """
+        if k < 1:
+            return False
+        m = k & (k - 1)
+        return m == 0
+
     def iterate_timestamp_refresh(self):
         """
         iterate timestamp refresh
@@ -291,16 +305,6 @@ class Lru(OpBase):
         self.tik_instance.data_move_pad(self.time_stamp_ub, self.time_stamp_wsp[self.set_number * self.way_number], 1,
                                         self.time_stamp_bytes, 0, 0)
         self.iterate_timestamp_scalar.set_as(self.time_stamp_ub[0])
-
-    @staticmethod
-    def is_power(k):
-        """
-        input is or not 2**n
-        """
-        if k < 1:
-            return False
-        m = k & (k - 1)
-        return m == 0
 
     def sort_index(self, index, score, result_ub_a, result_ub_b):
         """

@@ -280,8 +280,11 @@ class ParallelConcat(ParallelConcatBase):
                 scope=tik.scope_gm, name="data_gm_in_{}".format(i)))
         self.data_gm_out = self.tik_instance.Tensor(
             self.data_dtype[0], self.output_shape, scope=tik.scope_gm, name="data_gm_out")
-        self.tiling_case, self.single_tensor_size, self.max_single_tensor_size_all_core, \
-        self.max_single_tensor_size_each_core = self.get_buf_info()
+        self.tiling_case = None
+        self.single_tensor_size = None
+        self.max_single_tensor_size_all_core = None
+        self.max_single_tensor_size_each_core = None
+        self.get_buf_info()
 
     def get_buf_info(self):
         """
@@ -301,10 +304,10 @@ class ParallelConcat(ParallelConcatBase):
             tiling_case = 2
         else:
             tiling_case = 3
-        return tiling_case, \
-               single_tensor_size, \
-               max_single_tensor_size_all_core, \
-               max_single_tensor_size_each_core
+        self.tiling_case = tiling_case
+        self.single_tensor_size = single_tensor_size
+        self.max_single_tensor_size_all_core = max_single_tensor_size_all_core
+        self.max_single_tensor_size_each_core = max_single_tensor_size_each_core
 
     # 'pylint: disable=too-many-branches,too-many-statements
     def parallel_concat_compute(self):

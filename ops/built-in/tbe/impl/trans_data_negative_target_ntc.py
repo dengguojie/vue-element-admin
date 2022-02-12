@@ -1404,7 +1404,8 @@ def _func_transform_200(tensor_args, tp_args):
                                           dst_cl_lp_step_in, block_idx * core_step_in,
                                           cr_in_idx_0_size, cr_in_idx_0_dst_rsize, cr_in_idx_0_src_asize,
                                           cr_in_idx_1_size, cr_in_idx_1_dst_rsize, cr_in_idx_1_src_asize)
-                        copy_in_args = (tik_inst, src_in_gm, src_ub[src_ub_offset:], dst_ub, dst_cr_step_in, cr_pln_size,
+                        copy_in_args = (tik_inst, src_in_gm, src_ub[src_ub_offset:], dst_ub, dst_cr_step_in,
+                                        cr_pln_size,
                                         nlc_cr_lp_cnt, dst_cr_lp_unit, cr_backend, dst_cr_dims, src_c_step_in,
                                         c_plp_size, c_backend, dst_cl_step_in, cl_plp_size, cl_backend, dst_cl_dims,
                                         ele_per_block, c0_len, is_mc_cr, block_idx, vnc_col_size)

@@ -25,9 +25,10 @@ from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
 from te.platform import cce_params as param
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import *
 from te.lang.cce.te_compute import irbuilder_api as kernel_api
 from te.utils.error_manager import error_manager_vector
+from te.utils import para_check
+from te.utils.op_utils import check_shape
 from impl.resize_bilinear_tik import ResizeBilinear
 from impl.resize_bilinear_tik import resize_bilinear
 
@@ -158,20 +159,16 @@ def check_supported(images, y, size, align_corners=False, half_pixel_centers=Fal
         # format is not in "NHWC,NCHW,NC1HWC0" not suppord
         reason = "format is not in \"NHWC,NCHW,NC1HWC0\" not suppord, format:%s" % image_format
         return False, reason
-    try:
 
-        if w_in > HW_SIZE_2048 or h_in > HW_SIZE_2048 or \
-                size[0] > HW_SIZE_2048 or size[1] > HW_SIZE_2048:
-            reason = "the images shape or size are not supported, w_in:%s, h_in:%s, size[0]:%s, size[1]:%s"\
-                      % (w_in, h_in, size[0], size[1])
-            return False, reason
-        if w_in < 1 or h_in < 1 or size[0] < 1 or size[1] < 1:
-            reason = "the images shape or size are not supported, w_in:%s, h_in:%s, size[0]:%s, size[1]:%s"\
-                      % (w_in, h_in, size[0], size[1])
-            return False, reason
-
-    except RuntimeError as e:
-        return False, e.args
+    if w_in > HW_SIZE_2048 or h_in > HW_SIZE_2048 or \
+            size[0] > HW_SIZE_2048 or size[1] > HW_SIZE_2048:
+        reason = "the images shape or size are not supported, w_in:%s, h_in:%s, size[0]:%s, size[1]:%s"\
+                    % (w_in, h_in, size[0], size[1])
+        return False, reason
+    if w_in < 1 or h_in < 1 or size[0] < 1 or size[1] < 1:
+        reason = "the images shape or size are not supported, w_in:%s, h_in:%s, size[0]:%s, size[1]:%s"\
+                    % (w_in, h_in, size[0], size[1])
+        return False, reason
 
     is_use_dynamic = is_dynamic_white_list(image_format, image_shape, size)
     if is_use_dynamic:
@@ -3256,9 +3253,9 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
 
-        _vector_dup_fuc(ub_info["float32_const_0"], f32_c0, "float32", 1.0)
+        _vector_dup_fuc(ub_info.get("float32_const_0"), f32_c0, "float32", 1.0)
         if half_pixel_centers:
-            _vector_dup_fuc(ub_info["float32_const_1"], f32_c0 * 8, "float32", 0.0)
+            _vector_dup_fuc(ub_info.get("float32_const_1"), f32_c0 * 8, "float32", 0.0)
 
         def _gen_seq_data():
             """
@@ -3269,7 +3266,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             with ib.for_range(0, VBI_BLOCK_COUNT) as reg_idx:
                 ib.emit(tvm.call_extern("int64", "reg_mov", tvm.call_extern("int64", "reg", pos_reg[reg_idx]), reg_idx))
                 ib.emit(
-                    tvm.call_extern("int32", "reg_mov", ub_info["int32_w_pos_ub"].access_ptr("w", offset=reg_idx),
+                    tvm.call_extern("int32", "reg_mov", ub_info.get("int32_w_pos_ub").access_ptr("w", offset=reg_idx),
                                     tvm.call_extern("int32", "reg", pos_reg[reg_idx])))
 
         def _gen_w_seq_data():
@@ -3284,12 +3281,13 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                                                                       dtype="uint64")))
 
             ib.emit(
-                tvm.call_extern("int32", "copy_ubuf_to_ubuf", ub_info["int32_w_pos_ub"].access_ptr("w", offset=f32_c0),
-                                ub_info["int32_w_pos_ub"].access_ptr("r", offset=0), 0, 1, 1, 0, 0))
+                tvm.call_extern("int32", "copy_ubuf_to_ubuf",
+                                ub_info.get("int32_w_pos_ub").access_ptr("w", offset=f32_c0),
+                                ub_info.get("int32_w_pos_ub").access_ptr("r", offset=0), 0, 1, 1, 0, 0))
             ib.emit(
-                tvm.call_extern("int32", "copy_ubuf_to_ubuf", ub_info["int32_w_pos_ub"].access_ptr("w",
+                tvm.call_extern("int32", "copy_ubuf_to_ubuf", ub_info.get("int32_w_pos_ub").access_ptr("w",
                                                                                                    offset=f32_c0 * 2),
-                                ub_info["int32_w_pos_ub"].access_ptr("r", offset=0), 0, 1, 2, 0, 0))
+                                ub_info.get("int32_w_pos_ub").access_ptr("r", offset=0), 0, 1, 2, 0, 0))
 
         def _calc_h_out_pos_scalar():
             """
@@ -3299,7 +3297,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             """
             _gen_seq_data()
             # cast to int32 to get top_left pos
-            _addr_info = [[ub_info["float32_h_scalar_ub"], 0], [ub_info["int32_w_pos_ub"], 0]]
+            _addr_info = [[ub_info.get("float32_h_scalar_ub"), 0], [ub_info.get("int32_w_pos_ub"), 0]]
             _data_info = [VBI_BLOCK_COUNT, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_s322f32")
 
@@ -3315,8 +3313,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     ib.emit(
                         tvm.call_extern(
                             "float32", "vadds",
-                            ub_info["float32_h_scalar_ub"].access_ptr('w', offset=data_len * (idx + 1) + offset),
-                            ub_info["float32_h_scalar_ub"].access_ptr('r', offset=data_len * idx + offset),
+                            ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=data_len * (idx + 1) + offset),
+                            ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=data_len * idx + offset),
                             tvm.const(add_value, dtype="float32"), 1, 1, 1, 8, 8))
 
                 ib.emit(
@@ -3343,82 +3341,85 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             loop_left_64 = h_out % 64
             if loop_cnt_64 > 0:
                 ib.emit(
-                    tvm.call_extern("float32", "vadds", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r'),
+                    tvm.call_extern("float32", "vadds", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r'),
                                     core_idx * tvm.const(h_per_core, dtype="float32"), loop_cnt_64, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
-                        tvm.call_extern("float32", "vadds", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r'), tvm.const(0.5, dtype="float32"),
+                        tvm.call_extern("float32", "vadds", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r'),
+                                        tvm.const(0.5, dtype="float32"),
                                         loop_cnt_64, 1, 1, 8, 8))
                 ib.emit(
-                    tvm.call_extern("float32", "vmuls", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r'), tvm.const(scale_h, dtype="float32"),
+                    tvm.call_extern("float32", "vmuls", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r'),
+                                    tvm.const(scale_h, dtype="float32"),
                                     loop_cnt_64, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
-                        tvm.call_extern("float32", "vadds", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r'),
+                        tvm.call_extern("float32", "vadds", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r'),
                                         tvm.const(-0.5, dtype="float32"), loop_cnt_64, 1, 1, 8, 8))
                     ib.emit(
-                        tvm.call_extern("float32", "vmax", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r'),
-                                        ub_info["float32_const_1"].access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 0))
+                        tvm.call_extern("float32", "vmax", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r'),
+                                        ub_info.get("float32_const_1").access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 0))
             if loop_left_64 > 0:
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const((1 << loop_left_64) - 1, dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vadds",
-                                    ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     core_idx * tvm.const(h_per_core, dtype="float32"), 1, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
                         tvm.call_extern("float32", "vadds",
-                                        ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                         tvm.const(0.5, dtype="float32"), 1, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls",
-                                    ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     tvm.const(scale_h, dtype="float32"), 1, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
                         tvm.call_extern("float32", "vadds",
-                                        ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                         tvm.const(-0.5, dtype="float32"), 1, 1, 1, 8, 8))
                     ib.emit(
                         tvm.call_extern("float32", "vmax",
-                                        ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_const_1"].access_ptr('r'), 1, 1, 1, 1, 8, 8, 0))
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_const_1").access_ptr('r'), 1, 1, 1, 1, 8, 8, 0))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
 
             # cast to int32 to get h_out pos
-            _addr_info = [[ub_info["int32_h_pos_ub"], 0], [ub_info["float32_h_scalar_ub"], 0]]
+            _addr_info = [[ub_info.get("int32_h_pos_ub"), 0], [ub_info.get("float32_h_scalar_ub"), 0]]
             _data_info = [h_out, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_f322s32f")
             # to get the h_out scalar, the order is scalar, 1-scalar
-            _addr_info = [[ub_info["float32_h_scalar_ub"], vbi_ub_size_h], [ub_info["int32_h_pos_ub"], 0]]
+            _addr_info = [[ub_info.get("float32_h_scalar_ub"), vbi_ub_size_h], [ub_info.get("int32_h_pos_ub"), 0]]
             _data_info = [h_out, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_s322f32")
 
             if loop_cnt_64 > 0:
                 ib.emit(
-                    tvm.call_extern("float32", "vsub", ub_info["float32_h_scalar_ub"].access_ptr('w'),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r'),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r', offset=vbi_ub_size_h), loop_cnt_64,
+                    tvm.call_extern("float32", "vsub", ub_info.get("float32_h_scalar_ub").access_ptr('w'),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r'),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=vbi_ub_size_h),
+                                    loop_cnt_64,
                                     1, 1, 1, 8, 8, 8))
                 ib.emit(
-                    tvm.call_extern("float32", "vsub", ub_info["float32_h_scalar_ub"].access_ptr('w',
-                                                                                                 offset=vbi_ub_size_h),
-                                    ub_info["float32_const_0"].access_ptr('r'),
-                                    ub_info["float32_h_scalar_ub"].access_ptr('r',
+                    tvm.call_extern("float32", "vsub",
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=vbi_ub_size_h),
+                                    ub_info.get("float32_const_0").access_ptr('r'),
+                                    ub_info.get("float32_h_scalar_ub").access_ptr('r',
                                                                               offset=0), loop_cnt_64, 1, 0, 1, 8, 0, 8))
             if loop_left_64 > 0:
                 ib.emit(
@@ -3426,16 +3427,17 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     tvm.const((1 << loop_left_64) - 1, dtype="uint64")))
                 ib.emit(
                     tvm.call_extern(
-                        "float32", "vsub", ub_info["float32_h_scalar_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
-                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=vbi_ub_size_h + loop_cnt_64 * 64), 1, 1,
-                        1, 1, 8, 8, 8))
+                        "float32", "vsub", ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=vbi_ub_size_h + loop_cnt_64 * 64),
+                        1, 1, 1, 1, 8, 8, 8))
                 ib.emit(
                     tvm.call_extern(
                         "float32", "vsub",
-                        ub_info["float32_h_scalar_ub"].access_ptr('w', offset=vbi_ub_size_h + loop_cnt_64 * 64),
-                        ub_info["float32_const_0"].access_ptr('r'),
-                        ub_info["float32_h_scalar_ub"].access_ptr('r', offset=loop_cnt_64 * 64), 1, 1, 0, 1, 8, 0, 8))
+                        ub_info.get("float32_h_scalar_ub").access_ptr('w', offset=vbi_ub_size_h + loop_cnt_64 * 64),
+                        ub_info.get("float32_const_0").access_ptr('r'),
+                        ub_info.get("float32_h_scalar_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                        1, 1, 0, 1, 8, 0, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
@@ -3453,13 +3455,13 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const((1 << 32) - 1, dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w'),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r'), prev_wo_cnt, 1, 1, 1, 8, 8))
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w'),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r'), prev_wo_cnt, 1, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
             # cast to int32 to float32 pos
-            _addr_info = [[ub_info["float32_temp_wo_ub"], 0], [ub_info["int32_w_pos_ub"], 0]]
+            _addr_info = [[ub_info.get("float32_temp_wo_ub"), 0], [ub_info.get("int32_w_pos_ub"), 0]]
             _data_info = [VBI_BLOCK_COUNT * 4, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_s322f32")
             # get the vbi repeat count
@@ -3477,8 +3479,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     ib.emit(
                         tvm.call_extern(
                             "float32", "vadds",
-                            ub_info["float32_temp_wo_ub"].access_ptr('w', offset=data_len * (idx + 1) + offset),
-                            ub_info["float32_temp_wo_ub"].access_ptr('r', offset=data_len * idx + offset),
+                            ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=data_len * (idx + 1) + offset),
+                            ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=data_len * idx + offset),
                             tvm.const(add_value, dtype="float32"), 1, 1, 1, 8, 8))
 
                 ib.emit(
@@ -3502,22 +3504,25 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             if loop_cnt_64 > 0:
                 if half_pixel_centers:
                     ib.emit(
-                        tvm.call_extern("float32", "vadds", ub_info["float32_temp_wo_ub"].access_ptr('w'),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r'), tvm.const(0.5, dtype="float32"),
+                        tvm.call_extern("float32", "vadds", ub_info.get("float32_temp_wo_ub").access_ptr('w'),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                        tvm.const(0.5, dtype="float32"),
                                         loop_cnt_64, 1, 1, 8, 8))
                 ib.emit(
-                    tvm.call_extern("float32", "vmuls", ub_info["float32_temp_wo_ub"].access_ptr('w'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r'), tvm.const(scale_w, dtype="float32"),
+                    tvm.call_extern("float32", "vmuls", ub_info.get("float32_temp_wo_ub").access_ptr('w'),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                    tvm.const(scale_w, dtype="float32"),
                                     loop_cnt_64, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
-                        tvm.call_extern("float32", "vadds", ub_info["float32_temp_wo_ub"].access_ptr('w'),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r'), tvm.const(-0.5, dtype="float32"),
+                        tvm.call_extern("float32", "vadds", ub_info.get("float32_temp_wo_ub").access_ptr('w'),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                        tvm.const(-0.5, dtype="float32"),
                                         loop_cnt_64, 1, 1, 8, 8))
                     ib.emit(
-                        tvm.call_extern("float32", "vmax", ub_info["float32_temp_wo_ub"].access_ptr('w'),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r'),
-                                        ub_info["float32_const_1"].access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 0))
+                        tvm.call_extern("float32", "vmax", ub_info.get("float32_temp_wo_ub").access_ptr('w'),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                        ub_info.get("float32_const_1").access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 0))
             if loop_left_64 > 0:
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
@@ -3525,51 +3530,51 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                 if half_pixel_centers:
                     ib.emit(
                         tvm.call_extern("float32", "vadds",
-                                        ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                         tvm.const(0.5, dtype="float32"), 1, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls",
-                                    ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     tvm.const(scale_w, dtype="float32"), 1, 1, 1, 8, 8))
                 if half_pixel_centers:
                     ib.emit(
                         tvm.call_extern("float32", "vadds",
-                                        ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                         tvm.const(-0.5, dtype="float32"), 1, 1, 1, 8, 8))
                     ib.emit(
                         tvm.call_extern("float32", "vmax",
-                                        ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
-                                        ub_info["float32_const_1"].access_ptr('r'), 1, 1, 1, 1, 8, 8, 0))
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                        ub_info.get("float32_const_1").access_ptr('r'), 1, 1, 1, 1, 8, 8, 0))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
 
             # cast to int to get pos
-            _addr_info = [[ub_info["int32_w_pos_ub"], 0], [ub_info["float32_temp_wo_ub"], 0]]
+            _addr_info = [[ub_info.get("int32_w_pos_ub"), 0], [ub_info.get("float32_temp_wo_ub"), 0]]
             _data_info = [w_out_vbi_count * f32_c0 * 4, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_f322s32f")
 
             # cast to int to get pos
-            _addr_info = [[ub_info["float32_w_pos_ub"], 0], [ub_info["int32_w_pos_ub"], 0]]
+            _addr_info = [[ub_info.get("float32_w_pos_ub"), 0], [ub_info.get("int32_w_pos_ub"), 0]]
             _data_info = [w_out_vbi_count * f32_c0 * 4, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_s322f32")
 
             pos_reg[2] = tvm.expr.Cast("int64", tvm.call_extern("handle", "",
-                                                                ub_info["w0_w1_in_ub"].access_ptr("r"))).astype("int32")
+                                                            ub_info.get("w0_w1_in_ub").access_ptr("r"))).astype("int32")
             # get the top_left pos
             if loop_cnt_64 > 0:
                 ib.emit(
-                    tvm.call_extern("int32", "vmuls", ub_info["int32_w_pos_ub"].access_ptr('w'),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r'), tvm.const(f16_c0 * 2, dtype="int32"),
+                    tvm.call_extern("int32", "vmuls", ub_info.get("int32_w_pos_ub").access_ptr('w'),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r'), tvm.const(f16_c0 * 2, dtype="int32"),
                                     loop_cnt_64, 1, 1, 8, 8))
                 # to get the absolution address of left_top pos
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w'),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r'), pos_reg[2], loop_cnt_64, 1, 1, 8, 8))
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w'),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r'), pos_reg[2], loop_cnt_64, 1, 1, 8, 8))
                 # to get the absolution address of right_top pos
                 ib.emit(
                     tvm.call_extern(
@@ -3577,8 +3582,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         tvm.const(((1 << 64) - 1) - ((1 << 48) - 1) + ((1 << 32) - 1) - ((1 << 16) - 1),
                                   dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w'),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r'), tvm.const(f16_c0 * 2, dtype="int32"),
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w'),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r'), tvm.const(f16_c0 * 2, dtype="int32"),
                                     loop_cnt_64, 1, 1, 8, 8))
                 # to get the absolution address of left_right_bottom pos
                 ib.emit(
@@ -3588,8 +3593,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                   ((1 << 32) - 1) - ((1 << 24) - 1) + ((1 << 16) - 1) - ((1 << 8) - 1),
                                   dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w'),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r'),
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w'),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r'),
                                     tvm.const((w_in + 1) * f16_c0 * 2, dtype="int32"), loop_cnt_64, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
@@ -3601,24 +3606,25 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const((1 << loop_left_64) - 1, dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vmuls", ub_info["int32_w_pos_ub"].access_ptr('w',
+                    tvm.call_extern("int32", "vmuls", ub_info.get("int32_w_pos_ub").access_ptr('w',
                                                                                            offset=loop_cnt_64 * 64),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     tvm.const(f16_c0 * 2, dtype="int32"), 1, 1, 1, 8, 8))
                 # to get the absolution address of left_top pos
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w',
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w',
                                                                                            offset=loop_cnt_64 * 64),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r', offset=loop_cnt_64 * 64), pos_reg[2], 1,
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                    pos_reg[2], 1,
                                     1, 1, 8, 8))
                 # to get the absolution address of right_top pos
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const(((1 << 32) - 1) - ((1 << 16) - 1), dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w',
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w',
                                                                                            offset=loop_cnt_64 * 64),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     tvm.const(f16_c0 * 2, dtype="int32"), 1, 1, 1, 8, 8))
                 # to get the absolution address of left_right_bottom pos
                 ib.emit(
@@ -3627,9 +3633,9 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         tvm.const(((1 << 32) - 1) - ((1 << 24) - 1) + ((1 << 16) - 1) - ((1 << 8) - 1),
                                   dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("int32", "vadds", ub_info["int32_w_pos_ub"].access_ptr('w',
+                    tvm.call_extern("int32", "vadds", ub_info.get("int32_w_pos_ub").access_ptr('w',
                                                                                            offset=loop_cnt_64 * 64),
-                                    ub_info["int32_w_pos_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("int32_w_pos_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     tvm.const((w_in + 1) * f16_c0 * 2, dtype="int32"), 1, 1, 1, 8, 8))
 
                 ib.emit(
@@ -3639,16 +3645,16 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             # to get the w_scalar and 1 - w_scalar
             if loop_cnt_64 > 0:
                 ib.emit(
-                    tvm.call_extern("float32", "vsub", ub_info["float32_temp_wo_ub"].access_ptr('w'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r'),
-                                    ub_info["float32_w_pos_ub"].access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 8))
+                    tvm.call_extern("float32", "vsub", ub_info.get("float32_temp_wo_ub").access_ptr('w'),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                    ub_info.get("float32_w_pos_ub").access_ptr('r'), loop_cnt_64, 1, 1, 1, 8, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const(((1 << 48) - 1) - ((1 << 32) - 1) + ((1 << 16) - 1), dtype="uint64")))
                 ib.emit(
-                    tvm.call_extern("float32", "vsub", ub_info["float32_temp_wo_ub"].access_ptr('w', offset=0),
-                                    ub_info["float32_const_0"].access_ptr('r'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r'), loop_cnt_64, 1, 0, 1, 8, 0, 8))
+                    tvm.call_extern("float32", "vsub", ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=0),
+                                    ub_info.get("float32_const_0").access_ptr('r'),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r'), loop_cnt_64, 1, 0, 1, 8, 0, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
@@ -3659,18 +3665,19 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     tvm.const((1 << loop_left_64) - 1, dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vsub",
-                                    ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_w_pos_ub"].access_ptr('r', offset=loop_cnt_64 * 64), 1, 1, 1, 1, 8,
-                                    8, 8))
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_w_pos_ub").access_ptr('r', offset=loop_cnt_64 * 64), 1, 1, 1,
+                                    1, 8, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(0, dtype="uint64"),
                                     tvm.const(((1 << 16) - 1), dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vsub",
-                                    ub_info["float32_temp_wo_ub"].access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_const_0"].access_ptr('r'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64), 1, 1, 0, 1,
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('w', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_const_0").access_ptr('r'),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                    1, 1, 0, 1,
                                     8, 0, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
@@ -3679,13 +3686,14 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             if is_bigger_ub_size:
                 ib.emit(
                     tvm.call_extern("int32", "copy_ubuf_to_cbuf",
-                                    l1_info["int32_w_pos_l1"].access_ptr("w", offset=prev_wo_cnt * 4),
-                                    ub_info["int32_w_pos_ub"].access_ptr("r",
+                                    l1_info.get("int32_w_pos_l1").access_ptr("w", offset=prev_wo_cnt * 4),
+                                    ub_info.get("int32_w_pos_ub").access_ptr("r",
                                                                          offset=0), 0, 1, w_out_vbi_count * 4, 0, 0))
                 ib.emit(
                     tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                    l1_info["float32_temp_wo_l1"].access_ptr("w", offset=prev_wo_cnt * 4),
-                                    ub_info["float32_temp_wo_ub"].access_ptr("r", offset=0), 0, 1, w_out_vbi_count * 4,
+                                    l1_info.get("float32_temp_wo_l1").access_ptr("w", offset=prev_wo_cnt * 4),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr("r", offset=0),
+                                    0, 1, w_out_vbi_count * 4,
                                     0, 0))
 
         def _calc_w_out_scalar(temp_ub, h_scalar, neg_h_scalar, wo_len):
@@ -3708,7 +3716,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                   dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls", temp_ub.access_ptr('w'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r'), neg_h_scalar, loop_cnt_64, 1, 1, 8,
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                    neg_h_scalar, loop_cnt_64, 1, 1, 8,
                                     8))
                 ib.emit(
                     tvm.call_extern(
@@ -3718,7 +3727,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                   dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls", temp_ub.access_ptr('w'),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r'), h_scalar, loop_cnt_64, 1, 1, 8, 8))
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r'),
+                                    h_scalar, loop_cnt_64, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
@@ -3729,7 +3739,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     tvm.const(((1 << 24) - 1) - ((1 << 16) - 1) + ((1 << 8) - 1), dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls", temp_ub.access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64),
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
                                     neg_h_scalar, 1, 1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern(
@@ -3738,14 +3748,15 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                   dtype="uint64")))
                 ib.emit(
                     tvm.call_extern("float32", "vmuls", temp_ub.access_ptr('w', offset=loop_cnt_64 * 64),
-                                    ub_info["float32_temp_wo_ub"].access_ptr('r', offset=loop_cnt_64 * 64), h_scalar, 1,
+                                    ub_info.get("float32_temp_wo_ub").access_ptr('r', offset=loop_cnt_64 * 64),
+                                    h_scalar, 1,
                                     1, 1, 8, 8))
                 ib.emit(
                     tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
                                     tvm.const(-1, dtype="uint64")))
 
             # cast float32 scalar to float16
-            _addr_info = [[ub_info["float16_w_scalar_ub"], 0], [temp_ub, 0]]
+            _addr_info = [[ub_info.get("float16_w_scalar_ub"), 0], [temp_ub, 0]]
             _data_info = [vbi_wo_cnt * f32_c0 * 4, f32_c0 * 8]
             kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_f322f16")
 
@@ -3760,23 +3771,23 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
 
         def _mv_gm_to_ub(ib, nc1_idx, hi_idx):
             ib.emit(
-                tvm.call_extern("float16", "copy_gm_to_ubuf", ub_info["w0_w1_in_ub"].access_ptr("rw", offset=0),
+                tvm.call_extern("float16", "copy_gm_to_ubuf", ub_info.get("w0_w1_in_ub").access_ptr("rw", offset=0),
                                 inputs.access_ptr("r", offset=(hi_idx + nc1_idx * h_in) * w_in * f16_c0), 0, 1, w_in, 0,
                                 0))
             ib.emit(
                 tvm.call_extern(
-                    "float16", "copy_gm_to_ubuf", ub_info["w0_w1_in_ub"].access_ptr("rw", offset=w_in * f16_c0),
+                    "float16", "copy_gm_to_ubuf", ub_info.get("w0_w1_in_ub").access_ptr("rw", offset=w_in * f16_c0),
                     inputs.access_ptr("r", offset=(w_in - 1) * f16_c0 + (hi_idx + nc1_idx * h_in) * w_in * f16_c0), 0,
                     1, 1, 0, 0))
             with ib.if_scope(hi_idx != h_in - 1):
                 ib.emit(
                     tvm.call_extern("float16", "copy_gm_to_ubuf",
-                                    ub_info["w0_w1_in_ub"].access_ptr("rw", offset=(w_in + 1) * f16_c0),
+                                    ub_info.get("w0_w1_in_ub").access_ptr("rw", offset=(w_in + 1) * f16_c0),
                                     inputs.access_ptr("r", offset=(hi_idx + 1 + nc1_idx * h_in) * w_in * f16_c0), 0, 1,
                                     w_in, 0, 0))
                 ib.emit(
                     tvm.call_extern(
-                        "float16", "copy_gm_to_ubuf", ub_info["w0_w1_in_ub"].access_ptr("rw",
+                        "float16", "copy_gm_to_ubuf", ub_info.get("w0_w1_in_ub").access_ptr("rw",
                                                                                         offset=(2 * w_in + 1) * f16_c0),
                         inputs.access_ptr("r",
                                           offset=(w_in - 1) * f16_c0 + (hi_idx + 1 + nc1_idx * h_in) * w_in * f16_c0),
@@ -3784,12 +3795,12 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             with ib.else_scope():
                 ib.emit(
                     tvm.call_extern("float16", "copy_gm_to_ubuf",
-                                    ub_info["w0_w1_in_ub"].access_ptr("rw", offset=(w_in + 1) * f16_c0),
+                                    ub_info.get("w0_w1_in_ub").access_ptr("rw", offset=(w_in + 1) * f16_c0),
                                     inputs.access_ptr("r", offset=(h_in - 1 + nc1_idx * h_in) * w_in * f16_c0), 0, 1,
                                     w_in, 0, 0))
                 ib.emit(
                     tvm.call_extern(
-                        "float16", "copy_gm_to_ubuf", ub_info["w0_w1_in_ub"].access_ptr("rw",
+                        "float16", "copy_gm_to_ubuf", ub_info.get("w0_w1_in_ub").access_ptr("rw",
                                                                                         offset=(2 * w_in + 1) * f16_c0),
                         inputs.access_ptr("r",
                                           offset=(w_in - 1) * f16_c0 + (h_in - 1 + nc1_idx * h_in) * w_in * f16_c0), 0,
@@ -3798,11 +3809,11 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         pipe_all_str = tvm.call_pure_intrin("int32", "tvm_cce_string_print", "PIPE_ALL")
         nc1 = size_in[0] * size_in[1]
         # change the tensor type from int32 to uint16
-        uint16_w_pos = tvm.decl_buffer(ub_info["int32_w_pos_ub"].shape,
+        uint16_w_pos = tvm.decl_buffer(ub_info.get("int32_w_pos_ub").shape,
                                        "uint16_t",
                                        name="uint16_w_pos",
                                        scope=param.scope_ubuf,
-                                       data=ub_info["int32_w_pos_ub"].data)
+                                       data=ub_info.get("int32_w_pos_ub").data)
 
         with ib.for_range(0, nc1) as nc1_idx:
             # set the init value to -1
@@ -3812,16 +3823,16 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                     # get h_out pos
                     ib.emit(
                         tvm.call_extern("int32", "reg_mov", tvm.call_extern("int32", "reg", pos_reg[0]),
-                                        ub_info["int32_h_pos_ub"].access_ptr("r", offset=h_loop_idx)))
+                                        ub_info.get("int32_h_pos_ub").access_ptr("r", offset=h_loop_idx)))
                     # get h_out scalar and 1-scalar
                     with ib.if_scope(pos_reg[0] < h_in):
                         ib.emit(
                             tvm.call_extern("float32", "reg_mov", tvm.call_extern("float32", "reg", pos_reg_float32[0]),
-                                            ub_info["float32_h_scalar_ub"].access_ptr("r", offset=h_loop_idx)))
+                                            ub_info.get("float32_h_scalar_ub").access_ptr("r", offset=h_loop_idx)))
                         ib.emit(
                             tvm.call_extern(
                                 "float32", "reg_mov", tvm.call_extern("float32", "reg", pos_reg_float32[1]),
-                                ub_info["float32_h_scalar_ub"].access_ptr("r", offset=h_loop_idx + vbi_ub_size_h)))
+                                ub_info.get("float32_h_scalar_ub").access_ptr("r", offset=h_loop_idx + vbi_ub_size_h)))
 
                     # to make sure read scalar is done
                     ib.emit(tvm.call_extern('int32', 'pipe_barrier', pipe_all_str))
@@ -3852,8 +3863,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
 
                             ib.emit(
                                 tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                l1_info["float16_hw_scalar_l1"].access_ptr("w", offset=elem_offset),
-                                                ub_info["float16_w_scalar_ub"].access_ptr("r", offset=0), 0, 1,
+                                                l1_info.get("float16_hw_scalar_l1").access_ptr("w", offset=elem_offset),
+                                                ub_info.get("float16_w_scalar_ub").access_ptr("r", offset=0), 0, 1,
                                                 data_len // f16_c0, 0, 0))
 
                         def _copy_hw_scalar_to_ub(data_len, elem_offset):
@@ -3867,21 +3878,22 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
 
                             ib.emit(
                                 tvm.call_extern("float16", "copy_cbuf_to_ubuf",
-                                                ub_info["float16_w_scalar_ub"].access_ptr("w", offset=0),
-                                                l1_info["float16_hw_scalar_l1"].access_ptr("r", offset=elem_offset), 0,
-                                                1, data_len // f16_c0, 0, 0))
+                                                ub_info.get("float16_w_scalar_ub").access_ptr("w", offset=0),
+                                                l1_info.get("float16_hw_scalar_l1").access_ptr("r", offset=elem_offset),
+                                                0, 1, data_len // f16_c0, 0, 0))
 
                         # get h_scalar * w_scalar
                         if is_smaller_l1_size and nc1 > 1:
                             with ib.if_scope(nc1_idx == 0):
-                                _calc_w_out_scalar(ub_info["float32_w_pos_ub"], pos_reg_float32[0], pos_reg_float32[1],
+                                _calc_w_out_scalar(ub_info.get("float32_w_pos_ub"), pos_reg_float32[0],
+                                                   pos_reg_float32[1],
                                                    data_len)
                                 _copy_hw_scalar_to_l1(data_len, elem_offset + h_loop_idx * vbi_ub_size)
                             with ib.else_scope():
                                 _copy_hw_scalar_to_ub(data_len, elem_offset + h_loop_idx * vbi_ub_size)
 
                         else:
-                            _calc_w_out_scalar(ub_info["float32_w_pos_ub"], pos_reg_float32[0], pos_reg_float32[1],
+                            _calc_w_out_scalar(ub_info.get("float32_w_pos_ub"), pos_reg_float32[0], pos_reg_float32[1],
                                                data_len)
 
                         # make bilinear compute
@@ -3893,40 +3905,34 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     tvm.call_extern(
                                         "float16",
                                         "vbi",
-                                        ub_info["out_ub"].access_ptr(
+                                        ub_info.get("out_ub").access_ptr(
                                             "w", offset=0),
                                         uint16_w_pos.access_ptr(
                                             "r", offset=0),
-                                        ub_info["float16_w_scalar_ub"\
-                                        ].access_ptr(
-                                            "r", offset=0),
+                                        ub_info.get("float16_w_scalar_ub").access_ptr("r", offset=0),
                                         4, 1, 1, 128, repeat_vbi))
                             else:
                                 ib.emit(
                                     tvm.call_extern(
                                         "float16",
                                         "vbi",
-                                        ub_info["out_ub"].access_ptr(
+                                        ub_info.get("out_ub").access_ptr(
                                             "w", offset=0),
                                         uint16_w_pos.access_ptr(
                                             "r", offset=0),
-                                        ub_info["float16_w_scalar_ub"\
-                                            ].access_ptr(\
-                                            "r", offset=0),
+                                        ub_info.get("float16_w_scalar_ub").access_ptr("r", offset=0),
                                         4, 1, 1, 128, vbi_repeat_threshold))
                                 ib.emit(
                                     tvm.call_extern(
                                         "float16",
                                         "vbi",
-                                        ub_info["out_ub"].access_ptr(
+                                        ub_info.get("out_ub").access_ptr(
                                             "w",
                                             offset=vbi_repeat_threshold * 128),
                                         uint16_w_pos.access_ptr(
                                             "r",
                                             offset=vbi_repeat_threshold * 64),
-                                        ub_info["float16_w_scalar_ub"\
-                                            ].access_ptr(\
-                                            "r",
+                                        ub_info.get("float16_w_scalar_ub").access_ptr("r",
                                             offset=vbi_repeat_threshold * 32),
                                         4, 1, 1, 128, threshold_left))
 
@@ -3945,16 +3951,13 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 tvm.call_extern(
                                     "float16",
                                     "vbi",
-                                    ub_info["out_ub"].access_ptr(
+                                    ub_info.get("out_ub").access_ptr(
                                         "w",
                                         offset=repeat_vbi * 128),
                                     uint16_w_pos.access_ptr(
                                         "r",
                                         offset=repeat_vbi * 64),
-                                    ub_info["float16_w_scalar_ub"\
-                                    ].access_ptr(
-                                        "r",
-                                        offset=repeat_vbi * 32),
+                                    ub_info.get("float16_w_scalar_ub").access_ptr("r", offset=repeat_vbi * 32),
                                     4, 1, 1, 128, 1))
                             ib.emit(
                                 tvm.call_extern("uint64", "set_vector_mask", tvm.const(-1, dtype="uint64"),
@@ -3962,7 +3965,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
 
                             # cast to float16 to float32
 
-                        _addr_info = [[ub_info["float32_out_ub"], 0], [ub_info["out_ub"], 0]]
+                        _addr_info = [[ub_info.get("float32_out_ub"), 0], [ub_info.get("out_ub"), 0]]
                         _data_info = [data_len * f16_c0, f32_c0 * 8]
                         kernel_api.kernel_cast_to_fuc(ib, _addr_info, _data_info, "vconv_f162f32")
 
@@ -3978,7 +3981,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             nc1_idx * h_out) * \
                                            w_out * f16_c0 + \
                                            elem_offset * f16_c0),
-                                ub_info["float32_out_ub"].access_ptr("r"),
+                                ub_info.get("float32_out_ub").access_ptr("r"),
                                 0, 1, data_len * 2, 0, 0))
 
                     if wo_loop_count > 0:
@@ -3989,13 +3992,15 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             """
                             ib.emit(
                                 tvm.call_extern("int32", "copy_cbuf_to_ubuf",
-                                                ub_info["int32_w_pos_ub"].access_ptr("w", offset=0),
-                                                l1_info["int32_w_pos_l1"].access_ptr("r", offset=elem_offset * 4), 0, 1,
+                                                ub_info.get("int32_w_pos_ub").access_ptr("w", offset=0),
+                                                l1_info.get("int32_w_pos_l1").access_ptr("r", offset=elem_offset * 4),
+                                                0, 1,
                                                 data_len * 4, 0, 0))
                             ib.emit(
                                 tvm.call_extern("float32", "copy_cbuf_to_ubuf",
-                                                ub_info["float32_temp_wo_ub"].access_ptr("w", offset=0),
-                                                l1_info["float32_temp_wo_l1"].access_ptr("r", offset=elem_offset * 4),
+                                                ub_info.get("float32_temp_wo_ub").access_ptr("w", offset=0),
+                                                l1_info.get("float32_temp_wo_l1").access_ptr("r",
+                                                                                             offset=elem_offset * 4),
                                                 0, 1, data_len * 4, 0, 0))
 
                         with ib.for_range(0, wo_loop_count) as wo_lp_idx:
@@ -4273,12 +4278,13 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         _input_fp32_ub.access_ptr('r'), tvm.const(-0.5, dtype="float32"), 32, 1, 1, 8,
                                         8))
                     ib.emit(
-                        tvm.call_extern("float32", "vector_dup", ub_info["const_0"].access_ptr('w'),
+                        tvm.call_extern("float32", "vector_dup", ub_info.get("const_0").access_ptr('w'),
                                         tvm.const(0.0, dtype="float32"), 1, 1, 0, 8, 0))
 
                     _ib.emit(
                         tvm.call_extern(_input_fp32_ub.dtype, "vmax", _input_fp32_ub.access_ptr('w'),
-                                        _input_fp32_ub.access_ptr('r'), ub_info["const_0"].access_ptr('r'), 32, 1, 1, 1,
+                                        _input_fp32_ub.access_ptr('r'), ub_info.get("const_0").access_ptr('r'),
+                                        32, 1, 1, 1,
                                         8, 8, 0))
                     if _input_fp32_512_num == range_512:
                         _ib.emit(
@@ -4287,7 +4293,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             1, 1, 8, 8))
 
                 ib.emit(
-                    tvm.call_extern("float32", "vector_dup", ub_info["const_0"].access_ptr('w'),
+                    tvm.call_extern("float32", "vector_dup", ub_info.get("const_0").access_ptr('w'),
                                     tvm.const(1.0, dtype="float32"), 1, 1, 0, 8, 0))
 
                 data_info = [32 * 64, 64]
@@ -4334,8 +4340,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                 tail_loop = (_x_loop - min_loop) if _y_loop == min_loop else (_y_loop - min_loop)
                 index_ub = x_index_ub if _y_loop == min_loop else y_index_ub
                 index_l1_int = _l1_info["l1_xpos"] if _y_loop == min_loop else _l1_info["l1_ypos"]
-                index_l1_fp32 = _l1_info["l1_xscale"] \
-                    if _y_loop == min_loop else _l1_info["l1_yscale"]
+                index_l1_fp32 = _l1_info["l1_xscale"] if _y_loop == min_loop else _l1_info["l1_yscale"]
                 tail_scale = _scale_w if _y_loop == min_loop else _scale_h
                 # 'pylint: disable=simplifiable-if-expression
                 is_h = False if _y_loop == min_loop else True
@@ -4381,7 +4386,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         _addr = [[dst, cp_segment * 2 + 16], [src, src_offset + cp_segment * 2 - 16]]
                         kernel_api.kernel_cp_fuc(ib, _addr, [16, 8], "copy_gm_to_cbuf")
                 else:
-                    dst = ub_info["ub_input"]
+                    dst = ub_info.get("ub_input")
                     _addr = [[dst, 0], [src, src_offset]]
                     kernel_api.kernel_cp_fuc(ib, _addr, [cp_segment, 8], "copy_gm_to_ubuf")
                     _addr = [[dst, cp_segment], [src, src_offset + cp_segment - 16]]
@@ -4406,7 +4411,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                 fp32_mid_1 = mid_ub[1]
                 fp16_mid = mid_ub[2]
                 fp16_mid_1 = mid_ub[3]
-                fp32_dst = ub_info["ub_input"]
+                fp32_dst = ub_info.get("ub_input")
                 with ib.for_range(0, vconv_loop) as vconv_loop_i:
                     _addr = [[fp16_mid, 0], [src, src_offset + vconv_loop_i * HW_SIZE_256 * 8]]
                     kernel_api.kernel_cp_fuc(ib, _addr, [HW_SIZE_256 * 8, 16], "copy_gm_to_ubuf")
@@ -4515,22 +4520,22 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         # 'pylint: disable=unused-variable
         def _data_unfold(part_index, part_data_len):
             if part_index == 0:
-                x0x1_ub = ub_info["x0_512_x1_512_ub_unfold"]
-                x2x3_ub = ub_info["x2_512_x3_512_ub_unfold"]
-                pos_int_ub = ub_info["int32_512_ub"]
+                x0x1_ub = ub_info.get("x0_512_x1_512_ub_unfold")
+                x2x3_ub = ub_info.get("x2_512_x3_512_ub_unfold")
+                pos_int_ub = ub_info.get("int32_512_ub")
                 index_align_index_num = part_data_len
                 scale_offset = 0
             else:
-                x0x1_ub = ub_info["x0_512_x1_512_ub_1"]
-                x2x3_ub = ub_info["x2_512_x3_512_ub_1"]
-                pos_int_ub = ub_info["int32_512_ub"]
+                x0x1_ub = ub_info.get("x0_512_x1_512_ub_1")
+                x2x3_ub = ub_info.get("x2_512_x3_512_ub_1")
+                pos_int_ub = ub_info.get("int32_512_ub")
                 index_align_index_num = part_data_len
                 scale_offset = 0
             if is_input_in_ub is True:
-                src_addr = ub_info["ub_input"]
+                src_addr = ub_info.get("ub_input")
                 copy_cmd = "copy_ubuf_to_ubuf"
             else:
-                src_addr = l1_info["l1_input"]
+                src_addr = l1_info.get("l1_input")
                 copy_cmd = "copy_cbuf_to_ubuf"
 
             index_align_loop = index_align_index_num // reg_count
@@ -4611,30 +4616,29 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             index_align_blcok_1 = index_block
             index_align_blcok_2 = index_block
             if part_index == 0:
-                x0x1_ub_unfold = ub_info["x0_512_x1_512_ub_unfold"]
-                x2x3_ub_unfold = ub_info["x2_512_x3_512_ub_unfold"]
-                x0x1_ub = ub_info["x0_512_x1_512_ub"]
-                x2x3_ub = ub_info["x2_512_x3_512_ub"]
-                x_scale_512_ub = ub_info["x0_scale_x1_scale_512_ub"]
-                y_scale_2_ub = ub_info["y0_scale_ub"]
-                fp16_ub = ub_info["f16_512_1"]
+                x0x1_ub_unfold = ub_info.get("x0_512_x1_512_ub_unfold")
+                x2x3_ub_unfold = ub_info.get("x2_512_x3_512_ub_unfold")
+                x0x1_ub = ub_info.get("x0_512_x1_512_ub")
+                x2x3_ub = ub_info.get("x2_512_x3_512_ub")
+                x_scale_512_ub = ub_info.get("x0_scale_x1_scale_512_ub")
+                y_scale_2_ub = ub_info.get("y0_scale_ub")
+                fp16_ub = ub_info.get("f16_512_1")
                 index_align_index_num = index_align_blcok_1
                 index_align_blcok = index_align_blcok_1
                 scale_offset = 0
             else:
-                x0x1_ub_unfold = ub_info["x0_512_x1_512_ub_unfold"]
-                x2x3_ub_unfold = ub_info["x2_512_x3_512_ub_unfold"]
-                x0x1_ub = ub_info["x0_512_x1_512_ub_1"]
-                x2x3_ub = ub_info["x2_512_x3_512_ub_1"]
-                x_scale_512_ub = ub_info["x0_scale_x1_scale_512_ub"]
-                y_scale_2_ub = ub_info["y0_scale_ub"]
-                fp16_ub = ub_info["f16_512_1"]
+                x0x1_ub_unfold = ub_info.get("x0_512_x1_512_ub_unfold")
+                x2x3_ub_unfold = ub_info.get("x2_512_x3_512_ub_unfold")
+                x0x1_ub = ub_info.get("x0_512_x1_512_ub_1")
+                x2x3_ub = ub_info.get("x2_512_x3_512_ub_1")
+                x_scale_512_ub = ub_info.get("x0_scale_x1_scale_512_ub")
+                y_scale_2_ub = ub_info.get("y0_scale_ub")
+                fp16_ub = ub_info.get("f16_512_1")
                 index_align_index_num = index_block - index_align_blcok_1
                 index_align_blcok = index_align_blcok_2
                 scale_offset = index_align_blcok_1
 
-            _repeat = (index_align_blcok // 8 + 1) if index_align_blcok % 8 != 0 \
-                else (index_align_blcok // 8 + 0)
+            _repeat = (index_align_blcok // 8 + 1) if index_align_blcok % 8 != 0 else (index_align_blcok // 8 + 0)
             if index_block <= HW_SIZE_256:
                 # x0*(1-Yv)  x1*(1-Yv)
                 ib.emit(
@@ -4709,9 +4713,9 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                 kernel_api.kernel_two_to_one_common_fuc(ib, _addr_info, [_repeat * 2 * 8 * 8, 8 * 8], "vadd")
 
             # vadd x0+x2+x1+x3
-            _addr_info = [[ub_info["out_f32"], 0], [x0x1_ub, 0], [x2x3_ub, 0]]
+            _addr_info = [[ub_info.get("out_f32"), 0], [x0x1_ub, 0], [x2x3_ub, 0]]
             kernel_api.kernel_two_to_one_common_fuc(ib, _addr_info, [_repeat * 2 * 8 * 8, 8 * 8], "vadd")
-            out_ub = ub_info["out_f32"]
+            out_ub = ub_info.get("out_f32")
             out_offset = \
                 (idx * h_per_core + y_index) * w_out * c0 + \
                 x_index * HW_SIZE_256 * c0 + scale_offset * 16 + output_offset
@@ -4738,31 +4742,32 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             with ib.for_range(0, x_segment_loop) as x_loop:
                 pos_reg[1] = tvm.const(-1.0, dtype="int32")
                 # pre copy fisrt line of input
-                _addr_list = [[ub_info["int32_512_ub_y"], 0], [l1_info["l1_ypos"], 0 * 8]]
+                _addr_list = [[ub_info.get("int32_512_ub_y"), 0], [l1_info.get("l1_ypos"), 0 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [8, 8], "copy_cbuf_to_ubuf")
                 ib.emit(
                     tvm.call_extern("int32", "reg_mov", tvm.call_extern(y_index_reg.dtype, "reg", y_index_reg),
-                                    ub_info["int32_512_ub_y"].access_ptr("r"), 0))
+                                    ub_info.get("int32_512_ub_y").access_ptr("r"), 0))
                 images_offset = src_nc1_input_offset + y_index_reg * w_in * c0
                 copy_data_len = w_in * c0 * 2
                 with ib.if_scope(y_index_reg < h_in):
-                    _copy_input_to_l1(inputs, images_offset, l1_info["l1_input"], copy_data_len,
-                                      [range_512, range_512, ub_info["f16_512_1"], ub_info["f16_512_1"]], y_index_reg)
+                    _copy_input_to_l1(inputs, images_offset, l1_info.get("l1_input"), copy_data_len,
+                                      [range_512, range_512, ub_info.get("f16_512_1"), ub_info.get("f16_512_1")],
+                                      y_index_reg)
                 # copy x pos int from l1 to ub
-                _addr_list = [[ub_info["int32_512_ub"], 0], [l1_info["l1_xpos"], x_loop * HW_SIZE_256 * 8]]
+                _addr_list = [[ub_info.get("int32_512_ub"), 0], [l1_info.get("l1_xpos"), x_loop * HW_SIZE_256 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [HW_SIZE_256 * 8, 8], "copy_cbuf_to_ubuf")
                 # copy x pos float from l1 to ub
-                _addr_list = [[ub_info["x0_scale_x1_scale_512_ub"], 0],
-                              [l1_info["l1_xscale"], x_loop * HW_SIZE_512 * 8]]
+                _addr_list = [[ub_info.get("x0_scale_x1_scale_512_ub"), 0],
+                              [l1_info.get("l1_xscale"), x_loop * HW_SIZE_512 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [HW_SIZE_512 * 8, 8], "copy_cbuf_to_ubuf")
                 with ib.for_range(0, h_per_core) as y_loop:
                     with ib.if_scope(idx * h_per_core + y_loop < h_out):
                         # copy y pos int from l1 to ub
                         # copy y sclace float from l1 to ub
                         ib.emit(
-                            tvm.call_extern(ub_info["y0_scale_ub"].dtype, "copy_cbuf_to_ubuf",
-                                            ub_info["y0_scale_ub"].access_ptr('w', offset=0),
-                                            l1_info["l1_yscale"].access_ptr('r', offset=y_loop * 8), 0, 2, 1,
+                            tvm.call_extern(ub_info.get("y0_scale_ub").dtype, "copy_cbuf_to_ubuf",
+                                            ub_info.get("y0_scale_ub").access_ptr('w', offset=0),
+                                            l1_info.get("l1_yscale").access_ptr('r', offset=y_loop * 8), 0, 2, 1,
                                             loop_levely * HW_SIZE_256 - 1, 0))
                         # if y_before_index_reg != y_index_reg
                         # copy from gm to ub or l1 and open data to x1 x2 x3 x4
@@ -4770,47 +4775,49 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             pos_reg[1] = y_index_reg
                             _data_unfold(0, HW_SIZE_256)
 
-                        _addr_list = [[ub_info["int32_512_ub_y"], 0], [l1_info["l1_ypos"], y_loop * 8]]
+                        _addr_list = [[ub_info.get("int32_512_ub_y"), 0], [l1_info.get("l1_ypos"), y_loop * 8]]
                         kernel_api.kernel_cp_fuc(ib, _addr_list, [16, 8], "copy_cbuf_to_ubuf")
                         # copy next unflod data if next y != cu_y
                         ib.emit(
                             tvm.call_extern("int32", "reg_mov", tvm.call_extern(y_index_reg.dtype, "reg", y_index_reg),
-                                            ub_info["int32_512_ub_y"].access_ptr("r", offset=8), 0))
+                                            ub_info.get("int32_512_ub_y").access_ptr("r", offset=8), 0))
                         with ib.if_scope(
                                 tvm.all(y_index_reg != pos_reg[1], y_loop < (h_per_core - 1), y_index_reg < h_in)):
                             images_offset = src_nc1_input_offset + y_index_reg * w_in * c0
-                            _copy_input_to_l1(inputs, images_offset, l1_info["l1_input"], copy_data_len,
-                                              [range_512, range_512, ub_info["f16_512_1"], ub_info["f16_512_1"]],
-                                              y_index_reg)
+                            _copy_input_to_l1(inputs, images_offset, l1_info.get("l1_input"), copy_data_len,
+                                              [range_512, range_512, ub_info.get("f16_512_1"),
+                                               ub_info.get("f16_512_1")], y_index_reg)
                         _process(0, HW_SIZE_256, y_loop, x_loop, src_nc1_output_offset)
 
             if x_segment_tail != 0:
                 pos_reg[1] = tvm.const(-1.0, dtype="int32")
                 # pre copy fisrt line of input
-                _addr_list = [[ub_info["int32_512_ub_y"], 0], [l1_info["l1_ypos"], 0 * 8]]
+                _addr_list = [[ub_info.get("int32_512_ub_y"), 0], [l1_info.get("l1_ypos"), 0 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [8, 8], "copy_cbuf_to_ubuf")
                 ib.emit(
                     tvm.call_extern("int32", "reg_mov", tvm.call_extern(y_index_reg.dtype, "reg", y_index_reg),
-                                    ub_info["int32_512_ub_y"].access_ptr("r"), 0))
+                                    ub_info.get("int32_512_ub_y").access_ptr("r"), 0))
                 images_offset = src_nc1_input_offset + y_index_reg * w_in * c0
                 copy_data_len = w_in * c0 * 2
                 with ib.if_scope(y_index_reg < h_in):
-                    _copy_input_to_l1(inputs, images_offset, l1_info["l1_input"], copy_data_len,
-                                      [range_512, range_512, ub_info["f16_512_1"], ub_info["f16_512_1"]], y_index_reg)
-                _addr_list = [[ub_info["int32_512_ub"], 0], [l1_info["l1_xpos"], x_segment_loop * HW_SIZE_256 * 8]]
+                    _copy_input_to_l1(inputs, images_offset, l1_info.get("l1_input"), copy_data_len,
+                                      [range_512, range_512, ub_info.get("f16_512_1"), ub_info.get("f16_512_1")],
+                                      y_index_reg)
+                _addr_list = [[ub_info.get("int32_512_ub"), 0], [l1_info.get("l1_xpos"),
+                              x_segment_loop * HW_SIZE_256 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [x_segment_tail * 8, 8], "copy_cbuf_to_ubuf")
                 # copy x pos float from l1 to ub
-                _addr_list = [[ub_info["x0_scale_x1_scale_512_ub"], 0],
-                              [l1_info["l1_xscale"], x_segment_loop * HW_SIZE_512 * 8]]
+                _addr_list = [[ub_info.get("x0_scale_x1_scale_512_ub"), 0],
+                              [l1_info.get("l1_xscale"), x_segment_loop * HW_SIZE_512 * 8]]
                 kernel_api.kernel_cp_fuc(ib, _addr_list, [HW_SIZE_512 * 8, 8], "copy_cbuf_to_ubuf")
                 with ib.for_range(0, h_per_core) as y_loop_tail:
                     with ib.if_scope(idx * h_per_core + y_loop_tail < h_out):
                         # copy y pos int from l1 to ub
                         # copy y sclace float from l1 to ub
                         ib.emit(
-                            tvm.call_extern(ub_info["y0_scale_ub"].dtype, "copy_cbuf_to_ubuf",
-                                            ub_info["y0_scale_ub"].access_ptr('w', offset=0),
-                                            l1_info["l1_yscale"].access_ptr('r', offset=y_loop_tail * 8), 0, 2, 1,
+                            tvm.call_extern(ub_info.get("y0_scale_ub").dtype, "copy_cbuf_to_ubuf",
+                                            ub_info.get("y0_scale_ub").access_ptr('w', offset=0),
+                                            l1_info.get("l1_yscale").access_ptr('r', offset=y_loop_tail * 8), 0, 2, 1,
                                             loop_levely * HW_SIZE_256 - 1, 0))
                         # if y_before_index_reg != y_index_reg
                         # copy from gm to ub or l1 and open data to x1 x2 x3 x4
@@ -4818,17 +4825,18 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             pos_reg[1] = y_index_reg
                             _data_unfold(0, x_segment_tail)
 
-                        _addr_list = [[ub_info["int32_512_ub_y"], 0], [l1_info["l1_ypos"], y_loop_tail * 8]]
+                        _addr_list = [[ub_info.get("int32_512_ub_y"), 0], [l1_info.get("l1_ypos"), y_loop_tail * 8]]
                         kernel_api.kernel_cp_fuc(ib, _addr_list, [16, 8], "copy_cbuf_to_ubuf")
                         # copy next unflod data if next y != cu_y
                         ib.emit(
                             tvm.call_extern("int32", "reg_mov", tvm.call_extern(y_index_reg.dtype, "reg", y_index_reg),
-                                            ub_info["int32_512_ub_y"].access_ptr("r", offset=8), 0))
+                                            ub_info.get("int32_512_ub_y").access_ptr("r", offset=8), 0))
                         with ib.if_scope(
                                 tvm.all(y_index_reg != pos_reg[1], y_loop_tail < (h_per_core - 1), y_index_reg < h_in)):
                             images_offset = src_nc1_input_offset + y_index_reg * w_in * c0
-                            _copy_input_to_l1(inputs, images_offset, l1_info["l1_input"], copy_data_len,
-                                              [range_512, range_512, ub_info["f16_512_1"], ub_info["f16_512_1"]],
+                            _copy_input_to_l1(inputs, images_offset, l1_info.get("l1_input"), copy_data_len,
+                                              [range_512, range_512, ub_info.get("f16_512_1"),
+                                              ub_info.get("f16_512_1")],
                                               y_index_reg)
 
                         # caculate data
@@ -4881,8 +4889,11 @@ def resize_bilinear_v2_d_compute(images,
 
 
 # 'pylint: disable=too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 def resize_bilinear_v2_d(images,
                          y,
                          size,

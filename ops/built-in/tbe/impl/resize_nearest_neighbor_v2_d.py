@@ -280,7 +280,7 @@ class ResizeNearestNeighbor:
         src_loop = (b_c1 + src_loop_num - 1) // src_loop_num
         dst_loop = (b_c1 + dst_loop_num - 1) // dst_loop_num
 
-        return src_loop, src_loop_num, dst_loop, dst_loop_num
+        return [src_loop, src_loop_num, dst_loop, dst_loop_num]
 
     def calculate_w_b(self):
         """
@@ -327,7 +327,7 @@ class ResizeNearestNeighbor:
                     b_out = 1
                     l1_flag = True
 
-        return w_out, w_in, b_out, ub_flag, l1_flag
+        return [w_out, w_in, b_out, ub_flag, l1_flag]
 
     def copy_src_to_dst_ub(self, ib, input_data, output_data, src_offset_h,
                            src_offset_w, dst_offset_h, dst_offset_w, loop,
@@ -337,7 +337,9 @@ class ResizeNearestNeighbor:
         """
         b_c1 = self.batch * self.c1
 
-        src_loop, src_loop_num, dst_loop, dst_loop_num = self.tile_b_c1()
+        tile_b_c1_list = self.tile_b_c1()
+        src_loop, src_loop_num, dst_loop = tile_b_c1_list[0], tile_b_c1_list[1], tile_b_c1_list[2]
+        dst_loop_num = tile_b_c1_list[3]
 
         if self.input_h * self.input_w * \
                 self.c0_block >= 65536 or loop_num == 1:
@@ -447,7 +449,8 @@ class ResizeNearestNeighbor:
         """
         gm -> l1 -> ub ->gm
         """
-        w_out, w_in, b_out, _, _ = self.calculate_w_b()
+        calculate_w_b_list = self.calculate_w_b()
+        w_out, w_in, b_out = calculate_w_b_list[0], calculate_w_b_list[1], calculate_w_b_list[2]
         b_loop = (self.batch + b_out - 1) // b_out
         w_loop = (self.output_w + w_out - 1) // w_out
 
@@ -962,23 +965,20 @@ def check_supported(images,
         # format is not in "NHWC,NCHW,NC1HWC0", not suppord
         return False
 
-    try:
-        if in_size_h > 7680 or in_size_w > 4320:
-            reason = "the images_shape is too big, images_shape[1]:%s, images_shape[1]:%s" % (in_size_h, in_size_w)
-            return False, reason
+    if in_size_h > 7680 or in_size_w > 4320:
+        reason = "the images_shape is too big, images_shape[1]:%s, images_shape[1]:%s" % (in_size_h, in_size_w)
+        return False, reason
 
-        if size[0] > 7680 or size[1] > 4320:
-            reason = "the size is too big, size[0]:%s, size[1]:%s" % (size[0], size[1])
-            return False, reason
+    if size[0] > 7680 or size[1] > 4320:
+        reason = "the size is too big, size[0]:%s, size[1]:%s" % (size[0], size[1])
+        return False, reason
 
-        if in_size_h < 1 or in_size_w < 1 or size[0] < 1 or size[1] < 1:
-            reason = "the images_shape or size are too small, " \
-                     "images_shape[1]:%s, images_shape[1]:%s, size[0]:%s, size[1]:%s" \
-                     % (in_size_h, in_size_w, size[0], size[1])
-            return False, reason
+    if in_size_h < 1 or in_size_w < 1 or size[0] < 1 or size[1] < 1:
+        reason = "the images_shape or size are too small, " \
+                    "images_shape[1]:%s, images_shape[1]:%s, size[0]:%s, size[1]:%s" \
+                    % (in_size_h, in_size_w, size[0], size[1])
+        return False, reason
 
-    except RuntimeError as e:
-        return False, e.args
 
     return True, ""
 
@@ -1021,10 +1021,14 @@ def resize_nearest_neighbor_v2_d_compute(images,
     block = tvm.thread_axis("blockIdx.x")
 
     # for No.2 situation
-    _, _, _, ub_flag, l1_flag = resize.calculate_w_b()
+    calculate_w_b_list = resize.calculate_w_b()
+    ub_flag, l1_flag = calculate_w_b_list[3], calculate_w_b_list[4]
 
     # for No.3 situation
-    src_loop, src_loop_num, dst_loop, dst_loop_num = resize.tile_b_c1()
+    tile_b_c1_list = resize.tile_b_c1()
+    src_loop, src_loop_num, dst_loop = tile_b_c1_list[0], tile_b_c1_list[1], tile_b_c1_list[2]
+    dst_loop_num = tile_b_c1_list[3]
+
     if src_loop == dst_loop and src_loop_num == dst_loop_num:
         loop = src_loop
         loop_num = src_loop_num

@@ -1076,9 +1076,10 @@ class ReverseExt2:
         """
         self.thread_num = 2
         if self.ub_element_number > (2 + 4 // self.dsize) * self.shape_x[-1] * 2:
-            self.available_ub = (self.ub_element_number - 4 // self.dsize * 32) // 2 // 2 \
-                if self.replace_set_as_b32 else \
-                (self.ub_element_number - 4 // self.dsize * self.shape_x[-1]) // 2 // 2
+            if self.replace_set_as_b32:
+                self.available_ub = (self.ub_element_number - 4 // self.dsize * 32) // 2 // 2
+            else:
+                self.available_ub = (self.ub_element_number - 4 // self.dsize * self.shape_x[-1]) // 2 // 2
 
             for index, _ in enumerate(self.shape_x):
                 ele_cnt = functools.reduce(lambda x, y: x * y, self.shape_x[index:])

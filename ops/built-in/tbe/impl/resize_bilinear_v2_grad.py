@@ -124,21 +124,18 @@ def check_supported(grads, images, y, align_corners=False, kernel_name="resize_b
         in_size_w = grads_shape[3]
     else:
         # format is not in "NHWC,NCHW,NC1HWC0", not suppord
-        reason = "format is not in \"NHWC,NCHW,NC1HWC0\" not suppord, format:%s" % image_format
+        reason = "format is not in \"NHWC,NCHW,NC1HWC0\" not suppord, format:%s" % format_grads
         return False, reason
 
-    try:
-        if in_size_h > 10000 or in_size_w > 10000:
-            reason = "the size of grads_shape is too big, grads_shape[1]:%s, grads_shape[2]:%s"\
-                      % (in_size_h, in_size_w)
-            return False, reason
-        if in_size_h < 1 or in_size_w < 1:
-            reason = "the size of grads_shape is too small, grads_shape[1]:%s, grads_shape[2]:%s"\
-                      % (in_size_h, in_size_w)
-            return False, reason
+    if in_size_h > 10000 or in_size_w > 10000:
+        reason = "the size of grads_shape is too big, grads_shape[1]:%s, grads_shape[2]:%s"\
+                    % (in_size_h, in_size_w)
+        return False, reason
+    if in_size_h < 1 or in_size_w < 1:
+        reason = "the size of grads_shape is too small, grads_shape[1]:%s, grads_shape[2]:%s"\
+                    % (in_size_h, in_size_w)
+        return False, reason
 
-    except RuntimeError as e:
-        return False, e.args
 
     return True, ""
 
@@ -282,9 +279,7 @@ class ResizeBilinearGrad():
         else:
             is_same_core = 1
 
-        core_num = self.out_size_h // h_per_core + \
-                   (0 if self.out_size_h // core_counts == 0
-                    else is_same_core)
+        core_num = self.out_size_h // h_per_core + (0 if self.out_size_h // core_counts == 0 else is_same_core)
         # for special shape
         if self.images_shape == (2, 1, 48, 72, 16) and \
                 self.grads_shape == (2, 1, 768, 1152, 16) and not self.half_pixel_centers:

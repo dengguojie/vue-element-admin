@@ -583,7 +583,8 @@ def _copy_data_in_0(in_offset_args, tik_args):
      cl_in_idx_1_size, cl_in_idx_1_dst_rsize, cl_in_idx_1_src_asize) = in_offset_args
     (tik_inst, src_in_gm, src_ub, hidden_cnt, c0_pad_size, dst_cr_step_in, cr_pln_size, nlc_cr_lp_cnt, dst_cr_lp_unit,
      cr_backend, dst_cr_dims, src_c_step_in, c_plp_size, c_backend, dst_cl_step_in, cl_plp_size, nlc_cl_lp_cnt,
-     dst_cl_lp_unit, cl_backend, dst_cl_dims, ele_per_block, c0_len, is_mc_cl, is_mc_cr, hidden_size, block_idx) = tik_args
+     dst_cl_lp_unit, cl_backend, dst_cl_dims, ele_per_block, c0_len, is_mc_cl, is_mc_cr,
+     hidden_size, block_idx) = tik_args
 
     with tik_inst.new_stmt_scope():
         offset_args = (cr_lp_idx, dst_cr_lp_step_in, c_lp_idx, src_c_lp_step_in, cl_lp_idx,
@@ -923,7 +924,8 @@ def trans_data_rnn_negative_target(src, dst, input_size, hidden_size, kernel_nam
         used_core_cnt = tiling_params[3]
         with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
             with tik_inst.if_scope(block_idx < used_core_cnt):
-                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
+                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size,
+                               in_dtype]
                 tp_args = tiling_params
                 _func_transform_200(tensor_args, tp_args)
     else:
@@ -944,7 +946,8 @@ def trans_data_rnn_negative_target(src, dst, input_size, hidden_size, kernel_nam
         used_core_cnt1 = tiling_params1[3]
         with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
             with tik_inst.if_scope(block_idx < used_core_cnt0):
-                tensor_args0 = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
+                tensor_args0 = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size,
+                                in_dtype]
                 tp_args0 = tiling_params0
                 _func_transform_200(tensor_args0, tp_args0)
             with tik_inst.if_scope(block_idx < used_core_cnt1):
