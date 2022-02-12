@@ -49,7 +49,7 @@ vector<BufferFusionPattern *> TbeDxTransDataFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
   string pass_name = "TbeDxTransDataFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "New an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kFusedOpType.c_str(), "New an object failed."), return patterns);
 
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pattern.", pass_name.c_str());
   pattern->AddOpDesc(kPatternTransData1, {kOpTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
@@ -86,13 +86,13 @@ bool TbeDxTransDataFusionPass::CheckTransDataFormat(const ge::NodePtr &node, con
     is_support_format = (node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NCHW) &&
                         (node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NC1HWC0);
     FUSION_PASS_CHECK(!is_support_format,
-                      OP_LOGE(kFusedOpType.c_str(), "Only support format NCHW of input."),
+                      OP_LOGW(kFusedOpType.c_str(), "Only support format NCHW of input."),
                       return is_support_format);
   } else {
     is_support_format = (node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NC1HWC0) &&
                         (node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NCHW);
     FUSION_PASS_CHECK(!is_support_format,
-                      OP_LOGE(kFusedOpType.c_str(), "Only support format NC1HWC0 of output."),
+                      OP_LOGW(kFusedOpType.c_str(), "Only support format NC1HWC0 of output."),
                       return is_support_format);
   }
   return is_support_format;
@@ -104,21 +104,21 @@ bool TbeDxTransDataFusionPass::CheckInputNoRange(const ge::NodePtr &cube_node) c
   vector<int64_t> input_dims = input_desc->GetOriginShape().GetDims();
   for (auto input_dim : input_dims) {
     FUSION_PASS_CHECK(input_dim != -1,
-                      OP_LOGE(kFusedOpType.c_str(), "Only support dynamic nchw."), return false);
+                      OP_LOGW(kFusedOpType.c_str(), "Only support dynamic nchw."), return false);
   }
 
   vector<pair<int64_t, int64_t> > range_data;
   FUSION_PASS_CHECK(input_desc->GetShapeRange(range_data) == ge::GRAPH_FAILED,
-                    OP_LOGE(kFusedOpType.c_str(), "Failed to get input shape range of cube_node:2."),
+                    OP_LOGW(kFusedOpType.c_str(), "Failed to get input shape range of cube_node:2."),
                     return false);
   FUSION_PASS_CHECK(range_data.empty(),
-                    OP_LOGE(kFusedOpType.c_str(), "range_data is empty."),
+                    OP_LOGW(kFusedOpType.c_str(), "range_data is empty."),
                     return false);
 
   // range: ((1, -1), (1, -1), (1, -1), (1, -1), (16, 16))
   for (size_t i = 0; i < range_data.size() - 1; i++) {
     FUSION_PASS_CHECK(range_data[i] != kNoRange,
-                      OP_LOGE(kFusedOpType.c_str(), "Only support nchw no range."), return false);
+                      OP_LOGW(kFusedOpType.c_str(), "Only support nchw no range."), return false);
   }
   return true;
 }
@@ -131,17 +131,17 @@ bool TbeDxTransDataFusionPass::CheckOpCube(const ge::NodePtr &cube_node) const {
                     return false);
   int64_t groups = 1;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(cube_node->GetOpDesc(), "groups", groups),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr groups of Conv2DBackpropInput node failed."),
+                    OP_LOGW(kFusedOpType.c_str(), "Get attr groups of Conv2DBackpropInput node failed."),
                     return false);
   FUSION_PASS_CHECK(groups != 1,
-                    OP_LOGE(kFusedOpType.c_str(), "Only support groups = 1."),
+                    OP_LOGW(kFusedOpType.c_str(), "Only support groups = 1."),
                     return false);
   vector<int64_t> dilations;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(cube_node->GetOpDesc(), "dilations", dilations),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr dilations of Conv2DBackpropInput node failed."),
+                    OP_LOGW(kFusedOpType.c_str(), "Get attr dilations of Conv2DBackpropInput node failed."),
                     return false);
   FUSION_PASS_CHECK((dilations != kDilationsDefault),
-                    OP_LOGE(kFusedOpType.c_str(), "Only support dilations = {1, 1, 1, 1}."),
+                    OP_LOGW(kFusedOpType.c_str(), "Only support dilations = {1, 1, 1, 1}."),
                     return false);
 
   FUSION_PASS_CHECK(!CheckInputNoRange(cube_node),
@@ -189,16 +189,16 @@ Status TbeDxTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mappi
                     return SUCCESS);
 
   ge::NodePtr cube_node = cube_nodes[0];
-  FUSION_PASS_CHECK(!CheckOpCube(cube_node), OP_LOGE(kFusedOpType.c_str(), "Check op cube failed."),
+  FUSION_PASS_CHECK(!CheckOpCube(cube_node), OP_LOGW(kFusedOpType.c_str(), "Check op cube failed."),
                     return SUCCESS);
   vector<int64_t> strides;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(cube_node->GetOpDesc(), "strides", strides),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr strides of Conv2DBackpropInput node failed."),
+                    OP_LOGW(kFusedOpType.c_str(), "Get attr strides of Conv2DBackpropInput node failed."),
                     return SUCCESS);
   auto iter = find_if(strides.begin(), strides.end(), [](int64_t stride) { return stride > 1; });
   bool erase_transdata_flag = (iter != strides.end());
   FUSION_PASS_CHECK(!erase_transdata_flag && transdata1_nodes.empty(),
-                    OP_LOGE(kFusedOpType.c_str(), "There is no transdata of input when stride is 1"),
+                    OP_LOGW(kFusedOpType.c_str(), "There is no transdata of input when stride is 1"),
                     return SUCCESS);
 
   fusion_nodes = GetMatchedNodes(mapping);
