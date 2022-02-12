@@ -26,7 +26,6 @@ from functools import reduce as functools_reduce
 from te import platform as cce
 from te.platform import insn_cmd
 from te import tvm
-from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -24040,6 +24039,7 @@ def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
     shape_res = _get_perm_shape(shape, perm)
     shape, perm, shape_res = _check_side_one(shape, perm, shape_res)
 
+    build_config = cce.build_config_update(cce.build_config, "dummy_placeholder", False)
     if _check_two_permute_align_fp16(shape, perm, dtype):
         branch_per = _choose_branch_two_permute_align_fp16(shape, dtype)
         data = tvm.placeholder(shape, dtype=dtype, name="data")

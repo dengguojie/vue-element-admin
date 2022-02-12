@@ -2043,6 +2043,8 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     cp_align_len = tbe_platform.BLOCK_REDUCE_INT8 // dtype_size
     one_core_align = _ceil_fill(shape[len(shape) - 1] + cp_align_len, cp_align_len)
 
+    new_config = tbe_platform.build_config
+    new_config = tbe_platform.build_config_update(new_config, "dummy_placeholder", False)
     if _check_optimization_nchw(input_x, paddings):
         res = tvm.extern([_get_output_shape(shape, paddings)], [data],
                          lambda ins, outs: _pad_for_n_c_hw(ins, outs, paddings),
@@ -2050,7 +2052,7 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
                          dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
-        with tbe_platform.build_config:
+        with new_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
     elif _check_optimization_nhwc(input_x, paddings):
@@ -2060,7 +2062,7 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
                          dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
-        with tbe_platform.build_config:
+        with new_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
     else:
@@ -2098,7 +2100,7 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         sch = tvm.create_schedule(res[0].op)
         build_list = [data, res[0], res[1], res[2], res[3]]
 
-        with tbe_platform.build_config:
+        with new_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
             if dtype == "int8" or dtype == "uint8":
