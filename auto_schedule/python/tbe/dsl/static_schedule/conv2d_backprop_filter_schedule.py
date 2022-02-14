@@ -1494,10 +1494,10 @@ class CceConv2dBackpropFilterOp:
             sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
                                 g_multicore,
                                 c_grads_multicore, c_fmap_multicore, g_axis,
-                                c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at,
+                                c_fmap_l1_c1, c_fmap_mad_c1, c_fmap_l1_kh, c_fmap_l1_at,
                                 c_grads_l1_at,
                                 c_fmap_mad_at, c_grads_mad_at,
-                                c_fmap_mad_c1, c_fmap_mad_insn, c_grads_mad_insn,
+                                c_fmap_mad_insn, c_grads_mad_insn,
                                 sch[dw_ddr].op.axis[4])
         elif not dw_trans_flag:
             # dw_shape is (real_g, fmap_channel_1*kernel_height*kernel_width,

@@ -2437,6 +2437,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
                 sch_agent[a_l1].emit_insn(al1_insn, "phony_insn")
                 sch_agent[a_l1].reused_by(a_filling)
+                # in case of compile err ND2NZ (hw_fuse axis)
+                sch_agent[c_ddr].unroll(sch_agent[c_ddr].nlast_scopes(5)[0])
             else:
                 sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
                 if "a_zero" in tensor_map:
@@ -2450,8 +2452,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         setfmatrix_dict["conv_fm_h"] = a_l1.shape[2]
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]
         if not l0a_dma_flag:
-            sch_agent[a_col_before].emit_insn(
-                a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+            sch_agent[a_col_before].emit_insn(a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
             sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
         else:
             sch[a_l1].compute_inline()
