@@ -111,6 +111,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_or.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_xor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bucketize.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/cos.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/div.cc
@@ -327,6 +328,7 @@ set(_cpu_kernels_ut_files
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/conj/src/conj_utest.cpp
   testcase/coordinates_1d_to_2d/src/coordinates_1d_to_2d_utest.cpp
+  testcase/cos/src/cos_utest.cpp
   testcase/cosh/src/cosh_utest.cpp
   testcase/crop_and_resize/src/crop_and_resize_kernel_utest.cpp
   testcase/reduce_sum/src/reduce_sum_utest.cpp

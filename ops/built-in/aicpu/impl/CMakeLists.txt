@@ -127,6 +127,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/bitwise_or.cc
         kernels/normalized/custom/research/bitwise_xor.cc
         kernels/normalized/custom/research/bucketize.cc
+        kernels/normalized/custom/research/cos.cc
         kernels/normalized/custom/research/diag.cc
         kernels/normalized/custom/research/diag_part.cc
         kernels/normalized/custom/research/div.cc
