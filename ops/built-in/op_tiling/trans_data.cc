@@ -652,7 +652,7 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
   ge::Format src_format = input_desc->GetFormat();
   ge::Format dst_format = output_desc->GetFormat();
   OP_LOGD(op_type, "Input format is [%s], Output format is [%s].",
-	      to_string(src_format).c_str(), to_string(dst_format).c_str());
+          to_string(src_format).c_str(), to_string(dst_format).c_str());
   std::vector<int64_t> in_shape = input_desc->MutableShape().GetDims();
   std::vector<int64_t> out_shape = output_desc->MutableShape().GetDims();
   auto data_type = input_desc->GetDataType();

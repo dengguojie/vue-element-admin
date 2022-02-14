@@ -19,6 +19,16 @@ from te import tik
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import para_check
 
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+
+    DESC_SIZE = 128
+    DIM_BASE_IDX = 3
+    INT64_BYTE_SIZE = 8
+    BLOCK_BYTE_SIZE = 32
 
 # 'pylint: disable=too-few-public-methods
 class UpdateTensorDesc:
@@ -49,25 +59,20 @@ class UpdateTensorDesc:
         tik_instance_fun
         """
 
-        DESC_SIZE = 128
-        DIM_BASE_IDX = 3
-        INT64_BYTE_SIZE = 8
-        BLOCK_BYTE_SIZE = 32
-
         para_check.check_shape(self.shape, param_name="shape")
-        x_gm = self.tik_instance.Tensor(self.dtype_x, (DESC_SIZE,), tik.scope_gm, "x_gm")
-        y_gm = self.tik_instance.Tensor("int64", (DESC_SIZE,), tik.scope_gm, "y_gm")
-        y_ub = self.tik_instance.Tensor("int64", (DESC_SIZE,), tik.scope_ubuf, "y_ub")
+        x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.DESC_SIZE,), tik.scope_gm, "x_gm")
+        y_gm = self.tik_instance.Tensor("int64", (Constant.DESC_SIZE,), tik.scope_gm, "y_gm")
+        y_ub = self.tik_instance.Tensor("int64", (Constant.DESC_SIZE,), tik.scope_ubuf, "y_ub")
 
-        burst_len = DESC_SIZE * INT64_BYTE_SIZE // BLOCK_BYTE_SIZE
+        burst_len = Constant.DESC_SIZE * Constant.INT64_BYTE_SIZE // Constant.BLOCK_BYTE_SIZE
         self.tik_instance.data_move(y_ub, y_gm, 0, 1, burst_len, 0, 0)
 
         dim_num_scalar = self.tik_instance.Scalar(dtype="int64", init_value=self.dim_num)
-        y_ub[DIM_BASE_IDX].set_as(dim_num_scalar)
+        y_ub[Constant.DIM_BASE_IDX].set_as(dim_num_scalar)
 
         for idx, value in enumerate(self.shape):
             dim_num_scalar.set_as(value)
-            desc_idx = DIM_BASE_IDX + idx + 1
+            desc_idx = Constant.DIM_BASE_IDX + idx + 1
             y_ub[desc_idx].set_as(dim_num_scalar)
         self.tik_instance.data_move(y_gm, y_ub, 0, 1, burst_len, 0, 0)
         self.tik_instance.BuildCCE(kernel_name=kernel_name,

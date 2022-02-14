@@ -325,7 +325,7 @@ vector<FusionPattern*> LayerNormONNXMULFusionPass::DefinePatterns() {
 // get the scalar from the op inputs
 /*
 case 1: the first input of the op is a scalar |  case 2: the second input of the op is a scalar
-    x1(scalar)      x2(tensor)                |      x1(tensor)      x2(scalar) 
+    x1(scalar)      x2(tensor)                |      x1(tensor)      x2(scalar)
          \            /                       |           \            /
           \          /                        |            \          /
                op                             |                 op
@@ -333,7 +333,7 @@ case 1: the first input of the op is a scalar |  case 2: the second input of the
                |                              |                 |
 */
 static Status GetTensorDescAndDtype(ge::NodePtr node, ge::Tensor& const_input,
-                            ge::GeTensorDesc& tensor_desc, DataType& dtype) {
+                                    ge::GeTensorDesc& tensor_desc, DataType& dtype) {
   ge::Operator op_node = ge::OpDescUtils::CreateOperatorFromNode(node);
   dtype = op_node.GetInputDescByName("x2").GetDataType();
   std::string OpType = node->GetType();
@@ -358,7 +358,7 @@ static Status GetTensorDescAndDtype(ge::NodePtr node, ge::Tensor& const_input,
     }
   } else {
     OP_LOGI("LayerNorm", "%s op cannot be fused.", node->GetName().c_str());
-    return NOT_CHANGED; 
+    return NOT_CHANGED;
   }
   return SUCCESS;
 }

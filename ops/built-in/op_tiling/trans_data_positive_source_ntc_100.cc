@@ -489,5 +489,4 @@ namespace optiling
     run_info.AddTilingData(run_params.cr_out_idx_1_dst_rsize);
     run_info.AddTilingData(run_params.cr_out_idx_1_dst_asize);
   }
-
 } // namespace optiling

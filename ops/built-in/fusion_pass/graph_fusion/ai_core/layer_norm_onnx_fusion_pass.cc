@@ -208,7 +208,7 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   ge::OpDescPtr new_desc_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(opname, optype)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", opname.c_str());
-                          new_desc_ptr = nullptr; 
+                          new_desc_ptr = nullptr;
                           return INTERNAL_ERROR);
   ge::GeTensorDesc input_descs = previous_node->GetOpDesc()->GetInputDesc(0);
   new_desc_ptr->AddInputDesc(input_descs);
