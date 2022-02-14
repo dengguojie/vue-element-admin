@@ -401,7 +401,8 @@ def _scalar_depthwise_fused_v100(x, x_shape, align_shape, deq_scale, relu_flag, 
                           tag="dequant_remove_pad", attrs={"sqrt_flag": 0})
     else:
         res_sqrt = tvm.compute(align_shape,
-                               lambda batch, c1, ho, wo, c0: (res_f16(batch, c1, ho, wo, c0) * deq_scale(0, 0, 0, 0, 0)),
+                               lambda batch, c1, ho, wo, c0: (res_f16(batch, c1, ho, wo, c0) * deq_scale(
+                                   0, 0, 0, 0, 0)),
                                name="dequant2", tag="dequant2_vector")
 
         res = tvm.compute(align_shape, lambda *indice: res_sqrt(*indice), name="dequant2_remove_pad",
@@ -416,7 +417,8 @@ def _vector_depthwise_fused_v100(x, x_shape, align_shape, deq_scale, relu_flag, 
     if relu_flag:
         res_f16 = tvm.compute(align_shape,
                               lambda batch, c1, ho, wo, c0:
-                              tvm.relu(x(batch, c1 // 2, c1 % 2, wo, c0).astype("float16") * deq_scale(0, c1, 0, 0, c0)),
+                              tvm.relu(
+                                  x(batch, c1 // 2, c1 % 2, wo, c0).astype("float16") * deq_scale(0, c1, 0, 0, c0)),
                               name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
     else:
         res_f16 = tvm.compute(align_shape,
@@ -432,7 +434,8 @@ def _vector_depthwise_fused_v100(x, x_shape, align_shape, deq_scale, relu_flag, 
                           tag="dequant_remove_pad", attrs={"sqrt_flag": 0})
     else:
         res_sqrt = tvm.compute(align_shape,
-                               lambda batch, c1, ho, wo, c0: (res_f16(batch, c1, ho, wo, c0) * deq_scale(0, c1, ho, 0, c0)),
+                               lambda batch, c1, ho, wo, c0: (res_f16(batch, c1, ho, wo, c0) * deq_scale(
+                                   0, c1, ho, 0, c0)),
                                name="dequant2", tag="dequant2_vector")
 
         res = tvm.compute(align_shape,
