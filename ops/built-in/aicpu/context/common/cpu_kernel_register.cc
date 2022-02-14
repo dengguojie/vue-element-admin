@@ -153,9 +153,7 @@ uint32_t CpuKernelRegister::RunCpuKernelAsync(CpuKernelContext &ctx,
   if (aicpu::GetTaskAndStreamId != nullptr) {
     aicpu::GetTaskAndStreamId(notify_info->taskId, notify_info->streamId);
   }
-  if (aicpu::aicpuGetContext != nullptr) {
-    (void)aicpu::aicpuGetContext(&notify_info->ctx);
-  }
+  (void)aicpu::aicpuGetContext(&notify_info->ctx);
   notify_info->waitType = wait_type;
   notify_info->waitId = wait_id;
 

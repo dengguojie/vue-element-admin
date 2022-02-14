@@ -23,10 +23,6 @@ namespace {
 }
 
 namespace aicpu {
-status_t aicpuGetContext(aicpuContext_t *ctx) {
-  return AICPU_ERROR_NONE;
-}
-
 class TestKernel : public CpuKernel {
 public:
     ~TestKernel() = default;
