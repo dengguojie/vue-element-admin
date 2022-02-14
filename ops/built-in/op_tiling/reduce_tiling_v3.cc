@@ -1108,7 +1108,7 @@ bool Reduce::DoReduceTiling() {
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SetInit Failed"),
                     return false);
 
-  if (IsZero()){
+  if (IsZero()) {
     return DoZeroBranch();
   }
 
@@ -1226,7 +1226,7 @@ bool Reduce::DoReduceTiling(const OpInfo& op_info) {
     }
   }
 
-  if (IsZero()){
+  if (IsZero()) {
     return DoZeroBranch();
   }
 

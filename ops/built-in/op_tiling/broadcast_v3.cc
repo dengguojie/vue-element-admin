@@ -31,14 +31,14 @@
 namespace optiling {
 namespace v3 {
 namespace {
-const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
+const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS {
     {1, 32767},
     {2, 32767},
     {4, 16383},
     {8, 8191},
 };
 
-const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
+const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN {
     {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
     {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
 };
@@ -922,7 +922,7 @@ bool Broadcast::DefaultUbTiling() {
 }
 
 bool Broadcast::DoUbTiling() {
-  if (is_milan_soc){
+  if (is_milan_soc) {
     return MilanUbTiling();
   }
   return DefaultUbTiling();
@@ -1186,7 +1186,7 @@ bool Broadcast::CompletedShapes(const std::vector<std::vector<int64_t>>& op_inpu
   return true;
 }
 
-bool Broadcast::GetOutputType(){
+bool Broadcast::GetOutputType() {
   V_OP_TILING_CHECK((op_paras.GetOutputsSize() != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                     return false);
@@ -1210,7 +1210,7 @@ bool Broadcast::GetOutputType(){
   return true;
 }
 
-bool Broadcast::GetType(){
+bool Broadcast::GetType() {
     V_OP_TILING_CHECK((op_paras.GetInputsSize() != 0),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
                       return false);
@@ -1218,7 +1218,7 @@ bool Broadcast::GetType(){
     return GetOutputType();
 }
 
-bool Broadcast::CheckInputs(bool& is_pure_elementwise){
+bool Broadcast::CheckInputs(bool& is_pure_elementwise) {
   for (size_t i = 0; i < dim_len; i++) {
     int64_t max_output = input_shapes[0][i];
     for (size_t j = 1; j < input_num; j++) {

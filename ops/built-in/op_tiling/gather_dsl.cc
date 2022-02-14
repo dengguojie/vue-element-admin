@@ -717,7 +717,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
       ub_factor = gather_compile_info.params_ub_store_num;
     } else {
       int64_t ub_size_align = output_size / params_rows * params_rows_align;
-      for(size_t idx = block_axis; idx < OUTPUT_PARAMS_ROW_IDX; idx++) {
+      for (size_t idx = block_axis; idx < OUTPUT_PARAMS_ROW_IDX; idx++) {
         if (ub_size_align < gather_compile_info.params_ub_store_num) {
           ub_axis = idx;
           ub_factor = output_shape[ub_axis];
