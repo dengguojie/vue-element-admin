@@ -744,7 +744,7 @@ class Scatter:
                 src2_ub = self.updates_ub[src_addr2]
                 dst_ub = self.var_ub[dest_addr]
 
-        return mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride
+        return [mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride]
 
     def traversing_indices(self):
         """

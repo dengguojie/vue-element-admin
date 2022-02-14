@@ -182,8 +182,8 @@ class Mask2Argmax():
         else:
             is_same_core = 1
 
-        block_dim = nc1 // nc1_size + (0 if nc1 // core_counts == 0
-                                       else is_same_core)
+        block_dim = nc1 // nc1_size + \
+                    (0 if nc1 // core_counts == 0 else is_same_core)
         if self.out_size_h * self.out_size_w * 16 * 4 * 5 < UB_SIZE:
             with self.tik_instance.for_range(0, block_dim, block_num=block_dim) \
                     as block_index:

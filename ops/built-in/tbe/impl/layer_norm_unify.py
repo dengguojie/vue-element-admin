@@ -91,8 +91,8 @@ def _is_unsupported_or_single_core(shape_x, shape_gamma, shape_beta):
     if is_last_axis_align:
         return True
 
-    total_width = Constant.TOTAL_WIDTH_0 if size_reduce_axis in Constant.SPECIAL_REDUCE_AXES \
-        else Constant.TOTAL_WIDTH_1
+    total_width = \
+        Constant.TOTAL_WIDTH_0 if size_reduce_axis in Constant.SPECIAL_REDUCE_AXES else Constant.TOTAL_WIDTH_1
     # Bytes of fp16
     bytes_size = 2
     total_size = Constant.UB_SIZE // bytes_size

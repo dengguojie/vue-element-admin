@@ -461,7 +461,7 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
                        tvm.const((params.get("mean_num")**(-1)),
                                  dtype=cast_dtype))
 
-    return pd_x_1, pd_x_2, pd_x_3, var_elta_2_cast, sub_x_mean
+    return [pd_x_1, pd_x_2, pd_x_3, var_elta_2_cast, sub_x_mean]
 
 
 def _get_pd_x(data, params, shape_x, dtype, cast_dtype):

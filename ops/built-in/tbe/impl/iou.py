@@ -197,10 +197,10 @@ class Iou:
         block_element = common_util.get_block_element(self.bboxes_dtype)
         self.min_point_per_core = block_element
         self.eliments_per_block = block_element
-        self.gt_ub_segment = self.GTBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else self.GTBOX_SEGMENT // 2
-        self.bb_ub_segment = self.BBOX_SEGMENT if self.bboxes_dtype == "float16" \
-            else self.BBOX_SEGMENT // 2
+        self.gt_ub_segment = \
+            self.GTBOX_SEGMENT if self.bboxes_dtype == "float16" else self.GTBOX_SEGMENT // 2
+        self.bb_ub_segment = \
+            self.BBOX_SEGMENT if self.bboxes_dtype == "float16" else self.BBOX_SEGMENT // 2
         self.max_eliments = block_element * 8
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
@@ -564,6 +564,30 @@ class Iou:
             result.append(self.tik_instance.Scalar(dtype=self.dtype))
         return result
 
+    def run_tik(self, kernel_name):
+        """
+        run_tik start tik process, and buid cce
+
+        Parameters
+        ----------
+        kernel_name : str
+            bbox segment len
+
+        Returns
+        -------
+        result: tik_instance
+            tik_instance
+        """
+        if self.gtboxes_shape[0] * 4 <= self.GTBOX_SEGMENT:
+            self.iou_process()
+        else:
+            self.iou_process_cut_by_gt()
+        self.tik_instance.BuildCCE(
+            kernel_name=kernel_name,
+            inputs=[self.bboxes_gm, self.gtboxes_gm],
+            outputs=[self.iou_gm])
+        return self.tik_instance
+    
     def _run_segment(self, run_bb_point_segment, gm_offset, gm_out_offset=0):
         """
         do a segment of bbox compute
@@ -717,29 +741,6 @@ class Iou:
             self.tik_instance.data_move(self.iou_gm[iou_gm_offset],
                                         self.out_ub, 0, 1, nbust, 0, 0)
 
-    def run_tik(self, kernel_name):
-        """
-        run_tik start tik process, and buid cce
-
-        Parameters
-        ----------
-        kernel_name : str
-            bbox segment len
-
-        Returns
-        -------
-        result: tik_instance
-            tik_instance
-        """
-        if self.gtboxes_shape[0] * 4 <= self.GTBOX_SEGMENT:
-            self.iou_process()
-        else:
-            self.iou_process_cut_by_gt()
-        self.tik_instance.BuildCCE(
-            kernel_name=kernel_name,
-            inputs=[self.bboxes_gm, self.gtboxes_gm],
-            outputs=[self.iou_gm])
-        return self.tik_instance
 
     def data_rerange(self, run_point, point_ub):
         """
@@ -757,9 +758,8 @@ class Iou:
         None
         """
         for_range = _get_ceil_int(run_point, 2)
-        self.index_reg = [
-            self.tik_instance.Scalar(dtype=self.dtype) for _ in range(8)
-        ]
+        self.index_reg = \
+            [self.tik_instance.Scalar(dtype=self.dtype) for _ in range(8)]
         with self.tik_instance.for_range(0, for_range) as conv_index:
             for i in range(8):
                 self.index_reg[i].set_as(point_ub[conv_index * 8 + i])

@@ -361,7 +361,7 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4, greater_y,
                                                             param_name_input1="input4",
                                                             param_name_input2="shape_max_mul1")
 
-    return shape0, shape1, shape2, shape3, shape4, shape_greatery, shape_selecte
+    return [shape0, shape1, shape2, shape3, shape4, shape_greatery, shape_selecte]
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("lamb_update_with_lr_v2")

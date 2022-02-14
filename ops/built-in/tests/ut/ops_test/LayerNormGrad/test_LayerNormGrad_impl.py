@@ -201,7 +201,7 @@ precision_case1 = {"params": [{"shape": (3, 8), "dtype": "float32", "format": "N
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-ut_case.add_precision_case("Ascend910A", precision_case1)
+ut_case.add_case("Ascend910A", precision_case1)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A"])

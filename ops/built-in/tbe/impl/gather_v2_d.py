@@ -38,11 +38,11 @@ class Constant:
     The class for constant.
     """
     UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if tbe_platform.api_check_support("tik.vgatherb"):
         L1_SIZE = 0
     else:
         L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
-    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     TOTAL_PARAMS = 255000
     INDICES_LINE = 64
 
@@ -274,7 +274,7 @@ def _params_tiling(tensor_params, tensor_indices, row_num_each_core):
         split_num = int(tensor_params.shape[2]) // ub_row_num_once
         last_loop_row_num = int(tensor_params.shape[2]) - ub_row_num_once * split_num
 
-    return loop_num, split_num, ub_row_num_once, last_loop_row_num, is_params_ub
+    return [loop_num, split_num, ub_row_num_once, last_loop_row_num, is_params_ub]
 
 
 def _is_greater_than_32b(tensor_params, tensor_indices, row_num_each_core):

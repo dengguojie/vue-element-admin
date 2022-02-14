@@ -163,7 +163,7 @@ def _get_pd_x_front(data, params, shape_x):
     pd_x_2 = tbe.vmuls(pdx2_mul, tvm.const((2 * (params.get("mean_num")**(-1))), dtype="float32"))
     pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype="float32"))
 
-    return pd_x_1, pd_x_2, pd_x_3, var_elta_rsqrt, sub_x_mean
+    return [pd_x_1, pd_x_2, pd_x_3, var_elta_rsqrt, sub_x_mean]
 
 
 def _get_pd_x(data, params, shape_x, dtype):

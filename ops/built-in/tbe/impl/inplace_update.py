@@ -145,8 +145,8 @@ class InplaceUpdate():
         else:
             is_same_core = 1
 
-        block_dim = value_n // n_size + (0 if value_n //
-                                         self.core_num == 0 else is_same_core)
+        block_dim = value_n // n_size + \
+                    (0 if value_n // self.core_num == 0 else is_same_core)
         # caculate lenth of input data
         reg_x_len = 1
         for i in range(1, len(self.shape_x)):

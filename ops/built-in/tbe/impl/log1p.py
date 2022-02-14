@@ -101,18 +101,18 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     -------
     """
     # define taylor negative threshold , value = -1.7
-    TAYLOR_NEGATIVE_THRESHOLD = -1.7
+    taylor_negative_threshold = -1.7
     # define taylor positive threshold , value = 0.7
-    TAYLOR_POSITIVE_THRESHOLD = 0.7
+    taylor_positive_threshold = 0.7
     input_y = tbe.cast_to(mini_res, "float32")
     input_x = tbe.cast_to(input_x, "float32")
     newton_taylor_res = _newton_taylor_log1p(input_x, input_y)
     newton_exp_res = _newton_exp_log1p(input_x, input_y)
 
-    input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
+    input_left_border = tvm.const(taylor_negative_threshold, "float32")
     tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
-    input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
+    input_right_border = tvm.const(taylor_positive_threshold, "float32")
     tensor_input_right_border = tbe.broadcast(input_right_border,
                                               shape)
 
@@ -142,49 +142,49 @@ def _exp_taylor_compute(input_x):
     -------
     """
     # define second order parameter , value = 1 / 2.0
-    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    taylor_second_order_param = 1 / 2.0
     # define third order parameter , value = 1 / 6.0
-    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    taylor_third_order_param = 1 / 6.0
     # define fourth order parameter , value = 1 / 24.0
-    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    taylor_fourth_order_param = 1 / 24.0
     # define fifth order parameter , value = 1 / 120.0
-    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    taylor_fifth_order_param = 1 / 120.0
     # define sixth order parameter , value = 1 / 720.0
-    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    taylor_sixth_order_param = 1 / 720.0
     # define seventh order parameter , value = 1 / 5040.0
-    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
+    taylor_seventh_order_param = 1 / 5040.0
     # calculate second order tayloy section : x^2 / 2!
-    taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
+    taylor_second_order_param = tvm.const(taylor_second_order_param, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2,
                                    taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
-    taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
+    taylor_third_order_param = tvm.const(taylor_third_order_param, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3,
                                    taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
-    taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
+    taylor_fourth_order_param = tvm.const(taylor_fourth_order_param, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4,
                                     taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
-    taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
+    taylor_fifth_order_param = tvm.const(taylor_fifth_order_param, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5,
                                      taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
-    taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
+    taylor_sixth_order_param = tvm.const(taylor_sixth_order_param, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6,
                                      taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
-    taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
+    taylor_seventh_order_param = tvm.const(taylor_seventh_order_param,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7,

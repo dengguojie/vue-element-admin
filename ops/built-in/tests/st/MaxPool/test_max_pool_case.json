@@ -1,0 +1,51 @@
+[
+    {
+      "op": "MaxPool",
+      "case_name" : "test_max_pool_001",
+      "calc_expect_func_file": "test_max_pool_st.py:max_pooling_forward",
+       "input_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [1, 4, 56, 56, 16],
+           "typical_shape": [1, 4, 56, 56, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "value_range": [[0, 1]],
+           "data_distribute" : "uniform",
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [1, 4, 28, 28, 16],
+           "typical_shape": [1, 4, 28, 28, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "name": "y"
+         }
+       ],
+       "attr": [
+           {
+            "name": "ksize",
+            "value": [1, 1, 3, 3],
+            "type": "list_int"
+           },
+           {
+            "name": "strides",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "padding",
+            "value": "SAME",
+            "type": "string"
+           },
+           {
+            "name": "data_format",
+            "value": "NCHW",
+            "type": "string"
+           }
+       ]
+    }
+]
