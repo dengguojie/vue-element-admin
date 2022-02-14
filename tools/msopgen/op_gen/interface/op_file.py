@@ -21,7 +21,7 @@ class OPFile(metaclass=ABCMeta):
     CLass for generate op files
     """
 
-    def __init__(self: any, argument: any) -> None:
+    def __init__(self: any, argument: ArgParser) -> None:
         self.mode = argument.mode
         self.output_path = argument.output_path
         self.fmk_type = argument.framework
