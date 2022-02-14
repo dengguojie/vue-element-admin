@@ -5577,7 +5577,9 @@ class Transpose:
         fixed_len.set_as(self.ub_input_64_t[1])
         per_core_len.set_as(self.ub_input_64_t[2])
         sub_scenario.set_as(self.ub_input_64_t[3])
-        return scenario, fixed_len, per_core_len, sub_scenario
+
+        back_params = (scenario, fixed_len, per_core_len, sub_scenario)
+        return back_params
 
     def compute_tiling(self):
         """

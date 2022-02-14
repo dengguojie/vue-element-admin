@@ -182,8 +182,6 @@ def _once_vnchwconv_invert(args):
     if tensor_dtype in ("float32", "int32", "uint32"):  # to avoid compile error
         src_ub = src_ub.reinterpret_cast_to("float16")
         dst_ub = dst_ub.reinterpret_cast_to("float16")
-        if vnc_col_size % 32 > 0:  # to avoid compile error
-            vnc_col_size = 32
 
     # do cdh -> dhc
     with tik_inst.new_stmt_scope():

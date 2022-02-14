@@ -88,9 +88,9 @@ def _check_shape_compatibility(shape_in, shape_out):
     comp_shape_in : new shape_in compatible with shape_out.
     """
 
+    comp_shape_in, comp_shape_out, shape_max = shape_util.broadcast_shapes(
+        shape_in, shape_out, param_name_input1="value", param_name_input2="dims")
     try:
-        comp_shape_in, comp_shape_out, shape_max = shape_util.broadcast_shapes(
-            shape_in, shape_out, param_name_input1="value", param_name_input2="dims")
         if comp_shape_out != shape_max:
             raise ValueError('shape_in is not compatible with shape_out.')
     except RuntimeError:

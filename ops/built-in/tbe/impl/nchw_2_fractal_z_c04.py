@@ -183,10 +183,10 @@ class NCHW2FRACTAL4Compute:
         initialize some properties
         """
         # available ub size
-        TOTAL_UB_MEMORY = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        SIZE_TWO_BYTES = 2
+        total_ub_memory = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        size_two_bytes = 2
         # minimum unit of data_move: 32Bytes
-        DATA_MOVE_MIN_UNIT = 32
+        data_move_min_unit = 32
         self.src_shape = src_shape
         self.dtype = dtype
         self.kernel_name = kernel_name
@@ -195,14 +195,14 @@ class NCHW2FRACTAL4Compute:
                           (self.src_shape[0] + Constant.CUBE_SIZE - 1) // Constant.CUBE_SIZE,
                           Constant.CUBE_SIZE, Constant.CUBE_SIZE]
 
-        self.num_byte = SIZE_TWO_BYTES
+        self.num_byte = size_two_bytes
         self.mask = Constant.MAX_MASK
         # the number of data that can be moved in each data_move
-        self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
+        self.num_data = data_move_min_unit // self.num_byte
         para_check.check_shape_rule(self.dst_shape)
         para_check.check_tensor_shape_size(self.dst_shape)
         # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // self.num_byte // 2
+        self.ub_memory = min(total_ub_memory, 252 * 1024) // self.num_byte // 2
         self.src_gm = None
         self.dst_gm = None
 

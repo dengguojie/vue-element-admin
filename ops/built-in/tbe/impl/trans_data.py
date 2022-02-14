@@ -1,52 +1,29 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (C) 2019-2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 trans_data
 """
 from te.utils import para_check
-from impl import four_2_five
-from impl import five_2_four
-from impl import zn_2_nchw
 from impl import nchw_hwcn_zn
-from impl import zn_2_hwcn
 from impl import depthwise_weight_4d_2_6d
 from impl import depthwise_weight_6d_2_4d
 from impl import trans_data_2d
-from impl import nz_2_nd
-from impl import nd_2_nz
-from impl import four_2_five_int8
-from impl import five_2_four_int8
 from impl import transpose_d
-from impl import nd_2_zn_int8
-from impl import ndhwc_2_ndc1hwc0
-from impl import ndc1hwc0_2_ndhwc
 from impl import nhwc_2_fractal_z_c04
 from impl import nchw_2_fractal_z_c04
 from impl import hwcn_2_fractal_z_c04
 from impl import four_2_five_c04
-from impl import dhwcn_2_fractal_z_3d
-from impl import fractal_z_3d_2_dhwcn
-from impl import nc1hwc0_2_nz
-from impl import fractal_nz_2_nc1hwc0
 from impl import zn_2_hwcn_lstm
-from impl import ncdhw_2_ndc1hwc0
-from impl import ndc1hwc0_2_ncdhw
-from impl import ncdhw_2_fractal_z_3d
-from impl import fractal_z_3d_2_ncdhw
-from impl import ndhwc_2_fractal_z_3d
-from impl import fractal_z_3d_2_ndhwc
 from impl import zng_2_nchw_hwcn
 from impl import nchw_2_fractal_z_g
 from impl import hwcn_2_fractal_z_g
@@ -62,12 +39,12 @@ from impl.util.platform_adapter import error_manager_vector
 
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-statements
 # 'pylint: disable=too-many-arguments
-def check_whether_2d(format, input_dict):
+def check_whether_2d(input_format, input_dict):
     """Check whether the 4D is 2D extend to 4D
 
     Parameters
     ----------
-    format: str
+    input_format: str
         source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
     input_dict: dict
         shape and dtype of output, should be same shape and type as input
@@ -79,10 +56,10 @@ def check_whether_2d(format, input_dict):
     """
     is_2d = False
     shape = input_dict.get("shape")
-    if not (len(list(format)) == len(shape) and len(shape) == 4):
+    if not (len(list(input_format)) == len(shape) and len(shape) == 4):
         return is_2d
 
-    dict_zip = dict(zip(list(format), shape))
+    dict_zip = dict(zip(list(input_format), shape))
     if dict_zip["H"] == 1 and dict_zip["W"] == 1 and \
             dict_zip["C"] % 16 == 0:
         is_2d = True

@@ -1,18 +1,16 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 transpose_d
 """
 # 'pylint: disable=W0613,W0401,C0302
@@ -1709,7 +1707,8 @@ def _transpose_change_last(data, shape, shape_res, perm, dtype):
         num = 0
         total_size = []
 
-    return sch, tensor_list, num, total_size
+    back_params = (sch, tensor_list, num, total_size)
+    return back_params
 
 
 def _do_storage_align(sch, data_ub, shape_res, dtype):
