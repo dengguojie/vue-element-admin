@@ -415,7 +415,7 @@ class Conv2dTiling(CubeTilingOp):
            ("virtual_res" in res.op.name or res.dtype == "int8"):
             self._quant_fusion_muti_groups_in_cl0 = True
         self._tiling_type = TILING_REPO_MODE
-        self._cache_tiling_flag = tiling_info.get("cache_tiling_flag")
+        self.cache_tiling_flag = tiling_info.get("cache_tiling_flag")
 
     def get_cache_tiling(self):
         """
