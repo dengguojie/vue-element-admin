@@ -879,6 +879,25 @@ class MaxPoolWithargmaxPytorch():
                             self.c0_size], 0,
                     1, fmap_cut_h_num, 0, 0)
 
+    # 'pylint: disable=no-self-use
+    @staticmethod
+    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
+                                     pad_r, stride, dilation, ceil_mode):
+        temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
+
+        if ceil_mode == True:
+            output_size = ((temp + (stride - 1)) // stride) + 1
+        else:
+            output_size = (temp // stride) + 1
+
+        if pad_l > 0:
+            # ensure that the last pooling starts inside the image
+            # needed to avoid problems in ceil mode
+            if (output_size - 1) * stride >= (input_size + pad_l):
+                output_size = output_size - 1
+
+        return output_size
+
     # 'pylint: disable=too-many-locals,too-many-statements
     def _fun_only_cut_h(self, block_index, nc1_cuth_index, cut_h_size,
                         cut_stride, cut_h_num, nc1_cuth_size, flag_cut_h):
@@ -936,31 +955,6 @@ class MaxPoolWithargmaxPytorch():
                                       cut_h_num, input_fmap_l1, fmap_ub,
                                       fmap_cut_h, mask_shape_ub, nc1_num)
 
-    # 'pylint: disable=no-self-use
-    @staticmethod
-    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
-                                     pad_r, stride, dilation, ceil_mode):
-        temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
-
-        if ceil_mode == True:
-            output_size = ((temp + (stride - 1)) // stride) + 1
-        else:
-            output_size = (temp // stride) + 1
-
-        if pad_l > 0:
-            # ensure that the last pooling starts inside the image
-            # needed to avoid problems in ceil mode
-            if (output_size - 1) * stride >= (input_size + pad_l):
-                output_size = output_size - 1
-
-        return output_size
-
-    def _pooling_output_shape(self, input_size, kernel_size, pad, stride,
-                              dilation, ceil_mode):
-        return self._pooling_output_shape_pad_lr(input_size, kernel_size,
-                                                 pad, pad, stride, dilation,
-                                                 ceil_mode)
-
     @staticmethod
     def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                             pad_h, pad_w, dilation_h, dilation_w, output_h,
@@ -986,6 +980,12 @@ class MaxPoolWithargmaxPytorch():
         if output_h < 1 or output_w < 1:
             raise RuntimeError("Output size is too small ", "outW= ",
                                output_w, "outH= ", output_h)
+
+    def _pooling_output_shape(self, input_size, kernel_size, pad, stride,
+                              dilation, ceil_mode):
+        return self._pooling_output_shape_pad_lr(input_size, kernel_size,
+                                                 pad, pad, stride, dilation,
+                                                 ceil_mode)
 
     def _calc_out_size_and_pad(self):
         """

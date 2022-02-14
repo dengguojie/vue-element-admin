@@ -2220,6 +2220,16 @@ class MaxpoolV3Grad():
                                      0, src_output_offset,
                                      output_data_nums, remain_ho_nums, remained_hi, 0)
 
+    # 'pylint: disable=unused-variable,no-self-use
+    @staticmethod
+    def _get_core_divlist():
+        div_list = []
+        for i in range(1, CORE_NUM + 1):
+            if CORE_NUM % i == 0:
+                if CORE_NUM // i not in div_list:
+                    div_list.append(CORE_NUM // i)
+        return div_list
+
     # 'pylint: disable=unused-variable
     def _tilling_l1_ho_wo(self, each_process_wo, n_index, c1_index,
                           each_process_ho_block, each_process_hi_block,
@@ -2800,13 +2810,14 @@ class MaxpoolV3Grad():
 
     # 'pylint: disable=unused-variable,no-self-use
     @staticmethod
-    def _get_core_divlist():
-        div_list = []
-        for i in range(1, CORE_NUM + 1):
-            if CORE_NUM % i == 0:
-                if CORE_NUM // i not in div_list:
-                    div_list.append(CORE_NUM // i)
-        return div_list
+    def _get_block_num(block_num):
+        if block_num > CORE_NUM:
+            real_block = CORE_NUM
+            block_cycle = (block_num + CORE_NUM - 1) // CORE_NUM
+        else:
+            real_block = block_num
+            block_cycle = 1
+        return real_block, block_cycle
 
     # 'pylint: disable=unused-variable,
     def _if_block(self, ho_outer, ho_inner):
@@ -2828,17 +2839,6 @@ class MaxpoolV3Grad():
         if (overlaps + ho_inner) * 1.0 / ho_inner >= ho_outer:
             return False
         return True
-
-    # 'pylint: disable=unused-variable,no-self-use
-    @staticmethod
-    def _get_block_num(block_num):
-        if block_num > CORE_NUM:
-            real_block = CORE_NUM
-            block_cycle = (block_num + CORE_NUM - 1) // CORE_NUM
-        else:
-            real_block = block_num
-            block_cycle = 1
-        return real_block, block_cycle
 
     # 'pylint: disable=unused-variable
     def tik_instance_function(self, kernel_name):
@@ -3292,7 +3292,7 @@ class MaxpoolV3GradAtomic:
                      [pad_hw_top, pad_hw_bottom],
                      [pad_hw_left, pad_hw_right]]
 
-        return do, ho, wo, pad_model
+        return [do, ho, wo, pad_model]
 
     def _infer_dim_return(self, do, ho, wo, model):
 
@@ -3354,15 +3354,6 @@ class MaxpoolV3GradAtomic:
 
         return di, hi, wi
 
-    def _invalid_part(self):
-        # return area of kernel doesn't slides
-        di, hi, wi = self._infer_dim_return(self.do, self.ho, self.wo, False)
-        invalid_d = self.d - di
-        invalid_h = self.h - hi
-        invalid_w = self.w - wi
-
-        return invalid_d, invalid_h, invalid_w
-
     @staticmethod
     def _overlap_mode(stride, size, xo, xi):
         # xo: direction of x can be slided by xo times
@@ -3378,6 +3369,37 @@ class MaxpoolV3GradAtomic:
             overlap = size - stride
 
         return overlap
+
+    def _invalid_part(self):
+        # return area of kernel doesn't slides
+        di, hi, wi = self._infer_dim_return(self.do, self.ho, self.wo, False)
+        invalid_d = self.d - di
+        invalid_h = self.h - hi
+        invalid_w = self.w - wi
+
+        return invalid_d, invalid_h, invalid_w
+
+    @staticmethod
+    def _check_cut_model(cut_model, split_model, all_do, core_branch):
+        # "not_tiling": 0
+        # "tiling_do": 1
+        # "tiling_do_ho": 2
+        # "tiling_do_ho_wo": 3
+        branch_list = ["not_tiling", "tiling_do",
+                       "tiling_do_ho", "tiling_do_ho_wo"]
+
+        if cut_model == [True, False, False]:
+            if split_model[0] == all_do:
+                model = 0
+            else:
+                model = 1
+        elif cut_model == [True, True, False]:
+            model = 2
+        else:
+            model = 3
+
+        model = max(model, core_branch)
+        return branch_list[model]
 
     def _check_process_space(self, do, ho, wo):
         """
@@ -3445,28 +3467,6 @@ class MaxpoolV3GradAtomic:
                        grad_sel_fp32_size, f_map_fp32_size, l1_in_size)
         return param
 
-    @staticmethod
-    def _check_cut_model(cut_model, split_model, all_do, core_branch):
-        # "not_tiling": 0
-        # "tiling_do": 1
-        # "tiling_do_ho": 2
-        # "tiling_do_ho_wo": 3
-        branch_list = ["not_tiling", "tiling_do",
-                       "tiling_do_ho", "tiling_do_ho_wo"]
-
-        if cut_model == [True, False, False]:
-            if split_model[0] == all_do:
-                model = 0
-            else:
-                model = 1
-        elif cut_model == [True, True, False]:
-            model = 2
-        else:
-            model = 3
-
-        model = max(model, core_branch)
-        return branch_list[model]
-
     def _pattern(self, core_ou_shape, core_branch):
         # valid
         # D H W C0 -> Do Ho Wo C0
@@ -3528,20 +3528,6 @@ class MaxpoolV3GradAtomic:
         return branch, split_model, param
 
     @staticmethod
-    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        with tik_instance.for_range(0, n_burst) as i:
-            src_idx += i * (src_stride + burst_len) * BLOCK_SIZE // num_bit
-            dst_idx += i * (dst_stride + burst_len) * BLOCK_SIZE // num_bit
-
-            tik_instance.data_move(dst_buf[dst_idx],
-                                   src_buf[src_idx],
-                                   0, 1, burst_len, 0, 0)
-
-    @staticmethod
     def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
         """
         norm_data_move
@@ -3557,6 +3543,20 @@ class MaxpoolV3GradAtomic:
                                burst_len,
                                src_stride,
                                dst_stride)
+
+    @staticmethod
+    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
+
+        with tik_instance.for_range(0, n_burst) as i:
+            src_idx += i * (src_stride + burst_len) * BLOCK_SIZE // num_bit
+            dst_idx += i * (dst_stride + burst_len) * BLOCK_SIZE // num_bit
+
+            tik_instance.data_move(dst_buf[dst_idx],
+                                   src_buf[src_idx],
+                                   0, 1, burst_len, 0, 0)
 
     def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
         n_burst = in_shape[0]
@@ -3787,33 +3787,6 @@ class MaxpoolV3GradAtomic:
         self.set_vector_dup(tik_instance, num_init_zero,
                             ubuf, num_overlap, 0, "float32")
 
-    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
-        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
-        # to in_shape[2].
-        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
-        # Only split do, ho, wo, do and ho is 1.
-        n_burst = in_shape[0]
-        burst_len = prod(in_shape[1:]) * self.num_bit // BLOCK_SIZE
-        src_stride = (prod(self.forward_ou_shape[3:]) * (self.c1-1) +
-                      prod(self.forward_ou_shape[4:]) * (self.ho-in_shape[1]) +
-                      self.c0 * (self.wo-in_shape[2])) * \
-                     self.num_bit // BLOCK_SIZE
-        dst_stride = 0
-
-        if src_stride > MAX_STRIDE or dst_stride > MAX_STRIDE:
-            in_list = [n_burst, burst_len, src_stride,
-                       dst_stride, src_idx, 0]
-            self._ultimate_data_move(tik_instance, src_buf,
-                                     dst_buf, in_list, self.num_bit)
-        else:
-            tik_instance.data_move(dst_buf[0],
-                                   src_buf[src_idx],
-                                   0,
-                                   n_burst,
-                                   burst_len,
-                                   src_stride,
-                                   dst_stride)
-
     @staticmethod
     def set_vector_dup(tik_instance, psm, dst, idx, number, dtype):
         """
@@ -3858,6 +3831,33 @@ class MaxpoolV3GradAtomic:
                                         1,
                                         dst_blk_stride,
                                         dst_rep_stride)
+
+    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
+        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
+        # to in_shape[2].
+        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
+        # Only split do, ho, wo, do and ho is 1.
+        n_burst = in_shape[0]
+        burst_len = prod(in_shape[1:]) * self.num_bit // BLOCK_SIZE
+        src_stride = (prod(self.forward_ou_shape[3:]) * (self.c1-1) +
+                      prod(self.forward_ou_shape[4:]) * (self.ho-in_shape[1]) +
+                      self.c0 * (self.wo-in_shape[2])) * \
+                     self.num_bit // BLOCK_SIZE
+        dst_stride = 0
+
+        if src_stride > MAX_STRIDE or dst_stride > MAX_STRIDE:
+            in_list = [n_burst, burst_len, src_stride,
+                       dst_stride, src_idx, 0]
+            self._ultimate_data_move(tik_instance, src_buf,
+                                     dst_buf, in_list, self.num_bit)
+        else:
+            tik_instance.data_move(dst_buf[0],
+                                   src_buf[src_idx],
+                                   0,
+                                   n_burst,
+                                   burst_len,
+                                   src_stride,
+                                   dst_stride)
 
     @staticmethod
     def _vconv(tik_instance, src, src_start, dst,
@@ -3925,6 +3925,63 @@ class MaxpoolV3GradAtomic:
                         mask_value + remain_repeat_time * mask_value],
                     1, 1, 1, dst_stride, src_stride)
 
+    @staticmethod
+    def _rewrite_fmap(tik_instance, operator,
+                      src1, src2, dst, dtype, once_elem,
+                      repeat_times, shape_map, shape_grad, config=None):
+        # once_elem: amount of data processed at a time in the Wo direction.
+        # shape_map: container size of src1[1:].
+        # shape_grad: valid data size of src2.
+
+        _, w, c0 = shape_map[0], shape_map[1], shape_map[2]
+        _, wo = shape_grad[0], shape_grad[1]
+        config = list(config)
+        if dtype == "float16":
+            max_mask = 128
+            num_block = 8
+            block_size = 16
+        else:
+            max_mask = 64
+            num_block = 8
+            block_size = 8
+
+        # num_instr_loop_w: num of instructions on direct W
+        # num_instr_loop_h: num of instructions on direct H
+        num_instr_loop_w = math.ceil(once_elem/max_mask)
+        remain_mask = once_elem % max_mask
+        if remain_mask == 0 and once_elem != 0:
+            remain_mask = max_mask
+        num_instr_loop_h = math.ceil(repeat_times/MAX_VECTOR_REPEATE_TIME)
+        remain_repeat = repeat_times % MAX_VECTOR_REPEATE_TIME
+        if remain_repeat == 0 and repeat_times != 0:
+            remain_repeat = MAX_VECTOR_REPEATE_TIME
+
+        dst_offset = src1_offset = src2_offset = 0
+        if operator == "vadd":
+            for idx_h, _ in enumerate(range(num_instr_loop_h)):
+                for idx_w, _ in enumerate(range(num_instr_loop_w)):
+                    src1_offset = idx_w * num_block * config[1] * block_size + \
+                                  idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
+                    src2_offset = idx_w * num_block * config[2] * block_size + \
+                                  idx_h * MAX_VECTOR_REPEATE_TIME * wo * c0
+                    dst_offset = idx_w * num_block * config[0] * block_size + \
+                                 idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
+
+                    if idx_w < num_instr_loop_w - 1:
+                        mask = max_mask
+                    else:
+                        mask = remain_mask
+                    if idx_h < num_instr_loop_h - 1:
+                        rep = MAX_VECTOR_REPEATE_TIME
+                    else:
+                        rep = remain_repeat
+                    tik_instance.vadd(mask, dst[dst_offset],
+                                      src1[src1_offset], src2[src2_offset],
+                                      rep,
+                                      config[0], config[1],
+                                      config[2], config[3],
+                                      config[4], config[5])
+
     def _vector_op(self, tik_instance, operator,
                    src1, src2, dst, dtype, ele_num,
                    stride_config=None):
@@ -3991,63 +4048,6 @@ class MaxpoolV3GradAtomic:
                                   stride_config[0], stride_config[1],
                                   stride_config[2], stride_config[3],
                                   stride_config[4], stride_config[5])
-
-    @staticmethod
-    def _rewrite_fmap(tik_instance, operator,
-                      src1, src2, dst, dtype, once_elem,
-                      repeat_times, shape_map, shape_grad, config=None):
-        # once_elem: amount of data processed at a time in the Wo direction.
-        # shape_map: container size of src1[1:].
-        # shape_grad: valid data size of src2.
-
-        _, w, c0 = shape_map[0], shape_map[1], shape_map[2]
-        _, wo = shape_grad[0], shape_grad[1]
-        config = list(config)
-        if dtype == "float16":
-            max_mask = 128
-            num_block = 8
-            block_size = 16
-        else:
-            max_mask = 64
-            num_block = 8
-            block_size = 8
-
-        # num_instr_loop_w: num of instructions on direct W
-        # num_instr_loop_h: num of instructions on direct H
-        num_instr_loop_w = math.ceil(once_elem/max_mask)
-        remain_mask = once_elem % max_mask
-        if remain_mask == 0 and once_elem != 0:
-            remain_mask = max_mask
-        num_instr_loop_h = math.ceil(repeat_times/MAX_VECTOR_REPEATE_TIME)
-        remain_repeat = repeat_times % MAX_VECTOR_REPEATE_TIME
-        if remain_repeat == 0 and repeat_times != 0:
-            remain_repeat = MAX_VECTOR_REPEATE_TIME
-
-        dst_offset = src1_offset = src2_offset = 0
-        if operator == "vadd":
-            for idx_h, _ in enumerate(range(num_instr_loop_h)):
-                for idx_w, _ in enumerate(range(num_instr_loop_w)):
-                    src1_offset = idx_w * num_block * config[1] * block_size + \
-                                  idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
-                    src2_offset = idx_w * num_block * config[2] * block_size + \
-                                  idx_h * MAX_VECTOR_REPEATE_TIME * wo * c0
-                    dst_offset = idx_w * num_block * config[0] * block_size + \
-                                 idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
-
-                    if idx_w < num_instr_loop_w - 1:
-                        mask = max_mask
-                    else:
-                        mask = remain_mask
-                    if idx_h < num_instr_loop_h - 1:
-                        rep = MAX_VECTOR_REPEATE_TIME
-                    else:
-                        rep = remain_repeat
-                    tik_instance.vadd(mask, dst[dst_offset],
-                                      src1[src1_offset], src2[src2_offset],
-                                      rep,
-                                      config[0], config[1],
-                                      config[2], config[3],
-                                      config[4], config[5])
 
     def _set_buf_tensor(self, tik_instance, param):
 
@@ -4152,28 +4152,6 @@ class MaxpoolV3GradAtomic:
             tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
                               param.mask_size // VECTOR_FP16_SIZE,
                               1, 1, 8, 8)
-
-    def _sel(self, tik_instance, buf_list, idx_list, const_list):
-        mask_buf = buf_list[4]
-        zero_buf = buf_list[7]
-        grad_buf = buf_list[2]
-        grad_sel_fp16_buf = buf_list[8]
-
-        ho, wo, c0 = const_list
-        idx_do = idx_list[0]
-
-        repeat_times_sel = math.ceil(ho*wo*c0/VECTOR_FP16_SIZE)
-        with tik_instance.for_range(0, repeat_times_sel) as serial:
-            grad_sel_offset = serial * 128
-            grad_offset = serial * 128 + idx_do*ho*wo*c0
-            mask_offset = serial * 8
-            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
-            tik_instance.vsel(self.mask_fp16, 0,
-                              grad_sel_fp16_buf[grad_sel_offset],
-                              cmp_mask,
-                              grad_buf[grad_offset],
-                              zero_buf,
-                              1, 1, 1, 1, 8, 8, 0)
 
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):
@@ -4381,6 +4359,28 @@ class MaxpoolV3GradAtomic:
             self._copy_ub_to_gm(tik_instance, f_map_fp32_buf, 0,
                                 self.ou_y_gm, dst_ou_gm,
                                 ub2gm_shape)
+
+    def _sel(self, tik_instance, buf_list, idx_list, const_list):
+        mask_buf = buf_list[4]
+        zero_buf = buf_list[7]
+        grad_buf = buf_list[2]
+        grad_sel_fp16_buf = buf_list[8]
+
+        ho, wo, c0 = const_list
+        idx_do = idx_list[0]
+
+        repeat_times_sel = math.ceil(ho*wo*c0/VECTOR_FP16_SIZE)
+        with tik_instance.for_range(0, repeat_times_sel) as serial:
+            grad_sel_offset = serial * 128
+            grad_offset = serial * 128 + idx_do*ho*wo*c0
+            mask_offset = serial * 8
+            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
+            tik_instance.vsel(self.mask_fp16, 0,
+                              grad_sel_fp16_buf[grad_sel_offset],
+                              cmp_mask,
+                              grad_buf[grad_offset],
+                              zero_buf,
+                              1, 1, 1, 1, 8, 8, 0)
 
     def tiling_do_main(self, tik_instance, core_loop,
                        sum_core, model, param):
@@ -6191,6 +6191,20 @@ class MaxpoolV3GradAtomic:
                                   hi_batch, ho_batch,
                                   wi_batch, wo_batch)
 
+    @staticmethod
+    def _division_nearest(number, base_num):
+        # split number as n0 and n1,
+        # return n1, base_num*n0 as new_number and core_num
+        n1 = number
+        new_base_num = base_num
+        for n0 in range(1, number + 1):
+            if number % n0 == 0:
+                new_base_num = base_num * n0
+                n1 = int(number / n0)
+                if new_base_num >= CORE_NUM:
+                    break
+        return n1, new_base_num
+
     def filled_vec_dup(self, tik_instance, mark, di_value, pad_d_top,
                        pad_d_bottom, idx_do, idx_d, d_top, d_bottom,
                        param, dst_buf):
@@ -6214,18 +6228,24 @@ class MaxpoolV3GradAtomic:
                 mark.set_as(1)
 
     @staticmethod
-    def _division_nearest(number, base_num):
-        # split number as n0 and n1,
-        # return n1, base_num*n0 as new_number and core_num
-        n1 = number
-        new_base_num = base_num
-        for n0 in range(1, number + 1):
-            if number % n0 == 0:
-                new_base_num = base_num * n0
-                n1 = int(number / n0)
-                if new_base_num >= CORE_NUM:
-                    break
-        return n1, new_base_num
+    def grad(tik_instance, split_model,
+             param, total_num, core_num, func):
+        """
+        grad
+        """
+        # just tiling do ho
+        # support valid
+        core_loop = tik_instance.Scalar("int64")
+        sum_core = tik_instance.Scalar("int64")
+        with tik_instance.for_range(0, core_num,
+                                    block_num=core_num) as blk_idx:
+
+            core_loop_uint64, sum_core_uint64 = cal_core(tik_instance, total_num,
+                                                          blk_idx, core_num)
+            core_loop.set_as(core_loop_uint64)
+            sum_core.set_as(sum_core_uint64)
+
+            func(tik_instance, core_loop, sum_core, split_model, param)
 
     def _split_core(self):
         # ============================
@@ -6250,27 +6270,20 @@ class MaxpoolV3GradAtomic:
         di, hi, wi = self._infer_dim_return(do, ho, wo, True)
         core_in_shape = [di, hi, wi, c0]
 
-        return total_num, core_num, core_ou_shape, core_in_shape, core_branch
+        return [total_num, core_num, core_ou_shape, core_in_shape, core_branch]
 
-    @staticmethod
-    def grad(tik_instance, split_model,
-             param, total_num, core_num, func):
+    def get_tik_instance(self):
         """
-        grad
+        obtain tik instance
         """
-        # just tiling do ho
-        # support valid
-        core_loop = tik_instance.Scalar("int64")
-        sum_core = tik_instance.Scalar("int64")
-        with tik_instance.for_range(0, core_num,
-                                    block_num=core_num) as blk_idx:
+        tik_instance = self._compute()
+        tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                              inputs=[self.orig_x_gm,
+                                      self.orig_y_gm,
+                                      self.grads_gm],
+                              outputs=[self.ou_y_gm])
 
-            core_loop_uint64, sum_core_uint64 = cal_core(tik_instance, total_num,
-                                                          blk_idx, core_num)
-            core_loop.set_as(core_loop_uint64)
-            sum_core.set_as(sum_core_uint64)
-
-            func(tik_instance, core_loop, sum_core, split_model, param)
+        return tik_instance
 
     def _compute(self):
         """
@@ -6322,19 +6335,6 @@ class MaxpoolV3GradAtomic:
                 self.grad(tik_instance, split_model, param,
                           total_num, core_num,
                           self.same_pure_atomic_tiling_do_ho_wo)
-
-        return tik_instance
-
-    def get_tik_instance(self):
-        """
-        obtain tik instance
-        """
-        tik_instance = self._compute()
-        tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.orig_x_gm,
-                                      self.orig_y_gm,
-                                      self.grads_gm],
-                              outputs=[self.ou_y_gm])
 
         return tik_instance
 
