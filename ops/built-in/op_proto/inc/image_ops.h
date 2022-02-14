@@ -349,6 +349,7 @@ REG_OP(ExtractGlimpse)
 *y:images converted to RGB . \n
 
 *@attention Constraints:
+*Input images currently supports DT_FLOAT, DT_DOUBLE .
 *Last dimension of input x must be size 3 . \n
 
 *@par Third-party framework compatibility
