@@ -106,7 +106,7 @@ class ProdVirialSeA:
         self.nei_rep_times_pre_core.set_as(self.tiling_ub[7])
         self.nei_rep_times_post_core.set_as(self.tiling_ub[8])
 
-    # 'pylint: disable=too-many-return-statements
+    # 'pylint: disable=too-many-return-values
     def _init_ub_data_fp32(self):
         """
         init ub data fp32

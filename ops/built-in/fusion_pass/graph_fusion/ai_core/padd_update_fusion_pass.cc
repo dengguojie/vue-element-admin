@@ -149,7 +149,7 @@ Status PaddUpdateFusionPass::AddFusionNodes(ge::ComputeGraph& graph, const ge::N
   FUSION_PASS_CHECK(paddings.size() < 1 || paddings[0].size() < 1,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to get paddings value from PadD node"), return NOT_CHANGED);
 
-  ge::GeShape constShape = ge::GeShape({paddings.size(), paddings[0].size()});
+  ge::GeShape constShape = ge::GeShape({static_cast<int64_t>(paddings.size()), static_cast<int64_t>(paddings[0].size())});
   auto constTensorDesc = ge::GeTensorDesc(constShape, ge::FORMAT_ND, ge::DT_INT64);
   std::vector<int64_t> constValue;
   for (size_t i = 0; i < paddings.size(); i++) {
