@@ -21,8 +21,4 @@ namespace aicpu {
 status_t __attribute__((weak)) GetThreadLocalCtx(const std::string &key, std::string &value) {
   return AICPU_ERROR_NONE;
 }
-
-status_t __attribute__((weak)) aicpuGetContext(aicpuContext_t *ctx) {
-  return AICPU_ERROR_NONE;
-}
 }  // namespace aicpu
