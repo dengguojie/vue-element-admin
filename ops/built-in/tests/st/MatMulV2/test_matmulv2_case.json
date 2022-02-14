@@ -329,5 +329,237 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_009",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "typical_shape": [
+          32,
+          32
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_010",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "typical_shape": [
+          32,
+          32
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_011",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "typical_shape": [
+          32,
+          32
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_012",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "typical_shape": [
+          32,
+          32
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
 ]

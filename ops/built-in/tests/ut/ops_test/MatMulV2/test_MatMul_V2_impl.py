@@ -97,7 +97,8 @@ def golden_matmul_v2(input_x1,
     return res
 
 
-case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND"},
+case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (32, 96), "ori_format": "ND"},
                     {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         96, 64), "ori_format": "ND"},
                     {"shape": (64, ), "dtype": "float16", "format": "ND",
@@ -111,7 +112,8 @@ case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRA
          "format_expect": [],
          "support_expect": True}
 
-case2 = {"params": [{"shape": (2, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 32), "ori_format": "ND"},
+case2 = {"params": [{"shape": (2, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (96, 32), "ori_format": "ND"},
                     {"shape": (6, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         64, 96), "ori_format": "ND"},
                     {"shape": (64,), "dtype": "float16", "format": "ND",
@@ -125,7 +127,8 @@ case2 = {"params": [{"shape": (2, 6, 16, 16), "dtype": "float16", "format": "FRA
          "format_expect": [],
          "support_expect": True}
 
-case3 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND"},
+case3 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (32, 96), "ori_format": "ND"},
                     {"shape": (6, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         64, 96), "ori_format": "ND"},
                     {"shape": (64, ), "dtype": "float16", "format": "ND",
@@ -139,7 +142,8 @@ case3 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRA
          "format_expect": [],
          "support_expect": True}
 
-case4 = {"params": [{"shape": (64, 1280, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (20480, 1024), "ori_format": "ND"},
+case4 = {"params": [{"shape": (64, 1280, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (20480, 1024), "ori_format": "ND"},
                     {"shape": (64, 1280, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         20480, 1024), "ori_format": "ND"},
                     None,
@@ -152,7 +156,8 @@ case4 = {"params": [{"shape": (64, 1280, 16, 16), "dtype": "float16", "format": 
          "format_expect": [],
          "support_expect": True}
 
-case5 = {"params": [{"shape": (64, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8192, 1024), "ori_format": "ND"},
+case5 = {"params": [{"shape": (64, 512, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (8192, 1024), "ori_format": "ND"},
                     {"shape": (64, 64, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                         1024, 1024), "ori_format": "ND"},
                     {"shape": (16, 64), "dtype": "float16", "format": "ND",
@@ -166,7 +171,8 @@ case5 = {"params": [{"shape": (64, 512, 16, 16), "dtype": "float16", "format": "
          "format_expect": [],
          "support_expect": True}
 
-case6 = {"params": [{"shape": (8, 16, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (256, 240), "ori_format": "ND"},
+case6 = {"params": [{"shape": (8, 16, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ",
+                     "ori_shape": (256, 240), "ori_format": "ND"},
                     {"shape": (8, 4, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (
                         240, 60), "ori_format": "ND"},
                     {"shape": (60, ), "dtype": "int32", "format": "ND",
@@ -180,18 +186,64 @@ case6 = {"params": [{"shape": (8, 16, 16, 32), "dtype": "int8", "format": "FRACT
          "format_expect": [],
          "support_expect": True}
 
-case7 = {"params": [{"shape": (2, 1024, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16384, 32), "ori_format": "ND"},
-                    {"shape": (1024, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 16384), "ori_format": "ND"},
+case7 = {"params": [{"shape": (2, 1024, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (16384, 32), "ori_format": "ND"},
+                    {"shape": (1024, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (64, 16384), "ori_format": "ND"},
                     {"shape": (64,), "dtype": "float16", "format": "ND",
                      "ori_shape": (64, ), "ori_format": "ND"},
                     None,
-                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 64), "ori_format": "ND"},
+                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (32, 64), "ori_format": "ND"},
                     True, True],
          "case_name": "MatMul_7",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
+case8 = {"params": [{"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    True, True],
+         "case_name": "MatMul_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case9 = {"params": [{"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    False, True],
+         "case_name": "MatMul_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    True, False],
+         "case_name": "MatMul_10",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMul_11",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -200,10 +252,15 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910B"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
 
 # precision cases
 
-align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
                                {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                                    96, 64), "ori_format": "ND", "param_type": "input"},
                                {"shape": (64, ), "dtype": "float16", "format": "ND",
@@ -218,7 +275,8 @@ align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "fo
                     "calc_expect_func": golden_matmul_v2,
                     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
                     "support_expect": True}
-not_align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+not_align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                    "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                                        96, 64), "ori_format": "ND", "param_type": "input"},
                                    {"shape": (49, ), "dtype": "float16", "format": "ND",
@@ -233,7 +291,8 @@ not_align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
                         "calc_expect_func": golden_matmul_v2,
                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
                         "support_expect": True}
-not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                    "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
                                        96, 64), "ori_format": "ND", "param_type": "input"},
                                    {"shape": (49, ), "dtype": "float32", "format": "ND",
@@ -249,38 +308,6 @@ not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
                         "support_expect": True}
 
-# operator only support bias shape [n]
-# not_align_bias_case3 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
-#                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
-#                                        96, 64), "ori_format": "ND", "param_type": "input"},
-#                                    {"shape": (1, 49, ), "dtype": "float16", "format": "ND",
-#                                     "ori_shape": (1, 49, ), "ori_format": "ND", "param_type": "input"},
-#                                    None,
-#                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
-#                                     "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
-#                                    False, False],
-#                         "case_name": "MatMul_bias_2d_fp16",
-#                         "expect": "failed",
-#                         "format_expect": [],
-#                         "calc_expect_func": golden_matmul_v2,
-#                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
-#                         "support_expect": True}
-# not_align_bias_case4 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
-#                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
-#                                        96, 64), "ori_format": "ND", "param_type": "input"},
-#                                    {"shape": (1, 49, ), "dtype": "float32", "format": "ND",
-#                                     "ori_shape": (1, 49, ), "ori_format": "ND", "param_type": "input"},
-#                                    None,
-#                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
-#                                     "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
-#                                    False, False],
-#                         "case_name": "MatMul_bias_2d_fp32",
-#                         "expect": "failed",
-#                         "format_expect": [],
-#                         "calc_expect_func": golden_matmul_v2,
-#                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
-#                         "support_expect": True}
-
 ut_case.add_case(["Ascend310"], not_align_bias_case1)
 ut_case.add_case(["Ascend310"], not_align_bias_case2)
 
@@ -294,7 +321,6 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
     if len(shape) is 5:
         batch_shape = shape[0]
         tmp = np.zeros((batch_shape, h, w), dtype=dtype)
-        # print((batch_shape,h,w),matrix.shape)
         for batch in range(batch_shape):
             for j in range(0, j_outer):
                 for i in range(0, i_outer):
@@ -310,7 +336,6 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
                     for jj in range(0, j_inner):
                         tmp[i * 16 + ii][j * 16 + jj] = matrix[idx]
                         idx = idx + 1
-        # print((h,w))
 
     return tmp
 
@@ -407,13 +432,17 @@ def calc_expect_func(x1, x2, bias, offset_w, y, trans_a, trans_b):
     return res
 
 
-ut_case.add_precision_case("Ascend910", {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
-                                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+ut_case.add_precision_case("Ascend910", {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
+                                                     "format": "FRACTAL_NZ", "ori_shape": (32, 96),
+                                                     "ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (4, 6, 16, 16), "dtype": "float16",
+                                                     "format": "FRACTAL_NZ", "ori_shape": (
                                                         96, 64), "ori_format": "ND", "param_type": "input"},
                                                     {"shape": (64, ), "dtype": "float16", "format": "ND", "ori_shape": (
                                                         64, ), "ori_format": "ND", "param_type": "input"},
                                                     None,
-                                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                                    {"shape": (4, 2, 16, 16), "dtype": "float16",
+                                                     "format": "FRACTAL_NZ", "ori_shape": (
                                                         32, 64), "ori_format": "ND", "param_type": "output"},
                                                     False, False],
                                          "expect": "success",
@@ -508,9 +537,12 @@ def test_nbuffer_case1(test_arg):
     }
 
     with cce():
-        x1 = tvm.placeholder((16, 4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 1024, 64)}, dtype="float16")
-        x2 = tvm.placeholder((16, 32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 64, 512)}, dtype="float16")
-        output_y = {"shape": (16, 32, 64, 16, 16), "dtype": "float16", "ori_shape": (16, 1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        x1 = tvm.placeholder((16, 4, 64, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((16, 32, 4, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 64, 512)}, dtype="float16")
+        output_y = {"shape": (16, 32, 64, 16, 16), "dtype": "float16",
+                    "ori_shape": (16, 1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
         matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case1")
         tensor_list = [x1, x2, matmul_out]
         TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
@@ -550,9 +582,12 @@ def test_nbuffer_case2(test_arg):
     }
 
     with cce():
-        x1 = tvm.placeholder((4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
-        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
-        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16", "ori_shape": (1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        x1 = tvm.placeholder((4, 64, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16",
+                    "ori_shape": (1024, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
         matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case2")
         tensor_list = [x1, x2, matmul_out]
         TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
@@ -592,9 +627,12 @@ def test_nbuffer_case3(test_arg):
     }
 
     with cce():
-        x1 = tvm.placeholder((4, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
-        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
-        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16", "ori_shape": (1024, 512), "format": "ND", "ori_format": "ND"}
+        x1 = tvm.placeholder((4, 64, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 64, 16, 16), "dtype": "float16",
+                    "ori_shape": (1024, 512), "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nbuffer_case3")
         tensor_list = [x1, x2, matmul_out]
         cur_tiling_type = TILING_INSTANCE.get_tiling_type()
@@ -613,9 +651,12 @@ def test_nbuffer_case3(test_arg):
 def test_auto_tiling(test_arg):
     # Test Auto tiling here
     with cce():
-        x1 = tvm.placeholder((4, 641, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (10256, 64)}, dtype="float16")
-        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
-        output_y = {"shape": (32, 641, 16, 16), "dtype": "float16", "ori_shape": (10256, 512), "format": "ND", "ori_format": "ND"}
+        x1 = tvm.placeholder((4, 641, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (10256, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 641, 16, 16), "dtype": "float16",
+                    "ori_shape": (10256, 512), "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_auto_tiling")
         tensor_list = [x1, x2, matmul_out]
         sch = auto_schedule(matmul_out)
@@ -639,12 +680,6 @@ if __name__ == '__main__':
     for case in cases:
         print(case)
         ut_case.add_case(["Ascend310"], case)
-        # ut_case.add_precision_case(["Ascend310"], case)
-    # ut_case.add_case(["Ascend310"], not_align_bias_case1)
-    # ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
-    # ut_case.add_precision_case(["Ascend310", "Ascend910"], align_bias_case1)
-    # ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case1)
-    # ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case2)
 
     ut_case.run(["Ascend310", "Ascend920A"], simulator_mode="pv",
                 simulator_lib_path="../../Ascend/toolkit/tools/simulator")

@@ -282,8 +282,10 @@ def _compute_for_km_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
 
     the_result = tvm.compute(output_shape, lambda *i: tensor_result_ub_cast(*i), name='the_result')
 
-    return tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias, \
-           the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result
+    compute_res = [tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias,
+                   the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result]
+
+    return compute_res
 
 
 def _matmul_new_km_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, shape_b):
@@ -648,8 +650,10 @@ def _compute_for_mk_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
 
     the_result = tvm.compute(output_shape, lambda *i: tensor_result_ub_cast(*i), name='the_result')
 
-    return tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias, \
-           the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result
+    compute_res = [tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias,
+                   the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result]
+
+    return compute_res
 
 
 def _matmul_new_mk_kn_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, shape_b):
@@ -1026,8 +1030,10 @@ def _compute_for_mk_nk(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_u
 
     the_result = tvm.compute(output_shape, lambda *i: tensor_result_ub_cast(*i), name='the_result')
 
-    return tensor_temp_a, tensor_temp_b, tensor_result_ub_cast,\
-           tensor_temp_bias, the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result
+    compute_res = [tensor_temp_a, tensor_temp_b, tensor_result_ub_cast, tensor_temp_bias,
+                   the_result_mul_ub, the_result_ub, the_result_bais_ub, the_result]
+
+    return compute_res
 
 
 def _matmul_new_mk_nk_cce(tensor_a, tensor_b, tensor_bais, src_type, shape_a, shape_b):
@@ -1213,7 +1219,9 @@ def _matmul_new_km_nk_cce(tensor_a_pre, tensor_b_pre, tensor_bais, src_type, sha
     _tranpose_schedule(schedule, tensor_a_pre, data_ub_a, tensor_a, shape_a, src_type)
     _tranpose_schedule(schedule, tensor_b_pre, data_ub_b, tensor_b, shape_b, src_type)
 
-    return schedule, the_result, tensor_a, tensor_b
+    sch_res = [schedule, the_result, tensor_a, tensor_b]
+
+    return sch_res
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments

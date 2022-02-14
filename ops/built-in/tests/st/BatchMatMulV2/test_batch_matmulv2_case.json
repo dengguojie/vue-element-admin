@@ -461,5 +461,261 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_009",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": true,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_010",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": true,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_011",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": false,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_012",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "float",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": false,
+        "type": "bool"
+      }
+    ]
   }
 ]
