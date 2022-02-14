@@ -152,8 +152,8 @@ def apply_momentum_compute_d(var,
         accum_t, tvm.const(Constant.NUM_ZERO, accum_t.dtype))
 
     def _compute(*index):
-        return accum_t(*index), var_t(*index), var_out_data(*index), \
-               accum_out_data(*index)
+        return [accum_t(*index), var_t(*index), var_out_data(*index), \
+               accum_out_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

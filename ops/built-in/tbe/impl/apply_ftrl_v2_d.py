@@ -188,9 +188,9 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
         linear_new, tvm.const(Constant.NUM_ZERO, linear_new.dtype))
 
     def _compute(*index):
-        return var_new(*index), accum_new(*index), \
+        return [var_new(*index), accum_new(*index), \
                linear_new(*index), output_data(*index), \
-               accum_out_data(*index), linear_out_data(*index)
+               accum_out_data(*index), linear_out_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

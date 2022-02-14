@@ -165,11 +165,11 @@ class AdaptiveMaxPool2d:
 
         self.check_param()
 
-        self.N = self.x_shape[0]
-        self.C1 = self.x_shape[1]
+        self.n = self.x_shape[0]
+        self.c1 = self.x_shape[1]
         self.input_h = self.x_shape[2]
         self.input_w = self.x_shape[3]
-        self.C0 = self.x_shape[4]
+        self.c0 = self.x_shape[4]
         self.output_h = self.y_shape[2]
         self.output_w = self.y_shape[3]
 
@@ -194,9 +194,9 @@ class AdaptiveMaxPool2d:
         x_size = int(functools.reduce(lambda _x, _y: _x * _y, self.x_shape))
         y_size = int(functools.reduce(lambda _x, _y: _x * _y, self.y_shape))
 
-        self.total_cells = self.N * self.C1 * self.output_h * self.output_w
-        self.trans_cells = self.N * self.C1 * self.output_h
-        self.ele_per_cell = self.C0
+        self.total_cells = self.n * self.c1 * self.output_h * self.output_w
+        self.trans_cells = self.n * self.c1 * self.output_h
+        self.ele_per_cell = self.c0
         self.block_per_cell = self.ele_per_cell // self.elem_per_block
         self.block_per_wi = self.input_w * self.block_per_cell
         self.block_per_wo = self.output_w * self.block_per_cell
@@ -312,7 +312,7 @@ class AdaptiveMaxPool2d:
         # unit: tape, output_w*k_max_h*k_max_w*C0, for scenes: small output_w and window
         elif self.output_w * self.k_max[0] * self.k_max[1] <= self.ub_sec_cells:
             self.adaptive_mode = 2
-            self.total_unit = self.N * self.C1 * self.output_h
+            self.total_unit = self.n * self.c1 * self.output_h
             self.cal_core_num(self.total_unit, self.core_num)
             self.unit = self.output_w * self.k_max[0] * self.k_max[1]
             self.max_unit = self.ub_sec_cells // self.unit
@@ -324,7 +324,7 @@ class AdaptiveMaxPool2d:
         # unit: window, k_max_h*k_max_w*C0, , for scenes: big window
         elif self.k_max[0] * self.k_max[1] <= self.ub_sec_cells:
             self.adaptive_mode = 3
-            self.total_unit = self.N * self.C1 * self.output_h * self.output_w
+            self.total_unit = self.n * self.c1 * self.output_h * self.output_w
             self.cal_core_num(self.total_unit, self.core_num)
             self.unit = self.k_max[0] * self.k_max[1]
             self.max_unit = self.ub_sec_cells // self.unit

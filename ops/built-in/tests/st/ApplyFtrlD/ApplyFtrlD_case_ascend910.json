@@ -291,7 +291,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -315,7 +315,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -339,7 +339,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -363,7 +363,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -453,7 +453,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -477,7 +477,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",
@@ -501,7 +501,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           16
         ],
         "ori_format": "ND",

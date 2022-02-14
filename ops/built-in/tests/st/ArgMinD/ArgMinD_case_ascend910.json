@@ -47,11 +47,6 @@
         "name": "dimension",
         "type": "int",
         "value": 2
-      },
-      {
-        "name": "dtype",
-        "type": "data_type",
-        "value": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_2_ascend910a"
       }
     ]
   },
@@ -101,11 +96,6 @@
         "name": "dimension",
         "type": "int",
         "value": 1
-      },
-      {
-        "name": "dtype",
-        "type": "data_type",
-        "value": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_1_ascend910a"
       }
     ]
   }

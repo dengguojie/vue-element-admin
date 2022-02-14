@@ -280,7 +280,7 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
     shape3, shape_max_4add3, shape_max_sub = shape_util.broadcast_shapes(
         shape3, shape_max_4add3, param_name_input1="input3", param_name_input2="shape_max_4add3")
 
-    return shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey
+    return [shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey]
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("adam_apply_one_with_decay")

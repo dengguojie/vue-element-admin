@@ -170,9 +170,9 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     res2_data = tbe.vadds(gradient_squared_accum_new, tvm.const(Const.NUM_ZERO, var_new.dtype))
 
     def _compute(*index):
-        return var_new(*index), gradient_accum_new(*index), \
+        return [var_new(*index), gradient_accum_new(*index), \
                gradient_squared_accum_new(*index), output_data(*index),\
-               res1_data(*index), res2_data(*index)
+               res1_data(*index), res2_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

@@ -78,7 +78,7 @@ def apply_add_sign_d_compute(var,
     out_var, out_m, out_data, m_out_data = _muti_output(var_out, m_out, output_data,
                                                         m_output_data, var.shape)
 
-    return out_var, out_m, out_data, m_out_data
+    return [out_var, out_m, out_data, m_out_data]
 
 
 def _compute_process(var, m, lr_broad, alpha_broad, sign_decay_broad,
@@ -112,7 +112,7 @@ def _compute_process(var, m, lr_broad, alpha_broad, sign_decay_broad,
     output_data = tbe.vadds(var_out, tvm.const(Constant.CONST_ZERO, "float32"))
     m_output_data = tbe.vadds(m_out, tvm.const(Constant.CONST_ZERO, "float32"))
 
-    return m_out, var_out, output_data, m_output_data
+    return [m_out, var_out, output_data, m_output_data]
 
 
 def _update_m(m_old, beta_broad, grad):
@@ -197,11 +197,11 @@ def _muti_output(var_out, m_out, output_data, m_output_data, shape):
 
     # this compute is for muti output
     def _compute(*index):
-        return var_out(*index), m_out(*index), output_data(*index), m_output_data(*index)
+        return [var_out(*index), m_out(*index), output_data(*index), m_output_data(*index)]
 
     out_var, out_m, out_data, m_out_data = tvm.compute(shape, _compute, name="outputs")
 
-    return out_var, out_m, out_data, m_out_data
+    return [out_var, out_m, out_data, m_out_data]
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

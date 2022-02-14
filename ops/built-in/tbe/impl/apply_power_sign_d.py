@@ -149,7 +149,7 @@ def apply_power_sign_d_compute(var,
 
     #this compute is for muti output
     def _compute(*index):
-        return var_t(*index), m_t(*index), res1(*index), res2(*index)
+        return [var_t(*index), m_t(*index), res1(*index), res2(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

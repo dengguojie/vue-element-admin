@@ -189,8 +189,8 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
     res3 = tbe.vadds(v, tvm.const(0.0, dtype=inp_dtype))
 
     def _compute(*index):
-        return m(*index), v(*index), var(*index),\
-               res1(*index), res2(*index), res3(*index)
+        return [m(*index), v(*index), var(*index),\
+               res1(*index), res2(*index), res3(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

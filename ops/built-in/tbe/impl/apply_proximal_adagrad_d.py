@@ -270,7 +270,7 @@ def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
 
     # this compute is for muti output
     def _compute(*index):
-        return var_new(*index), accum_out(*index), output_data(*index), output_accum_data(*index)
+        return [var_new(*index), accum_out(*index), output_data(*index), output_accum_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

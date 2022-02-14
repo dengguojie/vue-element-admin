@@ -191,8 +191,8 @@ def apply_ftrl_d_compute(var,
     linear_output_data = tbe.vadds(linear_t, tvm.const(Constant.NUM_ZERO, linear_t.dtype))
 
     def _compute(*index):
-        return var_t(*index), accum_new(*index), linear_t(*index), var_output_data(
-            *index), accum_output_data(*index), linear_output_data(*index)
+        return [var_t(*index), accum_new(*index), linear_t(*index), var_output_data(
+            *index), accum_output_data(*index), linear_output_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

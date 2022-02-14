@@ -200,7 +200,10 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
 
     shape_y = tbe.util.shape_to_list(shape_y)
     shape_x = tbe.util.shape_to_list(shape_x)
-    shape_y, shape_x, shape_broadcast = shape_util.broadcast_shapes(shape_y, shape_x, param_name_input1="x1", param_name_input2="x2")
+    shape_y, shape_x, shape_broadcast = shape_util.broadcast_shapes(shape_y,
+                                                                    shape_x,
+                                                                    param_name_input1="x1",
+                                                                    param_name_input2="x2")
     y = tbe.broadcast(y, shape_broadcast)
     x = tbe.broadcast(x, shape_broadcast)
 

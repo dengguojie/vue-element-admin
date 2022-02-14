@@ -147,9 +147,9 @@ def apply_adadelta_d_compute(var,
 
     # this compute is for muti output
     def _compute(*index):
-        return var_res(*index), accum_res(*index), accum_update_res(*index), \
+        return [var_res(*index), accum_res(*index), accum_update_res(*index), \
                output_data(*index), accum_output_data(*index), \
-               accum_update_output_data(*index)
+               accum_update_output_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

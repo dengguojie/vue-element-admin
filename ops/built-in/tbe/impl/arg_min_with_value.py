@@ -348,11 +348,8 @@ class Argmin(ArgminBase):
             segment_tail_data = segment_tail
             # calcu tail
             if segment_tail % self.data_each_block != 0 and segment_loop != 0:
-                segment_tail_data = \
-                    (segment_tail // self.data_each_block) * \
-                    self.data_each_block + \
-                    (self.data_each_block
-                     if segment_tail % self.data_each_block != 0 else 0)
+                segment_tail_data = (segment_tail // self.data_each_block) * self.data_each_block + (
+                    self.data_each_block if segment_tail % self.data_each_block != 0 else 0)
                 offset = 0 + segment_tail - segment_tail_data
 
             if segment_tail != 0 and \
@@ -594,7 +591,7 @@ class Argmin(ArgminBase):
             loop_times = 0
             buf_size = self.c_align_ubsize
             over_size = buf_size
-        return buf_size, loop_times, over_size, align_flag
+        return [buf_size, loop_times, over_size, align_flag]
 
     def argmin_last_axis(self):
         """
@@ -933,8 +930,7 @@ class Argmin(ArgminBase):
         max_index = self.tik_instance.Scalar("int32")
         max_value.set_as(ub_max_64[0])
         max_index.set_as(ub_index_int32[0])
-        scalar_valid = self.data_each_vector \
-            if segment > self.data_each_vector else segment
+        scalar_valid = self.data_each_vector if segment > self.data_each_vector else segment
         with self.tik_instance.for_range(1, scalar_valid) as i:
             max_cmp_value = self.tik_instance.Scalar(self.dtype_x)
             max_cmp_index = self.tik_instance.Scalar("int32")

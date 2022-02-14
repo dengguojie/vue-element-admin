@@ -141,7 +141,7 @@ def apply_ada_max_d_compute(var,
         res3 = tbe.cast_to(res3, inp_dtype)
 
     def _compute(*index):
-        return m(*index), v(*index), var(*index), res1(*index), res2(*index), res3(*index)
+        return [m(*index), v(*index), var(*index), res1(*index), res2(*index), res3(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 

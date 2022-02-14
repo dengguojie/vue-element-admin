@@ -160,9 +160,9 @@ def apply_centered_rms_prop_d_compute(var,
 
     # this compute is for multi output
     def _compute(*index):
-        return out_mg(*index), out_ms(*index), out_mom(*index), out_var(
+        return [out_mg(*index), out_ms(*index), out_mom(*index), out_var(
             *index), out_var(*index), mg_output_data(*index), ms_output_data(
-            *index), mom_output_data(*index)
+            *index), mom_output_data(*index)]
 
     return tvm.compute(var.shape, _compute, name="outputs")
 
