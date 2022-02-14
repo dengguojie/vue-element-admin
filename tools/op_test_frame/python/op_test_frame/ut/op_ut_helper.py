@@ -18,6 +18,7 @@
 """
 op ut helper, apply helper function, get case name
 """
+import importlib
 import os
 import sys
 import stat
@@ -27,7 +28,6 @@ from multiprocessing import Pool
 from op_test_frame.ut import ut_loader
 from op_test_frame.utils import file_util
 from op_test_frame.common import logger
-
 
 
 def get_case_name_from_file(params):
@@ -41,8 +41,8 @@ def get_case_name_from_file(params):
     try:
         case_dir = os.path.dirname(os.path.realpath(case_file_path))
         case_module_name = os.path.basename(os.path.realpath(case_file_path))[:-3]
-        sys.path.insert(0, case_dir)
-        __import__(case_module_name)
+        sys.path.append(case_dir)
+        importlib.import_module(case_module_name)
         case_module = sys.modules[case_module_name]
         ut_case = getattr(case_module, "ut_case", None)
         case_name_list_inner = ut_case.get_all_test_case_name(soc_version)
@@ -60,15 +60,15 @@ def _print_case_name_info(json_obj):
 
 
 def _save_to_file(info_str, dump_file_inner):
-    DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
-    DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+    data_file_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    data_file_modes = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
+    data_dir_modes = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     dump_file_dir = os.path.dirname(dump_file_inner)
     if not os.path.exists(dump_file_dir):
-        file_util.makedirs(dump_file_dir, mode=DATA_DIR_MODES)
+        file_util.makedirs(dump_file_dir, mode=data_dir_modes)
 
     if not os.path.exists(dump_file_inner):
-        with os.fdopen(os.open(dump_file_inner, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as rpt_fout:
+        with os.fdopen(os.open(dump_file_inner, data_file_flags, data_file_modes), 'w') as rpt_fout:
             rpt_fout.write(info_str)
     else:
         with open(dump_file_inner, 'w') as d_f:

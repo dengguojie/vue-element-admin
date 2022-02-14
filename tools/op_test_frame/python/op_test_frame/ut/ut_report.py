@@ -90,6 +90,17 @@ class OpUTCaseReport:
             "trace_detail": None if not self.trace_detail else self.trace_detail.to_json_obj()
         }
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        parser from json object
+        :param json_obj: json object
+        :return: OpUTCaseReport
+        """
+        if not json_obj:
+            return None
+        return OpUTCaseReport(OpUTCaseTrace.parser_json_obj(json_obj["trace_detail"]))
+
     def summary_txt(self):
         """
         get summary info string
@@ -117,18 +128,6 @@ class OpUTCaseReport:
 
         return "%s: [%s]  %s (%s) (%s)" % (self.status, self.op_type, self.case_name, self.run_soc,
                                            self.trace_detail.ut_case_info.case_usage.value)
-
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        parser from json object
-        :param json_obj: json object
-        :return: OpUTCaseReport
-        """
-        if not json_obj:
-            return None
-        return OpUTCaseReport(OpUTCaseTrace.parser_json_obj(json_obj["trace_detail"]))
-
 
 class OpUTReport:
     """
@@ -170,7 +169,7 @@ class OpUTReport:
         if case_rpt.run_soc not in self._soc_report_map.keys():
             self._soc_report_map[case_rpt.run_soc] = {}
         if case_rpt.status not in self._soc_report_map[case_rpt.run_soc].keys():
-            self._soc_report_map[case_rpt.run_soc][case_rpt.status] = []
+            self._soc_report_map.get(case_rpt.run_soc)[case_rpt.status] = []
 
         self._soc_report_map[case_rpt.run_soc][case_rpt.status].append(case_rpt)
 
@@ -305,6 +304,18 @@ run command: %s
         for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
             self.add_case_report(case_rpt)
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        parser from json object
+        :param json_obj: json object
+        :return: report object
+        """
+        rpt = OpUTReport(json_obj["run_cmd"])
+        for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
+            rpt.add_case_report(case_rpt)
+        return rpt
+
     def save(self, report_data_path):
         """
         save report
@@ -325,15 +336,3 @@ run command: %s
         else:
             with open(report_data_path, 'w') as rpt_file:
                 rpt_file.write(json_str)
-
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        parser from json object
-        :param json_obj: json object
-        :return: report object
-        """
-        rpt = OpUTReport(json_obj["run_cmd"])
-        for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
-            rpt.add_case_report(case_rpt)
-        return rpt

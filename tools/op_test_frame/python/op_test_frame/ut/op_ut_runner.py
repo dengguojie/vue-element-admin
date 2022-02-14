@@ -72,17 +72,6 @@ class OpUTTestRunner:
         self.data_dumnp_level = data_dump_level
         self.data_dumnp_dir = data_dump_dir
 
-    def _execute_one_soc(self, op_ut_case: op_ut.OpUT, run_soc_vsersion: str,
-                         case_name_list: List[str], case_usage_list: List = None) -> ut_report.OpUTReport:
-        if self.simulator_mode:
-            run_cfg = {"simulator_mode": self.simulator_mode,
-                       "simulator_lib_path": self.simulator_lib_path,
-                       "simulator_dump_path": self.simulator_dump_path,
-                       "data_dump_path": self.data_dumnp_dir}
-        ut_run_report = op_ut_case.run_case(run_soc_vsersion, case_name_list=case_name_list,
-                                            case_usage_list=case_usage_list, run_cfg=run_cfg)
-        return ut_run_report
-
     def run(self, run_soc_versions: Union[str, List[str]], op_ut_case: op_ut.OpUT,
             case_name_list: List[str] = None, case_usage_list: List = None) -> ut_report.OpUTReport:
         """
@@ -124,6 +113,17 @@ class OpUTTestRunner:
             report.console_print()
 
         return report
+
+    def _execute_one_soc(self, op_ut_case: op_ut.OpUT, run_soc_vsersion: str,
+                         case_name_list: List[str], case_usage_list: List = None) -> ut_report.OpUTReport:
+        if self.simulator_mode:
+            run_cfg = {"simulator_mode": self.simulator_mode,
+                       "simulator_lib_path": self.simulator_lib_path,
+                       "simulator_dump_path": self.simulator_dump_path,
+                       "data_dump_path": self.data_dumnp_dir}
+        ut_run_report = op_ut_case.run_case(run_soc_vsersion, case_name_list=case_name_list,
+                                            case_usage_list=case_usage_list, run_cfg=run_cfg)
+        return ut_run_report
 
 
 class RunUTCaseFileArgs:  # 'pylint: disable=too-many-instance-attributes,too-few-public-methods
@@ -201,8 +201,8 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
             logger.log_warn(f"reload module {run_arg.op_module_name} failed")
         case_dir = os.path.dirname(os.path.realpath(run_arg.case_file))
         case_module_name = os.path.basename(os.path.realpath(run_arg.case_file))[:-3]
-        sys.path.insert(0, case_dir)
-        __import__(case_module_name)
+        sys.path.append(case_dir)
+        importlib.import_module(case_module_name)
         case_module = sys.modules[case_module_name]
         ut_case = getattr(case_module, "ut_case", None)
         case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,

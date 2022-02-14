@@ -18,6 +18,7 @@
 """
 ut load for load ut cases
 """
+import importlib
 import os
 import sys
 import fnmatch
@@ -88,9 +89,9 @@ def _get_op_module_info(case_file):
     logger.log_debug("_get_op_module_info start, case file: %s" % case_file)
     case_dir = os.path.dirname(case_file)
     case_module_name = os.path.basename(case_file)[:-3]
-    sys.path.insert(0, case_dir)
+    sys.path.append(case_dir)
     try:
-        __import__(case_module_name)
+        importlib.import_module(case_module_name)
     except BaseException as import_err:  # 'pylint: disable=broad-except
         exc_type, exc_value, exc_traceback = sys.exc_info()
         trace_info = traceback.format_exception(exc_type, exc_value, exc_traceback)

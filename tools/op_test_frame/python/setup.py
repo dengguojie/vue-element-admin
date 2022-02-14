@@ -24,7 +24,7 @@ from setuptools.dist import Distribution
 os.environ['SOURCE_DATE_EPOCH'] = str(
     int(os.path.getctime(os.path.realpath(__file__))))
 
-__version__ = "0.1"
+version_ = "0.1"
 
 
 class BinaryDistribution(Distribution):
@@ -69,7 +69,7 @@ def read_txt(file_name):
 
 setup(
     name="op_test_frame",
-    version=__version__,
+    version=version_,
     scripts=['op_test_frame/scripts/op_ut_run',
              'op_test_frame/scripts/op_ut_helper',
              'op_test_frame/scripts/msopst',
@@ -81,5 +81,5 @@ setup(
     license=read_txt("LICENSE"),
     **{
         "include_package_data": True
-    }
+    }   
 )

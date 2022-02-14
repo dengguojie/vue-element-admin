@@ -45,13 +45,6 @@ class CaseUsage(Enum):
     PRECISION = "precision"
     CUSTOM = "custom"
 
-    def to_str(self):
-        """
-        get case usage string
-        :return: string type case usage
-        """
-        return self.value
-
     @staticmethod
     def parser_str(type_str):
         """
@@ -71,6 +64,13 @@ class CaseUsage(Enum):
             return None
 
         return str_enum_map[type_str]
+
+    def to_str(self):
+        """
+        get case usage string
+        :return: string type case usage
+        """
+        return self.value 
 
 
 class OpUTBaseCase:
@@ -112,20 +112,6 @@ class OpUTBaseCase:
                 return True
         return False
 
-    def to_json_obj(self):
-        """
-        convert to json object
-        :return: json object
-        """
-        return {
-            "support_soc": self.support_soc,
-            "op_type": self.op_type,
-            "case_name": self.case_name,
-            "case_usage": self.case_usage.to_str(),
-            "case_file": self.case_file,
-            "case_line_num": self.case_line_num
-        }
-
     @staticmethod
     def parser_json_obj(json_obj):
         """
@@ -140,6 +126,20 @@ class OpUTBaseCase:
             return OpUTCustomCase.parser_json_obj(json_obj)
 
         return OpUTCase.parser_json_obj(json_obj)
+
+    def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
+        return {
+            "support_soc": self.support_soc,
+            "op_type": self.op_type,
+            "case_name": self.case_name,
+            "case_usage": self.case_usage.to_str(),
+            "case_file": self.case_file,
+            "case_line_num": self.case_line_num
+        }
 
 
 class OpUTCase(OpUTBaseCase):  # 'pylint: disable=too-many-instance-attributes
@@ -161,6 +161,28 @@ class OpUTCase(OpUTBaseCase):  # 'pylint: disable=too-many-instance-attributes
         self.precision_standard = precision_standard
         self.op_imply_type = op_imply_type
         self.addition_params = addition_params
+
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTCase object
+        :param json_obj: json object
+        :return: OpUTCase object
+        """
+        if not json_obj:
+            return None
+        return OpUTCase(support_soc=json_obj["support_soc"],
+                        op_type=json_obj["op_type"],
+                        case_name=json_obj["case_name"],
+                        op_params=json_obj["op_params"],
+                        expect=json_obj["expect"],
+                        case_usage=CaseUsage.parser_str(json_obj["case_usage"]),
+                        case_file=json_obj.get("case_file"),
+                        case_line_num=json_obj.get("case_line_num"),
+                        precision_standard=precision_info.PrecisionStandard.parse_json_obj(
+                            json_obj.get("precision_standard")),
+                        op_imply_type=json_obj.get("op_imply_type"),
+                        addition_params=json_obj.get("addition_params"))
 
     def to_json_obj(self):
         """
@@ -222,28 +244,6 @@ class OpUTCase(OpUTBaseCase):  # 'pylint: disable=too-many-instance-attributes
             "op_imply_type": self.op_imply_type
         }
 
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        convert json object to OpUTCase object
-        :param json_obj: json object
-        :return: OpUTCase object
-        """
-        if not json_obj:
-            return None
-        return OpUTCase(support_soc=json_obj["support_soc"],
-                        op_type=json_obj["op_type"],
-                        case_name=json_obj["case_name"],
-                        op_params=json_obj["op_params"],
-                        expect=json_obj["expect"],
-                        case_usage=CaseUsage.parser_str(json_obj["case_usage"]),
-                        case_file=json_obj.get("case_file"),
-                        case_line_num=json_obj.get("case_line_num"),
-                        precision_standard=precision_info.PrecisionStandard.parse_json_obj(
-                            json_obj.get("precision_standard")),
-                        op_imply_type=json_obj.get("op_imply_type"),
-                        addition_params=json_obj.get("addition_params"))
-
 
 class OpUTCustomCase(OpUTBaseCase):
     """
@@ -256,15 +256,6 @@ class OpUTCustomCase(OpUTBaseCase):
         super().__init__(support_soc, op_type, case_name, case_usage, case_file, case_line_num)
         self.test_func_name = test_func_name
         self.test_func = test_func
-
-    def to_json_obj(self):
-        """
-        convert to json object
-        :return: json object
-        """
-        json_obj = super().to_json_obj()
-        json_obj["test_func_name"] = self.test_func_name
-        return json_obj
 
     @staticmethod
     def parser_json_obj(json_obj):
@@ -282,6 +273,15 @@ class OpUTCustomCase(OpUTBaseCase):
                               case_file=json_obj.get("case_file"),
                               case_line_num=json_obj.get("case_line_num"),
                               test_func_name=json_obj.get("test_func_name"))
+
+    def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
+        json_obj = super().to_json_obj()
+        json_obj["test_func_name"] = self.test_func_name
+        return json_obj
 
 
 # 'pylint: disable=too-few-public-methods
@@ -315,6 +315,16 @@ class OpUTStageResult:
         """
         return self.status == op_status.SUCCESS
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTStageResult object
+        :param json_obj: json object
+        :return: OpUTStageResult object
+        """
+        return OpUTStageResult(json_obj["status"], json_obj["stage_name"], json_obj["result"], json_obj["err_msg"],
+                               json_obj["err_trace"])
+
     def to_json_obj(self):
         """
         convert to json object
@@ -327,16 +337,6 @@ class OpUTStageResult:
             "stage_name": self.stage_name,
             "err_trace": self.err_trace
         }
-
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        convert json object to OpUTStageResult object
-        :param json_obj: json object
-        :return: OpUTStageResult object
-        """
-        return OpUTStageResult(json_obj["status"], json_obj["stage_name"], json_obj["result"], json_obj["err_msg"],
-                               json_obj["err_trace"])
 
 
 class OpUTCaseTrace:
@@ -357,17 +357,6 @@ class OpUTCaseTrace:
         """
         self.stage_result.append(stage_res)
 
-    def to_json_obj(self):
-        """
-        convert to json object
-        :return: json object
-        """
-        return {
-            "run_soc": self.run_soc,
-            "ut_case_info": self.ut_case_info.to_json_obj(),
-            "stage_result": [stage_obj.to_json_obj() for stage_obj in self.stage_result],
-        }
-
     @staticmethod
     def parser_json_obj(json_obj):
         """
@@ -380,3 +369,15 @@ class OpUTCaseTrace:
         res = OpUTCaseTrace(json_obj["run_soc"], OpUTBaseCase.parser_json_obj(json_obj["ut_case_info"]))
         res.stage_result = [OpUTStageResult.parser_json_obj(stage_obj) for stage_obj in json_obj["stage_result"]]
         return res
+
+    def to_json_obj(self):
+        """
+        convert to json object
+        :return: json object
+        """
+        return {
+            "run_soc": self.run_soc,
+            "ut_case_info": self.ut_case_info.to_json_obj(),
+            "stage_result": [stage_obj.to_json_obj() for stage_obj in self.stage_result],
+        }
+        
