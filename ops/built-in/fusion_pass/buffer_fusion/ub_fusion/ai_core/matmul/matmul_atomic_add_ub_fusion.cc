@@ -578,18 +578,29 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
                                               vector<ge::NodePtr> &fusion_nodes) {
   auto base_name = matmul_node->GetName();
   auto next_node_name = base_name;
-  bool ret = SUCCESS;
   ge::NodePtr next_node;
+  FUSION_PASS_CHECK(matmul_node->GetOutDataAnchor(0) == nullptr,
+                    OP_LOGW(kFusedOpType.c_str(), "Node %s get output failed.", matmul_node->GetName().c_str()),
+                    return SUCCESS);
+  FUSION_PASS_CHECK(matmul_node->GetAllOutDataAnchors().size() > 1,
+                    OP_LOGW(kFusedOpType.c_str(), "Node %s have multi out data anchor, not handle this now.",
+                            matmul_node->GetName().c_str()),
+                    return SUCCESS);
+
   if (cur_add_node_type == ATOMIC_ADD_NEED_TRANSDATA) {
     next_node_name = next_node_name + "_Transdata";
-    ret = GenerateTransDataNode(matmul_node, next_node);
+    FUSION_PASS_CHECK(
+      SUCCESS != GenerateTransDataNode(matmul_node, next_node),
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add transdata node for %s fail.", matmul_node->GetName().c_str()),
+      return FAILED);
   } else if (cur_add_node_type == ATOMIC_ADD_NEED_CAST) {
     next_node_name = next_node_name + "_Cast";
-    ret = GenerateCastNode(matmul_node, next_node);
+    FUSION_PASS_CHECK(
+      SUCCESS != GenerateCastNode(matmul_node, next_node),
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add cast node for %s fail.", matmul_node->GetName().c_str()),
+      return FAILED);
   }
 
-  FUSION_PASS_CHECK(matmul_node->GetOutDataAnchor(0) == nullptr,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "matmul get output failed."), return SUCCESS);
   if (matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (ge::InDataAnchorPtr &in_anchor_ptr : matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
@@ -607,16 +618,47 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
       OP_LOGD(kFusedOpType.c_str(), "Add edge between node %s and %s.", next_node->GetName().c_str(),
               in_anchor_ptr->GetOwnerNode()->GetName().c_str());
     }
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), next_node->GetInDataAnchor(0)),
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
-                              matmul_node->GetName().c_str(), next_node->GetName().c_str()),
-        return FAILED);
-    OP_LOGD(kFusedOpType.c_str(), "Add edge between node %s and %s.", matmul_node->GetName().c_str(),
-            next_node->GetName().c_str());
-    OP_LOGD(kFusedOpType.c_str(), "Add the node %s success!", next_node_name.c_str());
   } else {
     OP_LOGD(kFusedOpType.c_str(), "matmul's out anchor is not connected to other node!");
+  }
+
+  FUSION_PASS_CHECK(SUCCESS != MatMulLinkControlEdge(matmul_node, next_node),
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add control edge between node fail."),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), next_node->GetInDataAnchor(0)),
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
+                                          matmul_node->GetName().c_str(), next_node->GetName().c_str()),
+                    return FAILED);
+  OP_LOGD(kFusedOpType.c_str(), "Add edge between node %s and %s.", matmul_node->GetName().c_str(),
+          next_node->GetName().c_str());
+  OP_LOGD(kFusedOpType.c_str(), "Add the node %s success!", next_node_name.c_str());
+  return SUCCESS;
+}
+
+Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node) {
+  if (matmul_node->GetOutControlAnchor() != nullptr) {
+    if (matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors().size() > 0) {
+      for (auto in_control_anchor : matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+        FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::RemoveEdge(matmul_node->GetOutControlAnchor(), in_control_anchor),
+          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove control edge between node %s and %s fail.",
+                                matmul_node->GetName().c_str(), in_control_anchor->GetOwnerNode()->GetName().c_str()),
+          return FAILED);
+        OP_LOGD(kFusedOpType.c_str(), "Remove control edge between node %s and %s.", matmul_node->GetName().c_str(),
+                in_control_anchor->GetOwnerNode()->GetName().c_str());
+        FUSION_PASS_CHECK(
+          SUCCESS != ge::GraphUtils::AddEdge(next_node->GetOutControlAnchor(), in_control_anchor),
+          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add control edge between node %s and %s fail.",
+                                next_node->GetName().c_str(), in_control_anchor->GetOwnerNode()->GetName().c_str()),
+          return FAILED);
+        OP_LOGD(kFusedOpType.c_str(), "Add control edge between node %s and %s.", next_node->GetName().c_str(),
+                in_control_anchor->GetOwnerNode()->GetName().c_str());
+      }
+    } else {
+      OP_LOGD(kFusedOpType.c_str(), "The node of %s's out control anchor is not connected to other node!",
+              matmul_node->GetName().c_str());
+    }
   }
   return SUCCESS;
 }

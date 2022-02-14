@@ -52,7 +52,7 @@ class MatmulAtomicAddUbFusion : public BufferFusionPassBase {
   Status GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node);
   Status AddSuperKernelId(ge::NodePtr &matmul_node);
   Status AddCustomNode(int cur_add_node_type, ge::NodePtr &matmul_node, vector<ge::NodePtr> &fusion_nodes);
-
+  Status MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node);
  protected:
   vector<BufferFusionPattern *> DefinePatterns() override;
   /*
