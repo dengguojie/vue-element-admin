@@ -2562,6 +2562,7 @@ COMMON_INFER_FUNC_REG(Remap, RemapInferShape);
 // ----------------Remap END---------------------
 
 IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
+  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   Shape boxes;
   Shape scores;
   Shape max_output_size_per_class;

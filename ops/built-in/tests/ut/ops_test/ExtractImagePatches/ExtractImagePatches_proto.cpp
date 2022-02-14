@@ -122,3 +122,20 @@ TEST_F(ExtractImagePatchesProtoTest, extract_image_patches_data_slice_test) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   EXPECT_EQ(expect_x_data_slice, x_data_slice);
 }
+
+TEST_F(ExtractImagePatchesProtoTest, extract_image_patches_verify_and_infer_dynamic) {
+  ge::op::ExtractImagePatches op;
+  op.UpdateInputDesc("x",
+                     create_desc_with_ori({2, -1, 7, 32}, ge::DT_INT8, ge::FORMAT_NHWC, {2, -1, 7, 32}, ge::FORMAT_NHWC));
+  op.SetAttr("ksizes", {1, 3, 3, 1});
+  op.SetAttr("strides", {1, 1, 1, 1});
+  op.SetAttr("rates", {1, 2, 2, 1});
+  std::string padding = "VALID";
+  op.SetAttr("padding", padding);
+
+  auto verify_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_res, ge::GRAPH_SUCCESS);
+
+  auto infer_res = op.InferShapeAndType();
+  EXPECT_EQ(infer_res, ge::GRAPH_FAILED);
+}

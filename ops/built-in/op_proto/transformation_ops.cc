@@ -2315,6 +2315,7 @@ IMPLEMT_VERIFIER(ExtractImagePatches, ExtractImagePatchesVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
+  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
 
   std::vector<int64_t> ksize;

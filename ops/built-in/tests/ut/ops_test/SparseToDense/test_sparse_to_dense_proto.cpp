@@ -49,3 +49,14 @@ TEST_F(SPARSE_TO_DENSE_UT, InferShape) {
   std::vector<int64_t> expected_y_shape = {-1, -1};
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
+
+TEST_F(SPARSE_TO_DENSE_UT, InferShape_dynamic) {
+  ge::op::SparseToDense op;
+  op.UpdateInputDesc("indices", create_desc({-1, 2}, ge::DT_INT32));
+  op.UpdateInputDesc("output_shape", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("values", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

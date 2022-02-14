@@ -24,6 +24,7 @@
 #include "util/error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "util/error_util.h"
+#include "util/util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
@@ -461,6 +462,7 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
 INFER_FUNC_REG(SparseCross, SparseCrossInfer);
 
 IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
+  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   GeShape shape;
   if (MakeShapeFromShapeTensor(op, "output_shape", shape,
                                op.GetName().c_str()) != GRAPH_SUCCESS) {

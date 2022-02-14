@@ -1011,6 +1011,7 @@ IMPLEMT_VERIFIER(BNTrainingUpdateV2, BNTrainingUpdateV2Verify) {
 }
 
 IMPLEMT_INFERFUNC(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape) {
+  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   auto shape = op.GetInputDesc("x").GetShape();
   auto output_dtype = op.GetInputDesc("x").GetDataType();
   TensorDesc td = op.GetOutputDesc("y");
