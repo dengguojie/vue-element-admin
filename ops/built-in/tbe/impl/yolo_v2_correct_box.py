@@ -121,6 +121,20 @@ class GetCorrectBoxBase():
             (self.batch, self.classes, self.boxes * self.width * self.height),
             True), scope=tbe_platform.scope_gm, name="inter_classes", is_workspace=True)
 
+    @staticmethod
+    def get_adj_hw(total_len):
+        """
+          compute height and weight with 32 alignment
+
+          Parameters
+          ----------
+           total_len: total length
+
+          Returns
+          -------
+          None
+        """
+        return math.ceil((total_len + 16) / 16) * 16
 
     def get_shape(self, old_shape, need_low_dim=False):
         """
@@ -160,23 +174,6 @@ class GetCorrectBoxBase():
         old_shape[0] += rev
 
         return tuple(old_shape)
-
-
-    @staticmethod
-    def get_adj_hw(total_len):
-        """
-          compute height and weight with 32 alignment
-
-          Parameters
-          ----------
-           total_len: total length
-
-          Returns
-          -------
-          None
-        """
-        return math.ceil((total_len + 16) / 16) * 16
-
 
     def get_burlen(self, length):
         """
@@ -573,6 +570,7 @@ class CorrectBoxComputer(CommonInstruct):
 
         return new_h, new_w
 
+    # 'pylint: disable=too-many-return-values
     def get_x_y_params(self, img_info):
         """
           compute x,y parameters

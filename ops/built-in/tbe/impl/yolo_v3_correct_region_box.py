@@ -605,6 +605,7 @@ class GetCorrectBoxTensor3(GetCorrectBoxTensor2):
 
         return (length * self.dsize) // constant.VECTOR_BYTE_SIZE + 1
 
+    # 'pylint: disable=too-many-return-values
     def get_x_y_params(self, img_info):
         """
           compute x,y parameters

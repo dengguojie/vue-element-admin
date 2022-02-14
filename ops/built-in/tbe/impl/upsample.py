@@ -167,6 +167,7 @@ def _gen_upsample_nint(dshape, feature, scale, stride_h, stride_w, dtype):
     return op_list, ins_list, tensor_dic
 
 
+# 'pylint: disable=too-many-return-values
 def _gen_upsample(input_x, dtype, scale, stride_h, stride_w):
     """
     gen upsample

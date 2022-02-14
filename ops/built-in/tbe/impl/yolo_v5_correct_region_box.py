@@ -62,6 +62,9 @@ class Constant:
     # neg one
     NEG_ONE = -1
 
+    # neg two
+    NEG_TWO = -2
+
     # value half
     VALUE_HALF = 0.5
 
@@ -153,6 +156,22 @@ class CorrectBoxComputer():
         self.hwtail_len = self.height[-1] * self.width[-1] % (self.len_32b)
         self.block_num, self.outer_loop, self.outer_tail = self.get_block_param()
 
+    @staticmethod
+    def get_adj_hw(height, width):
+        """
+          compute height and weight with 32 alignment
+
+          Parameters
+          ----------
+           height: box height
+           width: box width
+
+          Returns
+          -------
+             height * width
+        """
+        return math.ceil((height * width + 16) / 16) * 16
+
     def prepare_data(self):
         """
         prepare tensors for op
@@ -201,22 +220,6 @@ class CorrectBoxComputer():
             outer_tail = self.batch - block_num * outer_loop
 
         return block_num, outer_loop, outer_tail
-
-    @staticmethod
-    def get_adj_hw(height, width):
-        """
-          compute height and weight with 32 alignment
-
-          Parameters
-          ----------
-           height: box height
-           width: box width
-
-          Returns
-          -------
-             height * width
-        """
-        return math.ceil((height * width + 16) / 16) * 16
 
     def set_pre_nms_topn(self, pre_nms_topn):
         """
@@ -385,10 +388,7 @@ class CorrectBoxComputer():
           Returns
           -------
           None
-          """
-        # neg two
-        NEG_TWO = -2
-
+        """
         if tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
@@ -404,7 +404,7 @@ class CorrectBoxComputer():
                 self.instance.vec_mul(self.mask, dividend, dividend, tmp_tensor,
                                       repeat,
                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
-                self.instance.vec_adds(self.mask, dividend, dividend, NEG_TWO,
+                self.instance.vec_adds(self.mask, dividend, dividend, Constant.NEG_TWO,
                                        repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
                 self.instance.vec_mul(self.mask, dividend, dividend, tmp_tensor,
                                       repeat,
@@ -449,6 +449,7 @@ class CorrectBoxComputer():
 
         return (length * self.dsize) // constant.VECTOR_BYTE_SIZE + 1
 
+    # 'pylint: disable=too-many-return-values
     def get_x_y_params(self, img_info):
         """
           compute x,y parameters

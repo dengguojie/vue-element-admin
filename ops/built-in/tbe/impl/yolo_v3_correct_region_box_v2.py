@@ -150,6 +150,22 @@ class CorrectBoxComputer():
         self.hwtail_len = self.height[-1] * self.width[-1] % (self.len_32b)
         self.block_num, self.outer_loop, self.outer_tail = self.get_block_param()
 
+    @staticmethod
+    def get_adj_hw(height, width):
+        """
+          compute height and weight with 32 alignment
+
+          Parameters
+          ----------
+           height: box height
+           width: box width
+
+          Returns
+          -------
+             height * width
+        """
+        return math.ceil((height * width + 16) / 16) * 16
+
     def prepare_data(self):
         """
         prepare tensors for op
@@ -198,22 +214,6 @@ class CorrectBoxComputer():
             outer_tail = self.batch - block_num * outer_loop
 
         return block_num, outer_loop, outer_tail
-
-    @staticmethod
-    def get_adj_hw(height, width):
-        """
-          compute height and weight with 32 alignment
-
-          Parameters
-          ----------
-           height: box height
-           width: box width
-
-          Returns
-          -------
-             height * width
-        """
-        return math.ceil((height * width + 16) / 16) * 16
 
     def set_pre_nms_topn(self, pre_nms_topn):
         """
@@ -443,6 +443,7 @@ class CorrectBoxComputer():
 
         return (length * self.dsize) // constant.VECTOR_BYTE_SIZE + 1
 
+    # 'pylint: disable=too-many-return-values
     def get_x_y_params(self, img_info):
         """
           compute x,y parameters

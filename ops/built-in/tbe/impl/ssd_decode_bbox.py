@@ -302,6 +302,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                    decode_bbox_ori[computer_index, 0],
                                    handle_each_dst_loops, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-return-values
     def compute_prior_bbox_center_size(self, batch, data_offset, is_tail):
         """
         compute decection out code type 2
@@ -365,7 +366,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         return prior_width, prior_height, prior_center_x, prior_center_y, prior_var_dest_ub
 
-    # 'pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals,too-many-return-values
     def compute_decode_bbox_center_size(self, batch, data_offset, prior_data, is_tail):
         """
         compute decection out code type 2

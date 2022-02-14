@@ -148,7 +148,7 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(const ge::NodePtr& fusedNode, cons
   innerproductNode = graph.AddNode(innerProductStaticDesc);
   FUSION_PASS_CHECK(innerproductNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                            innerProductStaticDesc->GetName().c_str()),
+                        innerProductStaticDesc->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(innerproductNode);
 

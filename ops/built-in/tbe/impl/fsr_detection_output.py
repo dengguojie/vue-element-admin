@@ -41,7 +41,6 @@ class Constant:
     """
     The class for constant.
     """
-    NoneType = type(None)
     MAX_REPEAT_TIME = 255
     FP16_ALIGN_NUM = 16
     TO_ALIGN_NUM = 15
@@ -55,6 +54,7 @@ class Constant:
     VECTOR_BLOCK_SIZE = 256
     DATA_EIGHT = 8
     DATA_ONE = 1
+    NoneType = type(None)
 
 
 # 'pylint: disable=too-many-lines,unused-argument,too-many-instance-attributes,too-few-public-methods

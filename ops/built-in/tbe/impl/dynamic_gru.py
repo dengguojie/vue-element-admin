@@ -142,6 +142,7 @@ def _get_emit_insn_map(tensor):
     return insn
 
 
+# 'pylint: disable=too-many-return-values
 def _get_tiling(k_size, hidden_size):
     """
     get tiling
@@ -544,11 +545,11 @@ def _dynamic_gru_inner(input_list, custom_list):
     r_t_index = 0
     i_t_index = 1
     r_t = tvm.compute(shape_i,
-                      lambda t, i, j, k, l: c_ub_bias_1(t, r_t_index, i, j, k, l),
+                      lambda t, i, j, k, m: c_ub_bias_1(t, r_t_index, i, j, k, m),
                       name="r_t",
                       tag="split_com")
     i_t = tvm.compute(shape_i,
-                      lambda t, i, j, k, l: c_ub_bias_1(t, i_t_index, i, j, k, l),
+                      lambda t, i, j, k, m: c_ub_bias_1(t, i_t_index, i, j, k, m),
                       name="i_t",
                       tag="split_com")
     r_t_sigmoid = _sigmoid_compute(r_t)
@@ -712,15 +713,15 @@ def _dynamic_gru_inner(input_list, custom_list):
                                     tag="elewise_single_cast")
         update_h_ub = update_h_fp16
     update_y_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_h_ub(0, i, j, k, l),
+                              lambda t, i, j, k, m: update_h_ub(0, i, j, k, m),
                               name="update_y_gm",
                               tag="ub_to_out")
     update_y_gm_back = tvm.compute(shape_i_t,
-                                   lambda t, i, j, k, l: update_y_gm(0, i, j, k, l),
+                                   lambda t, i, j, k, m: update_y_gm(0, i, j, k, m),
                                    name="update_y_gm_back",
                                    tag="out_to_ub")
     update_h_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_y_gm_back(0, i, j, k, l),
+                              lambda t, i, j, k, m: update_y_gm_back(0, i, j, k, m),
                               name="update_h_gm",
                               tag="ub_to_out")
     # end compute

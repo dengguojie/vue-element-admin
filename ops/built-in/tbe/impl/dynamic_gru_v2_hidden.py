@@ -155,6 +155,7 @@ def _get_emit_insn_map(tensor):
     return insn
 
 
+# 'pylint: disable=too-many-return-values
 def _get_tiling(hidden_size):
     """
     get tiling
@@ -620,27 +621,27 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
         i_t_index = 1
         n_t_index = 2
     r_t_1 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: x_weight_input(t, r_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: x_weight_input(t, r_t_index, i, j, k, m),
                         name="r_t_1",
                         tag="split_com")
     i_t_1 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: x_weight_input(t, i_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: x_weight_input(t, i_t_index, i, j, k, m),
                         name="i_t_1",
                         tag="split_com")
     n_t_1 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: x_weight_input(t, n_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: x_weight_input(t, n_t_index, i, j, k, m),
                         name="n_t_1",
                         tag="split_com")
     r_t_2 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: c_ub_bias_2(t, r_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: c_ub_bias_2(t, r_t_index, i, j, k, m),
                         name="r_t_2",
                         tag="split_com")
     i_t_2 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: c_ub_bias_2(t, i_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: c_ub_bias_2(t, i_t_index, i, j, k, m),
                         name="i_t_2",
                         tag="split_com")
     n_t_2 = tvm.compute(shape_i,
-                        lambda t, i, j, k, l: c_ub_bias_2(t, n_t_index, i, j, k, l),
+                        lambda t, i, j, k, m: c_ub_bias_2(t, n_t_index, i, j, k, m),
                         name="n_t_2",
                         tag="split_com")
     # output n_t_2
@@ -802,15 +803,15 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
                                     tag="elewise_single_cast")
         update_h_ub = update_h_fp16
     update_y_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_h_ub(0, i, j, k, l),
+                              lambda t, i, j, k, m: update_h_ub(0, i, j, k, m),
                               name="update_y_gm",
                               tag="ub_to_out")
     update_y_gm_back = tvm.compute(shape_i_t,
-                                   lambda t, i, j, k, l: update_y_gm(0, i, j, k, l),
+                                   lambda t, i, j, k, m: update_y_gm(0, i, j, k, m),
                                    name="update_y_gm_back",
                                    tag="out_to_ub")
     update_h_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_y_gm_back(0, i, j, k, l),
+                              lambda t, i, j, k, m: update_y_gm_back(0, i, j, k, m),
                               name="update_h_gm",
                               tag="ub_to_out")
     # end compute

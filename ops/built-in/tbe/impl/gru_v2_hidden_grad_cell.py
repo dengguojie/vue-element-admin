@@ -126,6 +126,30 @@ class GRUHiddenGradCell(TikOpBase):
         output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
         self.tik_instance.BuildCCE(self.kernel_name, input_list, output_list, config=config_map)
 
+    def compute(self):
+        """ do compute
+        """
+        tiling = self._get_tiling()
+        core_num = tiling["core_num"]
+        tail_core_num = tiling["tail_core_num"]
+        ele_num = tiling["loop_ele"]
+        tail_ele_num = tiling["tail_loop_ele"]
+        offset = tiling["block_size"] * core_num
+        max_core_num = max(core_num, tail_core_num)
+        with self.tik_instance.for_range(0, max_core_num, block_num=max_core_num) as block_idx:
+            if tiling["loop_num"] > 0:
+                with self.tik_instance.if_scope(block_idx < core_num):
+                    with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
+                        base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
+                        self._do_compute(base_offset, ele_num)
+            if tiling["tail_num"] > 0:
+                with self.tik_instance.if_scope(block_idx < tail_core_num):
+                    base_offset = offset + block_idx * tail_ele_num
+                    with self.tik_instance.if_scope(block_idx < tail_core_num - 1):
+                        self._do_compute(base_offset, tail_ele_num)
+                    with self.tik_instance.else_scope():
+                        self._do_compute(base_offset, tiling["tail_last_ele"])
+
     # 'pylint: disable=too-many-locals,too-many-statements,invalid-name
     def _do_compute(self, input_offset, ele_num):
         """
@@ -271,30 +295,6 @@ class GRUHiddenGradCell(TikOpBase):
             "tail_loop_ele": tail_loop_ele,
             "tail_last_ele": tail_last_ele
         }
-
-    def compute(self):
-        """ do compute
-        """
-        tiling = self._get_tiling()
-        core_num = tiling["core_num"]
-        tail_core_num = tiling["tail_core_num"]
-        ele_num = tiling["loop_ele"]
-        tail_ele_num = tiling["tail_loop_ele"]
-        offset = tiling["block_size"] * core_num
-        max_core_num = max(core_num, tail_core_num)
-        with self.tik_instance.for_range(0, max_core_num, block_num=max_core_num) as block_idx:
-            if tiling["loop_num"] > 0:
-                with self.tik_instance.if_scope(block_idx < core_num):
-                    with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
-                        base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
-                        self._do_compute(base_offset, ele_num)
-            if tiling["tail_num"] > 0:
-                with self.tik_instance.if_scope(block_idx < tail_core_num):
-                    base_offset = offset + block_idx * tail_ele_num
-                    with self.tik_instance.if_scope(block_idx < tail_core_num - 1):
-                        self._do_compute(base_offset, tail_ele_num)
-                    with self.tik_instance.else_scope():
-                        self._do_compute(base_offset, tiling["tail_last_ele"])
 
 
 # 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda

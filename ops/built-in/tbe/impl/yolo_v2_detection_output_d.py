@@ -644,8 +644,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
         class_ub = param["classes_ub_nms"]
 
         pat_type = "uint16" if self.dtype == "float16" else "uint32"
-        pat_size = PRE_NMS_TOPN // 16 if self.dtype == "float16" else \
-            PRE_NMS_TOPN // 32
+        pat_size = PRE_NMS_TOPN // 16 if self.dtype == "float16" else PRE_NMS_TOPN // 32
         pattern = self.instance.Tensor(pat_type, (PRE_NMS_TOPN, ),
                                        name="pattern", scope=tik.scope_ubuf)
         self.instance.vec_dup(pat_size, pattern, 0, 1, 4)

@@ -132,6 +132,49 @@ class DynamicGRUCellGrad(TikOpBase):
         tbe_platform.scope_gm, "d_gate_h")
         self.dnt_x = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "dnt_x")
 
+    def build(self):
+        """
+        build cce
+        """
+        config_map = {"dump_cce_code": False}
+        input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.r2, self.n2, self.n2_mid, self.init_h,
+                      self.t_state_gm)
+        output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
+        self.tik_instance.BuildCCE(self.kernel_name,
+                                   input_list,
+                                   output_list,
+                                   flowtable=(self.tiling_gm,),
+                                   config=config_map)
+        tbe_context.get_context().add_compile_info("vars", {
+            "device_aicore_num": self.device_aicore_num,
+            "ub_size": self.ub_byte_size
+        })
+
+    def compute(self):
+        """ do compute
+        """
+        with self.tik_instance.for_range(0, self.device_aicore_num, block_num=self.device_aicore_num) as block_idx:
+            self._build_tiling_info()
+            tiling = self.tiling_map
+            core_num = tiling["core_num"]
+            tail_core_num = tiling["tail_core_num"]
+            ele_num = tiling["loop_ele"]
+            tail_ele_num = tiling["tail_loop_ele"]
+            offset = tiling["block_size"] * core_num
+            tail_num = tiling["tail_num"]
+            with self.tik_instance.if_scope(tiling["loop_num"] > 0):
+                with self.tik_instance.if_scope(block_idx < core_num):
+                    with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
+                        base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
+                        self._do_compute(base_offset, ele_num)
+            with self.tik_instance.if_scope(tail_num > 0):
+                with self.tik_instance.if_scope(block_idx < tail_core_num):
+                    base_offset = offset + block_idx * tail_ele_num
+                    with self.tik_instance.if_scope(block_idx < tail_core_num - 1):
+                        self._do_compute(base_offset, tail_ele_num)
+                    with self.tik_instance.else_scope():
+                        self._do_compute(base_offset, tiling["tail_last_ele"])
+
     def _build_tiling_info(self):
         tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM + 2,), \
         tik.scope_ubuf, "tiling_ub")
@@ -170,24 +213,6 @@ class DynamicGRUCellGrad(TikOpBase):
             "tail_loop_ele": tail_loop_ele,
             "tail_last_ele": tail_last_ele
         }
-
-    def build(self):
-        """
-        build cce
-        """
-        config_map = {"dump_cce_code": False}
-        input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.r2, self.n2, self.n2_mid, self.init_h,
-                      self.t_state_gm)
-        output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
-        self.tik_instance.BuildCCE(self.kernel_name,
-                                   input_list,
-                                   output_list,
-                                   flowtable=(self.tiling_gm,),
-                                   config=config_map)
-        tbe_context.get_context().add_compile_info("vars", {
-            "device_aicore_num": self.device_aicore_num,
-            "ub_size": self.ub_byte_size
-        })
 
     def _set_t_state(self):
         t_state_ub = self.tik_instance.Tensor(Constant.INT32, (4,), tbe_platform.scope_ubuf, "t_state_ub")
@@ -330,31 +355,6 @@ class DynamicGRUCellGrad(TikOpBase):
             else:
                 offset = input_offset
             self.move_data(self.d_gate_h[offset], dr2, self.dtype, shape)
-
-    def compute(self):
-        """ do compute
-        """
-        with self.tik_instance.for_range(0, self.device_aicore_num, block_num=self.device_aicore_num) as block_idx:
-            self._build_tiling_info()
-            tiling = self.tiling_map
-            core_num = tiling["core_num"]
-            tail_core_num = tiling["tail_core_num"]
-            ele_num = tiling["loop_ele"]
-            tail_ele_num = tiling["tail_loop_ele"]
-            offset = tiling["block_size"] * core_num
-            tail_num = tiling["tail_num"]
-            with self.tik_instance.if_scope(tiling["loop_num"] > 0):
-                with self.tik_instance.if_scope(block_idx < core_num):
-                    with self.tik_instance.for_range(0, tiling["loop_num"]) as loop_idx:
-                        base_offset = tiling["block_size"] * block_idx + ele_num * loop_idx
-                        self._do_compute(base_offset, ele_num)
-            with self.tik_instance.if_scope(tail_num > 0):
-                with self.tik_instance.if_scope(block_idx < tail_core_num):
-                    base_offset = offset + block_idx * tail_ele_num
-                    with self.tik_instance.if_scope(block_idx < tail_core_num - 1):
-                        self._do_compute(base_offset, tail_ele_num)
-                    with self.tik_instance.else_scope():
-                        self._do_compute(base_offset, tiling["tail_last_ele"])
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,unused-argument

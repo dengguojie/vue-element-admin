@@ -43,81 +43,81 @@ def copy_input_to_ub_compute(tensor_h1, tensor_n2,
     """
     tensor_ele_shape = [1, tensor_h1.shape[1].value, tensor_h1.shape[2].value,
                         tensor_h1.shape[3].value, tensor_h1.shape[4].value]
-    tensor_h1_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_h1[0, i, j, k, l],
+    tensor_h1_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_h1[0, i, j, k, m],
                                name="tensor_h1_ub", tag="tensor_h1_ub")
     tensor_list["tensor_h1_ub_ele"] = tensor_h1_ub
     emit_list["tensor_h1_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_h1_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_n2_i2_ub = tvm.compute(tensor_ele_shape,
-                                  lambda t, i, j, k, l: tensor_n2[0, i, j, k, l],
+                                  lambda t, i, j, k, m: tensor_n2[0, i, j, k, m],
                                   name="tensor_n2_i2_ub", tag="tensor_n2_i2_ub")
     tensor_list["tensor_n2_i2_ub_ele"] = tensor_n2_i2_ub
     emit_list["tensor_n2_i2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_n2_i2_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_n2_ub = tvm.compute(tensor_ele_shape,
-                               lambda t, i, j, k, l: tensor_n2[0, i, j, k, l],
+                               lambda t, i, j, k, m: tensor_n2[0, i, j, k, m],
                                name="tensor_n2_ub", tag="tensor_n2_ub")
     tensor_list["tensor_n2_ub_ele"] = tensor_n2_ub
     emit_list["tensor_n2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_n2_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_i2_ub = tvm.compute(tensor_ele_shape,
-                               lambda t, i, j, k, l: tensor_i2[0, i, j, k, l],
+                               lambda t, i, j, k, m: tensor_i2[0, i, j, k, m],
                                name="tensor_i2_ub", tag="tensor_i2_ub")
     tensor_list["tensor_i2_ub_ele"] = tensor_i2_ub
     emit_list["tensor_i2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_i2_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_i2_n2i_ub = tvm.compute(tensor_ele_shape,
-                                   lambda t, i, j, k, l: tensor_i2[0, i, j, k, l],
+                                   lambda t, i, j, k, m: tensor_i2[0, i, j, k, m],
                                    name="tensor_i2_n2i_ub", tag="tensor_i2_n2i_ub")
     tensor_list["tensor_i2_n2i_ub_ele"] = tensor_i2_n2i_ub
     emit_list["tensor_i2_n2i_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_i2_n2i_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_r2_dn2h_ub = tvm.compute(tensor_ele_shape,
-                                    lambda t, i, j, k, l: tensor_r2[0, i, j, k, l],
+                                    lambda t, i, j, k, m: tensor_r2[0, i, j, k, m],
                                     name="tensor_r2_dn2h_ub", tag="tensor_r2_dn2h_ub")
     tensor_list["tensor_r2_dn2h_ub_ele"] = tensor_r2_dn2h_ub
     emit_list["tensor_r2_dn2h_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_r2_dn2h_ub_ele"] = tbe_platform.scope_ubuf
 
-    tensor_r2_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_r2[0, i, j, k, l],
+    tensor_r2_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_r2[0, i, j, k, m],
                                name="tensor_r2_ub", tag="tensor_r2_ub")
     tensor_list["tensor_r2_ub_ele"] = tensor_r2_ub
     emit_list["tensor_r2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_r2_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_n2_mid_ub = tvm.compute(tensor_ele_shape,
-                                   lambda t, i, j, k, l: tensor_n2_mid[0, i, j, k, l],
+                                   lambda t, i, j, k, m: tensor_n2_mid[0, i, j, k, m],
                                    name="tensor_n2_mid_ub", tag="tensor_n2_mid_ub")
     tensor_list["tensor_n2_mid_ub_ele"] = tensor_n2_mid_ub
     emit_list["tensor_n2_mid_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_n2_mid_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_d_h2_i2_ub = tvm.compute(tensor_ele_shape,
-                                    lambda t, i, j, k, l: tensor_d_h2[0, i, j, k, l],
+                                    lambda t, i, j, k, m: tensor_d_h2[0, i, j, k, m],
                                     name="tensor_d_h2_i2_ub", tag="tensor_d_h2_i2_ub")
     tensor_list["tensor_d_h2_i2_ub_ele"] = tensor_d_h2_i2_ub
     emit_list["tensor_d_h2_i2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_d_h2_i2_ub_ele"] = tbe_platform.scope_ubuf
 
     tensor_d_h2_n2i_ub = tvm.compute(tensor_ele_shape,
-                                     lambda t, i, j, k, l: tensor_d_h2[0, i, j, k, l],
+                                     lambda t, i, j, k, m: tensor_d_h2[0, i, j, k, m],
                                      name="tensor_d_h2_n2i_ub", tag="tensor_d_h2_n2i_ub")
     tensor_list["tensor_d_h2_n2i_ub_ele"] = tensor_d_h2_n2i_ub
     emit_list["tensor_d_h2_n2i_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_d_h2_n2i_ub_ele"] = tbe_platform.scope_ubuf
 
-    tensor_dy_i2_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_dy[0, i, j, k, l],
+    tensor_dy_i2_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_dy[0, i, j, k, m],
                                   name="tensor_dy_i2_ub", tag="tensor_dy_i2_ub")
     tensor_list["tensor_dy_i2_ub_ele"] = tensor_dy_i2_ub
     emit_list["tensor_dy_i2_ub_ele"] = insn_cmd.DMA_COPY
     scope_list["tensor_dy_i2_ub_ele"] = tbe_platform.scope_ubuf
 
-    tensor_dy_n2i_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_dy[0, i, j, k, l],
+    tensor_dy_n2i_ub = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_dy[0, i, j, k, m],
                                    name="tensor_dy_n2i_ub", tag="tensor_dy_n2i_ub")
     tensor_list["tensor_dy_n2i_ub_ele"] = tensor_dy_n2i_ub
     emit_list["tensor_dy_n2i_ub_ele"] = insn_cmd.DMA_COPY
@@ -231,13 +231,13 @@ def elewise_compute_for_gate(tensor_dh2_di2, tensor_dy_di2, tensor_h1, tensor_n2
     scope_list["tensor_dh2_mul_i2_dn2i_ele"] = tbe_platform.scope_ubuf
 
     tensor_dh2_mul_i2_dn2i_gm = tvm.compute(
-        vector_shape_list, lambda t, i, j, k, l: tensor_dh2_mul_i2_dn2i[0, i, j, k, l],
+        vector_shape_list, lambda t, i, j, k, m: tensor_dh2_mul_i2_dn2i[0, i, j, k, m],
         name="tensor_dh2_mul_i2_dn2i_gm", tag="tensor_dh2_mul_i2_dn2i_gm")
     tensor_list["tensor_dh2_mul_i2_dn2i_gm_ele"] = tensor_dh2_mul_i2_dn2i_gm
     emit_list["tensor_dh2_mul_i2_dn2i_gm_ele"] = insn_cmd.DMA_COPY
 
     tensor_fake_dh2_mul_i2_dn2i_ub = tvm.compute(
-        vector_shape_list, lambda t, i, j, k, l: tensor_dh2_mul_i2_dn2i_gm[0, i, j, k, l],
+        vector_shape_list, lambda t, i, j, k, m: tensor_dh2_mul_i2_dn2i_gm[0, i, j, k, m],
         name="tensor_fake_dh2_mul_i2_dn2i_ub", tag="tensor_fake_dh2_mul_i2_dn2i_ub")
     tensor_list["tensor_fake_dh2_mul_i2_dn2i_ub_ele"] = tensor_fake_dh2_mul_i2_dn2i_ub
     scope_list["tensor_fake_dh2_mul_i2_dn2i_ub_ele"] = tbe_platform.scope_ubuf
@@ -322,14 +322,14 @@ def matmul_compute(tensor_weight, tensor_d_h2, tensor_dy, tensor_i2, tensor_list
                         tensor_d_h2.shape[4].value]
 
     tensor_d_h2_res = tvm.compute(tensor_ele_shape,
-                                  lambda t, i, j, k, l: tensor_d_h2[0, i, j, k, l],
+                                  lambda t, i, j, k, m: tensor_d_h2[0, i, j, k, m],
                                   name="tensor_d_h2_res", tag="tensor_d_h2_res")
     tensor_list["tensor_d_h2_res"] = tensor_d_h2_res
 
-    tensor_dy_res = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_dy[0, i, j, k, l],
+    tensor_dy_res = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_dy[0, i, j, k, m],
                                 name="tensor_dy_res", tag="tensor_dy_res")
     tensor_list["tensor_dy_res"] = tensor_dy_res
-    tensor_i2_res = tvm.compute(tensor_ele_shape, lambda t, i, j, k, l: tensor_i2[0, i, j, k, l],
+    tensor_i2_res = tvm.compute(tensor_ele_shape, lambda t, i, j, k, m: tensor_i2[0, i, j, k, m],
                                 name="tensor_i2_res", tag="tensor_i2_res")
     tensor_list["tensor_i2_res"] = tensor_i2_res
 
@@ -343,7 +343,7 @@ def matmul_compute(tensor_weight, tensor_d_h2, tensor_dy, tensor_i2, tensor_list
     tensor_list["tensor_dh1_res"] = tensor_dh1_res
 
     dh1_shape = tensor_ele_shape
-    tensor_dh1_gm = tvm.compute(dh1_shape, lambda t, i, j, k, l: tensor_dh1_res[0, i, j, k, l],
+    tensor_dh1_gm = tvm.compute(dh1_shape, lambda t, i, j, k, m: tensor_dh1_res[0, i, j, k, m],
                                 name="tensor_dh1_gm", tag="tensor_dh1_gm")
     tensor_list["tensor_dh1_gm"] = tensor_dh1_gm
 

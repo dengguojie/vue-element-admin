@@ -77,7 +77,7 @@ namespace fe {
     Status SoftplusTanhMulPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
       ge::NodePtr softPlusNode = GetNodeFromMapping(PATTERN_SOFTPLUS, mapping);
       FUSION_PASS_CHECK(softPlusNode == nullptr,
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"Node Softplus is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node Softplus is null, fusion failed."),
                         return PARAM_INVALID);
       ge::NodePtr tanhNode = GetNodeFromMapping(PATTERN_TANH, mapping);
       FUSION_PASS_CHECK(tanhNode == nullptr,

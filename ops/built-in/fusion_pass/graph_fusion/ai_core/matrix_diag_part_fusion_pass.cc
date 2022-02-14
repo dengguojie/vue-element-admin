@@ -57,7 +57,7 @@ template <typename Dtype>
 Status AssitHelp(const int32_t n, const int32_t m, const int32_t x, Dtype& output1) {
   Dtype* output = &output1;
   int32_t z = m * x;
-  if (z == INT_NUM_ZERO){
+  if (z == INT_NUM_ZERO) {
     return SUCCESS;
   }
   int32_t y = n / z;
@@ -86,7 +86,7 @@ Status AssitHelp1(const int32_t n, const int32_t m, const int32_t x, Dtype& outp
   int32_t xx = 1;
   t = xx;
   int32_t z = m * x;
-  if (z == INT_NUM_ZERO){
+  if (z == INT_NUM_ZERO) {
     return SUCCESS;
   }
   int32_t y = n / z;

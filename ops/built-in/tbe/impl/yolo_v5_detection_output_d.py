@@ -1355,8 +1355,7 @@ class DetectionOutput(ClsProbComputer):
         x1y1x2y2_ub = param["x1y1x2y2_ub"]
         class_ub = param["classes_ub_nms"]
         pat_type = "uint16" if self.dtype == "float16" else "uint32"
-        pat_size = Constant.PRE_NMS_TOPN // 16 if self.dtype == "float16" else \
-            Constant.PRE_NMS_TOPN // 32
+        pat_size = Constant.PRE_NMS_TOPN // 16 if self.dtype == "float16" else Constant.PRE_NMS_TOPN // 32
         pattern = self.instance.Tensor(pat_type, (Constant.PRE_NMS_TOPN, ),
                                        name="pattern", scope=cce_params.scope_ubuf)
         self.instance.vec_dup(pat_size, pattern, 0, 1, 4)
