@@ -3,6 +3,10 @@
 #include "op_proto_test_util.h"
 #include "array_ops.h"
 #include "selection_ops.h"
+#include "graph/debug/ge_attr_define.h"
+#include "utils/attr_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
 
 class gather_v2 : public testing::Test {
  protected:
@@ -340,4 +344,39 @@ TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_1) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
+}
+
+TEST_F(gather_v2, GatherV2_data_slice_infer1) {
+  ge::op::GatherV2 op;
+
+  auto tensor_desc = create_desc_with_ori({16, 64}, ge::DT_FLOAT16, ge::FORMAT_ND, {16, 64}, ge::FORMAT_ND);
+  op.UpdateInputDesc("indices", tensor_desc);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateOutputDesc("y", tensor_desc);
+  auto data0 = ge::op::Data().set_attr_index(0);
+  op.set_input_axis(data0);
+
+  std::vector<std::vector<int64_t>> output_data_slice = {{10, 6}, {60, 4}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc("y");
+  ge::AttrUtils::SetListListInt(output_tensor_desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(gather_v2, GatherV2_data_slice_infer2) {
+  ge::op::GatherV2 op;
+
+  auto tensor_desc = create_desc_with_ori({16, 64}, ge::DT_FLOAT16, ge::FORMAT_ND, {16, 64}, ge::FORMAT_ND);
+  op.UpdateInputDesc("indices", tensor_desc);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateOutputDesc("y", tensor_desc);
+  auto data0 = ge::op::Data().set_attr_index(0);
+  op.set_input_axis(data0);
+
+  std::vector<std::vector<int64_t>> output_data_slice = {{10, 6}, {60, 4}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc("y");
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

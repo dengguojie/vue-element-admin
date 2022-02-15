@@ -1018,9 +1018,34 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
 
     return GRAPH_SUCCESS;
 }
+IMPLEMT_INFER_DATA_SLICE(GatherV2, GatherV2InferDataSlice) {
+  OP_LOGD(TbeGetName(op), "Enter GatherV2InferDataSlice.");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  // get indice shape and format
+  auto indice_desc = op_info->MutableInputDesc("indices");
+  // get y desc
+  auto y_desc = op_info->MutableOutputDesc("y");
+  // get x desc
+  auto x_desc = op_info->MutableInputDesc("x");
+  size_t x_dimnum = x_desc->MutableShape().GetDimNum();
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> x_data_slice(x_dimnum);
+  if (!ge::AttrUtils::GetListListInt(y_desc, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGE(TbeGetName(op), "no data slice, use default as.");
+    return GRAPH_FAILED;
+  }
+  if (!ge::AttrUtils::SetListListInt(indice_desc, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    return GRAPH_FAILED;
+  }
+  if (!ge::AttrUtils::SetListListInt(x_desc, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
 
 COMMON_INFER_FUNC_REG(GatherV2, GatherV2InferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(GatherV2);
+INFER_DATA_SLICE_FUNC_REG(GatherV2, GatherV2InferDataSlice);
 // ----------------GatherV2 END-------------------
 
 // ----------------GatherV2D-----------------------
