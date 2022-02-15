@@ -254,8 +254,7 @@ Status PaddUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(fusedNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get PadD node"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(CheckFusedNode(fusedNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to check fused node"),
+  FUSION_PASS_CHECK(CheckFusedNode(fusedNode) != SUCCESS, OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to check fused node"),
                     return NOT_CHANGED);
 
   ge::NodePtr constNode = nullptr;
