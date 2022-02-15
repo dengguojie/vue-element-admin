@@ -27,7 +27,7 @@ def parse_ini_to_obj(ini_file, aicpu_ops_info):
                 key1 = line[:line.index("=")]
                 key2 = line[line.index("=")+1:]
                 key1_0, key1_1 = key1.split(".")
-                if not key1_0 in op:
+                if key1_0 not in op:
                     op[key1_0] = {}
                 op[key1_0][key1_1] = key2
 
@@ -44,7 +44,7 @@ def check_op_info(aicpu_ops):
                 op_info = op["opInfo"]
                 missing_keys = []
                 for  required_op_info_key in required_op_info_keys:
-                    if not required_op_info_key in op_info:
+                    if required_op_info_key not in op_info:
                         missing_keys.append(required_op_info_key)
                 if len(missing_keys) > 0:
                     print("op: " + op_key + " opInfo missing: " + ",".join(missing_keys))
@@ -93,10 +93,10 @@ def parse_ini_to_json(inf_paths, ouf_path):
     aicpu_ops_info = parse_ini_files(inf_paths)
     try:
         check_op_info(aicpu_ops_info)
-        write_json_file(aicpu_ops_info, ouf_path)
     except KeyError:
         print("bad format key value, failed to generate json file")
     finally:
+        write_json_file(aicpu_ops_info, ouf_path)
         print("parse_ini_to_json try except normal")
 
 if __name__ == '__main__':

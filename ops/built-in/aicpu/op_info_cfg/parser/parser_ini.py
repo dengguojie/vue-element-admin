@@ -179,14 +179,14 @@ class IniParser(object):
         self.load_ini_info(ini_paths)
         try:
             self.check_op_info_setting()
+        except KeyError as e:
+            print("bad format key value, failed to generate json file, detail info: \n%s" % e)
+        finally:
             self.write(out_file_path)
             if self.warning_ops and self.warn_print:
                 print(COLOR_BOLD + "=" * 80 + COLOR_END)
                 for warn_type, warn_ops in self.warning_ops.items():
                     print("\tNo \"%s\" ops set: %s" % (warn_type, warn_ops))
-        except KeyError as e:
-            print("bad format key value, failed to generate json file, detail info: \n%s" % e)
-        finally:
             print("parse try except normal")
 
 
