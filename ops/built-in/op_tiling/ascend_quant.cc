@@ -30,7 +30,16 @@
 namespace {
   constexpr int32_t ALIGN_BLOCK = 32;
   constexpr int32_t BASE_DIM_NUM = 4;
-}
+  constexpr int32_t SUBTRACTOR_TWO = 2;
+  constexpr int32_t SUBTRACTOR_THREE = 3;
+  constexpr int32_t SUBTRACTOR_FOUR = 4;
+  constexpr int64_t BASE_NUMBER = 2;
+  constexpr int64_t FACTOR_TWO = 2;
+  constexpr int64_t NC1HWC0_INDEX_C1 = 1;
+  constexpr int64_t NC1HWC0_INDEX_H = 2;
+  constexpr int64_t NC1HWC0_INDEX_W = 3;
+  constexpr int64_t NC1HWC0_INDEX_C0 = 4;
+}  // namespace
 
 namespace optiling {
 struct CompileInfo {
@@ -52,7 +61,7 @@ int32_t CalcPatternKey(std::vector<int64_t>& shape,
                        int32_t ub_tiling_axis) {
   int32_t pattern = 0;
   for (size_t i = 0; i < shape.size(); i++) {
-    pattern += pow(2, (shape.size() - 1 - i));
+    pattern += pow(BASE_NUMBER, (shape.size() - 1 - i));
   }
   pattern += block_tiling_axis * 100 + ub_tiling_axis * 10;
 
@@ -227,19 +236,22 @@ bool AscendQuantTiling(const std::string& op_type,
 
   std::vector<int64_t> input_y;
   std::vector<int64_t> input_x_new;
+  int64_t c0 = 32;
   if (input_format == FORMAT_NC1HWC0) {
-    int64_t c1 = input_x.GetDim(1) % 2 == 0 ? input_x.GetDim(1) / 2 : (input_x.GetDim(1) + 1) / 2;
-    int64_t hw = input_x.GetDim(2) * input_x.GetDim(3);
+    int64_t c1 = input_x.GetDim(NC1HWC0_INDEX_C1) % FACTOR_TWO == 0
+                     ? input_x.GetDim(NC1HWC0_INDEX_C1) / FACTOR_TWO
+                     : (input_x.GetDim(NC1HWC0_INDEX_C1) + 1) / FACTOR_TWO;
+    int64_t hw = input_x.GetDim(NC1HWC0_INDEX_H) * input_x.GetDim(NC1HWC0_INDEX_W);
 
     input_y.push_back(input_x.GetDim(0));
     input_y.push_back(c1);
     input_y.push_back(hw);
-    input_y.push_back(32);
+    input_y.push_back(c0);
 
     input_x_new.push_back(input_x.GetDim(0));
     input_x_new.push_back(input_x.GetDim(1));
     input_x_new.push_back(hw);
-    input_x_new.push_back(input_x.GetDim(4));
+    input_x_new.push_back(input_x.GetDim(NC1HWC0_INDEX_C0));
   } else {
     int64_t batch = 1;
     if (input_x.GetDimNum() > BASE_DIM_NUM) {
@@ -247,16 +259,17 @@ bool AscendQuantTiling(const std::string& op_type,
         batch *= input_x.GetDim(i);
       }
     }
-    int64_t c1_index = input_x.GetDimNum() - 4;
-    int64_t h_index = input_x.GetDimNum() - 3;
-    int64_t w_index = input_x.GetDimNum() - 2;
-    int64_t c1 = input_x.GetDim(c1_index) % 2 == 0 ? input_x.GetDim(c1_index) / 2 : (input_x.GetDim(c1_index) + 1) / 2;
+    int64_t c1_index = input_x.GetDimNum() - SUBTRACTOR_FOUR;
+    int64_t h_index = input_x.GetDimNum() - SUBTRACTOR_THREE;
+    int64_t w_index = input_x.GetDimNum() - SUBTRACTOR_TWO;
+    int64_t c1 = input_x.GetDim(c1_index) % FACTOR_TWO == 0 ? input_x.GetDim(c1_index) / FACTOR_TWO
+                                                            : (input_x.GetDim(c1_index) + 1) / FACTOR_TWO;
     int64_t hw = input_x.GetDim(h_index) * input_x.GetDim(w_index);
 
     input_y.push_back(batch);
     input_y.push_back(c1);
     input_y.push_back(hw);
-    input_y.push_back(32);
+    input_y.push_back(c0);
 
     input_x_new.push_back(batch);
     input_x_new.push_back(input_x.GetDim(c1_index));

@@ -29,7 +29,7 @@ class PadAddnFusionPass : public PatternFusionBasePass {
   Status CheckPadDInfo(const ge::NodePtr& padDNode1, const ge::NodePtr& padDNode2, const ge::NodePtr& addNNode,
                        std::map<uint32_t, ge::NodePtr>& mapPadDNode);
   const string FUSED_OP_TYPE = "PadAddN_ConcatV2D";
-  const int64_t SIZE_LIMIT_TWO = 2;
+  const uint64_t SIZE_LIMIT_TWO = 2;
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PAD_ADDN_FUSION_PASS_H_

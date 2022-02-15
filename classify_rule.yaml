@@ -476,6 +476,8 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/threshold_plugin.cc
       - ops/built-in/framework/caffe_plugin/upsample_plugin.cc
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_fusion_pass.cc
@@ -506,6 +508,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/map_index_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_addn_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_addn_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/permute_fusion_pass.cc

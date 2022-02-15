@@ -38,7 +38,6 @@
 
 using namespace ge;
 namespace fe {
-
 static const std::string PATTERN_PADD_1 = "PadD_1";
 static const std::string PATTERN_PADD_2 = "PadD_2";
 static const std::string PATTERN_ADDN = "AddN";
@@ -147,7 +146,7 @@ Status PadAddnFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   FUSION_PASS_MAKE_SHARED(
       (concatV2DOp = std::make_shared<ge::OpDesc>(addNNode->GetName() + '_' + "ConcatV2D", "ConcatV2D")),
       return INTERNAL_ERROR);
-  concatV2DOp->AddDynamicInputDesc("x", 2);
+  concatV2DOp->AddDynamicInputDesc("x", SIZE_LIMIT_TWO);
   concatV2DOp->UpdateInputDesc(0, mapPadDNode[0]->GetOpDesc()->GetInputDesc(0));
   concatV2DOp->UpdateInputDesc(1, mapPadDNode[1]->GetOpDesc()->GetInputDesc(0));
   ge::GeTensorDesc outputDesc = addNNode->GetOpDesc()->GetOutputDesc(0);

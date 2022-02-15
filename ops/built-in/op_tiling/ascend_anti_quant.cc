@@ -32,6 +32,10 @@ using namespace ge;
 
 namespace {
   constexpr int32_t ALIGN_BLOCK = 32;
+  constexpr int64_t BASE_NUMBER = 2;
+  constexpr int64_t NC1HWC0_INDEX_H = 2;
+  constexpr int64_t NC1HWC0_INDEX_W = 3;
+  constexpr int64_t NC1HWC0_INDEX_C0 = 4;
 }
 
 namespace optiling {
@@ -182,7 +186,7 @@ int32_t CalcPatternKey(std::vector<int64_t> shape,
                        int32_t ub_tiling_axis) {
   int32_t pattern = 0;
   for (int64_t i = 0; i < static_cast<int64_t>(shape.size()); i++) {
-    pattern += pow(2, (shape.size() - 1 - i));
+    pattern += pow(BASE_NUMBER, (shape.size() - 1 - i));
   }
   pattern += block_tiling_axis * 100 + ub_tiling_axis * 10;
 
@@ -228,17 +232,18 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   std::vector<int64_t> input_x_new;
   std::vector<int64_t> input_y;
   int64_t c1 = input_x.GetDim(1) * 2;
-  int64_t hw = input_x.GetDim(2) * input_x.GetDim(3);
+  int64_t hw = input_x.GetDim(NC1HWC0_INDEX_H) * input_x.GetDim(NC1HWC0_INDEX_W);
+  int64_t c0 = 16;
 
   input_y.push_back(input_x.GetDim(0));
   input_y.push_back(c1);
   input_y.push_back(hw);
-  input_y.push_back(16);
+  input_y.push_back(c0);
 
   input_x_new.push_back(input_x.GetDim(0));
   input_x_new.push_back(input_x.GetDim(1));
   input_x_new.push_back(hw);
-  input_x_new.push_back(input_x.GetDim(4));
+  input_x_new.push_back(input_x.GetDim(NC1HWC0_INDEX_C0));
 
   TilingParams tiling_params;
   GetTilingData(tiling_params, input_y, compile_info, output_dtype);

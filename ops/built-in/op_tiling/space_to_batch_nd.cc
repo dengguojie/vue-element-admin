@@ -26,6 +26,32 @@
 #include "op_tiling.h"
 #include "error_log.h"
 
+namespace {
+  constexpr int32_t FACTOR_TWO = 2;
+  constexpr int32_t FACTOR_FOUR = 4;
+  constexpr int32_t INPUT_W_LIMIT_1 = 65535;
+  constexpr int32_t INPUT_W_LIMIT_2 = 4096;
+  constexpr int32_t MODE_2 = 2;
+  constexpr int32_t MODE_3 = 3;
+  constexpr int32_t MODE_4 = 4;
+  constexpr int32_t MODE_5 = 5;
+  constexpr int32_t MODE_6 = 6;
+  constexpr int32_t MODE_7 = 7;
+  constexpr int32_t MODE_8 = 8;
+  constexpr int32_t MODE_9 = 9;
+  constexpr int32_t MODE_10 = 10;
+  constexpr int32_t MODE_11 = 11;
+  constexpr int32_t MODE_12 = 12;
+  constexpr int32_t MODE_13 = 13;
+  constexpr uint32_t SHAPE_LIMIT_5D = 5;
+  constexpr uint32_t SHAPE_LIMIT_6D = 6;
+  constexpr uint32_t SIZE_2 = 2;
+  constexpr uint32_t SIZE_3 = 3;
+  constexpr uint32_t SIZE_4 = 4;
+  constexpr uint32_t SIZE_6 = 6;
+  constexpr uint32_t SIZE_8 = 8;
+}  // namespace
+
 namespace optiling {
 using namespace ge;
 using namespace std;
@@ -143,20 +169,20 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
 
   // select tiling mode
-  if (param.output_h * param.output_w * param.block_w * param.channel_zero <= ub_ele / 4 &&
-      (param.block_h - 1) * param.input_w * 2 <= 65535) {
-    param.tiling_mode = input_format == "NC1HWC0" ? 0 : 6;
-  } else if (param.output_h * param.output_w * param.block_w * param.channel_zero <= ub_ele / 2 &&
-             (param.block_h - 1) * param.input_w * 2 <= 65535) {
-    param.tiling_mode = input_format == "NC1HWC0" ? 1 : 7;
-  } else if (param.output_w * param.block_w * param.channel_zero <= ub_ele / 4) {
-    param.tiling_mode = input_format == "NC1HWC0" ? 2 : 8;
-  } else if (param.output_w * param.block_w * param.channel_zero <= ub_ele / 2) {
-    param.tiling_mode = input_format == "NC1HWC0" ? 3 : 9;
-  } else if (param.output_w * param.channel_zero <= ub_ele && param.output_w < 4096) {
-    param.tiling_mode = input_format == "NC1HWC0" ? 4 : 10;
+  if (param.output_h * param.output_w * param.block_w * param.channel_zero <= ub_ele / FACTOR_FOUR &&
+      (param.block_h - 1) * param.input_w * FACTOR_TWO <= INPUT_W_LIMIT_1) {
+    param.tiling_mode = input_format == "NC1HWC0" ? 0 : MODE_6;
+  } else if (param.output_h * param.output_w * param.block_w * param.channel_zero <= ub_ele / FACTOR_TWO &&
+             (param.block_h - 1) * param.input_w * FACTOR_TWO <= INPUT_W_LIMIT_1) {
+    param.tiling_mode = input_format == "NC1HWC0" ? 1 : MODE_7;
+  } else if (param.output_w * param.block_w * param.channel_zero <= ub_ele / FACTOR_FOUR) {
+    param.tiling_mode = input_format == "NC1HWC0" ? MODE_2 : MODE_8;
+  } else if (param.output_w * param.block_w * param.channel_zero <= ub_ele / FACTOR_TWO) {
+    param.tiling_mode = input_format == "NC1HWC0" ? MODE_3 : MODE_9;
+  } else if (param.output_w * param.channel_zero <= ub_ele && param.output_w < INPUT_W_LIMIT_2) {
+    param.tiling_mode = input_format == "NC1HWC0" ? MODE_4 : MODE_10;
   } else {
-    param.tiling_mode = input_format == "NC1HWC0" ? 5 : 11;
+    param.tiling_mode = input_format == "NC1HWC0" ? MODE_5 : MODE_11;
   }
 
   // calc act core_num
@@ -167,8 +193,8 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
 
   // when slect branch 2 or 3, calc core at output_h
-  if ((param.tiling_mode == 2 || param.tiling_mode == 3) && (param.output_h > param.input_b * param.channel_one)) {
-    param.tiling_mode = param.tiling_mode == 2 ? 12 : 13;
+  if ((param.tiling_mode == 2 || param.tiling_mode == MODE_3) && (param.output_h > param.input_b * param.channel_one)) {
+    param.tiling_mode = param.tiling_mode == MODE_2 ? MODE_12 : MODE_13;
     CalCoreNum(param, param.output_h, core_num);
   }
 }
@@ -220,13 +246,13 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
                                     input_format.c_str());
     return false;
   }
-  if ((input_format == "NC1HWC0") && (input_shape.size() != 5)) {
+  if ((input_format == "NC1HWC0") && (input_shape.size() != SHAPE_LIMIT_5D)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
         "Get input shape failed at format NC1HWC0, the length of input shape must be 5, but got %lu.",
         input_shape.size());
     return false;
   }
-  if ((input_format == "NDC1HWC0") && (input_shape.size() != 6)) {
+  if ((input_format == "NDC1HWC0") && (input_shape.size() != SHAPE_LIMIT_6D)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
         "Get input shape failed at format NDC1HWC0, the length of input shape must be 6, but got %lu.",
         input_shape.size());
@@ -290,17 +316,17 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
 
   // check and resize block_shape and paddings
   if (input_format == "NC1HWC0") {
-    if ((ori_format == "NHWC") && (block_vec.size() == 1) && (pads_vec.size() == 2)) {
+    if ((ori_format == "NHWC") && (block_vec.size() == 1) && (pads_vec.size() == SIZE_2)) {
       block_vec.push_back(1);
       pads_vec.push_back(0);
       pads_vec.push_back(0);
-    } else if (((ori_format == "NHWC") || (ori_format == "NCHW")) && (block_vec.size() == 2) &&
-               (pads_vec.size() == 4)) {
+    } else if (((ori_format == "NHWC") || (ori_format == "NCHW")) && (block_vec.size() == SIZE_2) &&
+               (pads_vec.size() == SIZE_4)) {
       ;
-    } else if ((ori_format == "NCHW") && (block_vec.size() == 3) && (pads_vec.size() == 6) && (block_vec[0] == 1) &&
+    } else if ((ori_format == "NCHW") && (block_vec.size() == SIZE_3) && (pads_vec.size() == SIZE_6) && (block_vec[0] == 1) &&
                (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 2);
+      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + FACTOR_TWO);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, pads size "
@@ -309,12 +335,12 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
       return false;
     }
   } else {
-    if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == 3) && (pads_vec.size() == 6)) {
+    if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == SIZE_3) && (pads_vec.size() == SIZE_6)) {
       ;
-    } else if ((ori_format == "NCDHW") && (block_vec.size() == 4) && (pads_vec.size() == 8) && (block_vec[0] == 1) &&
+    } else if ((ori_format == "NCDHW") && (block_vec.size() == SIZE_4) && (pads_vec.size() == SIZE_8) && (block_vec[0] == 1) &&
                (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 2);
+      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + FACTOR_TWO);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, pads size "

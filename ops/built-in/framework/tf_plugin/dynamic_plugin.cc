@@ -20,6 +20,21 @@
  */
 #include "register/register.h"
 
+namespace {
+  constexpr int64_t DENSE_DEFAULTS_INPUT_PORT_NAME_LEN = 14;
+  constexpr int64_t TDENSE_INPUT_ATTR_NAME_LEN = 6;
+  constexpr int64_t SPARSE_INDICES_INPUT_PORT_NAME_LEN = 14;
+  constexpr int64_t NUM_SPARSE_INPUT_ATTR_NAME_LEN = 10;
+  constexpr int64_t SPARSE_VALUES_INPUT_PORT_NAME_LEN = 13;
+  constexpr int64_t SPARSE_TYPES_INPUT_ATTR_NAME_LEN = 12;
+  constexpr int64_t SPARSE_SHAPES_INPUT_PORT_NAME_LEN = 13;
+  constexpr int64_t DENSE_VALUES_INPUT_PORT_NAME_LEN = 13;
+  constexpr int64_t DECODED_INDICES_INPUT_PORT_NAME_LEN = 15;
+  constexpr int64_t DECODED_VALUES_INPUT_PORT_NAME_LEN = 14;
+  constexpr int64_t DECODED_SHAPE_INPUT_PORT_NAME_LEN = 13;
+  constexpr int64_t TOP_PATHS_INPUT_ATTR_NAME_LEN = 9;
+}  // namespace
+
 namespace domi {
 // register QueueDequeueUpTo op to GE
 Status QueueDequeueUpToMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
@@ -37,15 +52,20 @@ REGISTER_CUSTOM_OP("QueueDequeueUpTo")
 
 Status ParseSingleExampleMapping(const ge::Operator& op_src, ge::Operator& op) {
   std::vector<DynamicInputOutputInfo> value;
-  DynamicInputOutputInfo input(kInput, "dense_defaults", 14, "Tdense", 6);
+  DynamicInputOutputInfo input(kInput, "dense_defaults", DENSE_DEFAULTS_INPUT_PORT_NAME_LEN, "Tdense",
+                               TDENSE_INPUT_ATTR_NAME_LEN);
   value.push_back(input);
-  DynamicInputOutputInfo output(kOutput, "sparse_indices", 14, "num_sparse", 10);
+  DynamicInputOutputInfo output(kOutput, "sparse_indices", SPARSE_INDICES_INPUT_PORT_NAME_LEN, "num_sparse",
+                                NUM_SPARSE_INPUT_ATTR_NAME_LEN);
   value.push_back(output);
-  DynamicInputOutputInfo output1(kOutput, "sparse_values", 13, "sparse_types", 12);
+  DynamicInputOutputInfo output1(kOutput, "sparse_values", SPARSE_VALUES_INPUT_PORT_NAME_LEN, "sparse_types",
+                                 SPARSE_TYPES_INPUT_ATTR_NAME_LEN);
   value.push_back(output1);
-  DynamicInputOutputInfo output2(kOutput, "sparse_shapes", 13, "num_sparse", 10);
+  DynamicInputOutputInfo output2(kOutput, "sparse_shapes", SPARSE_SHAPES_INPUT_PORT_NAME_LEN, "num_sparse",
+                                 NUM_SPARSE_INPUT_ATTR_NAME_LEN);
   value.push_back(output2);
-  DynamicInputOutputInfo output3(kOutput, "dense_values", 12, "Tdense", 6);
+  DynamicInputOutputInfo output3(kOutput, "dense_values", DENSE_VALUES_INPUT_PORT_NAME_LEN, "Tdense",
+                                 TDENSE_INPUT_ATTR_NAME_LEN);
   value.push_back(output3);
   AutoMappingByOpFnDynamic(op_src, op, value);
   return SUCCESS;
@@ -406,11 +426,14 @@ REGISTER_CUSTOM_OP("ParseSingleSequenceExample")
 
 Status MappingFnCTCBeamSearchDecoder(const ge::Operator& op_src, ge::Operator& op) {
   std::vector<DynamicInputOutputInfo> value;
-  DynamicInputOutputInfo output(kOutput, "decoded_indices", 15, "top_paths", 9);
+  DynamicInputOutputInfo output(kOutput, "decoded_indices", DECODED_INDICES_INPUT_PORT_NAME_LEN, "top_paths",
+                                TOP_PATHS_INPUT_ATTR_NAME_LEN);
   value.push_back(output);
-  DynamicInputOutputInfo output1(kOutput, "decoded_values", 14, "top_paths", 9);
+  DynamicInputOutputInfo output1(kOutput, "decoded_values", DECODED_VALUES_INPUT_PORT_NAME_LEN, "top_paths",
+                                 TOP_PATHS_INPUT_ATTR_NAME_LEN);
   value.push_back(output1);
-  DynamicInputOutputInfo output2(kOutput, "decoded_shape", 13, "top_paths", 9);
+  DynamicInputOutputInfo output2(kOutput, "decoded_shape", DECODED_SHAPE_INPUT_PORT_NAME_LEN, "top_paths",
+                                 TOP_PATHS_INPUT_ATTR_NAME_LEN);
   value.push_back(output2);
   AutoMappingByOpFnDynamic(op_src, op, value);
   return SUCCESS;

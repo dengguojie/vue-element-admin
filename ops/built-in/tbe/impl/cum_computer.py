@@ -15,6 +15,7 @@
 """
 cum_computer
 """
+from collections import namedtuple
 from te import tik
 from te import platform as tbe_platform
 
@@ -166,10 +167,8 @@ class CumTensor(CumBase):
         self.mov_len = int(self.get_mov_len())
         self.mov_loop = int(self.each // self.mov_len)
         self.mov_tail = int((self.each - self.mov_len * self.mov_loop) % self.mov_len)
-        self.rdtype = DATA_TYPE_FP16 if \
-            dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else dtype
-        self.rdsize = Constant.VALUE_TWO if \
-            dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else self.dsize
+        self.rdtype = DATA_TYPE_FP16 if dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else dtype
+        self.rdsize = Constant.VALUE_TWO if dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else self.dsize
         self.mask = VECTOR_BYTE_SIZE // self.rdsize
 
     def check_dtype_in_u8s8(self):
@@ -265,7 +264,8 @@ class CumTensor(CumBase):
             block_num = Constant.VALUE_ONE
             outer_loop = total_loop
             outer_tail = Constant.VALUE_ZERO
-        return block_num, total_loop, outer_loop, outer_tail
+        return_args = namedtuple("args", "block_num total_loop outer_loop outer_tail")
+        return return_args(block_num, total_loop, outer_loop, outer_tail)
 
 
 class CumTilingParam(CumTensor):
@@ -521,11 +521,12 @@ class CumComputer(CumTilingParam):
         None
 
         """
-
-        burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
-        repeat = self.get_repeat(self.mov_len) \
-            if position == Constant.HEAD else self.get_repeat(self.mov_tail)
+        if position == Constant.HEAD:
+            burlen = self.get_burlen_by_mlen(self.mov_len)
+            repeat = self.get_repeat(self.mov_len)
+        else:
+            burlen = self.get_burlen_by_mlen(self.mov_tail)
+            repeat = self.get_repeat(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
@@ -561,8 +562,10 @@ class CumComputer(CumTilingParam):
                 last_32b, Constant.VALUE_ZERO, DEFAULT_BURST_LEN,
                 Constant.VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
         if self.ctype == Constant.LOGSUMEXP_TYPE:
-            offset = Constant.VALUE_ONE if self.need_special \
-                            and self.spe_position == position else Constant.VALUE_ZERO
+            if self.need_special and self.spe_position == position:
+                offset = Constant.VALUE_ONE
+            else:
+                offset = Constant.VALUE_ZERO
 
             self.tik_instance.data_move(last_ret, last_ori, Constant.VALUE_ZERO,
                                         DEFAULT_BURST_LEN, burlen+offset,
@@ -610,8 +613,10 @@ class CumComputer(CumTilingParam):
         None
 
         """
-        burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
+        if position == Constant.HEAD:
+            burlen = self.get_burlen_by_mlen(self.mov_len)
+        else:
+            burlen = self.get_burlen_by_mlen(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
@@ -632,8 +637,10 @@ class CumComputer(CumTilingParam):
 
         # to store last_ret and
         if self.ctype == Constant.LOGSUMEXP_TYPE:
-            offset = Constant.VALUE_ONE if self.need_special \
-                                  and self.spe_position == position else Constant.VALUE_ZERO
+            if self.need_special and self.spe_position == position:
+                offset = Constant.VALUE_ONE
+            else:
+                offset = Constant.VALUE_ZERO
             self.tik_instance.data_move(last_ori, last_ret, Constant.VALUE_ZERO,
                                         DEFAULT_BURST_LEN, burlen+offset, STRIDE_ZERO,
                                         STRIDE_ZERO)
@@ -657,11 +664,12 @@ class CumComputer(CumTilingParam):
         before = self.tik_instance.Tensor(self.dtype, (BLOCK_SIZE,),
                                           name="before",
                                           scope=tik.scope_ubuf)
-
-        burlen = self.get_burlen_by_mlen(self.mov_len) \
-            if position == Constant.HEAD else self.get_burlen_by_mlen(self.mov_tail)
-        repeat = self.get_repeat(self.mov_len) \
-            if position == Constant.HEAD else self.get_repeat(self.mov_tail)
+        if position == Constant.HEAD:
+            burlen = self.get_burlen_by_mlen(self.mov_len)
+            repeat = self.get_repeat(self.mov_len)
+        else:
+            burlen = self.get_burlen_by_mlen(self.mov_tail)
+            repeat = self.get_repeat(self.mov_tail)
 
         # Check whether multi-core special processing is required.
         burlen, tail_idx = self.pre_multicore(burlen, position)
@@ -891,8 +899,10 @@ class CumComputer(CumTilingParam):
                 self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.HEAD)
 
             if self.ctype == Constant.LOGSUMEXP_TYPE:
-                each_loop_start = Constant.VALUE_TWO if self.exclusive \
-                                               and self.each_loop > Constant.VALUE_ONE else Constant.VALUE_ONE
+                if self.exclusive and self.each_loop > Constant.VALUE_ONE:
+                    each_loop_start = Constant.VALUE_TWO
+                else:
+                    each_loop_start = Constant.VALUE_ONE
             else:
                 each_loop_start = Constant.VALUE_ONE
             with self.tik_instance.for_range(each_loop_start,
@@ -1040,8 +1050,10 @@ class CumComputer(CumTilingParam):
             self.t_vdup_to_gm(last_ret, last_ori, idx, Constant.TAIL)
 
         if self.ctype == Constant.LOGSUMEXP_TYPE:
-            each_loop_start = Constant.VALUE_TWO if self.exclusive \
-                                           and self.each_loop > Constant.VALUE_ONE else Constant.VALUE_ONE
+            if self.each_loop > Constant.VALUE_ONE and self.exclusive:
+                each_loop_start = Constant.VALUE_TWO
+            else:
+                each_loop_start = Constant.VALUE_ONE
         else:
             each_loop_start = Constant.VALUE_ONE
         with self.tik_instance.for_range(each_loop_start,
