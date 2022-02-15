@@ -37,6 +37,18 @@ class PrecisionStandard:
         self.atol = atol
         self.max_atol = max_atol
 
+    def to_json_obj(self):
+        """
+        get json obj
+        :return: json obj
+        """
+        return {
+            "precision_type": self.precision_type,
+            "rtol": self.rtol,
+            "atol": self.atol,
+            "max_atol": self.max_atol
+        }
+
     @staticmethod
     def parse_json_obj(json_obj):
         """
@@ -50,17 +62,6 @@ class PrecisionStandard:
 
         return None
 
-    def to_json_obj(self):
-        """
-        get json obj
-        :return: json obj
-        """
-        return {
-            "precision_type": self.precision_type,
-            "rtol": self.rtol,
-            "atol": self.atol,
-            "max_atol": self.max_atol
-        }
 
 class PrecisionCompareResult:
     """
@@ -78,15 +79,6 @@ class PrecisionCompareResult:
         """
         return self.status == op_status.SUCCESS
 
-    @staticmethod
-    def parse_json_obj(json_obj):
-        """
-        parser json obj to PrecisionStandard
-        :param json_obj: json obj
-        :return: PrecisionStandard
-        """
-        return PrecisionCompareResult(json_obj['status'], json_obj['err_msg'])
-
     def to_json_obj(self):
         """
         get json obj
@@ -96,6 +88,16 @@ class PrecisionCompareResult:
             "status": self.status,
             "err_msg": self.err_msg
         }
+
+    @staticmethod
+    def parse_json_obj(json_obj):
+        """
+        parser json obj to PrecisionStandard
+        :param json_obj: json obj
+        :return: PrecisionStandard
+        """
+        return PrecisionCompareResult(json_obj['status'], json_obj['err_msg'])
+
 
 def get_default_standard(dtype):
     """
