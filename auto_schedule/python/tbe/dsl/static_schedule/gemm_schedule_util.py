@@ -26,6 +26,7 @@ from tbe.common.context import op_context
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.static_schedule.util import check_fixpipe_op_support
 
 BATCH_MATMUL_LEN_ND = 3
 BATCH_MATMUL_LEN_NZ = 5
@@ -46,17 +47,8 @@ FIXPIPE_SCOPE_MAP = {
     "relu_weight_1": "local.FB2",
     "quant_scale_1": "local.FB3"
 }
-
-INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
-UNIT_POST_ELTWISE = "post_eltwise"
-
-
-def _is_support_fixpipe_op():
-    if tbe_platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
-        return tbe_platform_info.intrinsic_check_support(
-            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
-
-    return False
+TRANS_NZ2ND = {"layout_transform": "nz2nd"}
+TRANS_SPLIT = {"layout_transform": "channnel_split"}
 
 
 # common math funtion
@@ -271,8 +263,11 @@ def _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map):
     for tensor_mem_input, next_tensor_list in leaf_tensor.items():
         eltwise_input_flag = False
         input_tensor = all_tensor[tensor_mem_input]
+        if "broadcast" in input_tensor.op.tag:
+            sch[input_tensor].compute_inline()
+            continue
         for next_tensor in next_tensor_list:
-            if "elewise" in next_tensor.op.tag:
+            if "elewise" in next_tensor.op.tag or "broadcast" in next_tensor.op.tag:
                 eltwise_input_flag = True
                 break
         if eltwise_input_flag:
@@ -306,8 +301,8 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
                 sch[tensor_mem].set_scope(tbe_platform_info.scope_ubuf)
                 ub_write_tensor = tensor_mem
             ub_eltwise.append(ub_write_tensor)
-            if "broadcast" in tensor_mem.op.tag:
-                sch[tensor_mem].compute_inline()
+        if "broadcast" in tensor_mem.op.tag:
+            sch[tensor_mem].compute_inline()
         if tensor_mem.op.tag in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
             tensor_map["fixpipe_to_ub"] = tensor_mem
             set_matmul_fixpipe_scope(tensor_mem, sch, tensor_map)
@@ -819,15 +814,51 @@ def emit_insn_func(sch, tensor_map, k_axis, c_gm_emit_axis):
     :param c_gm_emit_axis: emit axis of c_gm
     :return: None
     """
-    c_gm = tensor_map["c_gm"]
-    is_nd_flag = len(c_gm.shape) in (MATMUL_LEN_ND, BATCH_MATMUL_LEN_ND)
     emit_insn_l1_and_l0(sch, tensor_map, k_axis)
-    emit_c_gm(sch, tensor_map, c_gm_emit_axis, is_nd_flag)
+    emit_c_gm(sch, tensor_map, c_gm_emit_axis)
     emit_insn_fp_and_bt(sch, tensor_map)
-    emit_insn_ub(sch, tensor_map, is_nd_flag)
+    emit_insn_ub(sch, tensor_map)
 
 
-def emit_c_gm(sch, tensor_map, c_gm_emit_axis, is_nd):
+def _get_fixpipe_emit_str():
+    """
+    get emit tag for fixpipe data flow
+    :return: str
+    """
+    return "fixpipe_op" if check_fixpipe_op_support() else "dma_copy"
+
+
+def emit_fixpipe_from_l0c(sch, fixpipe_tensor, need_align, emit_axises, tensor_map):
+    """
+    emit insn for fixpipe tensor
+    :param sch: schedule
+    :param fixpipe_tensor: tensor from l0c
+    :param need_align: if target is ub, need_align=True
+    :param emit_axises: emit axis
+    :param tensor_map: all tensor of matmul
+    :return: None
+    """
+    fixpipe_emit_str = _get_fixpipe_emit_str()
+    if len(fixpipe_tensor.shape) in (MATMUL_LEN_ND, BATCH_MATMUL_LEN_ND):
+        n_axis_index = 1
+        if need_align:
+            align_factor = tbe_platform.CUBE_MKN.get(fixpipe_tensor.dtype).get("mac")[1]
+            sch[fixpipe_tensor].compute_align(fixpipe_tensor.op.axis[-1], align_factor)
+            sch[fixpipe_tensor].storage_align(fixpipe_tensor.op.axis[-2], align_factor, 0)
+            n_axis_index = -1
+        sch[fixpipe_tensor].split(emit_axises[n_axis_index], 16)
+        sch[fixpipe_tensor].emit_insn(emit_axises[0], fixpipe_emit_str, TRANS_NZ2ND)
+    else:
+        if fixpipe_tensor.dtype == "int8":
+            sch[fixpipe_tensor].split(fixpipe_tensor.op.axis[-1], 16)
+        if tensor_map.get("a_l1").dtype == "float32" and fixpipe_tensor.dtype == "float32":
+            _, channel_split_in = sch[fixpipe_tensor].split(emit_axises[0], factor=2)
+            sch[fixpipe_tensor].emit_insn(channel_split_in, fixpipe_emit_str, TRANS_SPLIT)
+        else:
+            sch[fixpipe_tensor].emit_insn(emit_axises[0], fixpipe_emit_str)
+
+
+def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
     """
     emit insn for all tensor
     :param sch: schedule
@@ -837,22 +868,12 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis, is_nd):
     :return: None
     """
     c_gm = tensor_map["c_gm"]
-    c_l0c = tensor_map["c_l0c"]
-    emit_str = "fixpipe_op" if _is_support_fixpipe_op() else "dma_copy"
-    if is_nd and tensor_map.get("fixpipe_to_ub") is None:
-        sch[c_gm].split(c_gm_emit_axis[1], 16)
-        dma_dict = {"layout_transform": "nz2nd"}
-        sch[c_gm].emit_insn(c_gm_emit_axis[0], emit_str, dma_dict)
+    fixpipe_to_ub = tensor_map.get("fixpipe_to_ub")
+    if fixpipe_to_ub is not None:
+        emit_fixpipe_from_l0c(sch, fixpipe_to_ub, True, fixpipe_to_ub.op.axis, tensor_map)
+        sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy")
     else:
-        if c_gm.dtype == "int8":
-            sch[c_gm].split(c_gm.op.axis[-1], 16)
-            n_shape = int_ceil_div(c_l0c.shape[-4].value, 2) * 2
-            sch[c_l0c].storage_align(c_l0c.op.axis[-4], n_shape, 0)
-        if tensor_map["a_l1"].dtype == "float32" and c_gm.dtype == "float32":
-            _, chanel_split_in = sch[c_gm].split(c_gm_emit_axis[0], factor=2)
-            sch[c_gm].emit_insn(chanel_split_in, emit_str,  {"layout_transform": "channel_split"})
-        else:
-            sch[c_gm].emit_insn(c_gm_emit_axis[0], emit_str)
+        emit_fixpipe_from_l0c(sch, c_gm, False, c_gm_emit_axis, tensor_map)
 
 
 def emit_insn_l1_and_l0(sch, tensor_map, k_axis):
@@ -924,12 +945,11 @@ def emit_insn_fp_and_bt(sch, tensor_map):
         sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
 
 
-def emit_insn_ub(sch, tensor_map, is_nd):
+def emit_insn_ub(sch, tensor_map):
     """
     emit insn for all tensor
     :param sch: schedule
     :param tensor_map: tensor of matmul
-    :param is_nd:  :param is_nd: nz or nd format
     :return: None
     """
     for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
@@ -943,17 +963,6 @@ def emit_insn_ub(sch, tensor_map, is_nd):
             sch[ub_eltwise_input_mem].compute_align(ub_eltwise_input_mem.op.axis[-1], align_factor)
             sch[ub_eltwise_input_mem].storage_align(ub_eltwise_input_mem.op.axis[-2], align_factor, 0)
         sch[ub_eltwise_input_mem].emit_insn(ub_eltwise_input_mem.op.axis[0], "dma_copy")
-    if tensor_map.get("fixpipe_to_ub") is not None:
-        fixpipe_to_ub = tensor_map["fixpipe_to_ub"]
-        if is_nd:
-            align_factor = tbe_platform.CUBE_MKN[fixpipe_to_ub.dtype]["mac"][1]
-            sch[fixpipe_to_ub].compute_align(fixpipe_to_ub.op.axis[-1], align_factor)
-            sch[fixpipe_to_ub].storage_align(fixpipe_to_ub.op.axis[-2], align_factor, 0)
-            sch[fixpipe_to_ub].split(fixpipe_to_ub.op.axis[-1], 16)
-            dma_dict = {"layout_transform": "nz2nd"}
-            sch[fixpipe_to_ub].emit_insn(fixpipe_to_ub.op.axis[0], "dma_copy", dma_dict)
-        else:
-            sch[fixpipe_to_ub].emit_insn(fixpipe_to_ub.op.axis[0], "dma_copy")
 
 
 def do_buffer_align(sch, tensor_map, trans_a, trans_b):

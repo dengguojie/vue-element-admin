@@ -33,6 +33,7 @@ from tbe.common.platform import scope_cbuf_fusion
 from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils import log
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform.platform_info import intrinsic_check_support
 from tbe.common.buildcfg import get_current_build_config
 from te.platform.fusion_manager import fusion_manager
 from tbe.common.context import get_context
@@ -288,6 +289,44 @@ def get_all_tags(res):
     return tensor_tags
 
 
+def is_cube_pattern(op_pattern):
+    """
+    check if is cube pattern
+    op_pattern: input pattern
+    return: bool
+    """
+    cube_patterns = [
+        OpPatterns.MATMUL_PATTERN,
+        OpPatterns.MATMUL_V2_PATTERN,
+        OpPatterns.GEMM_PATTERN,
+        OpPatterns.CONV2D_BACKPROP_INPUT_PATTERN,
+        OpPatterns.CONV2D_BACKPROP_FILTER_PATTERN
+    ]
+    return op_pattern in cube_patterns
+
+
+def _skip_cast_op(in_dtype, out, op_pattern):
+    """
+    check if need to add cast
+    in_dtype: input dtype
+    out: output tensor
+    op_pattern: input pattern
+    return bool
+    """
+    if in_dtype in ("float32", "float16") and out.dtype == "int32":
+        return True
+    # c = vesl(condition,a,b), c is the same as a and b,
+    # condition_map[update_tensor]n is bool
+    if in_dtype in ("bool", "uint64"):
+        return True
+    if not check_is_need_cast(out):
+        return True
+    support_l0c2out = intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    if support_l0c2out and is_cube_pattern(op_pattern):
+        return True
+    return False
+
+
 def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     """
     schedule cce
@@ -353,13 +392,7 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
                                        "emit_insn_elewise_multiple_sel|bit",
                                        "NZ_trans_ND", "fixpipe_reform"]):
             in_dtype = input_tensors[0].dtype
-            if in_dtype in ("float32", "float16") and out.dtype == "int32":
-                continue
-            # c = vesl(condition,a,b), c is the same as a and b,
-            # conditioh_map[update_tensor]n is bool
-            if in_dtype in ("bool", "uint64"):
-                continue
-            if not check_is_need_cast(out):
+            if _skip_cast_op(in_dtype, out, op_pattern):
                 continue
             if in_dtype and out.dtype != in_dtype:
                 real_out = cast.cast_to(out, in_dtype)
