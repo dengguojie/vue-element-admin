@@ -81,7 +81,8 @@ Status DecodeBboxV2Params(const std::vector<const google::protobuf::Message*> in
   static const size_t INDEX_1 = 1;
   static const size_t INDEX_2 = 2;
   static const size_t INDEX_3 = 3;
-  if (v_const_str.size() != 4) {
+  static const size_t need_scale_size = 4;
+  if (v_const_str.size() != need_scale_size) {
     OP_LOGI(op.GetName().c_str(), "Boxes don't need to scale.");
   } else {
     if (ParseValueFromConstV2(v_input_const, v_const_str[INDEX_0], scale) != SUCCESS) {

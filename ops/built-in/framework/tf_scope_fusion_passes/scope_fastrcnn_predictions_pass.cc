@@ -25,9 +25,9 @@
 
 namespace ge {
 namespace {
-const char * kScopeType = "FastrcnnPredictions";
-const char * kScopeTypeFastrcnnPredictions = "FastrcnnPredictions";
-const char * kOpType = "FastrcnnPredictions";
+const char* kScopeType = "FastrcnnPredictions";
+const char* kScopeTypeFastrcnnPredictions = "FastrcnnPredictions";
+const char* kOpType = "FastrcnnPredictions";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeFastrcnnPredictionsPass::DefinePatterns() {

@@ -27,9 +27,9 @@
 
 namespace ge {
 namespace {
-const char* const kScopeType = "instance_norm_grad";
-const char* const kScopeRltType = "InstanceNormGrad";
-const char* const kOpType = "InstanceNormGrad";
+const char * const kScopeType = "instance_norm_grad";
+const char * const kScopeRltType = "InstanceNormGrad";
+const char * const kOpType = "InstanceNormGrad";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeInstanceNormGradPass::DefinePatterns() {
