@@ -252,8 +252,6 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > DMA_MAX_VAL:
             range_value = "".join([str(FMAP_HW_MIN), ", ", str(DMA_MAX_VAL)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
-        if int(shape_in[2]) > FMAP_H_MAX:
-            ConvParam.l0a_dma_flag = True
         if check_fm_w_flag_set():
             range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_W_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map W", shape_in[3])
