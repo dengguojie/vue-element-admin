@@ -744,7 +744,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# 'pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unnecessary-lambda,too-many-lines
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0,
                      wci_gm, wco_gm, wcf_gm, mask_gm, project_gm,
@@ -1781,70 +1781,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             insn = get_emit_insn_map(tensor)
             if tensor.op.name != "c_t_tanh_fake":
                 s[tensor].emit_insn(tensor.op.axis[0], insn)
-                s[tensor].set_buffer_size(shapei)
-
-    # set bound
-    s[s_state_h_ub].set_buffer_size(shapeh)
-    s[s_state_c_ub].set_buffer_size(shapei)
-
-    s[a_ub_if].set_buffer_size(shapeazbigz)
-    s[a_ub_else].set_buffer_size(shapeazbigz)
-    s[a_ub_if_else].set_buffer_size(shapeazbigz)
-
-    s[a_l1].set_buffer_size(shapeazbigz)
-    s[b_l1].set_buffer_size(shapeb)
-    s[a_l0a].set_buffer_size(shapeazbigz)
-    s[b_l0b].set_buffer_size(shapeb)
-    s[c_l0c].set_buffer_size(shapec)
-    s[c_ub].set_buffer_size(shapec)
-    s[bias_ub].set_buffer_size(shapebias)
-
-    if fp16_input_output:
-        s[bias_ub_fp32].set_buffer_size(shapebias)
-
-    s[bias_bc_ub].set_buffer_size(shapec)
-    s[c_ub_bias].set_buffer_size(shapec)
-
-    s[i_t].set_buffer_size(shapei)
-    s[j_t].set_buffer_size(shapei)
-    s[f_t].set_buffer_size(shapei)
-    s[o_t].set_buffer_size(shapei)
-
-    s[f_t_sigmoid_ub].set_buffer_size(shapei)
-    s[i_t_sigmoid_ub].set_buffer_size(shapei)
-    s[o_t_sigmoid_ub].set_buffer_size(shapei)
-    s[j_t_tanh_ub].set_buffer_size(shapei)
-
-    if is_gate_output:
-        if fp16_input_output:
-            s[f_t_sigmoid_fp16].set_buffer_size(shapei)
-            s[i_t_sigmoid_fp16].set_buffer_size(shapei)
-            s[o_t_sigmoid_fp16].set_buffer_size(shapei)
-            s[j_t_tanh_fp16].set_buffer_size(shapei)
-
-        if fp16_input_output:
-            s[s_state_c_back_fp32].set_buffer_size(shapei)
-
-    if bias_dtype == 'float16':
-        s[update_c_fp16].set_buffer_size(shapei)
-
-    if bias_dtype == 'float16':
-        s[update_c_fp16_back_fake].set_buffer_size(shapei)
-        s[c_t_tanh_fake].set_buffer_size(shapei)
-
-
-    s[c_t_tanh_ub].set_buffer_size(shapei)
-
-    if is_gate_output:
-        if fp16_input_output:
-            s[c_t_tanh_fp16].set_buffer_size(shapei)
-
-    if fp16_input_output:
-        s[update_h_fp16].set_buffer_size(shapepjc)
-        s[update_h_gm_as_y_back].set_buffer_size(shapepjc)
-    else:
-        s[update_h_gm_as_y_back].set_buffer_size(shapepjc)
-        s[update_h_fp16_cast].set_buffer_size(shapepjc)
 
     s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
 
