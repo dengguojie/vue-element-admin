@@ -3,7 +3,7 @@
 import te
 from te.platform.cce_conf import te_set_version
 from op_test_frame.ut import OpUT
-ut_case = OpUT("MaxPoolWithArgmaxv2", "impl.max_pool_with_argmaxv2", "max_pool_with_argmax_v2")
+ut_case = OpUT("MaxPoolWithArgmaxv2", "impl.dynamic.max_pool_with_argmaxv2", "max_pool_with_argmax_v2")
 
 case1 = {"params": [{"shape": (2,2,35,35,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,2,35,35,16),"ori_format": "NC1HWC0"},
                     {"shape": (2,2,35,35,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,2,35,35,16),"ori_format": "NC1HWC0"},

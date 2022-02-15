@@ -83,7 +83,6 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
         error_manager_vector.raise_err_pad_mode_invalid("max_pool_v3", "SAME, VALID or CALCULATED",
                                                         str(padding_mode))
 
-
 # 'pylint: disable=unnecessary-lambda,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("max_pool_v3")
@@ -145,23 +144,23 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
 
     # l1 fusion params assign
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    l1_fusion_type = \
-        input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = \
-        input_data.op.attrs["addr_type"].value == 1 if "addr_type" in input_data.op.attrs else False
-    in_valid_shape = \
-        input_data.op.attrs["valid_shape"] if "valid_shape" in input_data.op.attrs else []
-    in_slice_offset = \
-        input_data.op.attrs["slice_offset"] if "slice_offset" in input_data.op.attrs else []
+    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
+        if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
+        if "addr_type" in input_data.op.attrs else False
+    in_valid_shape = input_data.op.attrs["valid_shape"] \
+        if "valid_shape" in input_data.op.attrs else []
+    in_slice_offset = input_data.op.attrs["slice_offset"] \
+        if "slice_offset" in input_data.op.attrs else []
     in_select_read_flag = bool(in_valid_shape)
-    in_split_index = \
-        input_data.op.attrs["split_index"].value if "split_index" in input_data.op.attrs else 0
+    in_split_index = input_data.op.attrs["split_index"].value \
+        if "split_index" in input_data.op.attrs else 0
     out_l1_flag = output_data.get("addr_type") == 1
     out_valid_shape = output_data.get("valid_shape", [])
     out_select_write_flag = bool(out_valid_shape)
     out_shape = output_data.get("shape")
-    out_total_shape = \
-        output_data.get("valid_shape") if out_select_write_flag else output_data.get("shape")
+    out_total_shape = output_data.get("valid_shape") \
+        if out_select_write_flag else output_data.get("shape")
     out_slice_offset = output_data.get("slice_offset", [0, 0, 0, 0, 0])
     fusion_params = {"l1_fusion_type": l1_fusion_type,
                      "in_l1_flag": in_l1_flag,
