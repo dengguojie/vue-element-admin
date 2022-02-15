@@ -123,8 +123,8 @@ class CTCLossV2Grad():
 
         if mode_align:
             return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[0]]
-        else:
-            return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[1]]
+
+        return [shape_log_probs[0], shape_log_probs[1], shape_log_probs[2], shape_targets[1]]
 
 
     def ctc_loss_grad_compute(self):

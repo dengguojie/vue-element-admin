@@ -110,13 +110,13 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_1) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("LSTMPFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findTranspose = false;
+    bool findDynamicRNNV3 = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "DynamicRNNV3") {
-            findTranspose = true;
+            findDynamicRNNV3 = true;
         }
     }
-    // EXPECT_EQ(findTranspose, true);
+    EXPECT_EQ(findDynamicRNNV3, true);
 }
 
 TEST_F(lstmp_fusion_test, lstmp_fusion_test_2) {
@@ -184,15 +184,14 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_2) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("LSTMPFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findTranspose = false;
+    bool findDynamicRNNV3 = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "DynamicRNNV3") {
-            findTranspose = true;
+            findDynamicRNNV3 = true;
         }
     }
-    // EXPECT_EQ(findTranspose, true);
+    EXPECT_EQ(findDynamicRNNV3, true);
 }
-
 
 TEST_F(lstmp_fusion_test, lstmp_fusion_test_3) {
     ge::Graph graph("lstmp_fusion_test");
@@ -259,11 +258,11 @@ TEST_F(lstmp_fusion_test, lstmp_fusion_test_3) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("LSTMPFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findTranspose = false;
+    bool findDynamicRNNV3 = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "DynamicRNNV3") {
-            findTranspose = true;
+            findDynamicRNNV3 = true;
         }
     }
-    // EXPECT_EQ(findTranspose, true);
+    EXPECT_EQ(findDynamicRNNV3, true);
 }

@@ -135,7 +135,7 @@ Status LSTMPFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::G
                     return FAILED);
 
   auto input_dims = input_desc.GetShape().GetDims();
-  auto dim_num = input_desc.GetShape().GetDimNum();
+  int64_t dim_num = input_desc.GetShape().GetDimNum();
   FUSION_PASS_CHECK(dim_num != perm.size(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                    "input dims size[%ld] should be equal perm size[%ld]",
@@ -183,7 +183,7 @@ Status LSTMPFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::G
                               perm_desc, reinterpret_cast<uint8_t*>(perm.data()),
                               dim_num * sizeof(int32_t))),
                           return PARAM_INVALID);
- 
+
   ge::AttrUtils::SetTensor(perm_const_desc, ge::ATTR_NAME_WEIGHTS, tensor_ptr);
   perm_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
   auto perm_node = graph.AddNode(perm_const_desc);
@@ -758,7 +758,7 @@ Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDes
                               size_splits_desc, reinterpret_cast<uint8_t*>(size_splits.data()),
                               2 * sizeof(int64_t))),
                           return PARAM_INVALID);
- 
+
   ge::AttrUtils::SetTensor(size_splits_const_desc, ge::ATTR_NAME_WEIGHTS, size_splits_tensor_ptr);
   size_splits_const_desc->AddOutputDesc(size_splits_tensor_ptr->GetTensorDesc());
   auto size_splits_node = graph.AddNode(size_splits_const_desc);
@@ -787,7 +787,7 @@ Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDes
                               split_dim_desc, reinterpret_cast<uint8_t*>(split_dim.data()),
                               sizeof(int32_t))),
                           return PARAM_INVALID);
- 
+
   ge::AttrUtils::SetTensor(split_dim_const_desc, ge::ATTR_NAME_WEIGHTS, tensor_ptr);
   split_dim_const_desc->AddOutputDesc(tensor_ptr->GetTensorDesc());
   auto split_dim_node = graph.AddNode(split_dim_const_desc);
