@@ -69,3 +69,25 @@ TEST_F(TEST_PADD_UT, DATA_SUCCESS3) {
   bool compare = CompareResult(output, output_exp, 8);
   EXPECT_EQ(compare, true);
 }
+
+TEST_F(TEST_PADD_UT, DATA_SUCCESS4) {
+  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
+  vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}};
+  vector<vector<int64_t>> paddings = {};
+  int32_t input[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  int32_t output[8] = {0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas, paddings);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
+
+TEST_F(TEST_PADD_UT, DATA_FAILED) {
+  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
+  vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}};
+  vector<vector<int64_t>> paddings = {};
+  int32_t input[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  int32_t output[8] = {0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas, paddings);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+}

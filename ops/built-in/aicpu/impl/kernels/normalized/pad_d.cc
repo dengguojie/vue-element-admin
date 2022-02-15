@@ -32,20 +32,11 @@ namespace {
 const char *kPadD = "PadD";
 const uint32_t kInput = 1;
 const uint32_t kOutput = 1;
-
-#define RETURN_PAD_COMPUTE_CASE(DTYPE, TYPE, CTX)        \
-  case (DTYPE): {                                        \
-    uint32_t result = DoCompute<TYPE>(CTX);              \
-    if (result != KERNEL_STATUS_OK) {                    \
-      KERNEL_LOG_ERROR("PadD kernel compute failed.");   \
-      return result;                                     \
-    }                                                    \
-    break;                                               \
-  }
 }
 
 namespace aicpu {
 uint32_t PadDCpuKernel::Compute(CpuKernelContext &ctx) {
+  uint32_t res = KERNEL_STATUS_OK;
   KERNEL_LOG_INFO("PadD starts.");
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInput, kOutput),
                       "[%s] checks input and output number failed.", kPadD);
@@ -57,15 +48,23 @@ uint32_t PadDCpuKernel::Compute(CpuKernelContext &ctx) {
   // check type
   auto x_type = x->GetDataType();
   switch (x_type) {
-    RETURN_PAD_COMPUTE_CASE(DT_FLOAT, float, ctx)
-    RETURN_PAD_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    RETURN_PAD_COMPUTE_CASE(DT_INT32, int32_t, ctx)
+    case DT_FLOAT:
+      res = DoCompute<float>(ctx);
+      break;
+    case DT_FLOAT16:
+      res = DoCompute<Eigen::half>(ctx);
+      break;
+    case DT_INT32:
+      res = DoCompute<int32_t>(ctx);
+      break;
     default:
       KERNEL_LOG_ERROR("PadD kernel data type [%s] not support.",
                        DTypeStr(x_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-
+  if (res != KERNEL_STATUS_OK) {
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
   return KERNEL_STATUS_OK;
 }
 
