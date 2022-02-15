@@ -212,10 +212,10 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
   int32_t bound_size = compile_info.ub_size / dtype_size / MAX_COEXIST_NUM;
   int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
   int32_t c_size_align = (c_size + num_per_block - 1) / num_per_block * num_per_block;
-  if (c_size > bound_size) {
+  if (c_size_align > bound_size) {
     VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
     return false;
-  } else if ((c_size * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
+  } else if ((c_size_align * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
     // for open multi-core
     block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
                        ? compile_info.core_num
