@@ -164,7 +164,7 @@ bool ConcatParseFunc(const std::string& op_type, const nlohmann::json& compile_i
                   return false);
   } else {
     op_info.outer_compile_info = CreateConcatDslTilingHandler(op_type, "Concat", compile_info);
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_axis", op_info.ori_axis),
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "concat_dim", op_info.ori_axis),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ConcatParseFunc, get concat_dim error"),
                   return false);
     op_info.is_tik = false;

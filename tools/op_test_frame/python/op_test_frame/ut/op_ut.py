@@ -553,6 +553,8 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
     def _save_compile_info_json(self, kernel_name: str, compile_info: Any):
         compile_info_save_path = os.path.join(self.KERNEL_DIR, self._get_compile_info_file_name(kernel_name))
         if not os.path.exists(compile_info_save_path):
+            if not os.path.exists(os.path.split(compile_info_save_path)[0]):
+                os.makedirs(os.path.split(compile_info_save_path)[0])
             with os.fdopen(os.open(compile_info_save_path,
                                    Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
                 fout.write("")

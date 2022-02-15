@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 from impl.dynamic.concat_v2_d_tik import concat_v2_d_tik
 from impl.concat_v2_d import get_op_support_info as concat_v2_get_op_support_info
 from impl.concat_v2_d import op_select_format as concat_v2_op_select_format
@@ -74,8 +75,8 @@ def concat_v2_d_compute(input_values, output_data, concat_dim, kernel_name="conc
 
     Parameters
     ----------
-    datas : list of placeholders, all input data
-    output : dict, dict of output
+    input_values : list of placeholders, all input data
+    output_data : dict, dict of output
     concat_dim : scalar, in the range [-rank(values), rank(values))]
     kernel_name : string
         cce kernel name, default value is concat
@@ -126,6 +127,8 @@ def concat_v2_d_dsl(input_values, output_data, concat_dim, kernel_name="concat_v
             concat_dim = util_common.update_axis_for_other_format(ori_shape, concat_dim, input_format, ori_format)
             break
 
+    # transfer concat_dim to tiling for dynamic shape
+    tbe_context.get_context().add_compile_info("concat_dim", concat_dim)
     extra_params = {"axis": concat_dim}
     ins = classify([input_values], "concat", extra_params)
     schedules, tensors = [], []

@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 from impl.dynamic.pack_tik import pack_tik
 
 
@@ -92,6 +93,9 @@ def pack_dsl(x, y, axis, kernel_name="pack"):
     dtype_x = x[0].get("dtype")
 
     concat_x, concat_y, concat_axis = conver_pack_2_concat_input(x, y, axis)
+    # transfer concat_dim to tiling for dynamic shape
+    tbe_context.get_context().add_compile_info("concat_dim", concat_axis)
+
     extra_params = {"axis": concat_axis}
     ins = classify([concat_x], "concat", extra_params)
     schedules, tensors = [], []

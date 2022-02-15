@@ -16,6 +16,7 @@ concat_d
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -74,8 +75,8 @@ def concat_d_compute(input_values, output_data, concat_dim, kernel_name="concat"
 
     Parameters
     ----------
-    datas : list of placeholders, all input data
-    output : dict, dict of output
+    input_values : list of placeholders, all input data
+    output_data : dict, dict of output
     concat_dim : scalar, in the range [-rank(values), rank(values))]
     kernel_name : string
         cce kernel name, default value is concat
@@ -105,7 +106,6 @@ def concat_d_dsl(input_values, output_data, concat_dim, kernel_name="concat"):
     None
     """
     dtype_x = input_values[0].get("dtype")
-
     # update shape based on input format
     new_input_values = []
     for _, tensor_dict in enumerate(input_values):
@@ -125,6 +125,9 @@ def concat_d_dsl(input_values, output_data, concat_dim, kernel_name="concat"):
             ori_format = _input_dict.get("ori_format")
             concat_dim = util_common.update_axis_for_other_format(ori_shape, concat_dim, input_format, ori_format)
             break
+
+    # transfer concat_dim to tiling for dynamic shape
+    tbe_context.get_context().add_compile_info("concat_dim", concat_dim)
 
     extra_params = {"axis": concat_dim}
     ins = classify([input_values], "concat", extra_params)
