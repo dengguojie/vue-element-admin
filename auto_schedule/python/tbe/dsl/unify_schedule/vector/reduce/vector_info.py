@@ -52,8 +52,11 @@ from ...util import get_reduce_all_axes
 from ...util import get_reduce_axes
 from ...util import is_placeholder
 from ...util import shape_to_list
+from .....common.utils.errormgr import get_error_message
 
 ASCEND_SHISI = "smallhisi"
+BLOCK = 16
+ALIGN_AND_REMOVE_PAD_EXTRA_NODES = 3
 
 REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC = {
     "Default": ("float16", "float32", "int32"),
@@ -95,11 +98,15 @@ class ComputeGraphInfo:
         self.endpoint_output_tensor_set: Set[Tensor] = set()
         # For ReduceSch(only)
         self.coexisting_quantities: Optional[Dict] = None
+        self.coexisting_quantities_for_pad: Optional[Dict] = None
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
         self.coef: Optional[int] = None
         self.tensors_before_reduce: Optional[List[Tensor]] = []
         self.tensors_after_reduce: Optional[List[Tensor]] = []
+        self.pad_available_ub_size_before_reduce = 0
+        self.pad_available_ub_size_after_reduce = 0
+        self.pad_max_entire_size = 0
         # Do info collection
         self._collect_info(output_tensors)
         self._fake_node()
@@ -326,7 +333,7 @@ class ComputeGraphInfo:
                     raise RuntimeError("tensor_i is not in discrimination.")
             return _dict
 
-        def _current_compute_need_space(_tensor, _dict):
+        def _current_compute_need_space(_tensor, _dict, _is_pad=False):
             tag = _tensor.op.tag
             dtype = _tensor.dtype
 
@@ -414,6 +421,18 @@ class ComputeGraphInfo:
                 else:
                     _dict["_sNodeNum"].append(dtype)
 
+            if _is_pad:
+                if _tensor in self.input_tensor_set:
+                    _dict["_bNodeNum"].append(dtype)
+                    _dict["_bNodeNum"].append(dtype)
+                    _dict["_bNodeNum"].append(dtype)
+                if _tensor in self.output_tensor_set:
+                    # the space that remove pad buffer need
+                    size = ALIGN_AND_REMOVE_PAD_EXTRA_NODES - len(self.tensor_producers_map.get(_tensor))
+                    if size > 0:
+                        for i in range(0, size):
+                            _dict["_sNodeNum"].append(dtype)
+
         def _refresh_dependent(_tensor):
             for _tensor_i in _tensor.op.input_tensors:
                 if _tensor_i not in dependent_map:
@@ -422,21 +441,21 @@ class ComputeGraphInfo:
                 if not dependent_map[_tensor_i]:
                     dependent_map.pop(_tensor_i)
 
-        def _r_coexisting(_tensor, _need_space):
+        def _r_coexisting(_tensor, _need_space, _is_pad=False):
             if _tensor in dependent_map:
                 _need_space.append(_analysis_dependent(dependent_map))
                 return
 
             for _tensor_i in _tensor.op.input_tensors:
-                _r_coexisting(_tensor_i, _need_space)
+                _r_coexisting(_tensor_i, _need_space, _is_pad)
 
             _curr_dict = _analysis_dependent(dependent_map)
-            _current_compute_need_space(_tensor, _curr_dict)
+            _current_compute_need_space(_tensor, _curr_dict, _is_pad=_is_pad)
             _need_space.append(_curr_dict)
 
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
-                dependent_map[_tensor] = self.tensor_consumers_map[_tensor].copy()
+                dependent_map[_tensor] = self.tensor_consumers_map.get(_tensor).copy()
 
         # [Common Reduce] Find maximum sub_graph
         self.get_all_tensors_before_reduce()
@@ -455,7 +474,7 @@ class ComputeGraphInfo:
         # [Common Reduce] Multi outputs
         if not _out.op.tag == FAKE_NODE_TAG:
             curr_dict = _analysis_dependent(dependent_map)
-            _current_compute_need_space(_out, curr_dict)
+            _current_compute_need_space(_out, curr_dict, _is_pad=False)
             coexisting_quantities.append(curr_dict)
         self.coexisting_quantities = coexisting_quantities
 
@@ -465,8 +484,28 @@ class ComputeGraphInfo:
             # pure data_move
             self.coef = 1
 
+        # align and remove pad sch
+        coexisting_quantities_for_pad, dependent_map = [], {}
+        _out = list(self.output_tensor_set)[0]
+
+        for tensor_i in _out.op.input_tensors:
+            _r_coexisting(tensor_i, coexisting_quantities_for_pad, _is_pad=True)
+
+        # [Common Reduce] Multi outputs
+        if not _out.op.tag == FAKE_NODE_TAG:
+            curr_dict = _analysis_dependent(dependent_map)
+            _current_compute_need_space(_out, curr_dict, _is_pad=True)
+            coexisting_quantities_for_pad.append(curr_dict)
+        self.coexisting_quantities_for_pad = coexisting_quantities_for_pad
+
+        min_input_type = "int64"
+        for item in self.input_tensor_set:
+            if DTYPE_BYTE_MAPPING.get(item.dtype) < DTYPE_BYTE_MAPPING.get(min_input_type):
+                min_input_type = item.dtype
+        self.pad_max_entire_size = get_pad_entire_size(min_input_type)
+
     @staticmethod
-    def get_maximum_subgraph(graph_info, reduce_info, tiling_case):
+    def get_maximum_subgraph(graph_info, reduce_info, tiling_case, is_pad=False):
         """
         get maximum subgraph
         """
@@ -474,56 +513,66 @@ class ComputeGraphInfo:
         _node_list = graph_info.coexisting_quantities
         coefficients = graph_info.coef
         reduce_type = reduce_tensors[0].dtype
-        soc_ub_size = graph_info.soc_ub_size if not tiling_case.db else graph_info.soc_ub_size // 2
 
         def _calc_value(_graph):
             value = 0
             for _item in _graph.get("_sNodeNum"):
-                value += DTYPE_BYTE_MAPPING[_item]
+                value += DTYPE_BYTE_MAPPING.get(_item)
             for _item in _graph.get("_bNodeNum"):
-                value += coefficients * DTYPE_BYTE_MAPPING[_item]
+                value += coefficients * DTYPE_BYTE_MAPPING.get(_item)
 
             if _graph.get("SubGraphBeforeReduce"):
                 # compute_at reduce cause value++
                 if not _graph.get("_sNodeNum"):
-                    value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
+                    value += coefficients * DTYPE_BYTE_MAPPING.get(reduce_type)
                 # rfactor cause value++
+
                 cond0 = reduce_info.is_reduce_last_axis()
                 cond1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] in reduce_info.reduce_axes
                 if cond0 and cond1:
                     # ac_tensor is rf_tensor
-                    value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
+                    value += coefficients * DTYPE_BYTE_MAPPING.get(reduce_type)
             return value
 
-        def _r_parent(_child, _parent):
-            if not graph_info.tensor_producers_map.get(_child):
-                # reduce_i isn't connect to input directly
-                if reduce_i not in graph_info.tensor_consumers_map.get(_child):
-                    _parent.append(_child)
-                return
-            for _tensor in graph_info.tensor_producers_map.get(_child):
-                _r_parent(_tensor, _parent)
+        def _calc_small_ubsize(_node_list):
+            def _r_parent(_child, _parent):
+                if not graph_info.tensor_producers_map.get(_child):
+                    # reduce_i isn't connect to input directly
+                    if reduce_i not in graph_info.tensor_consumers_map.get(_child):
+                        _parent.append(_child)
+                    return
+                for _tensor in graph_info.tensor_producers_map.get(_child):
+                    _r_parent(_tensor, _parent)
 
-        max_value = _calc_value(_node_list[0])
-        for item in _node_list:
-            item_value = _calc_value(item)
-            if max_value < item_value:
-                max_value = item_value
+            soc_ub_size = graph_info.soc_ub_size if not tiling_case.db else graph_info.soc_ub_size // 2
+            max_value = _calc_value(_node_list[0])
+            for item in _node_list:
+                item_value = _calc_value(item)
+                if max_value < item_value:
+                    max_value = item_value
 
-        reduce_parents = []
-        for reduce_i in reduce_tensors:
-            _r_parent(reduce_i, reduce_parents)
-        reduce_parents = list(set(reduce_parents))
+            reduce_parents = []
+            for reduce_i in reduce_tensors:
+                _r_parent(reduce_i, reduce_parents)
+            reduce_parents = list(set(reduce_parents))
 
-        for parent_i in reduce_parents:
-            # Reserve space for input's "db"
-            max_value += DTYPE_BYTE_MAPPING[parent_i.dtype] * coefficients
+            for parent_i in reduce_parents:
+                # Reserve space for input's "db"
+                max_value += DTYPE_BYTE_MAPPING[parent_i.dtype] * coefficients
 
-        # [Common Reduce] avoid bank conflict in malloc ub
-        soc_ub_size -= 1024
-        small_ub_size = soc_ub_size // max_value // 128 * 128
-        tiling_case.tensor_ub_size_before_reduce = int(small_ub_size * coefficients)
-        tiling_case.tensor_ub_size_after_reduce = int(small_ub_size)
+            # [Common Reduce] avoid bank conflict in malloc ub
+            soc_ub_size -= 1024
+            small_ub_size = soc_ub_size // max_value // 128 * 128
+            return small_ub_size
+
+        if is_pad:
+            small_ub_size_for_pad = _calc_small_ubsize(graph_info.coexisting_quantities_for_pad)
+            tiling_case.tensor_ub_size_before_reduce = int(small_ub_size_for_pad * coefficients)
+            tiling_case.tensor_ub_size_after_reduce = int(small_ub_size_for_pad)
+        else:
+            small_ub_size_normal = _calc_small_ubsize(graph_info.coexisting_quantities)
+            tiling_case.tensor_ub_size_before_reduce = int(small_ub_size_normal * coefficients)
+            tiling_case.tensor_ub_size_after_reduce = int(small_ub_size_normal)
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:
@@ -531,3 +580,26 @@ class ComputeGraphInfo:
         deep copy tensor map
         """
         return {key: _map[key].copy() for key in _map}
+
+
+def get_pad_entire_size(dtype):
+    if dtype not in DTYPE_AND_PAD_ENTIRE_SIZE_MAP:
+        _raise_error("[%s] is not support type in reduce." % dtype)
+
+    return DTYPE_AND_PAD_ENTIRE_SIZE_MAP.get(dtype)
+
+
+DTYPE_AND_PAD_ENTIRE_SIZE_MAP = {
+    "bool": BLOCK * BLOCK * 4,
+    "int8":  BLOCK * BLOCK * 4,
+    "uint8":  BLOCK * BLOCK * 4,
+    "float16":  BLOCK * BLOCK,
+    "float32":  BLOCK * BLOCK // 2,
+    "int32": BLOCK * BLOCK // 2,
+    "int64": BLOCK * BLOCK // 4,
+}
+
+
+def _raise_error(message):
+    dict_args = {"errCode": "E90003", "detailed_cause": message}
+    raise RuntimeError(dict_args, get_error_message(dict_args))

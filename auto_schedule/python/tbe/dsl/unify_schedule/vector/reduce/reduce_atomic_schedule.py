@@ -82,6 +82,10 @@ class _VectorSchedule:
         self.compute_at_map = {}
         self.emit_insn_map = {}
 
+        self._ori_and_align_pad_tensor_map = {}
+        self._align_pad_tensor_list = []
+        self.remove_pad_tensor = None
+
     def _create_schedule(self):
         self.schedule = tvm.create_schedule([tensor.op for tensor in self.graph_info.output_tensor_set])
 
@@ -91,6 +95,13 @@ class _VectorSchedule:
             read_buffer = self.schedule.cache_read(tensor, scope_ubuf, readers)
             self.cache_read_tensors_and_buffer_map[tensor] = read_buffer
             self.update_stage(read_buffer, tensor, False)
+
+            if self.tiling_case.is_reduce_pad_case:
+                align_pad_buffer = self.schedule.cache_read(read_buffer, scope_ubuf, readers)
+                self._ori_and_align_pad_tensor_map[read_buffer] = align_pad_buffer
+                self._align_pad_tensor_list.append(align_pad_buffer)
+                self.cache_read_tensors_and_buffer_map[read_buffer] = align_pad_buffer
+                self.update_stage(align_pad_buffer, read_buffer, False)
 
     def _do_set_scope(self):
         for tensor in self.graph_info.mid_tensor_set:
@@ -378,7 +389,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         # cache write
         if len(self.graph_info.real_output_tensor_set) > 1:
-            # [TupleSum]
+            # TupleSum
             self.ub_tiling_result_pair[0] = self.reduce_rfs[0]
             self.schedule[self.reduce_rfs[0]].set_scope(scope_ubuf)
             for _idx, _tensor in enumerate(list(self.graph_info.real_output_tensor_set)):
@@ -389,7 +400,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 self.update_stage(self.reduce_repls[_idx], _tensor, True)
                 self.cache_write_tensors_and_buffer_map[_tensor] = self.reduce_repls[_idx]
         else:
-            # [SingleSum]
+            # SingleSum
             self.ub_tiling_result_pair[0] = self.reduce_rfs
             self.schedule[self.reduce_rfs].set_scope(scope_ubuf)
             self.update_stage(self.reduce_rfs, block_tiling_tensor, True)
@@ -397,6 +408,12 @@ class ReduceAtomicSchedule(_VectorSchedule):
             self.reduce_repls = self.schedule.cache_write(block_tiling_tensor, "")
             self.update_stage(self.reduce_repls, block_tiling_tensor, True)
             self.cache_write_tensors_and_buffer_map[block_tiling_tensor] = self.reduce_repls
+
+            if self.tiling_case.need_remove_pad:
+                self.remove_pad_tensor = self.schedule.cache_read(self.reduce_rfs, scope_ubuf, [self.reduce_repls])
+                self._ori_and_align_pad_tensor_map[self.reduce_rfs] = self.remove_pad_tensor
+                self.cache_read_tensors_and_buffer_map[self.reduce_rfs] = self.remove_pad_tensor
+                self.update_stage(self.remove_pad_tensor, self.reduce_rfs, False)
 
     def _do_reorder(self):
 
@@ -492,6 +509,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
             tensors_before_reduce = self.get_all_producers_stages(reduce_tensor)
             for tensor in tensors_before_reduce:
                 if tensor not in self.graph_info.input_tensor_set:
+                    if tensor in self._ori_and_align_pad_tensor_map.keys():
+                        continue
                     align_factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype])
                     para = {"align_axis_var": tensor.op.axis[_align_axis],
                             "align_factor": align_factor,
@@ -605,6 +624,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         ub_tiling_tensor = self.ub_tiling_result_pair[0]
         ub_split_axis = self.ub_tiling_result_pair[1]
+        block_split_axis = self.block_tiling_result_pair[1]
         res_ub_outer = self.iter_ub_outer
         reduce_axis_index = self.reduce_info.reduce_axis_indexes
         shape_before_reduce = self.reduce_info.shape_before_reduce
@@ -631,6 +651,12 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 if tensor not in self.graph_info.input_tensor_set:
                     para = {"parent": self.schedule[reduce_tensor], "scope": scop_axis}
                     self.compute_at_map[tensor] = para
+
+            if self.is_ARA_1_0_case():
+                for input_tensor in self._ori_and_align_pad_tensor_map.keys():
+                    align_buffer = self._ori_and_align_pad_tensor_map.get(input_tensor)
+                    para = {"parent": self.schedule[align_buffer], "scope": self.schedule[align_buffer].op.axis[0]}
+                    self.compute_at_map[input_tensor] = para
 
         if not self._last_reduction_rf_optimization():
             _compute_at_tensor_before_reduce(self.reduce_rfs, res_ub_outer)
@@ -661,6 +687,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
                              "scope": self.reduce_repls.op.reduce_axis[0]}
         self.compute_at_map[self.reduce_rfs] = para_reduce_repls
 
+        if self.remove_pad_tensor is not None:
+            self.compute_at_map[self.remove_pad_tensor] = para_reduce_repls
+
     def _calculate_emit_insn(self):
         self.emit_insn_map.clear()
         ub_tiling_tensor = self.ub_tiling_result_pair[0]
@@ -675,19 +704,29 @@ class ReduceAtomicSchedule(_VectorSchedule):
         else:
             tensors_before_reduce = self.get_all_producers_stages(self.reduce_rfs)
 
-        for tensor in tensors_before_reduce:
-            if tensor in self.graph_info.input_tensor_set:
-                continue
-            insn = INSN_MAPPING.get(get_dsl_insn(tensor), get_dsl_insn(tensor))
-            if insn == "":
-                insn = "dma_copy"
-                emit_insn_axis_index = 0
-            else:
-                emit_insn_axis_index = 0
+        def emit_reduce_insn_ub_split_on_reduce_axis():
+            for tensor in tensors_before_reduce:
+                if tensor in self.graph_info.input_tensor_set:
+                    continue
+                if tensor in self._align_pad_tensor_list:
+                    insn = "align_pad"
+                    if self.is_ARA_1_0_case():
+                        emit_insn_axis_index = -2
+                    else:
+                        emit_insn_axis_index = 0
+                else:
+                    insn = INSN_MAPPING.get(get_dsl_insn(tensor), get_dsl_insn(tensor))
+                    if insn == "":
+                        insn = "dma_copy"
+                        emit_insn_axis_index = 0
+                    else:
+                        emit_insn_axis_index = 0
 
-            para = {"scope": tensor.op.axis[emit_insn_axis_index],
-                    "instruction": insn}
-            self.emit_insn_map[tensor] = para
+                para = {"scope": self.schedule[tensor].op.axis[emit_insn_axis_index],
+                        "instruction": insn}
+                self.emit_insn_map[tensor] = para
+
+        emit_reduce_insn_ub_split_on_reduce_axis()
 
         # Reduce
         res_tensor = self.reduce_info.reduce_tensor
@@ -745,6 +784,11 @@ class ReduceAtomicSchedule(_VectorSchedule):
             self.emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
                                                     "instruction": insn,
                                                     "extra_space": extra_space}
+
+        if self.remove_pad_tensor is not None:
+            self.emit_insn_map[self.remove_pad_tensor] = {
+            "scope": self.schedule[self.remove_pad_tensor].op.axis[0],
+            "instruction": 'remove_pad'}
 
         self.emit_insn_map[self.reduce_repls] = {
             "scope": self.reduce_repls.op.axis[0],
@@ -869,6 +913,10 @@ class ReduceAtomicSchedule(_VectorSchedule):
             # Do not pragma placeholder
             if tensor in self.graph_info.input_tensor_set:
                 continue
+
+            if tensor in self._align_pad_tensor_list:
+                continue
+
             # For ub tensor
             if get_dsl_insn(tensor) != "":
                 # Iterate all axis after ub_tiling_axis and check if they need to be in the axis_group
@@ -1371,5 +1419,12 @@ class ReduceAtomicSchedule(_VectorSchedule):
         if self.reduce_info.is_reduce_last_axis() \
                 and self.reduce_info.all_axes[self.tiling_case.ub_split_axis_index] \
                 in self.reduce_info.reduce_axes:
+            return True
+        return False
+
+    def is_ARA_1_0_case(self):
+        ub_split_axis = self.ub_tiling_result_pair[1]
+        block_split_axis = self.block_tiling_result_pair[1]
+        if len(self._align_pad_tensor_list) != 0 and block_split_axis == 1 and ub_split_axis == 0:
             return True
         return False

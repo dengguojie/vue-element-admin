@@ -222,6 +222,24 @@ TEST_F(ReduceTilingV3, ReduceParseTest2) {
   ASSERT_FALSE(compileInfo_ptr);
 }
 
+TEST_F(ReduceTilingV3, ReduceParseTest3) {
+  std::string compileInfo = R"({"_ori_axis": [0],
+                                "_pattern": "CommReduce",
+                                "_common_info": [32, 1, 8, 1, 1, 0],
+                                "_pattern_info": [5],
+                                "axes_idx":0,
+                                "_compile_pattern":0,
+                                "_ub_info": [16256],
+                                "_ub_info_rf": [16256],
+                                "_block_dims": {"40000400": 0},
+                                "_atomic_flags": {"40000400": false}})";
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  auto compileInfo_ptr = CreateReduceTilingHandler("reduce","CommReduce",json_info);
+
+  bool result = compileInfo_ptr ? true : false;
+  ASSERT_FALSE(compileInfo_ptr);
+}
+
 /* Test Case
  * **/
 TEST_F(ReduceTilingV3, ReduceTiling1) {
@@ -651,6 +669,50 @@ TEST_F(ReduceTilingV3, ReduceTiling12) {
   ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
 }
 
+TEST_F(ReduceTilingV3, ReduceTiling13) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{12456, 15};
+  std::vector<int64_t> output{12456,1};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto _op = op::ReduceSumD("ReduceSumD_13");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{_op};
+  ge::Graph graph("ReduceTiling13");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+
+  std::string compileInfo = R"({"_ori_axis": [-1],"_pattern": "CommReduce", "_zero_ub_factor": 32512, "_common_info":
+  [32,1,8,1,1,256], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512],"_ub_info_pad": [20462],
+  "_reduce_shape_known": true,
+  "_compile_pattern": 1, "_block_dims":{"1":32},
+         "_atomic_flags":{"1": true},
+         "_vars": {"1": []}})";
+
+  // new interface
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{input,};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
+}
+
+
 static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> inputB, std::vector<int32_t> axes,
                              std::vector<int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB,
                              ge::DataType dtypeOutput, std::string compileInfo, bool isCustom, std::string caseName) {
@@ -766,4 +828,3 @@ TEST_F(ReduceTilingV3, ReduceSumTiling3) {
   bool isCustom = false;
   ReduceSumComputeInt64(inputA, inputB, axes, output, dtypeA, dtypeB, dtypeOutput, compileInfo, isCustom, caseName);
 }
-

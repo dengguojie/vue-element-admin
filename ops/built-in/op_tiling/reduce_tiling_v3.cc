@@ -40,11 +40,15 @@ namespace {
   constexpr int32_t ARRAY_INDEX_2 = 2;
   constexpr int32_t ARRAY_INDEX_3 = 3;
   constexpr int32_t ARRAY_INDEX_4 = 4;
+  constexpr int32_t ARRAY_INDEX_5 = 5;
   constexpr int32_t ARRAY_FIRST_POS = 0;
   constexpr int32_t DEFAULT_CAPACITY_EMPTY = 0;
   constexpr int32_t NO_DIM = 0;
-  constexpr int32_t LENGTH_OF_COMMON_FIVE = 5;
+  constexpr int32_t LEAST_LENGTH_OF_COMMON_FIVE = 5;
   constexpr int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
+  constexpr int32_t MIN_NOT_ONE_AXIS_NUM = 2;
+  constexpr int32_t SHAPE_LENGTH_TWO = 2;
+  constexpr int32_t SHAPE_LENGTH_THREE = 3;
 }
 
 namespace v3 {
@@ -95,8 +99,8 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
   // Required info from SCH that do for calculating
   if (json_info.count("_common_info") > 0) {
     std::vector<int32_t> common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
-    if (common_info.size() != LENGTH_OF_COMMON_FIVE) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_common_info length in json compile info should be 5.");
+    if (common_info.size() < LEAST_LENGTH_OF_COMMON_FIVE) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_common_info length in json compile info should be at least 5.");
       return false;
     }
     // Get Data
@@ -105,6 +109,14 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
     min_block_size = common_info[ARRAY_INDEX_2];
     atomic = (bool)common_info[ARRAY_INDEX_3];
     coef = common_info[ARRAY_INDEX_4];
+
+    if (common_info.size() > LEAST_LENGTH_OF_COMMON_FIVE) {
+      pad_max_entire_size = common_info[ARRAY_INDEX_5];
+      if (pad_max_entire_size <= 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad max entire size is %d that is illegal.", pad_max_entire_size);
+        return false;
+      }
+    }
   }
 
   if (json_info.count("_pattern_info") > 0) {
@@ -117,6 +129,10 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
 
   if (json_info.count("_ub_info") > 0) {
     ub_info = json_info.at("_ub_info").get<std::vector<int32_t>>();
+  }
+
+  if (json_info.count("_ub_info_pad") > 0) {
+    ub_info_pad = json_info.at("_ub_info_pad").get<std::vector<int32_t>>();
   }
 
   return true;
@@ -238,8 +254,8 @@ int32_t Reduce::GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx)
 int32_t Reduce::CalcTilingKey() {
   using namespace std;
   int db = 0;
-  int shape_type = 0;
-  vector<int> pos = {db, shape_type, reduceTilingInfo.block_tiling_axis, reduceTilingInfo.ub_tiling_axis, pattern};
+  vector<int> pos = {db, reduceTilingInfo.sch_type, reduceTilingInfo.block_tiling_axis,
+                     reduceTilingInfo.ub_tiling_axis, pattern};
   vector<int> coefficient = {1000000000, 10000000, 1000000, 100000, 100};
   int32_t key = 0;
   for (size_t i = 0; i < coefficient.size(); i++) {
@@ -391,39 +407,7 @@ void Reduce::FusedReduceAxis() {
   reduce_axis.resize(capacity_axis);
 }
 
-void Reduce::ChooseAtomic() {
-  // Layer 0 Check if atomic is enabled
-  bool atomic_available = compileInfo.atomic;
-  // Layer 1 Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
-  //         Check normal atomic rules
-  reduceTilingInfo.atomic = total_output_count <= ubSizeB &&
-                       total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
-                       total_output_count < static_cast<int64_t>(compileInfo.core_num) * block_size / BASE_2 &&
-                       total_reduce_count > static_cast<int64_t>(compileInfo.core_num) / BASE_2;
-  // Layer 2 Check if it is nlast_reduce
-  //         Check if it is in a0, r, a1 pattern and a0 is 0
-  bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
-                                             (int32_t)1) != reduce_axis.end() &&
-                                             input_shape[0] == (int32_t)1 &&
-                                             std::find(reduce_axis.begin(), reduce_axis.end(),
-                                                 static_cast<int32_t>(output_shape.size() - 1)) == reduce_axis.end();
-  // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
-  bool output_shape_limitation = total_output_count <= ubSizeB;
-  // Check if outermost reduce axis is larger than or equal to core_num
-  bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * BASE_4;
-  // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = ((static_cast<uint32_t>(pattern) & 1) == 1) &&
-                                        (input_shape[input_shape.size() - 1] < ubSizeB);
-  // AND expression for all checks
-  bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
-  // check extracted here because of 120 characters per line static check rule
-  reduceTilingInfo.atomic = reduceTilingInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
-  // Final
-  reduceTilingInfo.atomic = reduceTilingInfo.atomic && atomic_available;
-}
-
-void Reduce::ChooseUBInfo() {
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+void Reduce::GetReduceShapeCommonInfo() {
   total_output_count = 1;
   total_reduce_count = 1;
   output_shape.resize(input_shape.size());
@@ -441,30 +425,142 @@ void Reduce::ChooseUBInfo() {
       total_output_count *= input_shape[i];
     }
   }
+  block_size = compileInfo.min_block_size;
+}
 
+void Reduce::ChooseAtomic() {
+  int64_t ub_info_size = compileInfo.ub_info[reduceTilingInfo.idx];
+  int64_t ub_info_rf_size = compileInfo.ub_info_rf[reduceTilingInfo.idx];
+  int64_t ub_info_pad_size = compileInfo.ub_info_pad.size() == 0 ? 0 : compileInfo.ub_info_pad[reduceTilingInfo.idx];
+  int64_t mib_ub_info_size = ub_info_size < ub_info_rf_size ? ub_info_size : ub_info_rf_size;
+  mib_ub_info_size = ub_info_pad_size != 0 && ub_info_pad_size < mib_ub_info_size ?
+                                                              ub_info_pad_size : mib_ub_info_size;
+
+  // Layer 0 Check if atomic is enabled
+  bool atomic_available = compileInfo.atomic;
+  // Layer 1 Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
+  //         Check normal atomic rules
+  reduceTilingInfo.atomic = total_output_count <= mib_ub_info_size &&
+                       total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
+                       total_output_count < static_cast<int64_t>(compileInfo.core_num) * block_size / BASE_2 &&
+                       total_reduce_count > static_cast<int64_t>(compileInfo.core_num) / BASE_2;
+  // Layer 2 Check if it is nlast_reduce
+  //         Check if it is in a0, r, a1 pattern and a0 is 0
+  bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
+                                             (int32_t)1) != reduce_axis.end() &&
+                                             input_shape[0] == (int32_t)1 &&
+                                             std::find(reduce_axis.begin(), reduce_axis.end(),
+                                                 static_cast<int32_t>(output_shape.size() - 1)) == reduce_axis.end();
+  // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
+  bool output_shape_limitation = total_output_count <= mib_ub_info_size;
+  // Check if outermost reduce axis is larger than or equal to core_num
+  bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * BASE_4;
+  // Check nlast_reduce again
+  bool n_last_reduce_shape_limitation = ((static_cast<uint32_t>(pattern) & 1) == 1) &&
+                                        (input_shape[input_shape.size() - 1] < mib_ub_info_size);
+  // AND expression for all checks
+  bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
+  // check extracted here because of 120 characters per line static check rule
+  reduceTilingInfo.atomic = reduceTilingInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
+  // Final
+  reduceTilingInfo.atomic = reduceTilingInfo.atomic && atomic_available;
+}
+
+bool Reduce::IsReducePadCase() const {
+  // no pad_max_entire_size given , avoid old ut error
+  if ( -1 == compileInfo.pad_max_entire_size) {
+    return false;
+  }
+
+  // not support pad in tilingcase
+  if (compileInfo.ub_info_pad.size() == 0 ||
+      compileInfo.ub_info_pad[reduceTilingInfo.idx] == 0) {
+    return false;
+  }
+
+  // support only one reduce axis
+  if (reduce_axis.size() > 1) {
+    return false;
+  }
+
+  // input shape size limit in 2 and 3
+  int32_t input_shape_size = input_shape.size();
+  if (input_shape_size < SHAPE_LENGTH_TWO || input_shape_size > SHAPE_LENGTH_THREE) {
+    return false;
+  }
+
+  // last dim is not align
+  if (input_shape.back() % block_size == 0) {
+    return false;
+  }
+
+  // last dim is not small enough
+  int32_t pad_max_entire_size = compileInfo.pad_max_entire_size;
+  int32_t last_dim = input_shape[input_shape.size() - 1];
+  int32_t last_dim_align = (last_dim + block_size - 1) / block_size * block_size;
+  if (compileInfo.ub_info_pad[reduceTilingInfo.idx] / pad_max_entire_size < last_dim_align) {
+    return false;
+  }
+
+  // number of not 1 axis should be greater than or equal to 2
+  std::size_t count_one = 0;
+  for (const auto& single_dim : input_shape) {
+    if (single_dim == 1) {
+      count_one++;
+    }
+  }
+  if (input_shape.size() - count_one < MIN_NOT_ONE_AXIS_NUM) {
+    return false;
+  }
+
+  return IsEnableReducePad();
+}
+
+bool Reduce::IsEnableReducePad() const {
+  int32_t input_shape_size = input_shape.size();
+  int32_t core_num = compileInfo.core_num;
+  int32_t pad_max_entire_size = compileInfo.pad_max_entire_size;
+  if ((input_shape_size == SHAPE_LENGTH_TWO &&
+                !reduceTilingInfo.atomic && input_shape[0] / core_num >= pad_max_entire_size)
+    ||(input_shape_size == SHAPE_LENGTH_THREE && ((reduceTilingInfo.atomic && input_shape[1] / core_num >=
+    pad_max_entire_size)||
+      (!reduceTilingInfo.atomic &&
+      ((input_shape[0] >= core_num && input_shape[0] / core_num * input_shape[1] >= pad_max_entire_size)
+       || (input_shape[0] < core_num && input_shape[0] != 1 && input_shape[2] < block_size
+           && input_shape[1] > pad_max_entire_size)))))) {
+    return true;
+  }
+
+  return false;
+}
+
+
+void Reduce::ChooseUBInfo() {
+  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
   // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
   // nodes after reduce(include reduce) have same space(ubSizeA)
   // nodes before reduce have same space(ubSizeB)
   // ubSizeB = ubSizeA * coef (max dtype)
-  reduceTilingInfo.max_ub_count = compileInfo.ub_info[reduceTilingInfo.idx];
-  ubSizeB = reduceTilingInfo.max_ub_count;
-  ubSizeA = ubSizeB / compileInfo.coef;
-  block_size = compileInfo.min_block_size;
+  reduceTilingInfo.max_ub_count =
+  ubSizeB = compileInfo.ub_info[reduceTilingInfo.idx];
 
   // According adaptation of SCH, choose the best UBInfo.
   // Rfactor only attached in Last Reduce.
-  if (is_last_axis_reduce) {
+  is_reduce_pad_case = IsReducePadCase();
+  if (is_reduce_pad_case) {
+    ubSizeB = compileInfo.ub_info_pad[reduceTilingInfo.idx];
+    reduceTilingInfo.sch_type = 1;
+  } else if (is_last_axis_reduce) {
     int64_t last_dim = input_shape[input_shape.size()-1];
     int64_t real_reduce_count = total_reduce_count / last_dim;
     last_dim = (last_dim + block_size - 1) / block_size * block_size;
     real_reduce_count *= last_dim;
-    bool ub_split_in_r = real_reduce_count > reduceTilingInfo.max_ub_count;
+    bool ub_split_in_r = real_reduce_count > ubSizeB;
     if (ub_split_in_r) {
-      reduceTilingInfo.max_ub_count = compileInfo.ub_info_rf[reduceTilingInfo.idx];
-      ubSizeB = reduceTilingInfo.max_ub_count;
-      ubSizeA = ubSizeB / compileInfo.coef;
+      ubSizeB = compileInfo.ub_info_rf[reduceTilingInfo.idx];
     }
   }
+  ubSizeA = ubSizeB / compileInfo.coef;
 }
 
 bool Reduce::GetUbTilingInfo() {
@@ -801,6 +897,7 @@ bool Reduce::ProcessNormalTiling() {
   // rewrite TilingInfo(ub)
   reduceTilingInfo.ub_tiling_axis = reduceTilingInfo.block_tiling_axis;
   reduceTilingInfo.ub_tiling_factor = reduceTilingInfo.block_tiling_factor;
+
   if (!GetUbTilingInfo()) {
     return false;
   }
@@ -976,6 +1073,7 @@ bool Reduce::WriteTilingData() {
     run_info.AddTilingData((int32_t)reduceTilingInfo.ub_tiling_factor);
     run_info.AddTilingData(static_cast<int32_t>(ubSizeB));
     run_info.AddTilingData(static_cast<int32_t>(ubSizeA));
+    run_info.AddTilingData(reduceTilingInfo.sch_type);
     run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
     return true;
   }
@@ -1079,9 +1177,7 @@ bool Reduce::MatchPattern() {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern is %d that not in pattern_info", pattern);
     return false;
   }
-  // Use compileInfo.idx to choose buffer's size
-  ChooseUBInfo();
-  ChooseAtomic();
+
   return true;
 }
 
@@ -1140,6 +1236,9 @@ bool Reduce::DoReduceTiling() {
   V_OP_TILING_CHECK(MatchPattern(),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MatchPattern Failed"),
                     return false);
+  GetReduceShapeCommonInfo();
+  ChooseAtomic();
+  ChooseUBInfo();
   V_OP_TILING_CHECK(TilingProcess(),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"),
                     return false);
@@ -1254,6 +1353,9 @@ bool Reduce::DoReduceTiling(const OpInfo& op_info) {
   V_OP_TILING_CHECK(CheckCompileInfoForCalculate(), VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                                              "CheckCompileInfoForCalculate Failed"), return false);
   V_OP_TILING_CHECK(MatchPattern(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MatchPattern Failed"), return false);
+  GetReduceShapeCommonInfo();
+  ChooseAtomic();
+  ChooseUBInfo();
   V_OP_TILING_CHECK(TilingProcess(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"), return false);
   V_OP_TILING_CHECK(FineTuning(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "FineTuning Failed"), return false);
 

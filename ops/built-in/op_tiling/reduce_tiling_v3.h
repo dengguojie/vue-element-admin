@@ -51,9 +51,11 @@ struct ReduceCompileInfo {
     int32_t core_num{-1};
     int32_t min_block_size{-1};
     int32_t coef{-1};
+    int32_t pad_max_entire_size{-1};
     std::vector<int32_t> pattern_info;
     std::vector<int32_t> ub_info_rf;
     std::vector<int32_t> ub_info;
+    std::vector<int32_t> ub_info_pad;
     std::pair<bool, std::vector<int32_t>> ori_axis;
     std::pair<bool, uint32_t> axes_idx;
     std::pair<bool, int32_t> compile_pattern;
@@ -73,7 +75,7 @@ struct ReduceTilingInfo {
   int64_t block_tiling_factor{-1};
   int32_t ub_tiling_axis{-1};
   int64_t ub_tiling_factor{-1};
-
+  int32_t sch_type{0};
   uint32_t const_block_dims{0};
   bool const_atomic_flag{false};
   bool atomic{false};
@@ -122,6 +124,7 @@ class Reduce {
   void FusedReduceAxis();
   void ChooseAtomic();
   void ChooseUBInfo();
+  void GetReduceShapeCommonInfo();
 
   bool TilingProcess();
   bool ProcessAtomicTiling();
@@ -137,6 +140,8 @@ class Reduce {
   void GetNotMulCoreBlockTiling();
   bool SetAttrVars(int32_t key) const;
   int32_t CalcTilingKey();
+  bool IsReducePadCase() const;
+  bool IsEnableReducePad() const;
 
  private:
   const std::string& op_type;
@@ -150,6 +155,7 @@ class Reduce {
   bool exit_non_reduce_zero_axis{false};
   int64_t fusion_dim_value{1};
   int64_t zero_tiling_key{0};
+  bool is_reduce_pad_case{false};
 
   std::vector<int64_t> input_shape_ori;
   std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};

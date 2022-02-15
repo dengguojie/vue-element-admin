@@ -65,6 +65,7 @@ ZERO = "zero"
 DEFAULT = "default"
 OP_TYPE_AUTO_TILING = "AutoTiling"
 TILINGKEY_NONE_REDUCE_AXIS = 2 ** 31 - 2
+REDUCE_CASE_LENGTH_TWO = 2
 
 BlkOuter = "block_outer"
 BlkInner = "block_inner"
@@ -75,6 +76,21 @@ R = "R"
 REDUCE_COMPUTE = {
     "reduce_min", "reduce_max", "reduce_sum",
     "reduce_prod", "tuple_reduce_sum",
+}
+
+DTYPE_AND_BLOCK_SIZE_MAP = {
+    "bool": 32,
+    "int8": 32,
+    "uint8": 32,
+    "float16": 16,
+    "float32": 8,
+    "int32": 8,
+    "int64": 4
+}
+
+REDUCE_SUPPORT_PAD = {
+    2: {"0_0": False},
+    3: {"0_0": True, "0_1": True, "1_1": False, "1_0": False}
 }
 
 
@@ -130,39 +146,51 @@ class CalcReduceTilingCase(Computation):
         # Different Cases
         tiling_case_list: List[ReduceTilingCase] = []
         if current_compute.get("_mode") == CONST:
-            # Get all possible ub_info
-            possible_case_list = []
-            possible_case_list += _calculate_tiling_cases(single_reduce_info)
-            possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
-            for _case in possible_case_list:
-                ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
-            apply_dyn_compile_info(single_reduce_info, possible_case_list, model=CONST)
-            # Get Real TilingCase
-            cst_case = ReduceTilingCase()
-            _gen_const_tiling_case(single_reduce_info, compute_graph_info, cst_case)
-            tiling_case_list.append(cst_case)
+            def _calc_const_case(const_tiling_case_list):
+                # Get all possible ub_info
+                possible_case_list = []
+                possible_case_list += _calculate_tiling_cases(single_reduce_info)
+                possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+                for _case in possible_case_list:
+                    if _case.is_reduce_pad_case:
+                        ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case, True)
+                    else:
+                        ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
+                apply_dyn_compile_info(single_reduce_info, possible_case_list, model=CONST)
+                # Get Real TilingCase
+                cst_case = ReduceTilingCase()
+                _gen_const_tiling_case(single_reduce_info, compute_graph_info, cst_case)
+                const_tiling_case_list.append(cst_case)
+
+            _calc_const_case(tiling_case_list)
         elif current_compute.get("_mode") == ZERO:
             # SingleCase
             tiling_case_list += [_gen_zero_tiling_case(), ]
             ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, tiling_case_list[0])
             add_compile_info_inner("_zero_ub_factor", tiling_case_list[0].tensor_ub_size_after_reduce)
         else:
-            tiling_case_list += _calculate_tiling_cases(single_reduce_info)
-            tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
-            for tiling_case in tiling_case_list:
-                _calc_tiling_key(single_reduce_info, tiling_case)
-            # Empty schedule will always be there in the tiling_case_list
-            # noinspection PyProtectedMember
-            if "_empty_schedule_flag" not in get_context()._addition:
-                tiling_case_list.append(ReduceTilingCase())
-                tiling_case_list[-1].type = ReduceTilingCase.Type.EMPTY
-                get_context().add("_empty_schedule_flag", True)
+            def _calc_dynamic_case(dynamic_tiling_case_list):
+                dynamic_tiling_case_list += _calculate_tiling_cases(single_reduce_info)
+                dynamic_tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+                for tiling_case in dynamic_tiling_case_list:
+                    _calc_tiling_key(single_reduce_info, tiling_case)
+                # Empty schedule will always be there in the tiling_case_list
+                # noinspection PyProtectedMember
+                if "_empty_schedule_flag" not in get_context()._addition:
+                    dynamic_tiling_case_list.append(ReduceTilingCase())
+                    dynamic_tiling_case_list[-1].type = ReduceTilingCase.Type.EMPTY
+                    get_context().add("_empty_schedule_flag", True)
 
-            for _case in tiling_case_list:
-                if _case.type == ReduceTilingCase.Type.EMPTY:
-                    continue
-                ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
-            apply_dyn_compile_info(single_reduce_info, tiling_case_list)
+                for _case in dynamic_tiling_case_list:
+                    if _case.type == ReduceTilingCase.Type.EMPTY:
+                        continue
+                    if _case.is_reduce_pad_case:
+                        ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case, True)
+                    else:
+                        ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
+                apply_dyn_compile_info(single_reduce_info, dynamic_tiling_case_list)
+
+            _calc_dynamic_case(tiling_case_list)
 
         return tiling_case_list
 
@@ -303,6 +331,8 @@ class ReduceTilingCase(TilingCaseBase):
         self.tiling_key = 2 ** 31 - 1
         self.tensor_ub_size_before_reduce: Optional[int] = None
         self.tensor_ub_size_after_reduce: Optional[int] = None
+        self.is_reduce_pad_case = False
+        self.need_remove_pad = False
 
     def __repr__(self):
         segment0 = self.type.value
@@ -451,7 +481,7 @@ def apply_common_compile_info(graph_info, reduce_info):
             core_num = get_soc_spec("CORE_NUM")
             keep_dims = 1
             min_block_size = int(32 // DTYPE_BYTE_MAPPING[graph_info.min_type])
-            common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef]
+            common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef, graph_info.pad_max_entire_size]
             add_compile_info_inner("_common_info", common_info)
     else:
         raise RuntimeError("pre_compile_info is Null")
@@ -486,50 +516,57 @@ def apply_dyn_compile_info(reduce_info, tiling_case_list, model="dynamic"):
             current_pattern = [pattern_info, ]
             ub_info = [None, ]
             ub_info_rf = [None, ]
+            pad_ub_info = [0, ]
         else:
             current_pattern = pre_compile_info.get("_pattern_info")
             ub_info = pre_compile_info.get("_ub_info")
             ub_info_rf = pre_compile_info.get("_ub_info_rf")
+            pad_ub_info = pre_compile_info.get("_ub_info_pad")
             current_pattern.append(pattern_info)
             ub_info.append(None)
             ub_info_rf.append(None)
+            pad_ub_info.append(0)
 
         # different tilings in the pattern
+        _idx = current_pattern.index(pattern_info)
         for _case in tiling_case_list:
             if _case.type == ReduceTilingCase.Type.EMPTY:
                 continue
 
             max_ub_count = _case.tensor_ub_size_before_reduce
-            _idx = current_pattern.index(pattern_info)
-            if _is_rfactor(_case):
-                ub_info_rf[_idx] = max_ub_count
-                if not ub_info[_idx]:
-                    ub_info[_idx] = max_ub_count
-            else:
-                ub_info[_idx] = max_ub_count
-                if not ub_info_rf[_idx]:
+            if not _case.is_reduce_pad_case:
+                if _is_rfactor(_case):
                     ub_info_rf[_idx] = max_ub_count
+                    if not ub_info[_idx]:
+                        ub_info[_idx] = max_ub_count
+                else:
+                    ub_info[_idx] = max_ub_count
+                    if not ub_info_rf[_idx]:
+                        ub_info_rf[_idx] = max_ub_count
+            else:
+                pad_ub_info[_idx] = max_ub_count
 
         add_compile_info_inner("_pattern_info", current_pattern)
         add_compile_info_inner("_ub_info_rf", ub_info_rf)
         add_compile_info_inner("_ub_info", ub_info)
+        add_compile_info_inner("_ub_info_pad", pad_ub_info)
 
 
 def _calc_tiling_key(reduce_info, tiling):
-    # tiling: single_case
-    shape = reduce_info.shape_before_reduce
-    reduce_axis_idx = reduce_info.reduce_axis_indexes
-    block_split_axis = tiling.block_split_axis_index
-    ub_split_axis = tiling.ub_split_axis_index
-    atomic = tiling.type == tiling.Type.ATOMIC_REDUCE
-    shape_type, db = 0, 0
-
     if get_context().get("_mode") == CONST:
         ori_axis = get_context().get_current_compute().get("_ori_axis")
         tiling_key = _gen_const_tiling_key(ori_axis)
     elif get_context().get("_mode") == ZERO:
         tiling_key = _gen_zero_tiling_key()
     else:
+        # tiling: single_case
+        shape = reduce_info.shape_before_reduce
+        reduce_axis_idx = reduce_info.reduce_axis_indexes
+        block_split_axis = tiling.block_split_axis_index
+        ub_split_axis = tiling.ub_split_axis_index
+        atomic = tiling.type == tiling.Type.ATOMIC_REDUCE
+        db = 0
+        shape_type = 1 if tiling.is_reduce_pad_case else 0
         tiling_key = _get_tiling_key(atomic, db, shape_type,
                                      block_split_axis, ub_split_axis,
                                      shape, reduce_axis_idx)
@@ -564,7 +601,8 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     add_compile_info_inner("_compile_pattern", _gen_const_tiling_key(compile_axis))
     run_info = op_tiling.do_op_tiling(OP_TYPE_AUTO_TILING, get_compile_info(), inputs, outputs)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int",
-                     "tensor_ub_size_before_reduce": "int", "tensor_ub_size_after_reduce": "int"}
+                     "tensor_ub_size_before_reduce": "int", "tensor_ub_size_after_reduce": "int",
+                     "sch_type": "int"}
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
     const_tiling_case.block_split_axis_index = tiling_data["block_axis"]
     const_tiling_case.block_factor = tiling_data["block_factor"]
@@ -575,6 +613,18 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     const_tiling_case.type = \
         const_tiling_case.Type.ATOMIC_REDUCE if run_info["clear_atomic"] else const_tiling_case.Type.NORMAL_REDUCE
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
+    const_tiling_case.is_reduce_pad_case = True if tiling_data["sch_type"] == 1 else False
+
+    def _calc_const_pad_case():
+        if const_tiling_case.is_reduce_pad_case:
+            B_U = str(const_tiling_case.block_split_axis_index) + "_" + str(const_tiling_case.ub_split_axis_index)
+            support_pattern = REDUCE_SUPPORT_PAD.get(len(shape_before_reduce))
+            if support_pattern is not None and B_U in support_pattern:
+                const_tiling_case.need_remove_pad = support_pattern.get(B_U)
+            else:
+                const_tiling_case.is_reduce_pad_case = False
+    _calc_const_pad_case()
+
     _calc_tiling_key(single_reduce_info, const_tiling_case)
     # the flag of invoking op_tiling interface during running
     add_compile_info_inner("_const_shape_post", True)
@@ -664,6 +714,16 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     return True
 
 
+def _gen_add_pad_case(block_split_axis_index, ub_split_axis_index, is_atomic):
+    tiling_case = ReduceTilingCase()
+    tiling_case.block_split_axis_index = block_split_axis_index
+    tiling_case.ub_split_axis_index = ub_split_axis_index
+    tiling_case.multi_core = True
+    tiling_case.is_reduce_pad_case = True
+    tiling_case.type = tiling_case.Type.ATOMIC_REDUCE if is_atomic else tiling_case.Type.NORMAL_REDUCE
+    return tiling_case
+
+
 def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]) -> NoReturn:
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indexes
@@ -672,21 +732,40 @@ def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: Lis
         _reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
 
     for i in range(0, len(reordered_shape)):
-        orignal_axis = reorder_to_orignal_axis_map[i]
+        orignal_axis = reorder_to_orignal_axis_map.get(i)
         if orignal_axis not in reduce_axis_index:
             block_split_axis = orignal_axis
 
             for j in range(0, len(reordered_shape)):
-                orignal_axis = reorder_to_orignal_axis_map[j]
+                orignal_axis = reorder_to_orignal_axis_map.get(j)
                 if orignal_axis not in reduce_axis_index and j < i:
                     continue
-                ub_split_axis = reorder_to_orignal_axis_map[j]
+                ub_split_axis = reorder_to_orignal_axis_map.get(j)
                 tiling_case = ReduceTilingCase()
                 tiling_case.type = tiling_case.Type.NORMAL_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
+
+                tiling_case_pad = _calc_add_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, False)
+                if tiling_case_pad is not None:
+                    tiling_case_list.append(tiling_case_pad)
+
+
+def _calc_add_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, is_atomic):
+    # for pure move case don't need do pad
+    first_dim_is_one = util.expr_equal(shape_before_reduce[0], 1)
+    if first_dim_is_one and len(shape_before_reduce) == REDUCE_CASE_LENGTH_TWO:
+        return None
+
+    B_U = str(block_split_axis) + "_" + str(ub_split_axis)
+    support_pattern = REDUCE_SUPPORT_PAD.get(len(shape_before_reduce))
+    if support_pattern is not None and B_U in support_pattern:
+        tiling_case_pad = _gen_add_pad_case(block_split_axis, ub_split_axis, is_atomic)
+        tiling_case_pad.need_remove_pad = support_pattern.get(B_U)
+        return tiling_case_pad
+    return None
 
 
 def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]):
@@ -697,18 +776,22 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
         _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index)
 
     for i in range(0, len(reordered_shape)):
-        orignal_axis = reorder_to_orignal_axis_map[i]
+        orignal_axis = reorder_to_orignal_axis_map.get(i)
         if orignal_axis not in reduce_axis_index:
             block_split_axis = orignal_axis
 
             for j in range(i, len(reordered_shape)):
-                ub_split_axis = reorder_to_orignal_axis_map[j]
+                ub_split_axis = reorder_to_orignal_axis_map.get(j)
                 tiling_case = ReduceTilingCase()
                 tiling_case.type = tiling_case.Type.NORMAL_REDUCE
-                tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
+                tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
+
+                tiling_case_pad = _calc_add_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, False)
+                if tiling_case_pad is not None:
+                    tiling_case_list.append(tiling_case_pad)
 
 
 def _gen_tiling_case_reduce_all(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]):
@@ -747,6 +830,10 @@ def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
+
+                tiling_case_pad = _calc_add_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, True)
+                if tiling_case_pad is not None:
+                    tiling_case_list.append(tiling_case_pad)
     return tiling_case_list
 
 
@@ -964,3 +1051,9 @@ def _current_support_check(outs):
         if not ret:
             _raise_error("Dynamic reduce schedule does "
                          "not support outputs before reduce tensor.")
+
+
+def get_block_size(dtype):
+    if dtype not in DTYPE_AND_BLOCK_SIZE_MAP:
+        _raise_error("[%s] is not support type in norm" % dtype)
+    return DTYPE_AND_BLOCK_SIZE_MAP.get(dtype)

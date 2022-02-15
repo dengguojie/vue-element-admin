@@ -92,7 +92,7 @@ class EntryReduceSchedule(Schedule):
         single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
         if tiling_case.type == tiling_case.Type.EMPTY:
             reduce_sch: EmptySchedule = EmptySchedule(graph_info)
-            real_schedule = reduce_sch.do_schedule(None)
+            real_schedule = reduce_sch.do_schedule(tiling_case)
         elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
             reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule(graph_info, single_reduce_info)
             if single_reduce_info.is_reduce_all_axes():
@@ -575,7 +575,7 @@ class ReduceSchedule(VectorSchedule):
                 reduce_ub_split_axis_outer = self.reduce_info.reduce_axis_indexes[-1]
 
         # Add anchor point
-        self.anchor_point_list.append(reduce_ub_tiling_tensor)
+        self.anchor_point_list.append([reduce_ub_tiling_tensor, "ub_anchor"])
         self.anchor_point_axis_index_list.append(reduce_ub_split_axis_outer)
 
         # rfactor
@@ -594,14 +594,14 @@ class ReduceSchedule(VectorSchedule):
                     reduce_ub_buffer, _index)
             )
 
-            self.anchor_point_list.append(reduce_ub_buffer)
+            self.anchor_point_list.append([reduce_ub_buffer, "ub_anchor"])
             self.anchor_point_axis_index_list.append(rf_ub_split_idx)
 
         block_tiling_tensor = self.block_tiling_info.tiling_tensor
         res_block_outer = self.block_tiling_result_pair[0]
 
         # Add anchor point
-        self.anchor_point_list.append(block_tiling_tensor)
+        self.anchor_point_list.append([block_tiling_tensor, "block_anchor"])
         self.anchor_point_axis_index_list.append(res_block_outer)
 
     def _calc_emit_insn(self):

@@ -52,8 +52,11 @@ from ...util import is_keepdims
 from ...util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
+from ...constants import DTYPE_BYTE_MAPPING
 
 CONST = "const"
+BLOCK_SIZE_BYTE = 32
+PAD_ALIGN_AXIS = -2
 
 
 class VectorSchedule(VectorScheduleBase, ABC):
@@ -256,6 +259,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
         self.emit_insn_list: List[VectorSchedule.EmitInsnInfo] = []
         # Pragma - Calculate
         self.pragma_list: List[VectorSchedule.PragmaInfo] = []
+        # for align pad
+        self._ori_and_align_pad_tensor_map = {}
+        # fro remove pad
+        self._ori_and_remove_pad_tensor_map = {}
 
     def _do_create_schedule(self) -> NoReturn:
         self.schedule: Schedule = tvm.create_schedule([tensor.op for tensor in self.graph_info.output_tensor_set])
@@ -277,13 +284,23 @@ class VectorSchedule(VectorScheduleBase, ABC):
                     if consumers is None:
                         result: Tensor = self.schedule.cache_write(tensor, source_buffer_scope)
                         self._data_flow_control_placeholder_map[(tensor, source_buffer_scope, None)] = result
+
+                        if self.tiling_case.need_remove_pad:
+                            remove_pad_buffer = self.schedule.cache_write(tensor, source_buffer_scope)
+                            self._ori_and_remove_pad_tensor_map[tensor] = remove_pad_buffer
+
                     else:
                         list_consumers = list(consumers)
                         for idx, consumer in enumerate(list_consumers):
                             if isinstance(consumer, VectorSchedule.Placeholder):
                                 list_consumers[idx] = self.solve_placeholder(consumer)
                         result: Tensor = self.schedule.cache_read(tensor, source_buffer_scope, list_consumers)
-                        self._data_flow_control_placeholder_map[(tensor, source_buffer_scope, consumers)] = result
+
+                        if self.tiling_case.is_reduce_pad_case:
+                            align_pad_buffer = self.schedule.cache_read(result, source_buffer_scope, list_consumers)
+                            self._ori_and_align_pad_tensor_map[result] = align_pad_buffer
+
+                    self._data_flow_control_placeholder_map[(tensor, source_buffer_scope, consumers)] = result
 
     def _do_compute_inline(self):
         for tensor in self.compute_inline_tensor_set:
@@ -294,6 +311,16 @@ class VectorSchedule(VectorScheduleBase, ABC):
         for tensor, storage_bound in self.storage_bound_map.items():
             stage: Stage = self.schedule[self.solve_placeholder(tensor)]
             stage.set_buffer_size(storage_bound)
+
+        # add for pad
+        for _, tensor in self._ori_and_align_pad_tensor_map.items():
+            ub_count = self.tiling_case.tensor_ub_size_before_reduce
+            stage: Stage = self.schedule[tensor]
+            stage.set_buffer_size(ub_count)
+        for _, tensor in self._ori_and_remove_pad_tensor_map.items():
+            ub_count = self.tiling_case.tensor_ub_size_after_reduce
+            stage: Stage = self.schedule[tensor]
+            stage.set_buffer_size(ub_count)
 
     def _do_tiling(self):
         def get_normal_tiling_parameters(_tiling: VectorSchedule.TilingInfo):
@@ -421,11 +448,18 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def _do_storage_align(self):
         for storage_align in self.storage_align_list:
             tensor = self.solve_placeholder(storage_align.tensor)
+            if tensor in self._ori_and_align_pad_tensor_map.keys():
+                continue
             axis = self.get_itervar_by_original_index(storage_align.tensor, storage_align.axis_index)
             factor = storage_align.factor
             offset = storage_align.offset
             stage: Stage = self.schedule[tensor]
             stage.storage_align(axis, factor, offset)
+        # add for pad
+        for _, tensor in self._ori_and_align_pad_tensor_map.items():
+            align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(tensor.dtype))
+            stage: Stage = self.schedule[tensor]
+            stage.storage_align(tensor.op.axis[PAD_ALIGN_AXIS], align_num, 0)
 
     def _do_compute_align(self):
         for compute_align in self.compute_align_list:
@@ -441,8 +475,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
             stage.compute_align(axis, factor, pad)
 
     def _do_compute_at(self):
-        for idx, anchor_point in enumerate(self.anchor_point_list):
+        for idx, anchor_point_temp in enumerate(self.anchor_point_list):
+            anchor_point = anchor_point_temp[0]
             all_producers = self.get_all_producer_stages(anchor_point)
+            compute_at_pattern = anchor_point_temp[1]
             anchor_point = self.solve_placeholder(anchor_point)
             anchor_stage = self.schedule[anchor_point]
             stage_axis_to_relations_map = self._get_stage_axis_to_relation_map(anchor_point)
@@ -450,7 +486,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if isinstance(anchor_axis_index, VectorSchedule.Placeholder):
                 anchor_axis = self.solve_placeholder(anchor_axis_index)
             elif isinstance(anchor_axis_index, int):
-                anchor_axis = self.get_itervar_by_original_index(self.anchor_point_list[idx], anchor_axis_index)
+                anchor_axis = self.get_itervar_by_original_index(self.anchor_point_list[idx][0], anchor_axis_index)
             else:
                 raise RuntimeError("Invalid Anchor point axis index %s for anchor point %d %s" % (anchor_axis_index,
                                                                                                   idx,
@@ -462,6 +498,20 @@ class VectorSchedule(VectorScheduleBase, ABC):
                     producer_stage: Stage = self.schedule[self.solve_placeholder(producer)]
                     producer_stage.compute_at(anchor_stage, anchor_axis)
                     self.compute_at_map[producer] = anchor_point
+
+                    if compute_at_pattern == "ub_anchor":
+                        for _, tensor in self._ori_and_align_pad_tensor_map.items():
+                            if tensor not in self.compute_at_map:
+                                stage: Stage = self.schedule[tensor]
+                                stage.compute_at(anchor_stage, anchor_axis)
+                                self.compute_at_map[tensor] = anchor_point
+
+                    if compute_at_pattern == "block_anchor":
+                        for _, tensor in self._ori_and_remove_pad_tensor_map.items():
+                            if tensor not in self.compute_at_map:
+                                stage: Stage = self.schedule[tensor]
+                                stage.compute_at(anchor_stage, anchor_axis)
+                                self.compute_at_map[tensor] = anchor_point
 
     def _do_emit_insn(self):
         for emitinsninfo in self.emit_insn_list:
@@ -476,6 +526,12 @@ class VectorSchedule(VectorScheduleBase, ABC):
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs={"storage_bound":[extra_space]})
             else:
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
+        for _, tensor in self._ori_and_align_pad_tensor_map.items():
+            stage: Stage = self.schedule[tensor]
+            stage.emit_insn(tensor.op.axis[0], "align_pad")
+        for _, tensor in self._ori_and_remove_pad_tensor_map.items():
+            stage: Stage = self.schedule[tensor]
+            stage.emit_insn(tensor.op.axis[0], "remove_pad")
 
     def _do_pragma(self):
         for pragmainfo in self.pragma_list:
