@@ -31,22 +31,11 @@
 #include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
-#include "util/error_util.h"
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
 #include "axis_util.h"
 #include "common_shape_fns.h"
 #include "util/vector_proto_profiling.h"
-
-#define ELLIPSIS_MASK_UPDATE(mask, new_mask, bit_ellipsis, i, pow_table, \
-                             right_mov)                                  \
-  do {                                                                   \
-    if (((mask) & (1 << i)) && (bit_ellipsis >= i)) {                    \
-      new_mask += pow_table[i];                                          \
-    } else if (((mask) & (1 << i)) && (bit_ellipsis < i)) {              \
-      new_mask += pow_table[i + right_mov];                              \
-    }                                                                    \
-  } while (0)
 
 namespace ge {
 static bool CheckListEmpty(const std::string& op_name, const std::vector<int64_t>& list, const std::string& attr_name) {
@@ -1675,6 +1664,44 @@ COMMON_INFER_FUNC_REG(StridedSliceD, StridedSliceDInferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceD);
 // ----------------StridedSliceD Op End-------------------
 
+IMPLEMT_INFER_DATA_SLICE(StridedSliceD, StridedSliceDInferDataSlice) {
+  // Get input shape
+  ge::Shape shape = op.GetInputDesc(0).GetOriginShape();
+  DataType input_dtype = op.GetInputDesc(0).GetDataType();
+
+  // Get relevant masks from const node
+  struct SliceMasks slice_masks = {};
+  if (GRAPH_FAILED == GetStridedSliceMasks(op, slice_masks)) {
+    return GRAPH_FAILED;
+  }
+
+  if (slice_masks.new_axis_mask != 0 || slice_masks.shrink_axis_mask != 0) {
+    OP_LOGD(TbeGetName(op), "data slice is only support for new_axis_mask == 0 and shrink_axis_mask == 0");
+    return NOT_SUPPORT_SLICE;
+  }
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  OP_LOGE_IF(!op_info, GRAPH_FAILED, TbeGetName(op), "GetOpDescFromOperator failed.");
+  auto output_desc = op_info->MutableOutputDesc(0);
+  OP_LOGE_IF(!output_desc, GRAPH_FAILED, TbeGetName(op), "Get output desc failed.");
+  vector<vector<int64_t>> output_data_slice;
+  OP_LOGE_IF(!AttrUtils::GetListListInt(output_desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice), GRAPH_FAILED,
+             op.GetName(), "Output no data slice, not need infer input");
+  if (!output_data_slice.empty()) {
+    auto desc =  op_info->MutableInputDesc(0);
+    OP_LOGE_IF(!output_desc, GRAPH_FAILED, TbeGetName(op), "Get input desc failed.");
+    OP_LOGE_IF(!AttrUtils::SetListListInt(desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice), GRAPH_FAILED,
+                 op.GetName(), "Set input(%s) data slice failed", desc->GetName().c_str());
+
+    return GRAPH_SUCCESS;
+  }
+
+  return NO_OVERLAP_DIM;
+}
+
+INFER_DATA_SLICE_FUNC_REG(StridedSliceD, StridedSliceDInferDataSlice);
+
+
 // ----------------stridedSlice Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
   const vector<string> depend_names = {"begin", "end", "strides"};
@@ -1745,7 +1772,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
     slice_params.stride_list.assign(begin_len, 1);
   }
 
-  vector<pair<int64_t,int64_t>> input_ranges;
+  vector<pair<int64_t, int64_t>> input_ranges;
   input_desc->GetShapeRange(input_ranges);
   if (input_ranges.empty()) {
     MakeUpShapeRange(shape.GetDims(), input_ranges);

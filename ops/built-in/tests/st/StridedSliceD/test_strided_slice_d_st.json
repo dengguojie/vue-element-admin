@@ -1177,7 +1177,7 @@
           {
             "format": "ND",
             "shape": [],
-            "type": ["float32"],
+            "type": ["float16"],
             "value_range": [[0, 1]],
             "data_distribute" : "uniform",
             "name": "x"

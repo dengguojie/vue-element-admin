@@ -22,8 +22,10 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_STRIDED_SLICE_INFER_SHAPE_H_
 #define OPS_BUILT_IN_OP_PROTO_STRIDED_SLICE_INFER_SHAPE_H_
 
+#include <algorithm>
 #include <vector>
 #include <string>
+#include <utility>
 #include "../op_proto/util/op_common_util.h"
 
 
@@ -538,10 +540,13 @@ static bool StridedSliceCommonInferShape(std::string op_name,
       final_output_shape.push_back(1);
       final_output_ranges.push_back({1, 1});
 
-      final_input_shape.push_back(1);
-      final_input_begin.push_back(0);
-      final_input_end.push_back(1);
-      final_input_strides.push_back(1);
+      // input is scalar
+      if (input_shape.empty()) {
+        final_input_shape.push_back(1);
+        final_input_begin.push_back(0);
+        final_input_end.push_back(1);
+        final_input_strides.push_back(1);
+      }
     } else {
       final_input_shape.push_back(input_shape[shrink_gather_index]);
       final_input_begin.push_back(processing_begin[shrink_gather_index]);
@@ -559,8 +564,10 @@ static bool StridedSliceCommonInferShape(std::string op_name,
   end = final_input_end;
   strides = final_input_strides;
 
+  OP_LOGD(op_name, "after infershape params:%s, output_shape:%s.", params.to_string().c_str(),
+          ops::to_string(output_shape).c_str());
 
   return true;
 }
 
-#endif //OPS_BUILT_IN_OP_PROTO_STRIDED_SLICE_INFER_SHAPE_H_
+#endif  // OPS_BUILT_IN_OP_PROTO_STRIDED_SLICE_INFER_SHAPE_H_

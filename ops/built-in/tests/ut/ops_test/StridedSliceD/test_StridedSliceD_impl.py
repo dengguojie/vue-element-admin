@@ -13,11 +13,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 SpaceToBatch ut case
 """
+import json
+from unicodedata import name
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
 import tensorflow as tf
+from impl.strided_slice_d import get_op_support_info
 ut_case = OpUT("StridedSliceD", None, None)
+
+# pylint: disable=unused-argument, import-outside-toplevel, invalid-name
 
 case1 = {"params": [{"shape": (8, 8, 16), "dtype": "float16", "format": "ND",
                      "ori_shape": (8, 8, 16), "ori_format": "ND"},
@@ -478,7 +483,20 @@ case50 = {"params": [{"shape": (1, 512, 32000), "dtype": "int64", "format": "ND"
          "expect": "success",
          "support_expect": True}
 
+case51 = {"params": [{"shape": [], "dtype": "float16", "format": "ND",
+                     "ori_shape": [], "ori_format": "ND"},
+                    {"shape": [1], "dtype": "float16", "format": "ND",
+                     "ori_shape": [1], "ori_format": "ND"},
+                    [0, 0], [3, 3], [1, 1], 0, 0, 1, 2, 0
+                    ],
+         "case_name": "StridedSliceD_scalar_input",
+         "expect": "success",
+         "support_expect": True}
+
 def test_op_select_format(test_arg):
+    """
+    test for op_select_format
+    """
     from impl.strided_slice_d import op_select_format
     op_select_format(
         {"shape": (20, 28, 16, 16, 33), "dtype": "float16", "format": "NDHWC", "ori_shape": (20, 28, 16, 16, 33),
@@ -508,6 +526,115 @@ def test_op_select_format(test_arg):
         {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),
          "ori_format": "NHWC"},
         [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 0)
+
+
+def test_get_op_support_info1(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, 16, 16, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 0)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 3
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0, 1, 2)
+
+
+def test_get_op_support_info2(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 32], [1, 1, 1, 1], 0, 0, 0, 0, 0)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 4
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0, 1, 2, 3)
+
+
+def test_get_op_support_info3(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 0)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 3
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0, 2, 3)
+
+
+def test_get_op_support_info4(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 1, 0)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 0
+
+
+def test_get_op_support_info5(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, -1, 16, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (16, -1, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, -1, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, -1, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 3, 3, 0, 0, 0)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 2
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0, 2)
+
+
+def test_get_op_support_info6(test_arg):
+    """
+    test for get_op_support_info
+    """
+    support_info = get_op_support_info(
+        {"shape": (16, 2, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 32),
+         "ori_format": "NHWC"},
+        {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NHWC"},
+        [0, 0, 0, 0], [16, 16, 16, 16], [1, 1, 1, 1], 0, 0, 0, 0, 3)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 0
+
 
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
@@ -559,8 +686,15 @@ ut_case.add_case(["all"], case47)
 ut_case.add_case(["all"], case48)
 ut_case.add_case(["all"], case49)
 ut_case.add_case(["all"], case50)
+ut_case.add_case(["all"], case51)
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info1)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info2)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info3)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info4)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info5)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info6)
 
 def calc_expect_func(x, y, begin, end, strides):
     inputArr = x['value']

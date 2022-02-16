@@ -36,52 +36,17 @@ from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
 from impl import strided_slice_last_dim_with_vreducev2
 from impl import strided_slice_strides_larger_than_one
+from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_common import is_unknown_rank_input
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
 BURST_LEN = 65535
-UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-AICORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-
-
-# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
-def get_op_support_info(input_x,
-                        output_x,
-                        begin,
-                        end,
-                        strides=None,
-                        begin_mask=0,
-                        end_mask=0,
-                        ellipsis_mask=0,
-                        new_axis_mask=0,
-                        shrink_axis_mask=0,
-                        kernel_name="strided_slice_d"):
-    """
-    get_op_support_info
-    """
-    format_x = input_x.get("format").upper()
-    shape_x_len = len(input_x.get("shape"))
-    slice_len = len(begin)
-    if format_x == "ND" and new_axis_mask == 0 and shrink_axis_mask == 0:
-        axis_split_matrix = []
-        for i in range(slice_len, shape_x_len):
-            split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
-            axis_split_matrix.append(split_0)
-        if slice_len == shape_x_len:
-            axis_split_matrix = None
-        axis_reduce_list = None
-
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-    return op_cal_info_in_json
-
 
 def _fill_list_with_ones(length):
     """
@@ -90,6 +55,47 @@ def _fill_list_with_ones(length):
     result_list = [1] * length
 
     return result_list
+
+
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
+def get_op_support_info(input_x, output_x, begin, end, strides=None,
+                        begin_mask=0, end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+                        kernel_name="strided_slice_d"):
+    """
+    get_op_support_info
+    """
+    input_ori_shape = input_x.get("ori_shape")
+    input_format = input_x.get("format").upper()
+    input_ori_format = input_x.get("ori_format").upper()
+    begin = list(begin)
+    end = list(end)
+    if strides is None:
+        strides = _fill_list_with_ones(len(input_ori_shape))
+    else:
+        strides = list(strides)
+
+    axis_reduce_list = []
+    axis_split_matrix = []
+    to_check_shapes = [input_x, output_x]
+    if (not is_unknown_rank_input(to_check_shapes) and
+            0 not in strides and new_axis_mask == 0 and shrink_axis_mask == 0):
+        _, input_shape, begin, end, strides = _infer_shape(input_ori_shape, begin, end,
+                                                           strides, begin_mask, end_mask,
+                                                           ellipsis_mask, new_axis_mask,
+                                                           shrink_axis_mask)
+        # _infer_shape make sure than begin, end and strides has same length
+        output_shape = list(map(lambda x, y, z: (x - y) // z, end, begin, strides))
+        for i, _ in enumerate(input_shape):
+            if input_shape[i] == output_shape[i] and input_shape[i] != -1:
+                axis = i
+                if input_ori_format != input_format:
+                    axis = util_common.update_axis_for_other_format(input_shape, i, input_format,
+                                                                    input_ori_format, False)
+                split_0 = [SplitInput([0, [axis], [-1], [-1]]), SplitOutput([0, [axis]])]
+                axis_split_matrix.append(split_0)
+
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def _build_dense_spec(sparse: dict, dense: dict):
@@ -325,10 +331,12 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
             shrink_gather_index = gather_index + 1
         elif gather_index == NEW_AXIS:
             final_shape.append(1)
-            final_input_shape.append(1)
-            final_input_begin.append(0)
-            final_input_end.append(1)
-            final_input_stride.append(1)
+            # input is scalar
+            if len(shape) == 0:
+                final_input_shape.append(1)
+                final_input_begin.append(0)
+                final_input_end.append(1)
+                final_input_stride.append(1)
         else:
             final_input_shape.append(shape[shrink_gather_index])
             final_input_begin.append(processing_begin[shrink_gather_index])
@@ -525,7 +533,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     calculate the split parameters according to different shapes
     """
     # size of ub
-    ub_size_bytes = UB_SIZE_B - 1024
+    ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 1024
     dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
     # 32 means one block size(32 Bytes), divide by 32 to get
     # the numbers of data that can be stored in one block.
@@ -561,7 +569,7 @@ def _tilling_axis(shape, dtype, no_remainder):
             split_factor = shape[last_not_one_axis]
 
     if no_remainder:
-        device_core_num = AICORE_NUM
+        device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         if len(shape) >= 2 and split_axis == 0 \
                 and device_core_num <= shape[0] < (2 * device_core_num) \
                 and shape[0] < BURST_LEN:
@@ -592,7 +600,7 @@ def _get_align_axis(out_shape):
 
 
 def _get_target_core_num(first_axis_size):
-    cloud_core_num = AICORE_NUM
+    cloud_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if first_axis_size % i == 0:
@@ -621,6 +629,7 @@ def _get_multicore(input_shape, dtype, split_axis, split_factor):
      judge the input args multicore situation
     """
     length = len(input_shape) - 1
+    aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     ub_number, block_number = _get_ub_block_num(dtype)
     result = False
     if split_axis == length:
@@ -629,7 +638,7 @@ def _get_multicore(input_shape, dtype, split_axis, split_factor):
             result = split_factor % block_number == 0
         else:
             result = split_factor % block_number == 0 and last_number % block_number == 0
-    elif input_shape[length] % block_number == 0 or (input_shape[length] > block_number and AICORE_NUM > 2):
+    elif input_shape[length] % block_number == 0 or (input_shape[length] > block_number and aicore_num > 2):
         result = True
     else:
         result = False
@@ -687,7 +696,7 @@ def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, stride
         if input_shape[i] != output_shape[i]:
             return False
     dtype_size = common_util.get_data_size(dtype)
-    total_ub_length = UB_SIZE_B // dtype_size
+    total_ub_length = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // dtype_size
     if len(input_shape) == 1:
         total_dim = input_shape[-1]
     else:
@@ -802,7 +811,7 @@ def _update_params_for_other_format(input_shape, begin, end, strides, input_form
         end_new = [end_nchw[0], end_c1, end_nchw[2], end_nchw[3], end_c0]
         strides_new = [strides_nchw[0], strides_c1, strides_nchw[2], strides_nchw[3], strides_c0]
         return begin_new, end_new, strides_new
-    
+
     return begin, end, strides
 
 
@@ -869,10 +878,8 @@ def op_select_format(input_x,
         > the Op StridedSliceD can process with NDC1HWC0:
         > input_x : Tensor of (shape=(16, 2, 16, 16, 16), "NC1HWC0")
         > output_x: Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
-        
 
-
-        2. In other scenes, The Op StridedSliceD only support ND
+        3. In other scenes, The Op StridedSliceD only support ND
         > for example:
         > input_x : Tensor (shape=(16, 16, 16, 16, 32), "NDHWC")
         > begin : [0, 0, 0, 0, 1]
@@ -1015,16 +1022,17 @@ def make_perf_params(output_shape, input_shape, input_begin, input_end, input_st
         perf_input_end.pop(-1)
         perf_input_strides.pop(-1)
 
+    aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     if (perf_output_shape[0] == perf_input_shape[0] and
-            perf_output_shape[0] % AICORE_NUM == 0 and
-            perf_output_shape[0] != AICORE_NUM):
+            perf_output_shape[0] % aicore_num == 0 and
+            perf_output_shape[0] != aicore_num):
         first_dim = perf_output_shape[0]
-        perf_output_shape.insert(0, AICORE_NUM)
-        perf_input_shape.insert(0, AICORE_NUM)
+        perf_output_shape.insert(0, aicore_num)
+        perf_input_shape.insert(0, aicore_num)
         perf_input_begin.insert(0, 0)
-        perf_input_end.insert(0, AICORE_NUM)
+        perf_input_end.insert(0, aicore_num)
         perf_input_strides.insert(0, 1)
-        loop = first_dim // AICORE_NUM
+        loop = first_dim // aicore_num
         perf_output_shape[1] = loop
         perf_input_shape[1] = loop
         perf_input_begin[1] = 0
@@ -1135,16 +1143,8 @@ def strided_slice_d(input_x,
                                    dtype=input_dtype,
                                    name='input_tensor')
 
-    [output, out_shape] = strided_slice_d_compute(input_tensor,
-                                                  output_x,
-                                                  begin,
-                                                  end,
-                                                  strides,
-                                                  begin_mask,
-                                                  end_mask,
-                                                  ellipsis_mask,
-                                                  new_axis_mask,
-                                                  shrink_axis_mask,
+    [output, out_shape] = strided_slice_d_compute(input_tensor, output_x, begin, end, strides,
+                                                  begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask,
                                                   kernel_name=kernel_name)
 
     # 'pylint: disable=locally-disabled,unnecessary-lambda
@@ -1158,12 +1158,15 @@ def strided_slice_d(input_x,
 
     output_dtype = output_x.get("dtype").lower()
     output_shape = output_x.get("shape")
+    input_shape = input_x.get("shape")
     if input_size == out_size:
         if output_dtype == "bool":
             input_x["dtype"] = "int8"
             output_x["dtype"] = "int8"
         if not output_shape:
             output_x["shape"] = (1,)
+        if not input_shape:
+            input_x["shape"] = (1,)
         copy_only.copy_only(input_x, output_x, kernel_name)
         return
 
@@ -1244,20 +1247,10 @@ def strided_slice_d(input_x,
         if res1:
             return
 
-    input_tensor = tvm.placeholder(input_shape,
-                                   dtype=input_dtype,
-                                   name='input_tensor')
+    input_tensor = tvm.placeholder(input_shape, dtype=input_dtype, name='input_tensor')
 
-    [output, out_shape] = strided_slice_d_compute(input_tensor,
-                                                  output_x,
-                                                  begin,
-                                                  end,
-                                                  strides,
-                                                  begin_mask,
-                                                  end_mask,
-                                                  ellipsis_mask,
-                                                  new_axis_mask,
-                                                  shrink_axis_mask,
+    [output, out_shape] = strided_slice_d_compute(input_tensor, output_x, begin, end, strides,
+                                                  begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask,
                                                   kernel_name=kernel_name)
 
     # 'pylint: disable=locally-disabled,unnecessary-lambda

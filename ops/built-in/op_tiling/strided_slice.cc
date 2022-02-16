@@ -24,6 +24,7 @@
 #include <string>
 #include <map>
 #include <cmath>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
@@ -225,11 +226,8 @@ static bool GetStridedSliceSocParams(const std::string& opType, const ge::Operat
   return true;
 }
 
-static void MakeSameDims(SliceParameters& parameters, const vector<int64_t>& shape) {
-  if (parameters.input.size() < shape.size()) {
-    return;
-  }
-
+static void MakeSameDims(SliceParameters* parametersPtr) {
+  auto& parameters = *parametersPtr;
   bool same_size = parameters.input.size() == parameters.begin_list.size() &&
                    parameters.input.size() == parameters.end_list.size() &&
                    parameters.input.size() == parameters.stride_list.size();
@@ -237,40 +235,17 @@ static void MakeSameDims(SliceParameters& parameters, const vector<int64_t>& sha
     return;
   }
 
-  std::vector<int64_t> tmp_input;
-  std::vector<int64_t> tmp_begin_list;
-  std::vector<int64_t> tmp_end_list;
-  std::vector<int64_t> tmp_stride_list;
-  std::vector<int64_t> tmp_output_shape;
+  parameters.output_shape.clear();
+  parameters.output_shape.reserve(parameters.input.size());
   bool wrong_dim = false;
   for (size_t i = 0, j = 0; i < parameters.input.size(); i++) {
-    if (j < shape.size() && parameters.input[i] == shape[j]) {
-      tmp_input.push_back(parameters.input[i]);
-      tmp_begin_list.push_back(parameters.begin_list[i]);
-      tmp_end_list.push_back(parameters.end_list[i]);
-      tmp_stride_list.push_back(parameters.stride_list[i]);
-      auto interval = parameters.end_list[i] - parameters.begin_list[i];
-      auto stride_i = parameters.stride_list[i];
-      if (stride_i == 0) {
-        stride_i = 1;
-      }
-      int64_t output_size = interval / stride_i + (interval % stride_i != 0 ? 1 : 0);
-      tmp_output_shape.push_back(output_size);
-      j++;
-      continue;
+    auto interval = parameters.end_list[i] - parameters.begin_list[i];
+    auto stride_i = parameters.stride_list[i];
+    if (stride_i == 0) {
+      stride_i = 1;
     }
-
-    if (parameters.input[i] != 1) {
-      wrong_dim = true;
-    }
-  }
-
-  if (!wrong_dim) {
-    parameters.input = tmp_input;
-    parameters.begin_list = tmp_begin_list;
-    parameters.end_list = tmp_end_list;
-    parameters.stride_list = tmp_stride_list;
-    parameters.output_shape = tmp_output_shape;
+    int64_t output_size = interval / stride_i + (interval % stride_i != 0 ? 1 : 0);
+    parameters.output_shape.push_back(output_size);
   }
 }
 
@@ -438,7 +413,7 @@ bool StridedSliceTiling(const std::string& opType, const ge::Operator& opParas, 
   slice_params.stride_list = input_params.strides;
   slice_params.output_shape = output_shape;
 
-  MakeSameDims(slice_params, input_shape);
+  MakeSameDims(&slice_params);
   OP_LOGD(opType.c_str(), "origin slice params: %s", slice_params.to_string().c_str());
 
   ge::DataType input_dtype = opdesc->GetDataType();
