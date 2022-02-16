@@ -106,5 +106,73 @@
           "type": "int"
          }
      ]
+  },
+  {
+    "op": "SplitVD",
+    "case_name" : "test_split_v_d_003",
+    "calc_expect_func_file": "test_splitvd_golden.py:calc_expect_func_case_3", 
+    "input_desc": [
+       {
+         "format": "NC1HWC0",
+         "shape": [1, 128, 18, 32, 32],
+         "ori_format": "NHWC",
+         "ori_shape": [1, 18, 32, 4096],
+         "type": "int8",
+         "value_range": [[0, 100]],
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "NC1HWC0",
+         "shape": [1, 32, 18, 32, 32],
+         "ori_format": "NHWC",
+         "ori_shape": [1, 18, 32, 1024],
+         "type": "int8",
+         "name": "y0"
+       },
+       {
+        "format": "NC1HWC0",
+        "shape": [1, 32, 18, 32, 32],
+        "ori_format": "NHWC",
+        "ori_shape": [1, 18, 32, 1024],
+        "type": "int8",
+        "name": "y1"
+       },
+       {
+        "format": "NC1HWC0",
+        "shape": [1, 32, 18, 32, 32],
+        "ori_format": "NHWC",
+        "ori_shape": [1, 18, 32, 1024],
+        "type": "int8",
+        "name": "y2"
+       },
+       {
+        "format": "NC1HWC0",
+        "shape": [1, 32, 18, 32, 32],
+        "ori_format": "NHWC",
+        "ori_shape": [1, 18, 32, 1024],
+        "type": "int8",
+        "name": "y3"
+       }
+     ],
+     "attr": [
+         {
+          "name": "size_splits",
+          "value": [1024,1024,1024,1024],
+          "type": "list_int"
+         },
+         {
+          "name": "split_dim",
+          "value": 3,
+          "type": "int"
+         },
+         {
+          "name": "num_split",
+          "value": 4,
+          "type": "int"
+         }
+     ]
   }
 ]
