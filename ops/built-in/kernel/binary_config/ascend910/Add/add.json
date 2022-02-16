@@ -1,0 +1,255 @@
+{
+  "op_type": "Add",
+  "op_list": [
+    {
+      "bin_filename": "Add_0",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "attrs": []
+    },
+    {
+      "bin_filename": "Add_1",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "attrs": []
+    },
+    {
+      "bin_filename": "Add_2",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "attrs": []
+    },
+    {
+      "bin_filename": "Add_3",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "attrs": []
+    },
+    {
+      "bin_filename": "Add_4",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "ND"
+        }
+      ],
+      "attrs": []
+    }
+  ]
+}
