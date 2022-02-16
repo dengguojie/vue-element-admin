@@ -1,7 +1,7 @@
 Function: Add all input tensors element-wise.
 
 
-## BatchMatmul算子介绍
+## Add3算子介绍
 ### 1. 算子功能
 把两个tensor所有元素相加。
 

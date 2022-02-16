@@ -1,6 +1,6 @@
 Function: Convert a sparse representation into a dense tensor.
 
-## Cast算子介绍
+## SparseToDense算子介绍
 ### 1. 算子功能
 稀疏矩阵转密集矩阵
 

@@ -1,6 +1,6 @@
 Function: Perform data normalization on FeatureMap
 
-## BasicLSTMCell算子介绍
+## BatchNorm算子介绍
 ### 1. 算子功能
 Batchnorm是深度网络中经常用到的加速神经网络训练，加速收敛速度及稳定性的算法.
 

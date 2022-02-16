@@ -1,6 +1,6 @@
 Function: Computes rectified linear: "max(x, 0)".
 
-## ReduceAll算子介绍
+## Relu算子介绍
 ### 1. 算子功能
 计算激活函数 relu，即 max(features, 0)。将大于0的保持不变，小于0的数置为0。
 

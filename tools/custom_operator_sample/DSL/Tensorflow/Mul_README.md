@@ -1,6 +1,6 @@
 Function: Return x1 * x2 element-wise
 
-## MaxPool算子介绍
+## Mul算子介绍
 ### 1. 算子功能
 计算两个tensor对应元素各自相乘
 

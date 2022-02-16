@@ -1,6 +1,6 @@
 Function: Returns locations of nonzero/true values in a tensor.
 
-## TopK算子介绍
+## Where算子介绍
 ### 1. 算子功能
 获取输入tensor中非零元素的位置
 
