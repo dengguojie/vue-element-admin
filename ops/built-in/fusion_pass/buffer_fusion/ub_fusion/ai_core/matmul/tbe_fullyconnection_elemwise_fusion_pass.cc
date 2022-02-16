@@ -396,6 +396,16 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
               elemWiseNode->GetName().c_str(), elemWiseNode->GetType().c_str());
       return SUCCESS;
     }
+    // fusion will break bmm + add/relu + elewise in TbeBatchMatmulElementWiseFusionPass
+    bool is_batchmatmul = fcNodes[0]->GetType() == "BatchMatMul" || fcNodes[0]->GetType() == "BatchMatMulV2";
+    bool is_wrong_type = elemWiseNode->GetType() == "Add" || elemWiseNode->GetType() == "Relu";
+    bool clear_fusion = is_batchmatmul && reluNodes.empty() && dequantNodes.empty() && is_wrong_type;
+    FUSION_PASS_CHECK(clear_fusion,
+                      OP_LOGD(FUSED_OP_TYPE.c_str(),
+                              "BatchMatmul + type[%s] is not supported for this ub fusion pass, skip fusion.",
+                              elemWiseNode->GetType().c_str()),
+                      fusionNodes.clear();
+                      return SUCCESS);
   }
   CheckOutputFusion(mapping, fusionNodes);
   SetSplitInfo(mapping, fusionNodes);
