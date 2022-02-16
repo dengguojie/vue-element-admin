@@ -46,7 +46,6 @@ set(local_kernels_src_files
     kernels/normalized/image_warp_offsets.cc
     kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
-    kernels/normalized/compare_and_bitpack.cc
     kernels/normalized/invgrad.cc
     kernels/normalized/is_close.cc
     kernels/normalized/is_inf.cc
@@ -127,6 +126,7 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/bitwise_or.cc
         kernels/normalized/custom/research/bitwise_xor.cc
         kernels/normalized/custom/research/bucketize.cc
+        kernels/normalized/custom/research/compare_and_bitpack.cc
         kernels/normalized/custom/research/cos.cc
         kernels/normalized/custom/research/diag.cc
         kernels/normalized/custom/research/diag_part.cc

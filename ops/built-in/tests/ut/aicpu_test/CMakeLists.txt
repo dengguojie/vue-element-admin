@@ -95,7 +95,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/check_numerics.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/combinations.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/compare_and_bitpack.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/conj.cc
@@ -111,6 +110,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_or.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_xor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bucketize.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/compare_and_bitpack.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/cos.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc
@@ -324,6 +324,7 @@ set(_cpu_kernels_ut_files
   testcase/common/src/node_def_utest.cpp
   testcase/common/src/sharder_utest.cpp
   testcase/common/src/tensor_utest.cpp
+  testcase/compare_and_bitpack/src/compare_and_bitpack_utest.cpp
   testcase/compute_accidental_hits/src/compute_accidental_hits_kernel_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/conj/src/conj_utest.cpp
@@ -370,7 +371,6 @@ set(_cpu_kernels_ut_files
   testcase/log1p/src/log1p_utest.cpp
   testcase/log_matrix_determinant/src/log_matrix_determinant_utest.cpp
   testcase/logging/src/logging_utest.cpp
-  testcase/compare_and_bitpack/src/compare_and_bitpack_utest.cpp
   testcase/logsoftmaxv2/src/logsoftmaxv2_utest.cpp
   testcase/lu/src/lu_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
