@@ -148,9 +148,11 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   OpDescUtils::ClearInputDesc(linSpaceDDesc, 0);
 
   // new the assist node
-  std::shared_ptr<ge::OpDesc> newConstantOp = std::make_shared<ge::OpDesc>(linSpaceDDesc->GetName() +
-                                                                           "_assist", "Constant");
-  FUSION_PASS_MAKE_SHARED(newConstantOp, return PARAM_INVALID);
+  std::shared_ptr<ge::OpDesc> newConstantOp = nullptr;
+  FUSION_PASS_MAKE_SHARED((newConstantOp = std::make_shared<ge::OpDesc>(
+                           linSpaceDDesc->GetName() + "_assist", "Constant")),
+                           return PARAM_INVALID);
+
   ge::AttrUtils::SetTensor(newConstantOp, "value", assitPtr);
   (void)newConstantOp->AddOutputDesc(assitPtr->GetTensorDesc());
   ge::NodePtr assistNode = graph.AddNode(newConstantOp);
