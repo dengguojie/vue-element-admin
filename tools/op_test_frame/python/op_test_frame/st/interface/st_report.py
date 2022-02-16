@@ -54,6 +54,7 @@ class OpSTCaseReport:
         self.case_name = case_run_trace.st_case_info.case_name
         self.status = op_status.SUCCESS
         self.trace_detail = case_run_trace
+        self.expect = ConstManager.EXPECT_SUCCESS
 
     def update_case_status(self):
         """
@@ -65,6 +66,22 @@ class OpSTCaseReport:
             if not stage_res.is_success():
                 self.status = op_status.FAILED
 
+    def update_case_expect(self, expect_dict):
+        """
+        update case expect
+        :param: expect_dict
+        """
+        if "_sub_case" in self.case_name:
+            sub_str_index = self.case_name.rfind("_sub_case")
+        elif "_fuzz_case" in self.case_name:
+            sub_str_index = self.case_name.rfind("_fuzz_case")
+        else:
+            sub_str_index = self.case_name.rfind("_case")
+        parent_case_name = self.case_name[:sub_str_index]
+        if parent_case_name in expect_dict.keys() and \
+                expect_dict.get(parent_case_name) == ConstManager.EXPECT_FAILED:
+            self.expect = ConstManager.EXPECT_FAILED
+
     def to_json_obj(self):
         """
         generate json
@@ -73,6 +90,7 @@ class OpSTCaseReport:
         return {
             "case_name": self.case_name,
             "status": self.status,
+            "expect": self.expect,
             "trace_detail": None if not self.trace_detail else self.trace_detail.to_json_obj()
         }
 
@@ -98,8 +116,37 @@ class OpSTReport:
         self.total_cnt = 0
         self.failed_cnt = 0
         self.success_cnt = 0
-        self.err_cnt = 0
         self.report_list = []
+        self.expect_dict = {}
+
+    def set_expect(self, input_json_path):
+        """
+        set expect value from json
+        param input_json_path: input json file path
+        return: None
+        """
+        op_case_list = utils.load_json_file(input_json_path)
+        for op_case in op_case_list:
+            op_case_name = op_case.get(ConstManager.CASE_NAME)
+            self.expect_dict[op_case_name] = ConstManager.EXPECT_SUCCESS
+            if "expect" in op_case.keys():
+                expect_value = op_case.get("expect")
+                if expect_value in [ConstManager.EXPECT_SUCCESS, ConstManager.EXPECT_FAILED]:
+                    self.expect_dict[op_case_name] = expect_value
+                else:
+                    utils.print_warn_log("please use 'success' or 'failed' for the value of expect,"
+                                         "the default value 'success' is used here.")
+
+    def update_cnt(self, case: OpSTCaseReport):
+        """
+        update all kinds of cnt
+        :param case: OpStCaseReport object
+        """
+        self.total_cnt += 1
+        if case.status == case.expect:
+            self.success_cnt += 1
+        else:
+            self.failed_cnt += 1
 
     def add_case_report(self, case_rpt: OpSTCaseReport):
         """
@@ -133,7 +180,15 @@ class OpSTReport:
         report_tuple = (case_rpt.to_json_obj() for case_rpt in self.report_list)
         return {
             "run_cmd": self.run_cmd,
-            "report_list": list(report_tuple)
+            "report_list": list(report_tuple),
+            "summary": self._summary_to_json()
+        }
+
+    def _summary_to_json(self):
+        return {
+            "test case count": self.total_cnt,
+            "success count": self.success_cnt,
+            "failed count": self.failed_cnt
         }
 
     def _summary_txt(self):
@@ -141,13 +196,8 @@ class OpSTReport:
             return ""
         for case in self.report_list:
             case.update_case_status()
-            self.total_cnt += 1
-            if case.status == op_status.SUCCESS:
-                self.success_cnt += 1
-            if case.status == op_status.FAILED:
-                self.failed_cnt += 1
-            if case.status == op_status.ERROR:
-                self.err_cnt += 1
+            case.update_case_expect(self.expect_dict)
+            self.update_cnt(case)
 
         total_txt = """========================================================================
 run command: %s
@@ -155,10 +205,8 @@ run command: %s
 - test case count: %d
 - success count: %d
 - failed count: %d
-- error count: %d
 ------------------------------------------------------------------------
-""" % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt,
-       self.err_cnt)
+""" % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt)
         total_txt += "========================================================================\n"
         return total_txt
 

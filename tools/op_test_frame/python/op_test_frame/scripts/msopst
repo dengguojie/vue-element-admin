@@ -82,6 +82,7 @@ def _runner_and_compare(args, case_list, report, get_advance_args=None):
         runner.run()
         # compare
         result_comparer.compare(report, path, args.err_thr)
+    report.console_print()
 
 
 def _generate_testcase(args, report, machine_type):
@@ -148,6 +149,9 @@ def _do_run_cmd(args, report):
             utils.print_error_log(
                 'The value of "soc_version" is empty. Please modify it.')
             sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        # set expect value from json
+        input_json_path = os.path.realpath(args.input_file)
+        report.set_expect(input_json_path)
         if args.config_file != "":
             # check config_file invalid
             utils.check_path_valid(args.config_file)
@@ -175,6 +179,7 @@ def _gen_build_convert_run(args, report):
     elif acl_mode == ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
         _generate_run_cmd_op_project(args, report, False, get_advance_args)
+        report.console_print()
     elif acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
             acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
@@ -205,8 +210,9 @@ def _gen_build_convert_run(args, report):
             runner.run()
             # compare
             result_comparer.compare(report, path, args.err_thr)
-            report.save(report_path)
-            utils.print_info_log('The st report saved in: %s.' % report_path)
+        report.console_print()
+        report.save(report_path)
+        utils.print_info_log('The st report saved in: %s.' % report_path)
 
 
 def save_report(report, output_path):

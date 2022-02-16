@@ -211,17 +211,14 @@ class AtcTransformOm:
             atc_end_time = time.time()
             utils.print_info_log('Atc execute time: %f s.'
                                  % (atc_end_time - atc_start_time))
+            self.add_op_st_stage_result(op_status.SUCCESS,
+                                        "atc_single_op_convert",
+                                        None, cmd_str)
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED,
                                         "atc_single_op_convert",
                                         None, cmd_str)
-            if not os.path.exists(op_models_path) or not os.listdir(op_models_path):
-                raise utils.OpTestGenException(
-                    ConstManager.ATC_TRANSFORM_ERROR)
         finally:
             pass
-        self.add_op_st_stage_result(op_status.SUCCESS,
-                                    "atc_single_op_convert",
-                                    None, cmd_str)
         utils.print_info_log('Finish to convert single op.')
         os.chdir(origin_path)

@@ -283,6 +283,8 @@ class ConstManager:
     DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
     DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+    EXPECT_SUCCESS = "success"
+    EXPECT_FAILED = "failed"
 
     def get_op_name(self):
         """

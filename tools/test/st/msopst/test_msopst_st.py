@@ -46,6 +46,8 @@ INI_INPUT = './st/msopst/golden/base_case/input/conv2_d.ini'
 MODEL_ARGS = './st/msopst/golden/base_case/input/add.pb'
 ST_GOLDEN_OP_RESULT_TXT = './st/msopst/golden/base_case/input' \
                           '/result.txt'
+ST_GOLDEN_ABNORMAL_CASE_JSON_INPUT = './st/msopst/golden/base_case/input'\
+                                     '/test_add_abnormal_case.json'
 
 # AICPU_PARSE_HEAD_FILE OUTPUT
 BUCKETIZE_INI_INPUT = './st/msopst/golden/base_case/golden_output/aicpu' \
@@ -1038,6 +1040,19 @@ class TestUtilsMethods(unittest.TestCase):
             const_op_execute_cpp, ST_GOLDEN_CONST_INPUT_SRC_OP_EXECUTE))
         self.assertTrue(compare_context(
             const_acl_op_json, ST_GOLDEN_CONST_INPUT_CONFIG_ACL_OP))
+
+    def test_abnormal_case(self):
+        """
+        test abnormal case with input json
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_ABNORMAL_CASE_JSON_INPUT, '-soc',
+                'Ascend310', '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
 
     def test_const_input_with_no_value(self):
         """

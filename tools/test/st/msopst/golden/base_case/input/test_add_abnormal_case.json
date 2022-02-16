@@ -1,0 +1,71 @@
+[
+    {
+        "case_name": "Test_Add_001",
+        "expect": "failed",
+        "op": "Add",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int16"
+                ],
+                "shape": [
+                  1,
+                  2,
+                  4
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x1",
+                "data_distribution": [
+                    "uniform"
+                ]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                  1,
+                  2,
+                  4
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x2",
+                "data_distribution": [
+                    "uniform"
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [
+                  1,
+                  2,
+                  4
+                ],
+                "name": "y"
+            }
+        ]
+    }
+]
