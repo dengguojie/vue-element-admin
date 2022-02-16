@@ -24,6 +24,7 @@ import ast
 import stat
 import json
 import inspect
+import importlib
 import traceback
 from enum import Enum
 from typing import List
@@ -136,8 +137,8 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if __name__ == "__main__":
             ut_case.run("Ascend910", simulator_mode="pv", simulator_lib_path="xxx")
     """
-    _case_info_map: Dict[str, Union[op_ut_case_info.OpUTCase, op_ut_case_info.OpUTCustomCase]]
     KERNEL_DIR = os.path.realpath("./kernel_meta")
+    _case_info_map: Dict[str, Union[op_ut_case_info.OpUTCase, op_ut_case_info.OpUTCustomCase]]
     SOC_VERSION_STR = "SOC_VERSION"
 
     def __init__(self, op_type, op_module_name=None, op_func_name=None):
@@ -233,28 +234,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                         op_imply_type=op_imply_type,
                                         addition_params=case.get("addition_params", None))
 
-    def add_case(self, support_soc=None, case=None):
-        """
-        add a only test op compile case
-        :param support_soc: this case can test soc list
-        :param case: case info, this is a dict.
-        :return: None
-        """
-        if not support_soc:
-            support_soc = ("all",)
-
-        if not isinstance(support_soc, (tuple, list)):
-            support_soc = (support_soc,)
-
-        case_line_num = "unknown"
-        for stack in inspect.stack():
-            if not stack.filename.endswith("op_ut.py"):
-                case_line_num = stack.lineno
-                break
-
-        case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
-        self._case_info_map[case_info.case_name] = case_info
-
     @staticmethod
     def _gen_input_data(param_info):
         def _deal_data_path():
@@ -345,6 +324,28 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                 _add_to_params(output_list, arg)
         return output_list
 
+    def add_case(self, support_soc=None, case=None):
+        """
+        add a only test op compile case
+        :param support_soc: this case can test soc list
+        :param case: case info, this is a dict.
+        :return: None
+        """
+        if not support_soc:
+            support_soc = ("all",)
+
+        if not isinstance(support_soc, (tuple, list)):
+            support_soc = (support_soc,)
+
+        case_line_num = "unknown"
+        for stack in inspect.stack():
+            if not stack.filename.endswith("op_ut.py"):
+                case_line_num = stack.lineno
+                break
+
+        case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
+        self._case_info_map[case_info.case_name] = case_info
+
     def _build_data_file(self, file_name, run_soc_version, run_cfg: Dict = None):
         if run_cfg:
             data_root_dir = run_cfg.get("data_dump_path", "./data")
@@ -360,45 +361,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             with os.fdopen(os.open(data_path, Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
                 fout.write("")
         return data_path
-
-    def _save_data(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict = None):
-
-        def _save_input_data(one_param, idx):
-            input_data_file_name = "%s_input%s.bin" % (case_info.case_name, str(idx))
-            input_data_path = self._build_data_file(input_data_file_name, run_soc_version, run_cfg)
-            one_param["data_path"] = input_data_path
-            one_param["value"].tofile(input_data_path)
-
-        def _save_output_data(one_param, idx):
-            output_data_file_name = "%s_output%s.bin" % (case_info.case_name, str(idx))
-            expect_output_data_file_name = "%s_expect_output%s.bin" % (case_info.case_name, str(idx))
-            output_data_path = self._build_data_file(output_data_file_name, run_soc_version, run_cfg)
-            expect_output_data_path = self._build_data_file(expect_output_data_file_name, run_soc_version, run_cfg)
-            one_param["data_path"] = output_data_path
-            one_param["expect_data_path"] = expect_output_data_path
-            one_param["value"].tofile(output_data_path)
-            one_param["expect_value"].tofile(expect_output_data_path)
-
-        input_idx = 0
-        output_idx = 0
-        for arg in case_info.op_params:
-            param_type = OpUT._get_param_type(arg)
-            if param_type == "input":
-                if isinstance(arg, list):
-                    for sub_param in arg:
-                        _save_input_data(sub_param, input_idx)
-                        input_idx += 1
-                else:
-                    _save_input_data(arg, input_idx)
-                    input_idx += 1
-            if param_type == "output":
-                if isinstance(arg, list):
-                    for sub_param in arg:
-                        _save_output_data(sub_param, output_idx)
-                        output_idx += 1
-                else:
-                    _save_output_data(arg, output_idx)
-                    output_idx += 1
 
     def add_precision_case(self, support_soc=None, case=None):
         """
@@ -422,25 +384,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                 case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
 
-    def _build_custom_test_case(self, support_soc, test_func, case_line_no):
-        case_name = test_func.__name__
-        if case_name in self._case_info_map.keys():
-            idx = 1
-            while idx < 5000:
-                tmp_name = "".join([case_name, "__%d" % idx])
-                idx += 1
-                if tmp_name not in self._case_info_map.keys():
-                    case_name = tmp_name
-                    break
-        return op_ut_case_info.OpUTCustomCase(support_soc=support_soc,
-                                              op_type=self.op_type,
-                                              case_name=case_name,
-                                              case_usage=op_ut_case_info.CaseUsage.CUSTOM,
-                                              case_file=self.case_file,
-                                              case_line_num=case_line_no,
-                                              test_func_name=test_func.__name__,
-                                              test_func=test_func)
-
     def add_cust_test_func(self, support_soc=None, test_func=None):
         """
         add a custom test func
@@ -450,7 +393,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         """
         if not test_func:
             raise RuntimeError("add_cust_test_func failed, test func is None")
-        if not hasattr(test_func, "__call__"):
+        if not callable(test_func):
             raise RuntimeError("add_cust_test_func failed, test func is not a function.")
         if not support_soc:
             support_soc = ("all",)
@@ -503,35 +446,63 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             case_info_list.append(case_obj)
         return case_info_list
 
-    def _load_op_func(self):
-        try:
-            __import__(self.op_module_name)
-        except (ImportError, ModuleNotFoundError) as _:
-            # custom op and inner op both have parent dir impl，
-            # so when python_path contains two impl's parent dir,
-            # we need to add either impl dir to python_path
-            for dir_item in sys.path:
-                impl_dir = os.path.join(dir_item, "impl")
-                if os.path.exists(impl_dir):
-                    sys.path.append(impl_dir)
-            self.op_module_name = self.op_module_name.replace("impl.", "")
-            try:
-                __import__(self.op_module_name)
-            except (ImportError, ModuleNotFoundError) as _:
-                err_msg = "Can't import op module, please check you python path"
-                err_msg += ", op module name: %s" % self.op_module_name
-                err_trace = get_trace_info()
-                err_msg += ", err_trace: %s" % err_trace
-                return None, err_msg
+    def _save_data(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict = None):
 
-        op_module = sys.modules[self.op_module_name]
-        op_func = getattr(op_module, self.op_func_name)
-        if not op_func:
-            err_msg = "can't get op function in op module,"
-            err_msg += " op module name: %s, op function name: %s" % (self.op_module_name, self.op_func_name)
-            return None, err_msg
+        def _save_input_data(one_param, idx):
+            input_data_file_name = "%s_input%s.bin" % (case_info.case_name, str(idx))
+            input_data_path = self._build_data_file(input_data_file_name, run_soc_version, run_cfg)
+            one_param["data_path"] = input_data_path
+            one_param["value"].tofile(input_data_path)
 
-        return op_func, None
+        def _save_output_data(one_param, idx):
+            output_data_file_name = "%s_output%s.bin" % (case_info.case_name, str(idx))
+            expect_output_data_file_name = "%s_expect_output%s.bin" % (case_info.case_name, str(idx))
+            output_data_path = self._build_data_file(output_data_file_name, run_soc_version, run_cfg)
+            expect_output_data_path = self._build_data_file(expect_output_data_file_name, run_soc_version, run_cfg)
+            one_param["data_path"] = output_data_path
+            one_param["expect_data_path"] = expect_output_data_path
+            one_param["value"].tofile(output_data_path)
+            one_param["expect_value"].tofile(expect_output_data_path)
+
+        input_idx = 0
+        output_idx = 0
+        for arg in case_info.op_params:
+            param_type = OpUT._get_param_type(arg)
+            if param_type == "input":
+                if isinstance(arg, list):
+                    for sub_param in arg:
+                        _save_input_data(sub_param, input_idx)
+                        input_idx += 1
+                else:
+                    _save_input_data(arg, input_idx)
+                    input_idx += 1
+            if param_type == "output":
+                if isinstance(arg, list):
+                    for sub_param in arg:
+                        _save_output_data(sub_param, output_idx)
+                        output_idx += 1
+                else:
+                    _save_output_data(arg, output_idx)
+                    output_idx += 1
+
+    def _build_custom_test_case(self, support_soc, test_func, case_line_no):
+        case_name = test_func.__name__
+        if case_name in self._case_info_map.keys():
+            idx = 1
+            while idx < 5000:
+                tmp_name = "".join([case_name, "__%d" % idx])
+                idx += 1
+                if tmp_name not in self._case_info_map.keys():
+                    case_name = tmp_name
+                    break
+        return op_ut_case_info.OpUTCustomCase(support_soc=support_soc,
+                                              op_type=self.op_type,
+                                              case_name=case_name,
+                                              case_usage=op_ut_case_info.CaseUsage.CUSTOM,
+                                              case_file=self.case_file,
+                                              case_line_num=case_line_no,
+                                              test_func_name=test_func.__name__,
+                                              test_func=test_func)
 
     @staticmethod
     def _check_kernel_so_exist(kernel_meta_dir, kernel_name):
@@ -548,6 +519,36 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
     @staticmethod
     def _get_compile_info_file_name(kernel_name):
         return kernel_name + "_compile_info.json"
+
+    def _load_op_func(self):
+        try:
+            importlib.import_module(self.op_module_name)
+        except ImportError as _:
+            # custom op and inner op both have parent dir impl，
+            # so when python_path contains two impl's parent dir,
+            # we need to add either impl dir to python_path
+            for dir_item in sys.path:
+                impl_dir = os.path.join(dir_item, "impl")
+                if os.path.exists(impl_dir):
+                    sys.path.append(impl_dir)
+            self.op_module_name = self.op_module_name.replace("impl.", "")
+            try:
+                importlib.import_module(self.op_module_name)
+            except ImportError as _:
+                err_msg = "Can't import op module, please check you python path"
+                err_msg += ", op module name: %s" % self.op_module_name
+                err_trace = get_trace_info()
+                err_msg += ", err_trace: %s" % err_trace
+                return None, err_msg
+
+        op_module = sys.modules[self.op_module_name]
+        op_func = getattr(op_module, self.op_func_name)
+        if not op_func:
+            err_msg = "can't get op function in op module,"
+            err_msg += " op module name: %s, op function name: %s" % (self.op_module_name, self.op_func_name)
+            return None, err_msg
+
+        return op_func, None
 
     def _save_compile_info_json(self, kernel_name: str, compile_info: Any):
         compile_info_save_path = os.path.join(self.KERNEL_DIR, self._get_compile_info_file_name(kernel_name))
@@ -648,13 +649,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                            stage_name=op_ut_case_info.Constant.STAGE_COMPILE)
         return stage_status
 
-    def _run_compile_case(self, run_soc_version,
-                          case_info: op_ut_case_info.OpUTCase) -> ut_report.OpUTCaseReport:
-        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
-        stage_status = self._run_compile_stage(run_soc_version, case_info)
-        case_trace.add_stage_result(stage_status)
-        return ut_report.OpUTCaseReport(case_trace)
-
     @staticmethod
     def _get_simulator_mode(run_cfg):
         if not run_cfg or not isinstance(run_cfg, dict):
@@ -667,6 +661,13 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             return None
         return run_cfg.get("simulator_lib_path", None)
 
+    def _run_compile_case(self, run_soc_version,
+                          case_info: op_ut_case_info.OpUTCase) -> ut_report.OpUTCaseReport:
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        stage_status = self._run_compile_stage(run_soc_version, case_info)
+        case_trace.add_stage_result(stage_status)
+        return ut_report.OpUTCaseReport(case_trace)
+
     def _get_simulator_dump_path(self, simulator_mode, case_name, run_cfg):
         base_dir = "./model"
         if isinstance(run_cfg, dict):
@@ -676,15 +677,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if not os.path.exists(model_data_path):
             file_util.makedirs(model_data_path, Constant.DATA_DIR_MODES)
         return model_data_path
-
-    def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
-                   input_info_list: List, output_info_list: List):
-        from tbe.common.utils import op_tiling # 'pylint: disable=import-outside-toplevel
-        kernel_name = self._get_kernel_name(run_soc_version, case_info)
-        compile_info = self._get_compile_info(kernel_name)
-        tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
-                                             inputs=input_info_list, outputs=output_info_list)
-        return tiling_info.get("block_dim"), tiling_info.get("tiling_data")
 
     @staticmethod
     def _get_op_param_desc_info(op_func):
@@ -708,6 +700,15 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         node_iter.visit(ast.parse(inspect.getsource(op_func)))
 
         return param_desc_list, param_name_list
+
+    def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
+                   input_info_list: List, output_info_list: List):
+        from tbe.common.utils import op_tiling # 'pylint: disable=import-outside-toplevel
+        kernel_name = self._get_kernel_name(run_soc_version, case_info)
+        compile_info = self._get_compile_info(kernel_name)
+        tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
+                                             inputs=input_info_list, outputs=output_info_list)
+        return tiling_info.get("block_dim"), tiling_info.get("tiling_data")
 
     def _check_and_fix_param_desc(self, param_desc_list, op_params):
 
@@ -904,6 +905,14 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                 err_msg += "output %d precision compare failed, detail msg: %s" % (idx, cmp_res.err_msg)
         return compare_success, err_msg
 
+    @staticmethod
+    def _check_need_run_expect(run_args):
+        if not run_args:
+            return True
+
+        simulator_mode = run_args.get("simulator_mode")
+        return simulator_mode != "tm"
+
     def _run_data_compare_stage(self, case_info: op_ut_case_info.OpUTCase):
         compare_success, err_msg = self._compare_output(case_info)
         stage_status = op_ut_case_info.OpUTStageResult(
@@ -913,12 +922,25 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         return stage_status
 
     @staticmethod
-    def _check_need_run_expect(run_args):
-        if not run_args:
-            return True
-
-        simulator_mode = run_args.get("simulator_mode")
-        return simulator_mode != "tm"
+    def _run_custom_case(run_soc_version: str,
+                         case_info: op_ut_case_info.OpUTCustomCase) -> ut_report.OpUTCaseReport:
+        run_success = True
+        err_trace = None
+        try:
+            import tbe # 'pylint: disable=import-outside-toplevel
+            with tbe.common.context.op_context.OpContext("pre-static"):
+                case_info.test_func(run_soc_version)
+        except BaseException as _:  # 'pylint: disable=broad-except
+            run_success = False
+            err_trace = get_trace_info()
+        stage_status = op_ut_case_info.OpUTStageResult(
+            status=op_status.SUCCESS if run_success else op_status.FAILED,
+            stage_name=op_ut_case_info.Constant.STAGE_CUST_FUNC,
+            err_msg=None if run_success else "Failed",
+            err_trace=err_trace)
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        case_trace.add_stage_result(stage_status)
+        return ut_report.OpUTCaseReport(case_trace)
 
     def _run_precision_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
                             run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
@@ -944,30 +966,15 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         return ut_report.OpUTCaseReport(case_trace)
 
     @staticmethod
-    def _run_custom_case(run_soc_version: str,
-                         case_info: op_ut_case_info.OpUTCustomCase) -> ut_report.OpUTCaseReport:
-        run_success = True
-        err_trace = None
-        try:
-            import tbe # 'pylint: disable=import-outside-toplevel
-            with tbe.common.context.op_context.OpContext("pre-static"):
-                case_info.test_func(run_soc_version)
-        except BaseException as _:  # 'pylint: disable=broad-except
-            run_success = False
-            err_trace = get_trace_info()
-        stage_status = op_ut_case_info.OpUTStageResult(
-            status=op_status.SUCCESS if run_success else op_status.FAILED,
-            stage_name=op_ut_case_info.Constant.STAGE_CUST_FUNC,
-            err_msg=None if run_success else "Failed",
-            err_trace=err_trace)
-        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
-        case_trace.add_stage_result(stage_status)
-        return ut_report.OpUTCaseReport(case_trace)
+    def _set_run_soc(run_soc_version):
+        # there is a bug in te, we can't import te before tensorflow, so can't import te outside
+        from te.platform import te_set_version  # 'pylint: disable=import-outside-toplevel
+        te_set_version(run_soc_version)
 
     def _run_one_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
                       run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
+        case_rpt = None
         try:
-            case_rpt = None
             if case_info.case_usage == op_ut_case_info.CaseUsage.IMPL:
                 case_rpt = self._run_compile_case(run_soc_version, case_info)
             elif case_info.case_usage == op_ut_case_info.CaseUsage.PRECISION:
@@ -985,12 +992,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             case_trace.add_stage_result(stage_status)
             case_rpt = ut_report.OpUTCaseReport(case_trace)
         return case_rpt
-
-    @staticmethod
-    def _set_run_soc(run_soc_version):
-        # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-        from te.platform import te_set_version  # 'pylint: disable=import-outside-toplevel
-        te_set_version(run_soc_version)
 
     def run_case(self, one_soc_version: str, case_name_list: List[str] = None,
                  case_usage_list: List = None, run_cfg: Dict[str, Any] = None) -> ut_report.OpUTReport:
@@ -1023,9 +1024,9 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         for case_name, case_info in self._case_info_map.items():
             if not case_info.check_support_soc(one_soc_version):
                 continue
-            if case_name_list and not case_name in case_name_list:
+            if case_name_list and case_name not in case_name_list:
                 continue
-            if case_usage_list and not case_info.case_usage in case_usage_list:
+            if case_usage_list and case_info.case_usage not in case_usage_list:
                 continue
             print("%s (%s) (%s) ... " % (case_name, self.op_type, case_info.case_usage.value), end="")
             case_cnt += 1
