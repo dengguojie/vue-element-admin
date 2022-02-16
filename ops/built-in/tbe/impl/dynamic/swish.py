@@ -16,6 +16,7 @@
 dynamic swish
 'y = x * sigmoid(scale * x)'
 """
+import math
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -25,6 +26,15 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    CONST_FP32_MAX = 3.4e+38
+    CONST_FP16_MAX = 65504
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -49,10 +59,19 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
     """
     dtype = data_input.dtype
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    # avoid data overflow
+    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if dtype == "float32" and exp_support:
+            ln_res = math.log(Constant.CONST_FP32_MAX)
+            ln_res = int(ln_res * 10) / 10
+        else:
+            ln_res = math.log(Constant.CONST_FP16_MAX)
+            ln_res = int(ln_res * 1000) / 1000
+        data_scale = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
+        tmp_negative = tbe.vmins(data_scale, ln_res)
+    else:
+        tmp_negative = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
 
-    if dtype == "float16":
-        data_input_fp32 = tbe.cast_to(data_input, "float32")
-    tmp_negative = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
     if dtype == "float32" and not exp_support:
         tmp_negative = tbe.cast_to(tmp_negative, "float16")
     tmp_exp = tbe.vexp(tmp_negative)
@@ -60,6 +79,7 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
 
     tmp_sum = tbe.vadds(tmp_exp, tvm.const(1, dtype=dtype))
     if dtype == "float16":
+        data_input_fp32 = tbe.cast_to(data_input, "float32")
         res_fp32 = tbe.vdiv(data_input_fp32, tmp_sum)
         return tbe.cast_to(res_fp32, "float16")
     return tbe.vdiv(data_input, tmp_sum)
