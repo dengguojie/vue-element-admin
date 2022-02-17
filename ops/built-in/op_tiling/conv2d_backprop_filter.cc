@@ -25,8 +25,11 @@
 #include "op_tiling.h"
 #include "op_log.h"
 #include "graph/debug/ge_log.h"
+#include "graph/compute_graph.h"
 #include "graph/ge_tensor.h"
+#include "graph/graph.h"
 #include "graph/op_desc.h"
+#include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/type_utils.h"
 #include "external/graph/operator.h"
@@ -204,6 +207,25 @@ bool TransformShape(const ge::ConstGeTensorDescPtr& tensor, std::vector<int64_t>
   return true;
 }
 
+void ModifyPad(conv2d_dw::Conv2dBpFilterParas& params) {
+  GELOGD("before update pads, the pad_u is %d, pad_d is %d, pad_l is %d, pad_r is %d",
+         params.pad_u, params.pad_d, params.pad_l, params.pad_r);
+  int64_t filter_dilation_h = (params.kh - 1) * params.dilation_h + 1;
+  int64_t filter_dilation_w = (params.kw - 1) * params.dilation_w + 1;
+  int64_t pad_h = std::max(
+      (int64_t)(Align(params.hi, params.stride_h) - params.stride_h + filter_dilation_h - params.hi),
+      0L);
+  int64_t pad_w = std::max(
+      (int64_t)(Align(params.wi, params.stride_w) - params.stride_w + filter_dilation_w - params.wi),
+      0L);
+  params.pad_u = (pad_h >> 1L);
+  params.pad_d = pad_h - params.pad_u;
+  params.pad_l = (pad_w >> 1L);
+  params.pad_r = pad_w - params.pad_l;
+  GELOGD("after update pads, the pad_u is %d, pad_d is %d, pad_l is %d, pad_r is %d",
+         params.pad_u, params.pad_d, params.pad_l, params.pad_r);
+}
+
 bool SetCacheTilingParamsFromOpDesc(const ge::OpDescPtr& op_desc, conv2d_dw::Conv2dBpFilterParas& params) {
   std::vector<int64_t> strides;
   std::vector<int64_t> pads;
@@ -313,8 +335,9 @@ bool CheckCacheTilingParams(const conv2d_dw::Conv2dBpFilterParas& params) {
   return true;
 }
 
-bool SetShapeParams(const ge::OpDescPtr& op_desc, conv2d_dw::Conv2dBpFilterParas& params) {
-  ge::ConstGeTensorDescPtr dedy_desc = op_desc->GetInputDescPtr(2);
+bool SetShapeParams(const ge::OpDescPtr& op_desc, conv2d_dw::Conv2dBpFilterParas& params,
+                    const int32_t dedy_index) {
+  ge::ConstGeTensorDescPtr dedy_desc = op_desc->GetInputDescPtr(dedy_index);
   ge::ConstGeTensorDescPtr filter_desc = op_desc->GetOutputDescPtr(0);
   ge::ConstGeTensorDescPtr dedx_desc = op_desc->GetInputDescPtr(0);
 
@@ -340,15 +363,26 @@ bool SetShapeParams(const ge::OpDescPtr& op_desc, conv2d_dw::Conv2dBpFilterParas
 
   params.kh = filter_shape_nchw[kNchwDimH];
   params.kw = filter_shape_nchw[kNchwDimW];
+  if (params.pad_u == -1 || params.pad_l == -1) {
+    ModifyPad(params);
+  }
   return true;
 }
 
 bool ParseOpInfo(const nlohmann::json& compile_info, const ge::OpDescPtr& op_desc,
-                 conv2d_dw::Conv2dBpFilterParas& params) {
+                 conv2d_dw::Conv2dBpFilterParas& params, const ge::OpDescPtr ori_dw_desc) {
   // get attrs from op_desc
-  OP_LOGE_IF(!SetCacheTilingParamsFromOpDesc(op_desc, params), false, params.op_type,
+  int32_t dedy_index = 2;
+  ge::OpDescPtr op_dw_desc = nullptr;
+  if (ori_dw_desc != nullptr) {
+    op_dw_desc = ori_dw_desc;
+    dedy_index = 1;
+  } else {
+    op_dw_desc = op_desc;
+  }
+  OP_LOGE_IF(!SetCacheTilingParamsFromOpDesc(op_dw_desc, params), false, params.op_type,
               "Set cache tiling params failed.");
-  OP_LOGE_IF(!SetShapeParams(op_desc, params), false, params.op_type, "Set shape params failed.");
+  OP_LOGE_IF(!SetShapeParams(op_desc, params, dedy_index), false, params.op_type, "Set shape params failed.");
   OP_LOGE_IF(!compile_info.contains("max_core_num"), false, params.op_type,
              "compile info attrs not contains max_core_num.");
   // dw tiling can use double times core num
@@ -358,10 +392,11 @@ bool ParseOpInfo(const nlohmann::json& compile_info, const ge::OpDescPtr& op_des
 }
 
 bool BinaryTiling(const string& op_type, const ge::OpDescPtr op_desc, const nlohmann::json& compile_info,
-                  utils::OpRunInfo& run_info) {
+                  utils::OpRunInfo& run_info, const ge::OpDescPtr ori_dw_desc) {
   conv2d_dw::Conv2dBpFilterParas params;
   params.op_type = op_type;
-  OP_LOGE_IF(!ParseOpInfo(compile_info, op_desc, params), false, op_type, "Parse cache tiling params failed.");
+  OP_LOGE_IF(!ParseOpInfo(compile_info, op_desc, params, ori_dw_desc),
+             false, op_type, "Parse cache tiling params failed.");
   OP_LOGE_IF(!CheckCacheTilingParams(params), false, op_type, "Check cache tiling params failed.");
   conv2d_dw::Conv2dDwCacheTiling cacheTiling(params);
   conv2d_dw::Conv2dDwTiling tiling;
@@ -381,10 +416,24 @@ bool BinaryTiling(const string& op_type, const ge::OpDescPtr op_desc, const nloh
 bool Conv2DBpFilterTiling(const std::string& op_type, const ge::Operator& op_paras,
                           const nlohmann::json& op_compile_info, utils::OpRunInfo& run_info) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  ge::ComputeGraphPtr ori_graph = nullptr;
+  ge::OpDescPtr ori_dw_desc = nullptr;
+  int32_t dedy_index = 2;
+  if (ge::AttrUtils::GetGraph(op_desc, "_original_fusion_graph", ori_graph)) {
+    dedy_index = 1;
+    for (auto node : ori_graph->GetAllNodes()) {
+      if (node->GetType() == "Conv2DBackpropFilter") {
+        ori_dw_desc = node->GetOpDesc();
+        break;
+      }
+    }
+  } else {
+    GELOGD("this is not fusion node, only conv2d_backprop_filter single node");
+  }
   OP_LOGE_IF(op_desc == nullptr, false, op_type, "the op_desc is nullptr.");
   ge::ConstGeTensorDescPtr tensor_a_desc = op_desc->GetInputDescPtr(0);
   // the tensor b's index is 2
-  ge::ConstGeTensorDescPtr tensor_b_desc = op_desc->GetInputDescPtr(2);
+  ge::ConstGeTensorDescPtr tensor_b_desc = op_desc->GetInputDescPtr(dedy_index);
   const ge::GeShape& tensor_a_shape = tensor_a_desc->GetShape();
   const ge::GeShape& tensor_b_shape = tensor_b_desc->GetShape();
   size_t shape_a_dimnum = tensor_a_shape.GetDimNum();
@@ -427,7 +476,7 @@ bool Conv2DBpFilterTiling(const std::string& op_type, const ge::Operator& op_par
       GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
     } else if (op_compile_info.is_object()) {
       if (op_compile_info.contains("tiling_type") && op_compile_info.at("tiling_type") == "binary") {
-        BinaryTiling(op_type, op_desc, op_compile_info, run_info);
+        BinaryTiling(op_type, op_desc, op_compile_info, run_info, ori_dw_desc);
         return true;
       }
       varMap = op_compile_info.at("_vars")["10000"].get<std::vector<std::string>>();

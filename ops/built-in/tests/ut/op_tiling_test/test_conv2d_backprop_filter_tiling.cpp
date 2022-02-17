@@ -448,3 +448,75 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_l1_full_l
   EXPECT_EQ(runInfo.GetBlockDim(), 64);
   EXPECT_EQ(runInfo.GetTilingKey(), 12500000);
 }
+
+TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_pads_upadate) {
+  using namespace optiling;
+  std::string op_name = "Conv2DBackpropFilter";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "block_dim": {"CORE_NUM": 32}, "tiling_type": "binary", "max_core_num": 16, "attrs": {"dilation_h":1,"dilation_w":1,"groups":1,"padd":0,"padl":0,"padr":0,"padu":0,"stride_h":1,"stride_w":1}})";
+
+  ge::Graph graph("conv2dbackprop_filter_op_tiling_test_binary_mode_normal");
+
+
+  auto x_shape_vec = vector<int64_t>({8, 5, 56, 56});
+  ge::Shape x_shape(x_shape_vec);
+  ge::TensorDesc desc_x(x_shape, FORMAT_NCHW, DT_FLOAT16);
+  desc_x.SetOriginShape(x_shape);
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_size_shape_vec = vector<int64_t>({257, 5, 3, 3});
+  ge::Shape filter_size_shape = ge::Shape(filter_size_shape_vec);
+  ge::TensorDesc desc_filter_size(filter_size_shape, FORMAT_NCHW, DT_FLOAT16);
+  desc_filter_size.SetOriginShape(filter_size_shape);
+  desc_filter_size.SetOriginFormat(FORMAT_NCHW);
+  auto filter_size = op::Data("filter_size").set_attr_index(1);
+  filter_size.update_input_desc_x(desc_filter_size);
+  filter_size.update_output_desc_y(desc_filter_size);
+
+  auto out_backprop_shape_vec = vector<int64_t>({8, 257, 56, 56});
+  ge::Shape out_backprop_shape(out_backprop_shape_vec);
+  ge::TensorDesc desc_out_backprop(out_backprop_shape, FORMAT_NCHW, DT_FLOAT16);
+  desc_out_backprop.SetOriginShape(out_backprop_shape);
+  desc_out_backprop.SetOriginFormat(FORMAT_NCHW);
+  auto out_backprop = op::Data("out_backprop").set_attr_index(1);
+  out_backprop.update_input_desc_x(desc_out_backprop);
+  out_backprop.update_output_desc_y(desc_out_backprop);
+
+  auto conv2dbackpropfilter = op::Conv2DBackpropFilter(op_name)
+                                  .set_input_x(x)
+                                  .set_input_filter_size(filter_size)
+                                  .set_input_out_backprop(out_backprop)
+                                  .set_attr_strides({1, 1, 1, 1})
+                                  .set_attr_pads({-1, -1, -1, -1})
+                                  .set_attr_dilations({1, 1, 1, 1})
+                                  .set_attr_groups({1})
+                                  .set_attr_data_format("NCHW");
+
+  auto y_shape_vec = vector<int64_t>({257, 5, 3, 3});
+  ge::Shape y_shape = ge::Shape(y_shape_vec);
+  ge::TensorDesc output_desc_y(y_shape, ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  output_desc_y.SetOriginShape(y_shape);
+  output_desc_y.SetOriginFormat(FORMAT_NCHW);
+
+  conv2dbackpropfilter.update_input_desc_out_backprop(desc_out_backprop);
+  conv2dbackpropfilter.update_input_desc_x(desc_x);
+  conv2dbackpropfilter.update_input_desc_filter_size(desc_filter_size);
+  conv2dbackpropfilter.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x, out_backprop, filter_size};
+  std::vector<Operator> outputs{conv2dbackpropfilter};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_binary_mode_pads_upadate", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 28);
+  EXPECT_EQ(runInfo.GetTilingKey(), 23866250);
+}

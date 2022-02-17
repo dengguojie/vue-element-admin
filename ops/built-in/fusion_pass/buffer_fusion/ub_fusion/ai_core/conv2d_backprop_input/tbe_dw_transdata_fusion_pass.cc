@@ -197,7 +197,12 @@ Status TbeDwTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mappi
     OP_LOGW(kFusedOpType.c_str(), "fusion only supported in dynamic mode in NCHW with no range");
     return SUCCESS;
   }
-
+  // change the op_type of the fusion node which is get from the first node of fusion nodes
+  if (!ge::AttrUtils::SetStr(transdata_node_1->GetOpDesc(), UB_FUSION_OP_TYPE, "Conv2DBackpropFilter")) {
+    OP_LOGW(kFusedOpType.c_str(), "fusion node set op_type from TranData to Conv2dBackpropfilter failed");
+    fusion_nodes.clear();
+    return SUCCESS;
+  }
   OP_LOGD(kFusedOpType.c_str(), "End to do TbeDwTransDataFusionPass!");
   return SUCCESS;
 }
