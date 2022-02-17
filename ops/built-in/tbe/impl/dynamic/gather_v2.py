@@ -2069,11 +2069,6 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
-    def _set_mode_paras(self, aligned_types_params, cached_types_params, cached_types_indices):
-        self.cached_types["aligned_types_params"] = aligned_types_params
-        self.cached_types["cached_types_params"] = cached_types_params
-        self.cached_types["cached_types_indices"] = cached_types_indices
-
     # 'pylint:disable=E1136
     def params_row_more_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
@@ -2623,6 +2618,11 @@ class GatherV2():
                                    inputs=(self.x, self.indices),
                                    outputs=(self.y,),
                                    flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
+
+    def _set_mode_paras(self, aligned_types_params, cached_types_params, cached_types_indices):
+        self.cached_types["aligned_types_params"] = aligned_types_params
+        self.cached_types["cached_types_params"] = cached_types_params
+        self.cached_types["cached_types_indices"] = cached_types_indices
 
 
 def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):

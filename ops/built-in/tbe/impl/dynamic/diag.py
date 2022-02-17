@@ -92,6 +92,14 @@ class Diag():
         self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
         scope=tik.scope_gm)
 
+    @staticmethod
+    def ceil(data_a, data_b):
+        """
+        func ceil
+        """
+        res = (data_a + data_b - 1) // data_b
+        return res
+
     def diag_compute_tiling(self):
         """
         tiling info:
@@ -107,14 +115,6 @@ class Diag():
         self.tiling_act_core_num.set_as(self.tiling_ub[1])
         self.tiling_each_core_num.set_as(self.tiling_ub[2])
         self.tiling_last_core_num.set_as(self.tiling_ub[3])
-
-    @staticmethod
-    def ceil(data_a, data_b):
-        """
-        func ceil
-        """
-        res = (data_a + data_b - 1) // data_b
-        return res
 
     def compute_assist(self):
         """

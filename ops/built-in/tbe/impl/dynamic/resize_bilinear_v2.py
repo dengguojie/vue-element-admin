@@ -2158,19 +2158,6 @@ class ResizeBilinearV2(OpBase):
             with self.tik_instance.if_scope(self.tiling_out_height // self.tiling_in_height >= 2):
                 self._function_resize_with_l1_default(is_h_big_to_small=True)
 
-    def _tiling_compute_with_no_bilinear(self):
-        """
-        _tiling_compute_with_no_bilinear,
-        do case  (n,1,1,c  ->  n,h,w,c) and  (n,h,w,c  ->  n,h,w,c)
-        and the case: n,h,w,c  ->  n,h,w,c == n*h*w,1,1,c -> n*h*w,1,1,c
-        """
-        with self.tik_instance.if_scope(self.tiling_out_height + self.tiling_out_width > 2):
-            # process case: input h = 1 and input w = 1
-            self._function_reisze_with_no_bilinear(is_equal=False)
-        with self.tik_instance.if_scope(self.tiling_out_height + self.tiling_out_width == 2):
-            # process case: input h = output h and input w = output w
-            self._function_reisze_with_no_bilinear(is_equal=True)
-
     def resize_bilinear_v2_operator(self):
         """
         resize_bilinear_v2_operator
@@ -2436,6 +2423,19 @@ class ResizeBilinearV2(OpBase):
                     w_idx = (total_idx * 2 + 1) % self.core_width_num
                     h_idx = (total_idx * 2 + 1) // self.core_width_num
                     _do_resize_with_nc(w_idx, h_idx, nc_idx, nc_num, pang_ub_list)
+
+    def _tiling_compute_with_no_bilinear(self):
+        """
+        _tiling_compute_with_no_bilinear,
+        do case  (n,1,1,c  ->  n,h,w,c) and  (n,h,w,c  ->  n,h,w,c)
+        and the case: n,h,w,c  ->  n,h,w,c == n*h*w,1,1,c -> n*h*w,1,1,c
+        """
+        with self.tik_instance.if_scope(self.tiling_out_height + self.tiling_out_width > 2):
+            # process case: input h = 1 and input w = 1
+            self._function_reisze_with_no_bilinear(is_equal=False)
+        with self.tik_instance.if_scope(self.tiling_out_height + self.tiling_out_width == 2):
+            # process case: input h = output h and input w = output w
+            self._function_reisze_with_no_bilinear(is_equal=True)
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=6, block_num=16):

@@ -99,17 +99,6 @@ class Flatten:
         self.last_copy_loop = self.tik_instance.Scalar("int64", name="last_copy_loop")
         self.last_copy_tail = self.tik_instance.Scalar("int64", name="last_copy_tail")
 
-    def _tiling_args(self):
-        """Get runtime tiling parameters from tiling
-        """
-        # read tiling int64 scalar
-        self.core_data.set_as(self.tiling_ub[0])
-        self.core_used.set_as(self.tiling_ub[1])
-        self.copy_loop.set_as(self.tiling_ub[2])
-        self.copy_tail.set_as(self.tiling_ub[3])
-        self.last_copy_loop.set_as(self.tiling_ub[4])
-        self.last_copy_tail.set_as(self.tiling_ub[5])
-
     def copy_only(self, core_index, loop_num, tail_num):
         """Only execute move in and move out
         """
@@ -117,17 +106,6 @@ class Flatten:
             self.copy_in_and_out(core_index, loop_idx, self.copy_segment)
         with self.tik_instance.if_scope(tail_num > 0):
             self.copy_in_and_out(core_index, loop_num, tail_num)
-
-    # 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
-    def _get_ceil_int(self, int1, int2):
-        """Get ceil
-        """
-        result = self.tik_instance.Scalar("int64", name="result")
-        with self.tik_instance.if_scope(int1 % int2 == 0):
-            result.set_as(int1 // int2)
-        with self.tik_instance.else_scope():
-            result.set_as(int1 // int2 + 1)
-        return result
 
     def copy_in_and_out(self, core_index, loop_idx, loop_len):
         """Copy in and out
@@ -173,6 +151,28 @@ class Flatten:
                                    flowtable=[self.tiling_gm],
                                    config=opt_config)
         return self.tik_instance
+
+    def _tiling_args(self):
+        """Get runtime tiling parameters from tiling
+        """
+        # read tiling int64 scalar
+        self.core_data.set_as(self.tiling_ub[0])
+        self.core_used.set_as(self.tiling_ub[1])
+        self.copy_loop.set_as(self.tiling_ub[2])
+        self.copy_tail.set_as(self.tiling_ub[3])
+        self.last_copy_loop.set_as(self.tiling_ub[4])
+        self.last_copy_tail.set_as(self.tiling_ub[5])
+
+    # 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
+    def _get_ceil_int(self, int1, int2):
+        """Get ceil
+        """
+        result = self.tik_instance.Scalar("int64", name="result")
+        with self.tik_instance.if_scope(int1 % int2 == 0):
+            result.set_as(int1 // int2)
+        with self.tik_instance.else_scope():
+            result.set_as(int1 // int2 + 1)
+        return result
 
 
 # 'pylint: disable=unused-argument,invalid-name

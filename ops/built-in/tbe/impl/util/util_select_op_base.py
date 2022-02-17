@@ -18,7 +18,7 @@ util_select_op_base
 import json
 
 
-def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1_fusion_enable=0, min_tbeL1_space=0):
+def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1_fusion_enable=0, min_tbe_l1_space=0):
     """
     Function
     --------
@@ -50,7 +50,7 @@ def get_op_cal_info(axis_split_list, axis_reduce_list=None, l1_fusion_enable=0, 
     op_slice_info["splitMaps"] = _get_axis_split_in_json(axis_split_list)
     op_slice_info["reduceMaps"] = _get_axis_reduce_in_json(axis_reduce_list)
     op_slice_info["l1FusionEnable"] = l1_fusion_enable
-    op_slice_info["minTbeL1Space"] = min_tbeL1_space
+    op_slice_info["minTbeL1Space"] = min_tbe_l1_space
     op_cal_info["_op_slice_info"] = op_slice_info
     op_cal_info_in_json = json.dumps(op_cal_info)
     return op_cal_info_in_json

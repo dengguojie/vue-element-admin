@@ -102,22 +102,6 @@ class DiagPart():
         self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_128, Constant.NUM_128), name="assist_gm",
                                                   scope=tik.scope_gm, init_value=assist_data)
 
-    def _diag_part_compute_tiling(self):
-        """
-        tiling info:
-            tiling_line_num: number of input_x's line
-            tiling_act_core_num: need use aicore number
-            tiling_each_core_line_num: line number of one each aicore need to compute except last aicore
-            tiling_last_core_line_num: line number of one last aicore need to compute
-        """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", \
-        scope=tik.scope_ubuf)
-        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
-        self.tiling_line_num.set_as(self.tiling_ub[0])
-        self.tiling_act_core_num.set_as(self.tiling_ub[1])
-        self.tiling_each_core_line_num.set_as(self.tiling_ub[2])
-        self.tiling_last_core_line_num.set_as(self.tiling_ub[3])
-
     def core_scedule_args(self, core_idx):
         """
         core_scedule_args
@@ -275,6 +259,22 @@ class DiagPart():
         self.tik_instance.data_move(self.output_gm[output_offset],
                                     self.input_x_ub,
                                     0, 1, burst_len, 0, 0)
+
+    def _diag_part_compute_tiling(self):
+        """
+        tiling info:
+            tiling_line_num: number of input_x's line
+            tiling_act_core_num: need use aicore number
+            tiling_each_core_line_num: line number of one each aicore need to compute except last aicore
+            tiling_last_core_line_num: line number of one last aicore need to compute
+        """
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", \
+        scope=tik.scope_ubuf)
+        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
+        self.tiling_line_num.set_as(self.tiling_ub[0])
+        self.tiling_act_core_num.set_as(self.tiling_ub[1])
+        self.tiling_each_core_line_num.set_as(self.tiling_ub[2])
+        self.tiling_last_core_line_num.set_as(self.tiling_ub[3])
 
 
 @register_operator("DiagPart")

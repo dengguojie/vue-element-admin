@@ -147,6 +147,17 @@ class DropOutDoMask:
             self.sel_fp16_ub = None
             self.sel_fp32_ub = None
 
+    def drop_do_mask_operator(self):
+        """_drop_do_mask_operator"""
+        self._keep_prob_the_var()
+        opt_config = {"out_of_bound_sync_check": True}
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
+                                   outputs=(self.out_gm,),
+                                   flowtable=(self.tiling_gm,), config=opt_config)
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+
     def _tiling_args(self):
         """
         get runtime tiling parameters from tiling
@@ -274,17 +285,6 @@ class DropOutDoMask:
                     _core_idx * self.do_num_per_core + \
                     copy_loop * self.max_process_num + (copy_tail // self.vcetor_num) * self.vcetor_num
                 self._run_one_loop(copy_gm_offset, _process_num_one_loop, vector_mask, prob_rec, True)
-
-    def drop_do_mask_operator(self):
-        """_drop_do_mask_operator"""
-        self._keep_prob_the_var()
-        opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
-                                   outputs=(self.out_gm,),
-                                   flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars",
-                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
     def _keep_prob_the_var(self):
         """
