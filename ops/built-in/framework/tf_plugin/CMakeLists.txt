@@ -168,6 +168,7 @@ set(_tf_plugins
   elu_grad_plugin.cc
   einsum_plugin.cc
   elu_plugin.cc
+  encode_jpeg_variable_quality_plugin.cc
   equal_plugin.cc
   erfc_plugin.cc
   erf_plugin.cc
@@ -222,6 +223,7 @@ set(_tf_plugins
   hvd_broadcast_plugin.cc
   if_plugin.cc
   ifmr_plugin.cc
+  image_projective_transform_plugin.cc
   inplace_add_plugin.cc
   inplace_sub_plugin.cc
   inplace_update_plugin.cc

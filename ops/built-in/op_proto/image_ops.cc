@@ -3138,11 +3138,11 @@ IMPLEMT_INFERFUNC(GridSampler2D, GridSampler2DInferShape) {
 
     x_shape[2] = grid_shape[1];
     x_shape[3] = grid_shape[2];
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(ge::Shape(x_shape));
-    output_desc.SetDataType(x_dtype);
-    output_desc.SetFormat(x_format);
-    (void)op.UpdateOutputDesc("y", output_desc);
+    TensorDesc output_desc_y = op.GetOutputDesc("y");
+    output_desc_y.SetShape(ge::Shape(x_shape));
+    output_desc_y.SetDataType(x_dtype);
+    output_desc_y.SetFormat(x_format);
+    (void)op.UpdateOutputDesc("y", output_desc_y);
     return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(GridSampler2D, GridSampler2DInferShape);
@@ -3243,11 +3243,11 @@ IMPLEMT_INFERFUNC(ImageUnfold, ImageUnfoldInferShape) {
     vector<int64_t> output_shape = x_shape;
     output_shape[2] = pos_shape[1];
     output_shape[3] = pos_shape[2];
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(ge::Shape(output_shape));
-    output_desc.SetDataType(x_dtype);
-    output_desc.SetFormat(x_format);
-    (void)op.UpdateOutputDesc("y", output_desc);
+    TensorDesc output_desc_y = op.GetOutputDesc("y");
+    output_desc_y.SetShape(ge::Shape(output_shape));
+    output_desc_y.SetDataType(x_dtype);
+    output_desc_y.SetFormat(x_format);
+    (void)op.UpdateOutputDesc("y", output_desc_y);
     return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(ImageUnfold, ImageUnfoldInferShape);
@@ -3441,10 +3441,10 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   }
 
   Shape output_desc_shape(output_shape);
-  TensorDesc output_desc = op.GetOutputDescByName("y");
-  output_desc.SetShape(output_desc_shape);
-  output_desc.SetDataType(input_dtype);
-  op.UpdateOutputDesc("y", output_desc);
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
+  output_desc_y.SetShape(output_desc_shape);
+  output_desc_y.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc_y);
   return true;
 }
 
@@ -3542,10 +3542,10 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   }
 
   Shape output_desc_shape(input_size);
-  TensorDesc output_desc = op.GetOutputDescByName("y");
-  output_desc.SetShape(output_desc_shape);
-  output_desc.SetDataType(input_dtype);
-  op.UpdateOutputDesc("y", output_desc);
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
+  output_desc_y.SetShape(output_desc_shape);
+  output_desc_y.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc_y);
   return true;
 }
 // ---------------Upsample3dBackward Op END------------------------
@@ -3609,10 +3609,10 @@ IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
   }
 
   Shape output_desc_shape(output_shape);
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(output_desc_shape);
-  output_desc.SetDataType(input_dtype);
-  op.UpdateOutputDesc("y", output_desc);
+  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  output_desc_y.SetShape(output_desc_shape);
+  output_desc_y.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc_y);
   
   return GRAPH_SUCCESS;
 }
@@ -3642,13 +3642,86 @@ IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
   }
 
   Shape output_desc_shape(input_size);
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(output_desc_shape);
-  output_desc.SetDataType(input_dtype);
-  op.UpdateOutputDesc("y", output_desc);
+  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  output_desc_y.SetShape(output_desc_shape);
+  output_desc_y.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc_y);
 
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape);
 // ----------------UpsampleNearest1dGrad END---------------------
+
+// ---------------EncodeJpegVariableQuality Op START-------------------
+IMPLEMT_INFERFUNC(EncodeJpegVariableQuality, EncodeJpegVariableQualityInferShape) {
+  OP_LOGD(op.GetName().c_str(), "Enter EncodeJpegVariableQuality inferfunction!");
+  Shape image_shape;
+  if (WithRank(op.GetInputDesc(0), 3, image_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 3. but get %d.", image_shape.GetDimNum());
+    return GRAPH_FAILED;
+  }
+  Shape quality_shape;
+  if (WithRank(op.GetInputDesc(1), 0, quality_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 0. but get %d.", quality_shape.GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  Shape shape;
+  (void)Scalar(shape);
+  TensorDesc output_desc = op.GetOutputDesc(0);
+  output_desc.SetShape(shape);
+  output_desc.SetDataType(DT_STRING);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(EncodeJpegVariableQuality, EncodeJpegVariableQualityInferShape);
+// ----------------EncodeJpegVariableQuality END---------------------
+
+// ---------------ImageProjectiveTransform Op START-------------------
+IMPLEMT_INFERFUNC(ImageProjectiveTransform, ImageProjectiveTransformInferShape) {
+  OP_LOGD(op.GetName().c_str(), "Enter ImageProjectiveTransform inferfunction!");
+  auto opname = op.GetName().c_str();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto image_descptr = op_desc->MutableInputDesc("images");
+  GeShape image_shape;
+  if (WithRank(image_descptr, 4, image_shape, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "Expected images should be 4-D. but get %d.", image_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+  
+  auto outputshape_descptr = op_desc->MutableInputDesc("output_shape");
+  GeShape outputshape_shape;
+  if (WithRank(outputshape_descptr, 1, outputshape_shape, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "output_shape should be 1. but get %d.", outputshape_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  int64_t unused_dim = 0;
+  if (WithValue(outputshape_shape.GetDim(0), 2, unused_dim, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "output_shape's dim[0] should be 2. but get %d.", outputshape_shape.GetDim(0));
+    return GRAPH_FAILED;
+  }
+  
+  std::string interpolation; // required attr
+  if (op.GetAttr("interpolation", interpolation) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get attr interpolation failed");
+    return GRAPH_FAILED;
+  }
+
+  op_desc->SetOpInferDepends({"output_shape"});
+  int64_t new_width = UNKNOWN_DIM;
+  int64_t new_height = UNKNOWN_DIM;
+  Tensor outputshape_tensor;
+  if (op.GetInputConstData("output_shape", outputshape_tensor) == GRAPH_SUCCESS) {
+    auto output_data = reinterpret_cast<const int32_t*>(outputshape_tensor.GetData());
+    new_width = static_cast<int64_t>(output_data[0]);
+    new_height = static_cast<int64_t>(output_data[1]);
+  }
+  auto output_descptr = op_desc->MutableOutputDesc("transformed_images");
+  FillOpDesc(output_descptr,
+             GeShape({image_shape.GetDim(0), new_height, new_width, image_shape.GetDim(3)}),
+             image_descptr->GetDataType()); // NHWC
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(ImageProjectiveTransform, ImageProjectiveTransformInferShape);
+// ----------------ImageProjectiveTransform END---------------------
 }  // namespace ge
