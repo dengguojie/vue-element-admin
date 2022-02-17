@@ -36,6 +36,7 @@ class ConvAddFusionPass : public PatternFusionBasePass {
   Status ConnectConvToOutput(NodePtr conv_node, NodePtr add_node);
   Status ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv_node_desc,
                         size_t non_const_add_input_index, int64_t& channel_for_scalar);
+  Status CheckConv3DShapeInfo(const std::vector<int64_t> &non_const_dims, const std::vector<int64_t> &const_dims);
   Status BroadcastScalar(int64_t channel_for_scalar, int64_t& new_shape, GeTensorPtr conv_bias_ptr);
 };
 

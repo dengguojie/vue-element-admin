@@ -62,7 +62,42 @@ Status AttrUpdate(std::vector<int32_t>& dst, std::vector<int32_t>& src, int offs
   return SUCCESS;
 }
 
-Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& op) {
+void SetIntListValue(const ge::onnx::AttributeProto &attr, std::vector<int32_t> &int_list) {
+  for (auto i = 0; i < attr.ints_size(); ++i) {
+    int_list.push_back(attr.ints(i));
+  }
+}
+
+void GetPadList(const ge::onnx::AttributeProto &attr, std::vector<int32_t> &pad_list) {
+  // in onnx pads=[top, left, bottomm, right] -> [top, bottom, left, right]
+  // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
+  unsigned int len = attr.ints_size();
+  for (unsigned int i = 0; i < len / 2; i++) {
+    pad_list.push_back(attr.ints(i));
+    pad_list.push_back(attr.ints(i + len / 2));
+  }
+}
+
+void SetPadsAttr(std::vector<int32_t> &pad_list, int out_len, ge::Operator &op) {
+  if (!pad_list.empty()) {
+    for (int i = static_cast<int>(pad_list.size()); i < kLen2 * out_len; ++i) {
+      auto it = pad_list.begin();
+      pad_list.insert(it, 0);
+    }
+  }
+  op.SetAttr("pads", pad_list);
+}
+
+void SetSingleValueAttr(const ge::onnx::AttributeProto &attr, ge::Operator &op) {
+  if (attr.name() == "group" && attr.type() == ge::onnx::AttributeProto::INT) {
+    op.SetAttr("groups", attr.i());
+  } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
+    op.SetAttr("auto_pad", attr.s());
+    is_set_auto_pad = true;
+  }
+}
+
+Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto *node, ge::Operator &op) {
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
   // if attr is set in model, receive them with these var
@@ -75,56 +110,40 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
   bool is_have_kenel_shape = false;
   int dim_size = 4;
   // update attrs with model value
-  for (const auto& attr : node->attribute()) {
-    if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      for (auto i = 0; i < attr.ints_size(); ++i) {
-        strides_list.push_back(attr.ints(i));
+  for (const auto &attr : node->attribute()) {
+    if (attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.name() == "strides") {
+        SetIntListValue(attr, strides_list);
+        if (attr.ints_size() == 1) {
+          strides_list.push_back(attr.ints(0));
+        }
+        op.SetAttr("strides", strides_list);
+      } else if (attr.name() == "dilations") {
+        if (attr.ints_size() == 1) {
+          dilations_list.push_back(1);
+        }
+        SetIntListValue(attr, dilations_list);
+        op.SetAttr("dilations", dilations_list);
+      } else if (attr.name() == "pads") {
+        unsigned int len = attr.ints_size();
+        if (len & 1) {
+          ONNX_PLUGIN_LOGE(op_name.GetString(), "The value lenth of pads is odd, transform failed.");
+          return FAILED;
+        }
+        GetPadList(attr, pad_list);
+      } else if (attr.name() == "output_padding") {
+        SetIntListValue(attr, out_pads_list);
+      } else if (attr.name() == "output_shape") {
+        SetIntListValue(attr, out_shape_list);
+        is_set_output_shape = true;
+      } else if (attr.name() == "kernel_shape") {
+        int len = attr.ints_size();
+        is_have_kenel_shape = true;
+        is_trans_2d = len == 1;
+        dim_size = len >= kLen3 ? INPUT_5D : INPUT_4D;
       }
-      if (attr.ints_size() == 1) {
-        strides_list.push_back(attr.ints(0));
-      }
-      op.SetAttr("strides", strides_list);
-    } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      if (attr.ints_size() == 1) {
-        dilations_list.push_back(1);
-      }
-      for (auto i = 0; i < attr.ints_size(); ++i) {
-        dilations_list.push_back(attr.ints(i));
-      }
-      op.SetAttr("dilations", dilations_list);
-    } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      // in onnx pads=[top, left, bottomm, right] -> [top, bottom, left, right]
-      // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
-      unsigned int len = attr.ints_size();
-      if (len & 1) {
-        ONNX_PLUGIN_LOGE(op_name.GetString(), "The value lenth of pads is odd, transform failed.");
-        return FAILED;
-      }
-      for (unsigned int i = 0; i < len / 2; i++) {
-        pad_list.push_back(attr.ints(i));
-        pad_list.push_back(attr.ints(i + len / 2));
-      }
-    } else if (attr.name() == "group" && attr.type() == ge::onnx::AttributeProto::INT) {
-      op.SetAttr("groups", attr.i());
-    } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
-      op.SetAttr("auto_pad", attr.s());
-      is_set_auto_pad = true;
-    } else if (attr.name() == "output_padding" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      int len = attr.ints_size();
-      for (int i = 0; i < len; ++i) {
-        out_pads_list.push_back(attr.ints(i));
-      }
-    } else if (attr.name() == "output_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      int len = attr.ints_size();
-      for (int i = 0; i < len; ++i) {
-        out_shape_list.push_back(attr.ints(i));
-      }
-      is_set_output_shape = true;
-    } else if (attr.name() == "kernel_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      int len = attr.ints_size();
-      is_have_kenel_shape = true;
-      is_trans_2d = len == 1 ? true : false;
-      dim_size = len >= kLen3 ? INPUT_5D : INPUT_4D;
+    } else {
+      SetSingleValueAttr(attr, op);
     }
   }
 
@@ -152,15 +171,10 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& o
     op.SetAttr("output_shape", out_shape_list_new);
   }
 
-  if (!pad_list.empty()) {
-    for (int i = pad_list.size(); i < kLen2 * out_len; ++i) {
-      auto it = pad_list.begin();
-      pad_list.insert(it, 0);
-    }
-  }
-  op.SetAttr("pads", pad_list);
+  SetPadsAttr(pad_list, out_len, op);
 
-  if (is_set_output_shape && !is_set_auto_pad) {
+  bool is_set_auto_pad_attr = is_set_output_shape && !is_set_auto_pad;
+  if (is_set_auto_pad_attr) {
     op.SetAttr("auto_pad", "SAME_LOWER");
   }
 

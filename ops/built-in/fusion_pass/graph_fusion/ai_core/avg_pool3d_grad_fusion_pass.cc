@@ -181,6 +181,17 @@ bool HasVal(const vector<int64_t> &vec, int64_t val) {
   return std::find(vec.begin(), vec.end(), val) != vec.end();
 }
 
+static float GetFilterDataVal(bool is_dynamic, bool ceil_mode, int64_t divisor_override, const vector<int64_t> &pads,
+                              const vector<int64_t> &ksize_formated) {
+  float val = 1.0f;
+  if (divisor_override != 0 && !is_dynamic) {
+    val = 1.0 / divisor_override;
+  } else if (IsPadsZero(pads) && !ceil_mode && !is_dynamic) {
+    val = 1.0f / (ksize_formated[1] * ksize_formated[kIndex2] * ksize_formated[kIndex3]);
+  }
+  return val;
+}
+
 GeTensorPtr CreateFilterNode(const vector<int64_t> &filter_ori_shape_vec, float val) {
   OP_LOGI("create filter node.");
   vector<int64_t> filter_shape_vec = {(filter_ori_shape_vec[kIndex4] + kC0 - 1) / kC0 * filter_ori_shape_vec[0] *
@@ -331,12 +342,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
 
   // create filter tensor
   vector<GeTensorPtr> weights;
-  float val = 1.0f;
-  if (divisor_override != 0 && !is_dynamic) {
-    val = 1.0 / divisor_override;
-  } else if (IsPadsZero(pads) && !ceil_mode && !is_dynamic) {
-    val = 1.0f / (ksize_formated[1] * ksize_formated[kIndex2] * ksize_formated[kIndex3]);
-  }
+  float val = GetFilterDataVal(is_dynamic, ceil_mode, divisor_override, pads, ksize_formated);
   vector<int64_t> filter_ori_shape_vec = {ksize_formated[1], ksize_formated[kIndex2], ksize_formated[kIndex3],
                                           1, grads_ori_shape_vec_formated[kIndex4]};
   GeTensorPtr filter_ptr = CreateFilterNode(filter_ori_shape_vec, val);
