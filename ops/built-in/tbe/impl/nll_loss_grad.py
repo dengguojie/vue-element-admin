@@ -817,30 +817,6 @@ class NllLossGradCompute:
             self._set_valid_target(names, i, dst_need_index, src_need_index)
             dst[dst_offset].set_as(src[src_offset])
 
-    def _set_valid_target(self, names, var, dst_need_index, src_need_index):
-        """
-        set valid target when target index is out c range, x set 0, weight set -1.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if not self.invalid_target:
-            return
-
-        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
-                                                names["index_x" + str(var)] >= self.c_dim)):
-            if dst_need_index and src_need_index:
-                names["index_x" + str(var)].set_as(0)
-                names["index_x" + "w" + str(var)].set_as(-1)
-            elif src_need_index:
-                names["index_x" + str(var)].set_as(-1)
-            elif dst_need_index:
-                names["index_x" + str(var)].set_as(0)
-
     def normal_two_dim_compute(self):
         """
         calculate process of normal two dim.
@@ -905,6 +881,57 @@ class NllLossGradCompute:
                             compute_last_repeat, self.last_target_burst,
                             self.last_out_burst)
 
+    def nll_loss_compute_start(self):
+        """
+        Different calculation methods
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if self.x_dim == 1:
+            self.one_dim_compute()
+        if self.big_weight:
+            self.two_dim_with_big_weight_compute()
+        elif self.x_dim == Constant.DIM2:
+            self.normal_two_dim_compute()
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.data_x,
+                                           self.data_y_grad,
+                                           self.data_target,
+                                           self.data_weight,
+                                           self.data_total_weight],
+                                   outputs=[self.output])
+        return self.tik_instance
+
+    def _set_valid_target(self, names, var, dst_need_index, src_need_index):
+        """
+        set valid target when target index is out c range, x set 0, weight set -1.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if not self.invalid_target:
+            return
+
+        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
+                                                names["index_x" + str(var)] >= self.c_dim)):
+            if dst_need_index and src_need_index:
+                names["index_x" + str(var)].set_as(0)
+                names["index_x" + "w" + str(var)].set_as(-1)
+            elif src_need_index:
+                names["index_x" + str(var)].set_as(-1)
+            elif dst_need_index:
+                names["index_x" + str(var)].set_as(0)
+
     def _normal_two_tim_process(self, line_num, core_offset,
                                 repeat, burst, output_burst):
         if self.reduction == "none":
@@ -965,33 +992,6 @@ class NllLossGradCompute:
             self.tik_instance.data_move(
                 self.output[(core_offset + line_num)*self.c_dim - 8],
                 temp_out_ub, 0, 1, 1, 8, 8)
-
-    def nll_loss_compute_start(self):
-        """
-        Different calculation methods
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if self.x_dim == 1:
-            self.one_dim_compute()
-        if self.big_weight:
-            self.two_dim_with_big_weight_compute()
-        elif self.x_dim == Constant.DIM2:
-            self.normal_two_dim_compute()
-
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.data_x,
-                                           self.data_y_grad,
-                                           self.data_target,
-                                           self.data_weight,
-                                           self.data_total_weight],
-                                   outputs=[self.output])
-        return self.tik_instance
 
 
 @para_check.check_input_type(dict, dict, dict, dict, dict, dict, str, int, str)

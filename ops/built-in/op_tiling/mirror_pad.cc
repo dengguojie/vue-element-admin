@@ -41,7 +41,7 @@ const int64_t MAX_AXIS = 5;
 const int64_t BLOCK_NUM = 16;
 constexpr int32_t DIM_VAL = 16;
 
-// paddings values idx, paddings is an integer tensor with shape [n,2] 
+// paddings values idx, paddings is an integer tensor with shape [n,2]
 const int64_t DIM_ZERO_LEFT_PADDINGS_IDX = 0;
 const int64_t DIM_ZERO_RIGHT_PADDINGS_IDX = 1;
 const int64_t DIM_ONE_LEFT_PADDINGS_IDX = 2;

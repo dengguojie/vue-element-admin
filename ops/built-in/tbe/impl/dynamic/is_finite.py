@@ -312,6 +312,27 @@ class IsFinite:
         self._init_gm()
         self._init_tiling_params()
 
+    def build(self):
+        """
+        build cce
+        """
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
+                               inputs=[self.data_input],
+                               outputs=[self.data_out],
+                               flowtable=[self.data_tiling],
+                               config=opt_config)
+        return self.tik_inst
+
+    def compute(self):
+        """
+        do is_finite
+        """
+        with self.tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
+            self._get_tiling_params(block_idx)
+            core_offset = block_idx * self.per_core_size
+            self._schedule(core_offset, self.core_loop_cnt, self.core_left_size)
+
     def _init_inner_params(self, input_x, output_y, kernel_name):
         self.kernel_name = kernel_name
         self.input_dtype = input_x.get("dtype").lower()
@@ -352,27 +373,6 @@ class IsFinite:
         self.core_loop_cnt = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_loop_cnt")
         self.core_left_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_left_size")
         self.real_per_loop_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "per_loop_size")
-
-    def build(self):
-        """
-        build cce
-        """
-        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
-                               inputs=[self.data_input],
-                               outputs=[self.data_out],
-                               flowtable=[self.data_tiling],
-                               config=opt_config)
-        return self.tik_inst
-
-    def compute(self):
-        """
-        do is_finite
-        """
-        with self.tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
-            self._get_tiling_params(block_idx)
-            core_offset = block_idx * self.per_core_size
-            self._schedule(core_offset, self.core_loop_cnt, self.core_left_size)
 
     def _get_tiling_params(self, block_idx):
         _data_move(self.tik_inst, self.ub_tiling, self.data_tiling, Constant.TILING_CTRL_PARAM[1])

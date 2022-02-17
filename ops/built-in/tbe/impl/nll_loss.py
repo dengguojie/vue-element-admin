@@ -254,71 +254,6 @@ class NllLossCompute:
                 self.move_max_burst = self.move_last_burst
             self.x_offset = self.move_max_line*self.x_shape[-1]
 
-    def _recalculate_core_num(self, total_line):
-        """
-        init the size of args.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        core_num = self.real_core_num
-        if self.reduction == "none":
-            if total_line <= self.real_core_num*8:
-                core_num = math.ceil(total_line/8)
-        elif self.reduction == "sum":
-            if total_line < self.real_core_num:
-                core_num = total_line
-        elif self.reduction == "mean":
-            if total_line < self.real_core_num*8:
-                core_num = math.ceil(total_line/8)
-
-        return core_num
-
-    def _compute_none_and_sum_size(self):
-        """
-        compute the size of tiling.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        self.loop_time = math.ceil(self.avg_line/self.move_max_line)
-        self.redundant_line = self.n_dim - self.move_max_line * \
-            (self.loop_time - 1)*self.core_num
-        self.fake_core = self._recalculate_core_num(self.redundant_line)
-        self.avg_line = math.ceil(self.redundant_line/self.fake_core)
-        self.move_last_line = self.redundant_line // self.fake_core
-        self.break_core = self.redundant_line % self.fake_core
-
-        # if avg_line lower or equal to eight, have three situations of core
-        if self.avg_line <= 8 and self.reduction != "sum":
-            self.avg_line = 8
-            self.break_core = self.fake_core - 1
-            self.move_last_line = self.redundant_line - 8*self.break_core
-            self.lower_eight_line = 0
-        elif self.reduction == "mean":
-            align_eight_line = self.redundant_line//8
-            self.lower_eight_line = self.redundant_line % 8
-            self.fake_core = self._recalculate_core_num(self.redundant_line)
-            self.avg_line = math.ceil(align_eight_line/self.fake_core)*8
-            self.move_last_line = (align_eight_line // self.fake_core)*8
-            self.break_core = align_eight_line % self.fake_core
-
-
-        self.avg_repeat = math.ceil(self.avg_line/64)
-        self.last_vmul_repeat = math.ceil(self.move_last_line/64)
-        self.avg_in_burst = math.ceil(self.avg_line*self.c_dim/8)
-        self.last_in_burst = math.ceil(self.move_last_line*self.c_dim/8)
-        if self.loop_time == 1:
-            self.thread_num = 1
-
     def init_reduction_none_and_sum_and_mean_tiling(self):
         """
         Recalculate tiling when reduction is none or sum or mean.
@@ -338,20 +273,6 @@ class NllLossCompute:
         else:
             self.thread_num = 2
             self._db_tiling()
-
-    def _db_tiling(self):
-        self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
-            "Unified_Buffer")//2 - 2048
-        self.init_tiling_size()
-
-        # cancel db when cannot move weight or target to ub one time
-        # with open db
-        if self.big_weight or self.big_target:
-            self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
-                "Unified_Buffer") - 2048
-            self.thread_num = 1
-            self.init_tiling_size()
-        self._compute_none_and_sum_size()
 
     def init_gm(self):
         """
@@ -601,31 +522,6 @@ class NllLossCompute:
                 src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
                 dst2[dst_offset].set_as(src2[src2_offset])
 
-    def _set_valid_target(self, names, var, src):
-        """
-        set valid target when target index is out c range, x set 0, weight set -1.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        new target index
-        """
-        if not self.invalid_target:
-            return None
-
-        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
-                                                names["index_x" + str(var)] >= self.c_dim)):
-            if src.name == "x_ub":
-                valid_target = 0
-            else:
-                valid_target = -1
-
-            names["index_x" + str(var)].set_as(valid_target)
-
-        return valid_target
-
     def reduction_is_none_and_sum_compute(self):
         """
         The normal calculate process when x is 2D and reduction is none or sum.
@@ -677,53 +573,6 @@ class NllLossCompute:
                                 self.move_last_line, self.last_vmul_repeat,
                                 loop_offset+lower_core_offset,
                                 self.last_in_burst, last_move_out_burst)
-
-    def _none_and_sum_compute_process(self, line, repeat, offset,
-                                      x_burst, out_burst):
-        self.tik_instance.data_move(self.temp_weight_ub, self.data_weight,
-                                    0, 1, math.ceil(self.c_dim/8), 0, 0)
-        self.tik_instance.data_move(
-            self.x_ub, self.data_x[offset*self.c_dim], 0, 1,
-            x_burst, 0, 0)
-        self.tik_instance.data_move(
-            self.target_ub, self.data_target[offset],
-            0, 1, math.ceil(line/8), 0, 0)
-        self.select_valid_value(line, 0, self.c_dim, self.refactor_weight_ub,
-                                self.temp_weight_ub, self.refactor_x_ub,
-                                self.x_ub, self.target_ub)
-        self.tik_instance.vmuls(MASK64, self.refactor_x_ub,
-                                self.refactor_x_ub, Constant.NEGATIVE,
-                                repeat, 1, 1, 8, 8)
-        self.tik_instance.vmul(
-            MASK64, self.refactor_x_ub, self.refactor_x_ub,
-            self.refactor_weight_ub, repeat, 1, 1, 1, 8, 8, 8)
-
-        if self.reduction == "none":
-            if line % 8 != 0 and self.core_num != 1 and out_burst > 1:
-                with self.tik_instance.for_range(0, 8) as i:
-                    self.align_tensor_ub[i].set_as(
-                        self.refactor_x_ub[line - 8 + i])
-                self.tik_instance.data_move(
-                    self.output[offset], self.refactor_x_ub,
-                    0, 1, out_burst-1, 8, 8)
-                self.tik_instance.data_move(
-                    self.output[offset + line - 8],
-                    self.align_tensor_ub, 0, 1, 1, 0, 0)
-            else:
-                self.tik_instance.data_move(
-                    self.output[offset],
-                    self.refactor_x_ub, 0, 1, out_burst, 0, 0)
-        if self.reduction == "sum":
-            self.sum_compute(line, self.x_ub, self.refactor_x_ub,
-                             self.work_tensor_ub)
-            self.sum_compute(line, self.temp_weight_ub,
-                             self.refactor_weight_ub, self.work_tensor_ub)
-            self.tik_instance.set_atomic_add(1)
-            self.tik_instance.data_move(
-                self.output, self.x_ub, 0, 1, 1, 0, 0)
-            self.tik_instance.data_move(
-                self.total_weight, self.temp_weight_ub, 0, 1, 1, 0, 0)
-            self.tik_instance.set_atomic_add(0)
 
     def sum_compute(self, sum_size, dst_ub, src_ub, work_ub):
         """
@@ -859,28 +708,6 @@ class NllLossCompute:
                                 self.tik_instance.data_move(
                                     self.total_weight, self.temp_weight_ub,
                                     0, 1, 1, 0, 0)
-
-    def _init_mean_ub(self):
-        if self.invalid_target:
-            self.weight_ub = self.tik_instance.Tensor(
-                "float32", [self.weight_ub_size],
-                name="weight_ub", scope=tik.scope_ubuf)
-            self.zero_weight_ub = self.weight_ub[0:8]
-            self.temp_weight_ub = self.weight_ub[8:]
-        else:
-            self.temp_weight_ub = self.tik_instance.Tensor(
-                "float32", [self.weight_ub_size],
-                name="temp_weight_ub", scope=tik.scope_ubuf)
-
-        self.target_ub = self.tik_instance.Tensor(
-            "float32", [self.target_ub_size],
-            name="target_ub", scope=tik.scope_ubuf)
-        self.refactor_weight_ub = self.tik_instance.Tensor(
-            "float32", [self.refactor_weight_size],
-            name="refactor_weight_ub", scope=tik.scope_ubuf)
-        self.work_tensor_weight_ub = self.tik_instance.Tensor(
-            "float32", [self.work_tensor_size],
-            name="work_tensor_weight_ub", scope=tik.scope_ubuf)
 
     def big_target_compute(self):
         """
@@ -1070,76 +897,6 @@ class NllLossCompute:
                 self.total_weight, self.weight_ub, 0, 1, 1, 0, 0)
             self.tik_instance.set_atomic_add(0)
 
-    def _big_weight_data_move(self, total_x_ub, total_weight_ub, sort_index,
-                              burst_len, repeat, offset):
-        """
-        data move process, place x or weight one by one at a block interval.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        self.tik_instance.data_move(
-            self.target_ub, self.data_target[offset],
-            0, 1, burst_len, 0, 0)
-        with self.tik_instance.for_range(0, sort_index) as index:
-            self.index_x.set_as(self.target_ub[index])
-
-            if self.invalid_target:
-                with self.tik_instance.if_scope(tik.any(self.index_x < 0,
-                                                        self.index_x >= self.c_dim)):
-                    self.tik_instance.vector_dup(8, self.x_ub[8*index], 0, 1, 1, 8)
-                    self.tik_instance.vector_dup(8, self.weight_ub[8*index], 0, 1, 1, 8)
-                with self.tik_instance.else_scope():
-                    self.tik_instance.data_move(
-                        self.x_ub[8*index],
-                        self.data_x[self.c_dim*(index+offset)+self.index_x],
-                        0, 1, 1, 0, 0)
-                    self.tik_instance.data_move(self.weight_ub[8*index],
-                                                self.data_weight[self.index_x],
-                                                0, 1, 1, 0, 0)
-            else:
-                self.tik_instance.data_move(
-                    self.x_ub[8*index],
-                    self.data_x[self.c_dim*(index+offset)+self.index_x],
-                    0, 1, 1, 0, 0)
-                self.tik_instance.data_move(self.weight_ub[8*index],
-                                            self.data_weight[self.index_x],
-                                            0, 1, 1, 0, 0)
-
-        if repeat > Constant.MAXREPEAT:
-            loop_repeat = math.ceil(repeat/Constant.MAXREPEAT)
-            max_repeat = Constant.MAXREPEAT
-        else:
-            max_repeat = 1
-            loop_repeat = 1
-        tail_offset = (loop_repeat - 1)*Constant.MAXREPEAT*8
-        tail_repeat = int(repeat % Constant.MAXREPEAT)
-        if tail_repeat == 0:
-            tail_repeat = Constant.MAXREPEAT
-        with self.tik_instance.for_range(0, loop_repeat-1) as loop:
-            self.tik_instance.vmul(1, self.x_ub[loop*Constant.MAXREPEAT*8],
-                                   self.x_ub[loop*Constant.MAXREPEAT*8],
-                                   self.weight_ub[loop*Constant.MAXREPEAT*8],
-                                   max_repeat, 1, 1, 1, 1, 1, 1)
-            self.tik_instance.vmuls(1, self.x_ub[loop*Constant.MAXREPEAT*8],
-                                    self.x_ub[loop*Constant.MAXREPEAT*8],
-                                    Constant.NEGATIVE, max_repeat, 1, 1, 1, 1)
-        self.tik_instance.vmul(1, self.x_ub[tail_offset],
-                               self.x_ub[tail_offset],
-                               self.weight_ub[tail_offset],
-                               tail_repeat, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vmuls(1, self.x_ub[tail_offset],
-                                self.x_ub[tail_offset], Constant.NEGATIVE, tail_repeat,
-                                1, 1, 1, 1)
-        with self.tik_instance.for_range(0, sort_index) as index:
-            total_x_ub[index].set_as(self.x_ub[8*index])
-            if self.reduction != "none":
-                total_weight_ub[index].set_as(self.weight_ub[8*index])
-
     def big_weight_compute(self):
         """
         The calculate process when weight cannot move to ub one time.
@@ -1289,6 +1046,249 @@ class NllLossCompute:
                                                self.data_weight],
                                        outputs=[self.output])
         return self.tik_instance
+
+    def _recalculate_core_num(self, total_line):
+        """
+        init the size of args.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        core_num = self.real_core_num
+        if self.reduction == "none":
+            if total_line <= self.real_core_num*8:
+                core_num = math.ceil(total_line/8)
+        elif self.reduction == "sum":
+            if total_line < self.real_core_num:
+                core_num = total_line
+        elif self.reduction == "mean":
+            if total_line < self.real_core_num*8:
+                core_num = math.ceil(total_line/8)
+
+        return core_num
+
+    def _compute_none_and_sum_size(self):
+        """
+        compute the size of tiling.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        self.loop_time = math.ceil(self.avg_line/self.move_max_line)
+        self.redundant_line = self.n_dim - self.move_max_line * \
+            (self.loop_time - 1)*self.core_num
+        self.fake_core = self._recalculate_core_num(self.redundant_line)
+        self.avg_line = math.ceil(self.redundant_line/self.fake_core)
+        self.move_last_line = self.redundant_line // self.fake_core
+        self.break_core = self.redundant_line % self.fake_core
+
+        # if avg_line lower or equal to eight, have three situations of core
+        if self.avg_line <= 8 and self.reduction != "sum":
+            self.avg_line = 8
+            self.break_core = self.fake_core - 1
+            self.move_last_line = self.redundant_line - 8*self.break_core
+            self.lower_eight_line = 0
+        elif self.reduction == "mean":
+            align_eight_line = self.redundant_line//8
+            self.lower_eight_line = self.redundant_line % 8
+            self.fake_core = self._recalculate_core_num(self.redundant_line)
+            self.avg_line = math.ceil(align_eight_line/self.fake_core)*8
+            self.move_last_line = (align_eight_line // self.fake_core)*8
+            self.break_core = align_eight_line % self.fake_core
+
+
+        self.avg_repeat = math.ceil(self.avg_line/64)
+        self.last_vmul_repeat = math.ceil(self.move_last_line/64)
+        self.avg_in_burst = math.ceil(self.avg_line*self.c_dim/8)
+        self.last_in_burst = math.ceil(self.move_last_line*self.c_dim/8)
+        if self.loop_time == 1:
+            self.thread_num = 1
+
+    def _db_tiling(self):
+        self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
+            "Unified_Buffer")//2 - 2048
+        self.init_tiling_size()
+
+        # cancel db when cannot move weight or target to ub one time
+        # with open db
+        if self.big_weight or self.big_target:
+            self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
+                "Unified_Buffer") - 2048
+            self.thread_num = 1
+            self.init_tiling_size()
+        self._compute_none_and_sum_size()
+
+    def _set_valid_target(self, names, var, src):
+        """
+        set valid target when target index is out c range, x set 0, weight set -1.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        new target index
+        """
+        if not self.invalid_target:
+            return None
+
+        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
+                                                names["index_x" + str(var)] >= self.c_dim)):
+            if src.name == "x_ub":
+                valid_target = 0
+            else:
+                valid_target = -1
+
+            names["index_x" + str(var)].set_as(valid_target)
+
+        return valid_target
+
+    def _none_and_sum_compute_process(self, line, repeat, offset,
+                                      x_burst, out_burst):
+        self.tik_instance.data_move(self.temp_weight_ub, self.data_weight,
+                                    0, 1, math.ceil(self.c_dim/8), 0, 0)
+        self.tik_instance.data_move(
+            self.x_ub, self.data_x[offset*self.c_dim], 0, 1,
+            x_burst, 0, 0)
+        self.tik_instance.data_move(
+            self.target_ub, self.data_target[offset],
+            0, 1, math.ceil(line/8), 0, 0)
+        self.select_valid_value(line, 0, self.c_dim, self.refactor_weight_ub,
+                                self.temp_weight_ub, self.refactor_x_ub,
+                                self.x_ub, self.target_ub)
+        self.tik_instance.vmuls(MASK64, self.refactor_x_ub,
+                                self.refactor_x_ub, Constant.NEGATIVE,
+                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmul(
+            MASK64, self.refactor_x_ub, self.refactor_x_ub,
+            self.refactor_weight_ub, repeat, 1, 1, 1, 8, 8, 8)
+
+        if self.reduction == "none":
+            if line % 8 != 0 and self.core_num != 1 and out_burst > 1:
+                with self.tik_instance.for_range(0, 8) as i:
+                    self.align_tensor_ub[i].set_as(
+                        self.refactor_x_ub[line - 8 + i])
+                self.tik_instance.data_move(
+                    self.output[offset], self.refactor_x_ub,
+                    0, 1, out_burst-1, 8, 8)
+                self.tik_instance.data_move(
+                    self.output[offset + line - 8],
+                    self.align_tensor_ub, 0, 1, 1, 0, 0)
+            else:
+                self.tik_instance.data_move(
+                    self.output[offset],
+                    self.refactor_x_ub, 0, 1, out_burst, 0, 0)
+        if self.reduction == "sum":
+            self.sum_compute(line, self.x_ub, self.refactor_x_ub,
+                             self.work_tensor_ub)
+            self.sum_compute(line, self.temp_weight_ub,
+                             self.refactor_weight_ub, self.work_tensor_ub)
+            self.tik_instance.set_atomic_add(1)
+            self.tik_instance.data_move(
+                self.output, self.x_ub, 0, 1, 1, 0, 0)
+            self.tik_instance.data_move(
+                self.total_weight, self.temp_weight_ub, 0, 1, 1, 0, 0)
+            self.tik_instance.set_atomic_add(0)
+
+    def _init_mean_ub(self):
+        if self.invalid_target:
+            self.weight_ub = self.tik_instance.Tensor(
+                "float32", [self.weight_ub_size],
+                name="weight_ub", scope=tik.scope_ubuf)
+            self.zero_weight_ub = self.weight_ub[0:8]
+            self.temp_weight_ub = self.weight_ub[8:]
+        else:
+            self.temp_weight_ub = self.tik_instance.Tensor(
+                "float32", [self.weight_ub_size],
+                name="temp_weight_ub", scope=tik.scope_ubuf)
+
+        self.target_ub = self.tik_instance.Tensor(
+            "float32", [self.target_ub_size],
+            name="target_ub", scope=tik.scope_ubuf)
+        self.refactor_weight_ub = self.tik_instance.Tensor(
+            "float32", [self.refactor_weight_size],
+            name="refactor_weight_ub", scope=tik.scope_ubuf)
+        self.work_tensor_weight_ub = self.tik_instance.Tensor(
+            "float32", [self.work_tensor_size],
+            name="work_tensor_weight_ub", scope=tik.scope_ubuf)
+
+    def _big_weight_data_move(self, total_x_ub, total_weight_ub, sort_index,
+                              burst_len, repeat, offset):
+        """
+        data move process, place x or weight one by one at a block interval.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        self.tik_instance.data_move(
+            self.target_ub, self.data_target[offset],
+            0, 1, burst_len, 0, 0)
+        with self.tik_instance.for_range(0, sort_index) as index:
+            self.index_x.set_as(self.target_ub[index])
+
+            if self.invalid_target:
+                with self.tik_instance.if_scope(tik.any(self.index_x < 0,
+                                                        self.index_x >= self.c_dim)):
+                    self.tik_instance.vector_dup(8, self.x_ub[8*index], 0, 1, 1, 8)
+                    self.tik_instance.vector_dup(8, self.weight_ub[8*index], 0, 1, 1, 8)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(
+                        self.x_ub[8*index],
+                        self.data_x[self.c_dim*(index+offset)+self.index_x],
+                        0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(self.weight_ub[8*index],
+                                                self.data_weight[self.index_x],
+                                                0, 1, 1, 0, 0)
+            else:
+                self.tik_instance.data_move(
+                    self.x_ub[8*index],
+                    self.data_x[self.c_dim*(index+offset)+self.index_x],
+                    0, 1, 1, 0, 0)
+                self.tik_instance.data_move(self.weight_ub[8*index],
+                                            self.data_weight[self.index_x],
+                                            0, 1, 1, 0, 0)
+
+        if repeat > Constant.MAXREPEAT:
+            loop_repeat = math.ceil(repeat/Constant.MAXREPEAT)
+            max_repeat = Constant.MAXREPEAT
+        else:
+            max_repeat = 1
+            loop_repeat = 1
+        tail_offset = (loop_repeat - 1)*Constant.MAXREPEAT*8
+        tail_repeat = int(repeat % Constant.MAXREPEAT)
+        if tail_repeat == 0:
+            tail_repeat = Constant.MAXREPEAT
+        with self.tik_instance.for_range(0, loop_repeat-1) as loop:
+            self.tik_instance.vmul(1, self.x_ub[loop*Constant.MAXREPEAT*8],
+                                   self.x_ub[loop*Constant.MAXREPEAT*8],
+                                   self.weight_ub[loop*Constant.MAXREPEAT*8],
+                                   max_repeat, 1, 1, 1, 1, 1, 1)
+            self.tik_instance.vmuls(1, self.x_ub[loop*Constant.MAXREPEAT*8],
+                                    self.x_ub[loop*Constant.MAXREPEAT*8],
+                                    Constant.NEGATIVE, max_repeat, 1, 1, 1, 1)
+        self.tik_instance.vmul(1, self.x_ub[tail_offset],
+                               self.x_ub[tail_offset],
+                               self.weight_ub[tail_offset],
+                               tail_repeat, 1, 1, 1, 1, 1, 1)
+        self.tik_instance.vmuls(1, self.x_ub[tail_offset],
+                                self.x_ub[tail_offset], Constant.NEGATIVE, tail_repeat,
+                                1, 1, 1, 1)
+        with self.tik_instance.for_range(0, sort_index) as index:
+            total_x_ub[index].set_as(self.x_ub[8*index])
+            if self.reduction != "none":
+                total_weight_ub[index].set_as(self.weight_ub[8*index])
 
 
 @para_check.check_input_type(dict, dict, dict, dict, dict, str, int, str)

@@ -163,6 +163,16 @@ class Lru(OpBase):
         """
         return Constant.BLOCK_BYTES // (tbe_platform.get_bit_len(dtype) // Constant.BYTE_BITS)
 
+    @staticmethod
+    def is_power(k):
+        """
+        input is or not 2**n
+        """
+        if k < 1:
+            return False
+        m = k & (k - 1)
+        return m == 0
+
     def tiling_args(self):
         """
         tiling info:
@@ -282,16 +292,6 @@ class Lru(OpBase):
         self.index_offset_list_gm = self.output_gm_list[3]
         self.not_in_cache_index_list_gm = self.output_gm_list[4]
         self.not_in_cache_number_gm = self.output_gm_list[5]
-
-    @staticmethod
-    def is_power(k):
-        """
-        input is or not 2**n
-        """
-        if k < 1:
-            return False
-        m = k & (k - 1)
-        return m == 0
 
     def iterate_timestamp_refresh(self):
         """
