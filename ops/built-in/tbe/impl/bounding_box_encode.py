@@ -59,6 +59,8 @@ class BoundingBoxEncode():
         self.stds = stds
         self.kernel_name = kernel_name
         self.core_num = 32
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.data_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
             self.anchor_box_dtype) // 8
         block_size = 32

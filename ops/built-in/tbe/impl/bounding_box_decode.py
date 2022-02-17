@@ -169,6 +169,8 @@ class BoundingBoxDecode(object):
         self.rois_data_each_block = constant.BLOCK_SIZE // \
                                     self.rois_dtype_bytes_size
         self.core_num = 32
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.each_core_start_address, self.each_core_calcul_num = \
             self.get_core_param()
         self.init_gm_tensor()

@@ -98,6 +98,8 @@ class BoundingBoxDecode(object):
         self.rois_dtype_bytes_size = tbe_platform.get_bit_len(self.rois_dtype) // byte_size
         self.rois_data_each_block = constant.BLOCK_SIZE // self.rois_dtype_bytes_size
         self.core_num = 32
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.each_repeat_block_number = block_number_fp16
         self.ub_max_size = max_ub_element_number_fp16
         if self.rois_dtype == "float32":

@@ -13,6 +13,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 BoundingBoxDecode ut case
 """
+from unittest.mock import patch
+from unittest.mock import MagicMock
 from op_test_frame.ut import OpUT
 ut_case = OpUT("BoundingBoxDecode", None, None)
 
@@ -67,6 +69,14 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
+# MOCK TEST
+vals = {("tik.vgatherb", ): True}
+
+def side_effects(*args):
+    return vals[args]
+
+with patch("te.platform.api_check_support", MagicMock(side_effect=side_effects)):
+    ut_case.run("Ascend910",'BoundingBoxDecode_pre_static_BoundingBoxDecode_1')
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
