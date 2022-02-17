@@ -33,23 +33,29 @@ namespace concat {
 constexpr size_t MAX_DIM_LEN = 8;
 constexpr int64_t BLOCK_SIZE = 32;
 constexpr int64_t MAX_INPUT_NUM = 48;
+constexpr int64_t MAX_TILING_NUM = 256;
 
 struct CompileInfo {
+  int64_t const_block_dims{1};
   int64_t core_num{0};
   int64_t ub_size{0};
   int64_t ori_axis{-1};
+  bool is_const{false};
   bool only_const_tiling{false};
   std::vector<std::vector<bool>> concat_vars;
   std::vector<size_t> align_vars;
+
+  CompileInfo() = default;
+  explicit CompileInfo(const nlohmann::json& _compile_info);
 };
 
 class Concat {
  public:
-  explicit Concat(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _compile_info,
+  explicit Concat(const std::string& _op_type, const ge::Operator& _op_paras, const CompileInfo& _compile_info,
                   const OpInfo& _op_info, utils::OpRunInfo& _run_info)
       : op_type(_op_type),
         op_paras(_op_paras),
-        compile_info(_compile_info),
+        c_info(_compile_info),
         op_info(_op_info),
         run_info(_run_info) {
   }
@@ -57,9 +63,8 @@ class Concat {
   bool ConcatTiling();
 
  private:
-  bool ProcessConst(bool& is_const) const;
+  void ProcessConst() const;
   bool DoTiling();
-  bool ParseCompileInfo();
   bool GenerateOutputShape();
   bool GenerateOutputShapeFromOp();
   bool CalcTiling();
@@ -78,16 +83,15 @@ class Concat {
   void CalcFactor();
   void CalcOffsets();
   void CalcKey();
-  void WriteConstTilingData() const;
-  bool WriteTilingData() const;
+  void WriteConstTilingData();
+  bool WriteTilingData();
 
  private:
   const std::string& op_type;
   const ge::Operator& op_paras;
-  const nlohmann::json& compile_info;
+  const CompileInfo& c_info;
   const OpInfo& op_info;
   utils::OpRunInfo& run_info;
-  concat::CompileInfo c_info;
   int64_t input_nums{0};
   int64_t max_available_ub{0};
   int64_t block_axis{-1};
@@ -102,6 +106,7 @@ class Concat {
   ge::DataType dtype{ge::DataType::DT_FLOAT16};
   bool need_multi_core{false};
   bool is_one_concat{false};
+  bool is_concat_zero{false};
   bool use_one_concat{false};
   bool read_align_no_ub{false};
   bool all_concat_align{false};
@@ -113,6 +118,7 @@ class Concat {
   std::array<int64_t, MAX_DIM_LEN> output_shapes{};
   std::array<int64_t, MAX_INPUT_NUM> align_factors{};
   std::array<int64_t, MAX_INPUT_NUM> offsets{};
+  std::array<int32_t, MAX_TILING_NUM> tiling_data{};
 };
 }  // namespace concat
 
@@ -124,7 +130,7 @@ class Concat {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
+bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
                utils::OpRunInfo& run_info);
 
 /*
@@ -136,7 +142,7 @@ bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const n
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
+bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
                utils::OpRunInfo& run_info, const OpInfo& op_info);
 
 class ConcatDslTilingHandler : public AutoTilingHandler {
@@ -149,7 +155,7 @@ class ConcatDslTilingHandler : public AutoTilingHandler {
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
 
  private:
-  const nlohmann::json compile_info;
+  const concat::CompileInfo compile_info;
 };
 }  // namespace optiling
 

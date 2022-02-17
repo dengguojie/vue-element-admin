@@ -200,7 +200,7 @@ def test_one_axis_all_dynamic_concat_neg_axis(_):
         extra_params = {"axis": -2}
         ins = classify_concat(input_s, extra_params)
         compile_info = get_compile_info()
-        except_compile_info = {"_ori_axis": 1}
+        except_compile_info = {"_ori_axis": -2}
         import json
         print(json.dumps(compile_info))
         except_ins = [[[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}], 1]]
@@ -220,6 +220,32 @@ def test_one_input_concat_neg_axis(_):
     return ins == except_ins and compile_info == except_compile_info
 
 
+def test_unknown_rank_1_axis(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-2,), "dtype": "float32"}
+        input_1 = {"shape": (100,), "dtype": "float32", "range": [(100, 100)]}
+        input_s = [[input_0, input_1]]
+        extra_params = {"axis": 0}
+        ins = classify_concat(input_s, extra_params)
+        compile_info = get_compile_info()
+        except_compile_info = {"_ori_axis": 0}
+        except_ins = [[[{'shape': [1, -1], 'range': [(1, 1), (0, None)], 'mode': 'concat'}, {'shape': [1, 100], 'range': [(1, 1), (100, 100)], 'mode': 'concat'}], 1]]
+    return ins == except_ins and compile_info == except_compile_info
+
+
+def test_unknown_rank_3_axis(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-2,), "dtype": "float32"}
+        input_1 = {"shape": (5, 100, 20), "dtype": "float32", "range": [(5, 5), (100, 100), (20, 20)]}
+        input_s = [[input_0, input_1]]
+        extra_params = {"axis": -1}
+        ins = classify_concat(input_s, extra_params)
+        compile_info = get_compile_info()
+        except_compile_info = {"_ori_axis": -1}
+        except_ins = [[[{'shape': [500, -1], 'range': [(500, 500), (0, None)], 'mode': 'concat'}, {'shape': [500, 20], 'range': [(500, 500), (20, 20)], 'mode': 'concat'}], 1]]
+    return ins == except_ins and compile_info == except_compile_info
+
+
 test_func_list = [
     test_max_inputs,
     test_min_inputs,
@@ -236,7 +262,9 @@ test_func_list = [
     test_concat_axis_zero_range_concat,
     test_unknow_rank,
     test_one_axis_all_dynamic_concat_neg_axis,
-    test_one_input_concat_neg_axis
+    test_one_input_concat_neg_axis,
+    test_unknown_rank_1_axis,
+    test_unknown_rank_3_axis
 ]
 
 

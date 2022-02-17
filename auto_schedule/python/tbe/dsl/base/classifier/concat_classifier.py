@@ -18,11 +18,13 @@
 classifier of shape in concat
 """
 from functools import reduce
+from operator import mul
 from typing import List
 
 from tbe.common.utils.errormgr import get_error_message
-from . import util
 from tbe.dsl.base import operation
+from . import util
+
 
 INPUT_NUMBER_LIMIT = 48
 UNKNOWN_RANK = -2
@@ -75,24 +77,40 @@ class ConcatClassifier:
 
     def _get_shape_range(self):
         input_x = self.ins[0]
-        self.shapes = [x.get("shape") for x in input_x]
-        self.ranges = [x.get("range") for x in input_x]
-        if self.axis < 0:
-            self.axis = self.axis + len(self.shapes[0])
+        for x in input_x:
+            shapes = x.get("shape")
+            if UNKNOWN_RANK in shapes:
+                ranges = x.get("range", (0, None))
+            else:
+                ranges = x.get("range")
+            self.shapes.append(shapes)
+            self.ranges.append(ranges)
 
     def _process_unknown_rank(self):
+        is_unknown_rank = any(UNKNOWN_RANK in _shape for _shape in self.shapes)
+        if not is_unknown_rank:
+            return
+
+        is_all_unknown_rank = all(UNKNOWN_RANK in _shape for _shape in self.shapes)
+        max_dim_len = max(len(_shape) for _shape in self.shapes)
         for index, _shape in enumerate(self.shapes):
-            if UNKNOWN_RANK in _shape:
-                if len(_shape) != 1:
-                    dict_args = {"errCode": "E90001",
-                                 "detailed_cause": "if the shape contains -2, it must be [-2] or (-2,)"}
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
+            if UNKNOWN_RANK not in _shape:
+                continue
+            if len(_shape) != 1:
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": "if the shape contains -2, it must be [-2] or (-2,)"}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            if is_all_unknown_rank:
                 self.shapes[index] = [-1, -1]
                 self.ranges[index] = [(0, None), (0, None)]
-                self.axis = 1
+            else:
+                self.shapes[index] = [-1 for _ in range(max_dim_len)]
+                self.ranges[index] = [(0, None) for _ in range(max_dim_len)]
 
         if len(self.shapes) == 1:
             self.axis = 0
+        if is_all_unknown_rank:
+            self.axis = 1
 
     def _process_single_input(self):
         if len(self.shapes) == 1:
@@ -104,7 +122,7 @@ class ConcatClassifier:
 
     @staticmethod
     def merge_shape(_shape):
-        return reduce(lambda x, y: x * y, _shape or [1])
+        return reduce(mul, _shape or [1])
 
     def _merge_shape_range(self):
         for shape, _range in zip(self.shapes, self.ranges):
@@ -152,6 +170,8 @@ class ConcatClassifier:
         self._process_single_input()
         operation.add_compile_info_inner("_ori_axis", self.axis)
         self._process_unknown_rank()
+        if self.axis < 0:
+            self.axis = self.axis + len(self.shapes[0])
         self._merge_shape_range()
         self._update_shape_range()
         self._process_empty_shape()

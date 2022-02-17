@@ -39,112 +39,244 @@ ut_case = OpUT("UT_Concat", "concat.test_dynamic_concat_impl", "concat")
 
 case0 = {
     "params": [[{
-        "shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-    }] * 2, {"shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-             }, 0],
-    "case_name": "test_dynamic_concat_0",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }] * 2, {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 0],
+    "case_name":
+    "test_dynamic_concat_0",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case1 = {
     "params": [[{
-        "shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-    }] * 2, {"shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-             }, 1],
-    "case_name": "test_dynamic_concat_1",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }] * 2, {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_1",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case2 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "float16", "range": [(1, None)] * 3
-    }] * 2, {"shape": (-1,) * 3, "dtype": "float16", "range": [(1, None)] * 3
-             }, 0],
-    "case_name": "test_dynamic_concat_2",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "float16",
+        "range": [(1, None)] * 3
+    }] * 2, {
+        "shape": (-1, ) * 3,
+        "dtype": "float16",
+        "range": [(1, None)] * 3
+    }, 0],
+    "case_name":
+    "test_dynamic_concat_2",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case3 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "int32", "range": [(1, None)] * 3
-    }] * 2, {"shape": (-1,) * 3, "dtype": "int32", "range": [(1, None)] * 3
-             }, 1],
-    "case_name": "test_dynamic_concat_3",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "int32",
+        "range": [(1, None)] * 3
+    }] * 2, {
+        "shape": (-1, ) * 3,
+        "dtype": "int32",
+        "range": [(1, None)] * 3
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_3",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case4 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "float32", "range": [(1, None)] * 3
-    }] * 2, {"shape": (-1,) * 3, "dtype": "float32", "range": [(1, None)] * 3
-             }, 2],
-    "case_name": "test_dynamic_concat_4",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "float32",
+        "range": [(1, None)] * 3
+    }] * 2, {
+        "shape": (-1, ) * 3,
+        "dtype": "float32",
+        "range": [(1, None)] * 3
+    }, 2],
+    "case_name":
+    "test_dynamic_concat_4",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case5 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "uint64", "range": [(1, None)] * 3
-    }] * 4, {"shape": (-1,) * 3, "dtype": "uint64", "range": [(1, None)] * 3
-             }, 1],
-    "case_name": "test_dynamic_concat_5",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "uint64",
+        "range": [(1, None)] * 3
+    }] * 4, {
+        "shape": (-1, ) * 3,
+        "dtype": "uint64",
+        "range": [(1, None)] * 3
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_5",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case6 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "int64", "range": [(1, None)] * 3
-    }] * 5, {"shape": (-1,) * 3, "dtype": "int64", "range": [(1, None)] * 3
-             }, 1],
-    "case_name": "test_dynamic_concat_6",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "int64",
+        "range": [(1, None)] * 3
+    }] * 5, {
+        "shape": (-1, ) * 3,
+        "dtype": "int64",
+        "range": [(1, None)] * 3
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_6",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case7 = {
     "params": [[{
-        "shape": (-1,) * 3, "dtype": "uint8", "range": [(1, None)] * 3
-    }] * 2, {"shape": (-1,) * 3, "dtype": "uint8", "range": [(1, None)] * 3
-             }, 2],
-    "case_name": "test_dynamic_concat_7",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 3,
+        "dtype": "uint8",
+        "range": [(1, None)] * 3
+    }] * 2, {
+        "shape": (-1, ) * 3,
+        "dtype": "uint8",
+        "range": [(1, None)] * 3
+    }, 2],
+    "case_name":
+    "test_dynamic_concat_7",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case8 = {
     "params": [[{
-        "shape": (256, 3120), "dtype": "float32", "range": [(1, None)] * 2
-    }] * 2, {"shape": (-1,) * 2, "dtype": "float32", "range": [(1, None)] * 2
-             }, 1],
-    "case_name": "test_dynamic_concat_8",
-    "expect": "success",
-    "support_expect": True
+        "shape": (256, 3120),
+        "dtype": "float32",
+        "range": [(1, None)] * 2
+    }] * 2, {
+        "shape": (-1, ) * 2,
+        "dtype": "float32",
+        "range": [(1, None)] * 2
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_8",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case9 = {
     "params": [[{
-        "shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-    }] * 1, {"shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-             }, 1],
-    "case_name": "test_dynamic_concat_9",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }] * 1, {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 1],
+    "case_name":
+    "test_dynamic_concat_9",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 case10 = {
     "params": [[{
-        "shape": (-2,), "dtype": "float16", "range": [(1, None)]
-    }] * 3, {"shape": (-1,) * 2, "dtype": "float16", "range": [(1, None)] * 2
-             }, 3],
-    "case_name": "test_dynamic_concat_10",
-    "expect": "success",
-    "support_expect": True
+        "shape": (-2, ),
+        "dtype": "float16",
+        "range": [(1, None)]
+    }] * 3, {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 3],
+    "case_name":
+    "test_dynamic_concat_10",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+
+case11 = {
+    "params": [[{
+        "shape": (-2, ),
+        "dtype": "float16",
+        "range": [(1, None)]
+    }, {
+        "shape": (2, ),
+        "dtype": "float16",
+        "range": [(2, 2)]
+    }], {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 0],
+    "case_name":
+    "test_dynamic_concat_11",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+
+case12 = {
+    "params": [[{
+        "shape": (-2, ),
+        "dtype": "float16",
+        "range": [(1, None)]
+    }, {
+        "shape": (3, 4, 100),
+        "dtype": "float16",
+        "range": [(3, 3), (4, 4), (100, 100)]
+    }], {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, -1],
+    "case_name":
+    "test_dynamic_concat_12",
+    "expect":
+    "success",
+    "support_expect":
+    True
 }
 
 ut_case.add_case(["all"], case0)
@@ -158,7 +290,8 @@ ut_case.add_case(["all"], case7)
 ut_case.add_case(["all"], case8)
 ut_case.add_case(["all"], case9)
 ut_case.add_case(["all"], case10)
-
+ut_case.add_case(["all"], case11)
+ut_case.add_case(["all"], case12)
 
 if __name__ == '__main__':
     import os
