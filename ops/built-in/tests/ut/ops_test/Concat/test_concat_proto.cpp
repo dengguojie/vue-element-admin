@@ -1412,3 +1412,25 @@ TEST_F(ConcatD, concatv2_infer_shape_dynamic7_fp16) {
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1, 1}, {0, 14}, {256, 256}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(ConcatD, concatd_inputs_verify) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 2}, {3, 3}, {100, 200}, {4, 8}, {16, 16}};
+  auto format = ge::FORMAT_NDC1HWC0;
+  auto ori_format = ge::FORMAT_NDHWC;
+  auto x0 = create_desc_shape_range({2, 1, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 1, 100, 5, 48}, ori_format, shape_range);
+  auto x1 = create_desc_shape_range({2, 1, 3, 100, 5, 16}, ge::DT_FLOAT, format, {2, 1, 100, 5, 48}, ori_format, shape_range);
+  auto x2 = create_desc_shape_range({2, 1, 3, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 1, 100, 5, 48}, ori_format, shape_range);
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, x0);
+  op.UpdateDynamicInputDesc("x", 1, x1);
+  op.UpdateDynamicInputDesc("x", 2, x2);
+  op.SetAttr("N", 3);
+  op.SetAttr("concat_dim", -1);
+  auto y = create_desc_shape_range({2, 9, 100, 5, 16}, ge::DT_FLOAT16, format, {2, 1, 100, 5, 144}, ori_format, shape_range);
+  op.UpdateOutputDesc("y", y);
+  
+  auto ret = op.InferShapeAndType();
+  ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

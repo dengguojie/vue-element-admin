@@ -861,6 +861,30 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
   return GRAPH_SUCCESS;
 }
 
+static graphStatus ConcatInputsVerify(Operator &op) {
+  std::vector<std::string> inputs;
+  const string input_name = "x";
+  string input_name_i = "x63";
+  int64_t N;
+  if (op.GetAttr("N", N) == GRAPH_FAILED) {
+    OP_LOGE(TbeGetName(op), "get attr N failed");
+    return GRAPH_FAILED;
+  }
+  for (int64_t input_idx = 0; input_idx < N; input_idx++) {
+    input_name_i = input_name + std::to_string(input_idx);
+    inputs.emplace_back(input_name_i);
+  }
+
+  if (!CheckInputDtypeSame(op, inputs)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(ConcatV2D, ConcatV2DVerify) {
+  return ConcatInputsVerify(op);
+}
+
 IMPLEMT_COMMON_INFERFUNC(ConcatV2DInferShape) {
   const vector<string> depends;
   PREPARE_DYNAMIC_SHAPE(depends);
@@ -883,6 +907,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2DInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2D, ConcatV2DInferShape);
+VERIFY_FUNC_REG(ConcatV2D, ConcatV2DVerify);
 
 static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, int64_t axis) {
   if (num_concat <= 0) {
@@ -1057,6 +1082,10 @@ VERIFY_FUNC_REG(ParallelConcat, ParallelConcatVerify);
 // ----------------ParallelConcat OP End-------------------
 
 // ----------------ConcatD OP Begin-------------------
+IMPLEMT_VERIFIER(ConcatD, ConcatDVerify) {
+  return ConcatInputsVerify(op);
+}
+
 IMPLEMT_COMMON_INFERFUNC(ConcatDInferShape) {
   const vector<string> depends;
   PREPARE_DYNAMIC_SHAPE(depends);
@@ -1079,6 +1108,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatD, ConcatDInferShape);
+VERIFY_FUNC_REG(ConcatD, ConcatDVerify);
 
 IMPLEMT_INFER_DATA_SLICE(ConcatD, ConcatDInferDataSlice) {
   int64_t num_concat;
@@ -1103,6 +1133,10 @@ INFER_VALUE_RANGE_DEFAULT_REG(ConcatD);
 // ----------------ConcatD OP End-------------------
 
 // ----------------Concat OP Begin-------------------
+IMPLEMT_VERIFIER(Concat, ConcatVerify) {
+  return ConcatInputsVerify(op);
+}
+
 IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
   const vector<string> depend_names = {"concat_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
@@ -1135,10 +1169,15 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Concat, ConcatInferShape);
+VERIFY_FUNC_REG(Concat, ConcatVerify);
 INFER_VALUE_RANGE_DEFAULT_REG(Concat);
 // ----------------Concat OP End-------------------
 
 // ----------------ConcatV2 OP Begin-------------------
+IMPLEMT_VERIFIER(ConcatV2, ConcatV2Verify) {
+  return ConcatInputsVerify(op);
+}
+
 IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
   const vector<string> depend_names = {"concat_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
@@ -1171,6 +1210,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2, ConcatV2InferShape);
+VERIFY_FUNC_REG(ConcatV2, ConcatV2Verify);
 INFER_VALUE_RANGE_DEFAULT_REG(ConcatV2);
 // ----------------ConcatV2 OP End-------------------
 
