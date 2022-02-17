@@ -26,6 +26,7 @@
 #include "./util/error_util.h"
 #include "graph/utils/node_utils.h"
 #include "common/inc/op_log.h"
+#include "util/common_shape_fns.h"
 
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
@@ -188,7 +189,34 @@ IMPLEMT_COMMON_INFERFUNC(RollV2InferShape) {
   (void)op.UpdateOutputDesc("output", output_desc_y);
   return GRAPH_SUCCESS;
 }
+
+IMPLEMT_VERIFIER(RollV2, RollV2Verify) {
+  Shape x_shape;
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRankAtLeast failed, ", GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D")));
+    return GRAPH_FAILED;
+  }
+
+  Shape shift_shape;
+  if (WithRankAtMost(op.GetInputDesc(1), 1, shift_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    string err_msg = ConcatString("shift_shape must be scalar or 1D, real rank is ", shift_shape.GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape axis_shape;
+  if (WithRankAtMost(op.GetInputDesc(2), 1, axis_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    string err_msg = ConcatString("axis_shape must be scalar or 1D, real rank is ", axis_shape.GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 COMMON_INFER_FUNC_REG(RollV2, RollV2InferShape);
+VERIFY_FUNC_REG(RollV2, RollV2Verify);
 // ----------------RollV2 END---------------------
 
 // ----------------SmoothL1Loss-------------------
@@ -485,7 +513,7 @@ IMPLEMT_VERIFIER(Normalize, NormalizeVerify) {
 
 INFER_FUNC_REG(Normalize, NormalizeInfer);
 VERIFY_FUNC_REG(Normalize, NormalizeVerify);
-//------------------------Normalize---------------------------
+// ------------------------Normalize---------------------------
 
 //----------------------Renorm begin------------------------
 IMPLEMT_COMMON_INFERFUNC(RenormInferShape) {

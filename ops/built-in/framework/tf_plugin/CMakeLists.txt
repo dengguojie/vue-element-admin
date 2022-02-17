@@ -450,6 +450,8 @@ set(_tf_plugins
   k_means_centroids_plugin.cc
   k_means_centroids_v2_plugin.cc
   block_lstm_plugin.cc
+  roll_plugin.cc
+  ensure_shape_plugin.cc
 )
 
 set(_tf_scope_fusion_passes
