@@ -279,7 +279,7 @@
         ],
         "ori_format": "NDHWC",
         "name": "input_x",
-        "type": "float"
+        "type": "float32"
       }
     ],
     "output_desc": [
@@ -302,7 +302,7 @@
         ],
         "ori_format": "NDHWC",
         "name": "output_y",
-        "type": "float"
+        "type": "float32"
       }
     ],
     "attr": [

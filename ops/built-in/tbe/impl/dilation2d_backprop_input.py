@@ -71,16 +71,16 @@ def dilation2d_backprop_input(x,
     -------
     tik_instance: tik_instance
     """
-    x_format = x.get("format")
-    x_ori_format = x.get("ori_format")
-    x_shape = x.get("shape")
+    check_list = ["float32"]
     x_dtype = x.get("dtype").lower()
+    x_format = x.get("format")
+    x_shape = x.get("shape")
+    x_ori_format = x.get("ori_format")
     filter_format = filter.get("format")
     filter_shape = filter.get("shape")
-    check_list = ["float32"]
 
-    para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_format(x_format, "NC1HWC0", param_name="x")
+    para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_shape(x_shape, min_rank=5, max_rank=5, param_name="x")
     para_check.check_format(filter_format, "NC1HWC0", param_name="filter")
     para_check.check_shape(filter_shape, min_rank=5, max_rank=5, param_name="filter")
@@ -97,11 +97,11 @@ def dilation2d_backprop_input(x,
     if len(pads) != 4:
         error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of pads should be 4", "pads", pads)
 
-    input_h = x_shape[2]
-    input_w = x_shape[3]
-
     filter_h = filter_shape[2]
     filter_w = filter_shape[3]
+
+    input_h = x_shape[2]
+    input_w = x_shape[3]
 
     if x_ori_format == "NHWC":
         stride_n, stride_h, stride_w, stride_c = strides
@@ -330,12 +330,12 @@ class Dilation2DBase:
         """
         init shape and format information
         """
-        self.input_params = input_params
         self.instance = tik.Tik(tik.Dprofile())
-        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        self.x_shape = input_params.get("x").get("shape")
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.input_params = input_params
         self.x_dtype = input_params.get("x").get("dtype").lower()
+        self.x_shape = input_params.get("x").get("shape")
         self.x_dsize = common_util.get_data_size(self.x_dtype)
         self.x_block_size = 32 // self.x_dsize
         self.batch = self.x_shape[0]
@@ -352,15 +352,15 @@ class Dilation2DBase:
         self.out_backprop_h = self.out_backprop_shape[2]
         self.out_backprop_w = self.out_backprop_shape[3]
 
-        self.y_shape = input_params.get("y").get("shape")
         self.y_dtype = input_params.get("y").get("dtype").lower()
+        self.y_shape = input_params.get("y").get("shape")
         self.y_dsize = common_util.get_data_size(self.y_dtype)
         self.y_block_size = 32 // self.y_dsize
 
-        self.stride_h = input_params.get("stride_h")
-        self.stride_w = input_params.get("stride_w")
         self.rate_h = input_params.get("rate_h")
         self.rate_w = input_params.get("rate_w")
+        self.stride_h = input_params.get("stride_h")
+        self.stride_w = input_params.get("stride_w")
         self.window_h = input_params.get("window_h")
         self.window_w = input_params.get("window_w")
         self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = input_params.get("pads")
@@ -704,7 +704,7 @@ class Dilation2D(Dilation2DBase):
         }
 
         for i, elem in enumerate(ub_tiling_shape):
-            find, t_factor, size_info, is_all = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
+            [find, t_factor, size_info, is_all] = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
             if find:
                 flag = True
                 ub_index = block_index + i
@@ -775,8 +775,9 @@ class Dilation2D(Dilation2DBase):
             "out_backprop_padding": out_backprop_padding,
             "val_size": val_size
         }
+        return_list = [find, t_factor, info, is_all]
 
-        return find, t_factor, info, is_all
+        return return_list
 
     def dilation_compute(self):
         """
@@ -1014,21 +1015,20 @@ class Dilation2D(Dilation2DBase):
 
         # w way slide range
         w_pad_left_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_pad_left_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_pad_left_steps
+        w_pad_left_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_pad_left_steps
 
         # h way slide range
         h_pad_left_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
-        h_pad_left_steps = self.pad_top // self.stride_h + 1 \
-            if self.pad_top % self.stride_h != 0 else h_pad_left_steps
+        h_pad_left_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_pad_left_steps
 
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_elem_start_offset
 
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         # calcute w & h elements
         w_elem_range = self.filter_w - w_elem_start_offset
@@ -1068,13 +1068,13 @@ class Dilation2D(Dilation2DBase):
 
         # w way slide range
         w_pad_right_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_pad_right_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_pad_right_steps
+        w_pad_right_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_pad_right_steps
 
         # h way slide range
         h_pad_right_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
-        h_pad_right_steps = self.pad_top // self.stride_h + 1 \
-            if self.pad_top % self.stride_h != 0 else h_pad_right_steps
+        h_pad_right_steps = \
+            self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_pad_right_steps
 
         # right up area step offset
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
@@ -1082,14 +1082,14 @@ class Dilation2D(Dilation2DBase):
 
         w_elem_start_offset = 0
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         # calculate w & h elements
         outer_elem = right_up_begin_step * self.stride_w + dilation_window_w - (self.pad_left + self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_elem_range = self.filter_w - outer_elem_no_dilation
         h_elem_range = self.filter_h - h_elem_start_offset
@@ -1137,16 +1137,16 @@ class Dilation2D(Dilation2DBase):
         w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_upcenter_steps = w_total_step - w_left_pad_step - w_right_pad_step
 
         w_elem_start_offset = 0
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         w_elem_range = self.filter_w
         h_elem_range = self.filter_h - h_elem_start_offset
@@ -1186,23 +1186,23 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         w_leftcenter_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_leftcenter_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_leftcenter_steps
+        w_leftcenter_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_leftcenter_steps
 
         h_top_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_leftcenter_steps = h_total_steps - h_top_steps - h_bottom_steps
 
         h_elem_start_offset = 0
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_left % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_left % self.rate_w != 0 else w_elem_start_offset
 
         w_elem_range = self.filter_w - w_elem_start_offset
         h_elem_range = self.filter_h
@@ -1243,15 +1243,15 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         w_rightcenter_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_rightcenter_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_rightcenter_steps
+        w_rightcenter_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_rightcenter_steps
 
         h_top_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_rightcenter_steps = h_total_steps - h_top_steps - h_bottom_steps
@@ -1266,8 +1266,8 @@ class Dilation2D(Dilation2DBase):
         outer_elem = (w_total_step - w_rightcenter_steps) * self.stride_w + dilation_window_w - (self.pad_left +
                                                                                                  self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_elem_range = self.filter_w - outer_elem_no_dilation
         h_elem_range = self.filter_h
@@ -1305,32 +1305,31 @@ class Dilation2D(Dilation2DBase):
         dilation_window_h = (self.filter_h - 1) * self.rate_h + 1
 
         w_pad_left_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_pad_left_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_pad_left_steps
+        w_pad_left_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_pad_left_steps
 
         h_pad_left_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_pad_left_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_pad_left_steps
+        h_pad_left_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_pad_left_steps
 
         h_total_step = (self.pad_top + self.h_in + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         left_down_begin_step = h_total_step - h_pad_left_steps
 
         h_elem_start_offset = 0
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_elem_start_offset
 
         # calculate w & h elements
         h_outer_elem = (h_total_step - h_pad_left_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                 self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
         w_elem_range = self.filter_w - w_elem_start_offset
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
 
-        line_strides = self.w_in // self.stride_w \
-            if self.w_in % self.stride_w == 0 else self.w_in // self.stride_w + 1
+        line_strides = self.w_in // self.stride_w if self.w_in % self.stride_w == 0 else self.w_in // self.stride_w + 1
 
         with self.instance.for_range(0, c1_stride) as c1_cnt:
             with self.instance.for_range(0, h_pad_left_steps) as h_step_i:
@@ -1365,12 +1364,12 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         h_down_right_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_down_right_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_down_right_steps
+        h_down_right_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_down_right_steps
 
         w_down_right_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_down_right_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_down_right_steps
+        w_down_right_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_down_right_steps
 
         w_elem_start_offset = 0
         h_elem_start_offset = 0
@@ -1382,14 +1381,14 @@ class Dilation2D(Dilation2DBase):
         w_outer_elem = (w_total_step - w_down_right_steps) * self.stride_w + dilation_window_w - (self.pad_left +
                                                                                                   self.w_in)
         w_outer_elem_no_dilation = 1 if w_outer_elem == 1 else w_outer_elem // self.rate_w
-        w_outer_elem_no_dilation = w_outer_elem // self.rate_w + 1 \
-            if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
+        w_outer_elem_no_dilation = \
+            w_outer_elem // self.rate_w + 1 if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
 
         h_outer_elem = (h_total_step - h_down_right_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                   self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
 
         w_elem_range = self.filter_w - w_outer_elem_no_dilation
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
@@ -1433,16 +1432,15 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         h_down_center_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_down_center_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_down_center_steps
+        h_down_center_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_down_center_steps
 
         w_left_pad_step = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_step = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_step
+        w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_down_center_steps = w_total_step - w_left_pad_step - w_right_pad_step
@@ -1456,8 +1454,8 @@ class Dilation2D(Dilation2DBase):
         h_outer_elem = (h_total_step - h_down_center_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                    self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
 
         w_elem_range = self.filter_w
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
@@ -1500,12 +1498,11 @@ class Dilation2D(Dilation2DBase):
 
         # calcualte w step range
         w_left_pad_step = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_step = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_step
+        w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_step_range = w_total_step - w_left_pad_step - w_right_pad_step
@@ -1515,8 +1512,8 @@ class Dilation2D(Dilation2DBase):
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_step_range = h_total_steps - h_top_steps - h_bottom_steps
@@ -1552,21 +1549,20 @@ class Dilation2D(Dilation2DBase):
 
         # w way slide range
         w_pad_left_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_pad_left_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_pad_left_steps
+        w_pad_left_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_pad_left_steps
 
         # h way slide range
         h_pad_left_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
-        h_pad_left_steps = self.pad_top // self.stride_h + 1 \
-            if self.pad_top % self.stride_h != 0 else h_pad_left_steps
+        h_pad_left_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_pad_left_steps
 
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_elem_start_offset
 
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         # calcute w & h elements
         w_elem_range = self.filter_w - w_elem_start_offset
@@ -1607,13 +1603,13 @@ class Dilation2D(Dilation2DBase):
 
         # w way slide range
         w_pad_right_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_pad_right_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_pad_right_steps
+        w_pad_right_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_pad_right_steps
 
         # h way slide range
         h_pad_right_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
-        h_pad_right_steps = self.pad_top // self.stride_h + 1 \
-            if self.pad_top % self.stride_h != 0 else h_pad_right_steps
+        h_pad_right_steps = \
+            self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_pad_right_steps
 
         # right up area step offset
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
@@ -1621,14 +1617,14 @@ class Dilation2D(Dilation2DBase):
 
         w_elem_start_offset = 0
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         # calculate w & h elements
         outer_elem = right_up_begin_step * self.stride_w + dilation_window_w - (self.pad_left + self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_elem_range = self.filter_w - outer_elem_no_dilation
         h_elem_range = self.filter_h - h_elem_start_offset
@@ -1670,24 +1666,23 @@ class Dilation2D(Dilation2DBase):
 
         # h way slide range
         h_upcenter_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
-        h_upcenter_steps = self.pad_top // self.stride_h + 1 \
-            if self.pad_top % self.stride_h != 0 else h_upcenter_steps
+        h_upcenter_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_upcenter_steps
 
         # w way slide range
         w_left_pad_step = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
         w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_upcenter_steps = w_total_step - w_left_pad_step - w_right_pad_step
 
         w_elem_start_offset = 0
         h_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_elem_start_offset
+        h_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_elem_start_offset
 
         w_elem_range = self.filter_w
         h_elem_range = self.filter_h - h_elem_start_offset
@@ -1727,31 +1722,30 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         w_leftcenter_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_leftcenter_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_leftcenter_steps
+        w_leftcenter_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_leftcenter_steps
 
         h_top_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_leftcenter_steps = h_total_steps - h_top_steps - h_bottom_steps
 
         h_elem_start_offset = 0
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_left % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_left % self.rate_w != 0 else w_elem_start_offset
 
         w_elem_range = self.filter_w - w_elem_start_offset
         h_elem_range = self.filter_h
 
         left_center_begin_step = h_top_steps * (
             (self.pad_left + self.pad_right + self.w_in - dilation_window_w) // self.stride_w + 1)
-        line_strides = self.w_in // self.stride_w \
-            if self.w_in % self.stride_w == 0 else self.w_in // self.stride_w + 1
+        line_strides = self.w_in // self.stride_w if self.w_in % self.stride_w == 0 else self.w_in // self.stride_w + 1
 
         with self.instance.for_range(0, c1_stride) as c1_cnt:
             with self.instance.for_range(0, h_leftcenter_steps) as h_step_i:
@@ -1785,15 +1779,15 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         w_rightcenter_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_rightcenter_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_rightcenter_steps
+        w_rightcenter_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_rightcenter_steps
 
         h_top_steps = 1 if self.pad_top == 1 else self.pad_top // self.stride_h
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_rightcenter_steps = h_total_steps - h_top_steps - h_bottom_steps
@@ -1808,8 +1802,8 @@ class Dilation2D(Dilation2DBase):
         outer_elem = (w_total_step - w_rightcenter_steps) * self.stride_w + dilation_window_w - (self.pad_left +
                                                                                                  self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_elem_range = self.filter_w - outer_elem_no_dilation
         h_elem_range = self.filter_h
@@ -1846,27 +1840,27 @@ class Dilation2D(Dilation2DBase):
         dilation_window_h = (self.filter_h - 1) * self.rate_h + 1
 
         w_pad_left_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_pad_left_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_pad_left_steps
+        w_pad_left_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_pad_left_steps
 
         h_pad_left_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_pad_left_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_pad_left_steps
+        h_pad_left_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_pad_left_steps
 
         h_total_step = (self.pad_top + self.h_in + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         left_down_begin_step = h_total_step - h_pad_left_steps
 
         h_elem_start_offset = 0
         w_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_elem_start_offset
+        w_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_elem_start_offset
 
         # calculate w & h elements
         h_outer_elem = (h_total_step - h_pad_left_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                 self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
         w_elem_range = self.filter_w - w_elem_start_offset
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
 
@@ -1904,12 +1898,12 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         h_down_right_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_down_right_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_down_right_steps
+        h_down_right_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_down_right_steps
 
         w_down_right_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_down_right_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_down_right_steps
+        w_down_right_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_down_right_steps
 
         w_elem_start_offset = 0
         h_elem_start_offset = 0
@@ -1921,14 +1915,14 @@ class Dilation2D(Dilation2DBase):
         w_outer_elem = (w_total_step - w_down_right_steps) * self.stride_w + dilation_window_w - (self.pad_left +
                                                                                                   self.w_in)
         w_outer_elem_no_dilation = 1 if w_outer_elem == 1 else w_outer_elem // self.rate_w
-        w_outer_elem_no_dilation = w_outer_elem // self.rate_w + 1 \
-            if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
+        w_outer_elem_no_dilation = \
+            w_outer_elem // self.rate_w + 1 if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
 
         h_outer_elem = (h_total_step - h_down_right_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                   self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
 
         w_elem_range = self.filter_w - w_outer_elem_no_dilation
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
@@ -1970,16 +1964,15 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         h_down_center_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_down_center_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_down_center_steps
+        h_down_center_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_down_center_steps
 
         w_left_pad_step = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_step = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_step
+        w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_down_center_steps = w_total_step - w_left_pad_step - w_right_pad_step
@@ -1993,8 +1986,8 @@ class Dilation2D(Dilation2DBase):
         h_outer_elem = (h_total_step - h_down_center_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                    self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h else h_outer_elem_no_dilation
 
         w_elem_range = self.filter_w
         h_elem_range = self.filter_h - h_outer_elem_no_dilation
@@ -2036,12 +2029,11 @@ class Dilation2D(Dilation2DBase):
 
         # calcualte w step range
         w_left_pad_step = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_step = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_step
+        w_left_pad_step = self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_step
 
         w_right_pad_step = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_step = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_step
+        w_right_pad_step = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_step
 
         w_total_step = (self.w_in + self.pad_left + self.pad_right - dilation_window_w) // self.stride_w + 1
         w_step_range = w_total_step - w_left_pad_step - w_right_pad_step
@@ -2051,8 +2043,8 @@ class Dilation2D(Dilation2DBase):
         h_top_steps = self.pad_top // self.stride_h + 1 if self.pad_top % self.stride_h != 0 else h_top_steps
 
         h_bottom_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_bottom_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
+        h_bottom_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_bottom_steps
 
         h_total_steps = (self.h_in + self.pad_top + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_step_range = h_total_steps - h_top_steps - h_bottom_steps
@@ -3015,8 +3007,8 @@ class Dilation2D(Dilation2DBase):
 
         # (1) update left up area
         w_left_pad_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_steps
+        w_left_pad_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_steps
 
         cut_size = self.tiling_params["ub_size_info"].get("expand")
 
@@ -3082,8 +3074,8 @@ class Dilation2D(Dilation2DBase):
 
         # (1) update right up  area
         w_right_pad_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_steps
+        w_right_pad_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_steps
 
         cut_size = self.tiling_params["ub_size_info"].get("expand")
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
@@ -3095,14 +3087,14 @@ class Dilation2D(Dilation2DBase):
 
         w_right_elem_start_offset = 0
         h_right_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_right_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_right_elem_start_offset
+        h_right_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_right_elem_start_offset
 
         # calculate w & h elements
         outer_elem = right_up_begin_step * self.stride_w + dilation_window_w - (self.pad_left + self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_right_elem_range = self.filter_w - outer_elem_no_dilation
         h_right_elem_range = self.filter_h - h_right_elem_start_offset + h_pos // self.rate_h
@@ -3130,8 +3122,8 @@ class Dilation2D(Dilation2DBase):
 
         w_right_center_up_elem_start_offset = 0
         h_right_center_up_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_right_center_up_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_right_center_up_elem_start_offset
+        h_right_center_up_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_right_center_up_elem_start_offset
 
         w_right_center_up_elem_range = self.filter_w
         h_right_center_up_elem_range = self.filter_h - self.pad_top // self.rate_h + h_pos // self.rate_h
@@ -3168,8 +3160,8 @@ class Dilation2D(Dilation2DBase):
 
         w_center_up_elem_start_offset = 0
         h_center_up_elem_start_offset = 1 if self.pad_top == 1 else self.pad_top // self.rate_h
-        h_center_up_elem_start_offset = self.pad_top // self.rate_h + 1 \
-            if self.pad_top % self.rate_h != 0 else h_center_up_elem_start_offset
+        h_center_up_elem_start_offset = \
+            self.pad_top // self.rate_h + 1 if self.pad_top % self.rate_h != 0 else h_center_up_elem_start_offset
 
         w_center_up_elem_range = self.filter_w
         h_center_up_elem_range = self.filter_h - self.pad_top // self.rate_h + h_pos // self.rate_h
@@ -3211,8 +3203,8 @@ class Dilation2D(Dilation2DBase):
         cut_size = self.tiling_params["ub_size_info"].get("expand")
 
         w_left_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_left_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_left_elem_start_offset
+        w_left_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_left_elem_start_offset
         h_left_elem_start_offset = 0
 
         w_left_elem_range = self.filter_w - w_left_elem_start_offset
@@ -3284,8 +3276,8 @@ class Dilation2D(Dilation2DBase):
         # calculate w & h elements
         outer_elem = right_center_begin_step * self.stride_w + dilation_window_w - (self.pad_left + self.w_in)
         outer_elem_no_dilation = 1 if outer_elem == 1 else outer_elem // self.rate_w
-        outer_elem_no_dilation = outer_elem // self.rate_w + 1 \
-            if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
+        outer_elem_no_dilation = \
+            outer_elem // self.rate_w + 1 if outer_elem % self.rate_w != 0 else outer_elem_no_dilation
 
         w_right_elem_range = self.filter_w - outer_elem_no_dilation
         h_right_elem_range = self.filter_h
@@ -3362,24 +3354,24 @@ class Dilation2D(Dilation2DBase):
         dilation_window_h = (self.filter_h - 1) * self.rate_h + 1
 
         w_left_pad_steps = 1 if self.pad_left == 1 else self.pad_left // self.stride_w
-        w_left_pad_steps = self.pad_left // self.stride_w + 1 \
-            if self.pad_left % self.stride_w != 0 else w_left_pad_steps
+        w_left_pad_steps = \
+            self.pad_left // self.stride_w + 1 if self.pad_left % self.stride_w != 0 else w_left_pad_steps
 
         h_left_pad_steps = 1 if self.pad_bottom == 1 else self.pad_bottom // self.stride_h
-        h_left_pad_steps = self.pad_bottom // self.stride_h + 1 \
-            if self.pad_bottom % self.stride_h != 0 else h_left_pad_steps
+        h_left_pad_steps = \
+            self.pad_bottom // self.stride_h + 1 if self.pad_bottom % self.stride_h != 0 else h_left_pad_steps
 
         w_left_elem_start_offset = 1 if self.pad_left == 1 else self.pad_left // self.rate_w
-        w_left_elem_start_offset = self.pad_left // self.rate_w + 1 \
-            if self.pad_top % self.rate_w != 0 else w_left_elem_start_offset
+        w_left_elem_start_offset = \
+            self.pad_left // self.rate_w + 1 if self.pad_top % self.rate_w != 0 else w_left_elem_start_offset
         h_left_elem_start_offset = 0
 
         h_total_step = (self.pad_top + self.h_in + self.pad_bottom - dilation_window_h) // self.stride_h + 1
         h_outer_elem = (h_total_step - h_left_pad_steps) * self.stride_h + dilation_window_h - (self.pad_top +
                                                                                                 self.h_in)
         h_outer_elem_no_dilation = 1 if h_outer_elem == 1 else h_outer_elem // self.rate_h
-        h_outer_elem_no_dilation = h_outer_elem // self.rate_h + 1 \
-            if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
+        h_outer_elem_no_dilation = \
+            h_outer_elem // self.rate_h + 1 if h_outer_elem % self.rate_h != 0 else h_outer_elem_no_dilation
 
         w_left_elem_range = self.filter_w - w_left_elem_start_offset
         h_left_elem_range = self.filter_h - h_outer_elem_no_dilation
@@ -3439,8 +3431,8 @@ class Dilation2D(Dilation2DBase):
         dilation_window_w = (self.filter_w - 1) * self.rate_w + 1
 
         w_right_pad_steps = 1 if self.pad_right == 1 else self.pad_right // self.stride_w
-        w_right_pad_steps = self.pad_right // self.stride_w + 1 \
-            if self.pad_right % self.stride_w != 0 else w_right_pad_steps
+        w_right_pad_steps = \
+            self.pad_right // self.stride_w + 1 if self.pad_right % self.stride_w != 0 else w_right_pad_steps
 
         w_total_step = (self.pad_left + self.w_in + self.pad_right - dilation_window_w) // self.stride_w + 1
         right_up_begin_step = w_total_step - w_right_pad_steps
@@ -3449,8 +3441,8 @@ class Dilation2D(Dilation2DBase):
         w_outer_elem = (w_total_step - w_right_pad_steps) * self.stride_w + dilation_window_w - (self.pad_left +
                                                                                                  self.w_in)
         w_outer_elem_no_dilation = 1 if w_outer_elem == 1 else w_outer_elem // self.rate_w
-        w_outer_elem_no_dilation = w_outer_elem // self.rate_w + 1 \
-            if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
+        w_outer_elem_no_dilation = \
+            w_outer_elem // self.rate_w + 1 if w_outer_elem % self.rate_w != 0 else w_outer_elem_no_dilation
 
         w_right_elem_range = self.filter_w - w_outer_elem_no_dilation
         h_right_elem_range = self.filter_h - (h_pos - self.pad_top + dilation_window_h - self.h_in) // self.rate_h

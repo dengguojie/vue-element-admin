@@ -69,8 +69,8 @@ bool Softmax::FusedReduceAxis() {
     reduce_axis[0] = 1;
     input_shape[0] = 1;
     input_shape[1] = input_shape_ori[0];
-    capacity_shape = 2;
-    pattern = 400000000;
+    capacity_shape = INT_NUM_TWO;
+    pattern = PTTERN_40;
   } else if (axis_ori == 0) {
     reduce_axis[0] = 0;
     input_shape[0] = input_shape_ori[0];
@@ -78,8 +78,8 @@ bool Softmax::FusedReduceAxis() {
     for (size_t i = 1; i < input_shape_ori.size(); i++) {
       input_shape[1] *= input_shape_ori[i];
     }
-    capacity_shape = 2;
-    pattern = 300000000;
+    capacity_shape = INT_NUM_TWO;
+    pattern = PTTERN_30;
   } else if (axis_ori == input_shape_ori.size() - 1) {
     reduce_axis[0] = 1;
     input_shape[1] = input_shape_ori[input_shape_ori.size() - 1];
@@ -87,21 +87,21 @@ bool Softmax::FusedReduceAxis() {
     for (size_t i = 0; i < input_shape_ori.size() - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
-    capacity_shape = 2;
-    pattern = 400000000;
+    capacity_shape = INT_NUM_TWO;
+    pattern = PTTERN_40;
   } else {
     reduce_axis[0] = 1;
-    capacity_shape = 3;
+    capacity_shape = INT_NUM_THREE;
     input_shape[1] = input_shape_ori[axis_ori];
     input_shape[0] = 1;
-    input_shape[2] = 1;
+    input_shape[INT_NUM_TWO] = 1;
     for (size_t i = 0; i < axis_ori - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
     for (size_t i = axis_ori + 1; i < input_shape_ori.size(); i++) {
-      input_shape[2] *= input_shape_ori[i];
+      input_shape[INT_NUM_TWO] *= input_shape_ori[i];
     }
-    pattern = 500000000;
+    pattern = PTTERN_50;
   }
 
   input_shape.resize(capacity_shape);
@@ -113,8 +113,8 @@ bool Softmax::GetCompileInfo() {
   std::vector<int32_t> info = op_info["common_info"];
   compileInfo.max_ub_count = info[0];
   compileInfo.core_num = info[1];
-  compileInfo.is_keep_dims = (bool)info[2];
-  compileInfo.reduce_block_size = info[3];
+  compileInfo.is_keep_dims = (bool)info[INT_NUM_TWO];
+  compileInfo.reduce_block_size = info[INT_NUM_THREE];
   output_dtypeUB = op_paras.inputs[0].tensor[0].dtype;
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
@@ -124,7 +124,7 @@ bool Softmax::GetCompileInfo() {
 bool Softmax::GetBlockTilingInfo() {
   // rewrite block_tiling_axis, block_tiling_factor.
   int32_t core_num = compileInfo.core_num;
-  if (pattern == 300000000) {
+  if (pattern == PTTERN_30) {
     tilingInfo.block_tiling_axis = 1;
     tilingInfo.block_tiling_factor = 1;
     if (input_shape[1] > core_num) {
@@ -133,7 +133,7 @@ bool Softmax::GetBlockTilingInfo() {
     } else {
       tilingInfo.block_dim = input_shape[1];
     }
-  } else if (pattern == 400000000) {
+  } else if (pattern == PTTERN_40) {
     tilingInfo.block_tiling_axis = 0;
     tilingInfo.block_tiling_factor = 1;
     int32_t output_block_size = GetBlockSize(output_dtypeUB);
@@ -146,35 +146,19 @@ bool Softmax::GetBlockTilingInfo() {
     } else {
       tilingInfo.block_dim = input_shape[0];
     }
-  } else if (pattern == 500000000) {
-    if (input_shape[0] > core_num) {
-      tilingInfo.block_tiling_axis = 0;
-      tilingInfo.block_tiling_factor = (input_shape[0] + core_num - 1) / core_num;
-      tilingInfo.block_dim = core_num;
-      pattern = 500000010;
-    } else {
-      tilingInfo.block_tiling_axis = 2;
-      if (input_shape[0] * input_shape[2] >= core_num) {
-        int64_t block_tiling_factor_outer = core_num / input_shape[0];
-        tilingInfo.block_tiling_factor = (input_shape[0] + block_tiling_factor_outer - 1) / block_tiling_factor_outer;
-        tilingInfo.block_dim = core_num;
-      } else {
-        tilingInfo.block_dim = input_shape[0] * input_shape[2];
-      }
-      pattern = 500000030;
-    }
   }
+
   return true;
 }
 
 int32_t Softmax::GetBlockSize(std::string dtypeUB) {
   int32_t block_size = 0;
   if (dtypeUB == "float32" || dtypeUB == "int32" || dtypeUB == "uint32") {
-    block_size = 8;
+    block_size = BLOCK_SIZE_INT8;
   } else if (dtypeUB == "float16" || dtypeUB == "int16" || dtypeUB == "uint16") {
-    block_size = 16;
+    block_size = BLOCK_SIZE_FLOAT16;
   } else if (dtypeUB == "int8" || dtypeUB == "uint8") {
-    block_size = 32;
+    block_size = BLOCK_SIZE_FLOAT;
   }
 
   return block_size;
@@ -183,7 +167,7 @@ int32_t Softmax::GetBlockSize(std::string dtypeUB) {
 bool Softmax::GetUbTilingInfo() {
   // rewrite ub_tiling_factor, ub_tiling_axis
   int64_t result = 1;
-  if (pattern == 300000000) {
+  if (pattern == PTTERN_30) {
     if (tilingInfo.block_tiling_factor * input_shape[0] > compileInfo.max_ub_count) {
       tilingInfo.ub_tiling_axis = 1;
       tilingInfo.ub_tiling_factor = compileInfo.max_ub_count / input_shape[1];
@@ -191,26 +175,9 @@ bool Softmax::GetUbTilingInfo() {
       tilingInfo.ub_tiling_axis = 1;
       tilingInfo.ub_tiling_factor = result;
     }
-  } else if (pattern == 400000000) {
+  } else if (pattern == PTTERN_40) {
     tilingInfo.ub_tiling_factor = 1;
     tilingInfo.ub_tiling_axis = 0;
-  } else if (pattern == 500000010 || pattern == 500000030) {
-    if (pattern == 500000010) {
-      result = input_shape[0] / tilingInfo.block_tiling_factor;
-      if (result * input_shape[1] * input_shape[2] > compileInfo.max_ub_count) {
-        if (input_shape[1] * input_shape[2] < compileInfo.max_ub_count) {
-          tilingInfo.ub_tiling_axis = 0;
-          tilingInfo.ub_tiling_factor = compileInfo.max_ub_count / input_shape[1] / input_shape[2];
-        } else {
-          tilingInfo.ub_tiling_axis = 2;
-          tilingInfo.ub_tiling_factor = compileInfo.max_ub_count / input_shape[1];
-          pattern = 500000020;
-        }
-      } else {
-        tilingInfo.ub_tiling_axis = 2;
-        tilingInfo.ub_tiling_factor = compileInfo.max_ub_count / input_shape[1];
-      }
-    }
   }
 
   return true;
@@ -246,7 +213,7 @@ bool Softmax::DoTiling() {
   // common process
   ret = ret && GetCompileInfo();
 
-  if (pattern == 400000000) {
+  if (pattern == PTTERN_40) {
     ret = ret && ProcessTiling();
   }
 

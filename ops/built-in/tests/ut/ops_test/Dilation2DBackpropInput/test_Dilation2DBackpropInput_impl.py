@@ -458,6 +458,37 @@ case14 = {
     "support_expect": True
 }
 
+case1 = {
+    "params": [{
+        "shape": (32, 1000, 5, 5, 16),
+        "dtype": "float32",
+        "format": "NC1HWC0",
+        "ori_shape": (32, 5, 5, 16000),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (1, 1000, 3, 3, 16),
+        "dtype": "float32",
+        "format": "NC1HWC0",
+        "ori_shape": (1, 3, 3, 16000),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (32, 1000, 3, 3, 16),
+        "dtype": "float32",
+        "format": "NC1HWC0",
+        "ori_shape": (32, 3, 3, 1),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (32, 1000, 5, 5, 16),
+        "dtype": "float32",
+        "format": "NC1HWC0",
+        "ori_shape": (32, 5, 5, 16000),
+        "ori_format": "NHWC"
+    }, [1, 1, 1, 1], [1, 1, 1, 1], "SAME", [0, 0, 0, 0], False, "NHWC"],
+    "case_name": "test_1",
+    "expect": "success",
+    "support_expect": True
+}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)

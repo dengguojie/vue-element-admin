@@ -187,8 +187,7 @@ def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
                                     0, 1,
                                     _ceil_div(col_size, Constant.C0_LEN), 0, 0)
 
-                        src_addr_list = [in_ub[vnchw_col_size * i] for i in
-                                         idx_list]
+                        src_addr_list = [in_ub[vnchw_col_size * i] for i in idx_list]
                         dst_addr_list = [out_ub[Constant.C0_LEN * i] for i in idx_list]
                         repeat_cnt = _ceil_div(col_size, Constant.C0_LEN)
                         src_stride = 0 if repeat_cnt == 1 else 1

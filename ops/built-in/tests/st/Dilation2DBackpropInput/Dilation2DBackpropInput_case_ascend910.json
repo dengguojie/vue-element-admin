@@ -703,5 +703,287 @@
         "value": "NHWC"
       }
     ]
+  },
+  {
+    "case_name": "Dilation2DBackpropInput_static_shape_test_15_ascend910a",
+    "op": "Dilation2DBackpropInput",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          5,
+          16000
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          16000
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "filter"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          5,
+          16000
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          5,
+          16000
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "rates",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "SAME"
+      },
+      {
+        "name": "pads",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "ceil_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ]
+  },
+  {
+    "case_name": "Dilation2DBackpropInput_static_shape_test_16_ascend910a",
+    "op": "Dilation2DBackpropInput",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          50000,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "filter"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          50000,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5,
+          50000,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "rates",
+        "type": "list_int",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "SAME"
+      },
+      {
+        "name": "pads",
+        "type": "list_int",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "ceil_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ]
   }
 ]

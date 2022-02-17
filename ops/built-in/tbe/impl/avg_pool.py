@@ -139,16 +139,11 @@ def _get_fusion_params(input_data, output_data, is_fused_compute=True):
 
     # l1 fusion params assign
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in input_data.op.attrs else False
-    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value \
-        if "L1_addr_flag" in input_data.op.attrs else -1
-    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] \
-        if "L1_addr_offset" in input_data.op.attrs else -1
-    l1_valid_size = input_data.op.attrs["L1_valid_size"] \
-        if "L1_valid_size" in input_data.op.attrs else -1
+    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 if "addr_type" in input_data.op.attrs else False
+    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in input_data.op.attrs else -1
+    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] if "L1_addr_offset" in input_data.op.attrs else -1
+    l1_valid_size = input_data.op.attrs["L1_valid_size"] if "L1_valid_size" in input_data.op.attrs else -1
     out_l1_flag = output_data.get("addr_type") == 1
     fusion_params = {"is_fused_compute": is_fused_compute,
                      "l1_fusion_type": l1_fusion_type,
@@ -169,21 +164,14 @@ def _avgpool_conv2d_fusion_para(inputs, outputs):
     :return: l1 convergence parameter
     """
 
-    input_memory_type = inputs.op.attrs["addr_type"] \
-        if "addr_type" in inputs.op.attrs else 0
-    output_memory_type = outputs["addr_type"] \
-        if "addr_type" in outputs else 0
-    valid_shape = inputs.op.attrs["valid_shape"] \
-        if "valid_shape" in inputs.op.attrs else ()
-    slice_offset = inputs.op.attrs["slice_offset"] \
-        if "slice_offset" in inputs.op.attrs else ()
-    l1_fusion_type = inputs.op.attrs["L1_fusion_type"] \
-        if "L1_fusion_type" in inputs.op.attrs else -1
+    input_memory_type = inputs.op.attrs["addr_type"] if "addr_type" in inputs.op.attrs else 0
+    output_memory_type = outputs["addr_type"] if "addr_type" in outputs else 0
+    valid_shape = inputs.op.attrs["valid_shape"] if "valid_shape" in inputs.op.attrs else ()
+    slice_offset = inputs.op.attrs["slice_offset"] if "slice_offset" in inputs.op.attrs else ()
+    l1_fusion_type = inputs.op.attrs["L1_fusion_type"] if "L1_fusion_type" in inputs.op.attrs else -1
 
-    fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"] \
-        if "L1_addr_flag" in inputs.op.attrs else -1
-    fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"] \
-        if "L1_valid_size" in inputs.op.attrs else -1
+    fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"] if "L1_addr_flag" in inputs.op.attrs else -1
+    fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"] if "L1_valid_size" in inputs.op.attrs else -1
 
     l1_fusion_enable_flag = get_L1_info("L1_fusion_enabled")
     if not l1_fusion_enable_flag:

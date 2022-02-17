@@ -420,7 +420,8 @@ class Dilation2DBase:
             w_end = w_end + 1
         else:
             w_end = w_start
-        return h_start, h_end, w_start, w_end
+        return_list = [h_start, h_end, w_start, w_end]
+        return return_list
 
     def get_offset(self, index, ub_index):
         """
@@ -640,7 +641,7 @@ class Dilation2D(Dilation2DBase):
         self.filter_offset_list = _get_product_of_each_dim(self.filter_shape, len(self.filter_shape))
         self.y_offset_list = _get_product_of_each_dim(self.y_shape, len(self.y_shape))
 
-        self.ho_start, self.ho_end, self.wo_start, self.wo_end = self.get_mid_ho_wo_range()
+        [self.ho_start, self.ho_end, self.wo_start, self.wo_end] = self.get_mid_ho_wo_range()
         self.tiling_params = {}
         pad_flag = self.pad_left != 0 or self.pad_right != 0
         move_flag = False
@@ -677,7 +678,7 @@ class Dilation2D(Dilation2DBase):
             "expand": self.filter_h * self.filter_w * self.c0
         }
         for i, elem in enumerate(ub_tiling_shape):
-            find, t_factor, size_info, is_all = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
+            [find, t_factor, size_info, is_all] = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
             if find:
                 flag = True
                 ub_index = block_index + i
@@ -714,7 +715,8 @@ class Dilation2D(Dilation2DBase):
                 find = True
                 break
         info = {"input": input, "filter": filter, "expand": expand}
-        return find, t_factor, info, is_all
+        return_list = [find, t_factor, info, is_all]
+        return return_list
 
     def dilation_compute(self):
         """

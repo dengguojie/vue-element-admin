@@ -691,7 +691,7 @@ class Dilation2D(Dilation2DBase):
         }
 
         for i, elem in enumerate(ub_tiling_shape):
-            find, t_factor, size_info, is_all = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
+            [find, t_factor, size_info, is_all] = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
             if find:
                 flag = True
                 ub_index = block_index + i
@@ -762,8 +762,9 @@ class Dilation2D(Dilation2DBase):
             "out_backprop_padding": out_backprop_padding,
             "val_size": val_size
         }
+        return_list = [find, t_factor, info, is_all]
 
-        return find, t_factor, info, is_all
+        return return_list
 
     def dilation_compute(self):
         """

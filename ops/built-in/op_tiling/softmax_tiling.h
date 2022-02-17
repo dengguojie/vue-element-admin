@@ -25,9 +25,18 @@
 #include <cmath>
 #include <vector>
 
+
 #include "vector_tiling.h"
 
 namespace optiling {
+constexpr int32_t INT_NUM_TWO = 2;
+constexpr int32_t INT_NUM_THREE = 3;
+constexpr int32_t BLOCK_SIZE_INT8 = 8;
+constexpr int32_t BLOCK_SIZE_FLOAT16 = 16;
+constexpr int32_t BLOCK_SIZE_FLOAT = 32;
+constexpr int32_t PTTERN_30 = 300000000;
+constexpr int32_t PTTERN_40 = 400000000;
+constexpr int32_t PTTERN_50 = 500000000;
 
 struct SoftmaxTilingInfo {
   int32_t block_dim{0};

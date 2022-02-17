@@ -97,16 +97,11 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
     :return: dict fusion_params
     """
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in input_data.op.attrs else False
-    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value \
-        if "L1_addr_flag" in input_data.op.attrs else -1
-    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] \
-        if "L1_addr_offset" in input_data.op.attrs else -1
-    l1_valid_size = input_data.op.attrs["L1_valid_size"] \
-        if "L1_valid_size" in input_data.op.attrs else -1
+    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 if "addr_type" in input_data.op.attrs else False
+    l1_addr_flag = input_data.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in input_data.op.attrs else -1
+    l1_addr_offset = input_data.op.attrs["L1_addr_offset"] if "L1_addr_offset" in input_data.op.attrs else -1
+    l1_valid_size = input_data.op.attrs["L1_valid_size"] if "L1_valid_size" in input_data.op.attrs else -1
     out_l1_flag = output_data.get("addr_type") == 1
     fusion_params = {
         "is_fused_compute": is_fused_compute,
@@ -208,8 +203,8 @@ def pool_fuse_compute(input_data,
             window = list(window)
 
             # l1 fusion and l2 fusion
-            l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-                if "L1_fusion_type" in input_data.op.attrs else -1
+            l1_fusion_type = \
+                input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
 
             # l1 fusion params assign
             fusion_params = get_fusion_params(input_data, output_data, True)
@@ -281,8 +276,8 @@ def pool_fuse_compute(input_data,
             window = list(window)
 
             # l1 fusion and l2 fusion
-            l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-                if "L1_fusion_type" in input_data.op.attrs else -1
+            l1_fusion_type = \
+                input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
 
             # l1 fusion params assign
             fusion_params = get_fusion_params(input_data, output_data, True)

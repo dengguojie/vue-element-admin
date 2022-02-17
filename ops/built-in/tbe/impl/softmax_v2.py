@@ -374,7 +374,7 @@ def _is_special_cases(input_shape, compare_type):
                         [192, 50, 50], [384, 50, 50], [768, 50, 50],
                         [192, 197, 197], [384, 197, 197], [96, 197, 197],
                         [512, 3, 49, 49], [1024, 3, 49, 49], [2048, 3, 49, 49], [4096, 3, 49, 49],
-                        [512, 4, 49, 49], [1024, 4, 49, 49], [2048, 4, 49, 49], [4096 ,4, 49, 49],
+                        [512, 4, 49, 49], [1024, 4, 49, 49], [2048, 4, 49, 49], [4096, 4, 49, 49],
                         [128, 6, 49, 49], [256, 6, 49, 49], [512, 6, 49, 49],
                         [1024, 6, 49, 49], [2048, 6, 49, 49], [4096, 6, 49, 49],
                         [128, 8, 49, 49], [256, 8, 49, 49], [512, 8, 49, 49], [1024, 8, 49, 49],
@@ -610,8 +610,8 @@ def multicore_factor_calculate(shape):
         npart_w = shape[3]
         split_axis = 4
         split_size = 1
-
-    return npart_n, npart_h, npart_w, split_axis, split_size
+    return_list = [npart_n, npart_h, npart_w, split_axis, split_size]
+    return return_list
 
 
 def multicore_factor_calculate_nz(shape):
@@ -641,7 +641,8 @@ def multicore_factor_calculate_nz(shape):
         npart_n0 = shape[2]
         split_axis = 3
         split_size = 1
-    return npart_n1, npart_n0, split_axis, split_size
+    return_list = [npart_n1, npart_n0, split_axis, split_size]
+    return return_list
 
 
 def tiling_factor_calculate(shape, split_axis_0, split_size, use_fp32):
@@ -2322,7 +2323,7 @@ def softmax_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name, im
     align_factor = shape[4]
     align(sch, op_list, pad_param, align_factor, 0)
 
-    npart_n, npart_h, npart_w, split_axis_0, split_size = multicore_factor_calculate(shape)
+    [npart_n, npart_h, npart_w, split_axis_0, split_size] = multicore_factor_calculate(shape)
 
     xno, xni = sch[res].split(res.op.axis[0], nparts=npart_n)
     xho, xhi = sch[res].split(res.op.axis[2], nparts=npart_h)
@@ -2434,7 +2435,7 @@ def softmax_nz_channel_calculate(shape, dtype, pad_flag, pad_param, kernel_name)
     align_factor = shape[3]
     align_nz(sch, op_list, pad_param, align_factor, 0)
 
-    npart_n1, npart_n0, split_axis_0, split_size = multicore_factor_calculate_nz(shape)
+    [npart_n1, npart_n0, split_axis_0, split_size] = multicore_factor_calculate_nz(shape)
 
     xn1o, xn1i = sch[res].split(res.op.axis[1], nparts=npart_n1)
     xn0o, xn0i = sch[res].split(res.op.axis[2], nparts=npart_n0)
@@ -2577,9 +2578,9 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     if input_format in ("NDC1HWC0",):
         in_shape = list(in_shape)
         in_shape = [in_shape[0] * in_shape[1]] + in_shape[2:]
-
-    return in_shape, in_dtype, pad_flag, pad_param
-
+    return_list = [in_shape, in_dtype, pad_flag, pad_param]
+    
+    return return_list
 
 def softmax_nz_param_check(in_tensor, output_tensor, axis, kernel_name):
     """
@@ -2629,8 +2630,9 @@ def softmax_nz_param_check(in_tensor, output_tensor, axis, kernel_name):
         pad_c1 = (padding + 15) // 16
         pad_c0 = padding % 16
         pad_param = [pad_c1, pad_c0]
+    return_list = [in_shape, in_dtype, pad_flag, pad_param]
 
-    return in_shape, in_dtype, pad_flag, pad_param
+    return return_list
 
 
 def softmax_axis_check(origin_format, value):
@@ -2710,8 +2712,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     None
     """
     # get input_x format
-    ori_shape = input_x.get("ori_shape")
     input_format = input_x.get("format")
+    ori_shape = input_x.get("ori_shape")
     if input_format == "NC1HWC0":
         if len(ori_shape) == 2:
             new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
@@ -2740,9 +2742,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 if axis[0] >= 0:
                     axis[0] = axis[0] + 1
 
-
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     use_dynamic = True
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if input_format in ("NDC1HWC0",) and input_x.get("dtype").lower() == "float32":
         use_dynamic = False
     if _is_special_cases(ori_shape, 0):
@@ -2771,7 +2772,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
             axic_is_c = softmax_axis_check(input_x.get("ori_format"), axis[0])
     if input_format == "FRACTAL_NZ" and len(input_x.get("ori_shape")) == 2 \
             and input_x['ori_shape'][1] % 16 != 0:
-        in_shape, in_dtype, pad_flag, pad_param = \
+        [in_shape, in_dtype, pad_flag, pad_param] = \
             softmax_nz_param_check(input_x, output_y, axis, kernel_name)
 
         # compute & schedule & build
@@ -2780,7 +2781,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     elif input_format in ("NC1HWC0", "NDC1HWC0") and axic_is_c:
         # 5D format, using TVM primitive, UB fusion is not supported.
         # parameters check
-        in_shape, in_dtype, pad_flag, pad_param = \
+        [in_shape, in_dtype, pad_flag, pad_param] = \
             softmax_param_check(input_x, output_y, axis, kernel_name)
 
         # compute & schedule & build

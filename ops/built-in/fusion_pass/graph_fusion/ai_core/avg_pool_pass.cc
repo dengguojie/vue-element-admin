@@ -726,7 +726,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   bool isFuzzBuild = false;
   ge::AttrUtils::GetBool(avgPoolDesc, ge::ATTR_NAME_FUZZ_BUILD, isFuzzBuild);
   // when static op or dynamic op phase_running, is_dynamic = false
-  if (std::find(dimInfo.begin(),dimInfo.end(), -1) != dimInfo.end() || isFuzzBuild) {
+  if (std::find(dimInfo.begin(), dimInfo.end(), -1) != dimInfo.end() || isFuzzBuild) {
     isDynamic = true;
   }
   if (dimInfo.size() == INT_NUM_FOUR) {

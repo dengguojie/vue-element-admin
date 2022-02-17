@@ -148,6 +148,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 from impl.avg_pool import check_supported
 from impl.avg_pool import get_op_support_info
 from impl.avg_pool import avg_pool_compute
+from impl.avg_pool import _avgpool_conv2d_fusion_para
 
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
@@ -204,9 +205,24 @@ def test_avg_pool_compute_001(test_arg):
             "ori_format": "NHWC",
             "param_type": "output"
         }, [1, 1, 3, 1], [1, 1, 4, 1], "SAME", "NC1HWC0")
+
+def test_avgpool_conv2d_fusion_para_001(test_arg):
+    from te import tvm
+    attr = {"ori_shape": [1, 24, 24, 256]}
+    tensor_in = tvm.placeholder((1, 16, 24, 24, 16), name="tensor_in", dtype="float16", attrs=attr)
+    _avgpool_conv2d_fusion_para(tensor_in, {
+            "shape": (1, 16, 24, 24, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (1, 24, 24, 256),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        })
+
 ut_case.add_cust_test_func(test_func=test_avg_pool_compute_001)
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_cust_test_func(test_func=test_avgpool_conv2d_fusion_para_001)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
