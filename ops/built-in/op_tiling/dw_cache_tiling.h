@@ -150,10 +150,10 @@ struct BlockDimCalculator {
   int32_t tmp_load_size_bl1k = INT_MAX;
   int32_t tmp_load_size_neither = INT_MAX;
   int32_t tmp_core_use = 1;
-  int32_t* batch_dim_array;
-  int32_t* m_dim_array;
-  int32_t* n_dim_array;
-  int32_t* h_dim_array;
+  int32_t* batch_dim_array = nullptr;
+  int32_t* m_dim_array = nullptr;
+  int32_t* n_dim_array = nullptr;
+  int32_t* h_dim_array = nullptr;
   int32_t al1_full_load_size = 0;
   int32_t bl1_full_load_size = 0;
   int32_t al1_k_full_load_size = 0;
@@ -250,15 +250,14 @@ struct L1Status {
   bool both_full_load = false;
   bool al1_full_load = false;
   bool bl1_full_load = false;
-  void SetStatus(int32_t kal1_16_input, int32_t kbl1_16_input, int32_t m_al1_input, int32_t n_bl1_input,
-                 int32_t db_al1_input, int32_t db_bl1_input)
+  void SetStatus(const int32_t *l1_factors)
   {
-    this->kal1_16 = kal1_16_input;
-    this->kbl1_16 = kbl1_16_input;
-    this->m_al1 = m_al1_input;
-    this->n_bl1 = n_bl1_input;
-    this->db_al1 = db_al1_input;
-    this->db_bl1 = db_bl1_input;
+    this->kal1_16 = l1_factors[0];
+    this->kbl1_16 = l1_factors[1];
+    this->m_al1 = l1_factors[2];
+    this->n_bl1 = l1_factors[3];
+    this->db_al1 = l1_factors[4];
+    this->db_bl1 = l1_factors[5];
   }
 };
 
@@ -276,7 +275,7 @@ struct UbStatus {
 class Conv2dDwCacheTiling {
  public:
   bool GenTiling(Conv2dDwTiling &tiling);
-  Conv2dDwCacheTiling(const Conv2dBpFilterParas &params) : params(params) {}
+  explicit Conv2dDwCacheTiling(const Conv2dBpFilterParas &params) : params(params) {}
   ~Conv2dDwCacheTiling() {
   }
 
@@ -312,6 +311,7 @@ class Conv2dDwCacheTiling {
 
   void GetFinalMkn();
   void GetBlockDim();
+  void GetKDimHelper(const int32_t &m_idx, const int32_t &b_factor, const int32_t &n_factor);
   void UpdateBlockDimRes();
   void NeitherFullLoadBlock();
   void GetL0FactorsCand(L0Factors &res_factors, int32_t *paras_combo);
@@ -323,10 +323,9 @@ class Conv2dDwCacheTiling {
 
   static int32_t GetK2Ho(int32_t k, int32_t wo);
   static int32_t GetHo2Hi(int32_t ho, int32_t stride_h, int32_t kh);
-  static void GetFactors(int32_t *cnt, int32_t *factor_list, int32_t num, int32_t max_num);
+  static void GetFactors(int32_t &cnt, int32_t *factor_list, int32_t num, int32_t max_num);
   static void GetNearestFactor(int32_t base, int32_t &factor);
-  static void GetTwoFactors(int32_t *res, int32_t base, int32_t dim, int32_t max_num,
-                            int32_t min_num, int32_t cur_factor, int32_t default_num);
+  static void GetTwoFactors(int32_t *res, int32_t base, int32_t dim, const int32_t *other_factors);
 };
 
 }; // namespace optiling::conv2d_dw
