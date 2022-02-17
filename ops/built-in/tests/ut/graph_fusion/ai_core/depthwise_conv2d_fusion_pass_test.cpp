@@ -461,3 +461,168 @@ TEST_F(depthwise_conv2d_fusion_pass_test, all_filter_input_empty_test) {
   EXPECT_EQ(in_shape, exp_in);
   EXPECT_EQ(out_shape, exp_out);
 }
+
+/************************************
+ *
+ *              filter  offset
+ *                |      /
+ *      x     AscendWeightQuant
+ *        \      /
+ *         conv2d
+ *            |
+ *
+ *************************************/
+TEST_F(depthwise_conv2d_fusion_pass_test, AscendWeightQuant_hwcn_test) {
+  ge::OpDescPtr x = std::make_shared<ge::OpDesc>("x", "Data");
+  ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
+  ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
+  ge::OpDescPtr ascend_weight_quant = std::make_shared<ge::OpDesc>("ascend_weight_quant", "AscendWeightQuant");
+  ge::OpDescPtr offset = std::make_shared<ge::OpDesc>("offset", "Data");
+
+  ge::GeShape input_shape({1, 16, 256, 256});
+  ge::GeTensorDesc x_desc(input_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
+  x_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  x_desc.SetOriginDataType(ge::DT_FLOAT);
+  x_desc.SetOriginShape(input_shape);
+
+  ge::GeShape output_shape({1, 4, 256, 256});
+  ge::GeTensorDesc y_desc(output_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
+  y_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  y_desc.SetOriginDataType(ge::DT_FLOAT);
+  y_desc.SetOriginShape(output_shape);
+
+  ge::GeShape filter_shape({1, 1, 16, 4});
+  ge::GeTensorDesc filter_desc(filter_shape, ge::FORMAT_HWCN, ge::DT_FLOAT);
+  filter_desc.SetOriginFormat(ge::FORMAT_HWCN);
+  filter_desc.SetOriginDataType(ge::DT_FLOAT);
+  filter_desc.SetOriginShape(filter_shape);
+
+  x->AddOutputDesc(x_desc);
+  filter->AddOutputDesc(filter_desc);
+  offset->AddOutputDesc(filter_desc);
+  ascend_weight_quant->AddInputDesc("x", filter_desc);
+  ascend_weight_quant->AddInputDesc("offset", filter_desc);
+  ascend_weight_quant->AddOutputDesc(filter_desc);
+  d_conv->AddInputDesc("x", x_desc);
+  d_conv->AddInputDesc("filter", filter_desc);
+  d_conv->AddOutputDesc(y_desc);
+
+  ge::AttrUtils::SetListInt(d_conv, "dilations", {1, 1, 1, 1});
+  ge::AttrUtils::SetListInt(d_conv, "pads", {0, 0, 0, 0});
+  ge::AttrUtils::SetListInt(d_conv, "strides", {1, 1, 1, 1});
+
+  ge::ComputeGraphPtr compute_graph_ptr = std::make_shared<ge::ComputeGraph>("test");
+  ge::NodePtr x_node = compute_graph_ptr->AddNode(x);
+  ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
+  ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
+  ge::NodePtr ascend_weight_quant_node = compute_graph_ptr->AddNode(ascend_weight_quant);
+  ge::NodePtr offset_node = compute_graph_ptr->AddNode(offset);
+
+  ge::GraphUtils::AddEdge(x_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(filter_node->GetOutDataAnchor(0), ascend_weight_quant_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(offset_node->GetOutDataAnchor(0), ascend_weight_quant_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(ascend_weight_quant_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(1));
+
+
+  vector<int64_t> out_shape;
+  vector<int64_t> in_shape;
+  vector<int64_t> exp_in = {1, 1, 16, 4};
+  vector<int64_t> exp_out = {1, 1, 1, 64};
+  bool has_attr = false;
+  fe::FusionPassTestUtils::RunGraphFusionPass("ADepthwiseFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  for (ge::NodePtr &node : compute_graph_ptr->GetDirectNode()) {
+    std::cout << "type:" << node->GetType() << ", name:" << node->GetName() << std::endl;
+    if (node->GetName() == "filter/Reshape_1") {
+      ge::OpDescPtr desc = node->GetOpDesc();
+      auto out_tensor = desc->GetOutputDesc(0);
+      out_shape = out_tensor.GetOriginShape().GetDims();
+      auto in_tensor = desc->GetInputDesc(0);
+      in_shape = in_tensor.GetOriginShape().GetDims();
+    }
+  }
+  EXPECT_EQ(in_shape, exp_in);
+  EXPECT_EQ(out_shape, exp_out);
+}
+
+
+/************************************
+ *
+ *              filter
+ *                |      /
+ *      x     AscendWeightQuant
+ *        \      /
+ *         conv2d
+ *            |
+ *
+ *************************************/
+TEST_F(depthwise_conv2d_fusion_pass_test, AscendWeightQuant_nchw_test) {
+  ge::OpDescPtr x = std::make_shared<ge::OpDesc>("x", "Data");
+  ge::OpDescPtr filter = std::make_shared<ge::OpDesc>("filter", "Data");
+  ge::OpDescPtr d_conv = std::make_shared<ge::OpDesc>("depthwise_conv2d", "DepthwiseConv2D");
+  ge::OpDescPtr ascend_weight_quant = std::make_shared<ge::OpDesc>("ascend_weight_quant", "AscendWeightQuant");
+  ge::OpDescPtr offset = std::make_shared<ge::OpDesc>("offset", "Data");
+
+  ge::GeShape input_shape({1, 16, 256, 256});
+  ge::GeTensorDesc x_desc(input_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
+  x_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  x_desc.SetOriginDataType(ge::DT_FLOAT);
+  x_desc.SetOriginShape(input_shape);
+
+  ge::GeShape output_shape({1, 4, 256, 256});
+  ge::GeTensorDesc y_desc(output_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
+  y_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  y_desc.SetOriginDataType(ge::DT_FLOAT);
+  y_desc.SetOriginShape(output_shape);
+
+  ge::GeShape filter_shape({4, 16, 1, 1});
+  ge::GeTensorDesc filter_desc(filter_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
+  filter_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  filter_desc.SetOriginDataType(ge::DT_FLOAT);
+  filter_desc.SetOriginShape(filter_shape);
+
+  x->AddOutputDesc(x_desc);
+  filter->AddOutputDesc(filter_desc);
+  offset->AddOutputDesc(filter_desc);
+  ascend_weight_quant->AddInputDesc("x", filter_desc);
+  ascend_weight_quant->AddInputDesc("offset", filter_desc);
+  ascend_weight_quant->AddOutputDesc(filter_desc);
+  d_conv->AddInputDesc("x", x_desc);
+  d_conv->AddInputDesc("filter", filter_desc);
+  d_conv->AddOutputDesc(y_desc);
+
+  ge::AttrUtils::SetListInt(d_conv, "dilations", {1, 1, 1, 1});
+  ge::AttrUtils::SetListInt(d_conv, "pads", {0, 0, 0, 0});
+  ge::AttrUtils::SetListInt(d_conv, "strides", {1, 1, 1, 1});
+
+  ge::ComputeGraphPtr compute_graph_ptr = std::make_shared<ge::ComputeGraph>("test");
+  ge::NodePtr x_node = compute_graph_ptr->AddNode(x);
+  ge::NodePtr filter_node = compute_graph_ptr->AddNode(filter);
+  ge::NodePtr d_conv_node = compute_graph_ptr->AddNode(d_conv);
+  ge::NodePtr ascend_weight_quant_node = compute_graph_ptr->AddNode(ascend_weight_quant);
+  ge::NodePtr offset_node = compute_graph_ptr->AddNode(offset);
+
+  ge::GraphUtils::AddEdge(x_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(filter_node->GetOutDataAnchor(0), ascend_weight_quant_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(offset_node->GetOutDataAnchor(0), ascend_weight_quant_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(ascend_weight_quant_node->GetOutDataAnchor(0), d_conv_node->GetInDataAnchor(1));
+
+
+  vector<int64_t> out_shape;
+  vector<int64_t> in_shape;
+  vector<int64_t> exp_in = {4, 16, 1, 1};
+  vector<int64_t> exp_out = {64, 1, 1, 1};
+  bool has_attr = false;
+  fe::FusionPassTestUtils::RunGraphFusionPass("ADepthwiseFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  for (ge::NodePtr &node : compute_graph_ptr->GetDirectNode()) {
+    std::cout << "type:" << node->GetType() << ", name:" << node->GetName() << std::endl;
+    if (node->GetName() == "filter/Reshape_1") {
+      ge::OpDescPtr desc = node->GetOpDesc();
+      auto out_tensor = desc->GetOutputDesc(0);
+      out_shape = out_tensor.GetOriginShape().GetDims();
+      auto in_tensor = desc->GetInputDesc(0);
+      in_shape = in_tensor.GetOriginShape().GetDims();
+    }
+  }
+  EXPECT_EQ(in_shape, exp_in);
+  EXPECT_EQ(out_shape, exp_out);
+}
