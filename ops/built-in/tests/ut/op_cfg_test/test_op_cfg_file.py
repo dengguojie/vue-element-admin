@@ -67,7 +67,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_attr_type = set(["bool", "int", "listInt", "float", "str", "listFloat",
                                "listListInt", "type", "listBool", "listStr"])
         allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
-                            "binfile.name", "kernel.name",
+                            "binfile.name", "kernel.name", "coreType.value",
                             "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
                             "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value", "dynamicCompileStatic.flag",
                             "dynamicRankSupport.flag", "cubeOp.flag", "sgatKeyAttr.list", "rangeLimit.value"])
