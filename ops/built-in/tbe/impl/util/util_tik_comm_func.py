@@ -36,6 +36,12 @@ SCALAR_MUL2_FP32 = 2**26
 MAX_REPEAT_NUM = 255
 # max int64
 MAX_INT64 = 2 ** 64 - 1
+# repeat num for tik vsrot32 command
+REPEAT_NUM = 32
+# sort list num for tik vmrgsort command
+SORT_LIST_NUM = 4
+PER_LOOP_NUM = 4096
+BLOCK_ELE_B32 = 8
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -611,6 +617,24 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
             do_vconv(8, 8)
 
 
+def tik_func_vmins(tik_instance, dst_ub, src_ub, value, do_len,
+                   dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
+    """
+    tik_func_vmins
+    """
+    _tik_func_single_input_with_scalar(tik_instance.vmins, dst_ub, src_ub, value, do_len,
+                                       dst_blk, src_blk, dst_rep, src_rep)
+
+
+def tik_func_vmaxs(tik_instance, dst_ub, src_ub, value, do_len,
+                   dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
+    """
+    tik_func_vmaxs
+    """
+    _tik_func_single_input_with_scalar(tik_instance.vmaxs, dst_ub, src_ub, value, do_len,
+                                       dst_blk, src_blk, dst_rep, src_rep)
+
+
 def ceil_div(int1, int2):
     """
     ceil for (int1 / int2)
@@ -748,3 +772,112 @@ def floor_align(count, base):
         `count` floor align of `base`
     """
     return count // base * base
+
+
+def cur_sort_score_idx(tik_instance, score_idx, score_idx_out, do_lens, level=1):
+    """
+    Sort score_index data with vmrgsort
+    Parameters
+    ----------
+    tik_instance : tik instance
+    score_idx : tensor
+        temp score_index tensor in ub
+    score_idx_out : tensor
+        score_index tensor in ub
+    do_lens : int
+    level : cur_level
+
+    Returns
+    -------
+    score_idx_out:
+    """
+    compute_lens = REPEAT_NUM * SORT_LIST_NUM ** level
+    data_lens = compute_lens // SORT_LIST_NUM
+    whole_lens = compute_lens * SORT_LIST_NUM
+    loop_num = do_lens // whole_lens
+    offset = tik_instance.Scalar("uint32", init_value=0)
+    if loop_num > 0:
+        with tik_instance.for_range(0, loop_num) as idx:
+            src_list = [score_idx[offset:offset + compute_lens],
+                        score_idx[offset + compute_lens:offset + compute_lens * 2],
+                        score_idx[offset + compute_lens * 2:offset + compute_lens * 3],
+                        score_idx[offset + compute_lens * 3:offset + compute_lens * 4]]
+            count_list = [data_lens, data_lens, data_lens, data_lens]
+            tik_instance.vmrgsort(score_idx_out[whole_lens * idx], src_list, count_list, False, 1)
+            offset.set_as(offset+whole_lens)
+    else:
+        compute_lens = do_lens // SORT_LIST_NUM
+        whole_lens = do_lens
+        data_lens = compute_lens // SORT_LIST_NUM
+        src_list = [score_idx[0:compute_lens],
+                    score_idx[compute_lens:compute_lens * 2],
+                    score_idx[compute_lens * 2:compute_lens * 3],
+                    score_idx[compute_lens * 3:compute_lens * 4]]
+        count_list = [data_lens, data_lens, data_lens, data_lens]
+        tik_instance.vmrgsort(score_idx_out, src_list, count_list, False, 1)
+
+    if whole_lens >= do_lens:
+        if level % 2 == 0:
+            ub2ub(tik_instance, score_idx, score_idx_out, do_lens)
+        return
+    level += 1
+    return cur_sort_score_idx(tik_instance, score_idx_out, score_idx, do_lens, level)
+
+
+def init_index(tik_instance, src, index, offset, do_lens=PER_LOOP_NUM):
+    """
+    initialize index for tik commond vsort32
+
+    Parameters
+    ----------
+    tik_instance : tik instance
+    src : tensor
+        index tensor in gm, dtype must be uint32
+    index : tensor
+        index tensor in ub, dtype must be uint32
+    offset : int
+        data lens (16 aligned)
+    do_lens: int
+        init value set as 4096
+
+    Returns
+    -------
+    None
+    """
+    if do_lens % BLOCK_ELE_B32 != 0 or do_lens > PER_LOOP_NUM:
+        raise RuntimeError("Size must be 8 aligned and less than 4096.")
+
+    burst_lens = do_lens // BLOCK_ELE_B32
+    tik_instance.data_move(index, src[offset], 0, 1, burst_lens, 0, 0)
+
+
+def gm2ub_for_vsort32(tik_instance, src, idx_list, dst, do_lens):
+    """
+    move data from gm to ub for get_tik_func_vsort32
+
+    Parameters
+    ----------
+    tik_instance : tik instance
+    src : tensor
+        scores tensor in ub(3D)
+    idx_list : list
+        batch_idx, class_idx, box_idx
+    dst : tensor
+        scores tensor in gm(1D)
+    do_lens : int
+        data lens
+
+    Returns
+    -------
+    None
+    """
+
+    dtype_size = common_util.get_data_size(src.dtype)
+    block_element = constant_util.BLOCK_SIZE // dtype_size
+    burst_lens = do_lens // block_element
+    tail_num = do_lens % block_element
+    batch_idx, class_idx, box_idx = idx_list
+    with tik_instance.if_scope(burst_lens > 0):
+        tik_instance.data_move(dst, src[batch_idx, class_idx, box_idx], 0, 1, burst_lens, 0, 0)
+    with tik_instance.for_range(0, tail_num) as idx:
+        dst[burst_lens * block_element + idx].set_as(src[batch_idx, class_idx, box_idx + idx])

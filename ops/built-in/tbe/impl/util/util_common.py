@@ -36,6 +36,13 @@ MININUM_NUM_FLOAT = 2 ** (-126)
 SCALAR_MUL1_FP32 = 2 ** (50)
 SCALAR_MUL2_FP32 = 2 ** (26)
 
+BLOCK_SIZE = 32
+CYCLE_NUM = 8
+I8_SIZE = 1
+B16_SIZE = 2
+B32_SIZE = 4
+I64_SIZE = 8
+
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
@@ -684,3 +691,37 @@ def is_vector_core():
     """
     aicore_type = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.AICORE_TYPE)
     return aicore_type == "VectorCore"
+
+
+
+
+def get_mask_rep_stride(src):
+    """
+    get mask value
+
+    Parameters
+    ----------
+    src : tensor
+        source data in ub
+
+    Returns
+    -------
+    mask : int
+        mask value
+    """
+    if src.dtype in ["float16", "int16", "uint16"]:
+        mask = BLOCK_SIZE * CYCLE_NUM // B16_SIZE
+        rep_stride = mask // (BLOCK_SIZE // B16_SIZE)
+    elif src.dtype in ["float32", "int32", "uint32"]:
+        mask = BLOCK_SIZE * CYCLE_NUM // B32_SIZE
+        rep_stride = mask // (BLOCK_SIZE // B32_SIZE)
+    elif src.dtype in ["int8"]:
+        mask = BLOCK_SIZE * CYCLE_NUM // I8_SIZE
+        rep_stride = mask // (BLOCK_SIZE // I8_SIZE)
+    elif src.dtype in ["int64", "uint64"]:
+        mask = BLOCK_SIZE * CYCLE_NUM // I64_SIZE
+        rep_stride = mask // (BLOCK_SIZE // I64_SIZE)
+    else:
+        raise RuntimeError("src.dtype can't be recognized")
+
+    return mask, rep_stride

@@ -17,7 +17,8 @@
 """
 CombinedNonMaxSuppression ut test
 """
-
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("CombinedNonMaxSuppression",
@@ -67,7 +68,8 @@ def get_impl_list(batch_size, num_boxes, num_class, num_class_boxes,
                   get_dict_const(score_threshold, "float32")
                   ]
     input_list = input_list + const_list
-    output_list = [get_dict(output_boxes_shape), get_dict(output_score_shape), get_dict(output_score_shape), get_dict(output_valid_shape, "int32")]
+    output_list = [get_dict(output_boxes_shape), get_dict(output_score_shape), get_dict(output_score_shape),
+                   get_dict(output_valid_shape, "int32")]
     par_list = [True, False]
 
     return input_list + output_list + par_list
@@ -114,32 +116,42 @@ case8 = {"params": get_impl_list(2, 1000, 150, 150, 0.5, 0.5, 300, 0, False, Fal
          "expect": RuntimeError,
          "support_expect": True}
 
-ut_case.add_case(["Ascend310"], case1)
-ut_case.add_case(["Ascend310"], case2)
-ut_case.add_case(["Ascend310"], case3)
-ut_case.add_case(["Ascend310"], case4)
-ut_case.add_case(["Ascend310"], case5)
-ut_case.add_case(["Ascend310"], case6)
-ut_case.add_case(["Ascend310"], case7)
-ut_case.add_case(["Ascend310"], case8)
+ut_case.add_case(["Ascend920A", "Ascend310"], case1)
+ut_case.add_case(["Ascend920A", "Ascend310"], case2)
+ut_case.add_case(["Ascend920A", "Ascend310"], case3)
+ut_case.add_case(["Ascend920A", "Ascend310"], case4)
+ut_case.add_case(["Ascend920A", "Ascend310"], case5)
+ut_case.add_case(["Ascend920A", "Ascend310"], case6)
+ut_case.add_case(["Ascend920A", "Ascend310"], case7)
+ut_case.add_case(["Ascend920A", "Ascend310"], case8)
 
 from impl.combined_non_max_suppression import check_supported
 
+
 # 'pylint: disable=unused-argument,unused-variable
 def test_check_support(test_arg):
-    res = check_supported({'shape': [1, 1, 4, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 4, 29782], 'ori_format': 'ND'},
-          {'shape': [1, 1, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 29782], 'ori_format': 'ND'},
-          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (100,)},
-          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (100,)},
-          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (0.5,)},
-          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND', 'const_value': (0.5,)},
-          {'shape': [1, 4, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 4, 100], 'ori_format': 'ND'},
-          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100], 'ori_format': 'ND'},
-          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100], 'ori_format': 'ND'},
-          {'shape': [1, 8], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1, 8], 'ori_format': 'ND'},
-          True, False)
+    res = check_supported({'shape': [1, 1, 4, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 4, 29782],
+                           'ori_format': 'ND'},
+                          {'shape': [1, 1, 29782], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 1, 29782],
+                           'ori_format': 'ND'},
+                          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND',
+                           'const_value': (100,)},
+                          {'shape': [1], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND',
+                           'const_value': (100,)},
+                          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND',
+                           'const_value': (0.5,)},
+                          {'shape': [1], 'dtype': 'float32', 'format': 'ND', 'ori_shape': [1], 'ori_format': 'ND',
+                           'const_value': (0.5,)},
+                          {'shape': [1, 4, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 4, 100],
+                           'ori_format': 'ND'},
+                          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100],
+                           'ori_format': 'ND'},
+                          {'shape': [1, 100], 'dtype': 'float16', 'format': 'ND', 'ori_shape': [1, 100],
+                           'ori_format': 'ND'},
+                          {'shape': [1, 8], 'dtype': 'int32', 'format': 'ND', 'ori_shape': [1, 8], 'ori_format': 'ND'},
+                          True, False)
+
+
 ut_case.add_cust_test_func(test_func=test_check_support)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend310")
-    exit(0)
+ut_case.run(['Ascend920A', 'Ascend310'])
