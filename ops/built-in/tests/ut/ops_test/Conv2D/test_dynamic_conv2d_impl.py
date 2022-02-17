@@ -7,15 +7,15 @@ from impl.util.util_conv2d_dynamic import Conv2dParaProcess
 
 ut_case = OpUT("Conv2D", "impl.dynamic.conv2d", "conv2d")
 
-def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect):
+def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect, transdata_index):
     return {"params": [inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x],
-            "case_name": "dynamic_conv2d_case",
+            "case_name": "dynamic_conv2d_case_" + str(transdata_index),
             "expect": expect
             }
 
 print("adding Conv2D dyanmic op testcases")
-for test_case  in tc.conv2D_dynamic_ut_testcase:
-    ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
+for index, test_case  in enumerate(tc.conv2D_dynamic_ut_testcase):
+    ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:], index))
 
 cdim_dynamic_ut_testcases = [
     # case 0
@@ -65,7 +65,7 @@ def test_conv2d_param_process(test_arg):
     ori_paras = {
         "inputs": fmap, "weights": weight, "bias": bias_tensor, "offset_w": offset_w_tensor,
         "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
-        "groups": 1, "data_format": "float16", "kernel_name": "conv2d",
+        "groups": 1, "data_format": "float16", "kernel_name": "conv2d_param_process_case_0",
     }
     Conv2dParaProcess(ori_paras)
 
@@ -86,7 +86,7 @@ def test_conv2d_param_process_dynamic():
     ori_paras = {
         "inputs": fmap, "weights": weight, "bias": bias_tensor, "offset_w": offset_w_tensor,
         "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
-        "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d","dtype": "float16"
+        "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d_param_process_dynamic_case_0","dtype": "float16"
     }
     proc = Conv2dParaProcess(ori_paras)
     proc.check_range_valid([-1, 32, 8, 8], [(1, 2), (32, 32), (8, 8), (8, 8)], "test", "float16")
@@ -104,7 +104,7 @@ def test_conv2d_param_process_dynamic_cdim(test_arg):
     ori_paras = {
         "inputs": fmap, "weights": weight, "bias": bias_tensor, "offset_w": offset_w_tensor,
         "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
-        "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d","dtype": "float16"
+        "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d_param_process_dynamic_cdim_case_0","dtype": "float16"
     }
     proc = Conv2dParaProcess(ori_paras)
     proc.check_only_cdim_dynamic(fmap)

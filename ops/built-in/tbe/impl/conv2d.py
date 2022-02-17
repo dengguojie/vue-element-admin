@@ -362,6 +362,8 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     impl_mode = util_conv2d.get_op_precision_mode("Conv2D")
     para_dict["impl_mode"] = impl_mode
 
+    util_conv2d.set_dummy_placeholder()
+
     res = conv(inputs, weights, para_dict, optim_dict)
 
     return res

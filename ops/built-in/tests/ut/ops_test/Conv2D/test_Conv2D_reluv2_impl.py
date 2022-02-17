@@ -69,7 +69,7 @@ def test_conv2d_reluv2_fusion(test_arg):
         return reluv2_res
 
     def fusion_conv2d_reluv2_compute(testcases):
-        for testcase in testcases:
+        for index, testcase in enumerate(testcases):
             fmap_shape = testcase["fmap_shape"]
             filters_shape = testcase["filters_shape"]
             dtype = testcase["dtype"]
@@ -87,7 +87,8 @@ def test_conv2d_reluv2_fusion(test_arg):
             res = [output for output in relu_res]
 
             config = {"print_ir": False, "need_build": True,
-                      "name": "conv2d_reluv2_fusion", "tensor_list": total_input_tensors}
+                      "name": "conv2d_reluv2_fusion_" + str(index), 
+                      "tensor_list": total_input_tensors}
             with tvm.target.cce():
                 sch = auto_schedule(res)
             te.lang.cce.cce_build_code(sch, config)

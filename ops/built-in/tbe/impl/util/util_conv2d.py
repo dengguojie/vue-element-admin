@@ -8,15 +8,17 @@ provide common function used by conv2d
 """
 
 import math
-from impl.util import util_select_op_base
 import json
+from impl.util import util_select_op_base
 import tbe
 from tbe import tvm
+from tbe.tvm import build_module
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.common.context import get_context
+from te.tvm.buffer_manager import get_buffer_manager
 
 
 PAD_SHAPE_DIM = 2
@@ -68,7 +70,8 @@ def _shape_to_list(shape):
     return tmp
 
 
-def transform_shape_with_format(src_format: str, to_format: str, ori_shape: list, format_white_list: list) ->list:
+def transform_shape_with_format(src_format: str, to_format: str,
+                                ori_shape: list, format_white_list: list) -> list:
     # input format is not expected
     if ((src_format not in format_white_list) or
         (to_format not in format_white_list)):
@@ -77,8 +80,8 @@ def transform_shape_with_format(src_format: str, to_format: str, ori_shape: list
     if src_format == to_format:
         return list(ori_shape)
     res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
+    for i, _ in enumerate(to_format):
+        for j, _ in enumerate(src_format):
             if to_format[i] == src_format[j]:
                 res_shape[i] = ori_shape[j]
                 break
@@ -205,7 +208,6 @@ def calc_para_from_tensor(inputs,
         fmap_l1_addr_flag = "nothing"
         fmap_l1_valid_size = -1
         slice_offset = (0, 0, 0, 0, 0)
-        from te.tvm.buffer_manager import get_buffer_manager
         buffer_manager = get_buffer_manager()
         for remapped_buffer in buffer_manager.get_remapped_buffers():
             remapped_buffer_attr = remapped_buffer.get_buffer_attr()
@@ -871,3 +873,10 @@ def get_op_precision_mode(op_type):
         if op_info.op_type == op_type and op_info.precision_mode in ("high_performance", ""):
             return op_info.precision_mode
     return ""
+
+def set_dummy_placeholder():
+    """
+    set dummy placeholder to False when conv2d fusion compute is called.
+    """
+    config_current = build_module.current_build_config()
+    config_current.set_attr("dummy_placeholder", False)

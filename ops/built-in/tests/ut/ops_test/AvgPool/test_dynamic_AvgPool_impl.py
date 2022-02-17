@@ -13,6 +13,7 @@ case1 = {"params": [{"shape": (-1,2,1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (-1, 2, 1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, -1),"ori_format": "NCHW",
                      "range":[(1, None), (32, 32), (1, 99), (1, None)]},
                     [1,1,2,2], [1,1,2,2], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_1",
          "expect": "success",
          "support_expect": True}
 
@@ -25,6 +26,7 @@ case4 = {"params": [{"shape": (-1,1,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (-1, 1, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 16, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
                     [1,1,21,21], [1,1,1,1], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_4",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -37,6 +39,7 @@ case17 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
                      "range":[(1, 1), (2, 99), (2, 99), (32, 32)]},
                     [1,2,2,1], [1,1,2,1], "VALID", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_17",
          "expect": "success",
          "support_expect": True}
 
@@ -49,6 +52,7 @@ case33 = {"params": [{"shape": (-1,32,1,1), "format": "NCHW", "dtype": "float16"
                     {"shape": (-1, 32, 1, 1),"format": "NCHW", "dtype": "float16", "ori_shape": (-1, 32, 1, 1),"ori_format": "NCHW",
                      "range":[(1, 10), (32, 32), (1, 99), (1, 99)]},
                     [1,1,2,2], [1,1,2,1], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_33",
          "expect": "success",
          "support_expect": True}
 
@@ -61,6 +65,7 @@ case34 = {"params": [{"shape": (1,-1,2,32), "format": "NHWC", "dtype": "float16"
                     {"shape": (1, -1, 1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
                      "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
                     [1,2,2,1], [1,2,1,1], "VALID", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_34",
          "expect": "success",
          "support_expect": True}
 
@@ -74,6 +79,7 @@ case2 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
                     [1,1,1,1], [1,1,1,1], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_2",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -86,6 +92,7 @@ case3 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (1, 2), (1, 2)]},
                     [1,1,2,2], [1,1,64,64], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_3",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -98,6 +105,7 @@ case5 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (30, 100), (30, 100)]},
                     [1,1,2,2], [1,1,1,1], "SAME", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_5",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -110,6 +118,7 @@ case6 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2,1], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_6",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -122,6 +131,7 @@ case7 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_7",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -134,6 +144,7 @@ case8 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,2,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_8",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -146,6 +157,7 @@ case9 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,2,2,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_9",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -158,6 +170,7 @@ case10 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALIDE", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_10",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -170,6 +183,7 @@ case11 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                      {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                       "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                      [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+          "case_name": "dynamic_AvgPool_case_11",
           "expect": RuntimeError,
           "support_expect": True}
 
@@ -182,6 +196,7 @@ case12 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                      {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                       "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                      [1,1,2,2], [1,1,1,1], "VALIDE", "NCHW", 1],
+          "case_name": "dynamic_AvgPool_case_12",
           "expect": RuntimeError,
           "support_expect": True}
 
@@ -194,6 +209,7 @@ case13 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_13",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -206,6 +222,7 @@ case14 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                      {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                       "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                      [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+          "case_name": "dynamic_AvgPool_case_14",
           "expect": RuntimeError,
           "support_expect": True}
 
@@ -219,6 +236,7 @@ case15 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                      {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                       "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                      [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+          "case_name": "dynamic_AvgPool_case_15",
           "expect": RuntimeError,
           "support_expect": True}
 
@@ -231,6 +249,7 @@ case16 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,2,2,1], [1,1,1,1], "VALID", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_16",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -243,6 +262,7 @@ case18 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_18",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -255,6 +275,7 @@ case19 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_19",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -266,6 +287,7 @@ case20 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,-1,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_20",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -277,6 +299,7 @@ case21 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [3,1,-1,2,1], [3,1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_21",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -288,6 +311,7 @@ case22 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [3,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_22",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -299,6 +323,7 @@ case23 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [3,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_23",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -310,6 +335,7 @@ case24 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_24",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -321,6 +347,7 @@ case25 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,2,-1,2], [1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_25",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -332,6 +359,7 @@ case26 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_26",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -343,6 +371,7 @@ case27 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_27",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -354,6 +383,7 @@ case28 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,2,-1,2], [1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_28",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -365,6 +395,7 @@ case29 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,-1,2], [1,2,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_29",
          "expect": RuntimeError,
          "support_expect": True}
 case30 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
@@ -375,6 +406,7 @@ case30 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,-1,2], [1,1,1,1], "VALID", "FRACTAL_Z"],
+         "case_name": "dynamic_AvgPool_case_30",
          "expect": RuntimeError,
          "support_expect": True}
 case31 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,-1), "ori_format": "NCHW",
@@ -385,6 +417,7 @@ case31 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW", 1],
+         "case_name": "dynamic_AvgPool_case_31",
          "expect": RuntimeError,
          "support_expect": True}
 case32 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,-1), "ori_format": "NCHW",
@@ -395,6 +428,7 @@ case32 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "FRACTAL_Z",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_32",
          "expect": RuntimeError,
          "support_expect": True}
 #stide > 63
@@ -405,6 +439,7 @@ case35 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,1,2,2], [1,1,64,64], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_35",
          "expect": "success",
          "support_expect": True}
 
@@ -417,6 +452,7 @@ case36 = {"params": [{"shape": (1,-1,2,32), "format": "NHWC", "dtype": "float16"
                     {"shape": (1, -1, 1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
                      "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
                     [1,16,15,1], [1,2,1,1], "VALID", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_36",
          "expect": RuntimeError,
          "support_expect": True}
 
@@ -429,6 +465,7 @@ case_al1_buffer_tile = {"params": [{"shape": (-1,17,-1,-1), "format": "NCHW", "d
                     {"shape": (-1, 17, -1, -1),"format": "NCHW", "dtype": "float16", "ori_shape": (-1, 17, -1, -1),"ori_format": "NCHW",
                      "range":[(32, 36), (17, 17), (20, 30), (30, 35)]},
                     [1,1,6,14], [1,1,4,4], "VALID", "NCHW"],
+         "case_name": "dynamic_AvgPool_case_al1_buffer_tile",
          "expect": RuntimeError,
          "support_expect": True}
 

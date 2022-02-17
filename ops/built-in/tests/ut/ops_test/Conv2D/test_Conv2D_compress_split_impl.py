@@ -14,19 +14,19 @@ def gen_kernel_name(input_shape, weights_shape):
         dedy_shape_info, w_shape_info)
     return kernel_name
 
-def gen_trans_data_case(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations, expect):
+def gen_trans_data_case(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations, expect, transdata_index):
     input_shape = inputs.get("ori_shape")
     weights_shape = weight_compress.get("ori_shape")
     kernel_name = gen_kernel_name(input_shape, weights_shape)
     return {"params": [inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations],
-            "case_name": kernel_name,
+            "case_name": kernel_name + "_" + str(transdata_index),
             "expect": expect,
             "format_expect": [],
             "support_expect": True}
 
 def _test_get_op_support_info(test_arg):
-    for test_case in tc.op_support_info_conv2d_compress_testcase:
-        formatted_case = gen_trans_data_case(*test_case[1:])
+    for index, test_case in enumerate(tc.op_support_info_conv2d_compress_testcase):
+        formatted_case = gen_trans_data_case(*test_case[1:], index)
         params = formatted_case["params"]
         get_op_support_info(*params)
 

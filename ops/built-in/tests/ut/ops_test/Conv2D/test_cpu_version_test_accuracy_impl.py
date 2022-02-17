@@ -63,7 +63,7 @@ def test_conv2d_cpu_version_accuracy(test_arg):
         return out, cache
 
 
-    def dsl_cpu_test_fp16(case):
+    def dsl_cpu_test_fp16(case, cpu_index):
 
         fm_ori_shape = case['fm_ori_shape']
         fm_shape = case['fm_shape']
@@ -91,7 +91,7 @@ def test_conv2d_cpu_version_accuracy(test_arg):
             tensor_list = [fmap, weight, conv_res]
 
         sch = tvm.create_schedule(conv_res.op)
-        cpu_conv = tvm.build(sch, tensor_list, "c", "llvm", name="cpu_conv")
+        cpu_conv = tvm.build(sch, tensor_list, "c", "llvm", name="cpu_conv_" + str(cpu_index))
         ctx = tvm.cpu(0)
 
         data_x_5d = tvm.nd.array(np.random.uniform(size=fm_shape).astype(np.float16), ctx)
@@ -131,8 +131,8 @@ def test_conv2d_cpu_version_accuracy(test_arg):
          'bias_flag': 0, 'pads': [0, 0, 0, 0]},
     ]
 
-    for case in testcases:
-        dsl_cpu_test_fp16(case)
+    for index, case in enumerate(testcases):
+        dsl_cpu_test_fp16(case, index)
 
 print("adding Conv2D cpu version test accuracy case")
 ut_case.add_cust_test_func(test_func=test_conv2d_cpu_version_accuracy)
