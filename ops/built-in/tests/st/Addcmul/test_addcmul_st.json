@@ -1,15 +1,13 @@
 [
 	{
 		"case_name":"Test_addcmul_001",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
 		"op":"Addcmul",
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -28,12 +26,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -52,12 +47,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -76,12 +68,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float16",
 				"shape":[
 					[
 						1
@@ -100,12 +89,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -120,14 +106,12 @@
 	{
 		"case_name":"Test_addcmul_002",
 		"op":"Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -146,12 +130,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -170,12 +151,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -194,12 +172,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float",
 				"shape":[
 					[
 						1
@@ -218,12 +193,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -237,15 +209,13 @@
 	},
 	{
 		"case_name":"Test_addcmul_003",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
 		"op":"Addcmul",
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float16",
 				"shape":[
 					[
 						4,
@@ -264,12 +234,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float16",
 				"shape":[
 					[
 						4,
@@ -288,12 +255,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float16",
 				"shape":[
 					[
 						4,
@@ -312,12 +276,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float16",
 				"shape":[
 					[
 						1
@@ -336,12 +297,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float16",
 				"shape":[
 					[
 						4,
@@ -356,14 +314,12 @@
 	{
 		"case_name":"Test_addcmul_004",
 		"op":"Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float",
 				"shape":[
 					[
 						4,
@@ -382,12 +338,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float",
 				"shape":[
 					[
 						4,
@@ -406,12 +359,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float",
 				"shape":[
 					[
 						4,
@@ -430,12 +380,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float",
 				"shape":[
 					[
 						1
@@ -454,12 +401,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float",
 				"shape":[
 					[
 						4,
@@ -474,14 +418,12 @@
 	{
 		"case_name":"Test_addcmul_005",
 		"op":"Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -502,12 +444,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -528,12 +467,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -554,12 +490,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float16",
 				"shape":[
 					[
 						1
@@ -578,12 +511,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float16"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float16",
 				"shape":[
 					[
 						2,
@@ -600,14 +530,12 @@
 	{
 		"case_name":"Test_addcmul_006",
 		"op":"Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func", 
 		"input_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "input_data",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -628,12 +556,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x1",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -654,12 +579,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "x2",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -680,12 +602,9 @@
 				]
 			},
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "value",
+				"type": "float",
 				"shape":[
 					[
 						1
@@ -704,12 +623,9 @@
 		],
 		"output_desc":[
 			{
-				"format":[
-					"ND"
-				],
-				"type":[
-					"float"
-				],
+				"format": "ND",
+				"name": "y",
+				"type": "float",
 				"shape":[
 					[
 						2,
@@ -723,156 +639,414 @@
 		],
 		"attr":[]
 	},
-  {
-    "op": "Addcmul",
-    "input_desc": [
-      {
-        "shape": [
-          -1,
-          -1,
-          -1,
-          1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          -1,
-          -1,
-          -1,
-          1
-        ],
-        "ori_format": "ND",
-        "name": "input_data",
-        "type": "float16",
-        "shape_range": [
-          [
-            1,
-            3
-          ],
-          [
-            1,
-            16
-          ],
-          [
-            16,
-            16
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16,
-          16,
-          1
-        ]
-      },
-      {
-        "shape": [
-          -1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          -1
-        ],
-        "ori_format": "ND",
-        "name": "x1",
-        "type": "float16",
-        "shape_range": [
-          [
-            1,
-            16
-          ]
-        ],
-        "typical_shape": [
-          16
-        ]
-      },
-      {
-        "shape": [
-          -1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          -1
-        ],
-        "ori_format": "ND",
-        "name": "x2",
-        "type": "float16",
-        "shape_range": [
-          [
-            1,
-            16
-          ]
-        ],
-        "typical_shape": [
-          16
-        ]
-      },
-      {
-        "shape": [
-          -1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          -1
-        ],
-        "ori_format": "ND",
-        "name": "value",
-        "type": "float16",
-        "shape_range": [
-          [
-            1,
-            16
-          ]
-        ],
-        "typical_shape": [
-          16
-        ]
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          -1,
-          -1,
-          -1,
-          -1
-        ],
-        "format": "ND",
-        "ori_shape": [
-          -1,
-          -1,
-          -1,
-          -1
-        ],
-        "ori_format": "ND",
-        "name": "y",
-        "type": "float16",
-        "shape_range": [
-          [
-            1,
-            3
-          ],
-          [
-            1,
-            16
-          ],
-          [
-            16,
-            16
-          ],
-          [
-            1,
-            16
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16,
-          16,
-          16
-        ]
-      }
-    ],
-    "attr": [],
-    "case_name": "test_Addcmul_000"
-  }
+	{
+		"case_name":"Test_addcmul_007",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
+		"op":"Addcmul",
+		"input_desc":[
+			{
+				"format": "ND",
+				"name": "input_data",
+				"type": "int32",
+				"shape":[
+					[
+						2,
+						3,
+						4
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format": "ND",
+				"name": "x1",
+				"type": "int32",
+				"shape":[
+					[
+						2,
+						3,
+						4
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format": "ND",
+				"name": "x2",
+				"type": "int32",
+				"shape":[
+					[
+						2,
+						3,
+						4
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"format": "ND",
+				"name": "value",
+				"type": "int32",
+				"shape":[
+					[
+						1
+					]
+				],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"format": "ND",
+				"name": "y",
+				"type": "int32",
+				"shape":[
+					[
+						2,
+						3,
+						4
+					]
+				]
+			}
+		],
+		"attr":[]
+	},
+	{
+		"case_name":"Test_addcmul_008",
+		"op": "Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
+		"input_desc": [
+		{
+			"shape": [
+				-1,
+				-1,
+				-1,
+				1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1,
+				-1,
+				-1,
+				1
+			],
+			"ori_format": "ND",
+			"name": "input_data",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				3
+			],
+			[
+				1,
+				16
+			],
+			[
+				16,
+				16
+			]
+			],
+			"typical_shape": [
+				1,
+				16,
+				16,
+				1
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "x1",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				16
+			]
+			],
+			"typical_shape": [
+				16
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "x2",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				16
+			]
+			],
+			"typical_shape": [
+				16
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "value",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				16
+			]
+			],
+			"typical_shape": [
+				16
+			]
+		}
+		],
+		"output_desc": [
+		{
+			"shape": [
+				-1,
+				-1,
+				-1,
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1,
+				-1,
+				-1,
+				-1
+			],
+			"ori_format": "ND",
+			"name": "y",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				3
+			],
+			[
+				1,
+				16
+			],
+			[
+				16,
+				16
+			],
+			[
+				1,
+				16
+			]
+			],
+			"typical_shape": [
+				1,
+				16,
+				16,
+				16
+			]
+		}
+		],
+		"attr": []
+	},
+	{
+		"case_name":"Test_addcmul_009",
+		"op": "Addcmul",
+		"calc_expect_func_file":"test_addcmul.py:calc_expect_func",
+		"input_desc": [
+		{
+			"shape": [
+				-1,
+				-1,
+				-1,
+				1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1,
+				-1,
+				-1,
+				1
+			],
+			"ori_format": "ND",
+			"name": "input_data",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				3
+			],
+			[
+				1,
+				17
+			],
+			[
+				17,
+				17
+			]
+			],
+			"typical_shape": [
+				1,
+				17,
+				17,
+				1
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "x1",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				17
+			]
+			],
+			"typical_shape": [
+				17
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "x2",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				17
+			]
+			],
+			"typical_shape": [
+				17
+			]
+		},
+		{
+			"shape": [
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1
+			],
+			"ori_format": "ND",
+			"name": "value",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				17
+			]
+			],
+			"typical_shape": [
+				17
+			]
+		}
+		],
+		"output_desc": [
+		{
+			"shape": [
+				-1,
+				-1,
+				-1,
+				-1
+			],
+			"format": "ND",
+			"ori_shape": [
+				-1,
+				-1,
+				-1,
+				-1
+			],
+			"ori_format": "ND",
+			"name": "y",
+			"type": "float16",
+			"shape_range": [
+			[
+				1,
+				3
+			],
+			[
+				1,
+				17
+			],
+			[
+				17,
+				17
+			],
+			[
+				1,
+				17
+			]
+			],
+			"typical_shape": [
+				1,
+				17,
+				17,
+				17
+			]
+		}
+		],
+		"attr": []
+	}
 ]

@@ -1,6 +1,7 @@
 [
   {
     "op": "Addcdiv",
+    "calc_expect_func_file":"test_addcdiv.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -96,11 +97,11 @@
         "shape_range": [
           [
             1,
-            16
+            1
           ]
         ],
         "typical_shape": [
-          16
+          1
         ]
       }
     ],
@@ -153,6 +154,7 @@
   },
   {
     "op": "Addcdiv",
+    "calc_expect_func_file":"test_addcdiv.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -248,11 +250,11 @@
         "shape_range": [
           [
             1,
-            16
+            1
           ]
         ],
         "typical_shape": [
-          16
+          1
         ]
       }
     ],
@@ -301,6 +303,159 @@
       }
     ],
     "attr": [],
-    "case_name": "test_dynamic_Addcdiv_000"
+    "case_name": "test_dynamic_Addcdiv_001"
+  },
+  {
+    "op": "Addcdiv",
+    "calc_expect_func_file":"test_addcdiv.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1,
+          -1,
+          1
+        ],
+        "ori_format": "ND",
+        "name": "input_data",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            17,
+            17
+          ]
+        ],
+        "typical_shape": [
+          1,
+          17,
+          17,
+          1
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            17
+          ]
+        ],
+        "typical_shape": [
+          17
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            17
+          ]
+        ],
+        "typical_shape": [
+          17
+        ]
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            17
+          ],
+          [
+            17,
+            17
+          ],
+          [
+            1,
+            17
+          ]
+        ],
+        "typical_shape": [
+          1,
+          17,
+          17,
+          17
+        ]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Addcdiv_002"
   }
 ]
