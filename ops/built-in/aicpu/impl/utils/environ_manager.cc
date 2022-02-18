@@ -105,5 +105,4 @@ bool EnvironMgr::CheckEnvInput(const CpuKernelContext &ctx) const {
 
   return true;
 }
-
 }  // namespace aicpu

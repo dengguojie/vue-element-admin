@@ -79,7 +79,7 @@ std::string FormatToSerialString(Format format) {
   }
 }
 
-const std::map<std::string, DataType> dtype_maps{
+const std::map<std::string, DataType> dtype_maps {
     {"DT_FLOAT", DT_FLOAT},
     {"DT_FLOAT16", DT_FLOAT16},
     {"DT_INT8", DT_INT8},

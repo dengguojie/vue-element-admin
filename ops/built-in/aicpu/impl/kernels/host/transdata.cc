@@ -185,7 +185,7 @@ uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
       FormatToSerialString(output_format).c_str(),
       VectorToString(input_dims).c_str(), VectorToString(output_dims).c_str(),
       DTypeStr(input_data_type).c_str(), DTypeStr(output_data_type).c_str());
-  const formats::TransArgs trans_args{
+  const formats::TransArgs trans_args {
       input_data,
       static_cast<Format>(GetPrimaryFormat(input_format)),
       static_cast<Format>(GetPrimaryFormat(output_format)),

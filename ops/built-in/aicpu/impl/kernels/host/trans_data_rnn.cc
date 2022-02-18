@@ -209,7 +209,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZn(std::vector<int64_t> &dims, int
   if (stateSize == 0){
     if (inputSize > 0 && (shape0 == hiddenSize + inputSize)) {
       return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
-    } else if ((hiddenSize > 0 && (shape0 == hiddenSize)) || (inputSize > 0 && (shape0 == inputSize))){
+    } else if ((hiddenSize > 0 && (shape0 == hiddenSize)) || (inputSize > 0 && (shape0 == inputSize))) {
       return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
     } else {
       KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
