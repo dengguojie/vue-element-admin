@@ -794,14 +794,14 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[
-                                       0, i, j, k, l], name="s_init_h")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                       0, a_i, b_i, c_i, d_i], name="s_init_h")
             s_state_h_ub_tmp = tvm.compute(shape_h,
-                                           lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h_tmp")
+                                           lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_h_tmp")
             s_state_c_ub = tvm.compute(shape_i,
-                                       lambda _, i, j, k, l: s_init_c_gm[
-                                       0, i, j, k, l], name="s_init_c")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_c_gm[
+                                       0, a_i, b_i, c_i, d_i], name="s_init_c")
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -820,14 +820,14 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[
-                                   0, i, j, k, l], name="s_state_h_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                   0, a_i, b_i, c_i, d_i], name="s_state_h_ub")
         s_state_h_ub_tmp = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub_tmp")
+                                       lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub_tmp")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[
-                                   0, i, j, k, l], name="s_state_c_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_c_gm_last[
+                                   0, a_i, b_i, c_i, d_i], name="s_state_c_ub")
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
@@ -911,22 +911,22 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     i_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, i_t_index, a_i, b_i, c_i, d_i),
                     name="i_t",
                     tag="split_com")
     j_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, j_t_index, a_i, b_i, c_i, d_i),
                     name="j_t",
                     tag="split_com")
     f_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, f_t_index, a_i, b_i, c_i, d_i),
                     name="f_t",
                     tag="split_com")
     o_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, o_t_index, a_i, b_i, c_i, d_i),
                     name="o_t",
                     tag="split_com")
 
@@ -934,9 +934,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     mask_tensors = []
     project_tensors = []
     if wci_gm is not None:
-        wci_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wci_gm[0, i, j, k, l], name="wci_ub")
-        wco_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wco_gm[0, i, j, k, l], name="wco_ub")
-        wcf_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wcf_gm[0, i, j, k, l], name="wcf_ub")
+        wci_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wci_gm[0, a_i, b_i, c_i, d_i], name="wci_ub")
+        wco_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wco_gm[0, a_i, b_i, c_i, d_i], name="wco_ub")
+        wcf_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wcf_gm[0, a_i, b_i, c_i, d_i], name="wcf_ub")
         wci_ct_mul = vmul(wci_ub, s_state_c_ub)
         wcf_ct_mul = vmul(wcf_ub, s_state_c_ub)
         wci_ct_mul_mid = wci_ct_mul
@@ -973,10 +973,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if mask_gm is not None:
         shape_mask_ub_ct = [1, hidden_size, m_size, 16, 16]
         mask_ub_ct = tvm.compute(shape_mask_ub_ct,
-                                 lambda _, i, j, k, l: mask_gm[0, 0, j, k, l], name="mask_ub_ct")
+                                 lambda _, a_i, b_i, c_i, d_i: mask_gm[0, 0, b_i, c_i, d_i], name="mask_ub_ct")
         shape_mask_ub_ht = [1, state_size, m_size, 16, 16]
         mask_ub_ht = tvm.compute(shape_mask_ub_ht,
-                                 lambda _, i, j, k, l: mask_gm[0, 0, j, k, l], name="mask_ub_ht")
+                                 lambda _, a_i, b_i, c_i, d_i: mask_gm[0, 0, b_i, c_i, d_i], name="mask_ub_ht")
         mask_tensors.append(mask_ub_ct)
         mask_tensors.append(mask_ub_ht)
         mask_ub_ct_fp32_mid = mask_ub_ct
@@ -1231,10 +1231,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                name="pjc_b_l1",
                                tag="out_to_l1")
         shape_pjc_l0a = [t_size, m_size, hidden_size, 16, 16]
-        pjc_a_l0a = tvm.compute(shape_pjc_l0a, lambda b, i, j, k, l:pjc_a_l1[b, j, i, k, l],
+        pjc_a_l0a = tvm.compute(shape_pjc_l0a, lambda b, a_i, b_i, c_i, d_i:pjc_a_l1[b, b_i, a_i, c_i, d_i],
                                 name="pjc_a_l0a", tag="l1_to_l0")
         shape_pjc_l0b = [t_size, hidden_size, state_size, 16, 16]
-        pjc_b_l0b = tvm.compute(shape_pjc_l0b, lambda b, i, j, k, l: pjc_b_l1[b, j, i, l, k],
+        pjc_b_l0b = tvm.compute(shape_pjc_l0b, lambda b, a_i, b_i, c_i, d_i: pjc_b_l1[b, b_i, a_i, c_i, d_i],
                                 name="pjc_b_l0b", tag="l1_to_l0")
         pjc_k1 = tvm.reduce_axis((0, hidden_size), name='k1')
         pjc_k0 = tvm.reduce_axis((0, k0_size), name='k0')

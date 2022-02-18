@@ -502,6 +502,7 @@ def get_emit_insn_map(tensor):
     return insn
 
 
+# 'pylint: disable=too-many-return-values
 def get_lstm_tiling():
     """
     get no RL default lstm element wise tiling
@@ -1032,15 +1033,15 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_h")
             s_state_c_ub = tvm.compute(shape_i,
-                                       lambda _, i, j, k, l: s_init_c_gm[
-                                           0, i, j, k, l], name="s_init_c")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_c_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_c")
             if seq_mask_gm is not None:
                 s_state_h_ub_for_element = tvm.compute(shape_h,
-                                                       lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_state_h_ub_for_element")
+                                                       lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_state_h_ub_for_element")
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -1061,15 +1062,15 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[
-                                       0, i, j, k, l], name="s_state_c_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_c_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_c_ub")
         if seq_mask_gm is not None:
             s_state_h_ub_for_element = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub_for_element")
+                                       lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub_for_element")
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
@@ -1149,22 +1150,22 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     i_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, i_t_index, a_i, b_i, c_i, d_i),
                     name="i_t",
                     tag="split_com")
     j_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, j_t_index, a_i, b_i, c_i, d_i),
                     name="j_t",
                     tag="split_com")
     f_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, f_t_index, a_i, b_i, c_i, d_i),
                     name="f_t",
                     tag="split_com")
     o_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, o_t_index, a_i, b_i, c_i, d_i),
                     name="o_t",
                     tag="split_com")
 
@@ -1287,7 +1288,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         update_c = vmins(update_c, clip_const)
 
     if seq_mask_gm is not None:
-        seq_mask_ub = tvm.compute(shape_h, lambda _, i, j, k, l: seq_mask_gm[0, i, j, k, l],
+        seq_mask_ub = tvm.compute(shape_h, lambda _, a_i, b_i, c_i, d_i: seq_mask_gm[0, a_i, b_i, c_i, d_i],
                                     name="seq_mask_ub")
 
         update_c_diff = vsub(update_c, s_state_c_ub)

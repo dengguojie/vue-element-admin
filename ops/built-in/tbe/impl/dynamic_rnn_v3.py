@@ -161,6 +161,7 @@ def get_emit_insn_map(tensor):
     return insn
 
 
+# 'pylint: disable=too-many-return-values
 def get_lstm_tiling():
     """
     get no RL default lstm element wise tiling
@@ -196,7 +197,8 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     # check optional input
     if init_c is not None:
         if init_c.get("dtype").lower() != bias_dtype:
-            error_manager_vector.raise_err_specific_reson("DynamicRNN", "init_c dtype is not the same as bias dtype !")
+            error_manager_vector.raise_err_specific_reson("DynamicRNN",
+                                                          "init_c dtype is not the same as bias dtype !")
 
     # check output
     if y["dtype"] != bias_dtype:
@@ -254,7 +256,8 @@ def check_attr(cell_type, direction, cell_depth, activation):
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_depth is not support, please check!")
 
     if activation not in ["tanh"]:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicRNN",
+                                                      "attr activation only support tanh, please check!")
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -681,14 +684,14 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_h")
             s_state_h_ub_tmp = tvm.compute(shape_h,
-                                           lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h_tmp")
+                                           lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_h_tmp")
             s_state_c_ub = tvm.compute(shape_i,
-                                       lambda _, i, j, k, l: s_init_c_gm[
-                                           0, i, j, k, l], name="s_init_c")
+                                       lambda _, a_i, b_i, c_i, d_i: s_init_c_gm[
+                                           0, a_i, b_i, c_i, d_i], name="s_init_c")
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -707,14 +710,14 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub")
         s_state_h_ub_tmp = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub_tmp")
+                                       lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub_tmp")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[
-                                       0, i, j, k, l], name="s_state_c_ub")
+                                   lambda _, a_i, b_i, c_i, d_i: s_state_c_gm_last[
+                                       0, a_i, b_i, c_i, d_i], name="s_state_c_ub")
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
@@ -788,22 +791,22 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     i_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, i_t_index, a_i, b_i, c_i, d_i),
                     name="i_t",
                     tag="split_com")
     j_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, j_t_index, a_i, b_i, c_i, d_i),
                     name="j_t",
                     tag="split_com")
     f_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, f_t_index, a_i, b_i, c_i, d_i),
                     name="f_t",
                     tag="split_com")
     o_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, a_i, b_i, c_i, d_i: c_ub_bias(t, o_t_index, a_i, b_i, c_i, d_i),
                     name="o_t",
                     tag="split_com")
 
@@ -811,9 +814,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     mask_tensors = []
     project_tensors = []
     if wci_gm is not None:
-        wci_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wci_gm[0, i, j, k, l], name="wci_ub")
-        wco_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wco_gm[0, i, j, k, l], name="wco_ub")
-        wcf_ub = tvm.compute(shape_i, lambda _, i, j, k, l: wcf_gm[0, i, j, k, l], name="wcf_ub")
+        wci_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wci_gm[0, a_i, b_i, c_i, d_i], name="wci_ub")
+        wco_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wco_gm[0, a_i, b_i, c_i, d_i], name="wco_ub")
+        wcf_ub = tvm.compute(shape_i, lambda _, a_i, b_i, c_i, d_i: wcf_gm[0, a_i, b_i, c_i, d_i], name="wcf_ub")
         wci_ct_mul = vmul(wci_ub, s_state_c_ub)
         wcf_ct_mul = vmul(wcf_ub, s_state_c_ub)
         f_t_tmp = vadd(f_t, wcf_ct_mul)
@@ -832,10 +835,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if mask_gm is not None:
         shape_mask_ub_ct = [1, hidden_size, m_size, 16, 16]
         mask_ub_ct = tvm.compute(shape_mask_ub_ct,
-                                 lambda _, i, j, k, l: mask_gm[0, 0, j, k, l], name="mask_ub_ct")
+                                 lambda _, a_i, a_j, a_k, a_l: mask_gm[0, 0, a_j, a_k, a_l], name="mask_ub_ct")
         shape_mask_ub_ht = [1, state_size, m_size, 16, 16]
         mask_ub_ht = tvm.compute(shape_mask_ub_ht,
-                                 lambda _, i, j, k, l: mask_gm[0, 0, j, k, l], name="mask_ub_ht")
+                                 lambda _, a_i, a_j, a_k, a_l: mask_gm[0, 0, a_j, a_k, a_l], name="mask_ub_ht")
         mask_tensors.append(mask_ub_ct)
         mask_tensors.append(mask_ub_ht)
 
@@ -1054,10 +1057,12 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                name="pjc_b_l1",
                                tag="out_to_l1")
         shape_pjc_l0a = [t_size, m_size, hidden_size, 16, 16]
-        pjc_a_l0a = tvm.compute(shape_pjc_l0a, lambda b, i, j, k, l:pjc_a_l1[b, j, i, k, l],
+        pjc_a_l0a = tvm.compute(shape_pjc_l0a,
+                                lambda a_b, a_i, a_j, a_k, a_l:pjc_a_l1[a_b, a_j, a_i, a_k, a_l],
                                 name="pjc_a_l0a", tag="l1_to_l0")
         shape_pjc_l0b = [t_size, hidden_size, state_size, 16, 16]
-        pjc_b_l0b = tvm.compute(shape_pjc_l0b, lambda b, i, j, k, l: pjc_b_l1[b, j, i, l, k],
+        pjc_b_l0b = tvm.compute(shape_pjc_l0b,
+                                lambda a_b, a_i, a_j, a_k, a_l: pjc_b_l1[a_b, a_j, a_i, a_l, a_k],
                                 name="pjc_b_l0b", tag="l1_to_l0")
         pjc_k1 = tvm.reduce_axis((0, hidden_size), name='k1')
         pjc_k0 = tvm.reduce_axis((0, k0_size), name='k0')
@@ -1082,7 +1087,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         update_h_mad = update_h
     if mask_gm is not None and project_gm is not None:
         update_h_tmp1 = vmul(mask_ub_ht, update_h_mad)
-        broadcast_one_dh = broadcast(tvm.const(1, "float16"), [1, state_size, m_size, 16, 16], "float16")
+        broadcast_one_dh = broadcast(tvm.const(1, "float16"),
+                                     [1, state_size, m_size, 16, 16],
+                                     "float16")
         one_sub_mth = vsub(broadcast_one_dh, mask_ub_ht)
         update_h_tmp2 = vmul(one_sub_mth, s_state_h_ub_tmp)
         update_h_tmp = vadd(update_h_tmp1, update_h_tmp2)
@@ -1092,7 +1099,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         mask_tensors.append(update_h_tmp2)
         mask_tensors.append(update_h_tmp)
         mask_tensors.append(s_state_h_ub_tmp)
-        pjc_after_tensors = [mask_ub_ht, update_h_mad, broadcast_one_dh, one_sub_mth, s_state_h_ub_tmp, update_h_tmp2,
+        pjc_after_tensors = [mask_ub_ht, update_h_mad, broadcast_one_dh,
+                             one_sub_mth, s_state_h_ub_tmp, update_h_tmp2,
                              update_h_tmp1, update_h_tmp]
     else:
         update_h_tmp = update_h_mad
@@ -1309,12 +1317,18 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         barrier_tensor.op.axis[4],
         barrier_tensor.op.axis[5])
     if project_gm is not None:
-        pjc_l1_n_outer, pjc_l1_n_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.axis[1], factor=factor_l1_n)
-        pjc_l1_m_outer, pjc_l1_m_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.axis[2], factor=factor_l1_m)
-        pjc_l1_k_outer, pjc_l1_k_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.reduce_axis[0], factor=factor_l1_k)
-        pjc_l0_n_outer, pjc_l0_n_inner = s[pjc_c_l0c].split(pjc_l1_n_inner, factor=factor_l0_n)
-        pjc_l0_m_outer, pjc_l0_m_inner = s[pjc_c_l0c].split(pjc_l1_m_inner, factor=factor_l0_m)
-        pjc_l0_k_outer, pjc_l0_k_inner = s[pjc_c_l0c].split(pjc_l1_k_inner, factor=factor_l0_k)
+        pjc_l1_n_outer, pjc_l1_n_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.axis[1],
+                                                            factor=factor_l1_n)
+        pjc_l1_m_outer, pjc_l1_m_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.axis[2],
+                                                            factor=factor_l1_m)
+        pjc_l1_k_outer, pjc_l1_k_inner = s[pjc_c_l0c].split(pjc_c_l0c.op.reduce_axis[0],
+                                                            factor=factor_l1_k)
+        pjc_l0_n_outer, pjc_l0_n_inner = s[pjc_c_l0c].split(pjc_l1_n_inner,
+                                                            factor=factor_l0_n)
+        pjc_l0_m_outer, pjc_l0_m_inner = s[pjc_c_l0c].split(pjc_l1_m_inner,
+                                                            factor=factor_l0_m)
+        pjc_l0_k_outer, pjc_l0_k_inner = s[pjc_c_l0c].split(pjc_l1_k_inner,
+                                                            factor=factor_l0_k)
         s[pjc_c_l0c].reorder(pjc_l1_n_outer, pjc_l1_m_outer, pjc_l1_k_outer,
                              pjc_l0_n_outer, pjc_l0_m_outer, pjc_l0_k_outer,
                              pjc_l0_n_inner, pjc_l0_m_inner, pjc_c_l0c.op.axis[3],
@@ -1525,17 +1539,23 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[wco_ub].emit_insn(wco_ub.op.axis[0], 'dma_copy')
         s[wcf_ub].emit_insn(wcf_ub.op.axis[0], 'dma_copy')
     if mask_gm is not None:
-        s[mask_ub_ct].emit_insn(mask_ub_ct.op.axis[0], 'dma_copy')
-        s[mask_ub_ht].emit_insn(mask_ub_ht.op.axis[0], 'dma_copy')
-        s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0], 'dma_copy')
-        s[broadcast_one].emit_insn(broadcast_one.op.axis[0], 'broadcast')
-        s[broadcast_one_dh].emit_insn(broadcast_one_dh.op.axis[0], 'broadcast')
+        s[mask_ub_ct].emit_insn(mask_ub_ct.op.axis[0],
+                                'dma_copy')
+        s[mask_ub_ht].emit_insn(mask_ub_ht.op.axis[0],
+                                'dma_copy')
+        s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0],
+                                      'dma_copy')
+        s[broadcast_one].emit_insn(broadcast_one.op.axis[0],
+                                   'broadcast')
+        s[broadcast_one_dh].emit_insn(broadcast_one_dh.op.axis[0],
+                                      'broadcast')
     if project_gm is not None:
         s[pjc_a_l1].emit_insn(pjc_a_l1.op.axis[0], 'dma_copy')
         s[pjc_b_l1].emit_insn(pjc_b_l1.op.axis[0], 'dma_copy')
         s[pjc_a_l0a].emit_insn(pjc_a_l0a.op.axis[0], 'dma_copy')
         s[pjc_b_l0b].emit_insn(pjc_b_l0b.op.axis[0], 'dma_copy')
-        pjc_mad_dict = {"mad_pattern": 0, "k_outer": [pjc_l1_k_outer, pjc_l0_k_outer]}
+        pjc_mad_dict = {"mad_pattern": 0,
+                        "k_outer": [pjc_l1_k_outer, pjc_l0_k_outer]}
         s[pjc_c_l0c].emit_insn(pjc_l0_n_inner, 'mad', pjc_mad_dict)
         s[pjc_c_ub].emit_insn(pjc_ub_n_inner, 'dma_copy')
     if fp16_input_output:
@@ -1599,11 +1619,16 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                 s[c_t_tanh_back_fp32].emit_insn(s[c_t_tanh_back_fp32].op.axis[1], 'phony_insn')
                 s[o_t_sigmoid_back_fp32].emit_insn(s[o_t_sigmoid_back_fp32].op.axis[1], 'phony_insn')
 
-        s[f_t_sigmoid_gm].emit_insn(s[f_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[i_t_sigmoid_gm].emit_insn(s[i_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[o_t_sigmoid_gm].emit_insn(s[o_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[j_t_tanh_gm].emit_insn(s[j_t_tanh_gm].op.axis[1], 'dma_copy')
-        s[c_t_tanh_gm].emit_insn(s[c_t_tanh_gm].op.axis[1], 'dma_copy')
+        s[f_t_sigmoid_gm].emit_insn(s[f_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[i_t_sigmoid_gm].emit_insn(s[i_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[o_t_sigmoid_gm].emit_insn(s[o_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[j_t_tanh_gm].emit_insn(s[j_t_tanh_gm].op.axis[1],
+                                'dma_copy')
+        s[c_t_tanh_gm].emit_insn(s[c_t_tanh_gm].op.axis[1],
+                                 'dma_copy')
 
         s[f_t_sigmoid_back].emit_insn(s[f_t_sigmoid_back].op.axis[1],
                                       'phony_insn')
@@ -1611,28 +1636,41 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                       'phony_insn')
         s[o_t_sigmoid_back].emit_insn(s[o_t_sigmoid_back].op.axis[1],
                                       'phony_insn')
-        s[j_t_tanh_back].emit_insn(s[j_t_tanh_back].op.axis[1], 'phony_insn')
-        s[c_t_tanh_back].emit_insn(s[c_t_tanh_back].op.axis[1], 'phony_insn')
+        s[j_t_tanh_back].emit_insn(s[j_t_tanh_back].op.axis[1],
+                                   'phony_insn')
+        s[c_t_tanh_back].emit_insn(s[c_t_tanh_back].op.axis[1],
+                                   'phony_insn')
 
-        s[f_t_sigmoid_gm].emit_insn(s[f_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[i_t_sigmoid_gm].emit_insn(s[i_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[o_t_sigmoid_gm].emit_insn(s[o_t_sigmoid_gm].op.axis[1], 'dma_copy')
-        s[j_t_tanh_gm].emit_insn(s[j_t_tanh_gm].op.axis[1], 'dma_copy')
-        s[c_t_tanh_gm].emit_insn(s[c_t_tanh_gm].op.axis[1], 'dma_copy')
+        s[f_t_sigmoid_gm].emit_insn(s[f_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[i_t_sigmoid_gm].emit_insn(s[i_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[o_t_sigmoid_gm].emit_insn(s[o_t_sigmoid_gm].op.axis[1],
+                                    'dma_copy')
+        s[j_t_tanh_gm].emit_insn(s[j_t_tanh_gm].op.axis[1],
+                                 'dma_copy')
+        s[c_t_tanh_gm].emit_insn(s[c_t_tanh_gm].op.axis[1],
+                                 'dma_copy')
 
     if bias_dtype == "float16":
-        s[update_c_fp16_back_fake].emit_insn(s[update_c_fp16_back_fake].op.axis[0], 'phony_insn')
-        s[update_c_fp16_back_fp32_fake].emit_insn(s[update_c_fp16_back_fp32_fake].op.axis[0], 'phony_insn')
-    s[c_t_tanh_fake].emit_insn(s[c_t_tanh_fake].op.axis[0], 'phony_insn')
+        s[update_c_fp16_back_fake].emit_insn(s[update_c_fp16_back_fake].op.axis[0],
+                                             'phony_insn')
+        s[update_c_fp16_back_fp32_fake].emit_insn(s[update_c_fp16_back_fp32_fake].op.axis[0],
+                                                  'phony_insn')
+    s[c_t_tanh_fake].emit_insn(s[c_t_tanh_fake].op.axis[0],
+                               'phony_insn')
     # fp16 in
     if bias_dtype == 'float16':
-        s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0], 'vector_conv')
-        s[update_h_fp16].emit_insn(update_h_fp16.op.axis[0], 'vector_conv')
+        s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0],
+                                   'vector_conv')
+        s[update_h_fp16].emit_insn(update_h_fp16.op.axis[0],
+                                   'vector_conv')
     else:
         s[update_h_fp16_cast].emit_insn(update_h_fp16_cast.op.axis[0],
                                         'vector_conv')
 
-    s[update_h_gm_as_y].emit_insn(update_h_gm_as_y.op.axis[0], 'dma_copy')
+    s[update_h_gm_as_y].emit_insn(update_h_gm_as_y.op.axis[0],
+                                  'dma_copy')
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')
 
