@@ -439,6 +439,41 @@ def _dw_variable_shape(inputs: list):
     return shape_out
 
 
+def _get_input_no_range_dx(in_shape, in_format, in_range):
+    """
+    get input no range
+    """
+    tmp = in_shape[:]
+    format_fractal_z_dim = 4
+    format_nc1hwc0_dim = 5
+    if in_format == "FRACTAL_Z" and len(in_range) == format_fractal_z_dim:
+        axis_ci1hw, axis_co1 = 0, 1
+        # no add_exclude_bound_var for parallel compilation ERROR
+        tmp[axis_ci1hw] = operation.var("filter_ci1hw")
+        tmp[axis_co1] = operation.var("filter_co1")
+    elif in_format == "NC1HWC0" and len(in_range) == format_nc1hwc0_dim:
+        axis_n, axis_c1, axis_h, axis_w = 0, 1, 2, 3
+        tmp[axis_n] = operation.var("dedy_n")
+        tmp[axis_c1] = operation.var("dedy_c1")
+        tmp[axis_h] = operation.var("dedy_h")
+        tmp[axis_w] = operation.var("dedy_w")
+    return tmp
+
+
+def _dx_variable_shape(inputs: list):
+    """
+    get no range variable shape of conv2d_backprop_input
+    """
+    shape_out = []
+    for input_member in inputs:
+        in_shape = input_member.get("shape")
+        in_format = input_member.get("format")
+        in_range = input_member.get("range")
+        in_shape_var = _get_input_no_range_dx(in_shape, in_format, in_range)
+        shape_out.append(in_shape_var[:])
+    return shape_out
+
+
 def _transpose_variable_shape(inputs: list):
     if len(inputs) != 1:
         dict_args = {"errCode": "E90001", "detailed_cause": "input numbers error"}
@@ -642,6 +677,12 @@ def variable_shape(inputs: list, op_mode="elewise"):
     :param op_mode: operator mode, default is elewise
     :return:
     """
+    op_type = ""
+    if len(inputs) > 0 and isinstance(inputs[0], dict):
+        op_type = inputs[0].get("input_op_type", "")
+    if op_type == "Conv2DBackpropInput":
+        return _dx_variable_shape(inputs)
+
     if op_mode == "conv2d_backprop_filter":
         return _dw_variable_shape(inputs)
 

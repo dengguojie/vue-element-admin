@@ -36,7 +36,7 @@ from op_test_frame.utils import file_util
 from op_test_frame.ut.op_ut_case_info import CaseUsage
 
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-cube_source_dirs = ["impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule"]
+cube_source_dirs = ["impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule", "tbe.common.utils"]
 
 # pylint: disable=too-few-public-methods,too-many-arguments,too-many-branches,too-many-statements
 class OpUTTestRunner:

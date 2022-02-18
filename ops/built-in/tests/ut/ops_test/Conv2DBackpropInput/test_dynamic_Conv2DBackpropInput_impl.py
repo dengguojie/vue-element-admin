@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from op_test_frame.ut import OpUT
 from numpy import var
 from te import tvm
 from tbe.dsl.base import operation
@@ -9,7 +10,7 @@ from tbe.common.context.op_context import OpContext
 from impl.dynamic.conv2d_backprop_input import get_op_support_info
 from impl.dynamic.conv2d_backprop_input import conv2dbp_input_fusion_compute
 from impl.dynamic.trans_data import trans_data_fusion_compute
-from op_test_frame.ut import OpUT
+from tbe.common.utils import shape_util
 
 ut_case = OpUT("Conv2DBackpropInput", "impl.dynamic.conv2d_backprop_input",
                "conv2d_backprop_input")
@@ -677,8 +678,38 @@ def _test_transdata_dx_transdata_fusion_op(test_args):
             tensor_list = [input_tensor, filter_tensor, transdata_in_tensor]
             _build_dx_transdata_fusion_op(tensor_list, y, (1, 1, 1, 1), dy_tensor, "transdata_dx_transdata_fusion_binary")
 
+
+def _test_transdata_dx_transdata_shape_util(test_arg):
+    inputs = [
+        {"ori_shape": [4], "shape": [4], "data_type": "int32",
+         "ori_range": [[4, 4]], "range": [[4, 4]],
+         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+        {"ori_shape": [3, 3, 16, 16], "shape": [9, 1, 16, 16], "data_type": "float16",
+         "ori_range": [[3, 3], [3, 3], [16, 16], [16, 16]], "range": [[9, 9], [1, 1], [16, 16], [16, 16]],
+         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+    ]
+    shape_util.variable_shape(inputs, op_mode="cube")
+
+
+def _test_dx_transdata_shape_util(test_arg):
+    inputs = [
+        {"ori_shape": [4], "shape": [4], "data_type": "int32",
+         "ori_range": [[4, 4]], "range": [[4, 4]],
+         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+        {"ori_shape": [3, 3, 32, 64], "shape": [18, 4, 16, 16], "data_type": "float16",
+         "ori_range": [[3, 3], [3, 3], [32, 32], [64, 64]], "range": [[18, 18], [4, 4], [16, 16], [16, 16]],
+         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+        {"ori_shape": [-1, -1, -1, -1], "shape": [-1, -1, -1, -1, 16], "data_type": "float16",
+         "ori_range": [[1, -1], [1, -1], [1, -1], [1, -1]], "range": [[1, None], [1, None], [1, None], [1, None], [16, 16]],
+         "format": "NC1HWC0", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+    ]
+    shape_util.variable_shape(inputs, op_mode="cube")
+
+
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_fusion_op)
+ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_shape_util)
+ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_shape_util)
 
 
 if __name__ == '__main__':
