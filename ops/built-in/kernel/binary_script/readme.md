@@ -6,7 +6,7 @@
 build_binary.sh soc_version opp_run_path output_path
     gen opcinfo.csv    <<< use gen_opcinfo_from_opinfo.py and opinfo json of {soc_version}
     for op_type in all_binary_op_list:
-        bash build_binary_single_op.sh {soc_version} {opp_run_path} {output_path} {op_type}
+        bash build_binary_single_op.sh {op_type} {soc_version} {opp_run_path} {output_path}
             get 算子py文件                       <<< from opcinfo.csv
             get 算子编译函数 op_func             <<< from opcinfo.csv
             get 算子二进制json文件 binary.json   <<< from binary_config.csv or binary_config_{soc_version}.csv
@@ -21,18 +21,87 @@ build_binary.sh soc_version opp_run_path output_path
 
 ## Script Detail
 
+### build_binary_single_op.sh
+
+```
+编译单个算子二进制kernel脚本
+使用方法：
+1. 在路径ops/built-in/kernel/binary_config 下添加对应平台的二进制发布json文件, 见Sample
+2. 在文件ops/built-in/kernel/binary_config/binary_config.csv  添加算子对应的二进制发布json文件文件, 见Sample
+
+执行方法：
+  bash build_binary_single_op.sh {op_type} {soc_version} {opp_run_path} {output_path} {opcinfo文件}(可选, 不传内部自动生成)
+    ex: bash build_binary_single_op.sh Add Ascend910 /usr/local/Ascend/opp/ ./add
+
+入参说明
+    {op_type}      算子名字, ex：Add
+    {soc_version}  编译平台, ex: Ascend910
+    {opp_run_path} opp包路径, 预留没使用, ex：/usr/local/Ascend/opp/
+    {output_path}  二进制kernel输出路径
+                     二进制文件路径路径规划 {output_path}/op_impl/built-in/ai_core/tbe/kernel/{soc_version}/{op_type}/
+                     二进制config文件      {output_path}/op_impl/built-in/ai_core/tbe/kernel/config/{soc_version}/{op_type}.json
+    {opcinfo文件}  可选, opc编译使用的csv文件, 通过信息库和gen_opcinfo_from_opinfo.py脚本产生, 没有传参数内部可自动生成
+
+输出说明：
+    二进制文件
+        路径路径规划 {output_path}/op_impl/built-in/ai_core/tbe/kernel/{soc_version}/{xxxx}/      // {xxxx}为算子实现文件前缀, 小写加下划线
+            其中路径为全小写
+        ex：{output_path}/op_impl/built-in/ai_core/tbe/kernel/ascend910/add/add_0.o
+            {output_path}/op_impl/built-in/ai_core/tbe/kernel/ascend910/add/add_0.json
+    二进制config文件, 记录该算子二进制kernel信息
+        路径规划： {output_path}/op_impl/built-in/ai_core/tbe/kernel/config/{soc_version}/{xxxx}.json  // {xxxx}为算子实现文件前缀, 小写加下划线
+              ex: {output_path}/op_impl/built-in/ai_core/tbe/kernel/config/ascend910/add.json
+```
+
+### gen_opcinfo_for_socversion.sh .sh
+
+```
+区分平台生成opc 编译算子使用的信息, 动态算子实现文件(dynamic/add.py)和算子编译入口函数(add)
+内部使用函数 gen_opinfo_json_from_ini.sh + gen_opcinfo_from_opinfo.py
+
+执行方法：
+  bash gen_opcinfo_for_socversion.sh {soc_version} {out_opcinfo_csv_file}
+    ex: bash gen_opcinfo_for_socversion.sh Ascend910 ./opc_info_ascend910.csv
+
+入参说明
+    {soc_version}           平台, ex: Ascend910
+    {out_opcinfo_csv_file}  opcinfo保存路径, json文件后缀  ex: ./opc_info_ascend910.csv
+
+输出说明：
+    csv格式的opc编译信息, 格式如下
+    op_type,file_name,file_func
+    Abs,dynamic/abs.py,abs
+    AbsGrad,dynamic/abs_grad.py,abs_grad
+```
+
+### gen_opinfo_json_from_ini.sh
+
+```
+生成对应平台信息库(json文件), 依赖cann仓原码
+执行方法：
+    bash gen_opinfo_json_from_ini.sh {soc_version} {output_json_file}
+        ex: bash gen_opinfo_json_from_ini.sh Ascend910 910.json
+
+入参说明
+    {soc_version}       平台, ex: Ascend910
+    {output_json_file}  信息库保存路径, json文件后缀  ex: /home/910.json
+
+输出说明：
+    json格式的算子信息库
+```
+
 ### gen_opcinfo_from_opinfo.py
 
 ```
 从信息库提取算子编译函数, 包括动态算子实现文件(dynamic/add.py)和算子编译入口函数(add)
 执行方法：
-  python3 gen_opcinfo_from_opinfo.py ./aic-ascend910-ops-info.json ./opc_info_ascend910.csv
+    python3 gen_opcinfo_from_opinfo.py ./aic-ascend910-ops-info.json ./opc_info_ascend910.csv
 
 入参说明:
-  json文件(可以多个), csv后缀的文件(输出文件)
+    json文件(可以多个), csv后缀的文件(输出文件)
 
 输出csv格式:
-  op_type,file_name,file_func
-  Abs,dynamic/abs.py,abs
-  AbsGrad,dynamic/abs_grad.py,abs_grad
+    op_type,file_name,file_func
+    Abs,dynamic/abs.py,abs
+    AbsGrad,dynamic/abs_grad.py,abs_grad
 ```
