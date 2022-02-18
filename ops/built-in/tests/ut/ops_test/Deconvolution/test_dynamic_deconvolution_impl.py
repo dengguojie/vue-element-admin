@@ -30,6 +30,7 @@ dynamic_deconvolution_testcase = [
      [[(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)], [(1, 10), (1, 1), (1, 16), (1, 16), (16, 16)]], "success",
      "deconvolution_dynamic_fix_small_hw"),
 
+
     ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), None, (1, 1), (-1, -1, -1, -1), "NCHW", 1, [0, 1], None, RuntimeError, None),
     ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), None, (1, 1), (0, 2, 0, 2), "NCHW", 1, [0, 1], None, RuntimeError, None),
     ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), None, (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], None, RuntimeError, None),

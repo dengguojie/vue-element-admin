@@ -129,6 +129,7 @@ struct Tiling {
   int64_t init_db_al1 = 1;
   int64_t init_db_bl1 = 1;
   int64_t init_db_l0c = 1;
+  bool update_l1 = false;
 };
 
 struct RunInfoRaras {

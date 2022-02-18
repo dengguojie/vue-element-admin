@@ -211,10 +211,6 @@ namespace optiling {
     run_info.AddTilingData(static_cast<int32_t>(tiling.n_dim));
     run_info.AddTilingData(static_cast<int32_t>(tiling.m_dim));
     run_info.AddTilingData(run_info_params.batch_single_core);
-    run_info.AddTilingData(run_info_params.n_single_core);
-    run_info.AddTilingData(run_info_params.m_single_core);
-    run_info.AddTilingData(static_cast<int32_t>(tiling.k_al1 * params.kh * params.kw * kBlockSize));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.k_bl1 * params.kh * params.kw * kBlockSize));
     run_info.AddTilingData(static_cast<int32_t>(tiling.m_al1));
     run_info.AddTilingData(static_cast<int32_t>(tiling.n_bl1));
     run_info.AddTilingData(static_cast<int32_t>(tiling.k_aub * params.kh * params.kw * kBlockSize));
@@ -293,7 +289,7 @@ namespace optiling {
     bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
     if (stride_equal_one) {
       run_info_params.aub_bound = tiling.k_aub * kBlockSize *
-          ((tiling.m_aub * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) * kBlockSize;
+          ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
     }
 
     SetRunInfo(run_info_params, params, tiling, run_info);

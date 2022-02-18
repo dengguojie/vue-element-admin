@@ -265,7 +265,6 @@ class TilingSelection:
             return tiling_cases
         if self.op.op_type == "conv2d_bp_input" and self.op.binary_mode:
             add_compile_info("tiling_type", "binary")
-            add_compile_info("attrs", self.op.attrs)
             tiling_cases = self.op.get_cache_tiling()
         elif self.op.op_type == "conv2d_bp_filter" and self.op.is_binary_flag:
             add_compile_info("tiling_type", "binary")

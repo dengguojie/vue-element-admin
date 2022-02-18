@@ -80,7 +80,7 @@
     "input_desc": [
       {
         "format": "NCHW",
-        "ori_format": "NCHW",
+        "ori_format":  "NCHW",
         "shape": [-1,17,49,-1],
         "ori_shape": [-1,17,49,-1],
         "typical_shape": [17,17,49,49],

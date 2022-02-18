@@ -456,7 +456,6 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.c_type = self.tiling_info["C_dtype"]
         self.stride_h = self.tiling_info["strideH_expand"]
         self.binary_mode = DynamicConv2dBpInputParams.binary_mode
-        self.attrs = DynamicConv2dBpInputParams.attrs
         self.var_map = DynamicConv2dBpInputParams.var_map
         self._get_calc_info()
         self.key = 'C_shape'
@@ -480,7 +479,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         bool: True, the template is valid
         """
-        al1_pb, bl1_pb, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, _ = choice
+        al1_pb, bl1_pb, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, *_ = choice
         # al1 full load
         invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
             (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or
@@ -553,38 +552,37 @@ class Conv2dBpInputTiling(CubeTilingOp):
         '''
         cache_tiling_all = {}
         (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0) = (
+        bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = (
             [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1])
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1], [0, 1])
         attach_choices = list(
-            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach,
+                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag))
         stride_expand_flag = 0 if isinstance(self.stride_h, int) else 1
         for choice in attach_choices:
             cache_tiling = {
-                'block_dim': [-1, -1, -1, 1],
-                'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'block_dim': [-1, -1, -1, 1], 'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
                 'BL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
                 'CL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
                 'CUB_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-                'BUB_shape': [-1, -1, 1, 1],
-                'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
-                'AUB_shape': [-1, -1, 1, 1],
-                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
+                'BUB_shape': [-1, -1, 1, 1], 'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
+                'AUB_shape': [-1, -1, 1, 1], 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
                 'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
                 'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
-                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_ON, 'BUB_pbuffer': utils.DB_ON,
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_OFF, 'BUB_pbuffer': utils.DB_ON,
                 'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
                 'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
-                'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
+                'CUB_pbuffer': utils.DB_OFF, 'UBG_pbuffer': utils.DB_OFF},
                 'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
                 'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
                 'bl0_attach_flag': utils.ATTACH_LESS,
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}, 'no_overlap_default_flag': 0
             }
-            al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0 = choice
+            (al1_pb, bl1_pb, l0c_pb, abkl1_attach,
+             al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = choice
             if self._check_template_valid(choice):
                 continue
 
@@ -595,6 +593,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = al1_attach_flag
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = bl1_attach_flag
             cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = min_kl1_cmp_kl0
+            cache_tiling['no_overlap_default_flag'] = no_overlap_default_flag
             name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
             cache_tiling_all[name] = [[], cache_tiling, []]
             tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]

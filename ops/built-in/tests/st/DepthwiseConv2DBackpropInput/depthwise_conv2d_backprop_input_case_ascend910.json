@@ -5,7 +5,7 @@
     "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
     "input_desc":  [
       {
-        "format": "ND",
+        "format":  "ND",
         "ori_format": "ND",
         "shape": [4],
         "ori_shape": [4],

@@ -707,7 +707,6 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     pooling_mode = para_dict.get("pooling_mode")
     impl_mode = para_dict.get("impl_mode", "")
     binary_mode = para_dict.get("binary_mode", False)
-    attrs = para_dict.get("attrs", {})
 
     DeconvParam.set_default()
     if fusion_para is None:
@@ -818,7 +817,6 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "dynamic_shape_flag": True
     }
     DynamicConv2dBpInputParams.binary_mode = binary_mode
-    DynamicConv2dBpInputParams.attrs = attrs
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
     DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False),
                                                "op_type": para_dict.get("op_type", "")}
@@ -924,4 +922,3 @@ class DynamicConv2dBpInputParams:
     var_map = {}
     dynamic_para = {}
     ori_tensor = {}
-    attrs = {}

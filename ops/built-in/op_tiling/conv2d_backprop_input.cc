@@ -25,7 +25,10 @@
 #include "cube_tiling_new.h"
 #include "graph/debug/ge_log.h"
 #include "graph/ge_tensor.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
 #include "graph/op_desc.h"
+#include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/type_utils.h"
 #include "external/graph/operator.h"
@@ -69,11 +72,13 @@ const int64_t kFilterDimHWUp = 255;
 const int64_t kStrideDimHWLow = 1;
 const int64_t kDilationDimHWUp = 1;
 const int64_t kFp16Bytes = 2;
+const int64_t kFrontUbFusionMulti = 2;
+const int64_t kAfterUbFusionMulti = 2;
+const int64_t kUbSize = 262000;
 const int64_t kL1size = (1024 * 1024);
 const int64_t kStrideHWUp = 63;
 const int64_t kConv2dNC1HWC0Size = 5;
 const int64_t kConv2dNCHWSize = 4;
-const int64_t kInputOutBackpropIndex = 2;
 
 static map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"}, {ge::FORMAT_DHWNC, "DHWNC"},
@@ -160,6 +165,38 @@ bool CheckL1SizeLimit(const DxParas& dx_paras) {
   return true;
 }
 
+bool CheckUBSizeLimit(const DxParas& dx_paras) {
+  int64_t m_aub = 1;
+  int64_t k_aub = 1;
+  int64_t n_cub = 1;
+  int64_t m_l0 = 1;
+  int64_t loadin_size = k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
+  int64_t copyout_size = kAfterUbFusionMulti * n_cub * m_l0 * kC0 * kC0;
+  if (dx_paras.stride_expand_flag == 0) {
+    loadin_size = kFrontUbFusionMulti * k_aub * kBlockSize *
+                  ((m_aub * dx_paras.wo + dx_paras.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
+  }
+  int64_t ub_fp16_size = kUbSize / kFp16Bytes;
+  CHECK_OP_FUNC(loadin_size + copyout_size > ub_fp16_size, return false,
+                "check ubsize fail, loadin_size is %ld, copyout_size is %ld, ub_fp16_size is %ld", loadin_size,
+                copyout_size, ub_fp16_size);
+  return true;
+}
+
+void UpdateOpDescAttr(const ge::OpDescPtr& op_desc, ge::OpDescPtr& op_desc_attr) {
+  ge::ComputeGraphPtr ori_graph = nullptr;
+  if (ge::AttrUtils::GetGraph(op_desc, "_original_fusion_graph", ori_graph)) {
+    for (auto node : ori_graph->GetAllNodes()) {
+      if (node->GetType() == "Conv2DBackpropInput") {
+        op_desc_attr = node->GetOpDesc();
+        break;
+      }
+    }
+  } else {
+    GELOGD("this is not fusion node, only conv2d_backrprop_inpt single node");
+  }
+}
+
 bool CheckParams(const DxParas& dx_paras) {
   CHECK_OP_FUNC(!CheckRange(dx_paras.kh, kDimLow, kFilterDimHWUp), return false, "kh value invalid");
   CHECK_OP_FUNC(!CheckRange(dx_paras.kw, kDimLow, kFilterDimHWUp), return false, "kw value invalid");
@@ -188,7 +225,8 @@ bool CheckParams(const DxParas& dx_paras) {
                 return false, "fmap_h does not match dedy_h");
   CHECK_OP_FUNC((dx_paras.fmap_w_padding - dx_paras.filter_w_dilation) / dx_paras.stride_w + 1 != dx_paras.wo,
                 return false, "fmap_w does not match dedy_w");
-  CHECK_OP_FUNC(!CheckL1SizeLimit(dx_paras), return false, "this case may excceed L1size");
+  CHECK_OP_FUNC(!CheckL1SizeLimit(dx_paras), return false, "this case may exceed L1size");
+  CHECK_OP_FUNC(!CheckUBSizeLimit(dx_paras), return false, "this case may exceed UBsize");
   int64_t dedy_c_16 = Align(dx_paras.co, kC0);
   CHECK_OP_FUNC(dedy_c_16 == 0, return false, "dedy_c_16 is invalid");
   int64_t dedx_c_16 = Align(dx_paras.cin, kC0);
@@ -235,51 +273,32 @@ bool GetAttrFromOp(const ge::OpDescPtr& op_desc, DxParas& dx_paras) {
   return true;
 }
 
-bool GetAttrFromCompileInfo(const nlohmann::json& compile_info, DxParas& dx_paras) {
-  bool compile_info_invalid = !compile_info.contains("attrs") || !compile_info["attrs"].contains("strides") ||
-                              !compile_info["attrs"].contains("pads") || !compile_info["attrs"].contains("groups") ||
-                              !compile_info["attrs"].contains("dilations") ||
-                              !compile_info["attrs"].contains("data_format") ||
-                              compile_info["attrs"]["strides"].size() != kConv2dNCHWSize ||
-                              compile_info["attrs"]["pads"].size() != kConv2dNCHWSize ||
-                              compile_info["attrs"]["dilations"].size() != kConv2dNCHWSize ||
-                              compile_info["attrs"]["groups"].size() != 1;
-  CHECK_OP_FUNC(compile_info_invalid, return false, "get attr failed from compile_info");
-  CHECK_OP_FUNC(compile_info["attrs"]["data_format"] != "NCHW", return false, "data_format is not NCHW");
-  dx_paras.groups = compile_info["attrs"]["groups"];
-  std::vector<int64_t> strides_list = compile_info["attrs"]["strides"];
-  std::vector<int64_t> pads_list = compile_info["attrs"]["pads"];
-  std::vector<int64_t> dilations_list = compile_info["attrs"]["dilations"];
-  dx_paras.padu = pads_list[kConv2dPadUpIdx];
-  dx_paras.padd = pads_list[kConv2dPadDownIdx];
-  dx_paras.padl = pads_list[kConv2dPadLeftIdx];
-  dx_paras.padr = pads_list[kConv2dPadRightIdx];
-  dx_paras.stride_h = strides_list[kHDimNCHWIdx];
-  dx_paras.stride_w = strides_list[kWDimNCHWIdx];
-  dx_paras.dilations_n = dilations_list[kNDimNCHWIdx];
-  dx_paras.dilations_c = dilations_list[kCDimNCHWIdx];
-  dx_paras.dilations_h = dilations_list[kHDimNCHWIdx];
-  dx_paras.dilations_w = dilations_list[kWDimNCHWIdx];
-  return true;
-}
-
 bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                                  DxParas& dx_paras) {
+                                  DxParas& dx_paras, const ge::OpDescPtr& op_desc_attr) {
   if (compile_info.contains("tiling_type") && compile_info["tiling_type"] == "binary") {
     dx_paras.repo_binary_flag = true;
     ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
     ge::AscendString op_type;
     CHECK_OP_FUNC(op_paras.GetOpType(op_type) != ge::GRAPH_SUCCESS, return false, "failed to get op_type");
     dx_paras.op_type = string(op_type.GetString());
-    if (!GetAttrFromOp(op_desc, dx_paras)) {
-      CHECK_OP_FUNC(!GetAttrFromCompileInfo(compile_info, dx_paras), return false, "get attr failed");
+    int32_t out_backprop_input_index = 2;
+    int32_t filter_input_index = 1;
+    if (op_desc_attr == nullptr) {
+      CHECK_OP_FUNC(!GetAttrFromOp(op_desc, dx_paras), return false, "get attr failed");
+    } else {
+      CHECK_OP_FUNC(!GetAttrFromOp(op_desc_attr, dx_paras), return false, "get attr failed");
+    }
+    bool stride_equal_one = dx_paras.stride_h == 1 && dx_paras.stride_w == 1;
+    if (op_desc_attr != nullptr && stride_equal_one) {
+      filter_input_index = 2;
+      out_backprop_input_index = 0;
     }
     CHECK_OP_FUNC(!compile_info.contains("block_dim") || !compile_info["block_dim"].contains("CORE_NUM"),
                   return false, "get core_num failed");
     dx_paras.core_num = compile_info["block_dim"]["CORE_NUM"];
-    ge::GeTensorDescPtr filter_desc = op_desc->MutableInputDesc(1);
+    ge::GeTensorDescPtr filter_desc = op_desc->MutableInputDesc(filter_input_index);
+    ge::GeTensorDescPtr out_backprop_desc = op_desc->MutableInputDesc(out_backprop_input_index);
     CHECK_OP_FUNC(filter_desc == nullptr, return false, "tensor filter desc failed");
-    ge::GeTensorDescPtr out_backprop_desc = op_desc->MutableInputDesc(kInputOutBackpropIndex);
     CHECK_OP_FUNC(out_backprop_desc == nullptr, return false, "tensor out_backprop desc failed");
     ge::GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
     CHECK_OP_FUNC(y_desc == nullptr, return false, "tensor y desc failed");
@@ -294,7 +313,7 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
         return false, "filter ori_format failed");
     CHECK_OP_FUNC(y_desc->GetFormat() != ge::FORMAT_NCHW, return false, "y format invalid");
 
-    if (dx_paras.stride_h == 1 && dx_paras.stride_w == 1) {
+    if (stride_equal_one) {
       dx_paras.stride_expand_flag = 0;
       CHECK_SIZE(out_backprop_desc->GetShape().GetDimNum() != kConv2dNCHWSize,
           return false, "out_backprop shape len is invalid");
@@ -336,6 +355,20 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
     dx_paras.c1 = (dx_paras.cin + kBlockSize - 1) / kBlockSize;
     dx_paras.h = y_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
     dx_paras.w = y_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
+    // when padding is SAME, pads is [-1, -1, -1, -1]
+    // when padding is VALID, pads is [0, 0, 0, 0]
+    if (dx_paras.padu == -1) {
+      int64_t pad_h = max(Align(dx_paras.h, dx_paras.stride_h) - dx_paras.stride_h + dx_paras.kh - dx_paras.h, 0L);
+      int64_t pad_up = (pad_h >> 1L);
+      int64_t pad_down = pad_h - pad_up;
+      int64_t pad_w = max(Align(dx_paras.w, dx_paras.stride_w) - dx_paras.stride_w + dx_paras.kw - dx_paras.w, 0L);
+      int64_t pad_left = (pad_w >> 1L);
+      int64_t pad_right = pad_w - pad_left;
+      dx_paras.padu = pad_up;
+      dx_paras.padd = pad_down;
+      dx_paras.padl = pad_left;
+      dx_paras.padr = pad_right;
+    }
     dx_paras.fmap_h_padding = dx_paras.h + dx_paras.padu + dx_paras.padd;
     dx_paras.fmap_w_padding = dx_paras.w + dx_paras.padl + dx_paras.padr;
     dx_paras.filter_h_dilation = (dx_paras.kh - 1) * dx_paras.dilations_h + 1;
@@ -356,6 +389,8 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
                          utils::OpRunInfo& runInfo) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   CHECK_OP_FUNC(op_desc == nullptr, return false, "the op_desc is nullptr.");
+  ge::OpDescPtr op_desc_attr = nullptr;
+  UpdateOpDescAttr(op_desc, op_desc_attr);
   // the input tensor's index is 2
   ge::ConstGeTensorDescPtr tensor_in_desc = op_desc->GetInputDescPtr(2);
   ge::ConstGeTensorDescPtr tensor_out_desc = op_desc->GetOutputDescPtr(0);
@@ -402,7 +437,8 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
       // <<< end: put together compile info
       GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
     } else if (opCompileInfo.is_object()) {
-      CHECK_OP_FUNC(!Conv2DBackpropInputParseFunc(opParas, opCompileInfo, dx_paras), return false, "ParseFunc failed!");
+      CHECK_OP_FUNC(!Conv2DBackpropInputParseFunc(opParas, opCompileInfo, dx_paras, op_desc_attr), return false,
+                    "ParseFunc failed!");
       if (dx_paras.repo_binary_flag) {
         string tiling_id;
         Tiling tiling;

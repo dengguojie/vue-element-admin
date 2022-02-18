@@ -615,6 +615,7 @@ def _test_dx_transdata_fusion_op(test_args):
     dx: nc1hwc0 -> nchw
     """
     dtype = "float16"
+
     with OpContext("dynamic"):
         with operation.ComputeContext():
             y = {

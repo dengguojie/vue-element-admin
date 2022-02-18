@@ -1578,7 +1578,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 pass
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(c_ub, c_ddr, affine_shape=affine_cub,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode("cub_ddr"))
+                                    ceil_mode_dict=dyn_util.get_ceil_mode())
             else:
                 _raise_dx_general_err("c_ub attach error.")
             return status
@@ -1744,7 +1744,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
             elif status == Compare.GREATE_EQ:
                 sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode("cl0_cddr"))
+                                    ceil_mode_dict=dyn_util.get_ceil_mode())
             else:
                 _raise_dx_general_err("c_col attach error.")
         if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
@@ -1810,7 +1810,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch_agent.same_attach(a_col, c_col)
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(a_col, c_col, affine_shape=l0a2l0c_affine_shape,
-                                ceil_mode_dict=dyn_util.get_ceil_mode("al1_cl0"))
+                                ceil_mode_dict=dyn_util.get_ceil_mode())
         elif status == Compare.GREATE_EQ:
             sch_agent.attach_at(a_col, c_ddr, affine_shape=l0a2out_affine_shape)
         else:
@@ -1856,7 +1856,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.same_attach(b_col, c_col)
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode("bl0_cl0"))
+                                    ceil_mode_dict=dyn_util.get_ceil_mode())
             elif status == Compare.GREATE_EQ:
                 sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
@@ -1918,10 +1918,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.same_attach(attach_tensor, c_col)
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(attach_tensor, c_col, affine_shape=l1a2l0c_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode("al1_cl0"))
+                                    ceil_mode_dict=dyn_util.get_ceil_mode())
             elif status == Compare.GREATE_EQ:
                 sch_agent.attach_at(attach_tensor, c_ddr, affine_shape=l1a2out_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode("al1_cddr"))
+                                    ceil_mode_dict=dyn_util.get_ceil_mode())
             else:
                 _raise_dx_general_err("A_L1 atach error.")
         _al1_attach_process()
@@ -2005,7 +2005,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch_agent.same_attach(b_l1, c_col)
                 elif status == Compare.LESS_EQ:
                     sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape,
-                                        ceil_mode_dict=dyn_util.get_ceil_mode("bl1_cl0"))
+                                        ceil_mode_dict=dyn_util.get_ceil_mode())
                 elif status == Compare.GREATE_EQ:
                     l1_nb = bl1_tilling_n * bl0_tiling_nb
                     _, _, _n0 = tbe_platform.CUBE_MKN.get(b_l1.dtype)["mac"]
@@ -2016,7 +2016,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     if tensor_attr.get("5HD_TRANS_NHWC"):
                         l1b2out_affine_shape = [1, cl0_tiling_m0, l1_nb * _n0]
                     sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape,
-                                        ceil_mode_dict=dyn_util.get_ceil_mode("bl1_cddr"))
+                                        ceil_mode_dict=dyn_util.get_ceil_mode())
                 else:
                     _raise_dx_general_err("b_l1 attach error.")
             _bl1_attach()
@@ -2096,7 +2096,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
             ub_shape = _get_ub_shape(ub_shape_k, aub_h, aub_w, filling_w)
             if dyn_util.dynamic_mode == "binary":
-                sch_agent.attach_at(dy_vn, a_l1, ub_shape, ceil_mode_dict=dyn_util.get_ceil_mode("aub_al1"))
+                sch_agent.attach_at(dy_vn, a_l1, ub_shape, ceil_mode_dict=dyn_util.get_ceil_mode())
             else:
                 if not l0a_dma_flag:
                     sch_agent.attach_at(a_filling, a_l1, ub_shape)
@@ -2554,9 +2554,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[a_ub_pad_vn].storage_align(a_ub_pad_vn.op.axis[-2], 16, 0)
             sch[a_ub_reshape].storage_align(a_ub_reshape.op.axis[-2], 16, 0)
             sch[a_ub_transpose].storage_align(a_ub_transpose.op.axis[1], 256, 0)
-
-            sch[a_ub_padc].emit_insn(sch_agent[a_ub_padc].op.axis[0], 'dma_copy',
-                                     {'no_overlap': 'process_data_smaller_than_one_block'})
+            sch[a_ub_padc].emit_insn(sch_agent[a_ub_padc].op.axis[0], 'dma_copy')
             src_in_dst_order = tvm.expr.Call('handle', 'tvm_tuple', [1, 0], tvm.expr.Call.PureIntrinsic, None, 0)
             sch[a_ub_pad_vn].emit_insn(a_ub_pad_vn.op.axis[0], 'phony_insn')
             sch[a_ub_reshape].emit_insn(a_ub_reshape.op.axis[0], 'phony_insn')
@@ -2651,8 +2649,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 _, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
                 sch[c_ddr].emit_insn(channel_axis_inner, "dma_copy", {"layout_transform": "channel_split"})
             elif tensor_attr.get("5HD_TRANS_NCHW"):
+                no_overlap_flag = ("default" if dyn_util.tiling_case.get("no_overlap_default_flag")
+                                   else "process_data_smaller_than_one_block")
                 sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], 'dma_copy',
-                                     {'no_overlap': 'process_data_smaller_than_one_block'})
+                                     {'no_overlap': no_overlap_flag})
             else:
                 sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:
@@ -2921,8 +2921,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         if dyn_util.dynamic_mode == "binary":
             ax_batch_outer, ax_batch_inner = sch_agent[c_ddr].split(ax_ni, nparts=batch_dim, ceil_mode=False)
             ax_m_outer, ax_m_inner = sch_agent[c_ddr].split(ax_hw, nparts=m_dim)
-            ax_n_outer, ax_n_inner = sch_agent[c_ddr].split(ax_ci, nparts=n_dim, ceil_mode=False)
-            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim, ceil_mode=False)
+            ax_n_outer, ax_n_inner = sch_agent[c_ddr].split(ax_ci, nparts=n_dim)
+            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim)
             sch[c_ddr].reorder(ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer,
                                ax_g_inner, ax_batch_inner, ax_n_inner, ax_m_inner)
             sch.bind_axes([ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer], tvm.thread_axis('blockIdx.x'))
@@ -3078,13 +3078,12 @@ class DxDynamicUtil():
             "range_ub_bound": (256, 262144),
             "range_l1_bound": (256, 1048576)
         }
-        self.shape_var_names = ('batch_n', 'dedy_h', 'dedy_w', 'dx_h', 'dx_w', 'dx_c', 'dx_c1', 'dy_c', 'dy_c1',
+        self.shape_var_names = ('batch_n', 'dedy_h', 'dedy_w', 'dx_h', 'dx_w', 'dx_c', 'dx_c1', 'dy_c',
                                 'kernel_h', 'kernel_w', 'padt', 'padb', 'padl', 'padr', 'stride_h', 'stride_w',
-                                'g_extend', 'multiple_extend', 'dx_c1_extend', 'dy_c1_extend', 'dy_c_ori',
-                                'filter_ci1hw', 'pad_up_before', 'pad_left_before',
-                                'pad_down_after', 'pad_right_after',
+                                'g_extend', 'multiple_extend', 'dx_c1_extend', 'filter_ci1hw',
+                                'pad_up_before', 'pad_left_before', 'pad_down_after', 'pad_right_after',
                                 'shape_up_modify', 'shape_left_modify', 'shape_down_modify', 'shape_right_modify')
-        self.tiling_var_names = ('batch_dim', 'n_dim', 'm_dim', 'batch_single_core', 'n_single_core', 'm_single_core',
+        self.tiling_var_names = ('batch_dim', 'n_dim', 'm_dim', 'batch_single_core',
                                  'm_al1', 'n_bl1', 'k_al1_div_16', 'k_bl1_div_16', 'k_aub', 'm_aub',
                                  'm_l0', 'n_l0_div_ub', 'n_ub', 'k_l0', 'al1_bound', 'bl1_bound', 'aub_bound')
         self.status_ori_dict_dx = {
@@ -3151,10 +3150,9 @@ class DxDynamicUtil():
             shape_var_range = {
                 "dedy_h": range_4096, "dedy_w": range_4096,
                 "dx_h": range_4096, "dx_w": range_4096, "kernel_h": range_64, "kernel_w": range_64,
-                "dx_c": range_4096, "dy_c_ori": range_4096, "dx_c1": range_256, "dy_c1": range_256,
+                "dx_c": range_4096, "dx_c1": range_256,
                 "padt": range_256, "padb": range_256, "padl": range_256, "padr": range_256,
-                "dx_c1_extend": range_256, "dy_c1_extend": range_256,
-                "g_extend": range_one, "multiple_extend": range_one,
+                "dx_c1_extend": range_256,  "g_extend": range_one, "multiple_extend": range_one,
                 "pad_up_before": range_256, "pad_left_before": range_256,
                 "pad_down_after": range_256, "pad_right_after": range_256,
                 "shape_up_modify": range_256, "shape_left_modify": range_256,
@@ -3170,7 +3168,6 @@ class DxDynamicUtil():
 
             tiling_var_range = {
                 "batch_dim": range_block_dim, "n_dim": range_block_dim, "m_dim": range_block_dim,
-                "n_single_core": range_256, "m_single_core": range_4096,
                 "k_al1_div_16": range_1024, "k_bl1_div_16": range_1024, "m_al1": range_1024, "n_bl1": range_1024,
                 "n_ub": range_64, "m_l0": range_64, "k_l0": range_64, "n_l0_div_ub": range_64,
                 "m_aub": range_256, "k_aub": range_1024,
@@ -3250,37 +3247,14 @@ class DxDynamicUtil():
             "bl1_status": self.status_dict_dx.get(bl1_attach_flag),
         }
 
-    def get_ceil_mode(self, buffer):
+    @staticmethod
+    def get_ceil_mode():
         """
         calculate factor with factor_ceil_mode in schedule_agent, split with split_ceil_mode in schedule_agent/
         False for divisible scene, default is True
         """
         ceil_mode_dict = {"factor_ceil_mode": True, "split_ceil_mode": True}
-        if self.dynamic_mode != "binary" or self.format_a == "NCHW":
-            return ceil_mode_dict
-
-        buffer_ceil_mode = {
-            "cub_cddr": {"factor_ceil_mode": [True, False, False, False],
-                            "split_ceil_mode": [True, False, True, True]},
-            "cl0_cddr": {"factor_ceil_mode": [True, False, False, False],
-                            "split_ceil_mode": [True, False, True, True]},
-            "al0_cl0": {"factor_ceil_mode": False,
-                        "split_ceil_mode": [False, False, False, True, False, False, False]},
-            "bl0_cl0": {"factor_ceil_mode": False,
-                        "split_ceil_mode": False},
-            "al1_cl0": {"factor_ceil_mode": False,
-                        "split_ceil_mode": [False, False, True, False, False, False]},
-            "al1_cddr": {"factor_ceil_mode": False,
-                            "split_ceil_mode": [False, False, True, False, False, False]},
-            "bl1_cl0": {"factor_ceil_mode": [False, False, False, True, False, False, False],
-                        "split_ceil_mode": [False, True, True, False, False, False]},
-            "bl1_cddr": {"factor_ceil_mode": [False, False, False, True, False, False, False],
-                            "split_ceil_mode": [False, True, True, False, False, False]},
-            "aub_al1": {"factor_ceil_mode": False,
-                        "split_ceil_mode": [False, False, True, True, True, False]},
-        }
-
-        return buffer_ceil_mode.get(buffer)
+        return ceil_mode_dict
 
     def l1_full_load(self, c_ddr, a_l1, b_l1, sch):
         """
@@ -3289,8 +3263,6 @@ class DxDynamicUtil():
         if self.dynamic_mode != "binary":
             return
         if self.attach_flag.get("al1_attach_flag") == 0:
-            sch.set_var_value(self.tiling_vars.get("m_single_core"), 1)
             sch[a_l1].compute_at(sch[c_ddr], sch[c_ddr].leaf_iter_vars[5])
         if self.attach_flag.get("bl1_attach_flag") == 0:
-            sch.set_var_value(self.tiling_vars.get("n_single_core"), 1)
             sch[b_l1].compute_at(sch[c_ddr], sch[c_ddr].leaf_iter_vars[5])

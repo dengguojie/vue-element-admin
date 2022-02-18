@@ -16,7 +16,7 @@ dynamic_depthwise_conv2d_bp_input_op_testcase = [
     ((960, 1, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], None, "success", "depthwise_conv2d_bp_input_dynamic_n"),
     ((1, 1, 1, 32), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], None, "success", "depthwise_conv2d_bp_input_dynamic_hw"),
     ((16, 1, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], None, "success", "depthwise_conv2d_bp_input_unknown_rank"),
-    
+
     ((3, 3, 2, 16), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], None, RuntimeError, "depthwise_conv2d_bp_input_dedx_c_not_equal_filer"),
     ((3, 3, 1, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], None, RuntimeError, "depthwise_conv2d_bp_input_dedy_nhw_large_than_1"),
     ((1, 1, 14, 20), (1, 1, 28, 3507), (1, 1, 111, 3507), (4, 1), (-1, -1, -1, -1), "NCHW", [0, 2, 3], [[(1, 1),(1, 1), (27, 27), (2143, 2143)], [(1, 1),(1, 1), (120, 120), (2157, 2157)]], RuntimeError, "depthwise_conv2d_bp_input_dynamic_nhw_large_than_l1size"),
@@ -25,6 +25,7 @@ dynamic_depthwise_conv2d_bp_input_op_testcase = [
 
 def _shape_to_NC1HWC0(shape, data_format, dtype):
     if data_format.upper() == "NCHW":
+
         n, c, h, w = shape
     else:  # NCHW
         n, h, w, c = shape

@@ -685,7 +685,7 @@ class CubeParaProcess:
         """
         get binary mode, True if -1 in attr or None in range
         """
-        if self.fusion_flag:
+        if self.fusion_flag and "Ascend910" in get_soc_spec("SOC_VERSION"):
             for idx_range in dynamic_range:
                 if not idx_range:
                     return True
@@ -745,7 +745,6 @@ class Conv2dParaProcess(CubeParaProcess):
             self.bias = conver_tensor2dict(self.bias_tensor, False)
             self.dtype = self.input_tensor.dtype
 
-        self.none_range_flag = False
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
 
@@ -1004,10 +1003,6 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         operation.var("n_dim")
         operation.var("m_dim")
         operation.var("batch_single_core")
-        operation.var("n_single_core")
-        operation.var("m_single_core")
-        operation.var("k_al1")
-        operation.var("k_bl1")
         operation.var("m_al1")
         operation.var("n_bl1")
         operation.var("k_aub")
@@ -1423,19 +1418,10 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
 
         self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        self.shape = {
-            "dy_shape_nchw": dy_shape_nchw,
-            "filter_shape_nchw": filter_shape_nchw,
-            "dx_shape_nchw": dx_shape_nchw,
-        }
-        self.range = {
-            "dy_range_nchw": dy_range_nchw,
-            "dx_range_nchw": dx_range_nchw,
-        }
-        self.attrs = {
-            "group_para": group_para,
-            "correct_range_flag": correct_range_flag
-        }
+        self.shape = {"dy_shape_nchw": dy_shape_nchw, "filter_shape_nchw": filter_shape_nchw,
+                      "dx_shape_nchw": dx_shape_nchw}
+        self.range = {"dy_range_nchw": dy_range_nchw, "dx_range_nchw": dx_range_nchw}
+        self.attrs = {"group_para": group_para, "correct_range_flag": correct_range_flag}
 
     def config_paras(self):
         """
@@ -1632,14 +1618,8 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
             "filter_shape_nchw": filter_shape_nchw,
             "dx_shape_nchw": dx_shape_nchw
         }
-        self.range = {
-            "dy_range_nchw": dy_range_nchw,
-            "dx_range_nchw": dx_range_nchw,
-        }
-        self.attrs = {
-            "group_para": group_para,
-            "correct_range_flag": correct_range_flag
-        }
+        self.range = {"dy_range_nchw": dy_range_nchw, "dx_range_nchw": dx_range_nchw}
+        self.attrs = {"group_para": group_para, "correct_range_flag": correct_range_flag}
 
     def config_paras(self):
         """
@@ -1733,19 +1713,10 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
                                        output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
-        self.shape = {
-            "dy_shape_nchw": dy_shape_nchw,
-            "filter_shape_nchw": filter_shape_nchw,
-            "dx_shape_nchw": dx_shape_nchw,
-        }
-        self.range = {
-            "dy_range_nchw": dy_range_nchw,
-            "dx_range_nchw": dx_range_nchw,
-        }
-        self.attrs = {
-            "group_para": group_para,
-            "correct_range_flag": correct_range_flag
-        }
+        self.shape = {"dy_shape_nchw": dy_shape_nchw, "filter_shape_nchw": filter_shape_nchw,
+                      "dx_shape_nchw": dx_shape_nchw,}
+        self.range = {"dy_range_nchw": dy_range_nchw, "dx_range_nchw": dx_range_nchw}
+        self.attrs = {"group_para": group_para, "correct_range_flag": correct_range_flag}
 
     def config_paras(self):
         """

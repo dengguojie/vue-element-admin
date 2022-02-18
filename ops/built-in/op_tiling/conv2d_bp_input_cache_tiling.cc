@@ -27,15 +27,14 @@
 using namespace std;
 
 namespace optiling {
-static const int64_t kCoreNum = 32;
 static const int64_t kL1Size = (1024 * 1024);
 static const int64_t kL0cSize = (256 * 1024);
-static const int64_t kUbSize = (256 * 1024);
+static const int64_t kUbSize = 262000;
 static const int64_t kBlockSize = 16;
 static const int64_t kDecimal = 10;
 static const int64_t kDbOn = 2;
 static const int64_t kDbOff = 1;
-static const int64_t kFrontUbFusionMulti = 3;
+static const int64_t kFrontUbFusionMulti = 2;
 static const int64_t kAfterUbFusionMulti = 2;
 static const int64_t kHoshWNoDivided = 2;
 static const float kFloatZero = 0.0f;
@@ -88,6 +87,7 @@ bool MdimTune(const DxParas &params, const int64_t &m1, const int64_t &n_dim_fac
   bool min_hw = m1 / m_dim_factor <= min_m;
   if (min_hw && m_dim_factor > 1) {
     tiling.m_dim = max(m1 / min_m, kMinCoreNum);
+    tiling.m_dim = min(tiling.m_dim, params.core_num);
   }
   return min_hw;
 }
@@ -263,7 +263,7 @@ bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
   int64_t b_l1_size =
       k_al1 * params.kh * params.kw * n_bl1 * n0 * kC0 * kBlockSize;
   int64_t a_l1_size = k_al1 * params.wo * params.stride_w * kC0 * hosh;
-  if (m_al1 * m0 == tiling.m_single_core_size && k_al1 == params.co1) {
+  if (m_al1 * m0 == tiling.m_single_core_size && k_al1 == params.co1 && tiling.m_dim == 1) {
     int64_t hw_ceil_align = CeilAlign(params.ho * params.stride_h * params.wo * params.stride_w, kBlockSize);
     CHECK_OP_FUNC(hw_ceil_align == 0, return false, "hw_ceil_align is invalid");
     a_l1_size = k_al1 * kBlockSize * hw_ceil_align;
@@ -280,28 +280,37 @@ bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int64_t &m0) {
   int64_t copyout_size = kAfterUbFusionMulti * cub_n * m0 * kBlockSize * kBlockSize;
   if (params.stride_h == 1 && params.stride_w == 1) {
     loadin_size = kFrontUbFusionMulti * aub_k * kBlockSize *
-              ((aub_h * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) * kBlockSize;
+              ((aub_h * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
     return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
   }
   return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
 }
 
-bool GetSameCutOff(const int64_t &first, const int64_t &seccond, const int64_t &factor,
+bool GetSameCutOff(const int64_t &first, const int64_t &second, const int64_t &factor,
                    vector<vector<int64_t>> &cand) {
   CHECK_OP_FUNC(factor == 0, return false, "factor is 0");
   int64_t mt = first / factor;
   int64_t factor_fir = first / (mt + 1) + 1;
-  int64_t factor_sec = kL0cNzSize / factor_fir;
+  int64_t factor_sec = min(kL0cNzSize / factor_fir, second);
+  CHECK_OP_FUNC(factor_sec == 0, return false, "factor_sec is 0");
   mt = first / factor_fir;
-  int64_t mt_1 = seccond / factor_sec;
+  int64_t mt_1 = second / factor_sec;
   cand.push_back({factor_fir, factor_sec});
   for (int64_t i = factor_fir + 1; i <= first; i++) {
-    factor_sec = kL0cNzSize / i;
-    if (first / i == mt && seccond / factor_sec == mt_1) {
+    factor_sec = min(kL0cNzSize / i, second);
+    if (first / i == mt && second / factor_sec == mt_1) {
       cand.push_back({i, factor_sec});
     } else {
       break;
     }
+  }
+  return true;
+}
+
+bool ModifyL0(const DxParas &params, int64_t &k_l0) {
+  CHECK_OP_FUNC(k_l0 == 0, return false, "k_l0 is 0");
+  while ((params.co1 * params.kh * params.kw) % k_l0 != 0) {
+    k_l0 --;
   }
   return true;
 }
@@ -312,6 +321,7 @@ bool PushMNCandidate(const DxParas &params, const int64_t &cand_m, const int64_t
       min(min(static_cast<int64_t>(floor(static_cast<float>(kL0aNzSize) / static_cast<float>(cand_m))),
               static_cast<int64_t>(floor(static_cast<float>(kL0bNzSize) / static_cast<float>(cand_n)))),
           tiling.k_single_core_size);
+  CHECK_OP_FUNC(!ModifyL0(params, cand_k), return false, "cand_k is 0");
   if (cand_m == 0 || cand_n == 0) {
     return false;
   }
@@ -481,6 +491,7 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
   if (tiling.m_single_core_size <= x0 && tiling.n_single_core_size <= x0) {
     tiling.k_l0 = min(min(kL0aNzSize / tiling.m_single_core_size, kL0bNzSize / tiling.n_single_core_size),
                       tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyL0(params, tiling.k_l0), return false, "k_l0 is 0");
     tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, tiling.m_single_core_size);
     tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, tiling.n_single_core_size);
   } else if (tiling.m_single_core_size > x0 && tiling.n_single_core_size > x0) {
@@ -491,6 +502,7 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
     int64_t n_temp = min(min(kL0cNzSize / m_temp, tiling.n_single_core_size), kL0bNzSize);
     CHECK_OP_FUNC(n_temp == 0, return false, "n_temp invalid");
     tiling.k_l0 = min(min(kL0aNzSize / m_temp, kL0bNzSize /n_temp), tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyL0(params, tiling.k_l0), return false, "k_l0 is 0");
     tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, m_temp);
     tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, n_temp);
   } else if (tiling.n_single_core_size <= x0 && tiling.m_single_core_size > x0) {
@@ -499,6 +511,7 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
     int64_t m_temp = min(min(kL0cNzSize / n_temp, tiling.m_single_core_size), kL0aNzSize);
     CHECK_OP_FUNC(m_temp == 0, return false, "m_temp invalid");
     tiling.k_l0 = min(min(kL0aNzSize / m_temp, kL0bNzSize / n_temp), tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyL0(params, tiling.k_l0), return false, "k_l0 is 0");
     tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, m_temp);
     tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, n_temp);
   }
@@ -515,14 +528,16 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
   bool l0_invalid = tiling.k_l0 <= 0 || tiling.m_l0 * tiling.n_l0 > kL0cNzSize ||
                     !CheckL0Overflow(tiling.m_l0, tiling.n_l0, tiling.k_l0) ||
                     !CheckL1Overflow(params, tiling, tiling.m_l0, tiling.n_l0, tiling.k_l0) ||
-                    !CheckUbDb(params, tiling, tiling.m_l0);
+                    !CheckUbDb(params, tiling, tiling.m_l0) || (params.co1 * params.kw * params.kh) % tiling.k_l0 != 0;
   bool l0_valid_res = !l0_invalid;
   bool l0_valid = false;
   for (auto &m0 : m0_factor) {
     for (auto &n0 : n0_factor) {
       int64_t k0 = min(min(kL0aNzSize / m0, kL0bNzSize / n0), tiling.k_single_core_size);
+      CHECK_OP_FUNC(k0 == 0, return false, "k_l0 is 0");
       l0_invalid = k0 <= 0 || m0 * n0 > kL0cNzSize || !CheckL0Overflow(m0, n0, k0) ||
-                        !CheckL1Overflow(params, tiling, m0, n0, k0) || !CheckUbDb(params, tiling, m0);
+                        !CheckL1Overflow(params, tiling, m0, n0, k0) || !CheckUbDb(params, tiling, m0) ||
+                        (params.co1 * params.kw * params.kh) % k0 != 0;
       if (l0_invalid) {
         continue;
       }
@@ -551,17 +566,7 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
 bool GetL0Factors(const DxParas &params, Tiling &tiling) {
   // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
   // m_l0, n_l0, k_l0 is a factor of single core m, n, k
-  tiling.db_cub = kDbOn;
-  tiling.db_aub = kDbOn;
   tiling.db_l0c = kDbOn;
-  if (GetL0FactorsOptiNew(params, tiling)) {
-    return true;
-  }
-  tiling.db_cub = kDbOn;
-  tiling.db_aub = kDbOff;
-  if (GetL0FactorsOptiNew(params, tiling)) {
-    return true;
-  }
   tiling.db_cub = kDbOff;
   tiling.db_aub = kDbOff;
   if (GetL0FactorsOptiNew(params, tiling)) {
@@ -705,8 +710,7 @@ bool CheckL1Size(const vector<int64_t> &kn_factors, const vector<int64_t> &m_h,
       k_bl1 == params.co1) {
     b_size = params.co1 * kBlockSize * params.kh * params.kw * nbl1 * tiling.n_l0 * kBlockSize * kFp16Bytes;
   }
-  if (static_cast<int64_t>(ceil(static_cast<double>(h2) / static_cast<double>(load_h))) == 1 &&
-      k_al1 == params.co1) {
+  if (m_1 * tiling.m_l0 == tiling.m_single_core_size && k_al1 == params.co1 && tiling.m_dim == 1) {
     a_size = h2 * params.stride_h * params.wo * params.stride_w * params.co1 * kBlockSize * kFp16Bytes;
   } else {
     int64_t hosh = (params.kh - 1) + kHoshWNoDivided + (m_1 * tiling.m_l0 * kBlockSize) / params.w;
@@ -766,6 +770,7 @@ bool GetL1FactorsOpti(map<std::string, vector<int64_t>> &factor_size,
         tiling.db_bl1 = db_bl1_end;
         min_load_size = load_size;
         first_flag = false;
+        tiling.update_l1 = true;
       }
     }
   }
@@ -844,7 +849,7 @@ void GetAubM(const int64_t &aub_size, const DxParas &params,
   } else {
     for (int64_t hosh_temp = tiling.hosh; hosh_temp >= aub_m + 1; hosh_temp--) {
       if (kFrontUbFusionMulti * k_aub * kBlockSize *
-              ((hosh_temp * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) * kBlockSize <=
+              ((hosh_temp * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize <=
           aub_size) {
         aub_m = hosh_temp;
         break;
@@ -873,7 +878,7 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
     }
   } else {
     loadin_size = kFrontUbFusionMulti * tiling.k_aub * kBlockSize *
-                  ((tiling.m_aub * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) * kBlockSize;
+                  ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
     if (loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size) {
       tiling.db_aub = 1;
     }
@@ -881,8 +886,9 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
       tiling.db_cub = 1;
     }
   }
+  CHECK_OP_FUNC(loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size, return false,
+                "ub factor exceed buffer");
   int64_t max_dma_size = loadin_size * tiling.db_aub + copyout_size * tiling.db_cub;
-
   bool first_flag = true;
   int64_t aub_m;
   int64_t aub_size;
@@ -899,7 +905,7 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
       aub_temp_size = k_aub * aub_m * params.wo * params.stride_w * kC0;
       if (params.stride_h == 1 && params.stride_w == 1) {
         aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
-                        ((aub_m * params.wo * params.stride_w + kBlockSize - 1) / kBlockSize) *
+                        ((aub_m * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) *
                         kBlockSize;
       }
       if (aub_temp_size > aub_size) {
@@ -991,6 +997,11 @@ void SetTilingId(const DxParas &params, const Tiling &tiling, string &tilingId) 
       abkl1_attach_flag = kAttachFlagTwo;
     }
   }
+  int no_overlap_default_flag = 0;
+  // use default when less than one block in first block moved out
+  if (params.h * params.w < kC0) {
+    no_overlap_default_flag = 1;
+  }
   int64_t tiling_id_temp = tiling.db_al1;
   tiling_id_temp = tiling_id_temp * kDecimal + tiling.db_bl1;
   tiling_id_temp = tiling_id_temp * kDecimal + tiling.db_l0c;
@@ -998,6 +1009,7 @@ void SetTilingId(const DxParas &params, const Tiling &tiling, string &tilingId) 
   tiling_id_temp = tiling_id_temp * kDecimal + al1_attach_flag;
   tiling_id_temp = tiling_id_temp * kDecimal + bl1_attach_flag;
   tiling_id_temp = tiling_id_temp * kDecimal + min_kl1_cmp_kl0;
+  tiling_id_temp = tiling_id_temp * kDecimal + no_overlap_default_flag;
   tiling_id_temp = tiling_id_temp * kDecimal + params.stride_expand_flag;
   tilingId = to_string(tiling_id_temp);
 }
@@ -1010,6 +1022,13 @@ bool GenTiling(const DxParas &params, Tiling &tiling, string &tiling_id) {
     tiling.n_l0 = 1;
   }
   CHECK_OP_FUNC(!GetL1Factors(params, tiling), return false, "get l1 factors failed");
+  if (!tiling.update_l1) {
+    tiling.k_l0 = 1;
+    tiling.m_l0 = 1;
+    tiling.n_l0 = 1;
+    CHECK_OP_FUNC(!GetL1Factors(params, tiling), return false, "get l1 factors failed");
+    CHECK_OP_FUNC(!tiling.update_l1, return false, "not have valid l1 factors failed");
+  }
   CHECK_OP_FUNC(!GetUbFactors(params, tiling), return false, "get ub factors failed");
   CheckSpecialTemplate(params, tiling);
   SetTilingId(params, tiling, tiling_id);

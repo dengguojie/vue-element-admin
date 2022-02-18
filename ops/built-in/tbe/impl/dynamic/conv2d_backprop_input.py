@@ -307,7 +307,6 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
                                          "group_dict": conv2dbp_para.attrs.get("group_para"),
                                          "correct_range_flag": conv2dbp_para.attrs.get("correct_range_flag", False),
                                          "binary_mode": conv2dbp_para.binary_mode,
-                                         "attrs": attrs_info,
                                          "ori_tensors": _collect_ori_tensors(ori_paras),
                                          "op_type": "Conv2DBackpropInput"
                                      })
