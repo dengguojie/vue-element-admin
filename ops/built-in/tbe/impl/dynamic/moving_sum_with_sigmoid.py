@@ -84,7 +84,7 @@ class MovingSumWithSigmoid(object):
         tiling_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN],
                                              name='tiling_ub', scope=tik.scope_ubuf)
         self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
-        self.batch_size = self.tik_instance.Scalar("int32", init_value=tiling_ub[2])
+        self.batch_size = self.tik_instance.Scalar("int32", init_value=tiling_ub[0])
 
     def moving_sum_with_sigmoid_compute(self):
         self.get_tiling_args()
