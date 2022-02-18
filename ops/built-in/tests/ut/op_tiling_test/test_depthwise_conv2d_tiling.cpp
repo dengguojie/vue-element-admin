@@ -46,7 +46,7 @@ TEST_F(DepthwiseConv2DTiling, DepthwiseConv2d_tiling_dynamic_nhw) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "DepthwiseConvolution", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "DepthwiseConvolution", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
 
   ge::Graph graph("depthwiseconv2d_op_tiling_test_0");
 
@@ -93,7 +93,7 @@ TEST_F(DepthwiseConv2DTiling, DepthwiseConv2d_tiling_dynamic_None) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "DepthwiseConvolution", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, 2147483647, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "_vars": {"10000": ["batch_n"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "DepthwiseConvolution", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, 2147483647, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "_vars": {"10000": ["batch_n"]}, "_custom_vars": {"10000": ["batch_n"]}})";
 
   ge::Graph graph("depthwiseconv2d_op_tiling_test_1");
 

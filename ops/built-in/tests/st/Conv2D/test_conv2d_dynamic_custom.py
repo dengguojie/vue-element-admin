@@ -65,7 +65,30 @@ def test_conv2d_param_process_dynamic_cdim():
     proc = Conv2dParaProcess(ori_paras)
     proc.check_only_cdim_dynamic(fmap)
 
+def test_conv2d_caculate_shape():
+    from tbe.common.context import op_context
+    import tbe.dsl.base.operation as operation
+    with op_context.OpContext():
+        with operation.dynamic():
+            fmap = tvm.placeholder((-1, 2, -1, -1, 16), name="fmap", dtype="float16", attrs={"ori_shape": (-1, 32, -1, -1), "format": "NCHW", "ori_format": "NCHW", "range": [(1, 2), (32, 32), (8, 16), (8, 16)]})
+            weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW"})
+            bias_tensor = None
+            offset_w_tensor = None
+            strides = [1, 1, 1, 1]
+            pads = [0, 0, 0, 0]
+            dilations = [1, 1, 1, 1]
+            outputs = {"ori_shape": [-1, 128, -1, -1], "ori_format": "NCHW", "dtype": "float16"}
+
+            ori_paras = {
+                "inputs": fmap, "weights": weight, "bias": bias_tensor, "offset_w": offset_w_tensor,
+                "outputs": outputs, "strides": strides, "pads": pads, "dilations": dilations,
+                "groups": 1, "data_format": "NCHW", "kernel_name": "conv2d", "optim_dict": {}
+            }
+            conv_para = Conv2dParaProcess(ori_paras)
+            conv_para.config_paras()
+
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()
     test_conv2d_param_process()
     test_cachetiling_conv2d()
+    test_conv2d_caculate_shape()

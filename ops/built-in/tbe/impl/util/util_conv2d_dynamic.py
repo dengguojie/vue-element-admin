@@ -422,10 +422,12 @@ class Conv2dParaProcess(CubeParaProcess):
                 in_shape_nc1hwc0[N_DIM] = self.input_tensor.shape[N_DIM]
             if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[H_DIM] = self.input_tensor.shape[H_DIM]
-                operation.add_exclude_bound_var(operation.var("ho", y_range[H_DIM]))
+                if not operation.get_te_var("ho"):
+                    operation.add_exclude_bound_var(operation.var("ho", y_range[H_DIM]))
             if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[W_DIM] = self.input_tensor.shape[W_DIM]
-                operation.add_exclude_bound_var(operation.var("wo", y_range[W_DIM]))
+                if not operation.get_te_var("wo"):
+                    operation.add_exclude_bound_var(operation.var("wo", y_range[W_DIM]))
 
         if self.paras.get("optim_dict").get("c0_optim_flg"):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
