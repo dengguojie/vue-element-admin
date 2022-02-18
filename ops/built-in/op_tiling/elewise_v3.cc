@@ -130,10 +130,8 @@ bool Elewise::CheckInOutNum(const OpInfo& op_info) {
 }
 
 bool Elewise::GetShapeUnderCheck() {
-  constexpr uint32_t default_len = 0;
   const uint32_t input_num = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->GetAllInputsSize();
-  std::vector<int64_t> input_check;
-  uint32_t dim_len = default_len;
+  std::vector<uint32_t> input_check;
   // shape len check and prepare for len inputs shape check
   for (uint32_t i = 0; i < input_num; i++) {
     const ge::GeShape& input_shape =
@@ -142,38 +140,52 @@ bool Elewise::GetShapeUnderCheck() {
     if (shape_len == 0 || (shape_len == 1 && input_shape.GetDim(0) == 1)) {
       continue;
     } else {
-      if (shape_len != dim_len && dim_len != default_len) {
-        // No empty inputs empty has different len will be check
-        OP_LOGE(op_type.c_str(), "elewise not support input different len when len is over zero.");
-        return false;
-      }
-      dim_len = shape_len;
       input_check.emplace_back(i);
     }
   }
   // check same len inputs shape
   if (!input_check.empty()) {
-    const ge::GeShape& first_shape =
-      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[0])->MutableShape();
-    const uint32_t first_len = first_shape.GetDimNum();
+    uint32_t min_len =
+      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[0])->MutableShape().GetDimNum();
+    uint32_t min_len_index = input_check[0];
+    // Loop all input to get the true min_len and its index
     for (uint32_t i = 1; i < input_check.size(); i++) {
-      for (uint32_t j = 0; j < first_len; j++) {
-        V_OP_TILING_CHECK((first_shape.GetDim(j) == ge::OpDescUtils::GetOpDescFromOperator(
-                           op_paras)->MutableInputDesc(input_check[i])->MutableShape().GetDim(j)),
-                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise all input shape must be same"),
+      const ge::GeShape& check_shape =
+        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[i])->MutableShape();
+      const uint32_t check_len = check_shape.GetDimNum();
+      if (check_len < min_len) {
+        min_len = check_len;
+        min_len_index = input_check[i];
+      }
+    }
+    const ge::GeShape& min_shape =
+      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(min_len_index)->MutableShape();
+    // input check rules: 1.from right to left, same dim_index with min_shape must be same;
+    // 2.index higher must be all 1.
+    for (uint32_t i = 0; i < input_check.size(); i++) {
+      const ge::GeShape& need_check_shape =
+        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[i])->MutableShape();
+      const uint32_t need_check_len = need_check_shape.GetDimNum();
+      uint32_t len_diff = need_check_len - min_len;
+      for (uint32_t j = 0; j < len_diff; j++) {
+        V_OP_TILING_CHECK((need_check_shape.GetDim(j) == 1),
+                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise long input shape must be 1 on higher pos"),
+                          return false);
+      }
+      for (uint32_t k = 0; k < min_len; k++) {
+        V_OP_TILING_CHECK((need_check_shape.GetDim(k + len_diff) == min_shape.GetDim(k)),
+                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise input shape must be equal on lower pos"),
                           return false);
       }
     }
-    out_shape = first_shape.GetShapeSize();
+    out_shape = min_shape.GetShapeSize();
   }
   return true;
 }
 
 bool Elewise::GetShapeUnderCheck(const OpInfo& op_info) {
   const uint32_t custom_input_num = op_info.GetInputShape().size();
-  std::vector<int64_t> custom_input_check;
-  constexpr uint32_t custom_default_len = 0;
-  uint32_t custom_dim_len = custom_default_len;
+  std::vector<uint32_t> custom_input_check;
   // shape len check and prepare for inputs shape check
   for (uint32_t i = 0; i < custom_input_num; i++) {
     const std::vector<int64_t>& custom_input_shape = op_info.GetInputShape()[i];
@@ -181,31 +193,45 @@ bool Elewise::GetShapeUnderCheck(const OpInfo& op_info) {
     if (custom_shape_len == 0 || (custom_shape_len == 1 && custom_input_shape[0] == 1)) {
       continue;
     } else {
-      if (custom_shape_len != custom_dim_len && custom_dim_len != custom_default_len) {
-        // No empty custom inputs empty has different len will be check
-        OP_LOGE(op_type.c_str(), "elewise not support custom input diff len when len is over zero.");
-        return false;
-      }
-      custom_dim_len = custom_shape_len;
-      custom_input_check.emplace_back(static_cast<int64_t>(i));
+      custom_input_check.emplace_back(i);
     }
   }
   // check same custom inputs shape
   if (!custom_input_check.empty()) {
-    V_CHECK_GT(static_cast<int64_t>(op_info.GetInputShape().size()), custom_input_check.back(),
+    V_CHECK_GT(op_info.GetInputShape().size(), custom_input_check.back(),
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise custom input num may be out of index"),
                return false);
-    const std::vector<int64_t>& custom_first_shape = op_info.GetInputShape()[custom_input_check[0]];
-    const uint32_t custom_first_len = custom_first_shape.size();
+    uint32_t custom_min_len = op_info.GetInputShape()[custom_input_check[0]].size();
+    uint32_t custom_min_len_index = custom_input_check[0];
+    // Loop all custom input to get the true custom_min_len and its index
     for (uint32_t i = 1; i < custom_input_check.size(); i++) {
-      for (uint32_t j = 0; j < custom_first_len; j++) {
-        V_OP_TILING_CHECK((custom_first_shape[j] == op_info.GetInputShape()[custom_input_check[i]][j]),
-                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise all custom input shape must be same"),
+      const std::vector<int64_t>& custom_check_shape = op_info.GetInputShape()[custom_input_check[i]];
+      const uint32_t custom_check_len = custom_check_shape.size();
+      if (custom_check_len < custom_min_len) {
+        custom_min_len = custom_check_len;
+        custom_min_len_index = custom_input_check[i];
+      }
+    }
+    const std::vector<int64_t>& custom_min_shape = op_info.GetInputShape()[custom_min_len_index];
+    // custom input check rules: 1.from right to left, same dim_index with custom_min_shape must be same;
+    // 2.index higher must be all 1.
+    for (uint32_t i = 0; i < custom_input_check.size(); i++) {
+      const std::vector<int64_t>& custom_need_check_shape = op_info.GetInputShape()[custom_input_check[i]];
+      const uint32_t custom_need_check_len = custom_need_check_shape.size();
+      uint32_t custom_len_diff = custom_need_check_len - custom_min_len;
+      for (uint32_t j = 0; j < custom_len_diff; j++) {
+        V_OP_TILING_CHECK((custom_need_check_shape[j] == 1),
+                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom long in_shape need be 1 on higher pos"),
+                          return false);
+      }
+      for (uint32_t k = 0; k < custom_min_len; k++) {
+        V_OP_TILING_CHECK((custom_need_check_shape[k + custom_len_diff] == custom_min_shape[k]),
+                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom input shape must be equal on lower pos"),
                           return false);
       }
     }
     out_shape =
-      std::accumulate(custom_first_shape.begin(), custom_first_shape.end(), 1LL, std::multiplies<int64_t>());
+      std::accumulate(custom_min_shape.begin(), custom_min_shape.end(), 1LL, std::multiplies<int64_t>());
   }
   return true;
 }
