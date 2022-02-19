@@ -24,7 +24,7 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
+from impl.util import util_select_op_base
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-statements
@@ -82,6 +82,24 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
     if padding_mode not in ("SAME", "VALID", "CALCULATED"):
         error_manager_vector.raise_err_pad_mode_invalid("max_pool_v3", "SAME, VALID or CALCULATED",
                                                         str(padding_mode))
+
+
+def get_op_support_info(input_data, output_data, ksize, strides, padding_mode, pads,
+                        data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
+    """
+    get the max_pool_v3 data slice info
+    """
+    format_x = input_data.get("format")
+
+    axis_split_matrix = None
+    axis_reduce_list = None
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                  util_select_op_base.SplitOutput([0, [0]])]]
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
+
+    return op_cal_info_in_json
+
 
 # 'pylint: disable=unnecessary-lambda,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
@@ -181,7 +199,7 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
         temp_tensor = temp_tensor.op.input_tensors[0]
     if conv_pooling_flag:
         res = te.lang.cce.max_pool_compute(input_data, (window_h, window_w),
-                                           (stride_h, stride_w), padding,
+                                           (stride_h, stride_w), padding_mode,
                                            data_mode=0)
     else:
         if in_select_read_flag:

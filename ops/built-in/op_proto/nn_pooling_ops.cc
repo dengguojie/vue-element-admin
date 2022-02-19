@@ -7881,8 +7881,36 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(MaxPoolV3, MaxPoolV3InferDataSlice) {
+  // max_pool_v3 can cut n axis now
+  OP_LOGD(TbeGetName(op), "Enter MaxPoolV3 InferDataSlice");
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto tensor_desc_y = op_desc->MutableOutputDesc("y");
+  CHECK(!tensor_desc_y, OP_LOGI(TbeGetName(op), "get output desc failed."), return GRAPH_FAILED);
+  auto tensor_desc_x = op_desc->MutableInputDesc("x");
+  CHECK(!tensor_desc_x, OP_LOGI(TbeGetName(op), "get input desc failed."), return GRAPH_FAILED);
+  vector<vector<int64_t>> y_data_slice;
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(TbeGetName(op), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  if (!y_data_slice.empty()) {
+    if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+      OP_LOGD(TbeGetName(op), "Set x_data slice failed!");
+      return GRAPH_FAILED;
+    }
+    OP_LOGD(TbeGetName(op), "Calc MaxPoolV3 InferDataSlice end!");
+    return GRAPH_SUCCESS;
+  }
+
+  OP_LOGD(TbeGetName(op), "Calc MaxPoolV3 InferDataSlice end!");
+  return NO_OVERLAP_DIM;
+}
+
 COMMON_INFER_FUNC_REG(MaxPoolV3, MaxPoolV3InferShape);
 VERIFY_FUNC_REG(MaxPoolV3, MaxPoolV3Verify);
+INFER_DATA_SLICE_FUNC_REG(MaxPoolV3, MaxPoolV3InferDataSlice);
 // ----------------------MaxPoolV3------------------------------
 
 // ----------------------MaxPoolV3Grad--------------------------

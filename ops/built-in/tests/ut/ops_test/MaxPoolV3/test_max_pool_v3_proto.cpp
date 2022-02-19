@@ -22,6 +22,9 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_pooling_ops.h"
+#include "graph/debug/ge_attr_define.h"
+#include "utils/op_desc_utils.h"
+#include "utils/attr_utils.h"
 
 using namespace ge;
 using namespace op;
@@ -53,7 +56,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_diff_test) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_y1_desc = op.GetOutputDesc("y");
+  auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
@@ -72,7 +75,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 1, 1, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_y1_desc = op.GetOutputDesc("y");
+  auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_ceilmode_true) {
@@ -91,7 +94,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_ceilmode_true) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 29, 29, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_y1_desc = op.GetOutputDesc("y");
+  auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_failed) {
@@ -126,7 +129,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_same) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_y1_desc = op.GetOutputDesc("y");
+  auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutksize) {
@@ -193,7 +196,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_dynamicdim) {
   std::vector<int64_t> expect_output_shape = {-1, 4, -1, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_y1_desc = op.GetOutputDesc("y");
+  auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_stridesfailed) {
@@ -371,7 +374,6 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_004) {
   op.UpdateInputDesc("x", tensor_desc);
   std::vector<int64_t> ksize = {1, 2, 3, 4};
   std::vector<int64_t> strides = {1, 2, 3};
-  ;
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", strides);
 
@@ -386,7 +388,6 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_005) {
   op.UpdateInputDesc("x", tensor_desc);
   std::vector<int64_t> ksize = {1, 2, 3, 4};
   std::vector<int64_t> strides = {1, 2, 3, 4};
-  ;
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", strides);
   op.SetAttr("padding_mode", strides);
@@ -402,7 +403,6 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_006) {
   op.UpdateInputDesc("x", tensor_desc);
   std::vector<int64_t> ksize = {1, 2, 3, 4};
   std::vector<int64_t> strides = {1, 2, 3, 4};
-  ;
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", strides);
   op.SetAttr("padding_mode", "error");
@@ -418,7 +418,6 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_007) {
   op.UpdateInputDesc("x", tensor_desc);
   std::vector<int64_t> ksize = {1, 2, 3, 4};
   std::vector<int64_t> strides = {1, 2, 3, 4};
-  ;
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", strides);
   op.SetAttr("padding_mode", "CALCULATED");
@@ -607,4 +606,49 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_017) {
 
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPoolV3Test, InferDataSlice1) {
+  ge::op::MaxPoolV3 op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 64, 56, 56}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 64, 56, 56}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> ksize = {1, 3, 3, 1};
+  std::vector<int64_t> strides = {1, 3, 3, 1};
+  std::vector<int64_t> pads = {1, 1, 1, 1};
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("padding_mode", "VALID");
+  op.SetAttr("pads", pads);
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("ceil_mode", true);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_NE(status, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(MaxPoolV3Test, InferDataSlice2) {
+  ge::op::MaxPoolV3 op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 64, 56, 56}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 64, 56, 56}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> ksize = {1, 3, 3, 1};
+  std::vector<int64_t> strides = {1, 3, 3, 1};
+  std::vector<int64_t> pads = {1, 1, 1, 1};
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("padding_mode", "VALID");
+  op.SetAttr("pads", pads);
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("ceil_mode", true);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  std::vector<std::vector<int64_t>> y_data_slice = {{0, 2}, {}, {}, {}};
+  ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto x_desc = op_desc->MutableInputDesc("x");
+  std::vector<std::vector<int64_t>> x_data_slice;
+  ge::AttrUtils::GetListListInt(x_desc, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+  EXPECT_EQ(x_data_slice, y_data_slice);
 }

@@ -107,6 +107,70 @@ ut_case.add_precision_case("all", {
      "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
  })
 
+# pylint: disable=unused-argument, import-outside-toplevel
+def test_get_op_support_info_nd(test_arg):
+    """
+    test for get_op_support_info
+    """
+    import json
+    from impl.max_pool_v3 import get_op_support_info
+    support_info = get_op_support_info(
+        {"dtype": "float16", "format": "NCHW", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
+         "shape": (1, 64, 56, 56)},
+        {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
+         "shape": (1, 4, 28, 28, 16)},
+        [1, 1, 3, 3], [1, 1, 2, 2], "SAME", (1, 1, 1, 1), "NCHW", False, False)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 0
+
+
+def test_get_op_support_info_same(test_arg):
+    """
+    test for get_op_support_info
+    """
+    import json
+    from impl.max_pool_v3 import get_op_support_info
+    support_info = get_op_support_info(
+        {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
+         "shape": (1, 4, 56, 56, 16)},
+        {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
+         "shape": (1, 4, 28, 28, 16)},
+        [1, 1, 3, 3], [1, 1, 2, 2], "SAME", (1, 1, 1, 1), "NC1HWC0", False, False)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0,)
+
+
+def test_get_op_support_info_valid(test_arg):
+    """
+    test for get_op_support_info
+    """
+    import json
+    from impl.max_pool_v3 import get_op_support_info
+    support_info = get_op_support_info(
+        {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 64, 56, 56),
+         "shape": (1, 4, 56, 56, 16)},
+        {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 64, 28, 28),
+         "shape": (1, 4, 28, 28, 16)},
+        [1, 1, 3, 3], [1, 1, 2, 2], "VALID", (1, 1, 1, 1), "NCHW", False, False)
+    split_maps = json.loads(support_info).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        axis = input_list[0].get("axis")
+        assert len(axis) == 1
+        assert axis[0] in (0,)
+
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_nd)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_same)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_valid)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A",simulator_mode="pv",simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
-    exit(0)

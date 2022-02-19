@@ -3979,7 +3979,7 @@ IMPLEMT_INFER_DATA_SLICE(StridedWrite, StridedWriteInferDataSlice) {
   if (have_slice == false) {
     return GRAPH_FAILED;
   }
-  if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+  if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
     OP_LOGD(op.GetName().c_str(), "Set x_data slice failed!");
     return GRAPH_FAILED;
   }
