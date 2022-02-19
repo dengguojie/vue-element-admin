@@ -16,7 +16,7 @@
 #include "eigen_threadpool.h"
 
 #include <sys/sysinfo.h>
-#include <unistd.h>
+
 
 #include "log.h"
 

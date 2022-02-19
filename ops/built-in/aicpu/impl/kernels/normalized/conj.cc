@@ -73,7 +73,7 @@ uint32_t ConjCpuKernel::ConjCompute(CpuKernelContext &ctx) const {
   int64_t dataNum = ctx.Input(0)->NumElements();
   int64_t dataSize = dataNum * sizeof(T);
   if (dataSize <= kParallelDataNums) {
-    for (int64_t i = 0; i < dataNum; i++){
+    for (int64_t i = 0; i < dataNum; i++) {
       *(outputY + i) = std::conj(*(inputX + i));
     }
   } else {

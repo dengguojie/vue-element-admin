@@ -124,7 +124,7 @@ class KernelCache {
    * get session flag, true means session scene
    * @return bool: whether it's a session scene
    */
-  bool GetSessionFlag() { return sess_flag_; }
+  bool GetSessionFlag() const { return sess_flag_; }
 
   /*
    * get kernel cache capacity

@@ -91,14 +91,14 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param dims: shape information
    */
   void GetDimsFromShapeAndType(const FWKAdapter::ShapeAndType *shape_and_type,
-                               std::vector<int64_t> &dims);
+                               std::vector<int64_t> &dims) const;
 
   /*
    * get shape information from arrays.
    * @param dims: shape information
    */
   void GetDimsFromArrays(const int64_t *shape, size_t len,
-                         std::vector<int64_t> &dims);
+                         std::vector<int64_t> &dims) const;
 
   /*
    * update tensor information.
@@ -132,7 +132,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    */
   uint32_t ParseExtShapeAndType(
       bool unknown_shape, FWKAdapter::ExtInfo *ext_info,
-      std::vector<FWKAdapter::ShapeAndType *> &shape_and_type);
+      std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) const;
 
   /*
    * parse extend unknown shape index information.
@@ -142,7 +142,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    */
   uint32_t ParseExtUnknownShapeIndex(
       FWKAdapter::ExtInfo *ext_info,
-      std::map<uint32_t, uint64_t> &unknown_shape_index_addr);
+      std::map<uint32_t, uint64_t> &unknown_shape_index_addr) const;
 
   /*
    * parse extend session information.
@@ -182,7 +182,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    */
   uint32_t ParseIoAddr(AicpuParamHead *param_head,
                        std::vector<uint64_t> &io_addrs, char *&nodedef,
-                       uint32_t &nodedef_len);
+                       uint32_t &nodedef_len) const;
 
   /*
    * get cpu kernel context from cache

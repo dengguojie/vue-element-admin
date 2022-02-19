@@ -93,7 +93,7 @@ uint32_t CpuKernelCache::UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
  */
 void CpuKernelCache::GetDimsFromShapeAndType(
     const FWKAdapter::ShapeAndType *shape_and_type,
-    std::vector<int64_t> &dims) {
+    std::vector<int64_t> &dims) const {
   for (uint32_t index = 0; index < FWKAdapter::kMaxShapeDims; ++index) {
     // LLONG_MIN for dim end flag
     if (shape_and_type->dims[index] == LLONG_MIN) {
@@ -106,7 +106,7 @@ void CpuKernelCache::GetDimsFromShapeAndType(
 }
 
 void CpuKernelCache::GetDimsFromArrays(const int64_t *shape, size_t len,
-                                       std::vector<int64_t> &dims) {
+                                       std::vector<int64_t> &dims) const {
   for (size_t index = 0; index < len; ++index) {
     KERNEL_LOG_INFO("Get arrays shape[%zu] is [%ld]", index, shape[index]);
     dims.emplace_back(shape[index]);
@@ -252,9 +252,9 @@ uint32_t CpuKernelCache::ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
 /*
  * parse extend tensor shape and types information.
  */
-uint32_t CpuKernelCache::ParseExtShapeAndType(
+uint32_t CpuKernelCache::ParseExtShapeAndType (
     bool unknown_shape, FWKAdapter::ExtInfo *ext_info,
-    std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) {
+    std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) const {
   if (!unknown_shape) {
     return KERNEL_STATUS_OK;
   }
@@ -341,7 +341,7 @@ uint32_t CpuKernelCache::ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
 
 uint32_t CpuKernelCache::ParseExtUnknownShapeIndex(
     FWKAdapter::ExtInfo *ext_info,
-    std::map<uint32_t, uint64_t> &unknown_shape_index_addr) {
+    std::map<uint32_t, uint64_t> &unknown_shape_index_addr) const {
   if (ext_info->infoLen % sizeof(uint32_t) != 0) {
     KERNEL_LOG_ERROR(
         "Parse unknown shape index extend info length[%u] failed, must be "
@@ -443,7 +443,7 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
  */
 uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head,
                                      std::vector<uint64_t> &io_addrs,
-                                     char *&nodedef, uint32_t &nodedef_len) {
+                                     char *&nodedef, uint32_t &nodedef_len) const {
   auto param_base = reinterpret_cast<char *>(param_head);
   char *extend_param_base = param_base + sizeof(AicpuParamHead);
   uint32_t extend_param_len = param_head->length - sizeof(AicpuParamHead);
