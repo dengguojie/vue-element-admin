@@ -552,3 +552,17 @@ TEST_F(avg_pool, InfershapeAvgPool_009) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(avg_pool, InfershapeAvgPool_010) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({16, 16, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 1, -1, -1};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {1, 1, 1, 1};
+  op.SetAttr("strides", stride);
+  op.SetAttr("padding_mode", "VALID");
+  op.SetAttr("data_format", "NCHW");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

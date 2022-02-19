@@ -1761,17 +1761,18 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   int64_t input_c = input_shape.GetDim(c_position);
   int64_t input_h = input_shape.GetDim(h_position);
   int64_t input_w = input_shape.GetDim(w_position);
-  int64_t output_n = 0;
-  int64_t output_c = 0;
-  int64_t output_h = 0;
-  int64_t output_w = 0;
 
-  int32_t h_attr_position = 0;
-  int32_t w_attr_position = 0;
-  int32_t window_h = 0;
-  int32_t window_w = 0;
   int32_t stride_h = 0;
   int32_t stride_w = 0;
+  int32_t window_h = 0;
+  int32_t window_w = 0;
+  int32_t h_attr_position = 0;
+  int32_t w_attr_position = 0;
+  int64_t output_n = 0;
+  int64_t output_h = 0;
+  int64_t output_w = 0;
+  int64_t output_c = 0;
+
   if (data_format == "NCHW") {
     window_h = ksize_list[2];
     window_w = ksize_list[3];
@@ -1798,6 +1799,8 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     if (window_h == -1 && window_w == -1) {
       ksize_list[h_attr_position] = input_h;
       ksize_list[w_attr_position] = input_w;
+      window_h = input_h;
+      window_w = input_w;
     }
     op.SetAttr("ksize", ksize_list);
     output_n = input_n;
@@ -1816,13 +1819,14 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     output_w = -1;
   }
 
+  output_desc->SetDataType(input_dtype);
   output_shape.SetDimNum(4);
   output_shape.SetDim(n_position, output_n);
   output_shape.SetDim(c_position, output_c);
   output_shape.SetDim(h_position, output_h);
   output_shape.SetDim(w_position, output_w);
   output_desc->SetShape(output_shape);
-  output_desc->SetDataType(input_dtype);
+
 
   bool is_dynamic = (input_n == -1) || (input_c == -1) || (input_h == -1) || (input_w == -1);
   if (is_dynamic) {
