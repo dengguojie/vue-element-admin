@@ -1242,7 +1242,7 @@ class CceConvOp:
 
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
-            
+
             def fp32_cub_coefficient(cub_coefficient, ub_multiples=1, res_dtype="float16"):
                 """
                 when set fp32 output, compute cub_coefficient
@@ -1970,6 +1970,7 @@ class CceConvOp:
                 sch[trans_line_data].compute_at(sch[res_c], m_outer_inner_outer)
                 sch[trans_vn_node].compute_at(sch[res_c], m_outer_inner_outer)
                 sch[input_5d_data].reused_by(trans_line_data)
+                sch[input_5d_data].mem_unique()
                 sch[trans_vn_node].reused_by(\
                     self._max_pool_tensor_map["ub_reshape"])
                 sch[trans_line_data].emit_insn(
@@ -1978,6 +1979,12 @@ class CceConvOp:
                     trans_vn_node.op.axis[0], "phony_insn")
                 if double_buffer_flag["CUB_pbuffer"] == 2:
                     sch[trans_vn_node].double_buffer()
+            # if pattern is maxpool+quant,
+            # need to ues max_pool_res tensor compute at res_c tensor
+            if "quant" in tensor_map.keys():
+                maxpool_res = self._max_pool_tensor_map["max_pool_res"]
+                sch[maxpool_res].compute_at(sch[res_c], m_outer_inner_outer)
+                sch[maxpool_res].compute_inline()
             al1_nparts = int_ceil_div(pooling_out[0], al1_facter_pooling)
             if self.conv_pool_fused_flag:
                 offset_bound \
@@ -3462,6 +3469,9 @@ class CceConvOp:
                     """
                     for conv + 3*3pooling fusion, tile UB for data reuse
                     """
+
+                    skip_list = ['quant', 'cast_i8_ub', 'offset_ub', 'reform_by_vmuls', \
+                        'input_ub', 'reform_by_vadds']
                     offset_bound_first = \
                         int_ceil_div(al1_nparts, block_dim[2])*al1_facter_pooling*POOLING_STRIDE*block_tile
                     offset_bound = \
@@ -3492,6 +3502,11 @@ class CceConvOp:
                                  extend)),
                             (None, None),
                         )
+                    elif lop['op'] in skip_list:
+                        # if pattern is conv+maxpool+quant
+                        # need to skip the buffer tile process for the tensors
+                        # which  between max_pool_res and res
+                        pass
                     else:
                         self._schedule[lop["dst_buffer"]].buffer_tile(
                             (None, None),
@@ -5117,9 +5132,12 @@ class CceConvOp:
                                        (1, CUBE_MKN[c_ub.dtype]["mac"][2]))
 
         has_vector_flag = False
-
-        if not (ConvParam.res_dtype == 'int32') and not self.conv_pool_fused_flag \
-                and not self.conv_pool_2_2_fused_flag:
+        # distinguish with conv_maxpool_quant scence
+        conv_maxpool_quant_flag = (self.conv_pool_fused_flag or \
+            self.conv_pool_2_2_fused_flag) and "quant" in tensor_map.keys()
+        if (not (ConvParam.res_dtype == 'int32') and not self.conv_pool_fused_flag \
+                and not self.conv_pool_2_2_fused_flag) \
+                    or conv_maxpool_quant_flag:
             has_vector_flag = (c_ub.op.attrs['no_vector'].value == 0)
 
         if self._convbn1_flag:
@@ -6617,7 +6635,11 @@ class AutoScheduleOp:
         elif is_support_v200() and weight.dtype in ("int4", "int8") \
             and out_src not in ('convolution_C_UB', 'convolution_remove_padded_column'):
             ConvParam.tensor_map["v200_data_flow_type"] = DataFlowType.V200_GENERAL_FUSION
-        if "pooling2d_max" in out_src:
+        # if conv_maxpool_quant ,out_src tensor is quant
+        # so is_conv_pool_fused need to set True
+        max_pool_quant_flag = "quant" == self.output_ops[0]['op'] \
+            and 'max_pool_res' in MaxPoolParam.tensor_map.keys()
+        if "pooling2d_max" in out_src or max_pool_quant_flag:
             MaxPoolParam.tensor_map["is_conv_pool_fused"] = True
         else:
             MaxPoolParam.tensor_map["is_conv_pool_fused"] = False
@@ -7184,7 +7206,15 @@ class AutoScheduleOp:
             # conv2d_dequant_add_(relu)_quant_singleout
             "fusion_type_7_16_3_4_6_1": 68,
             # conv2d_dequant_add_(relu)_quant_dualout
-            "fusion_type_8_7_16_3_4_6_1": 69
+            "fusion_type_8_7_16_3_4_6_1": 69,
+            # convfp16_maxpool_relu_quant
+            "fusion_type_7_12_3_1":70,
+            # convfp16_maxpool_bias_relu_quant
+            "fusion_type_7_12_2_3_1":71,
+            # convfp16_maxpool_bias_quant
+            "fusion_type_7_12_2_1":72,
+            # convfp16_maxpool_quant
+            "fusion_type_7_12_1":73
         }
 
         fusion_type_list = __fusion_type_list_get()

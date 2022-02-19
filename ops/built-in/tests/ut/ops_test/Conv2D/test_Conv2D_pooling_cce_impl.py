@@ -27,6 +27,7 @@ def test_conv2d_pooling(test_arg):
     from te.platform import cce_conf
     from impl.conv2d import conv2d_compute
     from impl.pooling import pool_fuse_compute
+    from impl.ascend_quant import ascend_quant_compute
     from impl.relu import relu_compute
     from te import tvm
     from tbe.dsl import auto_schedule
@@ -34,18 +35,69 @@ def test_conv2d_pooling(test_arg):
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     testcases = {
-            "fm_224_224_conv2d_pooling_1batch": ((1, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_4batch": ((4, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_8batch": ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_16batch": ((16, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_1batch_no_bias": ((1, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 1, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_4batch_no_relu": ((4, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 0, (3, 3), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling_8batch_no_bias_no_relu": ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 0, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_1batch": ((1, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_4batch": ((4, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_8batch": ((8, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_16batch": ((16, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_1batch_no_bias": ((1, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 0, 1, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_4batch_no_relu": ((4, 3, 224, 224),\
+                 (64, 3, 7, 7), (3, 3), (2, 2), 1, 0, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_pooling_8batch_no_bias_no_relu": \
+                ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2),\
+                     0, 0, (3, 3), (2, 2), "SAME"),
+            "fm_224_224_conv2d_poolquant_1batch": ((1, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_4batch": ((4, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_8batch": ((8, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_16batch": ((16, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_1batch_no_bias": ((1, 3, 224, 224), \
+                (64, 3, 7, 7), (3, 3), (2, 2), 0, 1, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_4batch_no_relu": ((4, 3, 224, 224),\
+                 (64, 3, 7, 7), (3, 3), (2, 2), 1, 0, (3, 3), (2, 2), "SAME", 1),
+            "fm_224_224_conv2d_poolquant_8batch_no_bias_no_relu": \
+                ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2),\
+                     0, 0, (3, 3), (2, 2), "SAME", 1),
     }
 
+    def fusion_type_check(quant_flag, bias_flag, relu_flag):
+        """
+        distinguish the fusion_type from quant scene
+        """
+        if quant_flag == 0:
+            # the op_type without quant
+            if bias_flag and relu_flag:
+                fusion_type = 45
+            elif not bias_flag and relu_flag:
+                fusion_type = 44
+            elif bias_flag and not relu_flag:
+                fusion_type = 43
+            else:
+                fusion_type = 42
+        else:
+            # the op_type with quant
+            # the fusion_type added from
+            # conv_schedule file
+            if bias_flag and relu_flag:
+                fusion_type = 71
+            elif not bias_flag and relu_flag:
+                fusion_type = 70
+            elif bias_flag and not relu_flag:
+                fusion_type = 72
+            else:
+                fusion_type = 73
+        return fusion_type
 
     def _conv_pool_fusion_case(shape_in, shape_w, pads, strides, c_out, \
-        orig_shape_w, bias_flag, relu_flag, window_pool, strides_pool, pad_mode):
+        orig_shape_w, bias_flag, relu_flag, window_pool, strides_pool, pad_mode, \
+            quant_flag=0, quant_scale=0.5,quant_offset=10.32, sqrt_mode=False):
         with tvm.target.cce():
             # conv2d
             dilations = [1, 1, 1, 1]
@@ -68,6 +120,8 @@ def test_conv2d_pooling(test_arg):
             mode = pad_mode
             print("the conv shape is : ", conv_res.shape)
             out = pool_fuse_compute(conv_res, None, None, None, window, strides, pad=padding)
+            if quant_flag != 0:
+                out = ascend_quant_compute(out, None, quant_scale, quant_offset, sqrt_mode)
             print("the out shape is :", out.shape)
             auto_sch_res = AutoScheduleOp(out)
             sch = auto_schedule(out)
@@ -75,20 +129,15 @@ def test_conv2d_pooling(test_arg):
                 tensor_list = [fm, filter_w, bias_tensor, out]
             else:
                 tensor_list = [fm, filter_w, out]
-            if bias_flag and relu_flag:
-                fusion_type = 45
-            elif not bias_flag and relu_flag:
-                fusion_type = 44
-            elif bias_flag and not relu_flag:
-                fusion_type = 43
-            else:
-                fusion_type = 42
+            # need to check the fusion type
+            fusion_type = fusion_type_check(quant_flag, bias_flag, relu_flag)
             assert auto_sch_res.fusion_type == fusion_type
 
         return sch, tensor_list
 
     def conv_pooling_fusion(fm_shape, w_shape, padding, strides, \
-        bias_flag, relu_flag, window_pool, strides_pool, pad_mode):
+        bias_flag, relu_flag, window_pool, strides_pool, pad_mode, \
+            quant_flag=0, quant_scale=0.5,quant_offset=10.32, sqrt_mode=False):
         from te.platform.cce_policy import disableL2
         disableL2()
         smalle_channel_flag = False
@@ -134,7 +183,8 @@ def test_conv2d_pooling(test_arg):
 
         sch, tensor_list = _conv_pool_fusion_case(shape_in, shape_w, \
             padding_4d, strides_4d,c_out, w_shape, bias_flag, relu_flag, \
-            window_pool, strides_pool, pad_mode)
+            window_pool, strides_pool, pad_mode, \
+            quant_flag, quant_scale,quant_offset, sqrt_mode)
         from te.platform.fusion_manager import get_fusion_build_cfg
         config = {"print_ir": False,
                 "need_build": True,
