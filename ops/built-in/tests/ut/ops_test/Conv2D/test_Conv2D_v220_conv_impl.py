@@ -45,35 +45,35 @@ def test_conv2d_v220(test_arg):
         #          (quant_offset),
         #          (sqrt_mode)  # only for dequant
 
-        # ("conv2d_relu", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("conv2d_relu", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
 
-        # ("conv2d_relu", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 有问题
+        ("conv2d_relu", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 有问题
 
         # ("conv2d_relu", "bfloat16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # vrelu数据类型不支持
 
-        # ('conv2d_quant', 'float16', (4, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5), # 有问题
+        ('conv2d_quant', 'float16', (4, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5), # 有问题
 
-        # ("conv2d_quant", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
+        ("conv2d_quant", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
 
-        # ("conv2d_quant", "float16", (1, 64, 32, 32), (48, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
+        ("conv2d_quant", "float16", (1, 64, 32, 32), (48, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
 
-        # ("conv2d_quant", "float16", (1, 64, 32, 32), (112, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
+        ("conv2d_quant", "float16", (1, 64, 32, 32), (112, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, None, 0.5, 0.5),
 
-        # ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None", False),
+        ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None", False),
 
-        # ("conv2d_dequant", "int8", (1, 64, 32, 32), (64, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None", False),
+        ("conv2d_dequant", "int8", (1, 64, 32, 32), (64, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None", False),
 
-        # ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "relu", False),
+        ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "relu", False),
 
-        # ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "leaky_relu", False),
+        ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "leaky_relu", False),
 
         # ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "prelu", False),
 
-        # ("conv2d_requant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None"),
+        ("conv2d_requant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "None"),
 
-        # ("conv2d_requant", "int8", (2, 2048, 49, 49), (480, 2048, 1, 1), (0, 0, 0, 0), (1, 1), 1, False, "None"), # 有问题
+        ("conv2d_requant", "int8", (2, 2048, 49, 49), (480, 2048, 1, 1), (0, 0, 0, 0), (1, 1), 1, False, "None"), # 有问题
 
-        # ("conv2d_requant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "relu"),
+        ("conv2d_requant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "relu"),
 
         # ("conv2d_requant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "leaky_relu"), # vrelu数据类型不支持
     ]
@@ -87,7 +87,7 @@ def test_conv2d_v220(test_arg):
         #          strides,
         #          groups,
         #          bias_flag
-        # ("conv2d_single_op", "float16", (1, 9, 2, 2), (36, 9, 2, 2), (0, 0, 0, 0), (2, 2), 1, False), # 连续轴限制
+        ("conv2d_single_op", "float16", (1, 9, 2, 2), (36, 9, 2, 2), (0, 0, 0, 0), (2, 2), 1, False), # 连续轴限制
 
         ("conv2d_single_op", "float16", (1, 64, 56, 56), (64, 64, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),
         ("conv2d_single_op", "float16", (1, 64, 49, 49), (64, 64, 1, 1), (0, 0, 0, 0), (1, 1), 1, False),
@@ -120,15 +120,15 @@ def test_conv2d_v220(test_arg):
 
         ("conv2d_single_op", "int8", (1, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # √
 
-        # ("conv2d_single_op", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 后续蓝黄同步再上
-        # ("conv2d_single_op", "float32", (1, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 后续蓝黄同步再上
+        ("conv2d_single_op", "float32", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 后续蓝黄同步再上
+        ("conv2d_single_op", "float32", (1, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # 后续蓝黄同步再上
 
-        # ("conv2d_single_op", "bfloat16", (1, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("conv2d_single_op", "bfloat16", (1, 128, 32, 32), (128, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
 
         # c0 = 4 single_op 支持各种数据类型，验证非首层fp16以外的组合
         ("conv2d_single_op", "float16", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
-        # ("conv2d_single_op", "int8", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # tiling有问题
-        # ("conv2d_single_op", "float32", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # tiling有问题
+        ("conv2d_single_op", "int8", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # tiling有问题
+        ("conv2d_single_op", "float32", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # tiling有问题
 
         # N*1
         ("conv2d_single_op", "float16", (1, 16, 16, 16), (16, 16, 1, 16), (0, 0, 0, 0), (1, 1), 1, False),
@@ -153,12 +153,12 @@ def test_conv2d_v220(test_arg):
         #          (sqrt_mode)  # only for dequant
 
         # ===================================ND2NZ  fmap输入为NHWC格式========================================
-        # ("nd2nz_conv2d_relu", "float16", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("nd2nz_conv2d_relu", "float16", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
         ("nd2nz_conv2d", "float16", (1, 28, 28, 64), (64, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
         ("nd2nz_conv2d", "float16", (1, 28, 28, 24), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False), # C补pad
 
-        # ("nd2nz_conv2d", "float32", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
-        # ("nd2nz_conv2d", "bfloat16", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("nd2nz_conv2d", "float32", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
+        ("nd2nz_conv2d", "bfloat16", (1, 32, 32, 64), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
         ("nd2nz_conv2d", "int8", (1, 28, 28, 64), (64, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
     ]
 
@@ -186,10 +186,10 @@ def test_conv2d_v220(test_arg):
         # ("conv2d_dequant_nz2nd", "int8", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False, "relu", False),
         # ("conv2d_requant_nz2nd", "int8", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False, "relu", False),
 
-        ("conv2d_nz2nd", "float16", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
+        # ("conv2d_nz2nd", "float16", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
         # ("conv2d_nz2nd", "float32", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
         # ("conv2d_nz2nd", "bfloat16", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
-        ("conv2d_nz2nd", "int8", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
+        # ("conv2d_nz2nd", "int8", (1, 64, 32, 32), (32, 64, 3, 3), 32, (1, 1, 1, 1), (1, 1), 1, False),
 
         #==============C方向需要剔数据==============================
     ]
@@ -210,12 +210,12 @@ def test_conv2d_v220(test_arg):
         #          (quant_scale),
         #          (quant_offset),
 
-        # ("aipp_conv2d", "float16", (1, 3, 24, 24), (16, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "yuv"),
-        # ("aipp_conv2d", "float16", (1, 3, 1024, 1824), (32, 3, 3, 3), (1, 1, 1, 1), (2, 2), 1, False, True, False, "yuv"), # 非c04
-        # ("aipp_conv2d", "float16", (16, 3, 228, 240), (64, 3, 3, 3), (0, 0, 0, 0), (2, 2), 1, False, True, False, "rgb"), # 非c04
-        # ("aipp_conv2d", "float16", (1, 4, 24, 24), (16, 4, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "xrgb"),
+        ("aipp_conv2d", "float16", (1, 3, 24, 24), (16, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "yuv"),
+        ("aipp_conv2d", "float16", (1, 3, 1024, 1824), (32, 3, 3, 3), (1, 1, 1, 1), (2, 2), 1, False, True, False, "yuv"), # 非c04
+        ("aipp_conv2d", "float16", (16, 3, 228, 240), (64, 3, 3, 3), (0, 0, 0, 0), (2, 2), 1, False, True, False, "rgb"), # 非c04
+        ("aipp_conv2d", "float16", (1, 4, 24, 24), (16, 4, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "xrgb"),
 
-        # ("aipp_conv2d_quant", "float16", (1, 3, 416, 416), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "yuv", 0.5, 0.5),
+        ("aipp_conv2d_quant", "float16", (1, 3, 416, 416), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, False, True, "yuv", 0.5, 0.5),
     ]
 
     def is_support_v100():
@@ -811,6 +811,7 @@ def _test_5hd_trans_nhwc_format_err2(test_arg):
 
 
 print("adding Conv2D v220 ut testcases")
-# ut_case.add_cust_test_func(test_func=test_conv2d_v220)
+ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_v220)
 ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err1)
 ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err2)
+ut_case.run(['Ascend920A'])

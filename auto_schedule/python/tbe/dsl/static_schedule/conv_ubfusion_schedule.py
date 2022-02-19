@@ -18,9 +18,8 @@
 Schedule of conv2d ub fusion in v220/v300.
 """
 from collections import deque
+from te.platform import cce_params
 from tbe import tvm
-from tbe.common.platform import platform_info as cce
-from tbe.common.utils import log
 from tbe.dsl.static_schedule.conv_schedule_util import get_src_tensor
 from tbe.dsl.static_schedule.conv_schedule_util import is_elewise
 from tbe.dsl.static_schedule.conv_schedule_util import is_placeholder
@@ -106,9 +105,12 @@ class EltwiseUBFusion:
         """
         Check for ub fusion situations.
         """
-        # if v220 needs to set this flag to True, the cub_tag_list needs to be updated.
+        # to be deleted when fixpipe ready
+        if not is_support_fixpipe_op():
+            return res.op.tag == "elewise_single_VS_min"
+
         res_tag = get_src_tensor(res).op.tag if res.op.tag == "strided_write" else res.op.tag
-        return is_support_fixpipe_op() and (res_tag not in self.cub_tag_list)
+        return res_tag not in self.cub_tag_list
 
     def parse_ub_tensors(self, res, op_graph):
         """
@@ -216,9 +218,9 @@ class EltwiseUBFusion:
         Set scope for cub body tensors.
         """
         if self.flag:
-            sch[self.cub].set_scope(cce.scope_ubuf)
+            sch[self.cub].set_scope(cce_params.scope_ubuf)
             for tensor in list(self.ub_body_tensors) + list(self.ub_input_broadcast_tensors):
-                sch[tensor].set_scope(cce.scope_ubuf)
+                sch[tensor].set_scope(cce_params.scope_ubuf)
 
     def inputs_cache_read(self, sch, op_graph):
         """
@@ -230,7 +232,7 @@ class EltwiseUBFusion:
             next_op_map[input_op["dst_buffer"]] = input_op["next_op"][0]["dst_buffer"]
 
         for tensor in self.ub_input_placeholders:
-            input_ub = sch.cache_read(tensor, cce.scope_ubuf, next_op_map[tensor])
+            input_ub = sch.cache_read(tensor, cce_params.scope_ubuf, next_op_map[tensor])
             self.cache_read_tensors.append(input_ub)
 
     def res_cache_write(self, sch, res):
@@ -238,7 +240,7 @@ class EltwiseUBFusion:
         Cache write for the res tensor of eltwise operation in ub fusion.
         """
         if self.cache_write_flag:
-            res_cache_write = sch.cache_write(res, cce.scope_ubuf)
+            res_cache_write = sch.cache_write(res, cce_params.scope_ubuf)
             self.cache_write_tensors.append(res_cache_write)
 
     def ub_tensors_inline(self, sch):
@@ -343,7 +345,7 @@ class QuantFusion:
         """
         if self.flag:
             for _, tensor in self.quant_tensor_dict.items():
-                sch[tensor].set_scope(cce.scope_ubuf)
+                sch[tensor].set_scope(cce_params.scope_ubuf)
 
     def split_reform_axis(self, sch):
         """

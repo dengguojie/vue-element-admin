@@ -14,13 +14,6 @@ def test_conv2d_hf32(test_arg):
     from tbe.dsl import auto_schedule
     from te import tvm
 
-    vals = {("Intrinsic_fix_pipe_unit_list",): True,
-            ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): False,
-            ("Intrinsic_mmad", "h322f32"): True,}
-
-    def mock_platform(*args):
-        return vals[args]
-
     # case name: ((fm_shape), (weight_shape), (paddings), (strides), (dilations), bias_flag, dtype, impl_mode)
     testcase = {
         "conv2d_static_enable_hf32_test_1": ((2, 64, 56, 56), (64, 64, 3, 3), [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], False, "float32", "high_performance"),
@@ -58,9 +51,9 @@ def test_conv2d_hf32(test_arg):
 
     for key, value in testcase.items():
         print("test conv2d hf32 case:", key)
-        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=mock_platform)):
-            compile_conv2d_hf32(*value, key)
+        compile_conv2d_hf32(*value, key)
 
 
 print("test Conv2D HF32 mode running")
-ut_case.add_cust_test_func(test_func=test_conv2d_hf32)
+ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_hf32)
+ut_case.run(['Ascend920A'])

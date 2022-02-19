@@ -857,7 +857,6 @@ class Conv2dSchedule:
                 log.warn("get invalid tiling, default tiling will be used")
                 tiling = get_default_tiling()
 
-            tiling["CUB_matrix"] = tiling["CL0_matrix"]
             return tiling
 
         if self._dynamic_shape.flag and tiling_case:
@@ -1143,17 +1142,588 @@ class Conv2dSchedule:
         """
         Split tensor axis and attach tensors.
         """
+        def tile_tensor_al0():
+            """
+            tile al0 for load3d emit insn
+            """
+            al0_mo, al0_mi = sch[al0].split(al0.op.axis[2], ma_al0)
+            al0_ko, al0_ki = sch[al0].split(al0.op.axis[3], ka_al0)
+            al0_no, al0_ni = sch[al0].split(al0.op.axis[1], 1)
+
+            sch[al0].reorder(al0.op.axis[0],  # group
+                             al0_no,  # batch.outer
+                             al0_mo,  # m_1.outer
+                             al0_ko,  # k_1.outer
+                             al0_ni,  # batch.inner = 1
+                             al0_mi,  # m_1.inner
+                             al0_ki,  # k_1.inner
+                             al0.op.axis[4],  # m_0
+                             al0.op.axis[5])  # k_0
+            al0_axis_list = [al0_no, al0_mo, al0_ko,
+                             al0_ni, al0_mi, al0_ki,
+                             al0.op.axis[4], al0.op.axis[5]]  # axis for im2col
+            dynamic_al0_pragma_axis = al0_ni
+            return al0_axis_list, dynamic_al0_pragma_axis
+
+        def get_reorder_mn_flag():
+            """
+            get_reorder_mn_flag
+            """
+            if not bl1_tiling:
+                return True
+            if pingpong_buffer["AL1_pbuffer"] == pingpong_buffer["BL1_pbuffer"]:
+                if not self._dynamic_shape.flag and bl1_nparts[1] >= al1_nparts[1]:
+                    return True
+                return False
+            if pingpong_buffer["BL1_pbuffer"] == 2:
+                return True
+            return False
+
+        def tile_tensor_res():
+            """
+            tile tensor res
+            """
+            def set_reorder_mn_flag():
+                """
+                Reorder axis m and n to achieve better performance.
+                """
+                def reorder_res_mn_axis():
+                    """
+                    Reorder axis m and n according to various flags.
+                    """
+                    if self._inner_batch.flag:
+                        if reorder_mn_flag:
+                            sch[res].reorder(
+                                out2al1_loopbatch_axis,
+                                singlecore_out2al1_loopm_axis,
+                                res_batch_1_axis,
+                                singlecore_out2bl1_loopn_axis
+                                )
+                        else:
+                            sch[res].reorder(
+                                out2al1_loopbatch_axis,
+                                singlecore_out2bl1_loopn_axis,
+                                singlecore_out2al1_loopm_axis,
+                                res_batch_1_axis
+                                )
+                    else:
+                        # singlecore_out2bl1_loopn_axis means nparts of co1 axis loading into L1 in single core. (N axis)
+                        # singlecore_out2al1_loopm_axis means nparts of howo axis loading into L1 in single core. (M axis)
+                        if reorder_mn_flag:
+                            sch[res].reorder(
+                                out2al1_loopbatch_axis,
+                                singlecore_out2al1_loopm_axis,
+                                res_batch_1_axis,
+                                singlecore_out2bl1_loopn_axis,
+                                bl12bl0_loopn_axis,
+                                res_al1_batch_axis
+                                )
+                        else:
+                            sch[res].reorder(
+                                out2al1_loopbatch_axis,
+                                singlecore_out2bl1_loopn_axis,
+                                singlecore_out2al1_loopm_axis,
+                                bl12bl0_loopn_axis,
+                                res_batch_1_axis,
+                                res_al1_batch_axis
+                                )
+
+                reorder_mn_flag = get_reorder_mn_flag()
+
+                reorder_res_mn_axis()
+
+                return reorder_mn_flag
+
+            # Only fixpipe fusion. The special axis split operation works on res.
+            fixpipe_nz2nd_flag = self._output_nz2nd.flag or \
+                (self._fixpipe_fusion.nz2nd_flag and not self._eltwise_ub_fusion.flag)
+            fixpipe_channelsplit_flag = res.dtype == "float32" and not self._eltwise_ub_fusion.flag
+            fixpipe_channelmerge_flag = res.dtype in ("int4", "int8") and not self._eltwise_ub_fusion.flag
+            fixpipe_antiquant_flag = anti_quant_spilt_flag(res)
+
+            if fixpipe_nz2nd_flag:
+                fixpipe_channelsplit_flag = False
+                fixpipe_channelmerge_flag = False
+
+            special_axis_dict = {}
+            dtype_coeff = {
+                "int4": 4,
+                "int8": 2,
+            }
+
+            def fetch_base_axis():
+                """
+                Fetch axes of the res tensor.
+                """
+                if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                    res_n_axis, res_hw_axis, res_c_axis = res.op.axis  # [n, howo, co]
+                    # split c axis into c1 and c0 to avoid nonlinear ir
+                    res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16)  # [n, howo, co1, co0]
+                else:
+                    res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = res.op.axis  # [n, co1, howo, co0]
+
+                return res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis
+
+            def cal_co1_opt_factor():
+                """
+                Calculate the co1_opt factor to split out group axis.
+                """
+                if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                    co1_opt_factor = co1_opt
+                elif res.dtype in ("int4", "int8"):
+                    if multi_cl0_group:  # group_cl0 is even while co1_opt is odd.
+                        co1_opt_factor = ceil_div(co1_opt * multi_cl0_group, dtype_coeff[res.dtype])
+                    else:
+                        co1_opt_factor = ceil_div(co1_opt, dtype_coeff[res.dtype])
+                elif res.dtype == "float32":
+                    co1_opt_factor = co1_opt * 2
+                elif res.dtype in ("float16", "bfloat16", "int32"):
+                    co1_opt_factor = co1_opt
+                else:
+                    err_man.raise_err_specific("conv2d", "res dtype is not supported!")
+
+                return co1_opt_factor
+
+            def cal_nc_cl0_factor():
+                """
+                Fetch nc_cl0 for various tiling situation.
+                """
+                nc_cl0_factor = nc_cl0
+                if res.dtype in ("int4", "int8") and not (self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag):
+                    if multi_cl0_group:
+                        nc_cl0_factor = co1_opt * group_cl0 // dtype_coeff[res.dtype]
+                    else:
+                        nc_cl0_factor = nc_cl0 // dtype_coeff[res.dtype]
+                return nc_cl0_factor
+
+            def split_group_opt_axis(co1_opt_factor):
+                """
+                Split out group_opt axis and co1_opt axis.
+                """
+                res_group_opt_axis, res_co1_opt_axis = sch[res].split(res_c1_axis, factor=co1_opt_factor)
+
+                if fixpipe_channelsplit_flag:
+                    res_co1_opt_axis_ori = res_co1_opt_axis
+                    res_co1_opt_axis, res_c0_npart_axis = sch[res].split(res_co1_opt_axis_ori, 2)
+                    special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"] = res_c0_npart_axis
+
+                return res_group_opt_axis, res_co1_opt_axis
+
+            def split_nc_cl0_axis(nc_cl0_factor):
+                """
+                Split out nc_cl0_axis.
+                """
+                out2cl0_loopn_axis, res_nc_cl0_axis = sch[res].split(res_co1_opt_axis, factor=nc_cl0_factor)
+
+                if fixpipe_antiquant_flag:
+                    # fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride
+                    res_nc_cl0_axis_ori = res_nc_cl0_axis
+                    res_nc_cl0_axis, res_c0_npart_axis = sch[res].split(res_nc_cl0_axis_ori, 2)
+                    special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"] = res_c0_npart_axis
+
+                return out2cl0_loopn_axis, res_nc_cl0_axis
+
+            def special_axis_process(res_c0_axis):
+                """
+                Process special axes in fixpipe fusion situation.
+                """
+                if fixpipe_channelmerge_flag:
+                    # split c0=16 in channel merging to avoid nonlinear ir
+                    _, _ = sch[res].split(res_c0_axis, factor=16)
+
+            res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = fetch_base_axis()
+
+            co1_opt_factor = cal_co1_opt_factor()
+            res_group_opt_axis, res_co1_opt_axis = split_group_opt_axis(co1_opt_factor)
+
+            nc_cl0_factor = cal_nc_cl0_factor()
+            out2cl0_loopn_axis, res_nc_cl0_axis = split_nc_cl0_axis(nc_cl0_factor)
+
+            special_axis_process(res_c0_axis)
+
+            out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, mc_cl0 * m0_cl0)
+
+            # split cub tiling axis
+            cl02cub_loopn_axis, res_nc_factor_axis = sch[res].split(res_nc_cl0_axis,
+                                                                    nparts=ceil_div(nc_cl0, nc_factor_cub))
+            cl02cub_loopm_axis, res_m_factor_axis = sch[res].split(res_m_cl0_axis, nparts=1)
+
+            if fixpipe_nz2nd_flag:
+                sch[res].reorder(res_group_opt_axis,
+                                 out2cl0_loopn_axis,
+                                 out2cl0_loopm_axis,
+                                 #========cl0 tiling=================
+                                 cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                                 cl02cub_loopm_axis, # 1
+                                 #========cub tiling=================
+                                 res_m_factor_axis, # mc_factor_cub*m0_cl0
+                                 res_nc_factor_axis) # nc_factor_cub
+                # [n, group_opt, co1_opt // nc, howo // (mc*m0),
+                # ||| nc // nc_factor, 1,
+                # ||| mc_factor*m0, nc_factor, co0]
+            elif fixpipe_channelsplit_flag:
+                sch[res].reorder(res_group_opt_axis,
+                                 out2cl0_loopn_axis,
+                                 out2cl0_loopm_axis,
+                                 #========cl0 tiling=================
+                                 cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                                 cl02cub_loopm_axis, # 1
+                                 #========cub tiling=================
+                                 res_nc_factor_axis, # nc_factor_cub
+                                 special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
+                                 res_m_factor_axis) # mc_factor_cub*m0_cl0
+                # [n, group_opt, co1_opt // 2*nc, howo // (mc*m0),
+                # ||| nc // nc_factor, 1,
+                # ||| nc_factor, 2, mc_factor*m0, co0]
+            elif fixpipe_antiquant_flag:
+                sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
+                                 out2cl0_loopm_axis, # howo // (mc*m0)
+                                 #========cl0 tiling=================
+                                 cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                                 cl02cub_loopm_axis, # 1
+                                 #========cub tiling=================
+                                 res_nc_factor_axis, # nc_factor_cub // 2
+                                 special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
+                                 res_m_factor_axis) # mc_factor_cub*m0_cl0
+            else:
+                sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
+                                 out2cl0_loopm_axis, # howo // (mc*m0)
+                                 #========cl0 tiling=================
+                                 cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
+                                 cl02cub_loopm_axis, # 1
+                                 #========cub tiling=================
+                                 res_nc_factor_axis, # nc_factor_cub
+                                 res_m_factor_axis) # mc_factor_cub*m0_cl0
+                # [n, group_opt, co1_opt // nc, howo // (mc*m0),
+                # ||| nc // nc_factor, 1,
+                # ||| nc_factor, mc_factor*m0, co0]
+            out2al1_loopm_axis, al12al0_loopm_axis = sch[res].split(out2cl0_loopm_axis, nparts=al1_nparts[1])
+            # when multi_cl0_group, cl0_factor[0] is 1 and bl1_nparts[1] is 1
+            out2bl1_loopn_axis, bl12bl0_loopn_axis = sch[res].split(out2cl0_loopn_axis, nparts=bl1_nparts[1])
+
+            # split batch of res
+            if self._dynamic_shape.n_dynamic:
+                batch_dim_factor = tvm.max(1, ceil_div(batch, batch_dim))
+                res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, batch_dim_factor)
+            else:
+                res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, nparts=batch_dim)
+
+            res_group_dim_axis, res_singlecore_group_opt_axis = sch[res].split(res_group_opt_axis, nparts=group_dim)
+
+            batch_factor = self._inner_batch.config_innerbatch_axis(batch_al1, batch_cl0)
+            out2al1_loopbatch_axis, res_al1_batch_axis = sch[res].split(res_singlecore_batch_axis, batch_factor)
+
+            if group_cl0 == 1 and multi_bl0_group:
+                singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis,
+                                                                                    factor=group_bl0)
+            else:
+                singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis, 1)
+
+            # split cout of res
+            res_n_dim_axis, singlecore_out2bl1_loopn_axis = sch[res].split(out2bl1_loopn_axis, nparts=n_dim)
+            res_m_dim_axis, singlecore_out2al1_loopm_axis = sch[res].split(out2al1_loopm_axis, nparts=m_dim)
+
+            if self._inner_batch.flag:
+                if fixpipe_nz2nd_flag:
+                    pass
+                elif fixpipe_channelsplit_flag:
+                    sch[res].reorder(res_batch_dim_axis,
+                                     res_group_dim_axis,
+                                     res_n_dim_axis,
+                                     res_m_dim_axis,
+                                     singlecore_out2bl0_loopg_axis,
+                                     res_bl0_group_opt_axis,
+                                     out2al1_loopbatch_axis,
+                                     singlecore_out2bl1_loopn_axis,
+                                     singlecore_out2al1_loopm_axis,
+                                     bl12bl0_loopn_axis,
+                                     al12al0_loopm_axis,
+                                     #===============cl0 tiling========================
+                                     cl02cub_loopn_axis,
+                                     cl02cub_loopm_axis,
+                                     #===============cub tiling========================
+                                     res_nc_factor_axis,
+                                     res_al1_batch_axis,
+                                     # third axis from bottom must be 2 for fp32
+                                     special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
+                                     res_m_factor_axis)
+                else:
+                    if fixpipe_antiquant_flag:
+                        sch[res].reorder(res_batch_dim_axis,
+                                         res_group_dim_axis,
+                                         res_n_dim_axis,
+                                         res_m_dim_axis,
+                                         singlecore_out2bl0_loopg_axis,
+                                         res_bl0_group_opt_axis,
+                                         out2al1_loopbatch_axis,
+                                         singlecore_out2bl1_loopn_axis,
+                                         singlecore_out2al1_loopm_axis,
+                                         bl12bl0_loopn_axis,
+                                         al12al0_loopm_axis,
+                                         #===============cl0 tiling========================
+                                         cl02cub_loopn_axis,
+                                         cl02cub_loopm_axis,
+                                         #===============cub tiling========================
+                                         res_nc_factor_axis,
+                                         special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
+                                         res_al1_batch_axis,
+                                         res_m_factor_axis)
+                    else:
+                        sch[res].reorder(res_batch_dim_axis,
+                                         res_group_dim_axis,
+                                         res_n_dim_axis,
+                                         res_m_dim_axis,
+                                         singlecore_out2bl0_loopg_axis,
+                                         res_bl0_group_opt_axis,
+                                         out2al1_loopbatch_axis,
+                                         singlecore_out2bl1_loopn_axis,
+                                         singlecore_out2al1_loopm_axis,
+                                         bl12bl0_loopn_axis,
+                                         al12al0_loopm_axis,
+                                         #===============cl0 tiling========================
+                                         cl02cub_loopn_axis,
+                                         cl02cub_loopm_axis,
+                                         #===============cub tiling========================
+                                         res_nc_factor_axis,
+                                         res_al1_batch_axis,
+                                         res_m_factor_axis)
+            else:
+                sch[res].reorder(res_batch_dim_axis,
+                                 res_group_dim_axis,
+                                 res_n_dim_axis,
+                                 res_m_dim_axis,
+                                 singlecore_out2bl0_loopg_axis,
+                                 res_bl0_group_opt_axis,
+                                 out2al1_loopbatch_axis,
+                                 singlecore_out2bl1_loopn_axis,
+                                 singlecore_out2al1_loopm_axis,
+                                 res_al1_batch_axis,
+                                 bl12bl0_loopn_axis)
+
+            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                res_pragma_axis = res_m_factor_axis
+            else:
+                res_pragma_axis = res_nc_factor_axis
+
+            blocks = batch_dim*n_dim*m_dim*group_dim
+
+            if blocks != 1:
+                multicore_axis = sch[res].fuse(
+                    res_batch_dim_axis,
+                    res_group_dim_axis,
+                    res_n_dim_axis,
+                    res_m_dim_axis)
+                if self._dynamic_shape.flag:
+                    multicore_axis_o, _ = sch[res].split(multicore_axis, factor=1)
+                else:
+                    multicore_axis_o, _ = sch[res].split(multicore_axis, nparts=blocks)
+
+                bindcore_axis, batchbindonly_pragma_axis = sch[res].split(multicore_axis_o, 1)
+                sch[res].bind(bindcore_axis, tvm.thread_axis("blockIdx.x"))
+
+                if blocks == batch_dim:
+                    sch[res].pragma(batchbindonly_pragma_axis, 'json_info_batchBindOnly', 1)
+            else:
+                bindcore_axis = res_batch_dim_axis
+
+            out2al1_loopbatch_axis_ori = out2al1_loopbatch_axis
+            out2al1_loopbatch_axis, res_batch_1_axis = sch[res].split(out2al1_loopbatch_axis_ori, factor=1)
+
+            reorder_mn_flag = set_reorder_mn_flag()
+
+            if self._tiling["n_bef_batch_flag"] and not reorder_mn_flag and not self._inner_batch.flag:
+                sch[res].reorder(singlecore_out2bl1_loopn_axis, out2al1_loopbatch_axis)
+
+            def get_res_attach_axis():
+                """
+                prepare res attach axis for compute_at
+                """
+                # get cub_at_res_axis
+                cub_at_res_axis = cl02cub_loopm_axis
+
+                # get cl0_at_res_axis
+                cl0_at_res_axis = al12al0_loopm_axis
+
+                # get bl0_at_res_axis
+                bl0_at_res_axis = singlecore_out2bl0_loopg_axis
+
+                # get al1_at_res_axis
+                al1_at_res_axis = out2al1_loopbatch_axis
+                if self._lx_fusion.l1_fusion_type == DEPTH_L1_FUSION:
+                    al1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if al1_tiling or self._conv1d.flag:
+                    al1_at_res_axis = singlecore_out2al1_loopm_axis
+
+                # get bl1_at_res_axis
+                bl1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if bl1_tiling:
+                    bl1_at_res_axis = singlecore_out2bl1_loopn_axis
+                    if group_cl0 == 1 and multi_bl0_group:
+                        bl1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if self._inner_batch.flag:
+                    bl1_at_res_axis = singlecore_out2bl1_loopn_axis
+
+                return [cub_at_res_axis, cl0_at_res_axis, bl0_at_res_axis,
+                        al1_at_res_axis, bl1_at_res_axis]
+
+            res_axis_list = get_res_attach_axis()
+
+            return res_axis_list, bindcore_axis, res_pragma_axis
+
+        def tile_tensor_cl0():
+            """
+            tile tensor cl0
+            """
+            cl0_k1, cl0_k0 = cl0.op.reduce_axis
+
+            cl0_mo, cl0_mi = sch[cl0].split(sch[cl0].op.axis[3], ma_al0*self._block_m0)
+
+            if bl0_tiling == []:
+                cl0_co, cl0_ci = sch[cl0].split(sch[cl0].op.axis[2], nparts=1)
+            else:
+                cl0_co, cl0_ci = sch[cl0].split(sch[cl0].op.axis[2], nb_bl0)
+
+            if multi_cl0_group and multi_bl0_group:
+                cl0_go, cl0_gi = sch[cl0].split(cl0.op.axis[0], factor=group_bl0)
+
+            # for reduce axis, al0 and bl0 should be the same
+            cl0_ko, cl0_ki = sch[cl0].split(cl0_k1, ka_al0)
+            cl0_no, cl0_ni = sch[cl0].split(cl0.op.axis[1], 1)
+            cl0_co0 = cl0.op.axis[4]
+
+            if self._inner_batch.flag:
+                sch[cl0].reorder(cl0_ko,
+                                 cl0_co,
+                                 cl0_no,
+                                 cl0_mo,
+                                 cl0_ni,
+                                 cl0_ci,
+                                 cl0_mi,
+                                 cl0_co0,
+                                 cl0_ki,
+                                 cl0_k0)
+            else:
+                sch[cl0].reorder(cl0_ko,
+                                 cl0_co,
+                                 cl0_mo,
+                                 #=======L0C tiling=========
+                                 cl0_ni, # 1
+                                 cl0_ci, # nb
+                                 cl0_mi, # ma*m0
+                                 cl0_co0, # co0
+                                 cl0_ki, # ka = kb
+                                 cl0_k0) # k0
+
+            if multi_cl0_group and multi_bl0_group:
+                if self._inner_batch.flag:
+                    sch[cl0].reorder(cl0_go,
+                                     cl0_co,
+                                     cl0_gi,
+                                     cl0_ko,
+                                     cl0_no,
+                                     cl0_mo)
+                else:
+                    sch[cl0].reorder(cl0_go,
+                                     cl0_no,
+                                     cl0_co,
+                                     cl0_gi,
+                                     cl0_ko,
+                                     cl0_mo)
+
+            outer_factor = max(al1_nparts[0], bl1_nparts[0])
+            inner_factor = min(al1_nparts[0], bl1_nparts[0])
+
+            if outer_factor % inner_factor != 0:
+                err_man.raise_err_specific("conv2d", "illegal value of AL1_shape & BL1_shape")
+
+            if al1_nparts[0] > bl1_nparts[0]:
+                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=al1_nparts[0])
+                cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=bl1_nparts[0])
+            else:
+                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=bl1_nparts[0])
+                cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=al1_nparts[0])
+
+            def get_cl0_attach_axis():
+                """
+                prepare cl0 attach axis for compute_at
+                """
+                # get al0_at_cl0_axis
+                al0_at_cl0_axis = cl0_mo
+
+                # get bl0_at_cl0_axis
+                bl0_at_cl0_axis = cl0_co
+
+                # get al1_at_cl0_axis and bl1_at_cl0_axis
+                if al1_nparts[0] > bl1_nparts[0]:
+                    al1_at_cl0_axis = cl0_kooi
+                    bl1_at_cl0_axis = cl0_kooo
+                else:
+                    al1_at_cl0_axis = cl0_kooo
+                    bl1_at_cl0_axis = cl0_kooi
+
+                if bl1_tiling:
+                    if bl1_nparts[0] == 1 and multi_cl0_group:
+                        bl1_at_cl0_axis = cl0_co
+
+                if bl1_tiling == [] and multi_cl0_group:
+                    bl1_at_cl0_axis = cl0_co
+
+                return [al0_at_cl0_axis, bl0_at_cl0_axis,
+                        al1_at_cl0_axis, bl1_at_cl0_axis]
+
+            k_outer_list = [cl0_kooo, cl0_kooi, cl0_koi]
+            cl0_axis_list = get_cl0_attach_axis()
+            cl0_pragma_axis = cl0_ni
+            return k_outer_list, cl0_axis_list, cl0_pragma_axis
+
+        def tile_tensor_fixpipe_res():
+            """
+            tile tensor fixpipe_res
+            """
+            cub_pragma_axis = None
+
+            if self._eltwise_ub_fusion.flag:
+                cub = self._fixpipe_res
+                if self._fixpipe_fusion.nz2nd_flag:
+                    cub_n1_axis, cub_n0_axis = sch[cub].split(cub.op.axis[2], self._block_n0)
+                    cub_m_axis = cub.op.axis[1]
+                else:
+                    cub_n1_axis = cub.op.axis[1]
+                    cub_m_axis = cub.op.axis[2]
+
+                cub_out2ub_loopn_axis, cub_nc_factor_axis = sch[cub].split(cub_n1_axis, nc_factor_cub)
+                cub_out2ub_loopm_axis, cub_m_factor_axis = sch[cub].split(cub_m_axis, nparts=1)
+
+                if self._fixpipe_fusion.nz2nd_flag:
+                    sch[cub].reorder(
+                        cub_out2ub_loopn_axis,
+                        cub_out2ub_loopm_axis,
+                        cub_m_factor_axis,
+                        cub_nc_factor_axis,
+                        cub_n0_axis
+                        )
+                    cub_pragma_axis = cub_m_factor_axis
+                else:
+                    sch[cub].reorder(
+                        cub_out2ub_loopn_axis,
+                        cub_out2ub_loopm_axis,
+                        cub_nc_factor_axis,
+                        cub_m_factor_axis
+                        )
+                    cub_pragma_axis = cub_nc_factor_axis
+            return cub_pragma_axis
+
         def bl0_compute_at():
             """
             Handle bl0 attach.
             """
             if bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
                 if multi_bl0_group and group_cl0 == 1:
-                    sch[bl0].compute_at(sch[res], singlecore_out2bl0_loopg_axis)
+                    sch[bl0].compute_at(sch[res], bl0_at_res_axis)
                 else:
-                    sch[bl0].compute_at(sch[cl0], cl0_co)
+                    sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
             else:
-                sch[bl0].compute_at(sch[res], singlecore_out2bl0_loopg_axis)
+                sch[bl0].compute_at(sch[res], bl0_at_res_axis)
 
         def al1_compute_at():
             """
@@ -1169,16 +1739,7 @@ class Conv2dSchedule:
                 if al1_tiling:
                     if al1_nparts[0] != 1:
                         return cl0, al1_at_cl0_axis
-                    return res, al1_at_res_axis
-
-                # al1 full load
-                if self._conv1d.flag:
-                    return res, al1_at_res_axis
-
-                if self._lx_fusion.l1_fusion_type == DEPTH_L1_FUSION:
-                    return res, singlecore_out2bl0_loopg_axis
-
-                return res, out2al1_loopbatch_axis
+                return res, al1_at_res_axis
 
             consumer, target_axis = get_al1_attach_info()
             sch[al1].compute_at(sch[consumer], target_axis)
@@ -1194,22 +1755,20 @@ class Conv2dSchedule:
                 Get the consumer tensor of bl1 and the target axis to be attached.
                 """
                 if self._inner_batch.flag:
-                    return res, singlecore_out2bl1_loopn_axis
+                    return res, bl1_at_res_axis
 
                 if bl1_tiling:
                     if bl1_nparts[0] != 1:
                         # cl0_gi is under cl0_ko
                         return cl0, bl1_at_cl0_axis
                     if bl1_nparts[0] == 1 and multi_cl0_group:
-                        return cl0, cl0_co
-                    if group_cl0 == 1 and multi_bl0_group:
-                        return res, singlecore_out2bl0_loopg_axis
+                        return cl0, bl1_at_cl0_axis
                     return res, bl1_at_res_axis
 
                 if bl1_tiling == [] and multi_cl0_group:
-                    return cl0, cl0_co
+                    return cl0, bl1_at_cl0_axis
 
-                return res, singlecore_out2bl0_loopg_axis
+                return res, bl1_at_res_axis
 
             if bl1_tiling is not None:
                 consumer, target_axis = get_bl1_attach_info()
@@ -1251,6 +1810,7 @@ class Conv2dSchedule:
         dilate_h = self._dilate_h
         dilate_w = self._dilate_w
         block_k0 = self._block_k0
+        group_opt = self._group_opt
         ci1_opt = self._ci1_opt
         co1_opt = self._co1_opt
         out_hw = self._out_hw
@@ -1321,500 +1881,18 @@ class Conv2dSchedule:
 
         # tile
         #===================================tile al0============================================
-        # tile al0 for load3d
-        al0_mo, al0_mi = sch[al0].split(al0.op.axis[2], ma_al0)
-        al0_ko, al0_ki = sch[al0].split(al0.op.axis[3], ka_al0)
-        al0_no, al0_ni = sch[al0].split(al0.op.axis[1], 1)
-
-        sch[al0].reorder(al0.op.axis[0], # group
-                         al0_no, # batch.outer
-                         al0_mo, # m_1.outer
-                         al0_ko, # k_1.outer
-                         al0_ni, # batch.inner = 1
-                         al0_mi, # m_1.inner
-                         al0_ki, # k_1.inner
-                         al0.op.axis[4], # m_0
-                         al0.op.axis[5]) # k_0
-        al0_axis_list = [al0_no, al0_mo, al0_ko,
-                         al0_ni, al0_mi, al0_ki, al0.op.axis[4], al0.op.axis[5]] # axis for im2col
+        al0_axis_list, dynamic_al0_pragma_axis = tile_tensor_al0()
 
         #===================================tile res============================================
-        def set_reorder_mn_flag():
-            """
-            Reorder axis m and n to achieve better performance.
-            """
-            def reorder_res_mn_axis():
-                """
-                Reorder axis m and n according to various flags.
-                """
-                if self._inner_batch.flag:
-                    if reorder_mn_flag:
-                        sch[res].reorder(
-                            out2al1_loopbatch_axis,
-                            singlecore_out2al1_loopm_axis,
-                            res_batch_1_axis,
-                            singlecore_out2bl1_loopn_axis
-                            )
-                    else:
-                        sch[res].reorder(
-                            out2al1_loopbatch_axis,
-                            singlecore_out2bl1_loopn_axis,
-                            singlecore_out2al1_loopm_axis,
-                            res_batch_1_axis
-                            )
-                else:
-                    # singlecore_out2bl1_loopn_axis means nparts of co1 axis loading into L1 in single core. (N axis)
-                    # singlecore_out2al1_loopm_axis means nparts of howo axis loading into L1 in single core. (M axis)
-                    if reorder_mn_flag:
-                        sch[res].reorder(
-                            out2al1_loopbatch_axis,
-                            singlecore_out2al1_loopm_axis,
-                            res_batch_1_axis,
-                            singlecore_out2bl1_loopn_axis,
-                            bl12bl0_loopn_axis,
-                            res_al1_batch_axis
-                            )
-                    else:
-                        sch[res].reorder(
-                            out2al1_loopbatch_axis,
-                            singlecore_out2bl1_loopn_axis,
-                            singlecore_out2al1_loopm_axis,
-                            bl12bl0_loopn_axis,
-                            res_batch_1_axis,
-                            res_al1_batch_axis
-                            )
-
-            reorder_mn_flag = False
-            if not bl1_tiling:
-                reorder_mn_flag = True
-            elif pingpong_buffer["AL1_pbuffer"] == pingpong_buffer["BL1_pbuffer"]:
-                if not self._dynamic_shape.flag and bl1_nparts[1] >= al1_nparts[1]:
-                    reorder_mn_flag = True
-            elif pingpong_buffer["BL1_pbuffer"] == 2:
-                reorder_mn_flag = True
-
-            reorder_res_mn_axis()
-
-            return reorder_mn_flag
-
-
-        # Only fixpipe fusion. The special axis split operation works on res.
-        fixpipe_nz2nd_flag = self._output_nz2nd.flag or \
-            (self._fixpipe_fusion.nz2nd_flag and not self._eltwise_ub_fusion.flag)
-        fixpipe_channelsplit_flag = res.dtype == "float32" and not self._eltwise_ub_fusion.flag
-        fixpipe_channelmerge_flag = res.dtype in ("int4", "int8") and not self._eltwise_ub_fusion.flag
-        fixpipe_antiquant_flag = anti_quant_spilt_flag(res)
-
-        if fixpipe_nz2nd_flag:
-            fixpipe_channelsplit_flag = False
-            fixpipe_channelmerge_flag = False
-
-        special_axis_dict = {}
-        dtype_coeff = {
-            "int4": 4,
-            "int8": 2,
-        }
-
-        def fetch_base_axis():
-            """
-            Fetch axes of the res tensor.
-            """
-            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-                res_n_axis, res_hw_axis, res_c_axis = res.op.axis # [n, howo, co]
-                # split c axis into c1 and c0 to avoid nonlinear ir
-                res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16) # [n, howo, co1, co0]
-            else:
-                res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = res.op.axis # [n, co1, howo, co0]
-
-            return res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis
-
-        def cal_co1_opt_factor():
-            """
-            Calculate the co1_opt factor to split out group axis.
-            """
-            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-                co1_opt_factor = co1_opt
-            elif res.dtype in ("int4", "int8"):
-                if multi_cl0_group: # group_cl0 is even while co1_opt is odd.
-                    co1_opt_factor = ceil_div(co1_opt * multi_cl0_group, dtype_coeff[res.dtype])
-                else:
-                    co1_opt_factor = ceil_div(co1_opt, dtype_coeff[res.dtype])
-            elif res.dtype == "float32":
-                co1_opt_factor = co1_opt * 2
-            elif res.dtype in ("float16", "bfloat16", "int32"):
-                co1_opt_factor = co1_opt
-            else:
-                err_man.raise_err_specific("conv2d", "res dtype is not supported!")
-
-            return co1_opt_factor
-
-        def cal_nc_cl0_factor():
-            """
-            Fetch nc_cl0 for various tiling situation.
-            """
-            nc_cl0_factor = nc_cl0
-            if res.dtype in ("int4", "int8") and not (self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag):
-                if multi_cl0_group:
-                    nc_cl0_factor = co1_opt * group_cl0 // dtype_coeff[res.dtype]
-                else:
-                    nc_cl0_factor = nc_cl0 // dtype_coeff[res.dtype]
-            return nc_cl0_factor
-
-        def split_group_opt_axis(co1_opt_factor):
-            """
-            Split out group_opt axis and co1_opt axis.
-            """
-            res_group_opt_axis, res_co1_opt_axis = sch[res].split(res_c1_axis, factor=co1_opt_factor)
-
-            if fixpipe_channelsplit_flag:
-                res_co1_opt_axis_ori = res_co1_opt_axis
-                res_co1_opt_axis, res_c0_npart_axis = sch[res].split(res_co1_opt_axis_ori, 2)
-                special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"] = res_c0_npart_axis
-
-            return res_group_opt_axis, res_co1_opt_axis
-
-        def split_nc_cl0_axis(nc_cl0_factor):
-            """
-            Split out nc_cl0_axis.
-            """
-            out2cl0_loopn_axis, res_nc_cl0_axis = sch[res].split(res_co1_opt_axis, factor=nc_cl0_factor)
-
-            if fixpipe_antiquant_flag:
-                # fp16 and not nd2nz and anti_quant, split 2 for pass claculate c0 stride
-                res_nc_cl0_axis_ori = res_nc_cl0_axis
-                res_nc_cl0_axis, res_c0_npart_axis = sch[res].split(res_nc_cl0_axis_ori, 2)
-                special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"] = res_c0_npart_axis
-
-            return out2cl0_loopn_axis, res_nc_cl0_axis
-
-        def special_axis_process(res_c0_axis):
-            """
-            Process special axes in fixpipe fusion situation.
-            """
-            if fixpipe_channelmerge_flag:
-                # split c0=16 in channel merging to avoid nonlinear ir
-                _, _ = sch[res].split(res_c0_axis, factor=16)
-
-
-        res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = fetch_base_axis()
-
-        co1_opt_factor = cal_co1_opt_factor()
-        res_group_opt_axis, res_co1_opt_axis = split_group_opt_axis(co1_opt_factor)
-
-        nc_cl0_factor = cal_nc_cl0_factor()
-        out2cl0_loopn_axis, res_nc_cl0_axis = split_nc_cl0_axis(nc_cl0_factor)
-
-        special_axis_process(res_c0_axis)
-
-        out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, mc_cl0 * m0_cl0)
-
-        # split cub tiling axis
-        cl02cub_loopn_axis, res_nc_factor_axis = sch[res].split(res_nc_cl0_axis,
-                                                                nparts=ceil_div(nc_cl0, nc_factor_cub))
-        cl02cub_loopm_axis, res_m_factor_axis = sch[res].split(res_m_cl0_axis, nparts=1)
-
-        if fixpipe_nz2nd_flag:
-            sch[res].reorder(res_group_opt_axis,
-                             out2cl0_loopn_axis,
-                             out2cl0_loopm_axis,
-                             #========cl0 tiling=================
-                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
-                             cl02cub_loopm_axis, # 1
-                             #========cub tiling=================
-                             res_m_factor_axis, # mc_factor_cub*m0_cl0
-                             res_nc_factor_axis) # nc_factor_cub
-            # [n, group_opt, co1_opt // nc, howo // (mc*m0),
-            # ||| nc // nc_factor, 1,
-            # ||| mc_factor*m0, nc_factor, co0]
-        elif fixpipe_channelsplit_flag:
-            sch[res].reorder(res_group_opt_axis,
-                             out2cl0_loopn_axis,
-                             out2cl0_loopm_axis,
-                             #========cl0 tiling=================
-                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
-                             cl02cub_loopm_axis, # 1
-                             #========cub tiling=================
-                             res_nc_factor_axis, # nc_factor_cub
-                             special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
-                             res_m_factor_axis) # mc_factor_cub*m0_cl0
-            # [n, group_opt, co1_opt // 2*nc, howo // (mc*m0),
-            # ||| nc // nc_factor, 1,
-            # ||| nc_factor, 2, mc_factor*m0, co0]
-        elif fixpipe_antiquant_flag:
-            sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
-                             out2cl0_loopm_axis, # howo // (mc*m0)
-                             #========cl0 tiling=================
-                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
-                             cl02cub_loopm_axis, # 1
-                             #========cub tiling=================
-                             res_nc_factor_axis, # nc_factor_cub // 2
-                             special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
-                             res_m_factor_axis) # mc_factor_cub*m0_cl0
-        else:
-            sch[res].reorder(out2cl0_loopn_axis, # co1_opt // nc
-                             out2cl0_loopm_axis, # howo // (mc*m0)
-                             #========cl0 tiling=================
-                             cl02cub_loopn_axis, # nc_cl0 // nc_factor_cub
-                             cl02cub_loopm_axis, # 1
-                             #========cub tiling=================
-                             res_nc_factor_axis, # nc_factor_cub
-                             res_m_factor_axis) # mc_factor_cub*m0_cl0
-            # [n, group_opt, co1_opt // nc, howo // (mc*m0),
-            # ||| nc // nc_factor, 1,
-            # ||| nc_factor, mc_factor*m0, co0]
-        out2al1_loopm_axis, al12al0_loopm_axis = sch[res].split(out2cl0_loopm_axis, nparts=al1_nparts[1])
-        # when multi_cl0_group, cl0_factor[0] is 1 and bl1_nparts[1] is 1
-        out2bl1_loopn_axis, bl12bl0_loopn_axis = sch[res].split(out2cl0_loopn_axis, nparts=bl1_nparts[1])
-
-        # split batch of res
-        if self._dynamic_shape.n_dynamic:
-            batch_dim_factor = tvm.max(1, ceil_div(batch, batch_dim))
-            res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, batch_dim_factor)
-        else:
-            res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, nparts=batch_dim)
-
-        res_group_dim_axis, res_singlecore_group_opt_axis = sch[res].split(res_group_opt_axis, nparts=group_dim)
-
-        batch_factor = self._inner_batch.config_innerbatch_axis(batch_al1, batch_cl0)
-        out2al1_loopbatch_axis, res_al1_batch_axis = sch[res].split(res_singlecore_batch_axis, batch_factor)
-
-        if group_cl0 == 1 and multi_bl0_group:
-            singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis,
-                                                                                   factor=group_bl0)
-        else:
-            singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res].split(res_singlecore_group_opt_axis, 1)
-
-        # split cout of res
-        res_n_dim_axis, singlecore_out2bl1_loopn_axis = sch[res].split(out2bl1_loopn_axis, nparts=n_dim)
-        res_m_dim_axis, singlecore_out2al1_loopm_axis = sch[res].split(out2al1_loopm_axis, nparts=m_dim)
-
-        bl1_at_res_axis = singlecore_out2bl1_loopn_axis
-        al1_at_res_axis = singlecore_out2al1_loopm_axis
-
-        if self._inner_batch.flag:
-            if fixpipe_nz2nd_flag:
-                pass
-            elif fixpipe_channelsplit_flag:
-                sch[res].reorder(res_batch_dim_axis,
-                                 res_group_dim_axis,
-                                 res_n_dim_axis,
-                                 res_m_dim_axis,
-                                 singlecore_out2bl0_loopg_axis,
-                                 res_bl0_group_opt_axis,
-                                 out2al1_loopbatch_axis,
-                                 singlecore_out2bl1_loopn_axis,
-                                 singlecore_out2al1_loopm_axis,
-                                 bl12bl0_loopn_axis,
-                                 al12al0_loopm_axis,
-                                 #===============cl0 tiling========================
-                                 cl02cub_loopn_axis,
-                                 cl02cub_loopm_axis,
-                                 #===============cub tiling========================
-                                 res_nc_factor_axis,
-                                 res_al1_batch_axis,
-                                 # third axis from bottom must be 2 for fp32
-                                 special_axis_dict["fixpipe_channelsplit_res_c0_npart_axis"],
-                                 res_m_factor_axis)
-            else:
-                if fixpipe_antiquant_flag:
-                    sch[res].reorder(res_batch_dim_axis,
-                                     res_group_dim_axis,
-                                     res_n_dim_axis,
-                                     res_m_dim_axis,
-                                     singlecore_out2bl0_loopg_axis,
-                                     res_bl0_group_opt_axis,
-                                     out2al1_loopbatch_axis,
-                                     singlecore_out2bl1_loopn_axis,
-                                     singlecore_out2al1_loopm_axis,
-                                     bl12bl0_loopn_axis,
-                                     al12al0_loopm_axis,
-                                     #===============cl0 tiling========================
-                                     cl02cub_loopn_axis,
-                                     cl02cub_loopm_axis,
-                                     #===============cub tiling========================
-                                     res_nc_factor_axis,
-                                     special_axis_dict["fixpipe_antiquant_res_c0_npart_axis"],
-                                     res_al1_batch_axis,
-                                     res_m_factor_axis)
-                else:
-                    sch[res].reorder(res_batch_dim_axis,
-                                     res_group_dim_axis,
-                                     res_n_dim_axis,
-                                     res_m_dim_axis,
-                                     singlecore_out2bl0_loopg_axis,
-                                     res_bl0_group_opt_axis,
-                                     out2al1_loopbatch_axis,
-                                     singlecore_out2bl1_loopn_axis,
-                                     singlecore_out2al1_loopm_axis,
-                                     bl12bl0_loopn_axis,
-                                     al12al0_loopm_axis,
-                                     #===============cl0 tiling========================
-                                     cl02cub_loopn_axis,
-                                     cl02cub_loopm_axis,
-                                     #===============cub tiling========================
-                                     res_nc_factor_axis,
-                                     res_al1_batch_axis,
-                                     res_m_factor_axis)
-        else:
-            sch[res].reorder(res_batch_dim_axis,
-                             res_group_dim_axis,
-                             res_n_dim_axis,
-                             res_m_dim_axis,
-                             singlecore_out2bl0_loopg_axis,
-                             res_bl0_group_opt_axis,
-                             out2al1_loopbatch_axis,
-                             singlecore_out2bl1_loopn_axis,
-                             singlecore_out2al1_loopm_axis,
-                             res_al1_batch_axis,
-                             bl12bl0_loopn_axis)
-
-        cl0_at_res_axis = al12al0_loopm_axis # cl0_slice_axis
-
-        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
-            res_pragma_axis = res_m_factor_axis
-        else:
-            res_pragma_axis = res_nc_factor_axis
-
-        # cub_slice_axis
-        cub_slice_axis = cl02cub_loopm_axis
-
-        blocks = batch_dim*n_dim*m_dim*group_dim
-
-        if blocks != 1:
-            multicore_axis = sch[res].fuse(
-                res_batch_dim_axis,
-                res_group_dim_axis,
-                res_n_dim_axis,
-                res_m_dim_axis)
-            if self._dynamic_shape.flag:
-                multicore_axis_o, _ = sch[res].split(multicore_axis, factor=1)
-            else:
-                multicore_axis_o, _ = sch[res].split(multicore_axis, nparts=blocks)
-
-            bindcore_axis, batchbindonly_pragma_axis = sch[res].split(multicore_axis_o, 1)
-            sch[res].bind(bindcore_axis, tvm.thread_axis("blockIdx.x"))
-
-            if blocks == batch_dim:
-                sch[res].pragma(batchbindonly_pragma_axis, 'json_info_batchBindOnly', 1)
-        else:
-            bindcore_axis = res_batch_dim_axis
-
-        out2al1_loopbatch_axis_ori = out2al1_loopbatch_axis
-        out2al1_loopbatch_axis, res_batch_1_axis = sch[res].split(out2al1_loopbatch_axis_ori, factor=1)
-
-        reorder_mn_flag = set_reorder_mn_flag()
-
-        if self._tiling["n_bef_batch_flag"] and not reorder_mn_flag and not self._inner_batch.flag:
-            sch[res].reorder(singlecore_out2bl1_loopn_axis, out2al1_loopbatch_axis)
+        res_axis_list, bindcore_axis, res_pragma_axis = tile_tensor_res()
+        cub_at_res_axis, cl0_at_res_axis, bl0_at_res_axis, al1_at_res_axis, bl1_at_res_axis = res_axis_list
 
         #=====================================tile cl0==============================================
-        cl0_k1, cl0_k0 = cl0.op.reduce_axis
-
-        cl0_mo, cl0_mi = sch[cl0].split(sch[cl0].op.axis[3], ma_al0*self._block_m0)
-
-        al0_at_cl0_axis = cl0_mo
-
-        if bl0_tiling == []:
-            cl0_co, cl0_ci = sch[cl0].split(sch[cl0].op.axis[2], nparts=1)
-        else:
-            cl0_co, cl0_ci = sch[cl0].split(sch[cl0].op.axis[2], nb_bl0)
-
-        if multi_cl0_group and multi_bl0_group:
-            cl0_go, cl0_gi = sch[cl0].split(cl0.op.axis[0], factor=group_bl0)
-
-        # for reduce axis, al0 and bl0 should be the same
-        cl0_ko, cl0_ki = sch[cl0].split(cl0_k1, ka_al0)
-        cl0_no, cl0_ni = sch[cl0].split(cl0.op.axis[1], 1)
-        cl0_co0 = cl0.op.axis[4]
-
-        if self._inner_batch.flag:
-            sch[cl0].reorder(cl0_ko,
-                             cl0_co,
-                             cl0_no,
-                             cl0_mo,
-                             cl0_ni,
-                             cl0_ci,
-                             cl0_mi,
-                             cl0_co0,
-                             cl0_ki,
-                             cl0_k0)
-        else:
-            sch[cl0].reorder(cl0_ko,
-                             cl0_co,
-                             cl0_mo,
-                             #=======L0C tiling=========
-                             cl0_ni, # 1
-                             cl0_ci, # nb
-                             cl0_mi, # ma*m0
-                             cl0_co0, # co0
-                             cl0_ki, # ka = kb
-                             cl0_k0) # k0
-
-        if multi_cl0_group and multi_bl0_group:
-            if self._inner_batch.flag:
-                sch[cl0].reorder(cl0_go,
-                                 cl0_co,
-                                 cl0_gi,
-                                 cl0_ko,
-                                 cl0_no,
-                                 cl0_mo)
-            else:
-                sch[cl0].reorder(cl0_go,
-                                 cl0_no,
-                                 cl0_co,
-                                 cl0_gi,
-                                 cl0_ko,
-                                 cl0_mo)
-
-        outer_factor = max(al1_nparts[0], bl1_nparts[0])
-        inner_factor = min(al1_nparts[0], bl1_nparts[0])
-
-        if outer_factor % inner_factor != 0:
-            err_man.raise_err_specific("conv2d", "illegal value of AL1_shape & BL1_shape")
-
-        if al1_nparts[0] > bl1_nparts[0]:
-            cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=al1_nparts[0])
-            cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=bl1_nparts[0])
-            al1_at_cl0_axis = cl0_kooi
-            bl1_at_cl0_axis = cl0_kooo
-        else:
-            cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=bl1_nparts[0])
-            cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=al1_nparts[0])
-            al1_at_cl0_axis = cl0_kooo
-            bl1_at_cl0_axis = cl0_kooi
+        k_outer_list, cl0_axis_list, cl0_pragma_axis = tile_tensor_cl0()
+        al0_at_cl0_axis, bl0_at_cl0_axis, al1_at_cl0_axis, bl1_at_cl0_axis = cl0_axis_list
 
         #=======================tile fixpipe_res==============================
-        cub_pragma_axis = None
-
-        if self._eltwise_ub_fusion.flag:
-            cub = self._fixpipe_res
-            if self._fixpipe_fusion.nz2nd_flag:
-                cub_n1_axis, cub_n0_axis = sch[cub].split(cub.op.axis[2], self._block_n0)
-                cub_m_axis = cub.op.axis[1]
-            else:
-                cub_n1_axis = cub.op.axis[1]
-                cub_m_axis = cub.op.axis[2]
-
-            cub_out2ub_loopn_axis, cub_nc_factor_axis = sch[cub].split(cub_n1_axis, nc_factor_cub)
-            cub_out2ub_loopm_axis, cub_m_factor_axis = sch[cub].split(cub_m_axis, nparts=1)
-
-            if self._fixpipe_fusion.nz2nd_flag:
-                sch[cub].reorder(
-                    cub_out2ub_loopn_axis,
-                    cub_out2ub_loopm_axis,
-                    cub_m_factor_axis,
-                    cub_nc_factor_axis,
-                    cub_n0_axis
-                    )
-                cub_pragma_axis = cub_m_factor_axis
-            else:
-                sch[cub].reorder(
-                    cub_out2ub_loopn_axis,
-                    cub_out2ub_loopm_axis,
-                    cub_nc_factor_axis,
-                    cub_m_factor_axis
-                    )
-                cub_pragma_axis = cub_nc_factor_axis
+        cub_pragma_axis = tile_tensor_fixpipe_res()
 
         #=================tile reform_by_vmuls/reform_by_vadds in quant op==================
 
@@ -1822,14 +1900,14 @@ class Conv2dSchedule:
 
         #===============================attach=======================================
         # fixpipe
-        fixpipe_slice_axis = cub_slice_axis if self._group_opt*self._co1_opt > 16 else bindcore_axis
-        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_slice_axis)
+        fixpipe_slice_axis = cub_at_res_axis if group_opt*co1_opt > 16 else bindcore_axis
+        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_at_res_axis)
 
         # ub fusion
-        self._eltwise_ub_fusion.ub_tensors_attach(sch, res, cub_slice_axis)
+        self._eltwise_ub_fusion.ub_tensors_attach(sch, res, cub_at_res_axis)
 
         # quant fusion
-        self._quant_fusion.quant_tensors_attach(sch, res, cub_slice_axis)
+        self._quant_fusion.quant_tensors_attach(sch, res, cub_at_res_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
@@ -1855,12 +1933,12 @@ class Conv2dSchedule:
 
         emit_insn_dict = {"al0_axis_list": al0_axis_list,
                           "bindcore_axis": bindcore_axis,
-                          "k_outer": [cl0_kooo, cl0_kooi, cl0_koi],
-                          "cl0_pragma_axis": cl0_ni,
+                          "k_outer": k_outer_list,
+                          "cl0_pragma_axis": cl0_pragma_axis,
                           "res_pragma_axis": res_pragma_axis,
                           "cub_pragma_axis": cub_pragma_axis,
                           #================dynamic shape======================
-                          "dynamic_al0_pragma_axis": al0_ni,
+                          "dynamic_al0_pragma_axis": dynamic_al0_pragma_axis,
                          }
 
         return tiling_param, emit_insn_dict
@@ -2117,9 +2195,9 @@ class Conv2dSchedule:
 
         def res_emit_insn():
             """
-            Emit insn for res tensor. 
+            Emit insn for res tensor.
             """
-            if is_support_fixpipe_op() and not self._res.op.tag == "fixpipe_reform":
+            if self._eltwise_ub_fusion.flag:
                 sch[res].emit_insn(res_pragma_axis, "dma_copy")
 
         def bias_emit_insn():

@@ -86,7 +86,10 @@ CONV2D_COMPUTE = {
     "conv_vector_remove_pad",
     "convolution_C",
     "convolution_C_UB",
-    "convolution_c_col"
+    "convolution_c_col",
+    "convolution_c_col_bias",
+    "convolution_res_conv2d",
+    "convolution_res_fp32_conv2d"
 }
 
 CONV2D_BP_INPUT_COMPUTE = {

@@ -31,6 +31,7 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
+
 DYNAMIC_VALUE = -1
 
 

@@ -11,21 +11,6 @@ from unittest.mock import patch
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
 def test_static_v220_conv2d_bias(test_arg):
-    vals = {("SOC_VERSION", ): "Ascend920",
-            ("CORE_NUM", ): 1,
-            ("AICORE_TYPE", ): "AiCore",
-            ("CUBE_VECTOR_SPLIT", ): True,
-            ("UB_SIZE", ): 196608,
-            ("L0A_SIZE", ): 65536,
-            ("L0B_SIZE", ): 65536,
-            ("L1_SIZE", ): 524288,
-            ("L0C_SIZE", ): 131072,
-            ("Intrinsic_fix_pipe_unit_list",): True,
-            ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): False,
-            ("Intrinsic_mmad", "h322f32"): True,}
-
-    def side_effects(*args):
-        return vals[args]
 
     # case name: ((fm_shape), (weight_shape), (paddings), (strides), (dilations), group, bias_flag, dtype)
     testcase = {
@@ -74,15 +59,9 @@ def test_static_v220_conv2d_bias(test_arg):
 
     for key, value in testcase.items():
         print("test begin compile_static_v220_conv2d_bias case:", key)
-        with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-            with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-                compile_static_v220_conv2d_bias(*value, key)
+        compile_static_v220_conv2d_bias(*value, key)
         print("test end compile_static_v220_conv2d_bias case:", key)
 
 
 print("test_Conv2D_static_v220_bias_impl running")
-ut_case.add_cust_test_func(test_func=test_static_v220_conv2d_bias)
-
-if __name__ == '__main__':
-    ut_case.run("Ascend920A")
-    exit(0)
+ut_case.add_cust_test_func("Ascend920A", test_func=test_static_v220_conv2d_bias)

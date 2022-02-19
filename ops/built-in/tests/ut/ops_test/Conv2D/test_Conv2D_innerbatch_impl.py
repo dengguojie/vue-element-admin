@@ -13,18 +13,11 @@ def test_conv2d_innerbatch(test_arg):
     from tbe.dsl import auto_schedule
     from te import tvm
 
-    vals = {("Intrinsic_fix_pipe_unit_list",): True,
-            ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): False,
-            ("Intrinsic_mmad", "h322f32"): True,}
-
-    def mock_platform(*args):
-        return vals[args]
-
     def tiling_mock_fp16(*args):
         tiling = {'AL0_matrix': [4, 16, 16, 16, 1, 1], 'AL1_shape': [], 'AUB_channel_wise_flag': None, 'AUB_shape': None,
                   'A_overhead_opt_flag': 0, 'BL0_matrix': [16, 1, 16, 16, 1, 1], 'BL1_shape': None, 'BUB_channel_wise_flag': None,
                   'BUB_shape': None, 'B_overhead_opt_flag': 0, 'CL0_matrix': [1, 4, 16, 16, 4, 1], 'CUB_channel_wise_flag': False,
-                  'CUB_matrix': [128, 4, 16, 16, 1, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1],
+                  'CUB_matrix': [1, 4, 16, 16, 4, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1],
                   'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2, 'BL1_pbuffer': 2,
                                              'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
                   'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}
@@ -34,7 +27,7 @@ def test_conv2d_innerbatch(test_arg):
         tiling = {'AL0_matrix': [4, 16, 16, 8, 1, 1], 'AL1_shape': [], 'AUB_channel_wise_flag': None, 'AUB_shape': None,
                   'A_overhead_opt_flag': 0, 'BL0_matrix': [16, 1, 16, 8, 1, 1], 'BL1_shape': None, 'BUB_channel_wise_flag': None,
                   'BUB_shape': None, 'B_overhead_opt_flag': 0, 'CL0_matrix': [1, 4, 16, 16, 4, 1], 'CUB_channel_wise_flag': False,
-                  'CUB_matrix': [128, 4, 16, 16, 1, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1],
+                  'CUB_matrix': [1, 4, 16, 16, 4, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1],
                   'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2, 'BL1_pbuffer': 2,
                                              'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
                   'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}
@@ -71,8 +64,8 @@ def test_conv2d_innerbatch(test_arg):
 
     for key, value in testcase.items():
         print("test conv2d innerbatch case:", key)
-        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=mock_platform)):
-            compile_conv2d_innerbatch(*value, key)
+        compile_conv2d_innerbatch(*value, key)
 
 print("test Conv2D innerbatch mode running")
-ut_case.add_cust_test_func(test_func=test_conv2d_innerbatch)
+ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_innerbatch)
+ut_case.run(['Ascend920A'])
