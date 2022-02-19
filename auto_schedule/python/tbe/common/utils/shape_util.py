@@ -325,6 +325,45 @@ def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
             err_man.raise_err_specific_user(op_type, "each dim of range must be tuple or list.")
     return [tuple(r) if r else r for r in in_range]
 
+def _produce_convout_shape(inputs: list):
+    """
+    produce another input shape for conv + add fusion
+    """
+    shape_out = []
+    n_dim = 0
+    h_dim = 2
+    w_dim = 3
+    hw_dim = 2
+    dynamic_flag = -1
+    for input_x in inputs:
+        in_shape = input_x.get("shape")
+        ori_shape = list(input_x.get("ori_shape"))
+        ori_format = input_x.get("ori_format")
+        ori_range = input_x.get("ori_range")
+        in_range_nchw = _get_input_range_nchw("conv2d", ori_shape, ori_format, ori_range)
+
+        if input_x.get("format") != "NC1HWC0":
+            return []
+        if in_shape[n_dim] == dynamic_flag:
+            if operation.get_te_var("batch_n"):
+                in_shape[n_dim] = operation.get_te_var("batch_n").get_tvm_var()
+            else:
+                in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
+                operation.add_exclude_bound_var(in_shape[n_dim])
+        if in_shape[hw_dim] == dynamic_flag:
+            if operation.get_te_var("ho"):
+                ho_var = operation.get_te_var("ho").get_tvm_var()
+            else:
+                ho_var = operation.var("ho", in_range_nchw[h_dim])
+                operation.add_exclude_bound_var(ho_var)
+            if operation.get_te_var("wo"):
+                wo_var = operation.get_te_var("wo").get_tvm_var()
+            else:
+                wo_var = operation.var("wo", in_range_nchw[w_dim])
+                operation.add_exclude_bound_var(wo_var)
+            in_shape[hw_dim] = ho_var*wo_var
+        shape_out.append(in_shape)
+    return shape_out
 
 def _cube_variable_shape(inputs: list):
     shape_out = []
@@ -343,70 +382,43 @@ def _cube_variable_shape(inputs: list):
 
     if inputs and inputs[0].get("input_pattern") != "cube":
         # vector inputs process for conv + eltwise（double input）fusion
-        for input_x in inputs:
-            in_shape = input_x.get("shape")
-            ori_shape = list(input_x.get("ori_shape"))
-            ori_format = input_x.get("ori_format")
-            ori_range = input_x.get("ori_range")
-            in_range_nchw = _get_input_range_nchw("conv2d", ori_shape, ori_format, ori_range)
+        return _produce_convout_shape(inputs)
 
-            if input_x.get("format") != "NC1HWC0":
-                return []
-            if in_shape[n_dim] == dynamic_flag:
-                if operation.get_te_var("batch_n"):
-                    in_shape[n_dim] = operation.get_te_var("batch_n").get_tvm_var()
-                else:
-                    in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
-                    operation.add_exclude_bound_var(in_shape[n_dim])
-            if in_shape[hw_dim] == dynamic_flag:
-                if operation.get_te_var("ho"):
-                    ho_var = operation.get_te_var("ho").get_tvm_var()
-                else:
-                    ho_var = operation.var("ho", in_range_nchw[h_dim])
-                    operation.add_exclude_bound_var(ho_var)
-                if operation.get_te_var("wo"):
-                    wo_var = operation.get_te_var("wo").get_tvm_var()
-                else:
-                    wo_var = operation.var("wo", in_range_nchw[w_dim])
-                    operation.add_exclude_bound_var(wo_var)
-                in_shape[hw_dim] = ho_var*wo_var
-            shape_out.append(in_shape)
-    else:
-        weight_ori_format = inputs[1].get("ori_format")
-        c_index = weight_ori_format.index("C")
-        weight_cin = inputs[1].get("ori_shape")[c_index]
+    weight_ori_format = inputs[1].get("ori_format")
+    c_index = weight_ori_format.index("C")
+    weight_cin = inputs[1].get("ori_shape")[c_index]
 
-        fmap_cin = weight_cin * groups
+    fmap_cin = weight_cin * groups
 
-        for i, input in enumerate(inputs):
-            if i == 0:
-                ori_shape = list(input.get("ori_shape"))
-                ori_format = input.get("ori_format")
-                in_range = input.get("range")
-                if ori_shape == [unknown_flag]:
-                    in_range_nchw = [(1, None), (1, 1), (1, None), (1, None)]
-                else:
-                    in_range_nchw = _get_input_range_nchw("cube", ori_shape, ori_format, in_range)
-
-                in_shape = input.get("shape")
-                if input.get("format") != "NC1HWC0":
-                    return []
-                if in_shape[1] == -1:
-                    fmap_ci0 = in_shape[-1]
-                    in_shape[1] = (fmap_cin + fmap_ci0 - 1) // fmap_ci0
-                if in_shape[n_dim] == dynamic_flag:
-                    in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
-                    operation.add_exclude_bound_var(in_shape[n_dim])
-                if in_shape[h_dim] == dynamic_flag:
-                    in_shape[h_dim] = operation.var("fmap_h", in_range_nchw[h_dim])
-                    operation.add_exclude_bound_var(in_shape[h_dim])
-                if in_shape[w_dim] == dynamic_flag:
-                    in_shape[w_dim] = operation.var("fmap_w", in_range_nchw[w_dim])
-                    operation.add_exclude_bound_var(in_shape[w_dim])
-
-                shape_out.append(in_shape[:])
+    for i, input in enumerate(inputs):
+        if i == 0:
+            ori_shape = list(input.get("ori_shape"))
+            ori_format = input.get("ori_format")
+            in_range = input.get("range")
+            if ori_shape == [unknown_flag]:
+                in_range_nchw = [(1, None), (1, 1), (1, None), (1, None)]
             else:
-                shape_out.append(input.get("shape")[:])
+                in_range_nchw = _get_input_range_nchw("cube", ori_shape, ori_format, in_range)
+
+            in_shape = input.get("shape")
+            if input.get("format") != "NC1HWC0":
+                return []
+            if in_shape[1] == -1:
+                fmap_ci0 = in_shape[-1]
+                in_shape[1] = (fmap_cin + fmap_ci0 - 1) // fmap_ci0
+            if in_shape[n_dim] == dynamic_flag:
+                in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
+                operation.add_exclude_bound_var(in_shape[n_dim])
+            if in_shape[h_dim] == dynamic_flag:
+                in_shape[h_dim] = operation.var("fmap_h", in_range_nchw[h_dim])
+                operation.add_exclude_bound_var(in_shape[h_dim])
+            if in_shape[w_dim] == dynamic_flag:
+                in_shape[w_dim] = operation.var("fmap_w", in_range_nchw[w_dim])
+                operation.add_exclude_bound_var(in_shape[w_dim])
+
+            shape_out.append(in_shape[:])
+        else:
+            shape_out.append(input.get("shape")[:])
 
     return shape_out
 

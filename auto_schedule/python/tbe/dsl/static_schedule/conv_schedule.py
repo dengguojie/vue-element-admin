@@ -4668,7 +4668,7 @@ class CceConvOp:
                 sch.set_var_range(self._dyn_var_map['batch_n'], batch_range[0],
                                   batch_range[1])
 
-        def _handle_men_process():
+        def _handle_memory_process():
             """
             handle dynamic scope and strorage bound
             """
@@ -6091,7 +6091,7 @@ class CceConvOp:
         _remove_padded_column()
         _handle_transdata_ubfusion()
         if self._dynamic_flag:
-            _handle_men_process()
+            _handle_memory_process()
             return True
 
         tensor_map.clear()

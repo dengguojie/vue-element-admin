@@ -46,7 +46,6 @@ from impl.util.util_conv2d_dynamic import check_graph_mode
 from impl.util.util_conv2d_dynamic import check_conv2d_range
 from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import operation
 
 NONETYPE = type(None)
 H_DIM = 2

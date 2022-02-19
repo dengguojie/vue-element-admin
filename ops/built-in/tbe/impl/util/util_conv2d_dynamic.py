@@ -575,24 +575,24 @@ class Conv2dParaProcess(CubeParaProcess):
                 "new_in_range": new_in_range_nchw}
 
     def define_tiling_var(self):
-        batch_single_core_var = operation.var("batch_single_core")
-        n_single_core_var = operation.var("n_single_core")
+        operation.var("batch_single_core")
+        operation.var("n_single_core")
 
-        batch_dim_var = operation.var("batch_dim")
-        n_dim_var = operation.var("n_dim")
-        m_dim_var = operation.var("m_dim")
+        operation.var("batch_dim")
+        operation.var("n_dim")
+        operation.var("m_dim")
 
-        cub_n1_var = operation.var("cub_n1")
-        n_ub_l0c_factor_var = operation.var("n_ub_l0c_factor")
-        m_l0_var = operation.var("m_l0")
-        k_l0_var = operation.var("k_l0")
-        m_al1_factor_var = operation.var("m_al1_factor")
-        n_al1_factor_var = operation.var("n_bl1_factor")
+        operation.var("cub_n1")
+        operation.var("n_ub_l0c_factor")
+        operation.var("m_l0")
+        operation.var("k_l0")
+        operation.var("m_al1_factor")
+        operation.var("n_bl1_factor")
 
-        kal1_16_var = operation.var("kal1_16")
-        kbl1_16_var = operation.var("kbl1_16")
-        kal1_factor_var = operation.var("kal1_factor")
-        kbl1_factor_var = operation.var("kbl1_factor")
+        operation.var("kal1_16")
+        operation.var("kbl1_16")
+        operation.var("kal1_factor")
+        operation.var("kbl1_factor")
 
     def cache_tiling_paras_process(self):
         """
