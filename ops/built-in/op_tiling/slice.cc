@@ -75,10 +75,6 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const s
   if (slice_params_output.begin_list.size() != slice_params_output.end_list.size() ||
       slice_params_output.begin_list.size() != slice_params_output.input.size()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "length of input_shape, offsets and size must be equal.");
-    ge::OpsInputShapeErrReport(
-        opType, "length of x's shape, offsets and size must be equal.", "[x][offsets][size]",
-        ConcatString("[", slice_params_output.input.size(), "]", "[", slice_params_output.begin_list.size(), "]", "[",
-                     slice_params_output.end_list.size(), "]"));
     return false;
   }
 
@@ -111,10 +107,6 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const s
           "Requirements: 0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i], offsets:%s, size:%s, input_shape:%s",
           DebugString(slice_params_output.begin_list).c_str(), DebugString(slice_params_output.end_list).c_str(),
           DebugString(slice_params_output.input).c_str());
-      ge::OpsAttrValueErrReport(opType, "offsets", "[0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i]]",
-                                ConcatString(DebugString(slice_params_output.begin_list).c_str(),
-                                             DebugString(slice_params_output.end_list).c_str(),
-                                             DebugString(slice_params_output.input).c_str()));
       return false;
     }
   }

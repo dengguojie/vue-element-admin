@@ -37,7 +37,6 @@ IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
   if (op.GetAttr("mode", mode) == GRAPH_SUCCESS) {
     if (mode != "MIN_COMBINED" && mode != "MIN_FIRST" && mode != "SCALED") {
       string excepted_value = ConcatString("MIN_COMBINED,MIN_FIRST,SCALED");
-      OpsAttrValueErrReport(op.GetName(), "mode", excepted_value, mode);
       OP_LOGE(op.GetName().c_str(), "Attr mode(%s) can only support MIN_COMBINED or MIN_FIRST or SCALED.",
               mode.c_str());
       return GRAPH_FAILED;

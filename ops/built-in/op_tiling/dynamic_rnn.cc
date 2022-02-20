@@ -78,7 +78,7 @@ int32_t GetLibItem(const std::string& opType, const nlohmann::json& opCompileInf
       allVars.at("tune_shape_list").get<std::vector<std::vector<int64_t>>>();
   for (uint64_t i = 0; i < tune_shape_list.size(); i++) {
     if (tune_shape_list[i].size() != DEFAULT_SHAPE_LIST_SIZE) {
-      OP_LOGE(opType.c_str(), "tune_shape_list's size is illegal. it's = %lld", tune_shape_list[i].size());
+      OP_LOGE(opType.c_str(), "tune_shape_list's size is illegal. it's = %ld", tune_shape_list[i].size());
       return DEFAULT_RETURN;
     }
     if ((tune_shape_list[i][0] == -1) && (tune_shape_list[i][1] == -1)) {

@@ -52,7 +52,8 @@ Status ParseFloatValueFromConstNms(const vector<const NodeDef*>& inputConstNodes
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", name.c_str());
+        OP_LOGE("BatchMultiClassNonMaxSuppression", "ParseParamFromConst data from const NodeDef %s failed",
+                name.c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;
@@ -66,7 +67,8 @@ Status ParseIntValueFromConstNms(const vector<const NodeDef*>& inputConstNodes, 
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", name.c_str());
+        OP_LOGE("BatchMultiClassNonMaxSuppression", "ParseParamFromConst data from const NodeDef %s failed",
+                name.c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;

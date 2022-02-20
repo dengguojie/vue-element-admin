@@ -909,7 +909,7 @@ IMPLEMT_COMMON_INFERFUNC(PdistInferShape) {
     Format predict_format = op.GetInputDesc("x").GetFormat();
     ge::Shape inputshape = op.GetInputDesc("x").GetShape();
     if (inputshape.GetDims().size() != 2) {
-        OP_LOGE("The shape of input must be 2.");
+        OP_LOGE(op.GetName().c_str(), "The shape of input must be 2.");
         return GRAPH_FAILED;
     }
     int64_t dim_shape = inputshape.GetDim(0);
@@ -1351,7 +1351,7 @@ bool InferShapeAndTypeCross(Operator& op, const string& input_name1,
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
-        OP_LOGE("Operators need to be broadcast");
+        OP_LOGE(op.GetName().c_str(), "Operators need to be broadcast");
         return false;
       }
 

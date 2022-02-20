@@ -60,7 +60,7 @@ Status Conv2DGroupFusionPass::SwapNumChn(OpDescPtr opDesc, bool bInput, uint32_t
   }
   FUSION_PASS_CHECK(
           tensorDesc.GetShape().GetDimNum() != MAX_DIM_NUM,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "dim count not illegal, need:4 real:%d", tensorDesc.GetShape().GetDimNum()),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "dim count not illegal, need:4 real:%lu", tensorDesc.GetShape().GetDimNum()),
   return PARAM_INVALID);
   // Refresh the variable format and shape
   int64_t n = tensorDesc.GetShape().GetDim(DIM_C);
@@ -198,7 +198,7 @@ bool Conv2DGroupFusionPass::GenerateNewConvNodes(ge::ComputeGraph &graph, ge::Op
       newConvDesc->UpdateInputDesc(j, inDesc);
     }
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != newConvDesc->UpdateOutputDesc(0, newConvOutDesc),
-                      OP_LOGE("Update node:%s's 1st outputfailed.", convDesc->GetName().c_str()),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Update node:%s's 1st outputfailed.", convDesc->GetName().c_str()),
     return false);
     AttrUtils::SetInt(newConvDesc, "groups", 1);
     NodePtr newConvNode = graph.AddNode(newConvDesc);
@@ -238,7 +238,7 @@ bool Conv2DGroupFusionPass::Relink(ge::NodePtr &convNode, ge::NodePtr &splitNode
 
   Node::Vistor<NodePtr> inNodes = convNode->GetInAllNodes();
   FUSION_PASS_CHECK(inNodes.size() < 2,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv input nodes num(%d) < 2", inNodes.size()), return false);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv input nodes num(%lu) < 2", inNodes.size()), return false);
 
   Node::Vistor<NodePtr> outNodes = convNode->GetOutAllNodes();
 

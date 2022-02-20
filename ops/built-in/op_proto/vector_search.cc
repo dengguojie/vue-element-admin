@@ -272,7 +272,7 @@ IMPLEMT_VERIFIER(ScanPQCodes, ScanPQCodesVerify) {
   int64_t dimLast = ivfShape[ivfShape.size() - 1];
   std::vector<int64_t> ivfLastDims {IVF_LAST_DIM_1, IVF_LAST_DIM_2, IVF_LAST_DIM_3};
   CHECK((find(ivfLastDims.begin(), ivfLastDims.end(), dimLast) == ivfLastDims.end()),
-        OP_LOGE(op.GetName().c_str(), "Last dimesion %d of ivf should be equl to 16, 32, 64.", dimLast),
+        OP_LOGE(op.GetName().c_str(), "Last dimesion %ld of ivf should be equl to 16, 32, 64.", dimLast),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketListDesc = opDesc->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();

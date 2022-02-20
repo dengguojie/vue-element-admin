@@ -163,12 +163,12 @@ Status Resnet50DbnDwFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping,
   // delete dbn_node and dw_node
   FUSION_PASS_CHECK(
     graph.RemoveNode(dbn_node) == GRAPH_FAILED,
-    OP_LOGE("Removing Dbn Node is failed."),
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Removing Dbn Node is failed."),
     return FAILED);
 
   FUSION_PASS_CHECK(
     graph.RemoveNode(dw_node) == GRAPH_FAILED,
-    OP_LOGE("Removing Dw Node is failed."),
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Removing Dw Node is failed."),
     return FAILED);
 
   return SUCCESS;

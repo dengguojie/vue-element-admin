@@ -114,7 +114,7 @@ IMPLEMT_VERIFIER(HcomReduce, HcomReduceVerify) {
   int64_t fusionAttr;
   if (op.GetAttr("fusion", fusionAttr) == GRAPH_SUCCESS) {
     if ((fusionAttr != fusionAttrNoFuse) && (fusionAttr != fusionAttrFuseById)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion [%lld] is not supported. expecttd: [%lld or %lld]", fusionAttr,
+      OP_LOGE(op.GetName().c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld or %ld]", fusionAttr,
               fusionAttrNoFuse, fusionAttrFuseById);
       return GRAPH_FAILED;
     }
@@ -122,7 +122,7 @@ IMPLEMT_VERIFIER(HcomReduce, HcomReduceVerify) {
   int64_t fusionIdAttr;
   if (op.GetAttr("fusion_id", fusionIdAttr) == GRAPH_SUCCESS) {
     if ((fusionIdAttr < fusionIdMinVal) || (fusionIdAttr > fusionIdMaxVal)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%lld] is not supported. expecttd: [%lld ~ %lld]", fusionIdAttr,
+      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
               fusionIdMinVal, fusionIdMaxVal);
       return GRAPH_FAILED;
     }
@@ -154,7 +154,7 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
         string fusionValue = std::to_string(fusionAttr);
         REPORT_INPUT_ERROR("EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\
 	        std::vector<std::string>({"HcomAllReduce", "fusion", fusionValue, "please check fusion setting"}));
-      OP_LOGE(op.GetName().c_str(), "Attr fusion [%lld] is not supported. expecttd: [%lld ~ %lld]", fusionAttr,
+      OP_LOGE(op.GetName().c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionAttr,
               fusionAttrMinVal, fusionAttrMaxVal);
       return GRAPH_FAILED;
     }
@@ -162,7 +162,7 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
   int64_t fusionIdAttr;
   if (op.GetAttr("fusion_id", fusionIdAttr) == GRAPH_SUCCESS) {
     if ((fusionIdAttr < fusionIdMinVal) || (fusionIdAttr > fusionIdMaxVal)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%lld] is not supported. expecttd: [%lld ~ %lld]", fusionIdAttr,
+      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
               fusionIdMinVal, fusionIdMaxVal);
       return GRAPH_FAILED;
     }
@@ -538,7 +538,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
         const int32_t dataLenPerAddrinfo = 2;
 
         if (addrLenAttr < attrAddrLengthMin) {
-            OP_LOGE(op.GetName().c_str(), "Attr attr_length [%lld] is not supported. expecttd: [%lld ~ ]",
+            OP_LOGE(op.GetName().c_str(), "Attr attr_length [%ld] is not supported. expecttd: [%ld ~ ]",
                 addrLenAttr, attrAddrLengthMin);
             return GRAPH_FAILED;
         } else if (addrLenAttr < 0) {
@@ -566,7 +566,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
                 return GRAPH_FAILED;
             }
             if (inDims[0] <= 0) {
-                OP_LOGE(op.GetName().c_str(), "Input addrinfo tensor's dim[0] is invalid, expected: >0, actual:%u.",
+                OP_LOGE(op.GetName().c_str(), "Input addrinfo tensor's dim[0] is invalid, expected: >0, actual:%ld.",
                     inDims[0]);
                 return GRAPH_FAILED;
             }

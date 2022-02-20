@@ -44,7 +44,8 @@ static const int NUM_15 = 15;
 // --------------------------TabulateFusion Begin-----------------
 IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusion"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusion"),
+        return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
 
@@ -142,7 +143,8 @@ VERIFY_FUNC_REG(TabulateFusion, TabulateFusionVerify);
 // --------------------------ProdForceSeA Begin---------------------
 IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdForceSeA"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdForceSeA"),
+        return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
 
@@ -213,7 +215,7 @@ IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
     };
     int64_t nall = constVec[1];
     CHECK(nall > MAX_NALL,
-          OP_LOGE(opName.GetString(), "nall value %d is more than 30000.", nall), return GRAPH_FAILED);
+          OP_LOGE(opName.GetString(), "nall value %ld is more than 30000.", nall), return GRAPH_FAILED);
     bool secondInfer = false;
     op.GetAttr("second_infer", secondInfer);
     if (secondInfer) {
@@ -250,7 +252,8 @@ VERIFY_FUNC_REG(ProdForceSeA, ProdForceSeAVerify);
 // --------------------------ProdVirialSeA Begin---------------------
 IMPLEMT_VERIFIER(ProdVirialSeA, ProdVirialSeAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdVirialSeA"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+        return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
 
@@ -293,7 +296,8 @@ IMPLEMT_VERIFIER(ProdVirialSeA, ProdVirialSeAVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProdVirialSeAInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdVirialSeA"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+        return GRAPH_FAILED);
 
   const vector<string> depend_names = {"natoms"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
@@ -348,7 +352,8 @@ VERIFY_FUNC_REG(ProdVirialSeA, ProdVirialSeAVerify);
 // --------------------------ProdEnvMatA Begin---------------------
 IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdVirialSeA"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+        return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
 
@@ -387,7 +392,8 @@ IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of ProdEnvMatA"), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdEnvMatA"),
+        return GRAPH_FAILED);
 
   const vector<string> depend_names = {"natoms"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
@@ -500,8 +506,8 @@ VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------TabulateFusionGrad Begin---------------------
 IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusionGrad"),
-        return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(opDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get op desc"), return GRAPH_FAILED);
@@ -542,8 +548,8 @@ IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(TabulateFusionGradInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("Failed to get op name of TabulateFusionGrad"),
-        return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr emXDesc = opDesc->MutableInputDesc("em_x");

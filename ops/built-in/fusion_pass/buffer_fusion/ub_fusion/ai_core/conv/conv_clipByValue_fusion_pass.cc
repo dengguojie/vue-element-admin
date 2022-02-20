@@ -53,7 +53,7 @@ static const string PATTERN_OTHER_INPUT2 = "otherInput2";
 
    string passName = "ConvClipByValueFusionPass";
    BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName);
-   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE("new an object failed."), return patterns);
+   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(passName.c_str(), "new an object failed."), return patterns);
    OP_LOGD("Start to define %s pass pattern.", passName.c_str());
    /* define pattern        Convolution  -->  Elemwise
     *                                        /      |
@@ -75,7 +75,7 @@ static const string PATTERN_OTHER_INPUT2 = "otherInput2";
 
    string passName1 = "ClipByValueConvFusionPass";
    BufferFusionPattern *pattern1 = new (std::nothrow) BufferFusionPattern(passName1);
-   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE("new an object failed."), return patterns);
+   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(passName1.c_str(), "new an object failed."), return patterns);
    OP_LOGD("Start to define %s pass pattern.", passName1.c_str());
    /* defube oatterb        Elemwise  -->  Convolution
     *                                       /      |

@@ -64,7 +64,6 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
     OP_LOGE(TbeGetName(op), "get attr num_split failed");
-    OpsGetAttrErrReport(op.GetName(), "num_split");
     return GRAPH_FAILED;
   }
 
@@ -117,8 +116,6 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     split_dim = split_dim_vec[0];
   } else {
     OP_LOGE(TbeGetName(op), "size of split_dim_vec must be larger than 0");
-    OpsInputShapeErrReport(op.GetName(), "size of split_dim_vec must be larger than 0",
-                          "size of split_dim_vec", ConcatString(split_dim_vec.size()));
     return GRAPH_FAILED;
   }
   if (split_dim < 0) {
@@ -299,12 +296,10 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
-    OpsGetAttrErrReport(op.GetName(), "num_split");
     return GRAPH_FAILED;
   }
   if (num_split <= 0) {
     OP_LOGE(op.GetName().c_str(), "num_split must be greater than 0");
-    OpsAttrValueErrReport(op.GetName(), "num_split", "greater than 0", ConcatString(num_split));
     return GRAPH_FAILED;
   }
 
@@ -321,8 +316,6 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   int64_t xDimNum = x_shape.GetDimNum();
   if (xDimNum <= 0) {
     OP_LOGE(op.GetName().c_str(), "size of split_vec must be larger than 0");
-    OpsInputShapeErrReport(op.GetName(), "x dim num must be larger than 0",
-                           "dim num of x shape", ConcatString(xDimNum));
     return GRAPH_FAILED;
   }
 
@@ -362,18 +355,12 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
 
   if (split_dim_vec.size() == 0) {
     OP_LOGE(op.GetName().c_str(), "size of split_dim must be larger than 0");
-    OpsInputShapeErrReport(op.GetName(), "size of split_dim must be larger than 0",
-                           "size of split_dim", ConcatString(split_dim_vec.size()));
     return GRAPH_FAILED;
   }
   int64_t split_dim = split_dim_vec[0];
 
   if (split_dim < -xDimNum || split_dim >= xDimNum) {
     OP_LOGE(op.GetName().c_str(), "split_dim is invalid");
-    string minValue = ConcatString(-xDimNum);
-    string maxValue = ConcatString(xDimNum - 1);
-    string excepted_value = ConcatString("in the range of[", minValue, ",", maxValue, "]");
-    OpsInputShapeErrReport(op.GetName(), "split_dim", excepted_value, ConcatString(split_dim));
     return GRAPH_FAILED;
   }
   if (split_dim < 0) {
@@ -911,8 +898,7 @@ VERIFY_FUNC_REG(ConcatV2D, ConcatV2DVerify);
 
 static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, int64_t axis) {
   if (num_concat <= 0) {
-    OP_LOGE(op.GetName().c_str(), "Check N > 0 failed, N is %lld.", num_concat);
-    OpsAttrValueErrReport(op.GetName(), "N", ">0", std::to_string(num_concat));
+    OP_LOGE(op.GetName().c_str(), "Check N > 0 failed, N is %ld.", num_concat);
     return GRAPH_FAILED;
   }
 
@@ -925,7 +911,6 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
     input_name_i = input_name + std::to_string(input_idx);
     auto input_desc = op_info->MutableInputDesc(input_name_i);
     if (!input_desc) {
-      OpsMissInputErrReport(op.GetName(), input_name_i);
       OP_LOGE(op.GetName().c_str(), "Get input desc %s failed.", input_name_i.c_str());
       return GRAPH_FAILED;
     }
@@ -941,8 +926,7 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
   size_t dim_num = output_desc->GetOriginShape().GetDimNum();
 
   if ((axis < -static_cast<int64_t>(dim_num)) || (axis >= static_cast<int64_t>(dim_num))) {
-    OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dim_num), ConcatString(-dim_num), ConcatString(axis));
-    OP_LOGE(op.GetName().c_str(), "Axis[%lld] value out of range[%lld, %lld).", axis, -dim_num, dim_num);
+    OP_LOGE(op.GetName().c_str(), "Axis[%ld] value out of range[%ld, %ld).", axis, -dim_num, dim_num);
     return GRAPH_FAILED;
   }
 
@@ -958,7 +942,7 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
     auto new_non_negative_axis = GetNewAxis4NewFormat(output_desc->GetOriginShape().GetDimNum(), non_negative_axis,
                                                       origin_format, new_format, false);
     OP_LOGE_IF(new_non_negative_axis.empty(), GRAPH_FAILED, op.GetName(),
-               "Get new axis from %s to %s failed, origin_shape len is %llu.",
+               "Get new axis from %s to %s failed, origin_shape len is %lu.",
                origin_format.c_str(), new_format.c_str(), output_desc->GetOriginShape().GetDimNum());
     non_negative_axis = new_non_negative_axis[0];
     vector<vector<int64_t>> input_data_slice = output_data_slice;
@@ -979,14 +963,12 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
 IMPLEMT_INFER_DATA_SLICE(ConcatV2D, ConcatV2DInferDataSlice) {
   int64_t num_concat;
   if (op.GetAttr("N", num_concat) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "N");
     OP_LOGE(op.GetName().c_str(), "get attr N failed");
     return GRAPH_FAILED;
   }
 
   int64_t axis;
   if (op.GetAttr("concat_dim", axis) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
     OP_LOGE(op.GetName().c_str(), "get attr axis failed");
     return GRAPH_FAILED;
   }
@@ -1185,7 +1167,6 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2InferShape) {
   int64_t N;
   if (op.GetAttr("N", N) == GRAPH_FAILED) {
     OP_LOGE(TbeGetName(op), "get attr N failed");
-    OpsGetAttrErrReport(op.GetName(), "N");
     return GRAPH_FAILED;
   }
 

@@ -52,32 +52,26 @@ bool CheckGenADCParams(const std::string& opType, const TeOpParas& opParas, cons
     return false;
   }
   if (opParas.inputs.size() < INPUT_LENGTH) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "inputs", "The length of inputs is less than 4");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] The length of inputs is less than 4.");
     return false;
   }
   if (opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty() ||
       opParas.inputs[3].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "inputs", "Some of inputs is empty");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] Some of inputs is empty.");
     return false;
   }
   if (opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "adc_tables",
-                                   "The length of outputs is less than 1 or the outputs is empty");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] The length of outputs is less than 1 or the outputs is empty.");
     return false;
   }
 
   std::vector<int64_t> bucketListShape = opParas.inputs[3].tensor[0].shape;
   if (bucketListShape.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "bucket list", "The shape of bucket list is empty");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] The shape of bucket list is empty.");
     return false;
   }
   if (bucketListShape[0] < 1) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "bucket list", "The shape[0] of bucket list is less than 1");
-    OP_LOGE(opType.c_str(), "op[GenADCTiling] The shape[0] (%d) of bucket list is less than 1.", bucketListShape[0]);
+    OP_LOGE(opType.c_str(), "op[GenADCTiling] The shape[0] (%ld) of bucket list is less than 1.", bucketListShape[0]);
     return false;
   }
 
@@ -90,7 +84,6 @@ bool GetGenADCCompileParams(const std::string& opType, const nlohmann::json& opC
 
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] Failed to get core_num.");
     return false;
   }
@@ -178,7 +171,7 @@ bool GenADCTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   int64_t dataEachBlock = BLOCK_SIZE / eleSize;
   if (dataEachBlock < 1) {
-    OP_LOGE(opType.c_str(), "op[GenADCTiling] Size of the data type (%s) is larger than block size (%d).",
+    OP_LOGE(opType.c_str(), "op[GenADCTiling] Size of the data type (%s) is larger than block size (%ld).",
             bucketListDtype.c_str(), BLOCK_SIZE);
     return false;
   }

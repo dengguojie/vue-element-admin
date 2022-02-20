@@ -147,28 +147,28 @@ static bool GetSquareSumAllCompileParams(const std::string& op_type, const nlohm
   auto all_vars = op_info["vars"];
 
   if (all_vars.count("ub_size") == 0) {
-    OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get ub_size error");
+    OP_LOGE("SquareSumAll", "GetSquareSumAllCompileParams, get ub_size error");
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::int64_t>();
   OP_TILING_CHECK(ub_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size == 0"), return false);
 
   if (all_vars.count("core_num") == 0) {
-    OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get core_num error");
+    OP_LOGE("SquareSumAll", "GetSquareSumAllCompileParams, get core_num error");
     return false;
   }
   core_num = all_vars["core_num"].get<std::int64_t>();
   OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num == 0"), return false);
 
   if (all_vars.count("data_each_block") == 0) {
-    OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get data_each_block error");
+    OP_LOGE("SquareSumAll", "GetSquareSumAllCompileParams, get data_each_block error");
     return false;
   }
   data_each_block = all_vars["data_each_block"].get<std::int64_t>();
   OP_TILING_CHECK(data_each_block == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "data_each_block == 0"), return false);
 
   if (all_vars.count("dtype_bytes_size") == 0) {
-    OP_LOGE("op [SquareSumAll]: GetSquareSumAllCompileParams, get dtype_bytes_size error");
+    OP_LOGE("SquareSumAll", "GetSquareSumAllCompileParams, get dtype_bytes_size error");
     return false;
   }
   dtype_bytes_size = all_vars["dtype_bytes_size"].get<std::int64_t>();

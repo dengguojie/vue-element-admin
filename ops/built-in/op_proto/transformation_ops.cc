@@ -270,7 +270,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
     if (block_shape.size() < 0 || paddings.size() < 0 || paddings.size() != 2 * block_shape.size()) {
       OP_LOGE(op.GetName().c_str(),
               "block_shape and paddings size must be greater than 0 and paddings size must be twice as "
-              "block_shape size, but got bloack_shape size [%d] and paddings size [%d]",
+              "block_shape size, but got bloack_shape size [%lu] and paddings size [%lu]",
               block_shape.size(), paddings.size());
       return GRAPH_FAILED;
     }
@@ -278,7 +278,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
       OP_LOGE(
           op.GetName().c_str(),
           "input_shape size must be greater than block_shape size, "
-          "but got input_shape size [%d], block_shape size [%d]",
+          "but got input_shape size [%lu], block_shape size [%lu]",
           input_dims.size(), block_shape.size());
       return GRAPH_FAILED;
     }
@@ -540,7 +540,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
     if (block_shape.size() < 0 || crops.size() < 0 || crops.size() != 2 * block_shape.size()) {
       OP_LOGE(op.GetName().c_str(),
               "block_shape and crops size must be greater than 0 and crops size must be twice as "
-              "block_shape size, but got bloack_shape size [%d] and crops size [%d]",
+              "block_shape size, but got bloack_shape size [%lu] and crops size [%lu]",
               block_shape.size(), crops.size());
       return GRAPH_FAILED;
     }
@@ -548,7 +548,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
       OP_LOGE(
           op.GetName().c_str(),
           "input_shape size must be greater than block_shape size, "
-          "but got input_shape size [%d], block_shape size [%d]",
+          "but got input_shape size [%lu], block_shape size [%lu]",
           input_dims.size(), block_shape.size());
       return GRAPH_FAILED;
     }
@@ -844,7 +844,7 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
     OP_LOGI(op.GetName().c_str(), "attr of axis is null. Default axis is 1");
   }
   if (axis < -x_dim || axis > x_dim) {
-    OP_LOGE(op.GetName().c_str(), "axis %d is out of range[-%d, %d]. Please check.", axis, x_dim, x_dim);
+    OP_LOGE(op.GetName().c_str(), "axis %ld is out of range[-%d, %d]. Please check.", axis, x_dim, x_dim);
     return GRAPH_FAILED;
   }
   axis = (axis >= 0) ? axis : (x_dim + axis);
@@ -1322,7 +1322,6 @@ IMPLEMT_COMMON_INFERFUNC(PermuteInferShape) {
   std::vector<int64_t> perm_list;
   if (ge::GRAPH_SUCCESS != op.GetAttr("order", perm_list)) {
     OP_LOGE(op.GetName().c_str(), "The Permute op GetOpAttr ConstValue failed!");
-    OpsGetAttrErrReport(op.GetName(), "order");
     return GRAPH_FAILED;
   }
   for (size_t i = 0; i < input_shape_dims.size(); ++i) {
@@ -2052,21 +2051,17 @@ IMPLEMT_VERIFIER(BatchToSpace, BatchToSpaceVerify) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
-    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
-                          ConcatString(input_dims.size()));
-    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
+    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %ld.", input_dims.size());
     return GRAPH_FAILED;
   }
   // check block size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
     return GRAPH_FAILED;
   }
   if (block_size < 2) {
-    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
-    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %ld.", block_size);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2275,7 +2270,7 @@ static std::vector<int64_t> GetAttrValue(const Operator& op, const std::string& 
 static bool CheckListEmptyAndValue(const std::string& op_name, const std::vector<int64_t>& list,
                                    const std::string& attr_name) {
   if (list.size() < 1) {
-    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%u)!", attr_name.c_str(), list.size());
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%lu)!", attr_name.c_str(), list.size());
     return false;
   }
   return true;
@@ -2492,7 +2487,7 @@ static std::vector<int64_t> GetAttrValueVolume(const Operator& op, const std::st
 static bool CheckListEmptyAndValueVolume(const std::string& op_name, const std::vector<int64_t>& list,
                                          const std::string& attr_name) {
   if (list.size() < 5) {
-    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%llu)!", attr_name.c_str(), list.size());
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%lu)!", attr_name.c_str(), list.size());
     return false;
   }
   if (list.at(0) != 1 || list.at(1) < 1 || list.at(2) < 1 || list.at(3) < 1 || list.at(4) != 1) {
@@ -2724,12 +2719,12 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeInferShape) {
   Shape shape = op.GetInputDesc("shape").GetShape();
   std::vector<int64_t> perm_list;
   if (GRAPH_SUCCESS != op.GetAttr("perm", perm_list)) {
-    OP_LOGE("GetOpAttr perm failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr perm failed!");
     return GRAPH_FAILED;
   }
   bool transpose_first;
   if (GRAPH_SUCCESS != op.GetAttr("transpose_first", transpose_first)) {
-    OP_LOGE("GetOpAttr transpose_first failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr transpose_first failed!");
     return GRAPH_FAILED;
   }
 
@@ -2828,7 +2823,7 @@ static void GetAndConvertAxis(const Operator &op, int64_t &axis, int64_t &end_ax
 IMPLEMT_VERIFIER(FlattenV2, FlattenV2Verify) {
   TensorDesc x_desc = op.GetInputDescByName("x");
   if (x_desc.GetShape().GetDims() == UNKNOWN_RANK) {
-    OP_LOGE("[ERROR] shape is unknown rank");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] shape is unknown rank");
     return GRAPH_FAILED;
   }
   int64_t axis = 0;
@@ -2836,15 +2831,15 @@ IMPLEMT_VERIFIER(FlattenV2, FlattenV2Verify) {
   GetAndConvertAxis(op, axis, end_axis);
   int64_t real_dim_cnt = x_desc.GetRealDimCnt();
   if (axis < 0 || axis >= real_dim_cnt) {
-    OP_LOGE("[ERROR] axis out of range!");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] axis out of range!");
     return GRAPH_FAILED;
   }
   if (end_axis < 0 || end_axis >= real_dim_cnt) {
-    OP_LOGE("[ERROR] end_axis out of range!");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] end_axis out of range!");
     return GRAPH_FAILED;
   }
   if (axis > end_axis) {
-    OP_LOGE("[ERROR] axis after end_axis!");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] axis after end_axis!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2854,12 +2849,12 @@ static graphStatus InferDynamicShapeFlattenV2(Operator &op, const TensorDesc &x_
                                               std::vector<int64_t> &y_shape_dim) {
   std::vector<std::pair<int64_t, int64_t>> x_shape_range;
   if (x_desc.GetShapeRange(x_shape_range) != GRAPH_SUCCESS) {
-    OP_LOGE("[ERROR] get input shape range failed");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] get input shape range failed");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> x_shape_dim = x_desc.GetShape().GetDims();
   if (x_shape_range.empty() && IsUnKnownShape(x_shape_dim)) {
-    OP_LOGE("[ERROR] shape range is empty with dynamic shape");
+    OP_LOGE(op.GetName().c_str(), "[ERROR] shape range is empty with dynamic shape");
     return GRAPH_FAILED;
   }
 
@@ -3080,7 +3075,7 @@ IMPLEMT_VERIFIER(Im2col, Im2colVerify) {
   std::vector<int64_t> ksize;
   ksize = GetAttrValue(op, "ksizes");
   if (ksize.size() < 2) {
-    OP_LOGE(op.GetName().c_str(), "The ksizes dose not have enough elements(%u)!", ksize.size());
+    OP_LOGE(op.GetName().c_str(), "The ksizes dose not have enough elements(%lu)!", ksize.size());
     return GRAPH_FAILED;
   }
 
@@ -3477,7 +3472,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   constexpr int ONEDIMS = 1;
   constexpr int TWODIMS = 2;
   if (input_shape.size() != ONEDIMS && input_shape.size() != TWODIMS) {
-    OP_LOGE(op_name, "input dims must be 1 or 2, but get %d.", input_shape.size());
+    OP_LOGE(op_name, "input dims must be 1 or 2, but get %ld.", input_shape.size());
     return GRAPH_FAILED;
   }
   // verify input dynamic shape
@@ -3575,7 +3570,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   } else {
     if (static_cast<int64_t>(weights.size()) != col_size) {
       OP_LOGE(op_name, 
-              "attr::weights size should be %lld,equal Max(ngram_indexes)+1,but get %d.", 
+              "attr::weights size should be %ld,equal Max(ngram_indexes)+1,but get %lu.", 
               col_size, weights.size());
       return GRAPH_FAILED;
     }

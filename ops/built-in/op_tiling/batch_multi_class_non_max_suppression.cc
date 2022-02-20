@@ -57,12 +57,12 @@ namespace optiling {
     using namespace nlohmann;
     auto all_vars = op_compile_info["vars"];
     if (all_vars.count("aicore_num") == 0) {
-      OP_LOGE("op [BatchMultiClassNonMaxSuppressionTiling] : GetCompileInfo, get total_core_num error");
+      OP_LOGE("BatchMultiClassNonMaxSuppressionTiling", "GetCompileInfo, get total_core_num error");
       return false;
     }
     aicore_num = all_vars["aicore_num"].get<std::int32_t>();
     if (all_vars.count("proposal_topk_k") == 0) {
-      OP_LOGE("op [BatchMultiClassNonMaxSuppressionTiling] : GetCompileInfo, get total_core_num error");
+      OP_LOGE("BatchMultiClassNonMaxSuppressionTiling", "GetCompileInfo, get total_core_num error");
       return false;
     }
     proposal_topk_k = all_vars["proposal_topk_k"].get<std::int32_t>();
@@ -151,7 +151,7 @@ namespace optiling {
     int32_t proposal_topk_k;
     bool get_compile_info = GetCompileInfo(op_type, op_compile_info, core_num, proposal_topk_k);
     if (!get_compile_info) {
-      OP_LOGE("op[%s] BatchMultiClassNonMaxSuppressionTiling: GetCompileInfo error.", op_type.c_str());
+      OP_LOGE("BatchMultiClassNonMaxSuppressionTiling", "GetCompileInfo error.");
       return false;
     }
 

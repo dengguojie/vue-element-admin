@@ -61,7 +61,7 @@ vector<BufferFusionPattern*> Conv2DDequantClipByValueFusionPass::DefinePatterns(
   vector<BufferFusionPattern*> patterns;
   string passname = "Conv2DDequantClipByValueQuantFusion";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passname);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE("new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(passname, "new an object failed."), return patterns);
   OP_LOGD("Start to define %s pass pattern.", passName.c_str());
 /* define pattern   conv2d  -->  dequant  -->  clipByValue --> quant
  *                    otherinput1--/   otherinput2--/

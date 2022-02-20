@@ -835,14 +835,14 @@ IMPLEMT_VERIFIER(DropoutV2, DropoutV2Verify)
     TensorDesc x_desc = op.GetInputDesc(0);
     DataType x_dtype = x_desc.GetDataType();
     if (x_dtype != DT_FLOAT16 && x_dtype != DT_FLOAT) {
-        OP_LOGE("DropoutV2 x input should be float16 or float32");
+        OP_LOGE(op.GetName().c_str(), "DropoutV2 x input should be float16 or float32");
         return GRAPH_FAILED;
     }
 
     TensorDesc seed_desc = op.GetInputDesc(1);
     DataType seed_dtype = seed_desc.GetDataType();
     if (seed_dtype != DT_FLOAT) {
-        OP_LOGE("DropoutV2 seed input should be float32");
+        OP_LOGE(op.GetName().c_str(), "DropoutV2 seed input should be float32");
         return GRAPH_FAILED;
     }
 

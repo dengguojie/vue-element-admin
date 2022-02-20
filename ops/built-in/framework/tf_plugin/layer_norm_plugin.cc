@@ -39,7 +39,7 @@ Status ParseValueFromConst(const vector<const NodeDef*>& v_input_const, const st
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
+        OP_LOGE("LayerNorm", "ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;
@@ -68,7 +68,7 @@ Status LayerNormParserParams(const std::vector<const google::protobuf::Message*>
 
     if (node_def->op() == "Mean") {
       if (node_def->input().size() < kMeanInputSize) {
-        OP_LOGE(op.GetName().c_str(), "Input size of node mean is invalid, which is %zu.", node_def->input().size());
+        OP_LOGE(op.GetName().c_str(), "Input size of node mean is invalid, which is %d.", node_def->input().size());
         return FAILED;
       }
       mean_const_input_node_name = node_def->input(1);

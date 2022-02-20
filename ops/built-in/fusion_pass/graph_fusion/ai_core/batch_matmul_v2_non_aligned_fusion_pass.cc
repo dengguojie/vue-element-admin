@@ -765,7 +765,7 @@ Status BatchMatMulNonAlignedFusionPass::CreatePadDNode(ge::ComputeGraph *graph, 
 
   std::string op_name(previous_node->GetName() + "/PadD");
   auto pad_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "PadD");
-  FUSION_PASS_CHECK(pad_op.IsEmpty(), OP_LOGE("Create PadD Op operator error"), return FAILED);
+  FUSION_PASS_CHECK(pad_op.IsEmpty(), OP_LOGE(op_name.c_str(), "Create PadD Op operator error"), return FAILED);
   auto pad_desc = ge::OpDescUtils::GetOpDescFromOperator(pad_op);
   pad_op.BreakConnect();
 
@@ -798,7 +798,7 @@ Status BatchMatMulNonAlignedFusionPass::CreateReshapeNode(ge::ComputeGraph *grap
 
   std::string op_name(previous_node->GetName() + "/Reshape");
   auto reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "Reshape");
-  FUSION_PASS_CHECK(reshape_op.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return FAILED);
+  FUSION_PASS_CHECK(reshape_op.IsEmpty(), OP_LOGE(op_name.c_str(), "Create Reshape Op operator error"), return FAILED);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshape_op);
   reshape_op.BreakConnect();
 
@@ -827,7 +827,7 @@ Status BatchMatMulNonAlignedFusionPass::CreateReshapeNode(ge::ComputeGraph *grap
   reshape_desc->SetOpInferDepends(dep_inputs);
 
   ge::OpDescPtr const_opdesc = CreateListConstDesc(previous_node->GetName() + "/Reshape_Const", shape);
-  FUSION_PASS_CHECK(const_opdesc == nullptr, OP_LOGE("Create Const Op operator error"), return FAILED);
+  FUSION_PASS_CHECK(const_opdesc == nullptr, OP_LOGE(kNameFusionPass, "Create Const Op operator error"), return FAILED);
   auto new_shape_node = graph->AddNode(reshape_desc);
   FUSION_PASS_CHECK(new_shape_node == nullptr, OP_LOGE(kNameFusionPass, "failed to add Reshape to graph."),
                     return FAILED);

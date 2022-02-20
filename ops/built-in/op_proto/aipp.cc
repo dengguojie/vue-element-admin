@@ -751,8 +751,6 @@ static graphStatus DynamicShapeInfershape(Operator& op, const Tensor& params_dat
   auto features_desc = op.GetOutputDesc("features");
   auto features_format = features_desc.GetFormat();
   if (features_format != FORMAT_NCHW && features_format != FORMAT_NHWC) {
-    OpsInputFormatErrReport(op.GetName(), "features", "NCHW, NHWC",
-                            ge::TypeUtils::FormatToSerialString(features_format));
     OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, input format only support NCHW, NHWC.");
     return GRAPH_FAILED;
   }
@@ -790,7 +788,6 @@ static graphStatus DynamicShapeInfershape(Operator& op, const Tensor& params_dat
   if ((n_start < 1 || (n_end != -1 && (batch < n_start || batch > n_end)))
       || (h_start < 1 || (h_end != -1 && (outputH < h_start || outputH > h_end)))
       || (w_start < 1 || (w_end != -1 && (outputW < w_start || outputW > w_end)))) {
-    OpsOneOutputShapeErrReport(op.GetName(), "output shape", "The output shape is invalid, out of range.");
     OP_LOGE(op.GetName().c_str(), "The output shape is invalid, out of range. batch is %ld, batch range is [%ld,%ld],"
             "height is %ld, height range is [%ld,%ld], width is %ld, width range is [%ld,%ld]",
             batch, n_start, n_end, outputH, h_start, h_end, outputW, w_start, w_end);
@@ -845,7 +842,6 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
   OP_LOGD(op.GetName().c_str(), "images_desc size is %u", images_desc.GetSize());
   auto images_shape = images_desc.GetShape().GetDims();
   if (IsUnknownRankShape(images_shape)) {
-    OpsOneInputShapeErrReport(op.GetName(), "images shape", "The shape is unknown rank, not support");
     OP_LOGE(op.GetName().c_str(), "The shape is unknown rank, not support!");
     return GRAPH_FAILED;
   }
@@ -895,7 +891,6 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
   auto imagesDimNum = images_desc.GetShape().GetDimNum();
   if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
       || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
-    OpsOneInputShapeErrReport(op.GetName(), "images shape dims", "The input shape of images is invalid");
     OP_LOGE(op.GetName().c_str(), "The input shape of images is invalid");
     return GRAPH_FAILED;
   }
@@ -914,8 +909,6 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
     width = images_shape[3];
     c0 = images_shape[4];
   } else {
-    OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04",
-                            ge::TypeUtils::FormatToSerialString(images_desc.GetFormat()));
     OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
     return GRAPH_FAILED;
   }
@@ -935,8 +928,6 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
           (int)output_height, (int)output_width, (int)height, (int)width);
 
   if (output_height != height || output_width != width) {
-    OpsAippErrReport(ConcatString(output_height), ConcatString(output_width), ConcatString(height),
-                     ConcatString(width));
     OP_LOGE(op.GetName().c_str(), "the data output H and W is not equal with aipp output H and W."
             "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
             (int)output_height, (int)output_width, (int)height, (int)width);
@@ -1048,8 +1039,7 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
   OP_LOGD(op.GetName().c_str(), "AippInfer, current_aipp_index is %ld", index);
 
   if (index >= insert_op_conf_->aipp_op_size()) {
-    OP_LOGE(op.GetName().c_str(), "current_aipp_index %d is invalid", index);
-    OpsGetAttrErrReport(op.GetName().c_str(), "current_aipp_index");
+    OP_LOGE(op.GetName().c_str(), "current_aipp_index %ld is invalid", index);
     return GRAPH_FAILED;
   }
   ::domi::AippOpParams* aipp_op_params = insert_op_conf_->mutable_aipp_op(index);
@@ -1131,7 +1121,6 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW && input_format != FORMAT_NC1HWC0_C04) {
     OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
-    OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04", ConcatString(input_format));
     return GRAPH_FAILED;
   }
 

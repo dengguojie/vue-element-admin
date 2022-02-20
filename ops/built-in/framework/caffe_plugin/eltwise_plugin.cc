@@ -61,7 +61,6 @@ Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
         op_dest.SetAttr("mode", static_cast<int64_t>(OPERATION_TWO));
         break;
       default:
-        ge::OpsAttrValueErrReport(op_dest.GetName(), "operation", "0 or 1 or 2", "unsupported");
         OP_LOGE("Eltwise",
                 "Eltwise parse params fail,"
                 "unsupported opration %d.",

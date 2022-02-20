@@ -43,20 +43,17 @@ IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
   int out_widht;
   if (GRAPH_SUCCESS != op.GetAttr("out_height", out_height)) {
     OP_LOGE(op.GetName().c_str(), "Get out_height failed!\n");
-    OpsGetAttrErrReport(op.GetName(), "out_height");
     return GRAPH_FAILED;
   }
 
   if (GRAPH_SUCCESS != op.GetAttr("out_width", out_widht)) {
     OP_LOGE(op.GetName().c_str(), "Get out_width failed!\n");
-    OpsGetAttrErrReport(op.GetName(), "out_width");
     return GRAPH_FAILED;
   }
 
   Shape input_shape = op.GetInputDesc("x").GetShape();
   if (input_shape.GetDimNum() != 4) {
     OP_LOGE(op.GetName().c_str(), "Input Shape dim is not 4!\n");
-    OpsOneInputShapeErrReport(op.GetName(), "input x", "the dimension of input_shape is not 4");
     return GRAPH_FAILED;
   }
 
@@ -66,7 +63,6 @@ IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
 
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "output desc update failed!\n");
-    OpsOPUpdateErrReport(op.GetName(), "y");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

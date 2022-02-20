@@ -176,7 +176,7 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(
 
   size_t rank_size = 1;
   if (!((dims.size() <= rank_size) || (dims == ge::UNKNOWN_SHAPE))) {
-    OP_LOGE(op_name, "Shape's rank must be at most [%zu], but it is [%u]",
+    OP_LOGE(op_name, "Shape's rank must be at most [%zu], but it is [%lu]",
             rank_size, dims.size());
     return GRAPH_FAILED;
   }
@@ -1222,7 +1222,7 @@ IMPLEMT_INFERFUNC(TensorListScatterIntoExistingList, TensorListScatterIntoExisti
   }
   auto handle_data = shapes_and_types[0];
   if ((!shapes_and_types.empty()) && (handle_data.size() != 1)) {
-    OP_LOGE(op_name, "Expected length of shape_and_types is 1, but got [%zu]."
+    OP_LOGE(op_name, "Expected length of shape_and_types is 1, but got [%zu].",
             handle_data.size());
     return GRAPH_FAILED;
   }

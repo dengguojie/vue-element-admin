@@ -103,7 +103,7 @@ bool ConstToAttrStridedSliceV2Pass::AutoRemoveInput(ge::ComputeGraph &graph,
   }
 
   if (!ge::OpDescUtils::ClearInputDesc(p_desc, index)) {
-    OP_LOGE(FUSEDNODE.c_str(), "Fail to clear input desc[%d]", index);
+    OP_LOGE(FUSEDNODE.c_str(), "Fail to clear input desc[%ld]", index);
   }
 
   return true;
@@ -114,7 +114,7 @@ vector<FusionPattern *> ConstToAttrStridedSliceV2Pass::DefinePatterns() {
 
   FusionPattern *pattern =
       new (std::nothrow) FusionPattern("ConstToAttrStridedSliceV2Fusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE("new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSEDNODE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSEDNODE})

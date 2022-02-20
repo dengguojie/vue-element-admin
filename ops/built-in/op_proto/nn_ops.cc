@@ -39,13 +39,13 @@ bool InTopKV2CheckInput(const Operator& op) {
   }
   size_t target_dim = shape_target.GetDimNum();
   if (target_dim != DIM_SIZE1) {
-    OP_LOGE(op.GetName().c_str(), "Targets must be 1-dimensional but get [%u]", target_dim);
+    OP_LOGE(op.GetName().c_str(), "Targets must be 1-dimensional but get [%lu]", target_dim);
     return false;
   }
   if (shape_prediction.GetDim(0) != shape_target.GetDim(0)) {
     OP_LOGE(op.GetName().c_str(),
-            "First dimension of predictions must match length of targets, but first dimension of predictions get [%d] "
-            "and targets get [%u]", shape_prediction.GetDim(0), shape_target.GetDim(0));
+            "First dimension of predictions must match length of targets, but first dimension of predictions get [%ld] "
+            "and targets get [%lu]", shape_prediction.GetDim(0), shape_target.GetDim(0));
     return false;
   }
   return true;
@@ -118,7 +118,8 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
     }
     int64_t dim0 = vec.GetDim(0);
     if (Merge(channel_dim, dim0, channel_dim) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Channel_dim [%lld] and input[%d]'s dim0 [%lld] should same length", channel_dim, i, dim0);
+      OP_LOGE(op.GetName().c_str(), "Channel_dim [%ld] and input[%d]'s dim0 [%ld] should same length", channel_dim, i,
+              dim0);
       return GRAPH_FAILED;
     }
   }

@@ -99,7 +99,7 @@ vector<FusionPattern *> ResizeFusionPass::DefinePatterns() {
 
   FusionPattern *pattern = new (std::nothrow)
       FusionPattern("ReszieToResizeNearestNeighborV2DFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE("new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE("Reszie", "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {fused_node_resize})

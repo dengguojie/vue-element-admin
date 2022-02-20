@@ -78,7 +78,6 @@ IMPLEMT_INFERFUNC(BatchNorm3D, BatchNorm3DInferShape) {
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NDHWC" && data_format != "NCDHW") {
       string expected_format_list = ConcatString("NDHWC, NCDHW");
-      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
       OP_LOGE(op.GetName().c_str(),
               "data_format only "
               "support 'NDHWC' and 'NCDHW'.");
@@ -325,7 +324,6 @@ IMPLEMT_INFERFUNC(BatchNorm3DGrad, BatchNorm3DGradInferShape) {
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NDHWC" && data_format != "NCDHW") {
       string expected_format_list = ConcatString("NDHWC, NCDHW");
-      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
       OP_LOGE(op.GetName().c_str(),
               "data_format only "
               "support 'NDHWC' and 'NCDHW'.");

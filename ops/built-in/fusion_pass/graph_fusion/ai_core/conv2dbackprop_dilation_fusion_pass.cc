@@ -490,19 +490,17 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   // get shape
   auto filter_ori_shape = filter_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(filter_ori_shape.size() != 4,
-                    OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of filter", "size of ori_shape of filter = 4",
-                                          std::to_string(filter_ori_shape.size())),
+                    OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of filter = 4, actually %ld", filter_ori_shape.size()),
                     return FAILED);
   auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(
       out_backprop_ori_shape.size() != 4,
-      OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of out_backprop", "size of ori_shape of out_backprop = 4",
-                            std::to_string(out_backprop_ori_shape.size())),
+      OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of out_backprop = 4, actually %ld",
+                            out_backprop_ori_shape.size()),
       return FAILED);
   auto y_shape = conv2dbp_input_y_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(y_shape.size() != 4,
-                    OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of y", "size of ori_shape of y = 4",
-                                          std::to_string(y_shape.size())),
+                    OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of y = 4, actually %ld", y_shape.size()),
                     return FAILED);
 
   vector<int64_t> dilation_hw;
@@ -510,7 +508,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string backprop_out_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_outbackprop_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByOutBackprop.begin(), kOriFormatSupportByOutBackprop.end(),
                          backprop_out_fmt_str) == kOriFormatSupportByOutBackprop.end(),
-                    OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", backprop_out_fmt_str),
+                    OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
+                            backprop_out_fmt_str.c_str()),
                     return FAILED);
   size_t pos_backprop_out_h = backprop_out_fmt_str.find('H');
   CHECK_POSITION(pos_backprop_out_h);
@@ -520,7 +519,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string y_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_y_desc.GetOriginFormat());
   FUSION_PASS_CHECK(
       find(kOriFormatSupportByY.begin(), kOriFormatSupportByY.end(), y_fmt_str) == kOriFormatSupportByY.end(),
-      OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", y_fmt_str), return FAILED);
+      OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(), y_fmt_str.c_str()), 
+      return FAILED);
   size_t pos_y_h = y_fmt_str.find('H');
   CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
@@ -531,7 +531,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string filter_fmt_str = TypeUtils::FormatToSerialString(filter_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByFilter.begin(), kOriFormatSupportByFilter.end(), filter_fmt_str) ==
                         kOriFormatSupportByFilter.end(),
-                    OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support HWCN, NHWC, NCHW", filter_fmt_str),
+                    OP_LOGE(FUSED_OP_TYPE, "%s only support HWCN, NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
+                            filter_fmt_str.c_str()),
                     return FAILED);
   size_t pos_filter_h = filter_fmt_str.find('H');
   CHECK_POSITION(pos_filter_h);

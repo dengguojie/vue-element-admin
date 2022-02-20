@@ -560,7 +560,8 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::BuildSubNode(ge::NodePtr dynamicGRUGrad
   ge::OpDescPtr subOneOpDesc = ge::OpDescUtils::CreateConstOp(subOneDescTensor);
 
   ge::NodePtr subOneNode = graph.AddNode(subOneOpDesc);
-  FUSION_PASS_CHECK(subOneNode == nullptr, OP_LOGE("Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(subOneNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return nullptr);
   ge::NodePtr subNode = graph.AddNode(subDesc);
   ge::GraphUtils::AddEdge(totalT->GetOutDataAnchor(0), subNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(subOneNode->GetOutDataAnchor(0), subNode->GetInDataAnchor(1));
@@ -605,7 +606,7 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::BuildSizeConcatNode(ge::NodePtr dynamic
   ge::OpDescPtr x2OpDesc = ge::OpDescUtils::CreateConstOp(x2DescTensor);
 
   ge::NodePtr x2Node = graph.AddNode(x2OpDesc);
-  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE("Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return nullptr);
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   ge::GraphUtils::AddEdge(subNode->GetOutDataAnchor(0), concatNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(x2Node->GetOutDataAnchor(0), concatNode->GetInDataAnchor(1));
@@ -1216,7 +1217,7 @@ ge::OpDescPtr DynamicGRUV2GradDFusionPass::CreateConstDesc(const std::string& na
                                                            const std::string& dtype) {
   OpDescPtr const_op_desc = std::make_shared<ge::OpDesc>(name, "Const");
   if (const_op_desc == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create const desc failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create const desc failed. const:%s", name.c_str());
     return nullptr;
   }
 
@@ -1229,17 +1230,17 @@ ge::OpDescPtr DynamicGRUV2GradDFusionPass::CreateConstDesc(const std::string& na
     const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t*>(&value), sizeof(int64_t));
   }
   if (const_value == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create tensor failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create tensor failed. const:%s", name.c_str());
     return nullptr;
   }
 
   if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:%s", name.c_str());
     return nullptr;
   }
 
   if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:%s", name.c_str());
     return nullptr;
   }
 
@@ -1249,7 +1250,7 @@ ge::OpDescPtr DynamicGRUV2GradDFusionPass::CreateConstDesc(const std::string& na
 ge::OpDescPtr DynamicGRUV2GradDFusionPass::CreateListConstDesc(const std::string& name, std::vector<int64_t> values) {
   OpDescPtr const_op_desc = std::make_shared<ge::OpDesc>(name, "Const");
   if (const_op_desc == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create const desc failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create const desc failed. const:%s", name.c_str());
     return nullptr;
   }
 
@@ -1257,17 +1258,17 @@ ge::OpDescPtr DynamicGRUV2GradDFusionPass::CreateListConstDesc(const std::string
   GeTensorPtr const_value = std::make_shared<ge::GeTensor>(data_desc, reinterpret_cast<uint8_t*>(values.data()),
                                                            sizeof(int64_t) * values.size());
   if (const_value == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create tensor failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create tensor failed. const:%s", name.c_str());
     return nullptr;
   }
 
   if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:%s", name.c_str());
     return nullptr;
   }
 
   if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:" + name.c_str());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ATTR_NAME_WEIGHTS failed. const:%s", name.c_str());
     return nullptr;
   }
 
@@ -1494,7 +1495,7 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddInputReshapeNode(ge::NodePtr dynamic
                                                              vector<ge::NodePtr>& newNodes) {
   std::string reshape_op_name = dynamicGRUGradNode->GetName() + "/" + reshapeName;
   auto reshapeOp = ge::OperatorFactory::CreateOperator(reshape_op_name.c_str(), "Unsqueeze");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"), return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
 

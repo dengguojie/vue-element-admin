@@ -54,7 +54,8 @@ Status DynamicRNNParserParams(const std::vector<const google::protobuf::Message*
     }
     if (node_def->name().find(kForgetBias) != string::npos) {
       if (ParseParamFromConst(node_def, forget_bias) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
+        OP_LOGE(op.GetName().c_str(), "ParseParamFromConst data from const NodeDef %s failed",
+                node_def->name().c_str());
         return PARAM_INVALID;
       }
     }

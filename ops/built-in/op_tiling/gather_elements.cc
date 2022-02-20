@@ -135,14 +135,12 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesSha
   int64_t outputDims = outputShape.size();
 
   if (yDims != outputDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : CheckTensorShape, y Shape is invalid.");
     return false;
   }
 
   for (int64_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
       OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : CheckTensorShape, y Shpae dim is invalid.");
       return false;
     }
@@ -156,32 +154,27 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
   using namespace nlohmann;
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get ub_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("params_dsize") == 0) {
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get params_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
     return false;
   }
   paramsDSize = allVars["params_dsize"].get<std::int64_t>();
   if (allVars.count("indices_dsize") == 0) {
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get indices_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
     return false;
   }
   indicesDSize = allVars["indices_dsize"].get<std::int64_t>();
   if (allVars.count("axis") == 0) {
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : GetCompileParams, get axis error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "axis");
     return false;
   }
   axis = allVars["axis"].get<std::int64_t>();
@@ -206,13 +199,10 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
-                                  "The length of inputs is less than 3 or the inputs is empty");
     OP_LOGE(opType.c_str(), "op GatherElementsTiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y", "The length of outputs is less than 1 or the outputs is empty");
     OP_LOGE(opType.c_str(), "op GatherElementsTiling: output shape error.");
     return false;
   }
@@ -226,8 +216,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   int64_t paramsDims = paramsShape.size();
   int64_t indicesDims = indicesShape.size();
   if (paramsDims <= 0 || indicesDims <= 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices", "the dim of x or indices is less than 1");
-    OP_LOGE("op[%s] GatherElementsTiling: paramsDims or indicesDims is 0.", opType.c_str());
+    OP_LOGE(opType.c_str(), "GatherElementsTiling: paramsDims or indicesDims is 0.");
     return false;
   }
 
@@ -241,13 +230,11 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, paramsDSize, indicesDSize, axis);
 
   if (!flag) {
-    OP_LOGE("op[%s] GatherElementsTiling: GetCompileParams error.", opType.c_str());
+    OP_LOGE(opType.c_str(), "GatherElementsTiling: GetCompileParams error.");
     return false;
   }
 
   if (axis < -paramsDims || axis >= paramsDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "axis",
-                                  "the dim of axis is less than negative x dim, or greater than x dim");
     OP_LOGE(opType.c_str(), "op GatherElementsTiling: axis is invalid.");
     return false;
   }

@@ -33,7 +33,6 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
     auto dims = op.GetInputDesc(name).GetShape().GetDims();
     if (dims.size() != 0) {
       string reason = "input " + name + " should be a scalar, actually rank=" + std::to_string(dims.size());
-      GeInfershapeErrReport(op.GetName(), op.GetOpType(), name + "dims", reason);
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
       GE_OP_LOGE(op.GetName().c_str(), "[Verify][Check] Check shape rank failed, as %s", reason.c_str());
       return GRAPH_FAILED;
@@ -41,7 +40,6 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
     DataType type = op.GetInputDesc(name).GetDataType();
     if (type != DT_INT32) {
       string reason = "input " + name + " should be DT_INT32, actually is " + DataTypeToStringDesc(type);
-      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
       GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
       return GRAPH_FAILED;
@@ -55,7 +53,6 @@ graphStatus WhileInferImpl(Operator &op) {
   GE_OP_LOGD(op.GetName().c_str(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
   if (in_num != out_num) {
     string reason = "input num not equal with out num.";
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
     REPORT_INNER_ERROR("E19999",
                        "[Node:%s] Check input num and output num failed, as %s",
                        op.GetName().c_str(),

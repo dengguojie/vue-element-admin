@@ -49,7 +49,7 @@ Status ParseValueFromConstFloat(const vector<const NodeDef*>& v_input_const, con
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
+        OP_LOGE("RpnProposals", "ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;
@@ -63,7 +63,7 @@ Status ParseValueFromConstInt(const vector<const NodeDef*>& v_input_const, const
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
+        OP_LOGE("RpnProposals", "ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;

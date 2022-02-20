@@ -179,7 +179,6 @@ IMPLEMT_VERIFIER(LSTM, LSTMInferShape) {
   bool expose_hidden = false;
 
   if (ge::GRAPH_SUCCESS != op.GetAttr("expose_hidden", expose_hidden)) {
-    OpsGetAttrErrReport(op_name.GetString(), "expose_hidden");
     OP_LOGE(op_name.GetString(), "GetOpAttr expose_hidden failed!");
   }
 
@@ -1313,7 +1312,7 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, std::str
     std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
     bool dx_sizes_invalid = dx_sizes.empty() || dx_sizes.size() != kConv2dDimSizeLimit;
     if (dx_sizes_invalid) {
-      OP_LOGE(op_name.GetString(), "dx_sizes list should be 4D. actual is: %u.", dx_sizes.size());
+      OP_LOGE(op_name.GetString(), "dx_sizes list should be 4D. actual is: %lu.", dx_sizes.size());
       map<string, string> err_map;
       err_map["param_name"] = "dx_sizes";
       err_map["op_name"] = op_name.GetString();
@@ -3005,7 +3004,7 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
 
   const GeShape &y_shape = y_desc->GetShape();
   if (y_shape.GetDimNum() != kConv2dDimSizeLimit) {
-    OP_LOGE(op_info.op_name.GetString(), "y_shape list should be 4D. actual is: %u.", y_shape.GetDimNum());
+    OP_LOGE(op_info.op_name.GetString(), "y_shape list should be 4D. actual is: %lu.", y_shape.GetDimNum());
     map<string, string> err_map;
     err_map["param_name"] = "y_shape";
     err_map["op_name"] = op_info.op_name.GetString();
@@ -4094,7 +4093,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   op.GetAttr("pads", pads_list);
   auto p_size = pads_list.size();
   if (pads_list.empty() || p_size != kConv2dPadSizeLimit) {
-    OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %u.", p_size);
+    OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %lu.", p_size);
     map<string, string> err_map;
     err_map["param_name"] = "pads";
     err_map["op_name"] = op_name.GetString();
@@ -4185,7 +4184,7 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
   if (stride_list.empty() || s_size != kConv2dStridesSizeLimit) {
-    OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %u.", s_size);
+    OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %lu.", s_size);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = op_name.GetString();
@@ -4199,7 +4198,7 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
   if (dilation_list.empty() || d_size != kConv2dDilationSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %u.", d_size);
+    OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %lu.", d_size);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = op_name.GetString();
@@ -4439,7 +4438,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   auto &w_shape = w_tensor->MutableShape();
   bool unknown_rank = x_shape.IsUnknownDimNum();
   if ((!unknown_rank && x_shape.GetDimNum() != 4) || w_shape.GetDimNum() != 4) {
-    OP_LOGE(op_name.GetString(), "x_shape dimnum is %d", x_shape.GetDimNum());
+    OP_LOGE(op_name.GetString(), "x_shape dimnum is %lu", x_shape.GetDimNum());
     return GRAPH_FAILED;
   }
   auto x_format = x_tensor->GetFormat();
@@ -4571,7 +4570,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     OP_LOGE(op_name.GetString(),
             "x channel should be equal to filter channel*groups. "
             "x format is: %s, filter format is: %s, "
-            "x shape is: [%d,%d,%d,%d], filter shape is: [%d,%d,%d,%d], "
+            "x shape is: [%ld,%ld,%ld,%ld], filter shape is: [%ld,%ld,%ld,%ld], "
             "groups is: %d.",
             TypeUtils::FormatToSerialString(x_format).c_str(), TypeUtils::FormatToSerialString(w_format).c_str(),
             x_shape.GetDim(0), x_shape.GetDim(1), x_shape.GetDim(2),
@@ -5286,7 +5285,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
   if (stride_list.empty() || s_size != kConv2dStridesSizeLimit) {
-    OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %u.", s_size);
+    OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %lu.", s_size);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = op_name.GetString();
@@ -5300,7 +5299,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
   if (dilation_list.empty() || d_size != kConv2dDilationSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %u.", d_size);
+    OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %lu.", d_size);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = op_name.GetString();
@@ -5383,7 +5382,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   op.GetAttr("pads", pads_list);
   auto p_size = pads_list.size();
   if (pads_list.empty() || p_size != kConv2dPadSizeLimit) {
-    OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %u.", p_size);
+    OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %lu.", p_size);
     map<string, string> err_map;
     err_map["param_name"] = "pads";
     err_map["op_name"] = op_name.GetString();
@@ -5831,7 +5830,7 @@ static bool GetAttrsDeconv(ge::Operator& op, Format refer, int32_t& strh,
   if (s_size != 2) {
     OP_LOGE(op_name.GetString(),
             "strides list should be 2d."
-            " actual is: %d.",
+            " actual is: %lu.",
             s_size);
     string sizealue = ConcatString(s_size);
     map<string, string> err_map;
@@ -5849,7 +5848,7 @@ static bool GetAttrsDeconv(ge::Operator& op, Format refer, int32_t& strh,
   if (d_size != kConv2dDimSizeLimit) {
     OP_LOGE(op_name.GetString(),
             "dilations list should be 4d."
-            " actual is: %d.",
+            " actual is: %lu.",
             d_size);
     string realvalue = ConcatString(d_size);
     map<string, string> err_map;
@@ -6051,8 +6050,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   }
 
   if (wFormat != FORMAT_NCHW) {
-    OP_LOGE(op_name.GetString(),
-    std::string report_error_code = "E50033");
+    OP_LOGE(op_name.GetString(), "wFormat != FORMAT_NCHW");
     return GRAPH_FAILED;
   }
   kn = wShape[kNDimIdx];

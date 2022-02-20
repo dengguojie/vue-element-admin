@@ -158,67 +158,8 @@ std::string GetParamOutRangeErrMsg(const std::string& param_name, const std::str
 
 std::string OtherErrMsg(const std::string& error_detail);
 
-void OpsMissInputErrReport(const std::string& op_name, const std::string& param_name);
-
-void OpsInputFormatErrReport(const std::string& op_name, const std::string& param_name,
-                             const std::string& expected_format_list, const std::string& data_format);
-
-void OpsInputDtypeErrReport(const std::string& op_name, const std::string& param_name,
-                            const std::string& expected_data_type_list, const std::string& data_type);
-
-void OpsInputTypeErrReport(const std::string& op_name, const std::string& param_name, const std::string& param_type,
-                           const std::string& actual_type);
-
-void OpsGetAttrErrReport(const std::string& op_name, const std::string& param_name);
-
-void OpsSetAttrErrReport(const std::string& op_name, const std::string& param_name);
-
-void OpsAttrValueErrReport(const std::string& op_name, const std::string& param_name, const std::string& excepted_value,
-                           const std::string& input_value);
-
-void OpsOPUpdateErrReport(const std::string& op_name, const std::string& param_name);
-
-void OpsInputShapeErrReport(const std::string& op_name, const std::string& rule_desc, const std::string& param_name,
-                            const std::string& param_value);
-
-void OpsOneInputShapeErrReport(const std::string& op_name, const std::string& param_name,
-                               const std::string& error_detail);
-
-void OpsTwoInputShapeErrReport(const std::string& op_name, const std::string& param_name1,
-                               const std::string& param_name2, const std::string& error_detail);
-
-void OpsOneOutputShapeErrReport(const std::string& op_name, const std::string& param_name,
-                                const std::string& error_detail);
-
-void OpsGetCompileParamsErrReport(const std::string& op_name, const std::string& param_name);
-
-void OpsInputShapeSizeErrReport(const std::string& op_name, const std::string& input_name, const std::string& max_value,
-                                const std::string& real_value);
-
-void OpsInputShapeDimErrReport(const std::string& op_name, const std::string& param_name, const std::string& max_value,
-                               const std::string& min_value, const std::string& real_value);
-
-void OpsInputShapeBroadcastErrReport(const std::string& op_name, const std::string& input1_name,
-                                     const std::string& input2_name, const std::string& input1_shape,
-                                     const std::string& input2_shape);
-
 void TbeInputDataTypeErrReport(const std::string& op_name, const std::string& param_name,
                                const std::string& expected_dtype_list, const std::string& dtype);
-
-void OpsTwoInputDtypeErrReport(const std::string& op_name, const std::string& input1_name,
-                               const std::string& input2_name, const std::string& input1_dtype,
-                               const std::string& input2_dtype);
-
-void OpsAippErrReport(const std::string& aipp_output_H, const std::string& aipp_output_W, const std::string& data_H,
-                      const std::string& data_W);
-
-void OpsConvAttrValueErrReport(const std::string& op_name, const std::string& param_name, const std::string& expected_value,
-                           const std::string& input_value);
-
-void OpsConvSetAttrErrReport(const std::string& op_name, const std::string& param1_name,
-                           const std::string& param2_name);
-
-void OpsConvShapeErrReport(const std::string& op_name, const std::string& description);
 
 void GeInfershapeErrReport(const std::string& op_name, const std::string& op_type, const std::string& value,
                            const std::string& reason);

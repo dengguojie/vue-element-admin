@@ -356,7 +356,6 @@ IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputInferShape) {
   DataType input_dtype = op.GetInputDesc("coord_data").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
     OP_LOGE(op.GetName().c_str(), "get attr failed");
     return GRAPH_FAILED;
   }
@@ -473,7 +472,6 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputDInferShape) {
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
@@ -512,7 +510,6 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2InferShape) {
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
@@ -520,7 +517,6 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2InferShape) {
   std::int64_t outBoxDim = 3;
   if (ge::GRAPH_SUCCESS != op.GetAttr("out_box_dim", outBoxDim)) {
     OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "out_box_dim");
     return GRAPH_FAILED;
   }
   if (outBoxDim == 2) {
@@ -618,7 +614,6 @@ IMPLEMT_INFERFUNC(SPP, SPPInferShape) {
   }
   if (GRAPH_SUCCESS != op.GetAttr("pyramid_height", pyramidHeight)) {
     OP_LOGE("SPP", "GetOpAttr pyramid_height failed!");
-    OpsGetAttrErrReport(op.GetName().c_str(), "pyramid_height");
     return GRAPH_FAILED;
   }
   vector<int64_t> yShapeDims;
@@ -642,32 +637,27 @@ IMPLEMT_VERIFIER(SPP, SPPVerify) {
   vector<int64_t> xShapeDims = op.get_input_desc_x().GetShape().GetDims();
   if (xShapeDims.size() < 4) {
     OP_LOGE("SPP", "input shape is NULL!");
-    OpsOneInputShapeErrReport(op.GetName(), "input_x", "input shape is null");
     return GRAPH_FAILED;
   }
   int64_t bottomH = xShapeDims[2];
   int64_t bottomW = xShapeDims[3];
   if (GRAPH_SUCCESS != op.GetAttr("pyramid_height", pyramidHeight)) {
     OP_LOGE("SPP", "GetOpAttr pyramid_height failed!");
-    OpsGetAttrErrReport(op.GetName().c_str(), "pyramid_height");
     return GRAPH_FAILED;
   }
   if (pyramidHeight < 1 || pyramidHeight >= 7) {
     OP_LOGE("SPP", "pyramid_height value should be in range[1:7)!");
     string realvalue = ConcatString(pyramidHeight);
-    OpsAttrValueErrReport(op.GetName().c_str(), "pyramidHeight", "in range[1:7)", realvalue);
     return GRAPH_FAILED;
   }
   if (pyramidHeight > GetLogN(bottomH) || pyramidHeight > GetLogN(bottomH)) {
     OP_LOGE("SPP", "pyramid_height value should be in range[1:log(H or W)]");
     string realvalue = ConcatString(pyramidHeight);
-    OpsAttrValueErrReport(op.GetName().c_str(), "pyramidHeight", "in range[1:log(H or W)]", realvalue);
     return GRAPH_FAILED;
   }
   if (pyramidHeight > 1 && (bottomH > 510 || bottomW > 510)) {
     OP_LOGE("SPP", "feature map size should be in range[1:510]");
     string realvalue = ConcatString(bottomH);
-    OpsAttrValueErrReport(op.GetName().c_str(), "feature map", "[1:510]", realvalue);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -683,15 +673,11 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   if (box_predictions_format != FORMAT_ND && box_predictions_format != FORMAT_NCHW &&
       box_predictions_format != FORMAT_NHWC) {
     OP_LOGE(op.GetName().c_str(), "format of box_predictions should be ND or NCHW or NHWC");
-    OpsInputFormatErrReport(op.GetName(), "box_predictions", "ND,NCHW,NHWC",
-                            ConcatString(box_predictions_format));
     return GRAPH_FAILED;
   }
   Format anchors_format = op.GetInputDesc("anchors").GetFormat();
   if (anchors_format != box_predictions_format) {
     OP_LOGE(op.GetName().c_str(), "format of inputs should be equal");
-    OpsInputShapeErrReport(op.GetName(), "the format of anchors and box_predictions should be equal",
-                           "anchors_format", ConcatString(anchors_format));
     return GRAPH_FAILED;
   }
 
@@ -699,12 +685,10 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   float decode_clip = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("decode_clip", decode_clip)) {
     OP_LOGE(op.GetName().c_str(), "get attr decode_clip failed");
-    OpsGetAttrErrReport(op.GetName(), "decode_clip");
     return GRAPH_FAILED;
   }
   if (decode_clip > 10 || decode_clip < 0) {
     OP_LOGE(op.GetName().c_str(), "decode_clip should in [0, 10]");
-    OpsAttrValueErrReport(op.GetName(), "decode_clip", "in [0, 10]", ConcatString(decode_clip));
     return GRAPH_FAILED;
   }
 
@@ -712,13 +696,11 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   auto box_predictions_shape = op.GetInputDesc("box_predictions").GetShape().GetDims();
   if (box_predictions_shape.empty()) {
     OP_LOGE(op.GetName().c_str(), "can not get box_predictions shape.");
-    OpsMissInputErrReport(op.GetName(), "box_predictions shape");
     return GRAPH_FAILED;
   }
   auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
   if (anchors_shape.empty()) {
     OP_LOGE(op.GetName().c_str(), "can not get anchors shape.");
-    OpsMissInputErrReport(op.GetName(), "anchors shape");
     return GRAPH_FAILED;
   }
   // check shape
@@ -732,8 +714,6 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   }
   if ((box_predictions_shape_n > 0 && anchors_shape_n > 0) && box_predictions_shape_n != anchors_shape_n) {
     OP_LOGE(op.GetName().c_str(), "first dimension of inputs should be equal");
-    OpsInputShapeErrReport(op.GetName(), "the first dimension of anchors and box_predictions should be equal",
-                           "box_predictions", ConcatString(box_predictions_shape_n));
     return GRAPH_FAILED;
   }
   int64_t box_predictions_shape_dimension = box_predictions_shape.size();
@@ -749,8 +729,6 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
     }
     if (box_predictions_shape_D != 4 || anchors_shape_D != 4) {
       OP_LOGE(op.GetName().c_str(), "last dimension of box_predictions and anchors should be FOUR");
-      OpsInputShapeErrReport(op.GetName(), "the last dimension of anchors and box_predictions should be equal to 4",
-                           "box_predictions", ConcatString(box_predictions_shape_D));
       return GRAPH_FAILED;
     }
   }
@@ -761,8 +739,6 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
     }
     if (box_predictions_shape_N != 4 || anchors_shape_N != 4) {
       OP_LOGE(op.GetName().c_str(), "first dimension of box_predictions and anchors should be FOUR");
-      OpsInputShapeErrReport(op.GetName(), "the first dimension of anchors and box_predictions should be equal to 4",
-                           "box_predictions", ConcatString(box_predictions_shape_N));
       return GRAPH_FAILED;
     }
   }
@@ -846,56 +822,45 @@ IMPLEMT_VERIFIER(ClipBoxesD, ClipBoxesDVerify) {
   Format boxes_input_format = op.GetInputDesc("boxes_input").GetFormat();
   if (boxes_input_format != FORMAT_ND) {
     OP_LOGE(op.GetName().c_str(), "format of boxes_input should be ND");
-    OpsInputFormatErrReport(op.GetName(), "boxes_input", "ND", ConcatString(boxes_input_format));
     return GRAPH_FAILED;
   }
   // check shape
   auto boxes_input_shape = op.GetInputDesc("boxes_input").GetShape().GetDims();
   if (boxes_input_shape.empty()) {
     OP_LOGE(op.GetName().c_str(), "can not get boxes_input shape.");
-    OpsOneInputShapeErrReport(op.GetName(), "boxes_input", "the shape of boxes_input is empty");
     return GRAPH_FAILED;
   }
   int64_t boxes_input_dimension = boxes_input_shape.size();
   if (boxes_input_dimension != 2) {
     OP_LOGE(op.GetName().c_str(), "The input shape should be two dimension only!");
-    OpsInputShapeErrReport(op.GetName(), "The input shape should only be two dimension",
-                           "boxes_input", ConcatString(boxes_input_dimension));
     return GRAPH_FAILED;
   }
   // check N
   int64_t num = boxes_input_shape[0];
   if (num <= 0 && num > 65500) {
     OP_LOGE(op.GetName().c_str(), "N dimension of inputs should be in [1, 65500]");
-    OpsInputShapeDimErrReport(op.GetName(),"boxes_input", "1", "65500", ConcatString(num));
     return GRAPH_FAILED;
   }
   // check D
   int64_t boxes_input_D = boxes_input_shape[1];
   if (boxes_input_D != 4) {
     OP_LOGE(op.GetName().c_str(), "second dimension of boxes_input should be FOUR");
-    OpsAttrValueErrReport(op.GetName(), "second dimension of boxes_input", "4",
-                          ConcatString(boxes_input_D));
     return GRAPH_FAILED;
   }
   // check attr img_size
   std::vector<int64_t> img_size;
   if (op.GetAttr("img_size", img_size) != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "get attr img_size failed");
-    OpsGetAttrErrReport(op.GetName(), "img_size");
     return GRAPH_FAILED;
   }
   if ((int64_t)img_size.size() != 2) {
     OP_LOGE(op.GetName().c_str(), "img_size should be [img_h, img_w]!");
-    OpsOneInputShapeErrReport(op.GetName(), "img_size", "img_size should be [img_h, img_w]!");
     return GRAPH_FAILED;
   }
   int64_t img_h = img_size[0];
   int64_t img_w = img_size[1];
   if ((img_h <= 0) || (img_w <= 0)) {
     OP_LOGE(op.GetName().c_str(), "img_h/img_w should be larger than zero!");
-    OpsInputShapeErrReport(op.GetName(), "img_h/img_w should be larger than zero",
-                          "img_h", ConcatString(img_h) + ", img_w is " + ConcatString(img_w));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -928,32 +893,27 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   // check format
   Format score_format = op.GetInputDesc("score").GetFormat();
   if (score_format != FORMAT_ND) {
-    OpsInputFormatErrReport(op.GetName(), "Score Format", "ND", ConcatString(score_format));
     OP_LOGE(op.GetName().c_str(), "format of score should be ND");
     return GRAPH_FAILED;
   }
   // check attr nms_threshold
   float nms_threshold = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("nms_threshold", nms_threshold)) {
-    OpsGetAttrErrReport(op.GetName(), "nms threshold");
     OP_LOGE(op.GetName().c_str(), "get attr nms_threshold failed");
     return GRAPH_FAILED;
   }
   if (nms_threshold > 1 || nms_threshold < 0) {
-    OpsAttrValueErrReport(op.GetName(), "nms_threshold", "[0, 1]", ConcatString(nms_threshold));
     OP_LOGE(op.GetName().c_str(), "nms_threshold should in [0, 1]");
     return GRAPH_FAILED;
   }
   // check attr score_threshold
   float score_threshold = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("score_threshold", score_threshold)) {
-    OpsGetAttrErrReport(op.GetName(), "score_threshold");
     OP_LOGE(op.GetName().c_str(), "get attr score_threshold failed");
     return GRAPH_FAILED;
   }
   if (score_threshold > 1 || score_threshold < 0) {
     OP_LOGE(op.GetName().c_str(), "score_threshold should in [0, 1]");
-    OpsAttrValueErrReport(op.GetName(), "score_threshold", "[0, 1]", ConcatString(nms_threshold));
     return GRAPH_FAILED;
   }
   // check shape
@@ -973,15 +933,12 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   int64_t score_shape_dimension = score_shape.size();
   int64_t rois_shape_dimension = rois_shape.size();
   if (score_shape_dimension != 2 || rois_shape_dimension != 2) {
-    OpsTwoInputShapeErrReport(op.GetName(), "score_shape_dimension", "rois_shape_dimension",
-                              "score_shape_dimension != 2 or rois_shape_dimension != 2, please check!");
     OP_LOGE(op.GetName().c_str(), "The input shape should be two dimension only!");
     return GRAPH_FAILED;
   }
   // check N
   int64_t num = score_shape[0];
   if (num != 16 && num != 32 && num != 96) {
-    OpsInputShapeErrReport(op.GetName(), "16 or 32 or 96", "first Dim of Score Shape", ConcatString(num));
     OP_LOGE(op.GetName().c_str(), "first dimension of score should be 16 or 32 or 96");
     return GRAPH_FAILED;
   }
@@ -989,20 +946,16 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   int64_t classes = score_shape[1] - 1;
   if ((classes < 1) || (classes > 32)) {
     OP_LOGE(op.GetName().c_str(), "second dimension of score should in [1, 32]");
-    OpsInputShapeErrReport(op.GetName(), "[1, 32]", "Second Dim of Score Shape", ConcatString(classes));
     return GRAPH_FAILED;
   }
   // check D
   int64_t rois_shape_D = rois_shape[1];
   int64_t rois_shape_N = rois_shape[0];
   if (rois_shape_D != 4) {
-    OpsInputShapeErrReport(op.GetName(), "4", "Dim of ROIS Shape", ConcatString(rois_shape_D));
     OP_LOGE(op.GetName().c_str(), "second dimension of rois should be FOUR");
     return GRAPH_FAILED;
   }
   if (rois_shape_N != num * classes) {
-    OpsTwoInputShapeErrReport(op.GetName(), "Rois Shape", "Score Shape * Classes",
-                              "first dimension of rois not equal first dimension mul second dimension of score");
     OP_LOGE(op.GetName().c_str(),
             "first dimension of rois should be consistent to first dimension mul second dimension of score");
     return GRAPH_FAILED;
@@ -1011,12 +964,10 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   int64_t k = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("k", k)) {
     OP_LOGE(op.GetName().c_str(), "get attr k failed");
-    OpsGetAttrErrReport(op.GetName(), "Attribute K");
     return GRAPH_FAILED;
   }
   if (k != num) {
     OP_LOGE(op.GetName().c_str(), "k should be equle to N");
-    OpsAttrValueErrReport(op.GetName(), "Attribute K", ConcatString(num), ConcatString(k));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1070,7 +1021,6 @@ IMPLEMT_COMMON_INFERFUNC(RpnProposalsInferShapeCommon) {
   int64_t post_nms_num = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_num", post_nms_num)) {
     OP_LOGE(op.GetName().c_str(), "get attr post_nms_num failed");
-    OpsGetAttrErrReport(op.GetName(),"post_nms_num");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
@@ -1501,7 +1451,7 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
     err_map["wrong_shape"] = wrongString.c_str();
     err_map["correct_shape"] = correctString.c_str();
     std::string report_error_code = "E35000";
-    OP_LOGE(op.GetName().c_str(), "the last dim of boxes shape must be 4, while is %d",
+    OP_LOGE(op.GetName().c_str(), "the last dim of boxes shape must be 4, while is %ld",
             inputShape[inputShape.size() - 1]);
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
 
@@ -1512,11 +1462,12 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
     // check class num in boxes
     auto inputScoreShape = op.GetInputDesc("scores").GetShape().GetDims();
     // check input shape
-    CHECK(inputScoreShape.empty(), OP_LOGE(op.GetName().c_str(), "can not get input score shape."), return GRAPH_FAILED);
+    CHECK(inputScoreShape.empty(), OP_LOGE(op.GetName().c_str(), "can not get input score shape."),
+          return GRAPH_FAILED);
     auto scoreClassNum = inputScoreShape[inputScoreShape.size() - 1];
     auto boxesClassNum = inputShape[2];
     if ((boxesClassNum != scoreClassNum) && (boxesClassNum != 1)) {
-      OP_LOGE(op.GetName().c_str(), "the ClassNum in input score is %d, while ClassNum in boxes is %d", scoreClassNum,
+      OP_LOGE(op.GetName().c_str(), "the ClassNum in input score is %ld, while ClassNum in boxes is %ld", scoreClassNum,
               boxesClassNum);
       map<string, string> err_map;
       err_map["param_name"] = "ClassNum in boxes";

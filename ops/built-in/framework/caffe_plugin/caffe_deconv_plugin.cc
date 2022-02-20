@@ -34,7 +34,6 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
   int64_t pad[2] = {kDefaultPad, kDefaultPad};
   if (convParam.has_pad_h() || convParam.has_pad_w()) {
     if (pSize != 0) {
-      ge::OpsConvSetAttrErrReport(op_name.GetString(), "pad", "pad_h/w");
       OP_LOGE(op_name.GetString(), "set either pad or pad_h/w, not both.");
       return false;
     }
@@ -46,8 +45,6 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
         pad[i] = convParam.pad((pSize == 1) ? 0 : i);
       }
     } else if (pSize != 0) {
-      ge::OpsConvAttrValueErrReport(op_name.GetString(), "pad_size", "[0,1," + to_string(kMaxPadSize) + "]",
-                                    to_string(pSize));
       OP_LOGE(op_name.GetString(), "pad size is invalid, actual is: %d.", pSize);
       return false;
     }
@@ -62,14 +59,12 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
 
 static bool SetStrides(const caffe::ConvolutionParameter& convParam, const ge::AscendString& op_name,
                        ge::Operator& op) {
-  const int MAX_STRIDE_SIZE = 2;
   std::vector<int64_t> vec;
   const int sSize = convParam.stride_size();
   const int kDefaultStride = 1;
   int64_t stride[2] = {kDefaultStride, kDefaultStride};
   if (convParam.has_stride_h() || convParam.has_stride_w()) {
     if (sSize != 0) {
-      ge::OpsConvSetAttrErrReport(op_name.GetString(), "stride", "stride_h/w");
       OP_LOGE(op_name.GetString(), "set either stride or stride_h/w, not both");
       return false;
     }
@@ -81,8 +76,6 @@ static bool SetStrides(const caffe::ConvolutionParameter& convParam, const ge::A
         stride[i] = convParam.stride((sSize == 1) ? 0 : i);
       }
     } else if (sSize != 0) {
-      ge::OpsConvAttrValueErrReport(op_name.GetString(), "stride_size", "[0,1," + to_string(MAX_STRIDE_SIZE) + "]",
-                                    to_string(sSize));
       OP_LOGE(op_name.GetString(), "stride size is invalid, actual is: %d.", sSize);
       return false;
     }
@@ -95,7 +88,6 @@ static bool SetStrides(const caffe::ConvolutionParameter& convParam, const ge::A
 
 static bool SetDilations(const caffe::ConvolutionParameter& convParam, const ge::AscendString& op_name,
                          ge::Operator& op) {
-  const int MAX_DILATION_SIZE = 2;
   std::vector<int64_t> vec;
   const int dSize = convParam.dilation_size();
   const int kDefaultDilation = 1;
@@ -105,8 +97,6 @@ static bool SetDilations(const caffe::ConvolutionParameter& convParam, const ge:
       dilation[i] = convParam.dilation((dSize == 1) ? 0 : i);
     }
   } else if (dSize != 0) {
-    ge::OpsConvAttrValueErrReport(op_name.GetString(), "dilation_size", "[0,1," + to_string(MAX_DILATION_SIZE) + "]",
-                                  to_string(dSize));
     OP_LOGE(op_name.GetString(), "dilation size is invalid, actual is: %d.", dSize);
     return false;
   }
@@ -124,21 +114,16 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {
-    ge::OpsConvShapeErrReport(op_name.GetString(), "convert src op failed.");
     OP_LOGE(op_name.GetString(), "convert src op failed.");
     return FAILED;
   }
 
   if (layer->bottom_size() != 1) {
-    ge::OpsConvAttrValueErrReport(op_name.GetString(), "Deconvolution layer bottom num", "1",
-                                  to_string(layer->bottom_size()));
     OP_LOGE(op_name.GetString(), "Deconvolution layer bottom num(%d) must be 1", layer->bottom_size());
     return FAILED;
   }
 
   if (layer->top_size() != 1) {
-    ge::OpsConvAttrValueErrReport(op_name.GetString(), "Deconvolution layer top num", "1",
-                                  to_string(layer->top_size()));
     OP_LOGE(op_name.GetString(), "Deconvolution layer top num(%d) must be 1", layer->top_size());
     return FAILED;
   }
@@ -146,17 +131,14 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
   const caffe::ConvolutionParameter& convParam = layer->convolution_param();
 
   if (!SetPads(convParam, op_name, op)) {
-    ge::OpsConvShapeErrReport(op_name.GetString(), "Set pads failed.");
     OP_LOGE(op_name.GetString(), "set pads failed.");
     return FAILED;
   }
   if (!SetStrides(convParam, op_name, op)) {
-    ge::OpsConvShapeErrReport(op_name.GetString(), "Set strides failed.");
     OP_LOGE(op_name.GetString(), "set strides failed.");
     return FAILED;
   }
   if (!SetDilations(convParam, op_name, op)) {
-    ge::OpsConvShapeErrReport(op_name.GetString(), "Set dilations failed.");
     OP_LOGE(op_name.GetString(), "set dilations failed.");
     return FAILED;
   }

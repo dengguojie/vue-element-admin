@@ -60,7 +60,6 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
     batchSize = shapeX.GetDims().at(1);
     hiddenSize = shapeW.GetDims().at(1) / 4;
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
@@ -166,7 +165,6 @@ IMPLEMT_INFERFUNC(DynamicRNNV2, DynamicRNNV2InferShape) {
   } else {
     AscendString OpName;
     op.GetName(OpName);
-    OpsOneInputShapeErrReport(OpName.GetString(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(OpName.GetString(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
@@ -237,7 +235,6 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
     batch_size = shapeDY.GetDims().at(1);
     output_dim_size = shapeDY.GetDims().at(2);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "The input shape of dy", "not right");
     OP_LOGE(op.GetName().c_str(), "The input shape of dy is not right, please check!");
     return GRAPH_FAILED;
   }
@@ -277,7 +274,6 @@ IMPLEMT_INFERFUNC(DynamicGRUCellGrad, DynamicGRUCellGradInferShape) {
   int64_t batch_size = 0;
   int64_t output_dim_size = 0;
   if(dim_num != 3) {
-    OpsOneInputShapeErrReport(op.GetName(), "The input shape of dy", "not right");
     OP_LOGE(op.GetName().c_str(), "The input shape of dy is not right, please check!");
     return GRAPH_FAILED;
   }
@@ -354,7 +350,6 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
     hiddenSize = shapeW.GetDims().at(1) / 4;
     inputSize = shapeW.GetDims().at(0) - hiddenSize;
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
@@ -428,7 +423,6 @@ IMPLEMT_INFERFUNC(DynamicRNNGrad, DynamicRNNGradInferShape) {
     input_size = shapeX.GetDims().at(2);
     hidden_size = shapeH.GetDims().at(2);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "The input shape of X", "not right");
     OP_LOGE(op.GetName().c_str(), "The input shape of X is not right, please check!");
     return GRAPH_FAILED;
   }
@@ -489,7 +483,6 @@ IMPLEMT_INFERFUNC(DynamicLSTM, DynamicLSTMInferShape) {
     batchSize = shapeX.GetDims().at(1);
     hiddenSize = shapeW.GetDims().at(1) / 4;
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
@@ -749,7 +742,7 @@ IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
 
   int64_t hiddenSize = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("num_output", hiddenSize)) {
-    OpsGetAttrErrReport(op.GetName(), "num_output");
+    OP_LOGE(op.GetName(), "get num_output failed");
     return GRAPH_FAILED;
   }
   vector<int64_t> dimsO = {time_size, batchSize, hiddenSize};
@@ -837,8 +830,7 @@ IMPLEMT_INFERFUNC(DynamicGRU, DynamicGRUInferShape) {
   TensorDesc n_tensor_desc = op.GetOutputDesc("n");
 
   int64_t dim_num = shape_x.GetDimNum();
-  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
-        OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3"),
+  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!"),
         return GRAPH_FAILED);
 
   int64_t num_step = shape_x.GetDims().at(0);
@@ -913,8 +905,8 @@ IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
   TensorDesc hn_tensor_desc = op.GetOutputDesc("hidden_new");
 
   int64_t dim_num = shape_x.GetDimNum();
-  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
-        OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3"), return GRAPH_FAILED);
+  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!"),
+        return GRAPH_FAILED);
 
   int64_t num_step = shape_x.GetDims().at(0);
   int64_t batch_size = shape_x.GetDims().at(1);
@@ -995,7 +987,6 @@ IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
     input_size = shapeX.GetDims().at(2);
     hidden_size = shapeH.GetDims().at(2);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(),  "The input shape of X", "not right");
     OP_LOGE(op.GetName().c_str(),
       "The input shape of X is not right, please check!");
     return GRAPH_FAILED;
@@ -1144,7 +1135,6 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
 
   int64_t hidden_size;
   if (op.GetAttr("hidden_size", hidden_size) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "hidden_size");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr hidden_size failed.");
     return GRAPH_FAILED;
   }
@@ -1236,7 +1226,6 @@ IMPLEMT_INFERFUNC(CommonLSTM, CommonLSTMInferShape) {
     numStep = shapeX.GetDims().at(0);
     batchSize = shapeX.GetDims().at(1);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }
@@ -1287,7 +1276,6 @@ IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
   int64_t dim_num = shape_x.GetDimNum();
   if (dim_num != 3) {
     OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!");
-    OpsOneInputShapeErrReport(op.GetName(), "x", "The dimension count of x should be 3");
     return GRAPH_FAILED;
   }
 
@@ -1397,7 +1385,6 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   auto shapewx = inputwx.GetShape();
   auto shapewr = inputwr.GetShape();
   if (shapewx.GetDimNum() != 2 && shapewr.GetDimNum() != 2) {
-    OpsOneInputShapeErrReport(op.GetName(), "wx/wr Shape Dim", "The input shape  not equal 2!");
     OP_LOGE(op.GetName().c_str(), "The input shape of wx/wr not equal 2, please check!");
     return GRAPH_FAILED;
   }
@@ -1419,7 +1406,6 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
     hidden_size = shapewx.GetDims().at(0) / 4;
     state = shapewr.GetDims().at(1);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
   }

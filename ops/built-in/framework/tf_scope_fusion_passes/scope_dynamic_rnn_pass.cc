@@ -516,7 +516,7 @@ void ScopeDynamicRNNPass::GetQuantScale(const std::unordered_map<std::string, ge
       uint32_t scaleDeq = GET_DEQUANT_SCALE_DEQ(scale_deq);
       errno_t memcpy_ret = memcpy_s(&scale_b, sizeof(float), &scaleDeq, sizeof(float));
       if (memcpy_ret != EOK) {
-        OP_LOGE("memcpy_s fail!");
+        OP_LOGE(node_def->GetName().c_str(), "memcpy_s fail!");
         return;
       }
     }

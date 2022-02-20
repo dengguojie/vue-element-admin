@@ -497,9 +497,8 @@ IMPLEMT_INFERFUNC(ExtractGlimpse, ExtractGlimpseInfer) {
     OP_LOGE(op.GetName().c_str(), "get attr noise failed");
     return GRAPH_FAILED;
   }
-  std::string info = "The uniform_noise and noise should not be specified ";
   if (uniform_noise && (!noise.empty() && noise != "uniform")) {
-    OP_LOGE(op.GetName().c_str(), info + "at the same time");
+    OP_LOGE(op.GetName().c_str(), "The uniform_noise and noise should not be specified at the same time");
     return GRAPH_FAILED;
   }
 
@@ -641,19 +640,19 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   const char* op_name = op.GetName().c_str();
   GeShape grads_shape;
   if (WithRank(grads_desc, 4, grads_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_desc->GetName().c_str(), "Input grads must be 4-D, real rank is [%lld]", grads_desc->GetShape().GetDimNum());
+    OP_LOGE(op_desc->GetName().c_str(), "Input grads must be 4-D, real rank is [%lu]", grads_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
   GeShape size_shape;
   if (WithRank(size_desc, 1, size_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D, real rank is [%lld]", size_desc->GetShape().GetDimNum());
+    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D, real rank is [%lu]", size_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
   auto size_dims = size_shape.GetDims();
   if (size_dims[0] != 2 && size_dims[0] != UNKNOWN_DIM) {
-    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D of 2 elements, real dim size is [%lld]", size_dims[0]);
+    OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D of 2 elements, real dim size is [%ld]", size_dims[0]);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -1797,7 +1796,6 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
   vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "size");
     std::string err_msg = GetInputInvalidErrMsg("size");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1879,7 +1877,6 @@ IMPLEMT_COMMON_INFERFUNC(KeepRatioResizeBilinearInferShape) {
     channelDIms = inputImagesShape[1];
   } else {
     string expectedFormatList = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
-    OpsInputFormatErrReport(op.GetName(), "images", expectedFormatList, ConcatString(inputFormat));
     OP_LOGE(op.GetName().c_str(), "Not supported this format");
     return GRAPH_FAILED;
   }
@@ -3030,16 +3027,17 @@ IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
 
   if (flow_shape[pos_c] != 2) {
     OP_LOGE(op.GetName().c_str(),
-            "Input flow channel should be 2, actual is %d", flow_shape[3]);
+            "Input flow channel should be 2, actual is %ld", flow_shape[3]);
     return GRAPH_FAILED;
   }
 
   if (flow_shape[0] != image_shape[0] || flow_shape[pos_h] != image_shape[pos_h] ||
       flow_shape[pos_w] != image_shape[pos_w]) {
     OP_LOGE(op.GetName().c_str(),
-            "Input flow batch, height and width should be same as image, actually flow:[%d, %d, %d], image:[%d, %d, %d]",
-            flow_shape[0], flow_shape[pos_h], flow_shape[pos_w],
-            image_shape[0], image_shape[pos_h], image_shape[pos_w]);
+            "Input flow batch, height and width should be same as image, actually flow:[%ld, %ld, %ld], image:[%ld, "
+            "%ld, %ld]",
+            flow_shape[0], flow_shape[pos_h], flow_shape[pos_w], image_shape[0], image_shape[pos_h],
+            image_shape[pos_w]);
     return GRAPH_FAILED;
   }
 
@@ -3111,10 +3109,11 @@ IMPLEMT_VERIFIER(DenseImageWarpGrad, DenseImageWarpGradVerify) {
   }
 
   if (grad_shape != image_shape) {
-    OP_LOGE(op.GetName().c_str(),
-            "The shape of grad and image should be the same, acutally grad:[%d, %d, %d, %d], image[%d, %d, %d, %d]",
-            grad_shape[0], grad_shape[1], grad_shape[2], grad_shape[3],
-            image_shape[0], image_shape[1], image_shape[2], image_shape[3]);
+    OP_LOGE(
+        op.GetName().c_str(),
+        "The shape of grad and image should be the same, acutally grad:[%ld, %ld, %ld, %ld], image[%ld, %ld, %ld, %ld]",
+        grad_shape[0], grad_shape[1], grad_shape[2], grad_shape[3], image_shape[0], image_shape[1], image_shape[2],
+        image_shape[3]);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3166,17 +3165,17 @@ IMPLEMT_INFERFUNC(GridSampler2DGrad, GridSampler2DGradInferShape) {
   const int64_t GridSampler2DGradInputSizeLimit = 4;
   
   if (grad_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "Expected dim of grad should be 4. real value is %d.", grad_shape.GetDimNum());
+    OP_LOGE(TbeGetName(op), "Expected dim of grad should be 4. real value is %lu.", grad_shape.GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (x_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "Expected dim of x should be 4. real value is %d.", x_shape.GetDimNum());
+    OP_LOGE(TbeGetName(op), "Expected dim of x should be 4. real value is %lu.", x_shape.GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (grid_shape.GetDimNum() != GridSampler2DGradInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "Expected dim of grid should be 4. real value is %d.", grid_shape.GetDimNum());
+    OP_LOGE(TbeGetName(op), "Expected dim of grid should be 4. real value is %lu.", grid_shape.GetDimNum());
     return GRAPH_FAILED;
   }
   
@@ -3332,17 +3331,17 @@ IMPLEMT_INFERFUNC(GridSampler3D, GridSampler3DInferShape) {
   Format x_format = x_desc.GetFormat();
 
   if (x_shape.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. x dim is %d.", x_shape.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. x dim is %ld.", x_shape.size());
     return GRAPH_FAILED;
   }
 
   if (grid_shape.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. grid dim is %d.", grid_shape.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. grid dim is %ld.", grid_shape.size());
     return GRAPH_FAILED;
   }
 
   if (grid_shape[4] != 3) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of last axis of grid should be 3. real value is %d.", grid_shape[4]);
+    OP_LOGE(op.GetName().c_str(), "Expected dim of last axis of grid should be 3. real value is %ld.", grid_shape[4]);
     return GRAPH_FAILED;
   }
 
@@ -3368,17 +3367,17 @@ IMPLEMT_INFERFUNC(GridSampler3DGrad, GridSampler3DGradInferShape) {
   vector<int64_t> x_shape = x_desc.GetShape().GetDims();
 
   if (x_shape.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. real value is %d.", x_shape.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. real value is %ld.", x_shape.size());
     return GRAPH_FAILED;
   }
 
   if (grid_shape.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. real value is %d.", grid_shape.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. real value is %ld.", grid_shape.size());
     return GRAPH_FAILED;
   }
 
   if (grad_shape.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of grad should be 5. real value is %d.", grad_shape.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grad should be 5. real value is %ld.", grad_shape.size());
     return GRAPH_FAILED;
   }
 
@@ -3408,7 +3407,7 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   }
   
   if (input_shape_dims.size() != 5) {
-    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %ld.", input_shape_dims.size());
     return false;
   }
   output_shape.emplace_back(input_shape_dims[0]);
@@ -3422,13 +3421,13 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   if (!output_size.empty() && scales.empty())
   { 
     if (output_size.size() != THREEDIMS) {
-      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %d.", output_size.size());
+      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %ld.", output_size.size());
       return false;
     }
     output_shape.insert(output_shape.end(),output_size.begin(),output_size.end());
   } else if (output_size.empty() && !scales.empty()) {
     if (scales.size() != THREEDIMS) {
-      OP_LOGE(op_name,"attr::scales dims must be 3, but get %d.", scales.size());
+      OP_LOGE(op_name,"attr::scales dims must be 3, but get %ld.", scales.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
@@ -3488,7 +3487,7 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   }
 
   if (input_shape_dims.size() != FIVEDIMS) {
-    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %ld.", input_shape_dims.size());
     return false;
   }
 
@@ -3498,7 +3497,7 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
     return false;
   } 
   if (input_size.size() != FIVEDIMS) {
-    OP_LOGE(op_name,"attr::input_size dims must be 5, but get %d.", input_size.size());
+    OP_LOGE(op_name,"attr::input_size dims must be 5, but get %ld.", input_size.size());
     return false;
   }
 
@@ -3510,7 +3509,7 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   if (!output_size.empty() && scales.empty())
   { 
     if (output_size.size() != THREEDIMS) {
-      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %d.", output_size.size());
+      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %lu.", output_size.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
@@ -3523,7 +3522,7 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
     }
   } else if (output_size.empty() && !scales.empty()) {
     if (scales.size() != THREEDIMS) {
-      OP_LOGE(op_name,"attr::scales dims must be 3, but get %d.", scales.size());
+      OP_LOGE(op_name,"attr::scales dims must be 3, but get %lu.", scales.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
@@ -3580,7 +3579,7 @@ IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
   std::vector<int64_t> output_shape = input_shape_dims;
   
   if (input_shape_dims.size() != 3) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 3. but get %d.", input_shape_dims.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 3. but get %lu.", input_shape_dims.size());
     return GRAPH_FAILED;
   }
 
@@ -3592,13 +3591,13 @@ IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
   if (!output_size.empty() && scales.empty())
   { 
     if (output_size.size() != 1) {
-      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 1, but get %d.", output_size.size());
+      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 1, but get %lu.", output_size.size());
       return GRAPH_FAILED;
     }
     output_shape[2] = output_size[0];
   } else if (output_size.empty() && !scales.empty()) {
     if (scales.size() != 1) {
-      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 1, but get %d.", scales.size());
+      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 1, but get %lu.", scales.size());
       return GRAPH_FAILED;
     }
     output_shape[2] = input_shape_dims[2] * scales[0];
@@ -3627,7 +3626,7 @@ IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
   auto grad_output_dims = inputDesc.GetShape().GetDims();
  
   if (grad_output_dims.size() != 3) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of grad_output should be 3. but get %d.", grad_output_dims.size());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grad_output should be 3. but get %lu.", grad_output_dims.size());
     return GRAPH_FAILED;
   }
 
@@ -3637,7 +3636,7 @@ IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
     return GRAPH_FAILED;
   } 
   if (input_size.size() != 3) {
-    OP_LOGE(op.GetName().c_str(),"attr::input_size dims must be 3, but get %d.", input_size.size());
+    OP_LOGE(op.GetName().c_str(),"attr::input_size dims must be 3, but get %lu.", input_size.size());
     return GRAPH_FAILED;
   }
 
@@ -3657,12 +3656,12 @@ IMPLEMT_INFERFUNC(EncodeJpegVariableQuality, EncodeJpegVariableQualityInferShape
   OP_LOGD(op.GetName().c_str(), "Enter EncodeJpegVariableQuality inferfunction!");
   Shape image_shape;
   if (WithRank(op.GetInputDesc(0), 3, image_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 3. but get %d.", image_shape.GetDimNum());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 3. but get %lu.", image_shape.GetDimNum());
     return GRAPH_FAILED;
   }
   Shape quality_shape;
   if (WithRank(op.GetInputDesc(1), 0, quality_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 0. but get %d.", quality_shape.GetDimNum());
+    OP_LOGE(op.GetName().c_str(), "Expected dim of image should be 0. but get %lu.", quality_shape.GetDimNum());
     return GRAPH_FAILED;
   }
 
@@ -3684,20 +3683,20 @@ IMPLEMT_INFERFUNC(ImageProjectiveTransform, ImageProjectiveTransformInferShape) 
   auto image_descptr = op_desc->MutableInputDesc("images");
   GeShape image_shape;
   if (WithRank(image_descptr, 4, image_shape, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "Expected images should be 4-D. but get %d.", image_descptr->GetShape().GetDimNum());
+    OP_LOGE(opname, "Expected images should be 4-D. but get %lu.", image_descptr->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
   
   auto outputshape_descptr = op_desc->MutableInputDesc("output_shape");
   GeShape outputshape_shape;
   if (WithRank(outputshape_descptr, 1, outputshape_shape, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "output_shape should be 1. but get %d.", outputshape_descptr->GetShape().GetDimNum());
+    OP_LOGE(opname, "output_shape should be 1. but get %lu.", outputshape_descptr->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   int64_t unused_dim = 0;
   if (WithValue(outputshape_shape.GetDim(0), 2, unused_dim, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "output_shape's dim[0] should be 2. but get %d.", outputshape_shape.GetDim(0));
+    OP_LOGE(opname, "output_shape's dim[0] should be 2. but get %lu.", outputshape_shape.GetDim(0));
     return GRAPH_FAILED;
   }
   

@@ -916,7 +916,7 @@ IMPLEMT_VERIFIER(StringNormalizer, StringNormalizerVerify) {
   constexpr int TWODIMS = 2;
   if (input_shape.size() != ONEDIMS && input_shape.size() != TWODIMS) {
     OP_LOGE(op_name, 
-            "input dims must be 1 or 2, but get %d.", input_shape.size());
+            "input dims must be 1 or 2, but get %ld.", input_shape.size());
     return GRAPH_FAILED;
   }
   // verify 2-D input shape
@@ -985,7 +985,7 @@ IMPLEMT_COMMON_INFERFUNC(StringNormalizerInferShape) {
     range.emplace_back(std::make_pair(1, input_shape[1]));
   } else {
     OP_LOGE(op_name, 
-            "input dims must be 1 or 2, but get %d.", input_shape.size());
+            "input dims must be 1 or 2, but get %lu.", input_shape.size());
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDescByName("output");

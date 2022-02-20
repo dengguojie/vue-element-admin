@@ -129,7 +129,7 @@ Status ProcessMatrixMul(vector<vector<float>> &arr, vector<int64_t> size_h,
   for (int64_t i = 0; i < h_size; i++) {
     for (int64_t j = 0; j < w_size; j++) {
       if(size_h[i] == 0 || size_w[j] == 0) {
-        OP_LOGE("ProcessMatrixMul divied by zero error.");
+        OP_LOGE("ProcessMatrixMul", "ProcessMatrixMul divied by zero error.");
         return FAILED;
       }
       arr[i][j] = 1.0 / (float)(size_h[i] * size_w[j]);
@@ -144,7 +144,7 @@ Status ArrToTensor(vector<float> &arr_tensor, vector<vector<float>> arr) {
   auto size_n = arr.size();
   auto size_m = arr[0].size();
   if(size_m == 0 || size_n == 0) {
-    OP_LOGE("ArrToTensor divied by zero error.");
+    OP_LOGE("AdaptiveAvgPool2d", "ArrToTensor divied by zero error.");
     return FAILED;
   }
   auto arr_size = size_m * size_n;
@@ -461,7 +461,7 @@ Status AdaptiveAvgPool2dPass::CreatFuseNode(
       return PARAM_INVALID);
   ge::OpDescPtr adaptive_desc_ptr = fuse_node->GetOpDesc();
   FUSION_PASS_CHECK(adaptive_desc_ptr == nullptr,
-                    OP_LOGE("fusedNode's OpDesc is null, fusion failed."),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   // step2: get adaptive description
   ge::GeTensorDesc adaptive_input_tensor =
@@ -473,11 +473,11 @@ Status AdaptiveAvgPool2dPass::CreatFuseNode(
   ge::AttrUtils::GetListInt(fuse_node->GetOpDesc(), "output_size", output_size);
   // get output_shape
   FUSION_PASS_CHECK(GetOutputShape(input_shape, output_size, output_shape) != SUCCESS,
-                    OP_LOGE("AdaptiveAvgPool2d", "get OutputShape failed."),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get OutputShape failed."),
                     return FAILED);
   // 计算batone输出的shape
   FUSION_PASS_CHECK(GetBatOneShape(input_shape, output_shape, bat_one_shape) != SUCCESS,
-                    OP_LOGE("AdaptiveAvgPool2d", "get BatOneShape failed."),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get BatOneShape failed."),
                     return FAILED);
   return SUCCESS;
 }

@@ -49,7 +49,6 @@ bool CheckInputShape(const std::string& opType, std::vector<int64_t> xShape) {
   OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : xDims=%d", xDims);
 
   if (xShape[0] <= 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the first dim of x must be greater than 0");
     OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : CheckInputShape, x.shape is invalid.");
     return false;
   }

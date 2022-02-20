@@ -49,10 +49,10 @@ Status DynamicRNNFusionPass::AddSplitEdge(ge::NodePtr splitNode, ge::NodePtr for
                                           ge::NodePtr backwardRNNNode, string nodeName, int64_t index) {
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(0), forwardRNNNode->GetInDataAnchor(index)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to forwardRNNNode's w failed."), return FAILED);
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add %s's y to forwardRNNNode's w failed.", nodeName.c_str()), return FAILED);
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(1), backwardRNNNode->GetInDataAnchor(index)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to backwardRNNNode's w failed."), return FAILED);
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add %s's y to backwardRNNNode's w failed.", nodeName.c_str()), return FAILED);
 
   return SUCCESS;
 }
@@ -62,11 +62,11 @@ Status DynamicRNNFusionPass::AddConcatEdge(ge::NodePtr concatNode, ge::NodePtr d
                                            int64_t index) {
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(forwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add forwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add forwardRNNNode's y to %s's x failed.", nodeName.c_str()), return FAILED);
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(backwardRNNNode->GetOutDataAnchor(index), concatNode->GetInDataAnchor(1)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add backwardRNNNode's y to " + nodeName + "'s x failed."), return FAILED);
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add backwardRNNNode's y to %s's x failed.", nodeName.c_str()), return FAILED);
 
   OutDataAnchor::Vistor<InDataAnchorPtr> outputAnchors =
       dynamicRNNNode->GetOutDataAnchor(index)->GetPeerInDataAnchors();
@@ -76,7 +76,7 @@ Status DynamicRNNFusionPass::AddConcatEdge(ge::NodePtr concatNode, ge::NodePtr d
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "remove dynamicRNNNode's outDataAnchor failed."), return FAILED);
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), in_anchor),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add " + nodeName + "'s y to dynamicRNNNode's y failed."),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add  %s's y to dynamicRNNNode's y failed.", nodeName.c_str()),
                       return FAILED);
   }
 

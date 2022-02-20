@@ -597,8 +597,7 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
   }
   if (begin_norm_axis >= (int64_t)real_dim_num) {
     string excepted_value = ConcatString("less than x's dims [", (int64_t)real_dim_num, "]");
-    OpsAttrValueErrReport(op.GetName(), "begin_norm_axis", excepted_value, ConcatString(begin_norm_axis));
-    OP_LOGE(
+    OP_LOGE(op.GetName().c_str(),
         "[Plugin][ERROR]the op layernorm do not support beginNormAxis"
         "(%ld) large than shape dims(%lu)",
         begin_norm_axis, real_dim_num);
@@ -1514,7 +1513,6 @@ COMMON_INFER_FUNC_REG(MseLossGrad, MseLossGradInferShape);
 IMPLEMT_COMMON_INFERFUNC(MseLossInferShape) {
   std::string reduceType = "mean";
   if (op.GetAttr("reduction", reduceType) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "reduction");
     OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
     return GRAPH_FAILED;
   }

@@ -26,13 +26,13 @@ namespace domi {
 Status ParseParamsBNLL(const Message* op_origin, ge::Operator& op_dest) {
   // trans op_src to op_dest
   if (op_origin == nullptr) {
-    OP_LOGE("op_origin get failed.\n");
+    OP_LOGE("ParseParamsBNLL", "op_origin get failed.\n");
     return FAILED;
   }
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_origin);
   if (layer == nullptr) {
-    OP_LOGE("Dynamic cast op_src to LayerParameter failed.\n");
+    OP_LOGE("ParseParamsBNLL", "Dynamic cast op_src to LayerParameter failed.\n");
     return FAILED;
   }
 

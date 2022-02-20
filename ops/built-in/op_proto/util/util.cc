@@ -84,7 +84,6 @@ bool CheckInputDataType(const Operator& op, const std::string& input_name,
   } while (0);
 
   if (!valid) {
-    OpsInputDtypeErrReport(op.GetName(), input_name, DebugString(support_list), ConcatString(input_type));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The op do not support the dtype", ge::TypeUtils::DataTypeToSerialString(input_type))));
     return false;
   }
@@ -131,11 +130,6 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
 
     if (input_des.GetDataType() != first_input_des.GetDataType() ||
         input_des.GetShape().GetDims() != first_input_des.GetShape().GetDims()) {
-      OpsAttrValueErrReport(
-          op.GetName(), ConcatString(input_name->c_str(), "'s dtype and shape"),
-          ConcatString("same as", first_input_name->c_str(), "[", first_input_des.GetDataType(), "]", "[",
-                       DebugString(first_input_des.GetShape().GetDims()), "]"),
-          ConcatString("[", input_des.GetDataType(), "]", "[", DebugString(input_des.GetShape().GetDims()), "]"));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("the dtype and shape of param ", first_input_name->c_str(), " must be same as param ", input_name->c_str())));
       return false;
     }
@@ -164,8 +158,6 @@ bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& di
   }
   for (size_t i = 0; i < dimVec.size(); i++) {
     CHECK((dimVec[i] != dims[i]) && (dimVec[i] != 1) && (dims[i] != 1) && (dimVec[i] != -1) && (dims[i] != -1),
-    OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimVec[i]),
-  								ConcatString(dims[i]));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The ", op.GetName(), "'s dimensions does not match the broadcast rule(", dimVec[i], dims[i], ")."))),
     return false);
   }
@@ -436,8 +428,6 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   // dynamic case
   for (size_t i = 0; i < dimsX.size(); i++) {
     CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
-      OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimsX[i]),
-                                      ConcatString(dimsY[i]));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The ", op.GetName(), "'s dimensions does not match the broadcast rule(", dimsX[i], dimsY[i], ")."))),
       return false);
 
@@ -539,8 +529,6 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 
   for (size_t i = 0; i < dimsX.size(); i++) {
     CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
-      OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimsX[i]),
-                                      ConcatString(dimsY[i]));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The ", op.GetName(), "'s dimensions does not match the broadcast rule(", dimsX[i], dimsY[i], ")."))),
       return false);
 

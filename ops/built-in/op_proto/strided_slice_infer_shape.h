@@ -149,7 +149,7 @@ static bool StridedSliceBuildDenseSpec(std::string op_name,
       dense->final_shape_gather_indices.push_back(kStridedSliceNewAxis);
     } else {
       if (static_cast<size_t>(full_index) == dense->begin.size()) {
-        OP_LOGE(op_name.c_str(), "Index out of range using input dim %d; input has only %lld dims.",
+        OP_LOGE(op_name.c_str(), "Index out of range using input dim %d; input has only %ld dims.",
                 full_index, dense->dims);
         return false;
       }
@@ -442,7 +442,7 @@ static bool StridedSliceCommonInferShape(std::string op_name,
         begin_i = x_fwd;
         end_i = begin_i + 1;
         if (x_fwd < 0 || x_fwd >= dim_i) {
-          OP_LOGE(op_name.c_str(), "slice index %lld of dimension %d  out of bounds.", begin_i, i);
+          OP_LOGE(op_name.c_str(), "slice index %ld of dimension %d  out of bounds.", begin_i, i);
           return false;
         }
       } else {

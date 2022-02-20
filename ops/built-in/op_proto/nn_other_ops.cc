@@ -78,12 +78,10 @@ IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
   int64_t pool_h_shape;
   int64_t pool_w_shape;
   if (op.GetAttr("pooled_height", pool_h_shape) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "pooled_height");
     OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_height failed. Use unknown shape.");
     pool_h_shape = UNKNOWN_DIM;
   }
   if (op.GetAttr("pooled_width", pool_w_shape) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "pooled_width");
     OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_width failed. Use unknown shape.");
     pool_w_shape = UNKNOWN_DIM;
   }
@@ -195,14 +193,14 @@ IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
     // inputs size must be equal
     if ((rois_size < 1) || (rois_size != deltas_size)) {
         OP_LOGE(op.GetName().c_str(),
-        "the  BoundingBoxDecode verify Failed.inputs size(rois:%d, deltas:%d) not equal", rois_size, deltas_size);
+        "the  BoundingBoxDecode verify Failed.inputs size(rois:%ld, deltas:%ld) not equal", rois_size, deltas_size);
         return GRAPH_FAILED;
     }
 
     // inputs last dim value must be 4(x1,y1,x2,y2)
     if (((rois_shape[rois_size - 1] > 0) && (rois_shape[rois_size - 1] != 4)) || 
         ((deltas_shape[deltas_size - 1] > 0) && (deltas_shape[deltas_size - 1] != 4))) {
-        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%d, deltas:%d) != 4", 
+        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%ld, deltas:%ld) != 4", 
         rois_shape[rois_size - 1], deltas_shape[deltas_size - 1]);
         return GRAPH_FAILED;
     }
@@ -274,7 +272,6 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
       aspectratios_new.push_back(ar);
       if (flip) {
         if (ar <= 0) {
-          OpsAttrValueErrReport(op.GetName(), "aspect_ratio", "greater than 0", ConcatString(ar));
           OP_LOGE(op.GetName().c_str(), "aspect_ratio need greater than 0");
           return GRAPH_FAILED;
         }

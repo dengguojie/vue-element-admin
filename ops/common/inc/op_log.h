@@ -24,6 +24,7 @@
 #include <string>
 #include <type_traits>
 #include "external/graph/operator.h"
+#include "common/util/error_manager/error_manager.h"
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #include "toolchain/slog.h"
@@ -86,7 +87,14 @@ std::string TbeGetOpType(const T& op) {
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #define OP_LOGI(opname, ...) D_OP_LOGI(get_op_name(opname), __VA_ARGS__)
 #define OP_LOGW(opname, ...) D_OP_LOGW(get_op_name(opname), __VA_ARGS__)
-#define OP_LOGE(opname, ...) D_OP_LOGE(get_op_name(opname), __VA_ARGS__)
+
+#define OP_LOGE_WITHOUT_REPORT(opname, ...) D_OP_LOGE(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGE(op_name, ...)                       \
+  do {                                              \
+    OP_LOGE_WITHOUT_REPORT(op_name, ##__VA_ARGS__); \
+    REPORT_INNER_ERROR("EZ9999", ##__VA_ARGS__);    \
+  } while (0)
+
 #define OP_LOGD(opname, ...) D_OP_LOGD(get_op_name(opname), __VA_ARGS__)
 #define OP_EVENT(opname, ...) D_OP_EVENT(get_op_name(opname), __VA_ARGS__)
 #define GE_OP_LOGI(opname, ...) GE_D_OP_LOGI(opname, __VA_ARGS__)
@@ -100,6 +108,7 @@ std::string TbeGetOpType(const T& op) {
 #else
 #define OP_LOGI(opname, ...)
 #define OP_LOGW(opname, ...)
+#define OP_LOGE_WITHOUT_REPORT(opname, ...)
 #define OP_LOGE(opname, ...)
 #define OP_LOGD(opname, ...)
 #define OP_EVENT(opname, ...)

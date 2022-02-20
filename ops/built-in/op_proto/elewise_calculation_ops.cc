@@ -2320,15 +2320,16 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
     // verify dimension_value
     if (dimension_value.size() != 1) {
-      OP_LOGE(op.GetName().c_str(), "The length of dimension value must be equal to 1, but got %d.",
+      OP_LOGE(op.GetName().c_str(), "The length of dimension value must be equal to 1, but got %lu.",
               dimension_value.size());
       return GRAPH_FAILED;
     }
     int64_t dimension = dimension_value[0] < 0 ? dimension_value[0] + x_shape.size() : dimension_value[0];
     if (dimension >= static_cast<int64_t>(x_shape.size())) {
-      OP_LOGE(op.GetName().c_str(),
-              "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
-              dimension_value[0], x_shape.size());
+      OP_LOGE(
+          op.GetName().c_str(),
+          "The dimension value must be range at input shape size, but got dimension value %lu, input shape size %lu.",
+          dimension_value[0], x_shape.size());
       return GRAPH_FAILED;
     }
 
@@ -2516,7 +2517,6 @@ static const int64_t HAS_UNKNOWN_SHAPE_TENSOR = 3;
 int64_t GetEltwiseConstValue(ge::Operator& op) {
   int64_t tensor_num;
   if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
     OP_LOGE(op.GetName().c_str(), "The eltwise op GetOpAttr failed!");
   }
   return tensor_num;
@@ -2676,7 +2676,7 @@ IMPLEMT_COMMON_INFERFUNC(ErfinvInferShape) {
     if (InferShapeAndTypeErfinv(op, "input_x", "output_y")) {
         return GRAPH_SUCCESS;
     }
-    OP_LOGE("The InferShapeAndTypeErfinv is one input and one output.");
+    OP_LOGE(op.GetName().c_str(), "The InferShapeAndTypeErfinv is one input and one output.");
     return GRAPH_FAILED;
 }
 
@@ -3635,8 +3635,6 @@ IMPLEMT_INFERFUNC(ArgMaxWithK, ArgMaxWithKInfer) {
 IMPLEMT_VERIFIER(ArgMaxWithK, ArgMaxWithKVerify) {
   int topk = op.get_attr_topk();
   if (topk < 1) {
-    ge::OpsAttrValueErrReport(op.GetName(), "topk", "Greater than 0", 
-                              ConcatString(topk));
     OP_LOGE(op.GetName().c_str(), "topk must be greater than 0, current topk is %d", topk);
     return GRAPH_FAILED;
   }
@@ -3922,7 +3920,7 @@ bool InferShapeAndTypeTensorEqual(Operator &op, const string &input_name1,
   std::vector<int64_t> dims_y = shape_y.GetDims();
 
   if (shape_x.GetShapeSize() != shape_y.GetShapeSize()) {
-    OP_LOGE("The ShapeSize of input_x does not match input_y.");
+    OP_LOGE(op.GetName().c_str(), "The ShapeSize of input_x does not match input_y.");
     return false;
   }
   return true;
@@ -3948,7 +3946,7 @@ IMPLEMT_VERIFIER(TensorEqual, TensorEqualVerify) {
   // Check whether the data types of two input tensors are the same.
   if (op.GetInputDesc("input_x").GetDataType() !=
       op.GetInputDesc("input_y").GetDataType()) {
-    OP_LOGE("input_x input_y tensor dtype does not match.");
+    OP_LOGE(op.GetName().c_str(), "input_x input_y tensor dtype does not match.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3980,7 +3978,7 @@ graphStatus ChangeShape(std::vector<int64_t>& dims_fst,
   for (size_t i = 0; i < dims_fst.size(); i++) {
     if ((dims_fst[i] != dims_sec[i]) && (dims_fst[i] != 1) &&
         (dims_sec[i] != 1)) {
-      OP_LOGE("[ERROR] dims_fst and dims_sec can not be broadcast");
+      OP_LOGE("ChangeShape", "[ERROR] dims_fst and dims_sec can not be broadcast");
       return GRAPH_FAILED;
     }
 
@@ -4012,7 +4010,7 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
                                         const string& output_name) {
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -4629,24 +4627,20 @@ COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
 IMPLEMT_VERIFIER(DataCompare, DataCompareVerify) {
   float atol_data;
   if (ge::GRAPH_SUCCESS != op.GetAttr("atol", atol_data)) {
-    OpsGetAttrErrReport(op.GetName(), "atol");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of DataCompare!");
     return GRAPH_FAILED;
   }
   if (atol_data < 0) {
-    OpsAttrValueErrReport(op.GetName(), "atol", ">= 0", ConcatString(atol_data));
     OP_LOGE(op.GetName().c_str(), "atol should >= 0!");
     return GRAPH_FAILED;
   }
 
   float rtol_data;
   if (ge::GRAPH_SUCCESS != op.GetAttr("rtol", rtol_data)) {
-    OpsGetAttrErrReport(op.GetName(), "rtol");
     OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of DataCompare!");
     return GRAPH_FAILED;
   }
   if (rtol_data < 0) {
-    OpsAttrValueErrReport(op.GetName(), "rtol", ">= 0", ConcatString(rtol_data));
     OP_LOGE(op.GetName().c_str(), "rtol should >= 0!");
     return GRAPH_FAILED;
   }
@@ -4724,17 +4718,17 @@ bool InferShapeDot(Operator& op,
   std::vector<int64_t> dims_input2 = shape_input2.GetDims();
 
   if(dims_input1.size() != dims_input2.size()) {
-      OP_LOGE("The dim of input_x and input_y not match.");
+      OP_LOGE(op.GetName().c_str(), "The dim of input_x and input_y not match.");
       return false;
   }
 
   if(dims_input1.size() != 1) {
-      OP_LOGE("The dim of input must be 1");
+      OP_LOGE(op.GetName().c_str(), "The dim of input must be 1");
       return false;
   }
 
   if(dims_input1[0] != dims_input2[0]) {
-      OP_LOGE("The 0-dim of input_x and input_y not match.");
+      OP_LOGE(op.GetName().c_str(), "The 0-dim of input_x and input_y not match.");
       return false;
   }
   
@@ -4761,7 +4755,7 @@ IMPLEMT_COMMON_INFERFUNC(DotInferShape) {
 
 IMPLEMT_VERIFIER(Dot, DotVerify) {
   if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_y").GetDataType()) {
-      OP_LOGE("The dataType of input_x and input_y not match.");
+      OP_LOGE(op.GetName().c_str(), "The dataType of input_x and input_y not match.");
       return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -4883,23 +4877,23 @@ bool IsArgMaxGradCheckPass(Operator& op,
 
     if ((shape_var_list.size() > 1) &&
         (shape_var_list.size() != shape_updates_list.size() + 1)) {
-        OP_LOGE("The dim size of var should biger than updates(indices) 1.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of var should biger than updates(indices) 1.");
         return false;
     }
   
     if ((1 == shape_var_list.size()) && (1 != shape_updates_list.size())) {
-        OP_LOGE("The dim size of var should equal updates(indices) when size=1.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of var should equal updates(indices) when size=1.");
         return false;
     }
   
     if (shape_indices_list.size() != shape_updates_list.size()) {
-        OP_LOGE("The dim size of indices and updates not match.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of indices and updates not match.");
         return false;
     }
 
     for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
         if (shape_indices.GetDim(i) != shape_updates.GetDim(i)) {
-            OP_LOGE("The dim value of indices and updates not match.");
+            OP_LOGE(op.GetName().c_str(), "The dim value of indices and updates not match.");
             return false;
         }
     }
@@ -4908,7 +4902,7 @@ bool IsArgMaxGradCheckPass(Operator& op,
         for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
             if (((static_cast<int32_t>(i) < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
                 ((static_cast<int32_t>(i) >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
-                OP_LOGE("The dim value of var and updates not match.");
+                OP_LOGE(op.GetName().c_str(), "The dim value of var and updates not match.");
                 return false;
             }
         }
@@ -4917,7 +4911,7 @@ bool IsArgMaxGradCheckPass(Operator& op,
     DataType var_dtype = input_var_desc.GetDataType();
     DataType updates_dtype = input_updates_desc.GetDataType();
     if (var_dtype != updates_dtype) {
-        OP_LOGE("The dtype of var and updates not match.");
+        OP_LOGE(op.GetName().c_str(), "The dtype of var and updates not match.");
         return false;
     }
 
@@ -5015,30 +5009,30 @@ bool IsArgMaxGradDCheckPass(Operator& op,
 
     if ((shape_var_list.size() > 1) &&
         (shape_var_list.size() != shape_updates_list.size() + 1)) {
-        OP_LOGE("The dim size of var should biger than updates(indices) 1.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of var should biger than updates(indices) 1.");
         return false;
     }
 
     if ((1 == shape_var_list.size()) && (1 != shape_updates_list.size())) {
-        OP_LOGE("The dim size of var should equal updates(indices) when size=1.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of var should equal updates(indices) when size=1.");
         return false;
     }
   
     if (shape_indices_list.size() != shape_updates_list.size()) {
-        OP_LOGE("The dim size of indices and updates not match.");
+        OP_LOGE(op.GetName().c_str(), "The dim size of indices and updates not match.");
         return false;
     }
 
     for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
         if (shape_indices.GetDim(i) != shape_updates.GetDim(i)) {
-            OP_LOGE("The dim value of indices and updates not match.");
+            OP_LOGE(op.GetName().c_str(), "The dim value of indices and updates not match.");
             return false;
         }
     }
 
     for (size_t i = 0; i < shape_var.GetDimNum(); i++) {
         if (shape_var.GetDim(i) != shape_assist.GetDim(i)) {
-            OP_LOGE("The dim value of var and assist not match.");
+            OP_LOGE(op.GetName().c_str(), "The dim value of var and assist not match.");
             return false;
         }
     }
@@ -5047,7 +5041,7 @@ bool IsArgMaxGradDCheckPass(Operator& op,
         for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
             if (((static_cast<int32_t>(i) < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
                 ((static_cast<int32_t>(i) >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
-                OP_LOGE("The dim value of var and updates not match.");
+                OP_LOGE(op.GetName().c_str(), "The dim value of var and updates not match.");
                 return false;
             }
         }
@@ -5056,7 +5050,7 @@ bool IsArgMaxGradDCheckPass(Operator& op,
     DataType var_dtype = input_var_desc.GetDataType();
     DataType updates_dtype = input_updates_desc.GetDataType();
     if (var_dtype != updates_dtype) {
-        OP_LOGE("The dtype of var and updates not match.");
+        OP_LOGE(op.GetName().c_str(), "The dtype of var and updates not match.");
         return false;
     }
 

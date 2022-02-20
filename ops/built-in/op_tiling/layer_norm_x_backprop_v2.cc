@@ -82,7 +82,7 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
 
   bool ret = GetLayerNormXBackpropV2CompileParams(op_info, core_num, ub_size, max_dtype);
   if (!ret) {
-    OP_LOGE("op[%s] GetLayerNormXBackpropV2CompileParams failed.", op_type.c_str());
+    OP_LOGE(op_type.c_str(), "GetLayerNormXBackpropV2CompileParams failed");
     return false;
   }
   GELOGI("op[%s] GetLayerNormXBackpropV2CompileParams success.", op_type.c_str());

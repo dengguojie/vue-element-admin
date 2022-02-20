@@ -85,14 +85,14 @@ Status ProdForceSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   ge::GeShape prodForceSeAOutputShape = prodForceSeAOutputOpDesc.GetShape();
   vector<int64_t> dimInfo = prodForceSeAOutputShape.GetDims();
   if (dimInfo.size() != DIM_SIZE) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output dim is %d.", dimInfo.size());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output dim is %ld.", dimInfo.size());
     return PARAM_INVALID;
   }
   std::vector<std::pair<int64_t, int64_t>> forceOutRange;
   FUSION_PASS_CHECK(prodForceSeAOutputOpDesc.GetShapeRange(forceOutRange) != GRAPH_SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ProdForceSeA get shape range failed."), return NOT_CHANGED);
   if (forceOutRange.size() != DIM_SIZE) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output range dim is %d.", forceOutRange.size());
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProdForceSeA output range dim is %ld.", forceOutRange.size());
     return PARAM_INVALID;
   }
   int64_t outputNFrames = dimInfo[DIM_IDX_0];

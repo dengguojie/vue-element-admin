@@ -218,7 +218,7 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
   for (size_t i = 0, j = 0; i < fusedNode->GetAllInDataAnchors().size(); i++) {
     if (!FindAttrInfoByIndex(attrInfos, i, attr)) {
       if (fusedDesc->GetInputNameByIndex(i).empty()) {
-        OP_LOGE(fusionOpType.c_str(), "Get fuseNode:[%s]'s inputName by index [%d] failed.",
+        OP_LOGE(fusionOpType.c_str(), "Get fuseNode:[%s]'s inputName by index [%lu] failed.",
                 fusedNode->GetName().c_str(), i);
         return FAILED;
       }
@@ -291,11 +291,11 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
       FUSION_PASS_CHECK(
         SUCCESS !=
         ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor(), fusionNode->GetInDataAnchor(j)),
-        OP_LOGE(fusionOpType.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        OP_LOGE(fusionOpType.c_str(), "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                 fusedNode->GetName().c_str(), i, fusionNode->GetName().c_str(), j),
         return FAILED);
     }
-    OP_LOGD(fusionOpType.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d].",
+    OP_LOGD(fusionOpType.c_str(), "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu].",
             fusedNode->GetName().c_str(), i, fusionNode->GetName().c_str(), j);
     j++;
   }
@@ -842,7 +842,7 @@ Status PatternFusionUtil::UpdateInputAndOutputName(const ge::OpDescPtr opDescPtr
     OP_LOGD("Get op from OperatorFactory success. opType: %s", opDescPtr->GetType().c_str());
     auto temp_op_desc = ge::OpDescUtils::GetOpDescFromOperator(node_op);
     if (temp_op_desc == nullptr) {
-      OP_LOGE("temp op desc is null");
+      OP_LOGE(opDescPtr->GetType(), "temp op desc is null");
       return FAILED;
     }
     if (!opDescPtr->UpdateInputName(temp_op_desc->GetAllInputName())) {
@@ -1016,7 +1016,7 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, const NodePtr s
               OP_LOGE(curOpType.c_str(), "sliceNdoe's dim:[%ld] less than one, fusion failed.", inputShape.GetDimNum()),
               return FAILED);
       FUSION_PASS_CHECK(group != 0 && inputShape.GetDim(sliceDimIdx) % group != 0,
-                        OP_LOGE(curOpType.c_str(), "sliceNdoe's dim[%d]:[%ld] divide group(%ld) != 0, fusion failed.",
+                        OP_LOGE(curOpType.c_str(), "sliceNdoe's dim[%lu]:[%ld] divide group(%ld) != 0, fusion failed.",
                                 sliceDimIdx, inputShape.GetDim(sliceDimIdx), group),
                         return FAILED);
       // deivide the sliceDimIdx axis data into group
@@ -1065,7 +1065,7 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, const NodePtr s
   } else {
     // if there is sliceD node, just connect sliceD to new conv node
     FUSION_PASS_CHECK(newSlicedNodes.size() != (unsigned int)group,
-                      OP_LOGE(curOpType.c_str(), "Node[%s] should have [%d] sliceD outputs",
+                      OP_LOGE(curOpType.c_str(), "Node[%s] should have [%ld] sliceD outputs",
                               srcNode->GetInAllNodes().at(weightIdx)->GetName().c_str(), group),
                       return FAILED);
     for (int newSrcNodeIdx = 0; newSrcNodeIdx < group; newSrcNodeIdx++) {

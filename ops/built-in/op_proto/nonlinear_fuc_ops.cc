@@ -264,9 +264,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
       }
     }
   } else {
-    string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
-    OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, ConcatString(origin_format));
-    OP_LOGI("The format only support NHWC and NCHW.");
+    OP_LOGE(op.GetName().c_str(), "The format only support NHWC and NCHW.");
     return GRAPH_FAILED;
   }
   if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {

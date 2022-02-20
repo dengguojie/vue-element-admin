@@ -310,8 +310,6 @@ bool PadV35HDTiling(const std::string& op_type, const TeOpParas& op_paras, const
 
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
       op_paras.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(op_type.c_str(), "input_x or paddings",
-                                  "The input may be empty");
     OP_LOGE(op_type, "op [PadV35HDTiling] : input shape error");
     return false;
   }

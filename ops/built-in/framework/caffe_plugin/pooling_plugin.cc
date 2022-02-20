@@ -45,8 +45,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
 
   if (global_pooling) {
     if (pooling_param.has_kernel_size() || pooling_param.has_kernel_h() || pooling_param.has_kernel_w()) {
-      ge::OpsInputShapeErrReport(op_dest.GetName(), "In the Global_pooling condition, Filter size cannot be specified",
-                                 "Filter size", "specified");
       OP_LOGE("Pooling", "With Global_pooling: true Filter size cannot specified");
       return FAILED;
     }
@@ -55,8 +53,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
     bool condition =
         !pooling_param.has_kernel_size() != !(pooling_param.has_kernel_h() && pooling_param.has_kernel_w());
     if (!condition) {
-      ge::OpsInputShapeErrReport(op_dest.GetName(), "Filter size is kernel_size or kernel_h and kernel_w",
-                                 "kernel_size and kernel_h/kernel_w", "set both");
       OP_LOGE("Pooling", "Filter size is kernel_size OR kernel_h and kernel_w; not both");
       return FAILED;
     }
@@ -64,8 +60,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
     // preserve original caffe logic to prevent rewrite errors
     condition = pooling_param.has_kernel_size() || (pooling_param.has_kernel_h() && pooling_param.has_kernel_w());
     if (!condition) {
-      ge::OpsInputShapeErrReport(op_dest.GetName(), "For non-square filters, kernel_h and kernel_w are required",
-                                 "kernel_size or kernel_h/kernel_w", "missed");
       OP_LOGE("Pooling", "For non-square filters both kernel_h and kernel_w are required.");
       return FAILED;
     }
@@ -75,8 +69,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
   bool condition = (!pooling_param.has_pad() && pooling_param.has_pad_h() && pooling_param.has_pad_w()) ||
                    (!pooling_param.has_pad_h() && !pooling_param.has_pad_w());
   if (!condition) {
-    ge::OpsInputShapeErrReport(op_dest.GetName(), "set either pad or pad_h/pad_w should be specified",
-                               "pad and pad_h/pad_w", "set both");
     OP_LOGE("Pooling", "pad is pad OR pad_h and pad_w are required.");
     return FAILED;
   }
@@ -85,8 +77,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
   condition = ((!pooling_param.has_stride() && pooling_param.has_stride_h() && pooling_param.has_stride_w()) ||
                (!pooling_param.has_stride_h() && !pooling_param.has_stride_w()));
   if (!condition) {
-    ge::OpsInputShapeErrReport(op_dest.GetName(), "set either stride or stride_h/stride_w should be specified",
-                               "stride and stride_h/stride_w", "set both");
     OP_LOGE("Pooling", "Stride is stride OR stride_h and stride_w are required.");
     return FAILED;
   }
@@ -122,15 +112,11 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
   }
 
   if (kernel_h < 0) {
-    ge::OpsAttrValueErrReport(op_dest.GetName(), "kernel_h", "not be zero",
-                              to_string(kernel_h));
     OP_LOGE("Pooling", "Filter H dimensions cannot be zero.");
     return FAILED;
   }
 
   if (kernel_w < 0) {
-    ge::OpsAttrValueErrReport(op_dest.GetName(), "kernel_w", "not be zero",
-                              to_string(kernel_w));
     OP_LOGE("Pooling", "Filter W dimensions cannot be zero.");
     return FAILED;
   }
@@ -183,8 +169,6 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
     // preserve original caffe logic to prevent rewrite errors
     bool conditionGloable = (pad_h == 0) && (pad_w == 0) && (stride_h == 1) && (stride_w == 1);
     if (!conditionGloable) {
-      ge::OpsInputShapeErrReport(op_dest.GetName(), "In the Global_pooling condition, only pad = 0 and stride = 1",
-                                 "pad", to_string(pad_h) + ", stride is " + to_string(stride_h));
       OP_LOGE("Pooling", "With Global_pooling: true; only pad = 0 and stride = 1");
       return FAILED;
     }
@@ -199,22 +183,16 @@ Status ParseParamsPooling(const Message* op_src, ge::Operator& op_dest) {
 
   if (pad_h != 0 || pad_w != 0) {
     if ((mode != 0) && (mode != 1)) {
-      ge::OpsInputShapeErrReport(op_dest.GetName(), "Padding implemented only for average and max pooling",
-                                 "mode", to_string(mode));
       OP_LOGE("Pooling", "Padding implemented only for average and max pooling.");
       return FAILED;
     }
 
     if (pad_h > kernel_h) {
-      ge::OpsAttrValueErrReport(op_dest.GetName(), "pad_h", "less than kernel_h",
-                                to_string(pad_h));
       OP_LOGE("Pooling", "pad_h should less than kernel_h.");
       return FAILED;
     }
 
     if (pad_w > kernel_w) {
-      ge::OpsAttrValueErrReport(op_dest.GetName(), "pad_w", "less than kernel_w",
-                                to_string(pad_w));
       OP_LOGE("Pooling", "pad_w should less than kernel_w.");
       return FAILED;
     }

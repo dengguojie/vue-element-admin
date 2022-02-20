@@ -358,7 +358,6 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
     OP_LOGE(op.GetName().c_str(),
             "the tile multiples len %lu is less than the input len %lu!",
             multiples_len, input_len);
-    OpsInputShapeSizeErrReport(op.GetName(), "multiples", "input", ConcatString(multiples_len));
     return GRAPH_FAILED;
   }
 
@@ -419,8 +418,6 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
       return GRAPH_SUCCESS;
     } else {
       OP_LOGE(op.GetName().c_str(), "Illegal input dim value when multiples len is 1.");
-      OpsOneInputShapeErrReport(op.GetName(), "input_shape",
-                              "input dim value is illegal when multiples_len is 1");
       return GRAPH_FAILED;
     }
 
@@ -733,8 +730,6 @@ bool CheckGatherNdInputIndicesSize(const Operator& op, const string& input_name)
     indices_part *= static_cast<int64_t>(indices_shape.GetDim(i));
   }
   if (indices_part > std::numeric_limits<int>::max()) {
-    OpsInputShapeSizeErrReport(op.GetName(), "indices", ConcatString(std::numeric_limits<int>::max()),
-                               ConcatString(indices_part));
     OP_LOGE(op.GetName().c_str(), "Indices has too many elements for int indexing");
     return false;
   }
@@ -2505,12 +2500,10 @@ static graphStatus OneHotInferShapeAndType(ge::Operator& op, DataType& input_typ
 IMPLEMT_COMMON_INFERFUNC(OneHotDInferShape) {
   std::int64_t depth = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("depth", depth)) {
-    OpsGetAttrErrReport(op.GetName(), "depth");
     OP_LOGE(op.GetName().c_str(), "OneHot GetOpAttr depth failed!");
     return GRAPH_FAILED;
   }
   if (depth < 1) {
-    OpsAttrValueErrReport(op.GetName(), "depth", "greater than or equals to 1", ConcatString(depth));
     OP_LOGE(op.GetName().c_str(), "depth need greater than or equals to 1");
     return GRAPH_FAILED;
   }
@@ -2520,12 +2513,10 @@ IMPLEMT_COMMON_INFERFUNC(OneHotDInferShape) {
   dim_nums = indices_shape.GetDimNum();
   int32_t axis = -1;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
-    OP_LOGE("Get const axis failed from op of 'OneHotD'!\n");
+    OP_LOGE(op.GetName().c_str(), "Get const axis failed from op of 'OneHotD'!\n");
     return GRAPH_FAILED;
   }
   if (axis < -dim_nums || axis > dim_nums) {
-    OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dim_nums), ConcatString(-dim_nums), ConcatString(axis));
     OP_LOGE(op.GetName().c_str(), "attr axis is not in range");
     return GRAPH_FAILED;
   }
@@ -2912,7 +2903,6 @@ IMPLEMT_COMMON_INFERFUNC(ScatterNdDInferShape) {
   const std::string shape_name = "shape";
   std::vector<int64_t> shape_out_list;
   if (GRAPH_SUCCESS != op.GetAttr(shape_name, shape_out_list)) {
-    OpsGetAttrErrReport(op.GetName(), shape_name);
     USER_GE_LOGE("GetAttr %s failed.", shape_name.c_str());
     return GRAPH_FAILED;
   }
@@ -2967,19 +2957,19 @@ bool InTopKDCheckInputX1AndX2(const Operator& op) {
   bool unknown_rank = IsUnknownRankShape(dims_in_prediction);
   size_t target_dim = input_target->GetShape().GetDimNum();
   if (target_dim != 1) {
-    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional, but get %u", target_dim);
+    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional, but get %lu", target_dim);
     return false;
   }
   if (!unknown_rank) {
     size_t prediction_dim = input_prediction->GetShape().GetDimNum();
     if (prediction_dim != 2) {
-      OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %u", prediction_dim);
+      OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %lu", prediction_dim);
       return false;
     }
     if (input_prediction->GetShape().GetDim(0) != -1 && input_target->GetShape().GetDim(0) != -1) {
       if (input_prediction->GetShape().GetDim(0) != input_target->GetShape().GetDim(0)) {
         OP_LOGE(op.GetName().c_str(),
-                "First dimension of prediction must match length of targets, but first dimension of prediction get %d",
+                "First dimension of prediction must match length of targets, but first dimension of prediction get %ld",
                 input_prediction->GetShape().GetDim(0));
         return false;
       }
@@ -3066,19 +3056,19 @@ bool InTopKCheckInputX1AndX2(const Operator& op) {
   bool unknown_rank = IsUnknownRankShape(dims_in_prediction);
   size_t target_dim = input_target->GetShape().GetDimNum();
   if (target_dim != 1) {
-    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional, but get %u", target_dim);
+    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional, but get %lu", target_dim);
     return false;
   }
   if (!unknown_rank) {
     size_t prediction_dim = input_prediction->GetShape().GetDimNum();
     if (prediction_dim != 2) {
-      OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %u", prediction_dim);
+      OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %lu", prediction_dim);
       return false;
     }
     if (input_prediction->GetShape().GetDim(0) != -1 && input_target->GetShape().GetDim(0) != -1) {
       if (input_prediction->GetShape().GetDim(0) != input_target->GetShape().GetDim(0)) {
         OP_LOGE(op.GetName().c_str(),
-                "First dimension of prediction must match length of targets, but first dimension of prediction get %d",
+                "First dimension of prediction must match length of targets, but first dimension of prediction get %ld",
                 input_prediction->GetShape().GetDim(0));
         return false;
       }
@@ -3528,7 +3518,6 @@ IMPLEMT_COMMON_INFERFUNC(ProposalInferShape) {
 
   int64_t post_nms_topn = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", post_nms_topn)) {
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
     OP_LOGE(op.GetName().c_str(), "get attr failed");
     return GRAPH_FAILED;
   }
@@ -4127,7 +4116,7 @@ bool InferShapeAndTypeMaskedSelectV2(Operator& op, const string& input_name1,
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
-      OP_LOGE("The shape of x1 and x2 can not broadcast.");
+      OP_LOGE(op.GetName().c_str(), "The shape of x1 and x2 can not broadcast.");
       return false;
     }
     int64_t dims = (dims_x[i] > dims_y[i]) ? dims_x[i] : dims_y[i];
@@ -4146,7 +4135,7 @@ bool InferShapeAndTypeMaskedSelectV2(Operator& op, const string& input_name1,
 IMPLEMT_VERIFIER(MaskedSelectV2, MaskedSelectV2Verify) {
   if (op.GetInputDesc("x").GetDataType() !=
       op.GetOutputDesc("y").GetDataType()) {
-    OP_LOGE("x y tensor dtype does not match.");
+    OP_LOGE(op.GetName().c_str(), "x y tensor dtype does not match.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -4157,7 +4146,7 @@ IMPLEMT_COMMON_INFERFUNC(MaskedSelectV2InferShape) {
   if (InferShapeAndTypeMaskedSelectV2(op, "x", "mask", "y")) {
     return GRAPH_SUCCESS;
   }
-  OP_LOGE("The shape of output y does not match that of x1 x2.");
+  OP_LOGE(op.GetName().c_str(), "The shape of output y does not match that of x1 x2.");
   return GRAPH_FAILED;
 }
 
@@ -4495,7 +4484,7 @@ bool InferShapeAndTypeSliceLastDim(Operator& op, const string& x_name,
     return false;
   }
   if (stride == 0) {
-    OP_LOGE(op.GetName().c_str(), "stride[%d] error.", stride);
+    OP_LOGE(op.GetName().c_str(), "stride[%ld] error.", stride);
     return GRAPH_FAILED;
   }
   length = (end - begin - 1 + stride) / stride;

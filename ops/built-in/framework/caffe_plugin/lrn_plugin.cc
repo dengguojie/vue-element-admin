@@ -58,8 +58,6 @@ Status ParseParamsLrn(const Message* op_origin, ge::Operator& op_dest)
   if (param.has_local_size()) {
     localSize = param.local_size();
     if (localSize % 2 == 0) {
-      ge::OpsAttrValueErrReport(op_dest.GetName(), "localSize", "odd value",
-                                to_string(localSize));
       OP_LOGE(op_dest.GetName().c_str(), "LRN only supports odd values for localSize.");
       return FAILED;
     }

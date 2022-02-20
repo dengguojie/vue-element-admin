@@ -55,7 +55,7 @@ graphStatus MakeBatchSquareMatrix(const GeTensorDescPtr& tensor_desc,
                                   GeShape& out, const char* op_name) {
   GeShape ge_shape;
   if (WithRankAtLeast(tensor_desc, 2, ge_shape, op_name) == GRAPH_FAILED) {
-    OP_LOGE("Input tensor's rank at least 2.");
+    OP_LOGE(op_name, "Input tensor's rank at least 2.");
     return GRAPH_FAILED;
   }
   Shape s(ge_shape.GetDims());

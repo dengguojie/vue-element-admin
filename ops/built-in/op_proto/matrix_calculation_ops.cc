@@ -418,7 +418,6 @@ IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
 
   // check wShape size
   if (wShape.size() != 1 && wShape.size() != 2) {
-    OpsOneOutputShapeErrReport(opName.GetString(), "W shape", "wShape Compress size must equal to 1 or 2!");
     OP_LOGE(opName.GetString(), "wShape Compress size must equal to 1 or 2!\n");
     return GRAPH_FAILED;
   }
@@ -427,13 +426,11 @@ IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
   if (wShape.size() == 2) {
     if (!transpose) {
       if (kShape != wShape[1]) {
-        OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
         OP_LOGE(opName.GetString(), "weight Compress K must equal to input K!\n");
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
-        OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
         OP_LOGE(opName.GetString(), "weight Compress K must equal to input K!\n");
         return GRAPH_FAILED;
       }
@@ -455,8 +452,7 @@ IMPLEMT_INFERFUNC(FullyConnectionCompress, FullyConnectionCompressInfer) {
   bool transpose = op.get_attr_transpose();
 
   if (xShape.size() < 1 || wShape.size() < 1) {
-    OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "Input Shape or Weight Shape should >= 1!");
-    OP_LOGE(opName.GetString(), "Invalid Shape size, xShape size is %u, wShape size is %u.", xShape.size(),
+    OP_LOGE(opName.GetString(), "Invalid Shape size, xShape size is %lu, wShape size is %lu.", xShape.size(),
             wShape.size());
     return GRAPH_FAILED;
   }
@@ -788,7 +784,7 @@ bool InferShapeMatMul::InferBias() const {
   }
 
   CHECK(shape_bias.GetDim(bias_dim - 1) != shape_out.GetDim(1), OP_LOGE(op_name.GetString(),
-      "[InferShape] The dimension of n [%lld] and bias [%lld] tensors must be the same",
+      "[InferShape] The dimension of n [%ld] and bias [%ld] tensors must be the same",
       shape_out.GetDim(1), shape_bias.GetDim(bias_dim - 1)), return false);
 
   return true;
@@ -833,8 +829,7 @@ bool InferShapeMatMul::InferMKN() const {
   // ka != -1, kb != -1
   } else {
     if (k_a != k_b) {
-      OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of x1 [%lld] and x2 [%lld] tensors must be the same", k_a,
+      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of x1 [%ld] and x2 [%ld] tensors must be the same", k_a,
               k_b);
       return false;
     }
@@ -898,8 +893,7 @@ bool InferShapeMatMul::InferShape() {
     int64_t idx_n = trans_b ? 0 : 1;
 
     if (shape_a.GetDim(idx_k_a) != shape_b.GetDim(idx_k_b)) {
-      OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same",
+      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%ld) and b(%ld) tensors must be the same",
               shape_a.GetDim(idx_k_a), shape_b.GetDim(idx_k_b));
       return false;
     }
@@ -1057,8 +1051,7 @@ bool InferShapeBatchMatMul::InferMKN() const {
   }
   // ka != -1, kb != -1
   else if (k_a != k_b) {
-    OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-    OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same", k_a, k_b);
+    OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%ld) and b(%ld) tensors must be the same", k_a, k_b);
     return false;
   }
 
@@ -1366,8 +1359,7 @@ bool InferShapeBatchMatMul::InferShape() {
     }
 
     if (shape_a.GetDim(idx_k_a) != shape_b.GetDim(idx_k_b)) {
-      OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%lld) and b(%lld) tensors must be the same",
+      OP_LOGE(op_name.GetString(), "[InferShape] The k-axis of a(%ld) and b(%ld) tensors must be the same",
               shape_a.GetDim(idx_k_a), shape_b.GetDim(idx_k_b));
       return false;
     }
@@ -1513,14 +1505,12 @@ bool InferMatmul(const Operator &op) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!",
             opName.GetString());
     return false;
   }
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!",
             opName.GetString());
     return false;
@@ -1694,7 +1684,6 @@ bool InferBatchMatmul(const Operator &op) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "transposeA");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeA failed!",
             opName.GetString());
     return false;
@@ -1702,7 +1691,6 @@ bool InferBatchMatmul(const Operator &op) {
 
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "transposeB");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeB failed!",
             opName.GetString());
     return false;
@@ -1787,7 +1775,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
             opName.GetString(), "transpose_x1");
     return GRAPH_FAILED;
@@ -1795,7 +1782,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
             opName.GetString(), "transpose_x2");
     return GRAPH_FAILED;
@@ -1913,7 +1899,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
             opName.GetString(), "transpose_x2");
     return GRAPH_FAILED;
@@ -1921,7 +1906,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
             opName.GetString(), "transpose_x1");
     return GRAPH_FAILED;
@@ -2016,8 +2000,6 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
   OP_LOGD(opName.GetString(), "[GEMM Verify] Start GEMM Verify.");
 
   if (CheckInputDataType(op, "a", support_list) == false) {
-    TbeInputDataTypeErrReport(opName.GetString(), "a", "float16,float32,int8,int32",
-                              DataTypeToStringDesc(op.GetInputDescByName("a").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "b", support_list) == false) {
@@ -2109,14 +2091,12 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "adj_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!", opName.GetString(), "adj_x1");
     return GRAPH_FAILED;
   }
 
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "adj_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!", opName.GetString(), "adj_x2");
     return GRAPH_FAILED;
   }
@@ -2215,14 +2195,12 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x1", trans_a)) {
-    OpsGetAttrErrReport(opName.GetString(), "adj_x1");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!", opName.GetString(), "adj_x1");
     return GRAPH_FAILED;
   }
 
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "adj_x2", trans_b)) {
-    OpsGetAttrErrReport(opName.GetString(), "adj_x2");
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!", opName.GetString(), "adj_x2");
     return GRAPH_FAILED;
   }
@@ -3522,7 +3500,7 @@ bool InferShapeAndTypeIndexAdd(Operator& op) {
 
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -3547,7 +3525,7 @@ IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
   DataType updates_dtype = op.GetInputDescByName("updates").GetDataType();
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -3567,7 +3545,7 @@ IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
 IMPLEMT_COMMON_INFERFUNC(IndexAddInferShape) {
   AscendString op_name_str;
   if (GRAPH_SUCCESS != op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -3593,7 +3571,7 @@ bool InferShapeAndTypeIndexPut(Operator& op) {
 
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
 
@@ -3610,7 +3588,7 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
   DataType x2_dtype = op.GetInputDesc(1).GetDataType();
   AscendString op_name_str;
   if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -3625,7 +3603,7 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
 IMPLEMT_COMMON_INFERFUNC(IndexPutInferShape) {
   AscendString op_name_str;
   if (GRAPH_SUCCESS != op.GetName(op_name_str)) {
-    OP_LOGE("get op name faild!");
+    OP_LOGE(op_name_str.GetString(), "get op name faild!");
     return false;
   }
   const char *op_name = op_name_str.GetString();
@@ -4117,7 +4095,7 @@ static bool InferShapeAndTypeTrace(Operator& op, const std::string& inputName, c
   }
 
   if (inputDtype != DT_FLOAT16 && inputDtype != DT_FLOAT) {
-    OP_LOGE("the input dtype must is float16 or float.\n");
+    OP_LOGE(op.GetName().c_str(), "the input dtype must is float16 or float.\n");
     return false;
   }
 

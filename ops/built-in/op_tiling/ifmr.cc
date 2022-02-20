@@ -53,7 +53,7 @@ bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     OP_LOGI("ifmr data num is %d", data_size);
 
     if (data_size > max_size) {
-        OP_LOGE("ifmr data num overflow int32");
+        OP_LOGE(op_type.c_str(), "ifmr data num overflow int32");
         return false;
     }
 

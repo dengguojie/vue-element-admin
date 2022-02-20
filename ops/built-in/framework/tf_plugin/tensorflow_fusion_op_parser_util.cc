@@ -53,12 +53,12 @@ Status get_const_value(const domi::tensorflow::TensorProto& tensor, int index, T
         const std::string tensor_content = tensor.tensor_content();
         const T* buf_v = reinterpret_cast<const T*>(tensor_content.data());
         if (static_cast<uint32_t>(index) >= tensor_content.length() / sizeof(T)) {
-            OP_LOGE("Const data size is smaller than index :%d,not supported!", index);
+            OP_LOGE("fuison_op_parser_util", "Const data size is smaller than index :%d,not supported!", index);
             return FAILED;
         }
         param = buf_v[index];
     } else {
-        OP_LOGE("Const data size is smaller than index :%d,not supported!", index);
+        OP_LOGE("fuison_op_parser_util", "Const data size is smaller than index :%d,not supported!", index);
         return PARAM_INVALID;
     }
     return SUCCESS;
@@ -87,12 +87,12 @@ Status TensorflowFusionOpParserUtil::GetTensorFromNode(const domi::tensorflow::N
   domi::tensorflow::AttrValue attr_value;
   // Check that the attribute value must exist and get the value.
   if (!FindAttrValue(node_def, TENSORFLOW_ATTR_VALUE, attr_value)) {
-    OP_LOGE("NodeDef %s Attr %s is not exist.", node_name.c_str(), TENSORFLOW_ATTR_VALUE);
+    OP_LOGE("fuison_op_parser_util", "NodeDef %s Attr %s is not exist.", node_name.c_str(), TENSORFLOW_ATTR_VALUE);
     return FAILED;
   }
   // Check that the value attribute must be tensor.
   if (CheckAttrHasType(attr_value, TENSORFLOW_ATTR_TYPE_TENSOR) != SUCCESS) {
-    OP_LOGE("check Attr %s failed", TENSORFLOW_ATTR_VALUE);
+    OP_LOGE("fuison_op_parser_util", "check Attr %s failed", TENSORFLOW_ATTR_VALUE);
     return FAILED;
   }
   tensor = attr_value.tensor();
@@ -118,25 +118,27 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
                                                       const string& type) {
   uint32_t num_set = 0;
   bool field_validate_result = true;
-#define VALIDATE_FIELD(name, type_string, oneof_case)                                                         \
-  do {                                                                                                        \
-    if (attr_value.has_list()) {                                                                              \
-      if (attr_value.list().name##_size() > 0) {                                                              \
-        if (type != "list(" type_string ")") {                                                                \
-          OP_LOGE("GeAttrValue has value with type 'list(" type_string ")'when '%s' expected", type.c_str()); \
-          field_validate_result = FAILED;                                                                     \
-        } else {                                                                                              \
-            ++num_set;                                                                                        \
-        }                                                                                                     \
-      }                                                                                                       \
-    } else if (attr_value.value_case() == domi::tensorflow::AttrValue::oneof_case) {                          \
-      if (type != type_string) {                                                                              \
-        OP_LOGE("GeAttrValue has value with type '" type_string "' when '%s' expected", type.c_str());        \
-        field_validate_result = FAILED;                                                                       \
-      } else {                                                                                                \
-        ++num_set;                                                                                            \
-      }                                                                                                       \
-    }                                                                                                         \
+#define VALIDATE_FIELD(name, type_string, oneof_case)                                                            \
+  do {                                                                                                           \
+    if (attr_value.has_list()) {                                                                                 \
+      if (attr_value.list().name##_size() > 0) {                                                                 \
+        if (type != "list(" type_string ")") {                                                                   \
+          OP_LOGE("fuison_op_parser_util",                                                                       \
+                  "GeAttrValue has value with type 'list(" type_string ")'when '%s' expected", type.c_str());    \
+          field_validate_result = FAILED;                                                                        \
+        } else {                                                                                                 \
+          ++num_set;                                                                                             \
+        }                                                                                                        \
+      }                                                                                                          \
+    } else if (attr_value.value_case() == domi::tensorflow::AttrValue::oneof_case) {                             \
+      if (type != type_string) {                                                                                 \
+        OP_LOGE("fuison_op_parser_util", "GeAttrValue has value with type '" type_string "' when '%s' expected", \
+                type.c_str());                                                                                   \
+        field_validate_result = FAILED;                                                                          \
+      } else {                                                                                                   \
+        ++num_set;                                                                                               \
+      }                                                                                                          \
+    }                                                                                                            \
   } while (false)
 
   VALIDATE_FIELD(s, "string", kS);
@@ -155,7 +157,7 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
 #undef VALIDATE_FIELD
 
   if (attr_value.value_case() == domi::tensorflow::AttrValue::kPlaceholder) {
-    OP_LOGE("GeAttrValue has value with unexpected type 'placeholder'");
+    OP_LOGE("fuison_op_parser_util", "GeAttrValue has value with unexpected type 'placeholder'");
     return FAILED;
   }
 
@@ -163,7 +165,7 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
   string str_x = "list(";
   bool bStart = (type.size() >= str_x.size()) && (type.compare(0, str_x.size(), str_x) == 0);
   if ((num_set == 0) && !bStart) {
-    OP_LOGE("GeAttrValue missing value with expected type '%s'", type.c_str());
+    OP_LOGE("fuison_op_parser_util", "GeAttrValue missing value with expected type '%s'", type.c_str());
     return FAILED;
   }
 
@@ -171,22 +173,22 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
   // be a valid enum type.
   if (type == "type") {
     if (!domi::tensorflow::DataType_IsValid(attr_value.type())) {
-      OP_LOGE("GeAttrValue has invalid DataType enum: %d", attr_value.type());
+      OP_LOGE("fuison_op_parser_util", "GeAttrValue has invalid DataType enum: %d", attr_value.type());
       return FAILED;
     }
     if (attr_value.type() == domi::tensorflow::DT_INVALID) {
-      OP_LOGE("GeAttrValue has invalid DataType");
+      OP_LOGE("fuison_op_parser_util", "GeAttrValue has invalid DataType");
       return FAILED;
     }
   } else if (type == "list(type)") {
     for (auto& as_int : attr_value.list().type()) {
       const DataType dtype = static_cast<DataType>(as_int);
       if (!domi::tensorflow::DataType_IsValid(dtype)) {
-        OP_LOGE("GeAttrValue has invalid DataType enum: %d", as_int);
+        OP_LOGE("fuison_op_parser_util", "GeAttrValue has invalid DataType enum: %d", as_int);
         return FAILED;
       }
       if (dtype == domi::tensorflow::DT_INVALID) {
-        OP_LOGE("GeAttrValue contains invalid DataType");
+        OP_LOGE("fuison_op_parser_util", "GeAttrValue contains invalid DataType");
         return FAILED;
       }
     }

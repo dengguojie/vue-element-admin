@@ -159,7 +159,7 @@ static graphStatus CalcPadGradOutDims(const Shape& input_shape, const Tensor& pa
       const int64_t pad0 = static_cast<int64_t>(paddings_data[2 * i]);
       const int64_t pad1 = static_cast<int64_t>(paddings_data[(2 * i) + 1]);
       if ((pad0 < 0) || (pad1 < 0)) {
-        OP_LOGE(op_name, "Paddings must be non-negative, pad0= %lld, pad1=%lld.", pad0, pad1);
+        OP_LOGE(op_name, "Paddings must be non-negative, pad0= %ld, pad1=%ld.", pad0, pad1);
         return GRAPH_FAILED;
       }
       status = Subtract(input_shape.GetDim(i), pad0 + pad1, output_dims[i], op_name);
@@ -175,7 +175,7 @@ static graphStatus CalcPadGradOutDims(const Shape& input_shape, const Tensor& pa
       const int64_t pad0 = paddings_data[2 * i];
       const int64_t pad1 = paddings_data[(2 * i) + 1];
       if ((pad0 < 0) || (pad1 < 0)) {
-        OP_LOGE(op_name, "Paddings must be non-negative, pad0=%lld, pad1=%lld.", pad0, pad1);
+        OP_LOGE(op_name, "Paddings must be non-negative, pad0=%ld, pad1=%ld.", pad0, pad1);
         return GRAPH_FAILED;
       }
       status = Subtract(input_shape.GetDim(i), pad0 + pad1, output_dims[i], op_name);

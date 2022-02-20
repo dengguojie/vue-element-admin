@@ -220,9 +220,6 @@ bool GatherNdTiling(const std::string& opType, const ge::Operator& opParas, cons
   int32_t indicesLastDim = indicesShape.GetDim(indicesDims - 1);
   // indices.shape[-1] must be <= params.rank, and shape only support 1D ~ 8D
   if (indicesLastDim > paramsDims || indicesLastDim > LAST_DIM_MAX || indicesLastDim < 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices",
-                                  "the last dim of indices is more than the dim of x, "
-                                  "or the last dim of indices is greater than 8 or less than 0");
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: the last dim of indices shape is invalid.");
     return false;
   }

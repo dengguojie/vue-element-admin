@@ -109,10 +109,6 @@ bool StridedSliceV3Tiling(const std::string& opType, const ge::Operator& opParas
   if (slice_params_output.begin_list.size() != slice_params_output.end_list.size() ||
       slice_params_output.begin_list.size() != input_axes_values.size()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "length of axes, offsets and size must be equal.");
-    ge::OpsInputShapeErrReport(
-        opType, "length of axes,begin list and end list must be equal.", "[begin][end]",
-        ConcatString("[", input_axes_values.size(), "]", "[", slice_params_output.begin_list.size(), "]", "[",
-                     slice_params_output.end_list.size(), "]"));
     return false;
   }
 

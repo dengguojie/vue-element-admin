@@ -112,15 +112,12 @@ bool DynamicRnnV2Tiling(const std::string& opType, const TeOpParas& opParas, con
 
   if (opParas.inputs.empty() || opParas.inputs.size() < DST_INPUT_SIZE || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
-                                  "The length of inputs is less than 2 or the inputs is empty");
     OP_LOGE(opType.c_str(), "op DynamicRnnV2Tiling: input shape error.");
     return false;
   }
 
   std::vector<int64_t> xShape = opParas.inputs[0].tensor[0].shape;
   if (xShape.size() < DST_SHAPE_SIZE) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x", "x.shape is invalid");
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : CheckRnnV2TensorShape, x.shape is invalid.");
     return false;
   }

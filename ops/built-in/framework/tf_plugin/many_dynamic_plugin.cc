@@ -51,7 +51,7 @@ Status SparseSplitMapping(const google::protobuf::Message* op_src, ge::Operator&
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -63,7 +63,7 @@ Status SparseSplitMapping(const google::protobuf::Message* op_src, ge::Operator&
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_name.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_name.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -71,7 +71,7 @@ Status SparseSplitMapping(const google::protobuf::Message* op_src, ge::Operator&
   for (std::string output_name : dynamic_output) {
     auto graph_ret = op_desc->AddDynamicOutputDesc(output_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicOutputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicOutputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d", node->name().c_str(), output_name.c_str(),
@@ -91,7 +91,7 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -104,7 +104,7 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_name.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_name.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -112,7 +112,7 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
   for (std::string input_name : dynamic_input) {
     auto graph_ret = op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
@@ -121,7 +121,7 @@ Status BoostedTreesBucketizeMapping(const google::protobuf::Message* op_src, ge:
   auto graph_ret =
       op_desc->AddDynamicOutputDesc(dynamic_output, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
   if (graph_ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Op: %s AddDynamicOutputDesc failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "AddDynamicOutputDesc failed.");
     return FAILED;
   }
   OP_LOGI("In NodeDef %s add dynamic output, output name = %s, size = %d", node->name().c_str(), dynamic_output.c_str(),
@@ -141,7 +141,7 @@ Status DynamicStitchMapping(const google::protobuf::Message* op_src, ge::Operato
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -154,7 +154,7 @@ Status DynamicStitchMapping(const google::protobuf::Message* op_src, ge::Operato
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_name.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_name.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -162,7 +162,7 @@ Status DynamicStitchMapping(const google::protobuf::Message* op_src, ge::Operato
   for (std::string input_name : dynamic_input) {
     auto graph_ret = op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
@@ -183,7 +183,7 @@ Status ParallelDynamicStitchMapping(const google::protobuf::Message* op_src, ge:
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -195,7 +195,7 @@ Status ParallelDynamicStitchMapping(const google::protobuf::Message* op_src, ge:
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_name.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_name.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -203,7 +203,7 @@ Status ParallelDynamicStitchMapping(const google::protobuf::Message* op_src, ge:
   for (std::string input_name : dynamic_input) {
     auto graph_ret = op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
@@ -224,7 +224,7 @@ Status SparseConcatMapping(const google::protobuf::Message* op_src, ge::Operator
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -236,7 +236,7 @@ Status SparseConcatMapping(const google::protobuf::Message* op_src, ge::Operator
   int32_t dynamic_tensor_num = 0;
   ret = GetAttrValue(node, attr_name, dynamic_tensor_num);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_name.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_name.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -244,7 +244,7 @@ Status SparseConcatMapping(const google::protobuf::Message* op_src, ge::Operator
   for (std::string input_name : dynamic_input) {
     auto graph_ret = op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(dynamic_tensor_num), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
@@ -265,7 +265,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s call auto mapping function failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "call auto mapping function failed.");
     return FAILED;
   }
   OP_LOGI("op[%s] call auto mapping function success.", op_desc->GetName().c_str());
@@ -277,7 +277,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   int32_t N_value = 0;
   ret = GetAttrValue(node, attr_N, N_value);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_N.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_N.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -286,7 +286,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   int32_t sparse_types_value = 0;
   ret = GetAttrValue(node, attr_sparse_types, sparse_types_value);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_sparse_types.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_sparse_types.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -295,7 +295,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   int32_t dense_types_value = 0;
   ret = GetAttrValue(node, attr_dense_types, dense_types_value);
   if (ret != SUCCESS) {
-    OP_LOGE("Op: %s get attr [%s] value failed.", op_desc->GetName().c_str(), attr_dense_types.c_str());
+    OP_LOGE(op_desc->GetName().c_str(), attr_dense_types.c_str(), "get attr [%s] value failed.");
     return FAILED;
   }
 
@@ -303,7 +303,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   for (std::string input_name : dynamic_input) {
     auto graph_ret = op_desc->AddDynamicInputDesc(input_name, static_cast<uint32_t>(N_value), is_pushback);
     if (graph_ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+      OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
       return FAILED;
     }
     OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), input_name.c_str(),
@@ -311,7 +311,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
   }
   auto graph_ret = op_desc->AddDynamicInputDesc(value_input, static_cast<uint32_t>(sparse_types_value), is_pushback);
   if (graph_ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
     return FAILED;
   }
   OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), value_input.c_str(),
@@ -319,7 +319,7 @@ Status SparseCrossMapping(const google::protobuf::Message* op_src, ge::Operator&
 
   graph_ret = op_desc->AddDynamicInputDesc(dense_inputs, static_cast<uint32_t>(dense_types_value), is_pushback);
   if (graph_ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Op: %s AddDynamicInputDesc failed.", op_desc->GetName().c_str());
+    OP_LOGE(op_desc->GetName().c_str(), "AddDynamicInputDesc failed.");
     return FAILED;
   }
   OP_LOGI("In NodeDef %s add dynamic input, input name = %s, size = %d", node->name().c_str(), dense_inputs.c_str(),

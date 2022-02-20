@@ -102,7 +102,7 @@ IMPLEMT_COMMON_INFERFUNC(PadDInferShape) {
   PREPARE_DYNAMIC_SHAPE(depends);
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op.GetAttr("paddings", paddings)) {
-    OpsGetAttrErrReport(op.GetName(), "paddings");
+    OP_LOGE(op.GetName(), "get paddings failed");
     return GRAPH_FAILED;
   }
 
@@ -250,16 +250,12 @@ static graphStatus PadV2DInferShapeAndType(ge::Operator& op, std::vector<std::ve
   vector<int64_t> shape;
   int64_t dim_cur = 0;
   if (shape_x.GetDimNum() != paddings.size()) {
-    OpsInputShapeErrReport(op.GetName(), "Paddings and shape should be the same length", "x",
-                           ConcatString(shape_x.GetDimNum()));
     OP_LOGE(op.GetName().c_str(),
             "Paddings and shape are not the same length.");
     return GRAPH_FAILED;
   }
   for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
     if (paddings[dim].size() != 2) {
-      OpsInputShapeErrReport(op.GetName(), "Paddings's shape should be in the form of (n,2)", "paddings",
-                             ConcatString(paddings[dim].size()));
       OP_LOGE(op.GetName().c_str(),
               "Paddings's shape"
               "is not in the form of (n,2)");
@@ -302,7 +298,7 @@ IMPLEMT_COMMON_INFERFUNC(PadV2DInferShape) {
   OP_LOGD("OP[PadV2D]", "PadV2DInferShape Begin.");
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op.GetAttr("paddings", paddings)) {
-    OpsGetAttrErrReport(op.GetName(), "paddings");
+    OP_LOGE(op.GetName(), "get paddings failed");
     return GRAPH_FAILED;
   }
 
@@ -321,7 +317,7 @@ COMMON_INFER_FUNC_REG(PadV2, PadInferShape);
 IMPLEMT_COMMON_INFERFUNC(PadV3DInferShape) {
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op.GetAttr("paddings", paddings)) {
-    OpsGetAttrErrReport(op.GetName(), "paddings");
+    OP_LOGE(op.GetName(), "get paddings failed");
     return GRAPH_FAILED;
   }
 

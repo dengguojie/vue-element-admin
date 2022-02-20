@@ -40,7 +40,8 @@ Status ParseValueFromConstV2(const vector<const NodeDef*>& v_input_const, const 
     string name = nodeDef->name();
     if (name == names) {
       if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
+        OP_LOGE("ParseValueFromConstV2", "ParseParamFromConst data from const NodeDef %s failed",
+                nodeDef->name().c_str());
         return PARAM_INVALID;
       }
       return SUCCESS;

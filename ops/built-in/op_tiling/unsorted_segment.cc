@@ -634,8 +634,6 @@ bool UnsortedSegmentTiling(const std::string &op_type, const ge::Operator &op_pa
   for (unsigned i = 0; i < ids_shape.size(); i++) {
     GELOGD("op[%s] ids_shape[i] is %d", op_type.c_str(), ids_shape[i]);
     if (input_shape[i] != ids_shape[i]) {
-      ge::OpsTwoInputShapeErrReport("UnsortedSegment", "input_data", "ids",
-                                    "front shape of input must be equal with ids shape");
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
       return false;
     }

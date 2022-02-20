@@ -36,7 +36,6 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
                                      const std::string& shapes) {
   std::vector<DataType> elem_types;
   if (op.GetAttr(dtypes, elem_types) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), dtypes);
     OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
     return GRAPH_FAILED;
   }
@@ -1660,7 +1659,6 @@ IMPLEMT_INFERFUNC(PriorityQueue, PriorityQueueInfer) {
   ops_output_desc.SetShape(Shape());
   ops_output_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", ops_output_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "handle");
     std::string err_msg("update output[handle] desc failed.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     
@@ -2532,7 +2530,7 @@ IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
     return GRAPH_FAILED;
   }
   if (cache_size <= 0) {
-    OP_LOGE(op.GetName().c_str(), "cache_size should be >0 , real value is %d.", cache_size);
+    OP_LOGE(op.GetName().c_str(), "cache_size should be >0 , real value is %ld.", cache_size);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2542,7 +2540,7 @@ IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
     return GRAPH_FAILED;
   }
   if (load_factor <= 0.0 || load_factor > 1.0) {
-    OP_LOGE(op.GetName().c_str(), "load_factor should be in  (0, 1.0] , real value is %d.", load_factor);
+    OP_LOGE(op.GetName().c_str(), "load_factor should be in  (0, 1.0] , real value is %f.", load_factor);
     return GRAPH_PARAM_INVALID;
   }
   Shape scalar_shape;

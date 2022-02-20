@@ -123,7 +123,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     std::vector<int64_t> oShapeVector;
 
     if (axis_dimNum > 1) {
-      OP_LOGE(op.GetName().c_str(), "The dim number of axis must be one or zero, but actual is %d.", axis_dimNum);
+      OP_LOGE(op.GetName().c_str(), "The dim number of axis must be one or zero, but actual is %ld.", axis_dimNum);
       return false;
     }
 
@@ -204,7 +204,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     // convert reduce axis
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < -dim_num || axis[i] > (dim_num - 1)) {
-        OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %d, dim_num:%d.", axis[i], dim_num);
+        OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %ld, dim_num:%ld.", axis[i], dim_num);
         return false;
       }
       if (axis[i] < 0) {
@@ -266,7 +266,6 @@ static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, c
     return false;
   }
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OpsGetAttrErrReport(op.GetName(), axis_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
@@ -295,7 +294,7 @@ static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length) {
   // Convert reduce axis
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -input_length || axis[i] > (input_length - 1)) {
-      OP_LOGE("Op[Reduce]", "reduce verify failed, axis: %d, input_length: %d", axis[i], input_length);
+      OP_LOGE("Op[Reduce]", "reduce verify failed, axis: %ld, input_length: %ld", axis[i], input_length);
       return false;
     }
     if (axis[i] < 0) {
@@ -643,14 +642,12 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OpsGetAttrErrReport(op.GetName(), axis_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), keep_dims_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
@@ -663,8 +660,6 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -dimNum || axis[i] > (dimNum - 1)) {
-      OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dimNum - 1), ConcatString(-dimNum),
-                                ConcatString(axis[i]));
       OP_LOGE(op.GetName().c_str(), "the axis of reduce verify failed.");
       return false;
     }
@@ -1107,16 +1102,14 @@ IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[4]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 4 when NDHWC.", shapeVector.size());
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 4 when NDHWC.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCDHW) {
     if (dimNum >= 2 && dimNum <= 5) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 2-4 when NCDHW.", shapeVector.size());
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 2-4 when NCDHW.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDC1HWC0) {
@@ -1128,12 +1121,10 @@ IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
       oShapeVector.push_back(1);
       oShapeVector.push_back(shapeVector[5]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "6", "6", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDC1HWC0.", shapeVector.size());
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 5 when NDC1HWC0.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else {
-    OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC or NCDHW or NDHWC", ConcatString(format));
     OP_LOGE(op.GetName().c_str(), "This op can only support NCHW , NHWC, NDHWC, NCDHW, NDC1HWC0");
     return GRAPH_FAILED;
   }
