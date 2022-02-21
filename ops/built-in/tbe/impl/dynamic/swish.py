@@ -59,6 +59,7 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
     """
     dtype = data_input.dtype
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    tmp_negative = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
     # avoid data overflow
     if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
         if dtype == "float32" and exp_support:
@@ -67,17 +68,16 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
         else:
             ln_res = math.log(Constant.CONST_FP16_MAX)
             ln_res = int(ln_res * 1000) / 1000
-        data_scale = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
-        tmp_negative = tbe.vmins(data_scale, ln_res)
-    else:
-        tmp_negative = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
+        tmp_negative = tbe.vmins(tmp_negative, ln_res)
 
     if dtype == "float32" and not exp_support:
         tmp_negative = tbe.cast_to(tmp_negative, "float16")
+    elif dtype == "float16" and exp_support:
+        tmp_negative = tbe.cast_to(tmp_negative, "float32")
     tmp_exp = tbe.vexp(tmp_negative)
-    tmp_exp = tbe.cast_to(tmp_exp, "float32")
-
-    tmp_sum = tbe.vadds(tmp_exp, tvm.const(1, dtype=dtype))
+    if not exp_support:
+        tmp_exp = tbe.cast_to(tmp_exp, "float32")
+    tmp_sum = tbe.vadds(tmp_exp, tvm.const(1, dtype="float32"))
     if dtype == "float16":
         data_input_fp32 = tbe.cast_to(data_input, "float32")
         res_fp32 = tbe.vdiv(data_input_fp32, tmp_sum)
