@@ -81,7 +81,8 @@ ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, g
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   fusedDesc->UpdateInputDesc(10, outputTensorDesc);
 
-  ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(mask_idx)->GetPeerOutAnchor(), broadcast_node1->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(mask_idx)->GetPeerOutAnchor(),
+                          broadcast_node1->GetInDataAnchor(0));
 
   InDataAnchorPtr inAnchorPtr = fusedNode->GetInDataAnchor(mask_idx);
   inAnchorPtr->UnlinkAll();
