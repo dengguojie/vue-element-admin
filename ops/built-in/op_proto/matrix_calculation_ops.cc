@@ -2251,24 +2251,6 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
-  AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
-  OP_LOGD(opName.GetString(), "[BatchMatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
-  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
-
-  ge::GeTensorDescPtr tensordesc_input = op_desc->MutableInputDesc(0);
-  tensordesc_input->SetOriginFormat(FORMAT_ND);
-  tensordesc_input->SetFormat(FORMAT_ND);
-
-  ge::GeTensorDescPtr tensordesc_input_2 = op_desc->MutableInputDesc(1);
-  tensordesc_input_2->SetOriginFormat(FORMAT_ND);
-  tensordesc_input_2->SetFormat(FORMAT_ND);
-
-  return GRAPH_SUCCESS;
-}
-
 // the slice infer
 IMPLEMT_INFER_DATA_SLICE(BatchMatMulV2, BatchMatMulV2InferDataSlice) {
   AscendString opName;
@@ -2281,7 +2263,6 @@ IMPLEMT_INFER_DATA_SLICE(BatchMatMulV2, BatchMatMulV2InferDataSlice) {
 }
 
 // Registered inferfunction
-INFER_FORMAT_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferFormat);
 COMMON_INFER_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferShape);
 
 // Registered verify function
@@ -4146,7 +4127,7 @@ IMPLEMT_COMMON_INFERFUNC(PinverseInferShape) {
   int64_t dim_num2 = input_shape.GetDim(size - 1);
   std::vector<int64_t> dim_vector;
   dim_vector.push_back(dim_num2);
-  dim_vector.push_back(dim_num1); 
+  dim_vector.push_back(dim_num1);
   Shape output_shape(dim_vector);
   td.SetDataType(input_dtype);
   td.SetShape(output_shape);
