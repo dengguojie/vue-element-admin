@@ -50,8 +50,9 @@ case2 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "
 def test_mock_cases():
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-            op_select_format_v1(*case1["params"])
-            op_select_format_v2(*case2["params"])
+            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+                op_select_format_v1(*case1["params"])
+                op_select_format_v2(*case2["params"])
 
 #ut_case.add_cust_test_func(test_func=test_mock_cases)
 if __name__ == "__main__":

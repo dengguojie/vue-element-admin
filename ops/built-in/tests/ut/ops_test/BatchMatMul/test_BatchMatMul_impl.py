@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 BatchMatmul ut case
 """
+import json
 import numpy as np
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -538,21 +539,54 @@ def test_matmul_api(test_arg):
 ut_case.add_cust_test_func(test_func=test_matmul_api)
 
 
+def test_op_select_format_1():
+    from impl.batch_matmul import op_select_format
+    res = op_select_format({"shape": (3, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
+                     {"shape": (3, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (4, 5), "ori_format": "ND"},
+                    )
+    res_dict = json.loads(res)
+    expect_res = {
+        "input0": {
+            "name": "x1",
+            "dtype": "float16,float32,int8,int8,bfloat16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
+        },
+        "input1": {
+            "name": "x2",
+            "dtype": "float16,float32,int8,int8,bfloat16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_Z,FRACTAL_NZ"
+        },
+        "input2": {
+            "name": "bias",
+            "dtype": "float32,float32,int32,int32,float32",
+            "format": "ND,ND,ND,ND,ND"
+        },
+        "output0": {
+            "name": "y",
+            "dtype": "float16,float32,int32,int32,bfloat16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
+        }
+    }
+    assert res_dict == expect_res
+
+
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-            test_matmul_ND2ND_fp16()
-            test_matmul_ND2ND_int8()
-            test_matmul_ND2ND_fp32()
-            test_matmul_ND2ND_fp32_1()
-            test_matmul_NZ2ND_fp16()
-            test_matmul_ND2NZ_fp16()
-            test_matmul_NZ2NZ_fp16()
-            test_matmul_NZ2NZ_int8()
-            test_matmul_fixpipe_0()
-            test_matmul_fixpipe_1()
-            test_matmul_fixpipe_2()
+            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+                test_matmul_ND2ND_fp16()
+                test_matmul_ND2ND_int8()
+                test_matmul_ND2ND_fp32()
+                test_matmul_ND2ND_fp32_1()
+                test_matmul_NZ2ND_fp16()
+                test_matmul_ND2NZ_fp16()
+                test_matmul_NZ2NZ_fp16()
+                test_matmul_NZ2NZ_int8()
+                test_matmul_fixpipe_0()
+                test_matmul_fixpipe_1()
+                test_matmul_fixpipe_2()
+                test_op_select_format_1()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
