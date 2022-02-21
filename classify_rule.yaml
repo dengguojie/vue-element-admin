@@ -2707,6 +2707,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/atan_grad.py
       - ops/built-in/tbe/impl/dynamic/avg_pool_v2.py
       - ops/built-in/tbe/impl/dynamic/pad_v2.py
+      - ops/built-in/tbe/impl/dynamic/pad_v3.py
       - ops/built-in/tbe/impl/dynamic/ascend_quant.py
       - ops/built-in/tbe/impl/dynamic/drop_out_do_mask.py
       - ops/built-in/tbe/impl/dynamic/replication_pad_v3.py

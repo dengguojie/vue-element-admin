@@ -771,12 +771,27 @@ class PadV3Init:
             _outer_idx = self.core_outer_num - 1 + self.core_outer_start
             _run_one_dim(_outer_idx, ping_ub_list)
 
+    def cal_max_output_ub(self, max_line_in_ub):
+        """
+        calculate max output ub size for mode 2 and 3
+        :param
+        max_line_in_ub: max unit length for each line
+        :return:
+        max_output_size: max output ub size to calculate
+        """
+        tail_reserve_ub = 16 * 16
+        output_ub_cut_num = 8
+        ori_max_output_size = (self.ub_size_bytes - self.inner_bytes_size * tail_reserve_ub * 2) // \
+                              (output_ub_cut_num * max_line_in_ub * self.inner_bytes_size)
+        max_output_size = (ori_max_output_size // 16) * 16
+        return max_output_size
+
     def do_tiling_key_mode_2(self):
         """
         do_tiling_key_mode_2 when tiling key = 2
         """
         max_line_in_ub = 16
-        max_output_size = 480 * 2
+        max_output_size = self.cal_max_output_ub(max_line_in_ub)
         second_dim_input_num = self.tiling_input_shape[-2]
         third_dim_input_num = self.tiling_input_shape[-1]
         third_dim_output_num = self.tiling_output_shape[-1]
@@ -1054,7 +1069,7 @@ class PadV3Init:
         do_tiling_key_mode_3 when tiling key = 3
         """
         max_line_in_ub = 16
-        max_output_size = 480 * 2
+        max_output_size = self.cal_max_output_ub(max_line_in_ub)
         first_dim_input_num = self.tiling_input_shape[-3]
         second_dim_input_num = self.tiling_input_shape[-2]
         third_dim_input_num = self.tiling_input_shape[-1]
