@@ -25,12 +25,14 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling import tiling_api
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusion
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusionNew
 from tbe.dsl.static_schedule.conv_schedule_util import ceil, ceil_div, is_support_fixpipe_op, get_src_tensor
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
+from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule import MaxpoolFusion
 from te.platform import cce_params
 
 
@@ -713,6 +715,7 @@ class Conv2dSchedule:
         self._strideh_opti = StridehOpti(conv_param)
         self._c04 = C04Opti(conv_param)
         self._conv1d = Conv1dSplitw(conv_param)
+        self._pooling_fusion = MaxpoolFusion(res, MaxPoolParam)
 
         #===================parse fusion pattern========================
         self._fixpipe_fusion.parse_fusion_pattern()
@@ -730,6 +733,7 @@ class Conv2dSchedule:
             """
             eltwise_coeff, channelwise_coeff, scalar_num = self._eltwise_ub_fusion.coeff_eltwise_cal(self._res)
             eltwise_coeff += self._quant_fusion.cal_quant_coeff()
+            eltwise_coeff += self._pooling_fusion.cal_pooling_coeff()
             return eltwise_coeff, channelwise_coeff, scalar_num
 
         if self._dynamic_shape.flag and tiling_case: # pass when tiling_case
@@ -751,6 +755,8 @@ class Conv2dSchedule:
             eltwise_flag, eltwise_dtype = self._fixpipe_fusion.fetch_eltwise_info()
 
         eltwise_coeff, channelwise_coeff, scalar_num = cal_cub_coeff()
+
+        pooling_shape, pooling_stride = self._pooling_fusion.config_window_stride()
 
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
@@ -790,8 +796,8 @@ class Conv2dSchedule:
                      "placeholder_fmap_5hd_shape": list(self._dim_map["fmap_5hd_shape"]),
                      "fused_coefficient": [0, 0, eltwise_coeff],
                      "fused_channel_wise": [0, 0, channelwise_coeff],
-                     "pooling_shape": [0, 0],
-                     "pooling_stride": [0, 0],
+                     "pooling_shape": pooling_shape,
+                     "pooling_stride": pooling_stride,
                     }
         return info_dict
 
@@ -863,6 +869,7 @@ class Conv2dSchedule:
             self._tiling = self._dynamic_shape.fetch_tiling_case()
         else:
             self._tiling = get_v220_tiling(info_dict)
+
 
     def verify_tiling(self):
         """
@@ -943,6 +950,9 @@ class Conv2dSchedule:
         #==================modify tiling to be deleted=========================
         modify_bl0_tiling()
         modify_bl1_tiling()
+
+        tiling = self._pooling_fusion.modify_tiling(
+            tiling, self._dim_map["filter_matrix_dim"], self._out_width, self._conv_param, self._block_k0)
 
     def config_scope(self):
         """
@@ -1059,6 +1069,8 @@ class Conv2dSchedule:
 
         self._quant_fusion.quant_tensors_set_scope(sch)
 
+        self._pooling_fusion.set_maxpool_ub_scope(sch, self._op_graph.body_ops)
+
         tensor_param = {"al1": al1, "bl1": bl1,
                         "fmap": fmap, "weight": weight,
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
@@ -1079,6 +1091,8 @@ class Conv2dSchedule:
                 return self._lx_fusion.align_al1_lxfusion(sch, al1)
             if self._l0a_load2d.flag:
                 return self._l0a_load2d.align_al1_load2d(sch, al1)
+            if self._pooling_fusion.flag:
+                return self._pooling_fusion.align_al1_pooling(sch, al1)
             return None
 
         def align_row_major():
@@ -1341,7 +1355,10 @@ class Conv2dSchedule:
 
             special_axis_process(res_c0_axis)
 
-            out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, mc_cl0 * m0_cl0)
+            # split cl0 tiling m axis
+            res_m_cl0_factor = mc_cl0 * m0_cl0
+            res_m_cl0_factor = self._pooling_fusion.modify_res_m_cl0_factor(res_m_cl0_factor)
+            out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, res_m_cl0_factor)
 
             # split cub tiling axis
             cl02cub_loopn_axis, res_nc_factor_axis = sch[res].split(res_nc_cl0_axis,
@@ -1568,6 +1585,16 @@ class Conv2dSchedule:
 
             res_axis_list = get_res_attach_axis()
 
+            attach_axis_dict.update(
+                {
+                "cub_at_res_axis": res_axis_list[0],
+                "singlecore_out2al1_loopm_axis": singlecore_out2al1_loopm_axis,
+                "al12al0_loopm_axis": al12al0_loopm_axis,
+                "batchbindonly_pragma_axis": batchbindonly_pragma_axis if blocks != 1 else None,
+                "res_m_dim_axis": res_m_dim_axis
+                }
+                )
+
             return res_axis_list, bindcore_axis, res_pragma_axis
 
         def tile_tensor_cl0():
@@ -1576,7 +1603,10 @@ class Conv2dSchedule:
             """
             cl0_k1, cl0_k0 = cl0.op.reduce_axis
 
-            cl0_mo, cl0_mi = sch[cl0].split(sch[cl0].op.axis[3], ma_al0*self._block_m0)
+            # split ma*m0
+            cl0_ma_factor = ma_al0
+            cl0_ma_factor = self._pooling_fusion.modify_cl0_m_factor(cl0_ma_factor)
+            cl0_mo, cl0_mi = sch[cl0].split(sch[cl0].op.axis[3], cl0_ma_factor * self._block_m0)
 
             if bl0_tiling == []:
                 cl0_co, cl0_ci = sch[cl0].split(sch[cl0].op.axis[2], nparts=1)
@@ -1602,6 +1632,18 @@ class Conv2dSchedule:
                                  cl0_co0,
                                  cl0_ki,
                                  cl0_k0)
+            elif self._pooling_fusion.flag:
+                cl0_cio, cl0_cii = sch[cl0].split(cl0_ci, 1)
+                sch[cl0].reorder(cl0_ko,
+                                 cl0_co,
+                                 cl0_mo,
+                                 cl0_cio,
+                                 cl0_ni, # 1
+                                 cl0_cii,
+                                 cl0_mi, # ma*m0
+                                 cl0_co0, # co0
+                                 cl0_ki, # ka = kb
+                                 cl0_k0) # k0
             else:
                 sch[cl0].reorder(cl0_ko,
                                  cl0_co,
@@ -1652,6 +1694,8 @@ class Conv2dSchedule:
 
                 # get bl0_at_cl0_axis
                 bl0_at_cl0_axis = cl0_co
+                if self._pooling_fusion.flag:
+                    bl0_at_cl0_axis = cl0_cio
 
                 # get al1_at_cl0_axis and bl1_at_cl0_axis
                 if al1_nparts[0] > bl1_nparts[0]:
@@ -1674,6 +1718,13 @@ class Conv2dSchedule:
             k_outer_list = [cl0_kooo, cl0_kooi, cl0_koi]
             cl0_axis_list = get_cl0_attach_axis()
             cl0_pragma_axis = cl0_ni
+
+            attach_axis_dict.update(
+                {
+                "cl0_mo": cl0_mo
+                }
+                )
+
             return k_outer_list, cl0_axis_list, cl0_pragma_axis
 
         def tile_tensor_fixpipe_res():
@@ -1717,7 +1768,9 @@ class Conv2dSchedule:
             """
             Handle bl0 attach.
             """
-            if bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
+            if self._pooling_fusion.flag:
+                sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
+            elif bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
                 if multi_bl0_group and group_cl0 == 1:
                     sch[bl0].compute_at(sch[res], bl0_at_res_axis)
                 else:
@@ -1852,6 +1905,8 @@ class Conv2dSchedule:
         else:
             cl0_factor = [ceil_div(co1_opt, nc_cl0), ceil_div(out_hw, mc_cl0*m0_cl0)]
 
+        cl0_factor = self._pooling_fusion.modify_cl0_factor(cl0_factor)
+
         if al1_tiling:
             al1_nparts = [ci1_opt // k1_al1, ceil_div(cl0_factor[1], multi_m_al1)]
         else: # al1 full load
@@ -1878,6 +1933,9 @@ class Conv2dSchedule:
         fmap_row_major = tensor_param["fmap_row_major"]
         bias_l1 = tensor_param["bias_l1"]
         bias_bt = tensor_param["bias_bt"]
+
+        attach_axis_dict = {}
+        tiling_param = {}
 
         # tile
         #===================================tile al0============================================
@@ -1916,16 +1974,21 @@ class Conv2dSchedule:
         bl1_compute_at()
         bias_compute_at()
 
-        tiling_param = {"al1_tiling": al1_tiling,
-                        "al0_tiling": al0_tiling,
-                        "bl1_tiling": bl1_tiling,
-                        "bl0_tiling": bl0_tiling,
-                        "cl0_tiling": cl0_tiling,
-                        "al1_nparts": al1_nparts,
-                        "stride_h_update": self._strideh_opti.stride_h_update,
-                        "fmap_5hd_shape": self._para_dict["a_shape"],
-                        "m_cl0": mc_cl0*m0_cl0,
-                        "out_hw": self._out_hw}
+        tiling_param.update(
+            {
+            "al1_tiling": al1_tiling,
+            "al0_tiling": al0_tiling,
+            "bl1_tiling": bl1_tiling,
+            "bl0_tiling": bl0_tiling,
+            "cl0_tiling": cl0_tiling,
+            "al1_nparts": al1_nparts,
+            "stride_h_update": self._strideh_opti.stride_h_update,
+            "fmap_5hd_shape": self._para_dict["a_shape"],
+            "blocks": batch_dim*n_dim*m_dim*group_dim,
+            "m_cl0": mc_cl0*m0_cl0,
+            "out_hw": self._out_hw
+            }
+            )
         if al1_tiling:
             tiling_param.update({"multi_m_al1": multi_m_al1,
                                  "k_al1": k_al1,
@@ -1941,19 +2004,37 @@ class Conv2dSchedule:
                           "dynamic_al0_pragma_axis": dynamic_al0_pragma_axis,
                          }
 
-        return tiling_param, emit_insn_dict
+        return tiling_param, emit_insn_dict, attach_axis_dict
 
-    def special_process_post(self, res, conv_param, tensor_param, tiling_param, emit_insn_dict):
+    def special_process_post(self, res, conv_param, tensor_param, tiling_param, emit_insn_dict, attach_axis_dict):
         """
         Special process before tiling is parsed.
         """
         #===========================prepare params================================================
         fmap = tensor_param["fmap"]
+        fmap_row_major = tensor_param["fmap_row_major"]
         al1 = tensor_param["al1"]
+        al0 = tensor_param["al0"]
+        bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
+        cub = self._eltwise_ub_fusion.cub
+
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
+        _, _, m_dim, _ = self._tiling["block_dim"]
+
         cl0_tiling = tiling_param["cl0_tiling"]
+        blocks = tiling_param["blocks"]
+
         res_pragma_axis = emit_insn_dict["res_pragma_axis"]
+        bindcore_axis = emit_insn_dict["bindcore_axis"]
+
+        cub_at_res_axis = attach_axis_dict["cub_at_res_axis"]
+        singlecore_out2al1_loopm_axis = attach_axis_dict["singlecore_out2al1_loopm_axis"]
+        al12al0_loopm_axis = attach_axis_dict["al12al0_loopm_axis"]
+        batchbindonly_pragma_axis = attach_axis_dict["batchbindonly_pragma_axis"]
+        res_m_dim_axis = attach_axis_dict["res_m_dim_axis"]
+        cl0_mo = attach_axis_dict["cl0_mo"]
+
         sch = self._sch
 
         # parse the tbe compile parameter
@@ -1985,6 +2066,30 @@ class Conv2dSchedule:
                                           self._l0a_load2d.flag, self._strideh_opti.flag)
         self._dynamic_shape.set_cl0_bound(sch, cl0, cl0_tiling)
         self._dynamic_shape.res_hw_dynamic_pragma(sch, res, res_pragma_axis)
+
+        #=================================maxpool fusion=====================================
+        self._pooling_fusion.set_build_cfg()
+
+        self._pooling_fusion.process_maxpool_bl0(
+            sch, bl0, res, blocks,
+            batchbindonly_pragma_axis,
+            res_m_dim_axis,
+            al12al0_loopm_axis,
+            singlecore_out2al1_loopm_axis,
+            cl0_mo
+            )
+
+        self._pooling_fusion.process_maxpool_ub_tensors(
+            sch, res,
+            cub_at_res_axis, bindcore_axis, singlecore_out2al1_loopm_axis, al12al0_loopm_axis,
+            self._out_width, m_dim, pingpong_buffer
+            )
+
+        self._pooling_fusion.maxpool_buffertile(
+            sch, fmap_row_major, al1, al0, cl0, cub, res,
+            m_dim, self._stride_h, self._kernel_h, self._out_width, self._conv_param,
+            singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo
+            )
 
     def double_buffer(self, tensor_param):
         """
@@ -2023,6 +2128,8 @@ class Conv2dSchedule:
         for key, value in pingpong_buffer.items():
             if value == 2 and pingpong_map[key] is not None:
                 self._sch[pingpong_map[key]].double_buffer()
+
+        self._pooling_fusion.maxpool_al1_preload(self._sch, pingpong_buffer, al1)
 
     def map_insn(self, res, tensor_param, tiling_param, emit_insn_dict):
         """
@@ -2274,9 +2381,9 @@ def conv_v220_schedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_
 
     schedule.special_process_pre(res, tensor_param)
 
-    tiling_param, emit_insn_dict = schedule.tile_attach_tensor(res, tensor_param)
+    tiling_param, emit_insn_dict, attach_axis_dict = schedule.tile_attach_tensor(res, tensor_param)
 
-    schedule.special_process_post(res, conv_param, tensor_param, tiling_param, emit_insn_dict)
+    schedule.special_process_post(res, conv_param, tensor_param, tiling_param, emit_insn_dict, attach_axis_dict)
 
     schedule.double_buffer(tensor_param)
 

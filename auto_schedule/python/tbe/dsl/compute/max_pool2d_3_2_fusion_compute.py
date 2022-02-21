@@ -19,6 +19,7 @@ max_pool_v200
 """
 from __future__ import division
 import math
+import tbe
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 
@@ -72,6 +73,9 @@ def _is_support_v200():
     if soc_version in ("Ascend710", "Ascend610", "Hi3796CV300CS", "SD3403"):
         return True
     return False
+
+def _is_support_fixpipe():
+    return tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list")
 
 
 NAME = "pooling2d_max_"
@@ -258,8 +262,10 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
 
     dtype = input_data.dtype
     # hard code to get conv_res attrs!!!
-
-    conv_res = input_data.op.input_tensors[0]
+    if _is_support_fixpipe():
+        conv_res = input_data.op.input_tensors[0].op.input_tensors[0]
+    else:
+        conv_res = input_data.op.input_tensors[0]
     width_in = conv_res.op.attrs["width_out"].value
     MaxPoolParam.update_tensormap("conv_width", width_in)
     res = _compute_max_pooling(input_data, padding, ksize)
@@ -425,7 +431,7 @@ def _max_pooling_padding(input_data, padding, dtype):
 
         return pad_vn
 
-    if _is_support_v200():
+    if _is_support_v200() or _is_support_fixpipe():
         pad_res = _padding_v200()
     else:
         pad_res = _padding_v100()

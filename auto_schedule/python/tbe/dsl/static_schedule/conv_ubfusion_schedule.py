@@ -97,6 +97,12 @@ class EltwiseUBFusion:
         self.next_op_list = []
         self.cub = None # cub is the first tensor in ub. which is also fixpipe_res.
         self.cache_write_flag = self.flag and is_elewise(res)
+        self.cache_read_blacklist = [
+            "max_pooling_pad_top",
+            "max_pooling_pad_bottom",
+            "max_pooling_pad_left",
+            "max_pooling_pad_right",
+        ]
         if self.flag:
             self.parse_ub_tensors(res, op_graph)
             self.parse_next_op(op_graph)
@@ -137,7 +143,7 @@ class EltwiseUBFusion:
             if is_placeholder(src_tensor):
                 if src_tensor.op.tag == "broadcast":
                     self.ub_input_broadcast_tensors.add(src_tensor)
-                else:
+                elif src_tensor.op.name not in self.cache_read_blacklist:
                     self.ub_input_placeholders.add(src_tensor)
             elif src_tensor.op.tag == "broadcast_for_tensor":
                 self.inline_tensors.append(src_tensor)

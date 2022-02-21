@@ -39,6 +39,7 @@ static const char kPatternConv[] = "convolution";
 static const char kPatternEltwise[] = "eltwise";
 static const char kPatternMaxpool[] = "maxpool";
 static const char kPatternQuant[] = "quant";
+static const char kPatternFixpipe[] = "FixPipe";
 
 static const char kOpTypeMaxPool[] = "MaxPool";
 static const char kOpTypePooling[] = "Pooling";
@@ -80,6 +81,23 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
       .SetOutputs(kPatternMaxpool, {kPatternQuant});
   patterns.push_back(pattern);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name.c_str());
+
+  string pass_name2 = "TbeAippConvReluMaxpoolingFusionPass2";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
+  pattern2->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternFixpipe, {OP_PATTERN_FIXPIPE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMaxpool, {kOpTypeMaxPool, OP_PATTERN_POOL2D}, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternAipp, kPatternConv})
+      .SetOutputs(kPatternAipp, {kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternFixpipe}, TBE_OUTPUT_BRANCH_SINGLE, true)
+      .SetOutputs(kPatternFixpipe, {kPatternMaxpool});
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
+
   return patterns;
 }
 

@@ -58,7 +58,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 
 def test_pooling_get_op_support_info(test_arg):
     from impl.pooling import get_op_support_info

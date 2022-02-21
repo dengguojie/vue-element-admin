@@ -398,7 +398,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                     axis_k0]).astype(mad_dtype))),
                     axis=[axis_k1, axis_k0]),
                 name='mad1',
-                tag=OP_TAG + "c_col_bias")
+                tag=OP_TAG + "c_col_bias"
+                )
             return c_col
 
         c_col = tvm.compute(
@@ -419,7 +420,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                             axis_k0]).astype(mad_dtype)),
                 axis=[axis_k1, axis_k0]),
             name='mad1',
-            tag=OP_TAG + "c_col")
+            tag=OP_TAG + "c_col"
+            )
 
         return c_col
 
@@ -438,7 +440,9 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 co0_idx).astype(res_dtype),
             name='res_conv2d',
             tag=OP_TAG + "res_conv2d",
-            attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"]})
+            attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"],
+                   "width_out": out_width}
+            )
 
         if conv_type == ConvType.FP32:
             # split channel + remove pad

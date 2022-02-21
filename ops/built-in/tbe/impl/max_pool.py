@@ -181,7 +181,7 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
     conv_pooling_flag = False
     temp_tensor = input_data
     while temp_tensor.op.input_tensors:
-        if temp_tensor.op.tag == "convolution_C":
+        if temp_tensor.op.tag in ("convolution_C", "fixpipe_reform", "convolution_res_conv2d"):
             conv_pooling_flag = True
             break
         temp_tensor = temp_tensor.op.input_tensors[0]
