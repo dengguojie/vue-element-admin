@@ -720,6 +720,149 @@
     "input_desc": [
       {
         "shape": [
+          32,
+          16,
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 32],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [
+          32
+        ],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [
+          32
+        ],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          16,
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 32],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          1
+        ],
+        "format": "NCHW",
+	"typical_shape": [32, 16, 1],
+        "shape_range": [
+          [
+            32,
+            32
+          ],
+          [
+            16,
+            16
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          16,
+          1
+        ],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 1],
+        "shape_range": [
+          [
+            32,
+            32
+          ],
+          [
+            16,
+            16
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "impl_mode",
+        "type": "string",
+        "value": "keep_fp16"
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_0001"
+  },
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
           64,50,768
         ],
         "format": "NCHW",
@@ -1064,5 +1207,901 @@
       }
     ],
     "case_name": "test_dynamicLayerNorm_NZ_000"
+  },
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          32,
+          -1,
+          2,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "typical_shape": [32, 1, 2, 16, 16],
+        "ori_shape": [
+          32,
+          32,
+          -1
+        ],
+        "ori_format": "NCHW",
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [
+          16
+        ],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "NCHW",
+        "typical_shape": [
+          16
+        ],
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          -1,
+          2,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "typical_shape": [32, 1, 2, 16, 16],
+        "ori_shape": [
+          32,
+          32,
+          -1
+        ],
+        "ori_format": "NCHW",
+        "shape_range": [
+          [
+            1,
+            32
+          ]
+        ],
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          32,
+          1
+        ],
+        "format": "NCHW",
+	      "typical_shape": [32, 32, 1],
+        "shape_range": [
+          [
+            32,
+            32
+          ],
+          [
+            32,
+            32
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          32,
+          32,
+          1
+        ],
+        "format": "NCHW",
+        "typical_shape": [32, 32, 1],
+        "shape_range": [
+          [
+            32,
+            32
+          ],
+          [
+            32,
+            32
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "impl_mode",
+        "type": "string",
+        "value": "keep_fp16"
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_0001"
+  },
+  {  
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          102,128,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          2048, 1632
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1632
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1632
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          102,128,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          2048, 1632
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2048, 1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2048, 1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "impl_mode",
+        "type": "string",
+        "value": "keep_fp16"
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_002"
+  },
+  { 
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          35,65,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          1040,560
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          560
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          560
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          35,65,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          1040,560
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1040, 1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1040, 1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_003"
+  },
+  { 
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          3,1,18,34,29,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,1,18,464,544
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          544
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          544
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,1,18,34,29,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,1,18,464,544
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,1,18,464,1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          3,1,18,464,1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_004"
+  },
+  { 
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          35,13,109,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          35,1744,208
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          208
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          208
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          35,13,109,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          35,1744,208
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          35,1744,1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          35,1744,1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_005"
+  },
+  { 
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          85,56,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          896,1360
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          1360
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          1360
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          85,56,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          896,1360
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          896,1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          896,1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_006"
+  },
+  { 
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          69,24,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          384,1104
+        ],
+        "ori_format": "NHWC",
+        "name": "input_x",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          1104
+        ],
+        "format": "ND",
+        "name": "input_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          1104
+        ],
+        "format": "ND",
+        "name": "input_beta",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          69,24,16,16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          384,1104
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          384,1
+        ],
+        "format": "ND",
+        "name": "output_mean",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          384,1
+        ],
+        "format": "ND",
+	      "name": "output_variance",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_NZ_008"
+  },
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          8, 1, 86, 74, 79
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8, 1, 86, 74, 79
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          79
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          79
+        ],
+        "ori_format": "NCHW",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          79
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          79
+        ],
+        "ori_format": "NCHW",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8, 1, 86, 74, 79
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8, 1, 86, 74, 79
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          8, 1, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8, 1, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          8, 1, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          8, 1, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": 4
+      }
+    ],
+    "case_name": "test_staticDynamicLayerNorm_ND_000"
+  },
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          7, 17, 8, 14, 12, 4, 25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7, 17, 8, 14, 12, 4, 25
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          25
+        ],
+        "ori_format": "NCHW",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          25
+        ],
+        "ori_format": "NCHW",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7, 17, 8, 14, 12, 4, 25
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7, 17, 8, 14, 12, 4, 25
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          7, 1, 1, 1, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7, 1, 1, 1, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          7, 1, 1, 1, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          7, 1, 1, 1, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_staticDynamicLayerNorm_ND_001"
+  },
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [
+          14, 9, 28, 74
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          14, 9, 28, 74
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          74
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          74
+        ],
+        "ori_format": "NCHW",
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          74
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          74
+        ],
+        "ori_format": "NCHW",
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          14, 9, 28, 74
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          14, 9, 28, 74
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          14, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          14, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          14, 1, 1, 1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          14, 1, 1, 1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": -1
+      }
+    ],
+    "case_name": "test_staticDynamicLayerNorm_ND_002"
   }
 ]

@@ -15,6 +15,7 @@
 """
 layer_norm
 """
+from copy import deepcopy
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import shape_util
@@ -33,6 +34,7 @@ from impl.common_util import constant
 from impl.layer_norm_tik import if_tik_support
 from impl.layer_norm_tik import layer_normalize
 import impl.layer_norm_unify as layer_norm_unify
+import impl.dynamic as dyn
 
 
 # 'pylint: disable = unused-argument
@@ -53,18 +55,18 @@ def get_op_support_info(input_x, input_gamma, input_beta,
         axis_split_matrix = []
         if begin_params_axis == 0:
             for i in range(begin_norm_axis):
-                split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]]), \
+                split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]]),
                            SplitOutput([0, [i]], [1, [i]], [2, [i]])]
                 axis_split_matrix.append(split_0)
         else:
             if begin_norm_axis <= begin_params_axis:
                 for i in range(begin_norm_axis):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]], [2, [i]])]
                     axis_split_matrix.append(split_0)
             else:
                 for i in range(begin_params_axis):
-                    split_0 = [SplitInput([0, [i], [-1], [-1]]), \
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]], [2, [i]])]
                     axis_split_matrix.append(split_0)
 
@@ -100,6 +102,7 @@ def _division_sixteen(shape, begin_norm_axis):
     return False
 
 
+# 'pylint: disable=too-many-statements,too-many-branches
 def op_select_format(input_x, input_gamma, input_beta,
                      output_y, output_mean, output_variance,
                      begin_norm_axis, begin_params_axis,
@@ -332,6 +335,7 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
     return impl_mode == "high_performance" and _check_shape_and_dtype()
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def nz_non_aligned(input_x, input_gamma, input_beta,
                    output_y, output_mean, output_variance,
                    begin_norm_axis, begin_params_axis,
@@ -345,7 +349,7 @@ def nz_non_aligned(input_x, input_gamma, input_beta,
     cast_dtype = "float16"
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
@@ -400,7 +404,7 @@ def nz_non_aligned(input_x, input_gamma, input_beta,
 
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         mean = tbe.cast_to(mean, "float16")
@@ -410,6 +414,7 @@ def nz_non_aligned(input_x, input_gamma, input_beta,
     return mean, variance, res
 
 
+# 'pylint: disable=too-many-statements,too-many-branches
 def layer_norm_compute_nz(input_x, input_gamma, input_beta,
                           output_y, output_mean, output_variance,
                           begin_norm_axis, begin_params_axis,
@@ -452,7 +457,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     cast_dtype_precision = dtype
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
@@ -536,7 +541,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
 
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         mean = tbe.cast_to(mean, "float16")
@@ -546,6 +551,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     return mean, variance, res
 
 
+# 'pylint: disable=too-many-statements,too-many-branches
 @tbe_platform.fusion_manager.fusion_manager.register("layer_norm")
 def layer_norm_compute(input_x, input_gamma, input_beta,
                        output_y, output_mean, output_variance,
@@ -589,7 +595,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     cast_dtype_precision = dtype
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         cast_dtype = "float32"
@@ -675,7 +681,7 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
 
     if dtype == "float16" and \
             ((tbe_platform.cce_conf.api_check_support
-                  ("te.lang.cce.vexp", "float32") and
+              ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
         mean = tbe.cast_to(mean, "float16")
@@ -845,6 +851,8 @@ def layer_norm(input_x, input_gamma, input_beta,
         data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype)
 
         if input_format == "FRACTAL_NZ":
+            dyn_input_x = deepcopy(input_x)
+            dyn_input_x["shape"] = shape_x
             if flag_vector2cube:
                 layer_norm_cube = LayerNormCube({"ori_shape": ori_shape_x,
                                                  "epsilon": epsilon})
@@ -856,6 +864,11 @@ def layer_norm(input_x, input_gamma, input_beta,
                                    output_y, output_mean, output_variance,
                                    begin_norm_axis, begin_params_axis,
                                    ori_shape_x, epsilon, kernel_name, impl_mode)
+            elif layer_norm_unify.is_special_cases(dyn_input_x, input_gamma, input_beta, begin_norm_axis, impl_mode):
+                __dynamic_template_api(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                                       begin_norm_axis, begin_params_axis, epsilon, kernel_name, impl_mode)
+                return
+
             else:
                 mean, variance, res = \
                     layer_norm_compute_nz(data_x, data_gamma, data_beta,
@@ -863,23 +876,9 @@ def layer_norm(input_x, input_gamma, input_beta,
                                           begin_norm_axis, begin_params_axis,
                                           ori_shape_x, epsilon, kernel_name, impl_mode)
         else:
-            if layer_norm_unify.is_special_cases(shape_x, input_gamma_shape, input_beta_shape):
-                input_x, input_gamma, input_beta = layer_norm_unify.set_range(input_x, input_gamma, input_beta)
-                context = tbe_context.op_context.get_context()
-                if context is not None:
-                    context.set_op_mode("static")
-                    context.add_addition("is_static", True)
-                    layer_norm_unify.layer_norm(input_x, input_gamma, input_beta,
-                                                output_y, output_mean, output_variance,
-                                                begin_norm_axis, begin_params_axis,
-                                                epsilon, kernel_name, impl_mode)
-                else:
-                    with tbe_context.op_context.OpContext("static"):
-                        tbe_context.op_context.get_context().add_addition("is_static", True)
-                        layer_norm_unify.layer_norm(input_x, input_gamma, input_beta,
-                                                    output_y, output_mean, output_variance,
-                                                    begin_norm_axis, begin_params_axis,
-                                                    epsilon, kernel_name, impl_mode)
+            if layer_norm_unify.is_special_cases(input_x, input_gamma, input_beta, begin_norm_axis, impl_mode):
+                __dynamic_template_api(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                                       begin_norm_axis, begin_params_axis, epsilon, kernel_name, impl_mode)
                 return
             else:
                 mean, variance, res = \
@@ -898,3 +897,25 @@ def layer_norm(input_x, input_gamma, input_beta,
                                   data_beta, res, mean, variance]}
 
         tbe.cce_build_code(sch, config)
+
+
+def __dynamic_template_api(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                           begin_norm_axis, begin_params_axis, epsilon, kernel_name, impl_mode):
+    # when all reduce axis, or reduce axis non aligned or reduced mte data less one block etc. single-core cases will
+    # transfer dynamic template to use multi-core
+    input_x, input_gamma, input_beta = layer_norm_unify.set_range(input_x, input_gamma, input_beta)
+    context = tbe_context.op_context.get_context()
+    if context is not None:
+        context.set_op_mode("static")
+        context.add_addition("is_static", True)
+        dyn.layer_norm(input_x, input_gamma, input_beta,
+                       output_y, output_mean, output_variance,
+                       begin_norm_axis, begin_params_axis,
+                       epsilon, kernel_name, impl_mode)
+    else:
+        with tbe_context.op_context.OpContext("static"):
+            context.add_addition("is_static", True)
+            dyn.layer_norm(input_x, input_gamma, input_beta,
+                           output_y, output_mean, output_variance,
+                           begin_norm_axis, begin_params_axis,
+                           epsilon, kernel_name, impl_mode)

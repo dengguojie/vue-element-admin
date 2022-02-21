@@ -156,6 +156,25 @@ case45 = {"params": [{"shape": (-1, -1, 16, 16), "dtype": "float16", "format": "
           "format_expect": [],
           "support_expect": True}
 
+case46 = {"params": [{"shape": (-1, -1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (-1, -1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None), (1, None))},
+                     {"shape": (-1,), "dtype": "float16", "format": "NCHW", "ori_shape": (-1,),
+                      "ori_format": "NCHW", "range": ((1, None), )},
+                     {"shape": (-1,), "dtype": "float16", "format": "NCHW", "ori_shape": (-1,),
+                      "ori_format": "NCHW", "range": ((1, None), )},
+                     {"shape": (-1, -1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (-1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None), (1, None))},
+                     {"shape": (-1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None))},
+                     {"shape": (-1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None))},
+                     1, 1],
+          "addition_params": {'impl_mode': 'keep_fp16'},
+          "case_name": "layer_norm_46",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
 case5 = {"params": [{"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512), "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
                     {"shape": (304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (304, 512),
                      "ori_format": "NCHW", "range": ((1, None), (1, None),)},
@@ -224,6 +243,25 @@ case53 = {"params": [{"shape": (32, 304, 512), "dtype": "float16", "format": "NC
           "format_expect": [],
           "support_expect": True}
 
+case54 = {"params": [{"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     1, 0],
+          "addition_params": {'impl_mode': 'keep_fp16'},
+          "case_name": "layer_norm_54",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
 ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
@@ -233,10 +271,12 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case42)
 ut_case.add_case(["Ascend910A", "Ascend310"], case43)
 ut_case.add_case(["Ascend910A", "Ascend310"], case44)
 ut_case.add_case(["Ascend910A", "Ascend310"], case45)
+ut_case.add_case(["Ascend910A", "Ascend710"], case46)
 ut_case.add_case(["Ascend910A", "Ascend310"], case5)
 ut_case.add_case(["Ascend910A", "Ascend310"], case51)
 ut_case.add_case(["Ascend910A", "Ascend310"], case52)
 ut_case.add_case(["Ascend910A", "Ascend310"], case53)
+ut_case.add_case(["Ascend910A", "Ascend710"], case54)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

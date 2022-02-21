@@ -15,15 +15,13 @@
 """
 layer_norm_unify
 """
-from tbe import tvm
-from tbe.dsl.base import operation
-from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import register_operator
+from copy import deepcopy
 from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import classify
+from impl.util import util_common
+from tbe.dsl.static_schedule.util import gcd
+from tbe.dsl.static_schedule.util import get_block_factor_conservative
+from tbe.dsl.static_schedule.util import get_block_factor_radical
+from tbe.dsl.static_schedule.util import get_ub_factor
 
 
 # 'pylint: disable=too-few-public-methods
@@ -34,15 +32,21 @@ class Constant:
     UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     # Maximum number of surviving nodes for special cases, such as size of reduce axis is 768 or 1024
-    TOTAL_WIDTH_0 = 7.9
+    TOTAL_WIDTH_0 = {"float32": 7.9, "float16": 7.9}
     # Maximum number of surviving nodes for common cases
-    TOTAL_WIDTH_1 = 10
+    TOTAL_WIDTH_1 = {"float32": 8.1, "float16": 10}
+    # impl_mode is high_precision, Maximum number of surviving nodes for common case
+    TOTAL_WIDTH_2 = 11
     # used by TOTAL_WIDTH_0
     SPECIAL_REDUCE_AXES = [768, 1024]
     # UB buffer alignment number
     UB_ALIGN_FACTOR = 128
     # minimum alignment number
-    MIN_ALIGN_FACTOR = 16
+    MIN_ALIGN_FACTOR = {"float32": 8, "float16": 16}
+    DEFAULT_INDEX = -1
+    INIT_SIZE = 1
+    TILING_RADICAL = 0
+    TILING_CONSERVATIVE = 1
 
 
 # 'pylint: disable = unused-argument
@@ -67,311 +71,394 @@ def set_range(input_x, input_gamma, input_beta):
     return input_x, input_gamma, input_beta
 
 
-def _is_in_white_list(shape_x, shape_gamma, shape_beta):
+def _is_support_device():
+    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    support_device = (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,)
+    if cur_cce_product in support_device:
+        return True
+    return False
+
+
+def _is_in_white_list(input_x, input_gamma, input_beta):
     # Rules that besides the func:_is_unsupported_or_single_core
     # reserved for future
+    shape_x = list(input_x.get("shape"))
+    shape_gamma = list(input_gamma.get("shape"))
+    shape_beta = list(input_beta.get("shape"))
     white_list_x = [[50, 32, 768]]
     white_list_gamma = [[768]]
     white_list_beta = [[768]]
 
     if shape_x in white_list_x and shape_gamma in white_list_gamma and shape_beta in white_list_beta:
         return True
-
     return False
 
 
 # 'pylint: disable = unused-argument
-def _is_unsupported_or_single_core(shape_x, shape_gamma, shape_beta):
+def _is_unsupported_or_single_core(input_x, input_gamma, input_beta, begin_norm_axis, impl_mode):
     # Scenes that reduce_multi_schedule unsupported or unable to enable multi-core
-    # last dim
-    last_dim = -1
-    size_reduce_axis = shape_x[last_dim]
-    is_last_axis_align = size_reduce_axis % Constant.MIN_ALIGN_FACTOR
+    shape_x = list(input_x.get("shape"))
+    dtype = input_x.get("dtype").lower()
+    ori_shape_x = list(input_x.get("ori_shape"))
+    input_format = input_x.get("format").upper()
+    index_list = [index for index, _ in enumerate(ori_shape_x)]
+    reduce_axis_list = index_list[begin_norm_axis:]
+    if input_format == "FRACTAL_NZ":
+        reduce_axis_list = to_frac_z_axis(ori_shape_x, reduce_axis_list)
+
+    # all dims reduce
+    if not begin_norm_axis:
+        return True
+
+    size_reduce_axis = Constant.INIT_SIZE
+    for dim in reduce_axis_list:
+        size_reduce_axis *= shape_x[dim]
+    is_last_axis_align = size_reduce_axis % Constant.MIN_ALIGN_FACTOR.get(dtype)
     # Scenes with misaligned reduce axes
     if is_last_axis_align:
         return True
 
-    total_width = \
-        Constant.TOTAL_WIDTH_0 if size_reduce_axis in Constant.SPECIAL_REDUCE_AXES else Constant.TOTAL_WIDTH_1
+    if impl_mode == "high_precision":
+        total_width = Constant.TOTAL_WIDTH_2
+    else:
+        total_width = Constant.TOTAL_WIDTH_0.get(dtype) if size_reduce_axis in Constant.SPECIAL_REDUCE_AXES \
+            else Constant.TOTAL_WIDTH_1.get(dtype)
     # Bytes of fp16
     bytes_size = 2
     total_size = Constant.UB_SIZE // bytes_size
     max_ub_count = int(total_size / total_width)
     max_ub_count = int(max_ub_count // Constant.UB_ALIGN_FACTOR) * Constant.UB_ALIGN_FACTOR
-    limit_ub_count = size_reduce_axis
-    # Scenes with size of reduce axes exceed the UB size
-    if limit_ub_count > max_ub_count:
-        return True
+    # get reduce dims size
+    limit_ub_count = 1
+    middle_output_shape = deepcopy(shape_x)
+    for i in reduce_axis_list:
+        limit_ub_count *= shape_x[i]
+        middle_output_shape[i] = 1
 
     res_size = max_ub_count // limit_ub_count
     # Ensure that the result after reduce exceeds 1 block
-    if res_size < Constant.MIN_ALIGN_FACTOR:
+    if res_size < Constant.MIN_ALIGN_FACTOR.get(dtype):
         return True
 
+    return __penultimate_two_dimensional_case(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                              middle_output_shape)
+
+
+def __penultimate_two_dimensional_case(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                       middle_output_shape):
     # Penultimate two-dimensional
+    # last dim
+    last_dim = -1
     penultimate_two_dims = -2
     if len(shape_x) > 1:
         pre_reduce = 1
         for dim in shape_x[:last_dim]:
             pre_reduce *= dim
-        if shape_x[penultimate_two_dims] != 1 and shape_x[penultimate_two_dims] % Constant.MIN_ALIGN_FACTOR and \
-                pre_reduce > Constant.MIN_ALIGN_FACTOR:
+        if shape_x[penultimate_two_dims] != 1 and shape_x[penultimate_two_dims] % Constant.MIN_ALIGN_FACTOR.get(dtype) \
+                and pre_reduce > Constant.MIN_ALIGN_FACTOR.get(dtype):
             return True
+    return __calcu_align_in_reduce_last_single_core(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                                    middle_output_shape)
 
-    return False
+
+def __calcu_align_in_reduce_last_single_core(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                             middle_output_shape):
+    # ub calculate align, util touch non reduce axis
+    core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    _last_axis_index = len(shape_x) - 1
+    special_reduce_axis_size = Constant.INIT_SIZE
+    reduce_align_flag = True
+    for idx in reversed(range(len(shape_x))):
+        if idx not in reduce_axis_list:
+            break
+        special_reduce_axis_size *= shape_x[idx]
+        if special_reduce_axis_size % Constant.MIN_ALIGN_FACTOR.get(dtype) == 0:
+            reduce_align_flag = False
+
+    align_count = Constant.MIN_ALIGN_FACTOR.get(dtype)
+    if reduce_align_flag:
+        align_axis_ori_size = shape_x[_last_axis_index]
+        ori_coef = gcd(align_axis_ori_size, Constant.MIN_ALIGN_FACTOR.get(dtype))
+        new_coef = gcd(special_reduce_axis_size, Constant.MIN_ALIGN_FACTOR.get(dtype))
+        align_count = int(Constant.MIN_ALIGN_FACTOR.get(dtype) / (new_coef / ori_coef))
+        align_axis_new_size = util_common.align(align_axis_ori_size, align_count)
+        shape_x[_last_axis_index] //= align_axis_new_size
+        limit_ub_count = limit_ub_count / align_axis_ori_size * align_axis_new_size
+
+    # scenes with size of reduce axis exceed the UB size
+    if limit_ub_count > max_ub_count:
+        return True
+
+    return __calcu_align_in_gm_single_core(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                           middle_output_shape, _last_axis_index, core_num, align_count)
 
 
-def is_special_cases(shape_x, shape_gamma, shape_beta):
+def __calcu_align_in_gm_single_core(shape_x, reduce_axis_list, dtype, limit_ub_count, max_ub_count,
+                                    middle_output_shape, _last_axis_index, core_num, align_count):
+    # gm align forcus on middle output data, it must more than one block
+    # or multi core pipe will be a problem
+    res_align_dim = Constant.DEFAULT_INDEX
+    res_align_factor = Constant.DEFAULT_INDEX
+    middle_output_tensor = (shape_x, middle_output_shape, middle_output_shape)
+    for middle_output in middle_output_tensor:
+        cur_align_status = False
+        cur_factor = Constant.MIN_ALIGN_FACTOR.get(dtype)
+        for i in reversed(range(len(middle_output))):
+            # find align dim and factor in middle_output_tensor
+            if cur_factor <= middle_output[i]:
+                cur_align_status = True
+                if (res_align_dim == Constant.DEFAULT_INDEX or res_align_dim > i or
+                        (res_align_dim == i and cur_factor > res_align_factor)) and i not in reduce_axis_list:
+                    res_align_dim = i
+                    res_align_factor = cur_factor
+                break
+            cur_factor = util_common.ceil(cur_factor, middle_output[i])
+        # not fit gm align, unsupport
+        if not cur_align_status:
+            return True
+    # all align default by current barrier
+    if res_align_dim == Constant.DEFAULT_INDEX or res_align_factor == Constant.DEFAULT_INDEX or \
+            res_align_dim == _last_axis_index:
+        return True
+
+    # make align axis as barrier
+    for i in range(res_align_dim + 1, len(shape_x)):
+        if i not in reduce_axis_list:
+            limit_ub_count *= shape_x[i]
+            reduce_axis_list.append(i)
+
+    return __calcu_other_tiling_single_core(shape_x, reduce_axis_list, limit_ub_count, max_ub_count, core_num,
+                                            _last_axis_index, align_count, res_align_dim, res_align_factor)
+
+
+def __calcu_other_tiling_single_core(shape_x, reduce_axis_list, limit_ub_count, max_ub_count, core_num,
+                                     _last_axis_index, align_count, res_align_dim, res_align_factor):
+    res_size = int(max_ub_count // limit_ub_count)
+    # not enough space to align gm
+    if res_size < res_align_factor:
+        return True
+
+    # consider multi core
+    free_size_after_block_tiling = Constant.INIT_SIZE
+    for i in range(res_align_dim + 1):
+        if i not in reduce_axis_list:
+            free_size_after_block_tiling *= shape_x[i]
+    free_size_after_block_tiling = util_common.ceil(free_size_after_block_tiling, core_num)
+    # use barrier to make sure align
+    cur_align_size = res_align_factor
+    upper_size = min(res_size, shape_x[res_align_dim])
+    # find perfect cut
+    for align_size in range(res_align_factor, upper_size + 1):
+        if free_size_after_block_tiling % align_size == 0:
+            cur_align_size = align_size
+            break
+    misalign_size = shape_x[res_align_dim] % cur_align_size
+    if misalign_size and misalign_size < res_align_factor:
+        return True
+    shape_x[res_align_dim] //= res_align_factor
+    limit_ub_count *= cur_align_size
+
+    # consider db condition
+    double_buffer_size = limit_ub_count * 2
+    if double_buffer_size <= max_ub_count:
+        limit_ub_count = double_buffer_size
+    res_size = max_ub_count // limit_ub_count
+
+    block_tiling_para = __calc_tiling_strategy(shape_x, reduce_axis_list, res_size, res_align_dim, core_num,
+                                               _last_axis_index, align_count, cur_align_size)
+    if not __check_tiling_res(shape_x, block_tiling_para):
+        while core_num > 1:
+            core_num -= 1
+            block_tiling_para = __calc_tiling_strategy(shape_x, reduce_axis_list, res_size, res_align_dim, core_num,
+                                                       _last_axis_index, align_count, cur_align_size)
+
+    return _do_tiling_strategy(shape_x, reduce_axis_list, block_tiling_para)
+
+
+def is_special_cases(input_x, input_gamma, input_beta, begin_norm_axis, impl_mode):
     """
     Judge whether it is a special case
     """
-    shape_x = list(shape_x)
-    shape_gamma = list(shape_gamma)
-    shape_beta = list(shape_beta)
+    is_support_device = _is_support_device()
+    is_unsupported_or_single_core = _is_unsupported_or_single_core(
+        input_x, input_gamma, input_beta, begin_norm_axis, impl_mode)
+    is_in_white_list = _is_in_white_list(input_x, input_gamma, input_beta)
 
-    return _is_unsupported_or_single_core(shape_x, shape_gamma, shape_beta) or _is_in_white_list(shape_x, shape_gamma,
-                                                                                                 shape_beta)
+    return (is_unsupported_or_single_core or is_in_white_list) and is_support_device
 
 
-def layer_norm_compute(input_x,
-                       input_gamma,
-                       input_beta,
-                       output_y,
-                       output_mean,
-                       output_variance,
-                       reduce_axis,
-                       begin_params_axis,
-                       epsilon,
-                       kernel_name="layer_norm",
-                       impl_mode="high_performance"):
+def __calc_tiling_strategy(shape_x, reduce_axis_list, rest_size, res_align_dim, core_num,
+                           _last_axis_index, align_count, cur_align_size):
+    tiling_shape = deepcopy(shape_x)
+    tiling_barrier = reduce_axis_list
+    block_tiling_axes, block_factor = get_block_factor_radical(tiling_shape, tiling_barrier, core_num)
+    # set barrier base on block tiling result
+    tiling_shape[block_tiling_axes[0]] = block_factor
+    tiling_barrier = tiling_barrier + list(range(block_tiling_axes[0]))
+    tiling_barrier = tiling_barrier + block_tiling_axes[1:]
+    # ub tiling
+    ub_axis_idx, ub_factor = get_ub_factor(tiling_shape, tiling_barrier, rest_size)
+    # check result
+    if ub_axis_idx not in block_tiling_axes or len(block_tiling_axes) == 1:
+        tiling_strategy = Constant.TILING_RADICAL
+    else:
+        tiling_shape = deepcopy(shape_x)
+        tiling_barrier = reduce_axis_list
+        # use fill, at last, make it successful
+        block_tiling_axes, block_factor = get_block_factor_conservative(tiling_shape, tiling_barrier, core_num)
+
+        tiling_barrier += list(range(block_tiling_axes[-1]))
+        tiling_shape[block_tiling_axes[-1]] = block_factor[-1]
+        # ub_tiling
+        ub_axis_idx, ub_factor = get_ub_factor(tiling_shape, tiling_barrier, rest_size)
+        tiling_strategy = Constant.TILING_CONSERVATIVE
+
+    # modify cut factor as barrier last axis to ub align
+    if _last_axis_index in block_tiling_axes:
+        if tiling_strategy == Constant.TILING_RADICAL:
+            block_factor *= align_count
+        if tiling_strategy == Constant.TILING_CONSERVATIVE:
+            block_factor[-1] = block_factor[-1] * align_count
+    if ub_axis_idx == _last_axis_index:
+        ub_factor *= align_count
+
+    # modify cut factor as barrier some axes to gm align
+    if res_align_dim in block_tiling_axes:
+        if tiling_strategy == Constant.TILING_RADICAL:
+            block_factor *= cur_align_size
+        if tiling_strategy == Constant.TILING_CONSERVATIVE:
+            block_factor[-1] = block_factor[-1] * cur_align_size
+    if ub_axis_idx == res_align_dim:
+        ub_factor *= cur_align_size
+    ub_factor = __check_ub_factor(ub_axis_idx, block_tiling_axes, block_factor, ub_factor)
+    block_tiling_para = {"axes": block_tiling_axes, "factor": block_factor,
+                         "tiling_strategy": tiling_strategy, "ub_axes": ub_axis_idx, "ub_factor": ub_factor}
+
+    return block_tiling_para
+
+
+def _do_tiling_strategy(shape_x, reduce_axis_list, block_tiling_para):
+    # align tiling
+    res_axes = []
+    leave_in_ub_axes = []
+    front_ub_axis_idx = Constant.DEFAULT_INDEX
+    for idx in reduce_axis_list:
+        leave_in_ub_axes.append(idx)
+        if idx < front_ub_axis_idx or front_ub_axis_idx == Constant.DEFAULT_INDEX:
+            front_ub_axis_idx = idx
+    for _, val in enumerate(shape_x):
+        res_axes.append(val)
+    # get params
+    block_tiling_axes = block_tiling_para.get("axes")
+    block_tiling_factor = block_tiling_para.get("factor")
+    tiling_strategy = block_tiling_para.get("tiling_strategy")
+    # make init
+    if tiling_strategy == Constant.TILING_RADICAL:
+        # block tiling
+        block_target_axis = res_axes[block_tiling_axes[0]]
+        fuse_axes_idx = block_tiling_axes[1:]
+        for d_i in fuse_axes_idx:
+            block_target_axis *= res_axes[d_i]
+        block_target_axis = util_common.ceil(block_target_axis, block_tiling_factor)
+    else:
+        # block tiling
+        # 'pylint: disable=unsubscriptable-object
+        if len(block_tiling_axes) == 1:
+            block_target_axis = util_common.ceil(res_axes[block_tiling_axes[0]], block_tiling_factor[0])
+        else:
+            suf_outer = util_common.ceil(res_axes[block_tiling_axes[-1]], block_tiling_factor[-1])
+            block_target_axis = block_tiling_factor[0]
+            block_fuse_axes_idx = block_tiling_axes[1:-1]
+            for d_i in block_fuse_axes_idx:
+                block_target_axis *= res_axes[d_i]
+            block_target_axis *= suf_outer
+
+    multi_core_fused_axis = block_target_axis
+    if multi_core_fused_axis > 1:
+        return False
+    else:
+        return True
+
+
+def to_frac_z_axis(ori_shape, ori_axis):
     """
-    DSL description of the layernorm operator's mathematical calculation process
+    judge the format is fractal NZ
 
     Parameters
     ----------
-    input_x : dict
-        shape and dtype of input x, only support float16, float32
-    input_gamma: dict
-        shape and dtype of input gamma, only support float16, float32
-    input_beta: dict
-        shape and dtype of input beta, only support float16, float32
-    output_y: dict
-        shape and dtype of output, only support float16, float32
-    output_mean: dict
-        shape and dtype of output, only support float16, float32
-    output_variance: dict
-        shape and dtype of output, only support float16, float32
-    reduce_axis: int
-      The first normalization dimension: normalization will be
-      performed along dimensions `begin_norm_axis : rank(inputs)`
-    begin_params_axis: int
-      The first parameter (beta, gamma) dimension: scale
-      and centering parameters will have dimensions
-      `begin_params_axis : rank(inputs)` and will be broadcast with the
-      normalized inputs accordingly.
-    epsilon: float,
-      Minimum positive number greater than 0
-    kernel_name: str
-        cce kernel name, default value is "layer_norm"
-    impl_mode: str
-        high_precision or high_performance for inference, default value is "high_performance".
+    ori_shape: list or tuple
+        original shape of input
+    ori_axis: list or tuple
+        original axis of original shape to operate
 
     Returns
     -------
-    res_tuple: tuple
-        (mean, variance, res)
+    output: list
+        axis of the fractal Nz shape
     """
-    shape_x = shape_util.shape_to_list(input_x.shape)
-    dtype = input_x.dtype.lower()
-    cast_dtype = dtype
-    cast_dtype_precision = dtype
-    is_cast = False
-    is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-    tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and is_support_vexp and impl_mode != "keep_fp16":
-        cast_dtype = "float32"
-        cast_dtype_precision = "float32"
-        input_x = tbe.cast_to(input_x, "float32")
-        input_gamma = tbe.cast_to(input_gamma, "float32")
-        input_beta = tbe.cast_to(input_beta, "float32")
-        is_cast = True
-
-    reduce_elts = 1.0
-    for i in reduce_axis:
-        reduce_elts *= shape_x[i]
-    if isinstance(reduce_elts, float):
-        mean_cofs = reduce_elts ** (-1)
-        mean_cof = tvm.const(mean_cofs, dtype=cast_dtype)
-    else:
-        mean_cof = tbe.var("mean_cof", dtype=cast_dtype)
-        operation.add_compile_info("reduce_mean_cof_dtype", cast_dtype)
-
-    # DSL description of the mean calculation process
-    mean_muls = tbe.vmuls(input_x, mean_cof)
-    mean = tbe.reduce_sum(mean_muls, axis=reduce_axis, keepdims=True)
-    # workspace special case
-    if is_cast:
-        mean_16 = tbe.cast_to(mean, "float16")
-        mean = tbe.cast_to(mean_16, "float32")
-
-    # DSL description of the variance calculation process
-    mean_variance_broadcast = tbe.broadcast(mean, shape_x)
-    variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
-    variance_mul = tbe.vmul(variance_sub, variance_sub)
-    variance_muls = tbe.vmuls(variance_mul, mean_cof)
-    variance = tbe.reduce_sum(variance_muls, axis=reduce_axis, keepdims=True)
-    if is_cast:
-        variance_16 = tbe.cast_to(variance, "float16")
-        variance = tbe.cast_to(variance_16, "float32")
-    norm_sub = variance_sub
-
-    # DSL description of the normalize calculation process
-    if is_support_vexp:
-        epsilon = tvm.const(epsilon, dtype=cast_dtype)
-        variance_norm_broadcast = tbe.broadcast(variance, shape_x)
-        norm_add = tbe.vadds(variance_norm_broadcast, epsilon)
-        norm_log = tbe.vlog(norm_add)
-        norm_log_mul = tbe.vmuls(norm_log, tvm.const(-0.5, dtype=cast_dtype))
-        norm_exp = tbe.vexp(norm_log_mul)
-        norm_mul = tbe.vmul(norm_sub, norm_exp)
-    else:
-        tensor_one = tbe.broadcast(tvm.const(1, cast_dtype_precision), shape_x)
-        variance_norm_broadcast = tbe.broadcast(variance, shape_x)
-        epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
-        norm_add = tbe.vadds(variance_norm_broadcast, epsilon)
-        norm_sqrt = tbe.vsqrt(norm_add, 0)
-        norm_rsqrt = tbe.vdiv(tensor_one, norm_sqrt)
-        norm_mul = tbe.vmul(norm_sub, norm_rsqrt)
-
-    # DSL description of the scale and translate calculation process
-    if begin_params_axis == 0:
-        scale_mul = tbe.vmul(norm_mul, input_gamma)
-        res = tbe.vadd(scale_mul, input_beta)
-    else:
-        gamma_broadcast = tbe.broadcast(input_gamma, shape_x)
-        beta_broadcast = tbe.broadcast(input_beta, shape_x)
-        scale_mul = tbe.vmul(norm_mul, gamma_broadcast)
-        res = tbe.vadd(scale_mul, beta_broadcast)
-
-    if is_cast:
-        res = tbe.cast_to(res, "float16")
-        return mean_16, variance_16, res
-
-    return mean, variance, res
+    frac_z_axis = list(ori_axis)
+    ori_shape_len = len(ori_shape)
+    axis_count = len(frac_z_axis)
+    axis_negative_1 = ori_shape_len - 1
+    axis_negative_2 = ori_shape_len - 2
+    for i in range(axis_count):
+        axis_index = (frac_z_axis[i] + ori_shape_len) % ori_shape_len
+        if axis_index == axis_negative_1:
+            if frac_z_axis[i] <= ori_shape_len - 2:
+                frac_z_axis[i] = axis_index - 1
+                frac_z_axis.append(axis_index + 2)
+            else:
+                frac_z_axis[i] = axis_index - 1
+                frac_z_axis.append(axis_index + 1)
+        elif axis_index == axis_negative_2:
+            frac_z_axis[i] = axis_index + 1
+            frac_z_axis.append(axis_index + 2)
+        else:
+            frac_z_axis[i] = axis_index
+    return frac_z_axis
 
 
-@register_operator("StaticLayerNorm")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
-def layer_norm(input_x,
-               input_gamma,
-               input_beta,
-               output_y,
-               output_mean,
-               output_variance,
-               begin_norm_axis,
-               begin_params_axis,
-               epsilon=1e-12,
-               kernel_name="layer_norm",
-               impl_mode="high_performance"):
+def __check_ub_factor(ub_axis_idx, block_tiling_axes, block_factor, ub_factor):
     """
-    layernorm operator interface implementation
-    calculating: x, gamma, beta
-        mean  = np.mean(x, reduce_axis, keepdims=True)
-        variance = np.mean(np.power((x - mean),2), reduce_axis, keepdims=True)
-        result = gamma*((x - mean) / np.sqrt(variance + 0.001)) + beta
-
-    Parameters
-    ----------
-    input_x : dict
-        shape and dtype of input x, only support float16, float32
-    input_gamma: dict
-        shape and dtype of input gamma, only support float16, float32
-    input_beta: dict
-        shape and dtype of input beta, only support float16, float32
-    output_y: dict
-        shape and dtype of output, only support float16, float32
-    output_mean: dict
-        shape and dtype of output, only support float16, float32
-    output_variance: dict
-        shape and dtype of output, only support float16, float32
-    begin_norm_axis: int
-      The first normalization dimension: normalization will be
-      performed along dimensions `begin_norm_axis : rank(inputs)`
-    begin_params_axis: int
-      The first parameter (beta, gamma) dimension: scale
-      and centering parameters will have dimensions
-      `begin_params_axis : rank(inputs)` and will be broadcast with the
-      normalized inputs accordingly.
-    epsilon: float,
-      Minimum positive number greater than 0
-    kernel_name: str
-        cce kernel name, default value is "layer_norm"
-    impl_mode: str
-        high_precision or high_performance for inference, default value is "high_performance".
-
-    Returns
-    -------
-    None
+    check ub_factor is need modify
     """
-    shape_x = list(input_x.get("shape"))
+    is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
+        len(block_tiling_axes) == 1
+    _block_factor = 1
+    if is_need_modify_factor:
+        if isinstance(block_factor, int):
+            _block_factor = block_factor
+        if isinstance(block_factor, list) and \
+                len(block_factor) == 1:
+            _block_factor = block_factor[0]
 
-    check_list = ("float16", "float32")
-    dtype = input_x.get("dtype").lower()
-    dtype_gamma = input_gamma.get("dtype").lower()
-    dtype_beta = input_beta.get("dtype").lower()
-    para_check.check_dtype(dtype, check_list, param_name="input_x")
-    para_check.check_dtype(dtype_gamma, check_list, param_name="input_gamma")
-    para_check.check_dtype(dtype_beta, check_list, param_name="input_beta")
+    if _block_factor > 1:
+        while _block_factor % ub_factor == 1:
+            ub_factor -= 1
 
-    shape_gamma = list(input_gamma.get("shape"))
-    shape_beta = list(input_beta.get("shape"))
-    range_gamma = list(input_gamma.get("range"))
-    range_beta = list(input_beta.get("range"))
+    return ub_factor
 
-    begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
-    begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
 
-    index_list = tuple(index for index, _ in enumerate(shape_x))
-    reduce_axis = index_list[begin_norm_axis:]
-    broadcast_axis = index_list[:begin_params_axis]
+def __check_tiling_res(tiling_shape, tiling_para):
+    block_tiling_axes = tiling_para["axes"]
+    block_factor = tiling_para["factor"]
+    ub_axis_idx = tiling_para["ub_axes"]
+    ub_factor = tiling_para["ub_factor"]
 
-    input_gamma["shape"] = tuple(shape_gamma)
-    input_beta["shape"] = tuple(shape_beta)
-    input_gamma["range"] = tuple(range_gamma)
-    input_beta["range"] = tuple(range_beta)
+    is_need_modify_factor = ub_axis_idx in block_tiling_axes and \
+        len(block_tiling_axes) == 1
 
-    ins = classify([input_x, input_gamma, input_beta, reduce_axis], "norm",
-                   {"input_shape_type": [0, 1, 1], "same_input_shape_group": [[1, 2]],
-                    "compile_broadcast_axes": {1: broadcast_axis, 2: broadcast_axis}})
-    schedules = []
-    tensors = []
+    if is_need_modify_factor:
+        block_tiling_axis = block_tiling_axes[0]
+        if isinstance(block_factor, int):
+            _block_factor = block_factor
+        if isinstance(block_factor, list) and \
+                len(block_factor) == 1:
+            _block_factor = block_factor[0]
+        if _block_factor > 1:
+            block_tile = tiling_shape[block_tiling_axis] % _block_factor
+            if _block_factor % ub_factor == 1 or \
+                    block_tile % ub_factor == 1:
+                return False
 
-    for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins:
-        with tbe.compute():
-            x_var, gamma_var, beta_var = shape_util.variable_shape(
-                [dy_shape_x, dy_shape_gamma, dy_shape_beta], op_mode="norm")
-            data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
-            data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
-            data_beta = tvm.placeholder(beta_var, name="beta", dtype=dtype)
-
-            mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
-                                                     output_y, output_mean, output_variance,
-                                                     dy_reduce_axis,
-                                                     begin_params_axis, epsilon,
-                                                     kernel_name, impl_mode)
-            tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
-        with tvm.target.cce():
-            sch = tbe.auto_schedule([res, mean, variance])
-
-        schedules.append(sch)
-
-    config = {
-        "print_ir": False,
-        "name": kernel_name,
-        "tensor_list": tensors
-    }
-
-    tbe.build(schedules, config)
+    return True
