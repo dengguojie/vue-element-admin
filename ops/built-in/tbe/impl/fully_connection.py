@@ -220,7 +220,7 @@ def fully_connection_check_rule(x, w, b, offset_w, y, num_output, transpose, axi
                        "C0 must be 32 or 64 when quant condition! for axis = 2: the last dim must be 16!"
         error_manager_vector.raise_err_specific_reson("fully_connection", error_reson)
 
-    para_check.check_dtype(dtype_x, ['float16', 'int8', 'int4'], param_name="x")
+    para_check.check_dtype(dtype_x, ['float16', 'int8', 'int4', 'bfloat16', 'float32'], param_name="x")
     para_check.check_format(format_x, ('NC1HWC0', 'FRACTAL_NZ', 'FRACTAL_Z'), param_name="x")
 
     # w info
@@ -288,6 +288,7 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
     """
     format_x = x.op.attrs["format"].value
     format_out = None
+    support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     if axis == 2:
         format_a = 'FRACTAL_NZ'
         format_b = 'FRACTAL_Z'
@@ -297,7 +298,7 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
             format_a = 'ND'
             format_b = 'FRACTAL_Z'
             trans_a = False
-            if x.shape[0].value == 1:
+            if x.shape[0].value == 1 and not support_l0c2out:
                 format_out = 'FRACTAL_NZ'
         else:
             format_a = 'FRACTAL_NZ'
